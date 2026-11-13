@@ -1,5 +1,6 @@
-Rubenium 2.2.0
+Rubenium 2.3.0
 
-- Automatic updates: Rubenium now finds new versions by itself and offers to install them.
-- Rocket League: Steam and Epic supported, changes collected while the game is open, safer swaps.
-- Reset buttons on every customisation tab.
+- Starts more reliably with Windows: every part starts on its own, the music connection and the tray icon retry if Windows is still loading, and screen colours are applied again once Windows has settled.
+- If something ever fails at start-up, the ball still appears and the problem is written to the log.
+- The Rubenium name in the card is drawn as one word (no more tiny gap).
+- Every version is now launched and tested on Windows before it is published.

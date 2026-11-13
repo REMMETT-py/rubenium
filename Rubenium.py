@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.2 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 2.3 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1178,7 +1178,7 @@ from PyQt6.QtGui import QColor, QFont
 
 
 APP_NAME = "Rubenium"
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -3444,20 +3444,26 @@ class MediaService(QThread):
         self._wake.set()
 
     def run(self) -> None:
-        try:
-            if os.environ.get("RUBENIUM_DEMO"):
-                backend = DemoBackend(self._wake.set)
-            elif sys.platform == "win32":
-                backend = WindowsBackend(self._wake.set)
-            else:
-                raise BackendUnavailable("Rubenium needs Windows 10 or 11")
-        except BackendUnavailable as exc:
-            log.error("%s", exc)
-            self.state_changed.emit(TrackState(Status.UNAVAILABLE, message=str(exc)))
-            return
-        except Exception as exc:  # noqa: BLE001
-            log.exception("Media backend start-up failed")
-            self.state_changed.emit(TrackState(Status.UNAVAILABLE, message=f"Start-up error: {exc}"))
+        backend = None
+        for attempt in range(8):                    # right after Windows starts, its media service can be late
+            try:
+                if os.environ.get("RUBENIUM_DEMO"):
+                    backend = DemoBackend(self._wake.set)
+                elif sys.platform == "win32":
+                    backend = WindowsBackend(self._wake.set)
+                else:
+                    raise BackendUnavailable("Rubenium needs Windows 10 or 11")
+                break
+            except BackendUnavailable as exc:
+                log.error("%s", exc)
+                self.state_changed.emit(TrackState(Status.UNAVAILABLE, message=str(exc)))
+                return
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Media start-up attempt %d failed: %s", attempt + 1, exc)
+                if self._halt.wait(min(15.0, 2.0 * (attempt + 1))):
+                    return
+        if backend is None:
+            self.state_changed.emit(TrackState(Status.UNAVAILABLE, message="Windows media service did not answer"))
             return
         try:
             self._loop(backend)
@@ -4955,8 +4961,8 @@ class RocketSwaps(QObject):
         self._timer.setInterval(20000)
         self._timer.timeout.connect(self.watch)
         self.done.connect(self._finished)
+        self._detected = False
         self._migrate()
-        self.detect()
 
     # -- settings
     @property
@@ -5278,7 +5284,13 @@ class RocketSwaps(QObject):
         return win.open_path(url)
 
     # -- watching for game updates and changed files (every install)
+    def ensure_detected(self) -> None:
+        if not self._detected:
+            self._detected = True
+            self.detect()
+
     def start(self) -> None:
+        QTimer.singleShot(1500, self.ensure_detected)       # after the ball is on screen
         self._timer.start()
         QTimer.singleShot(4000, self.watch)
 
@@ -5286,6 +5298,7 @@ class RocketSwaps(QObject):
         self._timer.stop()
 
     def watch(self) -> None:
+        self.ensure_detected()
         if self.working:
             return
         for plat in self.available():
@@ -7399,6 +7412,7 @@ class RocketPage(Page):
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
         eng = ctx.rocket
+        eng.ensure_detected()
         self.pending = None                       # wanted swaps while the game is open, until Reload
         self.tiles = []
         lay = vbox(self, 8)
@@ -8264,12 +8278,19 @@ class Body(QWidget):
         p.setFont(font(18, QFont.Weight.ExtraBold, 0.4))
         fm = p.fontMetrics()
         x, base = S(PAD), QRectF(S(PAD), S(HEADER_TOP), self.width(), S(HEADER_H))
+        # Drawn as ONE word so the letters keep their natural spacing; the colour changes by clipping.
+        word = "Rubenium"
+        full = fm.horizontalAdvance(word)
+        split = x + full - fm.horizontalAdvance("ium")
+        p.save()
+        p.setClipRect(QRectF(0, 0, split, self.height()))
         p.setPen(QColor(TEXT))
-        p.drawText(base, int(Qt.AlignmentFlag.AlignVCenter), "Ruben")
-        x += fm.horizontalAdvance("Ruben")
+        p.drawText(base, int(Qt.AlignmentFlag.AlignVCenter), word)
+        p.setClipRect(QRectF(split, 0, self.width(), self.height()))
         p.setPen(ui.accent)
-        p.drawText(QRectF(x, base.top(), 200, base.height()), int(Qt.AlignmentFlag.AlignVCenter), "ium")
-        x += fm.horizontalAdvance("ium") + S(9)
+        p.drawText(base, int(Qt.AlignmentFlag.AlignVCenter), word)
+        p.restore()
+        x += full + S(9)
         st = self.win.ctx.state
         playing = st.status is Status.PLAYING
         live = st.status in (Status.PLAYING, Status.PAUSED)
@@ -9101,24 +9122,84 @@ class App(QObject):
         QTimer.singleShot(0, self._late_start)
 
     # ------------------------------------------------------------------ start-up
+    @staticmethod
+    def _safe(name: str, fn) -> None:
+        """One start-up step. If it fails it is logged and the app carries on: the ball always appears."""
+        try:
+            fn()
+        except Exception:  # noqa: BLE001
+            log.exception("start-up step '%s' failed", name)
+
     def _late_start(self) -> None:
-        self.media.start()
-        self._make_tray()
-        if win.IS_WIN:
-            if self.cfg["autostart"] is None:                 # first run: start with Windows by default
-                self.cfg["autostart"] = win.autostart_set(True)
-            elif self.cfg["autostart"]:
-                win.autostart_set(True)                       # keeps the path right if the app was moved
-        self.apply_overlays()
-        self.apply_timer()
-        self.refresh_accent()
-        self.rocket.start()
-        if self.cfg["update_check"]:
-            self.updater.start()
+        selftest = "--selftest" in sys.argv
+        self._safe("media", self.media.start)
+        if not selftest:
+            self._safe("tray", self._make_tray)
+            self._safe("autostart", self._sync_autostart)
+        self._safe("overlays", self.apply_overlays)
+        self._safe("timer", self.apply_timer)
+        self._safe("accent", self.refresh_accent)
+        self._safe("rocket", self.rocket.start)
+        if self.cfg["update_check"] and not selftest:
+            self._safe("updates", self.updater.start)
         self._pin = QTimer(self)
         self._pin.setInterval(2000)
-        self._pin.timeout.connect(self._housekeeping)
+        self._pin.timeout.connect(lambda: self._safe("housekeeping", self._housekeeping))
         self._pin.start()
+        # Right after Windows starts, the tray and the screen settings can still be settling: try again later.
+        QTimer.singleShot(8000, lambda: self._safe("tray retry", self._retry_tray))
+        QTimer.singleShot(12000, lambda: self._safe("display again", self._reapply_display))
+        QTimer.singleShot(30000, lambda: self._safe("tray retry", self._retry_tray))
+        if selftest:
+            QTimer.singleShot(1500, self._selftest)
+
+    def _sync_autostart(self) -> None:
+        if not win.IS_WIN:
+            return
+        if self.cfg["autostart"] is None:                 # first run: start with Windows by default
+            self.cfg["autostart"] = win.autostart_set(True)
+        elif self.cfg["autostart"]:
+            win.autostart_set(True)                       # keeps the path right if the app was moved
+
+    def _retry_tray(self) -> None:
+        if self.tray is None and not self._closing and "--selftest" not in sys.argv:
+            self._make_tray()
+
+    def _reapply_display(self) -> None:
+        if self.cfg["display"]["active"] in ("A", "B") and not self._closing:
+            self.display.apply()
+
+    def _selftest(self) -> None:
+        """--selftest: open every tab in both languages, then quit. Exit code 0 only if nothing went wrong.
+        The automatic build runs this on Windows before publishing a release."""
+        errors: list = []
+        old_hook = sys.excepthook
+
+        def hook(t, v, tb) -> None:
+            errors.append(v)
+            log.critical("SELFTEST error", exc_info=(t, v, tb))
+        sys.excepthook = hook
+        w = self.window
+        lang = self.cfg["lang"]
+        steps = [w.expand] + [lambda k=k: w.goto(k) for k, _, _ in TABS]
+        steps += [lambda: self.set_language("fr"), lambda: w.goto("home"), lambda: w.goto("rl"),
+                  lambda: self.set_language(lang or "en"), w.collapse, w.expand, w.collapse]
+
+        def run(i: int = 0) -> None:
+            if i < len(steps):
+                try:
+                    steps[i]()
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(exc)
+                    log.exception("SELFTEST step %d failed", i)
+                QTimer.singleShot(900, lambda: run(i + 1))
+                return
+            sys.excepthook = old_hook
+            log.info("SELFTEST %s (%d problems)", "OK" if not errors else "FAILED", len(errors))
+            self.shutdown()
+            self.qapp.exit(1 if errors else 0)
+        run()
+        QTimer.singleShot(120000, lambda: (log.error("SELFTEST timed out"), self.qapp.exit(2)))
 
     def apply_overlays(self) -> None:
         """(Re)apply everything that lives outside the card."""
@@ -9516,7 +9597,19 @@ def main() -> int:
     qapp.setQuitOnLastWindowClosed(False)
     qapp.setStyleSheet(APP_QSS)
     qapp.setWindowIcon(app_icon())
-    qapp._rubenium = App(qapp)          # kept alive for the lifetime of the event loop
+    try:
+        qapp._rubenium = App(qapp)      # kept alive for the lifetime of the event loop
+    except Exception:  # noqa: BLE001
+        log.exception("Rubenium could not start")
+        if "--selftest" in sys.argv:
+            return 1
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(None, "Rubenium could not start.\n\nDetails are in "
+                                             "Documents\\Rubenium\\rubenium.log", "Rubenium", 0x10)
+        except Exception:  # noqa: BLE001
+            pass
+        return 1
     return qapp.exec()
 
 

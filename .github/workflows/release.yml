@@ -20,9 +20,9 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -67,6 +67,18 @@ jobs:
           cd out
           for f in Rubenium.exe Rubenium.py swaps.zip; do sha256sum "$f" > "$f.sha256"; done
           ls -l
+
+      - name: Self-test the .exe on Windows (open every tab, both languages)
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\Rubenium.exe" -ArgumentList "--selftest" -PassThru
+          if (-not $p.WaitForExit(150000)) { $p.Kill(); Write-Error "Self-test timed out"; exit 1 }
+          $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
+          if (Test-Path $log) { Get-Content $log -Tail 40 }
+          if ($p.ExitCode -ne 0) { Write-Error "Self-test failed (exit code $($p.ExitCode))"; exit 1 }
+          if (-not (Select-String -Path $log -Pattern "SELFTEST OK" -Quiet)) { Write-Error "No SELFTEST OK in the log"; exit 1 }
+          Write-Host "Rubenium.exe opened and ran every tab without errors."
 
       - name: Publish the release
         if: steps.exists.outputs.skip == '0'
