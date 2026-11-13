@@ -1,6 +1,4 @@
-Rubenium 2.3.0
+Rubenium 2.4.0
 
-- Starts more reliably with Windows: every part starts on its own, the music connection and the tray icon retry if Windows is still loading, and screen colours are applied again once Windows has settled.
-- If something ever fails at start-up, the ball still appears and the problem is written to the log.
-- The Rubenium name in the card is drawn as one word (no more tiny gap).
-- Every version is now launched and tested on Windows before it is published.
+- New Rocket League swap in Goal explosions: Splash -> Adidas.
+- New website with a one-click download of the latest version.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.3 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 2.4 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1178,7 +1178,7 @@ from PyQt6.QtGui import QColor, QFont
 
 
 APP_NAME = "Rubenium"
-VERSION = "2.3.0"
+VERSION = "2.4.0"
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -4716,6 +4716,7 @@ RL_CATS = [("goal", "Goal explosions"), ("body", "Car bodies"), ("boost", "Boost
 RL_SLOTS = 4
 RL_ITEMS = [
     dict(id="atomizer_gentlemates", cat="goal", old="Atomizer", new="Gentle Mates 2025", file="explosion_Rekt_SF.upk"),
+    dict(id="splash_adidas", cat="goal", old="Splash", new="Adidas", file="explosion_splash_SF.upk"),
     dict(id="octane_fennec", cat="body", old="Octane", new="Fennec", file="Body_Octane_SF.upk"),
     dict(id="bubbles_alpha", cat="boost", old="Bubbles", new="Alpha Boost", file="Boost_Bubble_SF.upk"),
     dict(id="bubbles_dev", cat="boost", old="Bubbles", new="Dev Boost", file="Boost_Bubble_SF.upk"),
