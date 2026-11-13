@@ -1,0 +1,5 @@
+Rubenium 2.2.0
+
+- Automatic updates: Rubenium now finds new versions by itself and offers to install them.
+- Rocket League: Steam and Epic supported, changes collected while the game is open, safer swaps.
+- Reset buttons on every customisation tab.

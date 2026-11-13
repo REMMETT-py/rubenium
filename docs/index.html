@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rubenium</title>
+<style>
+  :root { --accent: #2D9CFF; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #090c0d;
+         color: #fff; font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif; }
+  .card { width: min(420px, 92vw); padding: 34px 30px 28px; border-radius: 22px;
+          background: linear-gradient(#0b0f10, #101415); border: 1px solid rgba(45,156,255,.55);
+          box-shadow: 0 0 0 6px rgba(45,156,255,.06), 0 0 60px rgba(45,156,255,.18); text-align: center; }
+  .ball { width: 64px; height: 64px; margin: 0 auto 18px; border-radius: 50%; display: grid; place-items: center;
+          background: #0b0f10; border: 1.5px solid var(--accent); box-shadow: 0 0 26px rgba(45,156,255,.45);
+          font-weight: 800; font-size: 30px; }
+  h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: .4px; }
+  h1 span { color: var(--accent); }
+  p { color: #b3b3b3; margin: 10px 0 26px; line-height: 1.45; }
+  a.btn { display: block; padding: 13px; border-radius: 12px; background: var(--accent); color: #04121f;
+          font-weight: 700; text-decoration: none; }
+  a.btn:hover { filter: brightness(1.1); }
+  small { display: block; margin-top: 16px; color: #7c8385; }
+  small a { color: #b3b3b3; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="ball">R</div>
+    <h1>Ruben<span>ium</span></h1>
+    <p>Music, crosshair, screen colours, stats, timer, themes and Rocket League swaps, in one glowing ball.
+       Windows 10 / 11.</p>
+    <a class="btn" href="https://github.com/REMMETT-py/rubenium/releases/latest/download/Rubenium.exe">Download Rubenium</a>
+    <small>It updates itself. Windows may say "unknown publisher": More info &rarr; Run anyway.<br>
+      <a href="https://github.com/REMMETT-py/rubenium/releases">All versions</a></small>
+  </main>
+</body>
+</html>

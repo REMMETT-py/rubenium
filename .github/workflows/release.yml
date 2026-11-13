@@ -1,0 +1,78 @@
+# Builds Rubenium.exe on Windows and publishes it as a GitHub release whenever VERSION in Rubenium.py
+# is a version that has not been released yet. Everyone's Rubenium then offers the update.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: ["Rubenium.py", "swaps/**", "release_notes.txt", "Rubenium.spec", "requirements.txt",
+            ".github/workflows/release.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Read the version from Rubenium.py
+        id: ver
+        shell: python
+        run: |
+          import os, re
+          text = open("Rubenium.py", encoding="utf-8").read()
+          version = re.search(r'^VERSION = "([0-9][0-9.]*)"', text, re.M).group(1)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"version={version}\n")
+          print("version", version)
+
+      - name: Already released?
+        id: exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.ver.outputs.version }}" > /dev/null 2>&1; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"; echo "v${{ steps.ver.outputs.version }} already exists, nothing to do."
+          else
+            echo "skip=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build Rubenium.exe
+        if: steps.exists.outputs.skip == '0'
+        shell: bash
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+          python make_icon.py
+          python make_version_info.py "${{ steps.ver.outputs.version }}"
+          pyinstaller --noconfirm --clean Rubenium.spec
+          mkdir out
+          cp dist/Rubenium.exe out/
+          cp Rubenium.py out/
+          python -c "import shutil; shutil.make_archive('out/swaps', 'zip', '.', 'swaps')"
+          cd out
+          for f in Rubenium.exe Rubenium.py swaps.zip; do sha256sum "$f" > "$f.sha256"; done
+          ls -l
+
+      - name: Publish the release
+        if: steps.exists.outputs.skip == '0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.ver.outputs.version }}"
+          gh release create "v$v" out/* --title "Rubenium $v" --notes-file release_notes.txt --latest

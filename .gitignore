@@ -1,0 +1,8 @@
+build/
+dist/
+__pycache__/
+*.spec.bak
+rubenium.ico
+rubenium.png
+version_info.txt
+*.download
