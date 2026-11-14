@@ -6014,7 +6014,9 @@ class Updater(QObject):
             info = {"version": tag.lstrip("vV"), "label": shown.group(0) if shown else tag.lstrip("vV"),
                     "page": str(rel.get("html_url", UPDATE_PAGE)), "assets": assets}
             self.busy = False
-            if version_tuple(tag) > version_tuple(self.current):
+            # The version is the one in the release title ("Rubenium 1.0.1"). The tag can differ: a release meant
+            # for older Rubenium versions carries a tag they read as newer, without this version seeing it as one.
+            if version_tuple(info["label"]) > version_tuple(self.current):
                 self.latest = info
                 self.found.emit(info)
                 if manual:

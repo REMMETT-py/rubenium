@@ -5,7 +5,7 @@ name: Release
 on:
   push:
     branches: [main, build-test]
-    paths: ["Rubenium.py", "swaps/**", "release_notes.txt", "Rubenium.spec", "installer.iss", "requirements.txt",
+    paths: ["Rubenium.py", "swaps/**", "release_notes.txt", "release_tag.txt", "Rubenium.spec", "Rubenium-portable.spec", "installer.iss", "requirements.txt",
             ".github/workflows/release.yml"]
   workflow_dispatch:
 
@@ -34,7 +34,13 @@ jobs:
           text = open("Rubenium.py", encoding="utf-8").read()
           version = re.search(r'^VERSION = "([0-9][0-9.]*)"', text, re.M).group(1)
           name = re.search(r'^VERSION_NAME = "([0-9][0-9.]*)"', text, re.M)
+          # The tag is normally v<VERSION>. release_tag.txt can set another one: a release meant for older
+          # Rubenium versions needs a tag they read as newer (the app itself goes by the release title).
+          tag = f"v{version}"
+          if os.path.exists("release_tag.txt"):
+              tag = open("release_tag.txt", encoding="utf-8").read().strip() or tag
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"tag={tag}\n")
               out.write(f"version={version}\n")
               out.write(f"name={name.group(1) if name else version}\n")
           print("version", version)
@@ -45,8 +51,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "v${{ steps.ver.outputs.version }}" > /dev/null 2>&1; then
-            echo "skip=1" >> "$GITHUB_OUTPUT"; echo "v${{ steps.ver.outputs.version }} already exists, nothing to do."
+          if gh release view "${{ steps.ver.outputs.tag }}" > /dev/null 2>&1; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"; echo "${{ steps.ver.outputs.tag }} already exists, nothing to do."
           else
             echo "skip=0" >> "$GITHUB_OUTPUT"
           fi
@@ -84,6 +90,36 @@ jobs:
           if (Test-Path $log) { Get-Content $log -Tail 40 }
           if ($p.ExitCode -ne 0) { Write-Error "Self-test failed (exit code $($p.ExitCode))"; exit 1 }
           if (-not (Select-String -Path $log -Pattern "SELFTEST OK" -Quiet)) { Write-Error "No SELFTEST OK in the log"; exit 1 }
+
+      - name: Build Rubenium.exe (one file, for older Rubenium versions that update by swapping their .exe)
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          pyinstaller --noconfirm --clean --distpath dist-portable --workpath build-portable Rubenium-portable.spec
+          if (-not (Test-Path dist-portable\Rubenium.exe)) { Write-Error "no dist-portable\Rubenium.exe"; exit 1 }
+
+      - name: Test that an old Rubenium (4.0.0) updates itself to this version
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        run: |
+          $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
+          $work = Join-Path $env:RUNNER_TEMP "old"
+          New-Item -ItemType Directory -Force $work | Out-Null
+          Invoke-WebRequest "https://github.com/REMMETT-py/rubenium/releases/download/v4.0.0/Rubenium.exe" -OutFile "$work\Rubenium.exe"
+          $new = (Resolve-Path dist-portable\Rubenium.exe).Path
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Start-Process "$work\Rubenium.exe" -ArgumentList "--selftest-update=$new"
+          Start-Sleep 4; $t = 0
+          while ((Get-Process | Where-Object { $_.Name -like "Rubenium*" }) -and $t -lt 240) { Start-Sleep 2; $t += 2 }
+          Get-Process | Where-Object { $_.Name -like "Rubenium*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+          if (Test-Path $log) { Get-Content $log -Tail 30 }
+          foreach ($text in @("UPDATE SWAP OK", "SELFTEST OK")) {
+            if (-not (Select-String -Path $log -Pattern $text -SimpleMatch -Quiet)) { Write-Error "Not in the log: $text"; exit 1 } }
+          if ((Get-FileHash "$work\Rubenium.exe").Hash -ne (Get-FileHash $new).Hash) { Write-Error "The old exe was not replaced"; exit 1 }
+          Remove-Item (Join-Path $env:LOCALAPPDATA "Rubenium") -Recurse -Force -ErrorAction SilentlyContinue
+          Write-Host "Rubenium 4.0.0 replaced itself with this version, which then started and passed its self-test."
 
       - name: Build RubeniumSetup.exe
         if: steps.exists.outputs.skip == '0'
@@ -143,7 +179,7 @@ jobs:
         run: |
           try { Update-MpSignature -ErrorAction Stop } catch { Write-Host "signature update failed: $_" }
           $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe"
-          foreach ($f in @("out\RubeniumSetup.exe", "dist\Rubenium\Rubenium.exe")) {
+          foreach ($f in @("out\RubeniumSetup.exe", "dist\Rubenium\Rubenium.exe", "dist-portable\Rubenium.exe")) {
             & $mp -Scan -ScanType 3 -File (Resolve-Path $f).Path -DisableRemediation
             if ($LASTEXITCODE -eq 2) { Write-Error "Defender flags $f"; exit 1 }
           }
@@ -153,9 +189,10 @@ jobs:
         shell: bash
         run: |
           cp Rubenium.py out/
+          cp dist-portable/Rubenium.exe out/
           python -c "import shutil; shutil.make_archive('out/swaps', 'zip', '.', 'swaps')"
           cd out
-          for f in RubeniumSetup.exe Rubenium.py swaps.zip; do sha256sum "$f" > "$f.sha256"; done
+          for f in RubeniumSetup.exe Rubenium.exe Rubenium.py swaps.zip; do sha256sum "$f" > "$f.sha256"; done
           ls -l
 
       - name: Publish the release
@@ -164,5 +201,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          v="${{ steps.ver.outputs.version }}"
-          gh release create "v$v" out/* --title "Rubenium ${{ steps.ver.outputs.name }}" --notes-file release_notes.txt --latest
+          gh release create "${{ steps.ver.outputs.tag }}" out/* --title "Rubenium ${{ steps.ver.outputs.name }}" --notes-file release_notes.txt --latest

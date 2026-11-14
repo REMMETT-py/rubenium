@@ -11,7 +11,7 @@ Rubenium checks this repository for new versions and offers to install them (Set
 
 ## Publishing an update
 
-1. Change `VERSION = "..."` and `VERSION_NAME = "..."` near the top of the CORE section in `Rubenium.py` (for example `1.0.0` / `1.0` → `1.0.1` / `1.0.1`). `VERSION` must always go up: it is what the updater compares.
+1. Change `VERSION = "..."` and `VERSION_NAME = "..."` near the top of the CORE section in `Rubenium.py` (for example `1.0.0` / `1.0` → `1.0.1` / `1.0.1`). The app compares the version in the release title. Delete `release_tag.txt` before the next release so its tag is `v<VERSION>` again (it only gave the 1.0 release a tag older Rubenium versions read as newer).
 2. Write what changed in `release_notes.txt`.
 3. Commit / upload both files to `main`.
 

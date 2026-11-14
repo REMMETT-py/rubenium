@@ -1,6 +1,8 @@
 Rubenium 1.0
 
-Download RubeniumSetup.exe below. It installs Rubenium for your Windows account (no admin rights needed), adds it to the Start menu, and it can be removed from Settings > Apps. Updates then install by themselves.
+Already have Rubenium? Open it, go to Settings and press Check for updates.
+
+New here? Download RubeniumSetup.exe below. It installs Rubenium for your Windows account (no admin rights needed), adds it to the Start menu, and it can be removed from Settings > Apps. Updates then install by themselves.
 
 - Install and updates: Rubenium installs like a normal Windows app, and the Update button installs new versions in the background.
 - Sound: soft, very quiet sounds when you switch something on or off (can be turned off in Settings > Audio).
