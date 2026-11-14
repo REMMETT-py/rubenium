@@ -1,12 +1,12 @@
-Rubenium 1.0
+Rubenium 1.1
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
+New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-New here? Download RubeniumSetup.exe below. It installs Rubenium for your Windows account (no admin rights needed), adds it to the Start menu, and it can be removed from Settings > Apps. Updates then install by themselves.
-
-- Install and updates: Rubenium installs like a normal Windows app, and the Update button installs new versions in the background.
-- Sound: soft, very quiet sounds when you switch something on or off (can be turned off in Settings > Audio).
-- Stats: Top apps measured like Task Manager, with bars on a fixed scale. Much lighter on the PC.
-- RL Swap: pictures for every swap, Black Lunation ready, clearer outlines for pending changes.
-- Themes: 15 themes, plus styles for the R and the song ring that unlock with time.
-- Rubenium uses much less processor.
+- RL Swap: 6 new swaps (Purple Standard boost, Affluenter, Black Infinium, Alpha wheels, S8 SSL banner) and a new Player banners section. Swaps now also work for items the game has not downloaded yet.
+- Ball: stays where you leave it, snaps to a corner or the middle of an edge only when dropped close to one, and works on every monitor.
+- Games: while a game hides or locks the mouse, clicks go through Rubenium to the game, so it can't be opened or dragged by accident.
+- Display: just Default and Custom. Moving a slider switches to Custom; your settings are saved.
+- Apps: finds every game installed with Steam or Epic.
+- Stats: fully unloaded when you leave the tab.
+- Themes: Mythic replaces Prism, new R styles (Bloom, Shine) and rings (Comet, Aura).

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.0 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.1 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1233,6 +1233,59 @@ def play_sound(path: str) -> None:
         log.debug("sound failed: %s", exc)
 
 
+# --------------------------------------------------------------------------- #
+# Games that take over the mouse: let clicks pass through Rubenium while the pointer is hidden or locked
+# --------------------------------------------------------------------------- #
+class _CURSORINFO(ctypes.Structure):
+    _fields_ = [("cbSize", ctypes.c_uint32), ("flags", ctypes.c_uint32), ("hCursor", ctypes.c_void_p),
+                ("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+
+def mouse_captured() -> bool:
+    """True while a game hides the mouse pointer or locks it inside its window (aiming with the mouse).
+    Rubenium then lets every click pass through to the game, so it can never be opened or dragged by accident."""
+    if not IS_WIN:
+        return False
+    try:
+        user32 = ctypes.windll.user32
+        ci = _CURSORINFO()
+        ci.cbSize = ctypes.sizeof(_CURSORINFO)
+        if user32.GetCursorInfo(ctypes.byref(ci)):
+            if ci.flags & 2:                                  # hidden because touch or a pen is used: not a game
+                return False
+            if not (ci.flags & 1) or not ci.hCursor:          # no pointer shown
+                return True
+        clip = W.RECT()
+        if user32.GetClipCursor(ctypes.byref(clip)):
+            vx, vy = user32.GetSystemMetrics(76), user32.GetSystemMetrics(77)
+            vw, vh = user32.GetSystemMetrics(78), user32.GetSystemMetrics(79)
+            if (clip.right - clip.left) < vw - 2 or (clip.bottom - clip.top) < vh - 2 or clip.left > vx or clip.top > vy:
+                return True                                       # pointer locked inside one window
+    except Exception:  # noqa: BLE001
+        return False
+    return False
+
+
+def set_click_through(hwnd: int, on: bool) -> None:
+    """Let mouse clicks go through a (layered) window to whatever is under it, or stop doing so."""
+    if not IS_WIN or not hwnd:
+        return
+    try:
+        user32 = ctypes.windll.user32
+        get = user32.GetWindowLongPtrW
+        put = user32.SetWindowLongPtrW
+        get.restype = ctypes.c_ssize_t
+        get.argtypes = [W.HWND, ctypes.c_int]
+        put.restype = ctypes.c_ssize_t
+        put.argtypes = [W.HWND, ctypes.c_int, ctypes.c_ssize_t]
+        style = get(hwnd, -20)                                    # GWL_EXSTYLE
+        want = (style | 0x20) if on else (style & ~0x20)        # WS_EX_TRANSPARENT (the window is layered)
+        if want != style:
+            put(hwnd, -20, want)
+    except Exception as exc:  # noqa: BLE001
+        log.debug("click-through failed: %s", exc)
+
+
 # ==================================================================================================
 # SECTION: core
 # ==================================================================================================
@@ -1251,8 +1304,8 @@ from PyQt6.QtGui import QColor, QFont
 
 
 APP_NAME = "Rubenium"
-VERSION = "1.0.0"            # what the updater compares (major.minor.patch)
-VERSION_NAME = "1.0"         # the version people see
+VERSION = "1.1.0"            # what the updater compares (major.minor.patch)
+VERSION_NAME = "1.1"         # the version people see
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -1476,6 +1529,7 @@ DEFAULTS: dict = {
     "news_tab": False,
     "welcome": True,
     "sounds": True,
+    "unlock_all": False,
     "card_open": False,
     "seen_version": "",
     "tabs_off": {},
@@ -1931,6 +1985,28 @@ FR = {
     "Bars use a fixed scale, so 2 % looks small and 50 % fills half":
         "Les barres ont une échelle fixe : 2 % reste petit et 50 % remplit la moitié",
     "Rubenium uses much less processor": "Rubenium utilise beaucoup moins le processeur",
+    # 1.1
+    "Player banners": "Bannières", "Default": "Par défaut", "Custom": "Custom", "Reset Custom": "Réinitialiser Custom",
+    "Custom reset": "Custom réinitialisé",
+    "Your own settings. They are saved.": "Vos propres réglages. Ils sont enregistrés.",
+    "Your screen as Windows shows it. Move any slider to switch to Custom.":
+        "Votre écran tel que Windows l'affiche. Bougez un curseur pour passer en Custom.",
+    "Mythic": "Mythique", "Bloom": "Lueur", "Shine": "Éclat", "Comet": "Comète", "Aura": "Aura",
+    "6 new swaps and a new Player banners section": "6 nouveaux swaps et une nouvelle section Bannières",
+    "Swaps now also work for items the game has not downloaded yet":
+        "Les swaps marchent aussi pour les objets que le jeu n'a pas encore téléchargés",
+    "The ball stays where you leave it": "La bulle reste là où vous la laissez",
+    "Drop it close to a corner or the middle of an edge and it snaps there":
+        "Lâchez-la près d'un coin ou du milieu d'un bord et elle s'y place",
+    "While a game hides or locks the mouse, clicks go through Rubenium to the game":
+        "Quand un jeu cache ou bloque la souris, les clics traversent Rubenium jusqu'au jeu",
+    "Just two choices: Default and Custom. Moving a slider switches to Custom":
+        "Deux choix seulement : Par défaut et Custom. Bouger un curseur passe en Custom",
+    "Finds every game installed with Steam or Epic": "Trouve tous les jeux installés avec Steam ou Epic",
+    "The Stats tab is fully unloaded when you leave it": "L'onglet Stats est complètement déchargé quand vous le quittez",
+    "Mythic replaces Prism": "Mythique remplace Prisme",
+    "New R styles Bloom and Shine, and two new rings: Comet and Aura":
+        "Nouveaux styles de R Lueur et Éclat, et deux nouveaux anneaux : Comète et Aura",
 }
 
 
@@ -4526,15 +4602,16 @@ THEMES = [      # in unlock order: each one is a little richer than the one befo
     dict(id="comet", name="Comets", hours=50, layers=["glow", "comet"], sparkles=3, glow=1.3),
     dict(id="aurora", name="Aurora", hours=62, layers=["aurora"], sparkles=4, glow=1.3),
     dict(id="nebula", name="Nebula", hours=75, layers=["aurora", "hex"], sparkles=9, glow=1.35),
-    dict(id="prism", name="Prism", hours=100, layers=["aurora", "dots"], glow=1.35, edge="rainbow"),
+    dict(id="mythic", name="Mythic", hours=100, layers=["glow", "lines"], sparkles=6, glow=1.4, edge="shine"),
     dict(id="legend", name="Legend", hours=150, layers=["glow", "lines"], sparkles=8, glow=1.45, edge="gold"),
 ]
 # Small extras that also unlock with time: the look of the R and of the song ring on the ball.
 R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="outline", name="Outline", hours=3),
-            dict(id="neon", name="Neon", hours=15), dict(id="gold", name="Gold", hours=45),
-            dict(id="prism", name="Prism", hours=90)]
+            dict(id="glow", name="Bloom", hours=15), dict(id="gold", name="Gold", hours=45),
+            dict(id="shine", name="Shine", hours=90)]
 RING_STYLES = [dict(id="line", name="Line", hours=0), dict(id="dash", name="Dashes", hours=10),
-               dict(id="dots", name="Dots", hours=30)]
+               dict(id="dots", name="Dots", hours=30), dict(id="comet", name="Comet", hours=60),
+               dict(id="aura", name="Aura", hours=120)]
 
 
 def unlocked_style(styles: list, ident: str, hours: float) -> str:
@@ -4548,7 +4625,7 @@ def unlocked_style(styles: list, ident: str, hours: float) -> str:
 def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now: float = 0.0) -> None:
     """The R of the ball, centred in `box` for a ball of diameter `d`, in one of R_STYLES."""
     from PyQt6.QtCore import QPointF
-    from PyQt6.QtGui import QConicalGradient, QFont, QFontMetricsF, QLinearGradient, QPainterPath
+    from PyQt6.QtGui import QFont, QFontMetricsF, QLinearGradient, QPainterPath
     pass
     f = font(20, QFont.Weight.ExtraBold)
     f.setPixelSize(max(8, int(d * 0.46)))
@@ -4572,15 +4649,18 @@ def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now:
         p.setPen(pen)
         p.setBrush(alpha(accent, 0.18))
         p.drawPath(path)
-    elif style == "neon":
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        for width, a in ((d * 0.14, 0.10), (d * 0.09, 0.16), (d * 0.05, 0.28)):
-            pen = QPen(alpha(accent, a), width)
+    elif style == "glow":                              # soft light around a bright accent letter
+        for grow, a in ((d * 0.10, 0.07), (d * 0.06, 0.10), (d * 0.03, 0.16)):
+            pen = QPen(alpha(accent, a), grow)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             p.setPen(pen)
+            p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawPath(path)
+        g = QLinearGradient(box.topLeft(), box.bottomLeft())
+        g.setColorAt(0.25, mix(accent, QColor("#FFFFFF"), 0.75))
+        g.setColorAt(0.80, mix(accent, QColor("#FFFFFF"), 0.25))
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(mix(accent, QColor("#FFFFFF"), 0.55))
+        p.setBrush(g)
         p.drawPath(path)
     elif style == "gold":
         g = QLinearGradient(box.topLeft(), box.bottomRight())
@@ -4590,18 +4670,28 @@ def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now:
         p.setPen(QPen(alpha("#000000", 0.35), 1))
         p.setBrush(g)
         p.drawPath(path)
-    else:                                               # prism: slowly turning colours
-        g = QConicalGradient(box.center(), (now * 30.0) % 360.0)
-        for i in range(7):
-            g.setColorAt(i / 6, QColor.fromHsvF((i / 6) % 1.0 * 0.999, 0.45, 1.0))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(g)
+    else:                                               # shine: accent letter, a glint passes over it now and then
+        base = QLinearGradient(box.topLeft(), box.bottomLeft())
+        base.setColorAt(0.2, mix(accent, QColor("#FFFFFF"), 0.45))
+        base.setColorAt(0.85, accent)
+        p.setPen(QPen(alpha("#FFFFFF", 0.55), max(1.0, d * 0.012)))
+        p.setBrush(base)
         p.drawPath(path)
+        sweep = (now % 3.2) / 1.1 - 0.25                # crosses in ~1 s, then rests ~2 s
+        if -0.25 < sweep < 1.25:
+            x = box.left() + box.width() * sweep
+            glint = QLinearGradient(QPointF(x - d * 0.16, box.top()), QPointF(x + d * 0.16, box.bottom()))
+            glint.setColorAt(0.0, alpha("#FFFFFF", 0.0))
+            glint.setColorAt(0.5, alpha("#FFFFFF", 0.85))
+            glint.setColorAt(1.0, alpha("#FFFFFF", 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(glint)
+            p.drawPath(path)
     p.restore()
 
 
 def ring_pen(style: str, color: QColor, width: float) -> QPen:
-    """Pen for the song ring on the ball, in one of RING_STYLES."""
+    """Pen for the simple ring styles (line, dashes, dots)."""
     pen = QPen(color, width)
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     if style == "dash":
@@ -4610,6 +4700,51 @@ def ring_pen(style: str, color: QColor, width: float) -> QPen:
     elif style == "dots":
         pen.setDashPattern([0.1, 2.2])
     return pen
+
+
+def paint_ring(p: QPainter, ring: QRectF, style: str, frac: float, accent: QColor, width: float) -> None:
+    """The song-progress ring of the ball, in one of RING_STYLES (all follow the accent colour)."""
+    import math
+    from PyQt6.QtCore import QPointF
+    from PyQt6.QtGui import QConicalGradient
+    frac = max(0.0, min(1.0, frac))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    simple = style if style in ("line", "dash", "dots") else "line"
+    p.setPen(ring_pen(simple, alpha("#FFFFFF", 0.10), width))
+    p.drawEllipse(ring)
+    if frac <= 0.0:
+        return
+    span = int(-360 * 16 * frac)
+    head_ang = math.radians(90 - 360 * frac)
+    head = QPointF(ring.center().x() + ring.width() / 2 * math.cos(head_ang),
+                   ring.center().y() - ring.height() / 2 * math.sin(head_ang))
+    if style in ("line", "dash", "dots"):
+        p.setPen(ring_pen(style, accent, width))
+        p.drawArc(ring, 90 * 16, span)
+        return
+    # comet / aura: the arc fades in from its start and ends in a bright head
+    # Qt's conical gradient runs anticlockwise from the top; the arc runs clockwise from the top, so the arc
+    # covers positions 1 - frac (its head) up to 1.0 (its start).
+    g = QConicalGradient(ring.center(), 90.0)
+    faded = alpha(accent, 0.04 if style == "comet" else 0.30)
+    g.setColorAt(0.0, faded)
+    g.setColorAt(max(0.001, min(0.998, 1.0 - frac)), alpha(accent, 1.0))
+    g.setColorAt(1.0, faded)
+    if style == "aura":                                  # soft light under the line
+        for w, a in ((width * 3.2, 0.10), (width * 2.0, 0.16)):
+            pen = QPen(alpha(accent, a), w)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            p.setPen(pen)
+            p.drawArc(ring, 90 * 16, span)
+    pen = QPen(g, width)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    p.setPen(pen)
+    p.drawArc(ring, 90 * 16, span)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha(accent, 0.35))
+    p.drawEllipse(head, width * 1.6, width * 1.6)
+    p.setBrush(mix(accent, QColor("#FFFFFF"), 0.7))
+    p.drawEllipse(head, width * 0.75, width * 0.75)
 
 
 GOLD = "#E8C26A"
@@ -4810,17 +4945,21 @@ def paint_sparkles(p: QPainter, sparks: list, ox: float, oy: float, accent: QCol
 
 def paint_theme_edge(p: QPainter, theme: dict, shape: QRectF, radius: float, level: float, halo: bool,
                      now: float) -> None:
-    """Card outline: plain accent, rotating rainbow or double gold."""
+    """Card outline: plain accent, accent with a travelling light (shine) or gold."""
     from PyQt6.QtGui import QConicalGradient
     p.setBrush(Qt.BrushStyle.NoBrush)
     a = (80 + 110 * level) / 255 if halo else 0.35
     r = shape.adjusted(0.6, 0.6, -0.6, -0.6)
     style = theme.get("edge", "")
-    if style == "rainbow":
-        g = QConicalGradient(shape.center(), (now * 25.0) % 360.0)
-        for i in range(7):
-            g.setColorAt(i / 6, alpha(QColor.fromHsvF((i / 6) % 1.0 * 0.999, 0.45, 1.0), min(1.0, a + 0.1)))
-        p.setPen(QPen(g, 1.3))
+    if style == "shine":
+        p.setPen(QPen(alpha(ui.accent, a), 1.2))
+        p.drawRoundedRect(r, radius, radius)
+        g = QConicalGradient(shape.center(), (now * 40.0) % 360.0)
+        g.setColorAt(0.0, alpha("#FFFFFF", 0.0))
+        g.setColorAt(0.04, alpha(mix(ui.accent, QColor("#FFFFFF"), 0.6), min(1.0, a + 0.25)))
+        g.setColorAt(0.09, alpha("#FFFFFF", 0.0))
+        g.setColorAt(1.0, alpha("#FFFFFF", 0.0))
+        p.setPen(QPen(g, 1.6))
         p.drawRoundedRect(r, radius, radius)
     elif style == "gold":
         p.setPen(QPen(alpha(GOLD, min(1.0, a + 0.15)), 1.3))
@@ -5004,7 +5143,15 @@ APP_WORDS = ["steam", "epic games", "rocket league", "discord", "spotify", "obs"
              "counter-strike", "fortnite", "battle.net", "minecraft", "ea app", "ubisoft", "gog galaxy", "medal",
              "overwolf", "bakkesmod", "nvidia", "afterburner", "twitch", "streamlabs", "chrome", "firefox",
              "edge", "brave", "opera", "league of legends", "roblox", "geforce", "teamspeak", "telegram",
-             "whatsapp", "apex", "overwatch", "genshin", "xbox", "playnite", "parsec", "curseforge", "lunar client"]
+             "whatsapp", "apex", "overwatch", "genshin", "xbox", "playnite", "parsec", "curseforge", "lunar client",
+             "blizzard", "rockstar", "grand theft auto", "call of duty", "warzone", "rainbow six", "pubg", "dota",
+             "elden ring", "hoyoplay", "honkai", "wuthering", "zenless", "marvel rivals", "the finals", "deadlock",
+             "fall guys", "trackmania", "osu!", "faceit", "esea", "g hub", "razer", "steelseries", "icue",
+             "wootility", "msi center", "armoury crate", "voicemeeter", "elgato", "stream deck", "nvidia app",
+             "amd software", "itch", "heroic", "prism launcher", "modrinth", "vlc", "apple music", "deezer", "tidal",
+             "amazon games", "ea sports", "fc 2", "nba 2k", "f1 2", "forza", "halo", "destiny", "warframe",
+             "path of exile", "lost ark", "new world", "rust", "dead by daylight", "sea of thieves", "gta",
+             "geometry dash", "terraria", "among us", "brawlhalla", "rocketleague", "obsidian", "notion"]
 APP_SKIP = ["uninstall", "désinstall", "help", "readme", "manual", "documentation", "website", "support",
             "license", "release notes", "crash", "repair", "setup", "installer", "updater", "diagnos"]
 GAME_DIRS = ["steamapps\\common", "epic games", "riot games", "\\games\\", "ubisoft game launcher", "ea games"]
@@ -5024,8 +5171,76 @@ def _start_folders() -> list:
     return out
 
 
-def scan_apps(limit: int = 40) -> list:
-    """[{name, path, exe, icon}] for apps worth a quick-launch tile. exe is '' when unknown."""
+STORE_SKIP = ("steamworks", "redistributable", "proton", "steam linux runtime", "directx", "vc redist",
+              "dedicated server", "sdk", "soundtrack", "benchmark")
+
+
+def _main_exe(folder: str) -> str:
+    """The game's own .exe in its folder (the largest one at the top, else in Binaries/Win64)."""
+    best, size = "", 0
+    for sub in ("", os.path.join("Binaries", "Win64"), "bin", "Game"):
+        try:
+            with os.scandir(os.path.join(folder, sub)) as it:
+                for e in it:
+                    name = e.name.lower()
+                    if e.is_file() and name.endswith(".exe") and not any(w in name for w in
+                                                                          ("crash", "unins", "setup", "redist",
+                                                                           "launcher_helper", "report", "eac")):
+                        st = e.stat().st_size
+                        if st > size:
+                            best, size = e.path, st
+        except OSError:
+            continue
+        if best:
+            break
+    return best
+
+
+def _store_games() -> list:
+    """Games installed through Steam and Epic, even without a Start menu or desktop shortcut."""
+    out = []
+    import re
+    for lib in _steam_roots():                            # Steam: one appmanifest per installed game
+        apps = Path(lib) / "steamapps"
+        try:
+            manifests = list(apps.glob("appmanifest_*.acf"))
+        except OSError:
+            continue
+        for acf in manifests:
+            try:
+                text = acf.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            got = {k: v for k, v in re.findall(r'"(appid|name|installdir)"\s+"([^"]*)"', text)}
+            name = got.get("name", "").strip()
+            if not name or not got.get("appid") or any(w in name.lower() for w in STORE_SKIP):
+                continue
+            folder = str(apps / "common" / got.get("installdir", ""))
+            out.append({"name": name, "path": f"steam://rungameid/{got['appid']}", "exe_path": _main_exe(folder)})
+    program_data = os.environ.get("PROGRAMDATA", r"C:\ProgramData")
+    try:                                                  # Epic: one manifest per installed game
+        for item in (Path(program_data) / "Epic" / "EpicGamesLauncher" / "Data" / "Manifests").glob("*.item"):
+            try:
+                data = json.loads(item.read_text(encoding="utf-8", errors="ignore"))
+            except (OSError, ValueError):
+                continue
+            name, app = str(data.get("DisplayName", "")).strip(), str(data.get("AppName", ""))
+            main = str(data.get("MainGameAppName", "") or app)
+            if not name or not app or main != app or data.get("bIsApplication") is False:
+                continue                                  # add-ons and DLC have their own manifest
+            if any(w in name.lower() for w in STORE_SKIP):
+                continue
+            exe = os.path.join(str(data.get("InstallLocation", "")), str(data.get("LaunchExecutable", "")))
+            out.append({"name": name, "path": f"com.epicgames.launcher://apps/{app}?action=launch&silent=true",
+                        "exe_path": exe if os.path.isfile(exe) else ""})
+    except OSError:
+        pass
+    return out
+
+
+def scan_apps(limit: int = 60) -> list:
+    """[{name, path, exe, icon}] for apps worth a quick-launch tile: Start menu and desktop shortcuts of known
+    apps and launchers, plus every game installed through Steam or Epic. exe is '' when unknown."""
     if not win.IS_WIN:
         return []
     found: dict = {}
@@ -5065,6 +5280,17 @@ def scan_apps(limit: int = 40) -> list:
                 continue
             icon = QIcon(icon_path) if icon_path and os.path.exists(icon_path) else provider.icon(QFileInfo(str(f)))
             found[low] = {"name": name, "path": str(f), "exe": exe, "icon": icon}
+    try:
+        for game in _store_games():
+            low = game["name"].lower()
+            if low in found:
+                continue                                  # it already has a shortcut (with its own icon)
+            exe_path = game["exe_path"]
+            icon = provider.icon(QFileInfo(exe_path)) if exe_path else QIcon()
+            found[low] = {"name": game["name"], "path": game["path"],
+                          "exe": os.path.basename(exe_path).lower() if exe_path else "", "icon": icon}
+    except Exception as exc:  # noqa: BLE001
+        log.debug("store games: %s", exc)
     apps = sorted(found.values(), key=lambda a: a["name"].lower())
     return apps[:limit]
 
@@ -5101,6 +5327,18 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # newest first: (version shown, [(heading, [lines])])
+    ("1.1", [
+        ("RL Swap", ["6 new swaps and a new Player banners section",
+                     "Swaps now also work for items the game has not downloaded yet"]),
+        ("Ball", ["The ball stays where you leave it",
+                  "Drop it close to a corner or the middle of an edge and it snaps there",
+                  "While a game hides or locks the mouse, clicks go through Rubenium to the game"]),
+        ("Display", ["Just two choices: Default and Custom. Moving a slider switches to Custom"]),
+        ("Apps", ["Finds every game installed with Steam or Epic"]),
+        ("Stats", ["The Stats tab is fully unloaded when you leave it"]),
+        ("Themes", ["Mythic replaces Prism",
+                    "New R styles Bloom and Shine, and two new rings: Comet and Aura"]),
+    ]),
     ("1.0", [
         ("Sound", ["Soft, very quiet sounds when you switch something on or off (Settings, Audio)"]),
         ("Stats", ["Top apps measured like Task Manager: accurate, smooth and light on your PC",
@@ -5133,7 +5371,7 @@ NEWS = [        # newest first: (version shown, [(heading, [lines])])
 # Rocket League: find the game, swap item files, keep the originals safe
 # --------------------------------------------------------------------------- #
 RL_CATS = [("goal", "Goal explosions"), ("body", "Car bodies"), ("decal", "Decals"), ("boost", "Boosts"),
-           ("wheels", "Wheels"), ("trail", "Trails")]
+           ("wheels", "Wheels"), ("banner", "Player banners"), ("trail", "Trails")]
 # One entry per swap. `old` is the item you equip in the game, `new` is what it turns into, `file` is the game
 # file it replaces. Several swaps of one category can be on together; two swaps of the SAME file cannot.
 # To add a swap: put its file in swaps/<id>/<file> (and, if you have one, a picture named preview.png) and
@@ -5158,9 +5396,21 @@ RL_ITEMS = [
     dict(id="bubbles_alpha", cat="boost", old="Bubbles", new="Alpha Boost", file="Boost_Bubble_SF.upk"),
     dict(id="bubbles_dev", cat="boost", old="Bubbles", new="Dev Boost", file="Boost_Bubble_SF.upk"),
     dict(id="bubbles_purple", cat="boost", old="Bubbles", new="Standard Purple", file="Boost_Bubble_SF.upk"),
+    dict(id="standard_purple", cat="boost", old="Standard", new="Purple Standard", file="Boost_Standard_SF.upk"),
+    dict(id="fennec_ribbon_affluenter", cat="decal", old="Fennec: Ribbon", new="Affluenter",
+         file="skin_grain_block_SF.upk"),
+    dict(id="dieci_black_infinium", cat="wheels", old="Dieci", new="Black Infinium", file="WHEEL_Caliber_SF.upk"),
+    dict(id="stern_alpha", cat="wheels", old="Stern", new="Alpha Wheels", file="WHEEL_Hydra_SF.upk"),
+    dict(id="banner_ssl_s8", cat="banner", old="Rocket League", new="S8 Supersonic Legend",
+         file="playerBanner_RLShield_SF.upk"),
+    dict(id="banner_ssl_s21", cat="banner", old="Rocket League", new="S21 Supersonic Legend",
+         file="playerBanner_RLShield_SF.upk"),
 ]
 RL_BY_ID = {it["id"]: it for it in RL_ITEMS}
 RL_EXE = "rocketleague.exe"
+
+
+ABSENT = "absent"      # marks a swap file the game did not have: switching the swap off removes it
 
 
 def rl_key(item: dict) -> str:
@@ -5435,6 +5685,7 @@ class RocketSwaps(QObject):
         self._timer.timeout.connect(self.watch)
         self.done.connect(self._finished)
         self._detected = False
+        self._index: dict = {}                     # per install: game file name -> path (from a folder search)
         self._migrate()
 
     # -- settings
@@ -5531,6 +5782,31 @@ class RocketSwaps(QObject):
     def cooked(self, plat: str = "") -> Path:
         return Path(self.folder(plat)) / "TAGame" / "CookedPCConsole"
 
+    def game_file(self, plat: str, name: str) -> Path:
+        """Where the game keeps one file. Most are directly in CookedPCConsole, some in a sub-folder (found by
+        a search of the game's folders, remembered). An item the game has not downloaded yet has no file:
+        then the swap is placed directly in CookedPCConsole, where the game looks for it."""
+        cooked = self.cooked(plat)
+        direct = cooked / name
+        if direct.is_file():
+            return direct
+        index = self._index.get(plat)
+        if index is None or (name.lower() not in index and time.monotonic() - index.get("", 0) > 120):
+            index = {"": time.monotonic()}
+            try:
+                for root in (cooked, Path(self.folder(plat)) / "TAGame"):
+                    for dirpath, _dirs, files in os.walk(root):
+                        for f in files:
+                            if f.lower().endswith(".upk"):
+                                index.setdefault(f.lower(), os.path.join(dirpath, f))
+            except OSError:
+                pass
+            self._index[plat] = index
+        found = index.get(name.lower())
+        if found and os.path.isfile(found):
+            return Path(found)
+        return direct
+
     def active(self, plat: str = "") -> dict:
         """The swaps the user wants on this install: {game file: item id}, one per game file.
         (Before 3.0 this was stored per category; only the item ids matter, so old settings still load.)"""
@@ -5550,7 +5826,7 @@ class RocketSwaps(QObject):
             return out
         for it in RL_ITEMS:
             src = swap_source(it)
-            game = self.cooked(plat) / it["file"]
+            game = self.game_file(plat, it["file"])
             if src is not None and game.is_file() and file_hash(game) == file_hash(src):
                 out[rl_key(it)] = it["id"]
         return out
@@ -5603,12 +5879,12 @@ class RocketSwaps(QObject):
         e = self._entry(plat)
         for ident in act.values():
             it = RL_BY_ID[ident]
-            game = self.cooked(plat) / it["file"]
+            game = self.game_file(plat, it["file"])
             src = swap_source(it)
-            if not game.is_file():
-                state = "missing"
-            elif src is None:
+            if src is None:
                 state = "nofile"
+            elif not game.is_file():
+                state = "undone"                    # not placed yet (or removed): applying puts it back
             elif file_hash(game) == file_hash(src):
                 state = "ok"
             elif self.stamp(plat) != e["stamp"]:
@@ -5630,8 +5906,9 @@ class RocketSwaps(QObject):
         self.working = True
         desired = {rl_key(RL_BY_ID[i]): i for i in desired.values() if i in RL_BY_ID}
         e = self._entry(plat)
-        job = {"plat": plat, "cooked": self.cooked(plat), "orig": dict(e["orig"]), "stamp_saved": e["stamp"],
-               "stamp_now": self.stamp(plat)}
+        paths = {it["file"].lower(): self.game_file(plat, it["file"]) for it in RL_ITEMS}
+        job = {"plat": plat, "cooked": self.cooked(plat), "paths": paths, "orig": dict(e["orig"]),
+               "stamp_saved": e["stamp"], "stamp_now": self.stamp(plat)}
         import threading
         threading.Thread(target=self._work, args=(dict(desired), reload, quiet, job), daemon=True).start()
         return True
@@ -5697,11 +5974,19 @@ class RocketSwaps(QObject):
                 want_by_file[it["file"].lower()] = it
         files = sorted({it["file"] for it in RL_ITEMS}, key=str.lower)
         for name in files:
-            game = cooked / name
+            game = job["paths"].get(name.lower(), cooked / name)
             want = want_by_file.get(name.lower())
             if not game.is_file():
+                # The game has no such file (an item it has not downloaded): the swap is simply added, and
+                # taken away again when it is switched off.
                 if want:
-                    return False, "missing", orig
+                    src = swap_source(want)
+                    if src is None:
+                        return False, "nofile", orig
+                    _atomic_copy(src, game)
+                    if file_hash(game) != file_hash(src):
+                        return False, "error", orig
+                    orig[name] = ABSENT
                 continue
             cur = file_hash(game)
             customs = self._customs(name)
@@ -5713,6 +5998,8 @@ class RocketSwaps(QObject):
                 want_hash = file_hash(src)
                 if cur == want_hash:
                     continue
+                if cur not in customs and orig.get(name) == ABSENT:
+                    orig.pop(name, None)                # the game has the file now (an update): a real original
                 if cur not in customs:
                     # The file in the game is an original. Keep it, unless it is a stranger's file
                     # (same game version but different from the original we saved).
@@ -5727,6 +6014,8 @@ class RocketSwaps(QObject):
                 _atomic_copy(src, game)
                 if file_hash(game) != want_hash:
                     return False, "error", orig
+            elif cur in customs and orig.get(name) == ABSENT:
+                game.unlink()                           # it was added by a swap: remove it again
             elif cur in customs:
                 if not backup.is_file():
                     return False, "nobackup", orig
@@ -6997,33 +7286,29 @@ class CrosshairPage(Page):
 # Display colour
 # --------------------------------------------------------------------------- #
 class DisplayPage(Page):
+    """Default = the screen exactly as Windows has it (every slider locked at its normal value).
+    Custom = your own settings (saved). Moving any slider while on Default switches to Custom."""
     key = "display"
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
         eng = ctx.display
         eng.probe()
-        cfg = ctx.cfg
-        self.slot = eng.manual if eng.manual in ("A", "B") else "A"
-        pr = cfg["display"][self.slot]
         lay = vbox(self, 7)
-
-        self.t_on = Toggle(eng.manual in ("A", "B"))
-        self.t_on.toggled_by_user.connect(self._power)
-        lay.addWidget(row(tr("Change my screen colours"), self.t_on))
-        self.seg = Segmented([tr("Custom 1"), tr("Custom 2")], 0 if self.slot == "A" else 1)
-        self.seg.changed.connect(self._slot)
+        self.seg = Segmented([tr("Default"), tr("Custom")], 1 if eng.manual == "A" else 0)
+        self.seg.changed.connect(self._mode)
         lay.addWidget(self.seg)
+        self.hint = Label("", 11, TEXT_DIM, wrap_w=self.W)
+        self.hint.setFixedHeight(S(32))                # two lines in both modes: the card never jumps
+        self.hint.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        lay.addWidget(self.hint)
 
         self.rows: dict = {}
         pct = lambda v: f"{int(v):+d}"  # noqa: E731
 
         def add(key, label, lo, hi, fmt, marks, default=None):
-            value = pr[key]
             default = DISPLAY_PROFILE[key] if default is None else default
-            if value < lo:                                    # "keep the PC's own value"
-                value = default
-            r = SliderRow(label, lo, hi, value, 1, default, fmt, marks=sorted(set(marks + [default])))
+            r = SliderRow(label, lo, hi, default, 1, default, fmt, marks=sorted(set(marks + [default])))
             r.changed.connect(lambda v, k=key: self._set(k, int(v)))
             self.rows[key] = r
             lay.addWidget(r)
@@ -7049,51 +7334,57 @@ class DisplayPage(Page):
             lay.addWidget(notice("display", tr("Some settings are missing"),
                                  tr("This PC or screen does not allow them."), self.W))
         lay.addSpacing(S(4))
-        b_reset = Button(tr("Reset colours"), "danger", 34)
-        b_reset.clicked.connect(self._reset)
-        lay.addWidget(b_reset)
+        self.b_reset = Button(tr("Reset Custom"), "danger", 34)
+        self.b_reset.clicked.connect(self._reset)
+        lay.addWidget(self.b_reset)
+        self._show_rows()
         eng.changed.connect(self._refresh)
+
+    def _custom(self) -> bool:
+        return self.ctx.display.manual == "A"
 
     def on_show(self) -> None:
         self._refresh()
 
     def _refresh(self) -> None:
-        eng = self.ctx.display
-        self.t_on.set_checked(eng.manual in ("A", "B"))
-        if eng.manual in ("A", "B") and eng.manual != self.slot:
-            self.slot = eng.manual
-            self.seg.set_index(0 if self.slot == "A" else 1)
-            self._load_rows()
+        self.seg.set_index(1 if self._custom() else 0)
+        self._show_rows()
 
-    def _load_rows(self) -> None:
-        pr = self.ctx.cfg["display"][self.slot]
+    def _show_rows(self) -> None:
+        """Custom: the saved values. Default: every slider at its normal value."""
+        custom = self._custom()
+        pr = self.ctx.cfg["display"]["A"]
         for key, r in self.rows.items():
-            r.set_value(r.slider.default if pr[key] < r.slider.lo else pr[key])
+            value = pr.get(key, r.slider.default) if custom else r.slider.default
+            r.set_value(r.slider.default if value < r.slider.lo else value)
+        self.hint.set_text(tr("Your own settings. They are saved.") if custom else
+                           tr("Your screen as Windows shows it. Move any slider to switch to Custom."))
 
-    def _power(self, on: bool) -> None:
-        self.ctx.display.set_active(self.slot if on else "off")
-
-    def _slot(self, i: int) -> None:
-        self.slot = "AB"[i]
-        self._load_rows()
-        if self.ctx.display.manual in ("A", "B"):
-            self.ctx.display.set_active(self.slot)
+    def _mode(self, i: int) -> None:
+        self.ctx.display.set_active("A" if i == 1 else "off")
+        self._show_rows()
 
     def _set(self, key: str, value: int) -> None:
-        self.ctx.cfg["display"][self.slot][key] = value
+        self.ctx.cfg["display"]["A"][key] = value
         self.ctx.cfg.save()
-        if not self.ctx.display.active:              # moving a slider shows the result straight away
-            self.t_on.set_checked(True)
-            self.ctx.display.set_active(self.slot)
-        elif self.ctx.display.effective == self.slot:
+        if not self._custom():                       # moving a slider on Default switches to Custom
+            self.ctx.display.set_active("A")
+            self.seg.set_index(1)
+            pr = self.ctx.cfg["display"]["A"]
+            for k, r in self.rows.items():           # the other sliders show your saved Custom values
+                if k != key:
+                    v = pr.get(k, r.slider.default)
+                    r.set_value(r.slider.default if v < r.slider.lo else v)
+            self.hint.set_text(tr("Your own settings. They are saved."))
+        else:
             self.ctx.display.apply()
 
     def _reset(self) -> None:
-        self.ctx.cfg["display"][self.slot] = dict(DISPLAY_PROFILE)
+        self.ctx.cfg["display"]["A"] = dict(DISPLAY_PROFILE)
         self.ctx.cfg.save()
-        self._load_rows()
+        self._show_rows()
         self.ctx.display.apply()
-        self.ctx.toast(tr("Custom {n} reset", n=1 if self.slot == "A" else 2))
+        self.ctx.toast(tr("Custom reset"))
 
 
 # --------------------------------------------------------------------------- #
@@ -7876,7 +8167,7 @@ class ThemeCard(QAbstractButton):
 
     def paintEvent(self, _e) -> None:
         th, ctx = self.theme, self.page.ctx
-        hours = ctx.usage_hours()
+        hours = ctx.unlock_hours()
         unlocked = hours >= th["hours"]
         active = ctx.cfg["theme"] == th["id"] and unlocked
         p = QPainter(self)
@@ -7956,7 +8247,7 @@ class UnlockTile(QAbstractButton):
 
     def paintEvent(self, _e) -> None:
         ctx, st = self.page.ctx, self.style
-        open_ = ctx.usage_hours() >= st["hours"]
+        open_ = ctx.unlock_hours() >= st["hours"]
         current = ctx.ball_style() if self.kind == "r" else ctx.ring_style()
         active = open_ and current == st["id"]
         h = self._hover.level
@@ -7970,14 +8261,10 @@ class UnlockTile(QAbstractButton):
         p.setOpacity(1.0 if open_ else 0.38 + 0.2 * h)
         box = QRectF(c.x() - d / 2, c.y() - d / 2 - d * 0.02, d, d)
         if self.kind == "r":
-            extras.paint_r(p, box, d, st["id"], ui.accent, 0.0)
+            extras.paint_r(p, box, d, st["id"], ui.accent, 0.6)      # 0.6 s: the shine's glint is visible
         else:
             ring = QRectF(c.x() - d / 2, c.y() - d / 2, d, d).adjusted(S(6), S(6), -S(6), -S(6))
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.setPen(extras.ring_pen(st["id"], alpha("#FFFFFF", 0.12), S(2.4)))
-            p.drawEllipse(ring)
-            p.setPen(extras.ring_pen(st["id"], ui.accent, S(2.4)))
-            p.drawArc(ring, 90 * 16, int(-360 * 16 * 0.68))
+            extras.paint_ring(p, ring, st["id"], 0.68, ui.accent, S(2.4))
         p.setOpacity(1.0)
         foot = QRectF(0, S(4) + d + S(4), self.width(), S(16))
         p.setFont(font(10, QFont.Weight.DemiBold))
@@ -8062,7 +8349,7 @@ class ThemesPage(Page):
         self._refresh()
 
     def _unlock_pick(self, tile) -> None:
-        if self.ctx.usage_hours() < tile.style["hours"]:
+        if self.ctx.unlock_hours() < tile.style["hours"]:
             return self.ctx.toast(tr("Unlocks after {n} h of use", n=tile.style["hours"]), "warn")
         if self.ctx.cfg[tile.key] != tile.style["id"]:
             sfx.play("pick")
@@ -8078,7 +8365,7 @@ class ThemesPage(Page):
 
     def _pick(self, th: dict) -> None:
         drawer = self.ctx.window.drawer
-        if self.ctx.usage_hours() >= th["hours"]:
+        if self.ctx.unlock_hours() >= th["hours"]:
             drawer.close_now()
             if self.ctx.cfg["theme"] != th["id"]:
                 sfx.play("pick")
@@ -8740,12 +9027,7 @@ def paint_ball_face(p: QPainter, ctx, shape: QRectF, opacity: float) -> None:
     if ctx.cfg["ring"] and st.has_track and st.duration_ms > 0:
         frac = max(0.0, min(1.0, ctx.position_ms() / st.duration_ms))
         ring = QRectF(c.x() - d / 2, c.y() - d / 2, d, d).adjusted(S(5), S(5), -S(5), -S(5))
-        style = ctx.ring_style()
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.setPen(extras.ring_pen(style, alpha("#FFFFFF", 0.10), S(2.2)))
-        p.drawEllipse(ring)
-        p.setPen(extras.ring_pen(style, ui.accent, S(2.2)))
-        p.drawArc(ring, 90 * 16, int(-360 * 16 * frac))
+        extras.paint_ring(p, ring, ctx.ring_style(), frac, ui.accent, S(2.2))
     box = QRectF(c.x() - d / 2, c.y() - d / 2 - d * 0.02, d, d)
     extras.paint_r(p, box, d, ctx.ball_style(), ui.accent, time.monotonic())
     if ctx.overlay_active():
@@ -8802,13 +9084,33 @@ class BallWindow(QWidget):
                              max(wa.top() + r, min(wa.bottom() - r, self.center.y())))
 
     @staticmethod
-    def corner_point(wa: QRect, left: bool, top: bool) -> QPoint:
-        m = S(14) + BD() // 2
-        return QPoint(wa.left() + m if left else wa.right() - m, wa.top() + m if top else wa.bottom() - m)
+    def _top_y(wa: QRect) -> int:
+        """Top spots sit a little lower, clear of the close / minimise buttons of windows under them."""
+        return wa.top() + S(52) + BD() // 2
 
-    def nearest_corner(self, point: QPoint) -> QPoint:
-        wa = work_area(point)
-        return self.corner_point(wa, point.x() < wa.center().x(), point.y() < wa.center().y())
+    @classmethod
+    def corner_point(cls, wa: QRect, left: bool, top: bool) -> QPoint:
+        m = S(14) + BD() // 2
+        return QPoint(wa.left() + m if left else wa.right() - m, cls._top_y(wa) if top else wa.bottom() - m)
+
+    @classmethod
+    def snap_points(cls, wa: QRect) -> list:
+        """The four corners and the middle of each edge."""
+        m = S(14) + BD() // 2
+        top, bottom = cls._top_y(wa), wa.bottom() - m
+        left, right = wa.left() + m, wa.right() - m
+        cx, cy = wa.center().x(), (top + bottom) // 2
+        return [QPoint(left, top), QPoint(right, top), QPoint(left, bottom), QPoint(right, bottom),
+                QPoint(cx, top), QPoint(cx, bottom), QPoint(left, cy), QPoint(right, cy)]
+
+    def snap_target(self):
+        """The spot the ball locks into when it is dropped close to one, else None (it stays where dropped)."""
+        best, reach = None, S(64)
+        for pt in self.snap_points(work_area(self.center)):
+            dist = math.hypot(pt.x() - self.center.x(), pt.y() - self.center.y())
+            if dist <= reach:
+                best, reach = pt, dist
+        return best
 
     # -- glide (the window only moves: nothing is repainted, so it is perfectly smooth)
     @property
@@ -8865,6 +9167,8 @@ class BallWindow(QWidget):
         self.hover.to(0.0, 320)
 
     def mousePressEvent(self, e) -> None:
+        if win.mouse_captured():               # a game has the mouse: this click was not meant for Rubenium
+            return
         if e.button() == Qt.MouseButton.LeftButton and not self.gliding:
             self._press_pos = e.globalPosition().toPoint()
             self._origin = QPoint(self.center)
@@ -8888,7 +9192,11 @@ class BallWindow(QWidget):
         self._press_pos = None
         self.press.to(0.0, 200)
         if self._moved:
-            self.owner.save_position()
+            target = self.snap_target()
+            if target is not None:
+                self.glide_to(target, fast=True)           # saves the position when it arrives
+            else:
+                self.owner.save_position()
         else:
             self.owner.expand()
 
@@ -9240,12 +9548,23 @@ class Welcome(QWidget):
         self._clock.setTimerType(Qt.TimerType.PreciseTimer)
         self._clock.setInterval(16)
         self._clock.timeout.connect(self.update)
+        # Hidden: holding Launch for 5 s shows a code bar under the card.
+        self._hold = QTimer(self)
+        self._hold.setSingleShot(True)
+        self._hold.timeout.connect(self._reveal)
+        self._held = False
+        self.code = ""
+        self.code_in = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self.shake = Tween(self, 0.0, self.update)
+        self._good = False
+
+    SECRET = "01092008"
 
     def start(self) -> None:
         ball = self.ctx.window.ball
         wa = work_area(ball.center)
         m = S(GLOW) + S(14)
-        w, h = S(self.CW) + 2 * m, S(self.CH) + 2 * m
+        w, h = S(self.CW) + 2 * m, S(self.CH) + 2 * m + 2 * S(64)     # room under the card for the code bar
         self.setGeometry(wa.center().x() - w // 2, wa.center().y() - h // 2, w, h)
         self.show()
         self.appear.to(1.0, 420)
@@ -9264,6 +9583,8 @@ class Welcome(QWidget):
     def launch(self) -> None:
         if self.phase != "card":
             return
+        self._hold.stop()
+        self.code_in.to(0.0, 160)
         self.phase = "fold"
         sfx.play("on")
         self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -9320,14 +9641,103 @@ class Welcome(QWidget):
         if (self.phase == "card" and e.button() == Qt.MouseButton.LeftButton
                 and self._button().contains(e.position())):
             self._down = True
+            self._held = False
+            self._hold.start(5000)
             self.press.to(1.0, 80)
 
     def mouseReleaseEvent(self, e) -> None:
         if self._down:
             self._down = False
+            self._hold.stop()
             self.press.to(0.0, 160)
+            if self._held:                         # the long press opened the code bar: no launch
+                self._held = False
+                return
             if self._button().contains(e.position()):
                 self.launch()
+
+    # -- the code bar
+    def _code_rect(self) -> QRectF:
+        w, h = S(232), S(42)
+        k = 0.94 + 0.06 * max(0.0, min(1.0, self.appear.level))
+        top = self.height() / 2 + S(self.CH) * k / 2 + S(14)
+        dx = S(10) * math.sin(self.shake.level * math.pi * 6) * (1.0 - self.shake.level)
+        return QRectF(self.width() / 2 - w / 2 + dx, top, w, h)
+
+    def _reveal(self) -> None:
+        if not self._down or self.phase != "card":
+            return
+        self._held = True
+        self.code = ""
+        sfx.play("pick")
+        # The bar needs the keyboard: from now on this window may take focus (it is the start screen).
+        self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        self.setFocus()
+        self.code_in.to(1.0, 260)
+
+    def keyPressEvent(self, e) -> None:
+        if self.phase != "card" or self.code_in.target < 0.5:
+            return
+        key, text = e.key(), e.text()
+        if key == Qt.Key.Key_Escape:
+            self.code = ""
+            self.code_in.to(0.0, 180)
+        elif key == Qt.Key.Key_Backspace:
+            self.code = self.code[:-1]
+        elif text.isdigit() and len(text) == 1 and len(self.code) < 8:
+            self.code += text
+            if len(self.code) == 8:
+                self._check()
+        elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self._check()
+        self.update()
+
+    def _check(self) -> None:
+        if self.code == self.SECRET:
+            self._good = True
+            self.ctx.cfg["unlock_all"] = True       # every theme and style, for good
+            self.ctx.cfg.save()
+            sfx.play("on")
+            QTimer.singleShot(450, self.launch)
+        else:
+            sfx.play("off")
+            self.code = ""
+            self.shake.jump(0.0)
+            self.shake.to(1.0, 420)
+        self.update()
+
+    def _paint_code(self, p: QPainter) -> None:
+        t = max(0.0, min(1.0, self.code_in.level))
+        if t <= 0.0:
+            return
+        r = self._code_rect().translated(0, (1 - t) * S(8))
+        p.save()
+        p.setOpacity(t * max(0.0, min(1.0, self.appear.level)))
+        p.setPen(QPen(alpha(ui.accent, 0.9 if self._good else 0.45), 1.2))
+        p.setBrush(QColor(12, 15, 16, 245))
+        p.drawRoundedRect(r, S(12), S(12))
+        p.save()
+        p.translate(r.left() + S(20), r.center().y())
+        p.scale(S(13) / 20, S(13) / 20)
+        draw_icon(p, "lock", QColor(TEXT_DIM))
+        p.restore()
+        shown = "".join("X" if i < len(self.code) else "x" for i in range(8))
+        shown = shown[:4] + "-" + shown[4:]
+        f = font(17, QFont.Weight.Bold, 3.0)
+        p.setFont(f)
+        fm = p.fontMetrics()
+        x = r.center().x() - fm.horizontalAdvance(shown) / 2 + S(8)
+        for ch in shown:
+            typed = ch == "X"
+            p.setPen(QColor(TEXT) if typed else alpha(TEXT_DIM, 0.55))
+            p.drawText(QPointF(x, r.center().y() + fm.ascent() / 2 - S(2)), ch)
+            x += fm.horizontalAdvance(ch)
+        p.restore()
 
     def closeEvent(self, e) -> None:
         if self.phase != "done":
@@ -9434,6 +9844,9 @@ class Welcome(QWidget):
                 p.drawArc(ring, 90 * 16, int(-360 * 16 * turn))
         p.setOpacity(a)
         paint_edge(p, self.ctx, shape, radius, level)
+        if self.phase == "card":
+            p.setOpacity(1.0)
+            self._paint_code(p)
 
 
 class Body(QWidget):
@@ -9562,6 +9975,16 @@ class MainWindow(QWidget):
         self._anchor_bottom = False
         self.card_pos = None                 # where the card lives on screen (global top-left)
         self._docked = None                  # where the ball was parked after the last collapse
+        self._reset_to = None
+        self._closed_at_card = False         # True: the ball sits in the card's top corner (card was moved)
+        self._through = False                # clicks pass through Rubenium (a game has the mouse)
+        self._guard = QTimer(self)
+        self._guard.setInterval(50)
+        self._guard.timeout.connect(self._mouse_guard)
+        if win.IS_WIN:
+            self._guard.start()
+        self._open_from = None               # where the ball was when the card opened
+        self._open_card = None
         self._pending_home = None
         self._sparks: list = []
         self._fsnap = None
@@ -9734,10 +10157,28 @@ class MainWindow(QWidget):
         self.slide.jump(0.0)
         self.slide.to(1.0, 280)
         self.pageh.to(new_h, 320)
+        if self._dir and "perf" in self.pages and key != "perf":   # Stats is unloaded once it is left
+            QTimer.singleShot(400, self._unload_stats)
         gone = [k for k in TEMP_TABS if k != key]          # a tab shown only while it was being read
         if gone:
             TEMP_TABS.difference_update(gone)
             self.body.set_tabs()
+
+    def _mouse_guard(self) -> None:
+        """While a game hides or locks the mouse pointer, every Rubenium window lets clicks through to the
+        game: aiming or clicking in a game can never open, drag or press anything in Rubenium."""
+        through = win.mouse_captured() and self.ball._press_pos is None and self._drag_origin is None
+        if through != self._through or through:
+            for w in (self.ball, self, self.drawer):
+                hwnd = int(w.internalWinId() or 0)
+                if hwnd:
+                    win.set_click_through(hwnd, through)
+        self._through = through
+
+    def _unload_stats(self) -> None:
+        """The Stats tab measures the PC while it is open; once you leave it, it is removed completely."""
+        if self.current != "perf" and "perf" in self.pages and not self.slide.busy:
+            self._drop_page("perf")
 
     def _on_slide(self) -> None:
         if self.slide.level >= 0.999 and self._snap_new is not None:
@@ -9824,7 +10265,9 @@ class MainWindow(QWidget):
             return
         home, b = self.card_pos, self.ball
         parked = self._docked is not None and (b.center - self._docked).manhattanLength() < 4
-        self._pending_home = home if (home is not None and parked) else None
+        # The card opens from the ball. Only when the ball sits in the corner of a card the user had moved
+        # does the card come back exactly where it was.
+        self._pending_home = home if (home is not None and parked and self._closed_at_card) else None
         if self._pending_home is not None:
             d, cw = BD(), S(CARD_W)
             target = QPoint(max(home.x() + d // 2, min(b.center.x(), home.x() + cw - d // 2)), home.y() + d // 2)
@@ -9842,6 +10285,7 @@ class MainWindow(QWidget):
         self.ball.appear.jump(1.0)
         self.ball.hover.jump(0.0)
         self._place(self.ball.rect_global(), self._pending_home)   # laid out while hidden: nothing can flash
+        self._open_from, self._open_card = QPoint(self.ball.center), QPoint(self.card_pos)
         sa, _page, _ = self._ensure_page(self.current)
         self.pageh.jump(self._card_h(self.current))
         self._layout_body()
@@ -9874,9 +10318,17 @@ class MainWindow(QWidget):
         c, d = self._card_rect(), BD()
         centre = self.mapToGlobal(c.center().toPoint())
         wa = work_area(centre)
-        left, top = centre.x() < wa.center().x(), centre.y() < wa.center().y()
-        self._corner = self.ball.corner_point(wa, left, top)
-        self._ball_l = QRectF(c.left() if left else c.right() - d, c.top() if top else c.bottom() - d, d, d)
+        left = centre.x() < wa.center().x()
+        if self._open_from is not None and self._open_card is not None and self.card_pos == self._open_card:
+            # The card was not moved: it folds back into the ball exactly where the ball was.
+            here = self.mapFromGlobal(self._open_from)
+            self._ball_l = QRectF(here.x() - d / 2, here.y() - d / 2, d, d)
+            self._closed_at_card = False
+        else:
+            # The card was moved: it folds into its own top corner (the side nearer the screen edge) and the
+            # ball stays there, so the card opens in the same place next time.
+            self._ball_l = QRectF(c.left() if left else c.right() - d, c.top(), d, d)
+            self._closed_at_card = True
         page = self.page()
         self._snap = snapshot(self.body)
         if page:
@@ -9911,8 +10363,14 @@ class MainWindow(QWidget):
                 self.ball.repaint()                        # the real ball is drawn on top of the painted one
                 self.hide()
                 self._retime()
-                self._docked = QPoint(self._corner)
-                self.ball.glide_to(self._corner)           # then it curves into the nearest corner
+                self._docked = QPoint(self.ball.center)
+                self.save_position()                       # the ball stays where the card closed
+                if self._reset_to is not None:             # "Reset position" asked while the card was open
+                    target, self._reset_to = self._reset_to, None
+                    self._docked = None
+                    self.ball.glide_to(target)
+                if self.current == "perf":
+                    self._drop_page("perf")
         self.update()
 
     def toast(self, text: str, kind: str = "ok") -> None:
@@ -10053,7 +10511,7 @@ class MainWindow(QWidget):
             return
         if self.morph.busy or self.pageh.busy or self.slide.busy or self.chrome.busy:
             return
-        if self.ctx.cfg["halo"] or self.ctx.theme().get("edge") == "rainbow":
+        if self.ctx.cfg["halo"] or self.ctx.theme().get("edge") == "shine":
             shape, _r = self._shape()
             g = S(GLOW)
             outer = shape.adjusted(-g, -g, g, g).toAlignedRect()
@@ -10212,7 +10670,10 @@ class MainWindow(QWidget):
         if screen is not None and 0 <= c["nx"] <= 1 and 0 <= c["ny"] <= 1:
             wa = screen.availableGeometry()
             self.card_pos = QPoint(int(wa.left() + c["nx"] * wa.width()), int(wa.top() + c["ny"] * wa.height()))
-            self._docked = QPoint(self.ball.center)        # first open goes back to where the card was
+            self._docked = QPoint(self.ball.center)
+            d, b = BD(), self.ball.center                  # is the ball in that card's top corner?
+            self._closed_at_card = (abs(b.y() - (self.card_pos.y() + d // 2)) <= 4
+                                    and self.card_pos.x() - 4 <= b.x() - d // 2 <= self.card_pos.x() + S(CARD_W))
 
     def reset_position(self) -> None:
         self.card_pos = self._docked = None
@@ -10220,8 +10681,8 @@ class MainWindow(QWidget):
         wa = QGuiApplication.primaryScreen().availableGeometry()
         target = self.ball.corner_point(wa, False, True)
         if self.expanded:
+            self._reset_to = target
             self.collapse()
-            self._corner = target
         else:
             self.ball.glide_to(target)
 
@@ -10313,6 +10774,10 @@ class App(QObject):
         self.qapp = qapp
         self.cfg = Config()
         self._was_open = bool(self.cfg["card_open"])
+        disp = self.cfg["display"]
+        if disp.get("active") == "B":                # one Custom since 1.1: an old "Custom 2" becomes Custom
+            disp["A"] = dict(disp["B"])
+            disp["active"] = "A"
         self.cfg["card_open"] = False
         self._news = False
         set_lang(self.cfg["lang"] or ("fr" if QLocale.system().language() == QLocale.Language.French else "en"))
@@ -10505,6 +10970,20 @@ class App(QObject):
                 if not snap or len(snap) < 10 or not any(n.lower() == "explorer.exe" or n.lower().startswith("rubenium")
                                                          for _p, n, _c, _m in snap):
                     errors.append(RuntimeError("process snapshot failed"))
+                try:                                # click-through switch on the ball's window
+                    import ctypes
+                    hwnd = int(self.window.ball.winId())
+                    getter = ctypes.windll.user32.GetWindowLongPtrW
+                    getter.restype = ctypes.c_ssize_t
+                    win.set_click_through(hwnd, True)
+                    on = bool(getter(ctypes.c_void_p(hwnd), -20) & 0x20)
+                    win.set_click_through(hwnd, False)
+                    off = not (getter(ctypes.c_void_p(hwnd), -20) & 0x20)
+                    log.info("SELFTEST click-through: %s/%s, mouse captured now: %s", on, off, win.mouse_captured())
+                    if not (on and off):
+                        errors.append(RuntimeError("click-through switch failed"))
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(exc)
                 try:
                     sfx.enabled = True
                     sfx.play("on")                  # the sound files can be made and played
@@ -10636,6 +11115,10 @@ class App(QObject):
     def usage_hours(self) -> float:
         return self.cfg["usage_s"] / 3600
 
+    def unlock_hours(self) -> float:
+        """Hours that count for unlocking themes and styles (everything, once the code was entered)."""
+        return 1e9 if self.cfg["unlock_all"] else self.usage_hours()
+
     def _count_usage(self) -> None:
         self.cfg["usage_s"] = self.cfg["usage_s"] + 60.0
 
@@ -10643,7 +11126,7 @@ class App(QObject):
         if self._preview:
             return extras.theme_by_id(self._preview)
         th = extras.theme_by_id(self.cfg["theme"])
-        return th if self.usage_hours() >= th["hours"] else extras.THEMES[0]
+        return th if self.unlock_hours() >= th["hours"] else extras.THEMES[0]
 
     def set_theme(self, ident: str) -> None:
         self._preview = ""
@@ -10680,10 +11163,10 @@ class App(QObject):
         self.window.ball.update()
 
     def ball_style(self) -> str:
-        return extras.unlocked_style(extras.R_STYLES, self.cfg["ball_style"], self.usage_hours())
+        return extras.unlocked_style(extras.R_STYLES, self.cfg["ball_style"], self.unlock_hours())
 
     def ring_style(self) -> str:
-        return extras.unlocked_style(extras.RING_STYLES, self.cfg["ring_style"], self.usage_hours())
+        return extras.unlocked_style(extras.RING_STYLES, self.cfg["ring_style"], self.unlock_hours())
 
     def set_look(self, key: str, value: int) -> None:
         """Ball size, glow strength, background and corners (Settings and Themes)."""
