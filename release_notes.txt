@@ -1,11 +1,9 @@
-Rubenium 1.1
+Rubenium 1.2
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-- Themes rebuilt: one night sky that fills with stars as the hours go by, then turns to gold (2, 6, 12, 24, 48, 72, 100, 150, 200 and 250 h).
-- Colours: pick any colour on a colour line, and add a second colour after 24 h. "Use the colours of the music" is now at the top of Themes.
-- Ball: R styles Classic, Outline, Echo, Gold; rings Dots, Line, Comet, Gold.
-- Rubenium start screen when Rocket League and Fortnite load (can be switched off in Settings > Games).
-- Softer interface sounds, a smooth menu size change, and a new app icon.
-- RL Swap: the Electric banner now replaces the Diamond Tile banner.
+- Games: Rubenium ignores the mouse while a game uses it to aim or turn the camera, also in borderless fullscreen and in games that keep an invisible pointer. In game menus it works as normal.
+- Moving the menu: hold it, and the spot you hold stays exactly under the mouse. It follows smoothly, even with fast moves.
+- The ball can never sit in the top-right corner of a screen, over the close buttons of windows.
+- The welcome-screen code only lasts until Rubenium is closed.

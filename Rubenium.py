@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.1 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.2 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1241,29 +1241,147 @@ class _CURSORINFO(ctypes.Structure):
                 ("x", ctypes.c_long), ("y", ctypes.c_long)]
 
 
+class _ICONINFO(ctypes.Structure):
+    _fields_ = [("fIcon", ctypes.c_int32), ("xHotspot", ctypes.c_uint32), ("yHotspot", ctypes.c_uint32),
+                ("hbmMask", ctypes.c_void_p), ("hbmColor", ctypes.c_void_p)]
+
+
+class _BITMAP(ctypes.Structure):
+    _fields_ = [("bmType", ctypes.c_long), ("bmWidth", ctypes.c_long), ("bmHeight", ctypes.c_long),
+                ("bmWidthBytes", ctypes.c_long), ("bmPlanes", ctypes.c_ushort), ("bmBitsPixel", ctypes.c_ushort),
+                ("bmBits", ctypes.c_void_p)]
+
+
+class _MONITORINFO(ctypes.Structure):
+    _fields_ = [("cbSize", W.DWORD), ("rcMonitor", W.RECT), ("rcWork", W.RECT), ("dwFlags", W.DWORD)]
+
+
+_blank_cache: dict = {}
+
+
+def _bitmap_bytes(hbm) -> tuple:
+    gdi = ctypes.windll.gdi32
+    gdi.GetObjectW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p]
+    gdi.GetBitmapBits.argtypes = [ctypes.c_void_p, ctypes.c_long, ctypes.c_void_p]
+    bm = _BITMAP()
+    if not gdi.GetObjectW(ctypes.c_void_p(hbm), ctypes.sizeof(bm), ctypes.byref(bm)):
+        return b"", 0
+    size = bm.bmWidthBytes * bm.bmHeight
+    if size <= 0 or size > 4 * 1024 * 1024:
+        return b"", 0
+    buf = ctypes.create_string_buffer(size)
+    got = gdi.GetBitmapBits(ctypes.c_void_p(hbm), size, buf)
+    return buf.raw[:max(0, got)], bm.bmBitsPixel
+
+
+def cursor_is_blank(hcursor: int) -> bool:
+    """True when the mouse pointer is an empty picture: many games hide the pointer that way while you aim."""
+    if not IS_WIN or not hcursor:
+        return False
+    if hcursor in _blank_cache:
+        return _blank_cache[hcursor]
+    blank = False
+    info = _ICONINFO()
+    try:
+        u = ctypes.windll.user32
+        u.GetIconInfo.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        if u.GetIconInfo(ctypes.c_void_p(hcursor), ctypes.byref(info)):
+            if info.hbmColor:                                     # colour pointer: blank if nothing is opaque
+                data, bpp = _bitmap_bytes(info.hbmColor)
+                if data and bpp == 32:
+                    blank = not any(data[3::4])
+                elif data:
+                    mask, _ = _bitmap_bytes(info.hbmMask)
+                    blank = not any(data) and bool(mask) and all(b == 0xFF for b in mask)
+            elif info.hbmMask:                                    # black and white: top half AND, bottom XOR
+                data, _ = _bitmap_bytes(info.hbmMask)
+                half = len(data) // 2
+                blank = bool(data) and all(b == 0xFF for b in data[:half]) and not any(data[half:])
+    except Exception:  # noqa: BLE001
+        blank = False
+    finally:
+        try:
+            gdi = ctypes.windll.gdi32
+            gdi.DeleteObject.argtypes = [ctypes.c_void_p]
+            for hbm in (info.hbmMask, info.hbmColor):
+                if hbm:
+                    gdi.DeleteObject(ctypes.c_void_p(hbm))
+        except Exception:  # noqa: BLE001
+            pass
+    if len(_blank_cache) > 64:
+        _blank_cache.clear()
+    _blank_cache[hcursor] = blank
+    return blank
+
+
+_SHELL_CLASSES = {"progman", "workerw", "shell_traywnd", "shell_secondarytraywnd", "windows.ui.core.corewindow"}
+
+
+def _foreground_game():
+    """(left, top, right, bottom) of the window in front if it fills its whole monitor (a fullscreen or borderless
+    game, or a video), else None. Never Rubenium itself, the desktop or the taskbar."""
+    u = ctypes.windll.user32
+    u.GetForegroundWindow.restype = ctypes.c_void_p
+    u.MonitorFromWindow.restype = ctypes.c_void_p
+    hwnd = u.GetForegroundWindow()
+    if not hwnd:
+        return None
+    pid = W.DWORD(0)
+    u.GetWindowThreadProcessId(ctypes.c_void_p(hwnd), ctypes.byref(pid))
+    if pid.value == os.getpid():
+        return None
+    cls = ctypes.create_unicode_buffer(64)
+    u.GetClassNameW(ctypes.c_void_p(hwnd), cls, 64)
+    if cls.value.lower() in _SHELL_CLASSES:
+        return None
+    rect = W.RECT()
+    if not u.GetWindowRect(ctypes.c_void_p(hwnd), ctypes.byref(rect)):
+        return None
+    mon = u.MonitorFromWindow(ctypes.c_void_p(hwnd), 2)
+    mi = _MONITORINFO()
+    mi.cbSize = ctypes.sizeof(mi)
+    if not mon or not u.GetMonitorInfoW(ctypes.c_void_p(mon), ctypes.byref(mi)):
+        return None
+    m = mi.rcMonitor
+    if rect.left <= m.left and rect.top <= m.top and rect.right >= m.right and rect.bottom >= m.bottom:
+        return (rect.left, rect.top, rect.right, rect.bottom)
+    return None
+
+
 def mouse_captured() -> bool:
-    """True while a game hides the mouse pointer or locks it inside its window (aiming with the mouse).
-    Rubenium then lets every click pass through to the game, so it can never be opened or dragged by accident."""
+    """True while a game has the mouse for aiming or turning the camera. Rubenium then lets every click and
+    hover pass through to the game, so it can never be opened, dragged or lit up by accident. Seen as:
+    - the pointer is hidden, or locked inside one window;
+    - a fullscreen or borderless game is in front and its pointer is an empty picture, or is held in the
+      middle of the screen (how most shooters turn the camera with the mouse).
+    In a game menu with a normal pointer Rubenium stays usable."""
     if not IS_WIN:
         return False
     try:
-        user32 = ctypes.windll.user32
+        u = ctypes.windll.user32
         ci = _CURSORINFO()
         ci.cbSize = ctypes.sizeof(_CURSORINFO)
-        if user32.GetCursorInfo(ctypes.byref(ci)):
-            if ci.flags & 2:                                  # hidden because touch or a pen is used: not a game
-                return False
-            if not (ci.flags & 1) or not ci.hCursor:          # no pointer shown
-                return True
+        if not u.GetCursorInfo(ctypes.byref(ci)):
+            return False
+        if ci.flags & 2:                                      # hidden because touch or a pen is used: not a game
+            return False
+        if not (ci.flags & 1) or not ci.hCursor:              # no pointer shown
+            return True
         clip = W.RECT()
-        if user32.GetClipCursor(ctypes.byref(clip)):
-            vx, vy = user32.GetSystemMetrics(76), user32.GetSystemMetrics(77)
-            vw, vh = user32.GetSystemMetrics(78), user32.GetSystemMetrics(79)
+        if u.GetClipCursor(ctypes.byref(clip)):
+            vx, vy = u.GetSystemMetrics(76), u.GetSystemMetrics(77)
+            vw, vh = u.GetSystemMetrics(78), u.GetSystemMetrics(79)
             if (clip.right - clip.left) < vw - 2 or (clip.bottom - clip.top) < vh - 2 or clip.left > vx or clip.top > vy:
-                return True                                       # pointer locked inside one window
+                return True                                   # pointer locked inside one window
+        game = _foreground_game()
+        if game is None:
+            return False
+        if cursor_is_blank(int(ci.hCursor)):
+            return True
+        cx, cy = (game[0] + game[2]) // 2, (game[1] + game[3]) // 2
+        return abs(ci.x - cx) <= 3 and abs(ci.y - cy) <= 3   # held in the middle of the game
     except Exception:  # noqa: BLE001
         return False
-    return False
 
 
 def set_click_through(hwnd: int, on: bool) -> None:
@@ -1305,8 +1423,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.1"         # the version people see
-BUILD = "2026.11.14.4"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "1.2"         # the version people see
+BUILD = "2026.11.14.5"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -2078,6 +2196,15 @@ FR = {
     "The menu size changes smoothly": "La taille du menu change en douceur",
     "New app icon": "Nouvelle icône",
     "New swap: Diamond Tile banner to Electric": "Nouveau swap : bannière Diamond Tile vers Electric",
+    # 1.2
+    "Rubenium ignores the mouse while a game uses it to aim, even in borderless fullscreen":
+        "Rubenium ignore la souris quand un jeu l'utilise pour viser, même en plein écran fenêtré",
+    "Moving the menu: the spot you hold stays under the mouse, and it follows smoothly":
+        "Déplacer le menu : l'endroit que vous tenez reste sous la souris, et il suit en douceur",
+    "The ball never sits over the close buttons in the top-right corner":
+        "La bulle ne se place plus jamais sur les boutons de fermeture en haut à droite",
+    "The welcome code only lasts until Rubenium is closed":
+        "Le code de bienvenue ne dure que jusqu'à la fermeture de Rubenium",
 }
 
 
@@ -5377,6 +5504,10 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("1.2", ["Rubenium ignores the mouse while a game uses it to aim, even in borderless fullscreen",
+             "Moving the menu: the spot you hold stays under the mouse, and it follows smoothly",
+             "The ball never sits over the close buttons in the top-right corner",
+             "The welcome code only lasts until Rubenium is closed"]),
     ("1.1", ["Themes rebuilt: one night sky that fills with stars, then turns to gold",
              "Pick any colour on a colour line, and add a second colour after 24 h",
              "New ball styles, with a gold ring",
@@ -9511,13 +9642,29 @@ class BallWindow(QWidget):
     def clamp(self) -> None:
         wa = work_area(self.center)
         r = BD() // 2 + S(6)
-        self.center = QPoint(max(wa.left() + r, min(wa.right() - r, self.center.x())),
-                             max(wa.top() + r, min(wa.bottom() - r, self.center.y())))
+        self.center = self.keep_clear(QPoint(max(wa.left() + r, min(wa.right() - r, self.center.x())),
+                                             max(wa.top() + r, min(wa.bottom() - r, self.center.y()))))
 
     @staticmethod
-    def _top_y(wa: QRect) -> int:
+    def _clear_h() -> int:
+        """Height of the strip at the top of the screen where windows have their close / minimise buttons."""
+        return max(52, S(52))
+
+    @classmethod
+    def keep_clear(cls, c: QPoint) -> QPoint:
+        """The ball may never sit in the top-right corner of a screen, over the close buttons of windows:
+        anywhere in that area it is moved straight down, just below it."""
+        wa = work_area(c)
+        r = BD() // 2
+        zone_w = max(200, S(200))
+        if c.x() + r > wa.right() - zone_w and c.y() - r < wa.top() + cls._clear_h():
+            return QPoint(c.x(), wa.top() + cls._clear_h() + r)
+        return QPoint(c)
+
+    @classmethod
+    def _top_y(cls, wa: QRect) -> int:
         """Top spots sit a little lower, clear of the close / minimise buttons of windows under them."""
-        return wa.top() + S(52) + BD() // 2
+        return wa.top() + cls._clear_h() + BD() // 2
 
     @classmethod
     def corner_point(cls, wa: QRect, left: bool, top: bool) -> QPoint:
@@ -9556,6 +9703,7 @@ class BallWindow(QWidget):
             self.owner.save_position()
 
     def glide_to(self, target: QPoint, then=None, fast: bool = False) -> None:
+        target = self.keep_clear(target)
         self._from, self._to = QPoint(self.center), QPoint(target)
         self._then = then
         dist = (target - self.center).manhattanLength()
@@ -10146,8 +10294,7 @@ class Welcome(QWidget):
     def _check(self) -> None:
         if self.code == self.SECRET:
             self._good = True
-            self.ctx.cfg["unlock_all"] = True       # every theme and style, for good
-            self.ctx.cfg.save()
+            self.ctx.unlocked = True                # every theme and style, until Rubenium is closed
             sfx.play("on")
             QTimer.singleShot(450, self.launch)
         else:
@@ -10395,15 +10542,18 @@ class Body(QWidget):
     def _arm(self, at: QPoint) -> None:
         if self._press is None or self._press is not at or win.mouse_captured():
             return
+        if not (QGuiApplication.mouseButtons() & Qt.MouseButton.LeftButton):
+            self._press = None                  # the button was let go somewhere else
+            return
         self._armed = True
         self.setCursor(Qt.CursorShape.SizeAllCursor)
-        self.win.begin_drag(QCursor.pos())      # from where the mouse is now: no jump
-
-    def mouseMoveEvent(self, e) -> None:
-        if self._press is not None and getattr(self, "_armed", False):
-            self.win.drag_to(e.globalPosition().toPoint())
+        # The point you pressed is the point you hold: if the mouse already moved, the card catches up with it.
+        self.win.begin_drag(self._press)
 
     def mouseReleaseEvent(self, e) -> None:
+        self.release_drag()
+
+    def release_drag(self) -> None:
         self._press = None
         if getattr(self, "_armed", False):
             self._armed = False
@@ -10436,7 +10586,7 @@ class MainWindow(QWidget):
         self._closed_at_card = False         # True: the ball sits in the card's top corner (card was moved)
         self._through = False                # clicks pass through Rubenium (a game has the mouse)
         self._guard = QTimer(self)
-        self._guard.setInterval(30)
+        self._guard.setInterval(25)
         self._guard.timeout.connect(self._mouse_guard)
         if win.IS_WIN:
             self._guard.start()
@@ -10447,6 +10597,12 @@ class MainWindow(QWidget):
         self._fsnap = None
         self.card_max_h = S(400)
         self._drag_origin = None
+        self._drag_at = QPointF()
+        self._follow_test = False            # tests move a fake mouse: no real button is held
+        self._follow = QTimer(self)
+        self._follow.setTimerType(Qt.TimerType.PreciseTimer)
+        self._follow.setInterval(8)
+        self._follow.timeout.connect(self._follow_step)
 
         self.setWindowTitle("Rubenium")
         self.setWindowFlags(WINDOW_FLAGS)
@@ -10799,6 +10955,10 @@ class MainWindow(QWidget):
             # ball stays there, so the card opens in the same place next time.
             self._ball_l = QRectF(c.left() if left else c.right() - d, c.top(), d, d)
             self._closed_at_card = True
+        here = self.mapToGlobal(self._ball_l.center().toPoint())
+        safe = self.ball.keep_clear(here)                  # never folds into the top-right corner of a screen
+        if safe != here:
+            self._ball_l.translate(QPointF(safe - here))
         page = self.page()
         self._snap = snapshot(self.body)
         if page:
@@ -11095,24 +11255,44 @@ class MainWindow(QWidget):
         paint_edge(p, self.ctx, shape, radius, level)
 
     # ------------------------------------------------------------------ dragging the card (kept on screen)
-    def begin_drag(self, global_pos: QPoint) -> None:
-        self._drag_start = global_pos
+    def begin_drag(self, grab: QPoint) -> None:
+        """Start moving the card. `grab` is the screen point that was pressed: that point of the card stays
+        exactly under the mouse. The card follows the mouse every frame, gliding the last few pixels."""
+        self._drag_start = QPoint(grab)
         self._drag_origin = self.pos()
+        self._drag_at = QPointF(self.pos())
         self.drawer.close_now()
+        self._follow.start()
+        self._follow_step()
 
-    def drag_to(self, global_pos: QPoint) -> None:
-        if self._drag_origin is None:
-            return
-        new = self._drag_origin + (global_pos - self._drag_start)      # stored origin + total delta: no drift
+    def _drag_target(self, cursor: QPoint) -> QPoint:
+        new = self._drag_origin + (cursor - self._drag_start)          # stored origin + total delta: no drift
         c = self._card_rect()
-        wa, m = work_area(global_pos), S(8)
+        wa, m = work_area(cursor), S(8)
         x = max(wa.left() + m - c.left(), min(new.x(), wa.right() - m - c.right()))
         y = max(wa.top() + m - c.top(), min(new.y(), wa.bottom() - m - S(MIN_CARD) - c.top()))
-        self.move(int(x), int(y))
+        return QPoint(int(x), int(y))
+
+    def _follow_step(self) -> None:
+        if self._drag_origin is None:
+            self._follow.stop()
+            return
+        if not (QGuiApplication.mouseButtons() & Qt.MouseButton.LeftButton) and not self._follow_test:
+            self.body.release_drag()                     # let go anywhere: the drag ends
+            return
+        target = QPointF(self._drag_target(QCursor.pos()))
+        gap = target - self._drag_at
+        if abs(gap.x()) + abs(gap.y()) < 1.5:
+            self._drag_at = target
+        else:
+            self._drag_at = self._drag_at + gap * 0.55   # quick, smooth catch-up; never lags behind
+        self.move(round(self._drag_at.x()), round(self._drag_at.y()))
 
     def end_drag(self) -> None:
         if self._drag_origin is None:
             return
+        self._follow.stop()
+        self.move(self._drag_target(QCursor.pos()))       # lands exactly where the mouse is
         moved = self.pos() != self._drag_origin
         self._drag_origin = None
         if moved and self.expanded and not self.morph.busy:
@@ -11268,6 +11448,15 @@ class App(QObject):
         self.qapp = qapp
         self.cfg = Config()
         self._was_open = bool(self.cfg["card_open"])
+        # The welcome-screen code unlocks everything until Rubenium is closed, never for good. Anything picked
+        # with it that the hours have not earned goes back to the free choice on the next start.
+        self.unlocked = False
+        self.cfg["unlock_all"] = False
+        earned = self.cfg["usage_s"] / 3600
+        if extras.theme_by_id(self.cfg["theme"])["hours"] > earned:
+            self.cfg["theme"] = "clean"
+        for key, styles in (("ball_style", extras.R_STYLES), ("ring_style", extras.RING_STYLES)):
+            self.cfg[key] = extras.unlocked_style(styles, self.cfg[key], earned)
         disp = self.cfg["display"]
         if disp.get("active") == "B":                # one Custom since 1.1: an old "Custom 2" becomes Custom
             disp["A"] = dict(disp["B"])
@@ -11469,6 +11658,23 @@ class App(QObject):
                 if not snap or len(snap) < 10 or not any(n.lower() == "explorer.exe" or n.lower().startswith("rubenium")
                                                          for _p, n, _c, _m in snap):
                     errors.append(RuntimeError("process snapshot failed"))
+                try:                                # the game-has-the-mouse test reads pointers correctly
+                    import ctypes
+                    u = ctypes.windll.user32
+                    u.LoadCursorW.restype = ctypes.c_void_p
+                    u.CreateCursor.restype = ctypes.c_void_p
+                    arrow = u.LoadCursorW(None, ctypes.c_void_p(32512))
+                    and_mask = (ctypes.c_ubyte * 128)(*([0xFF] * 128))
+                    xor_mask = (ctypes.c_ubyte * 128)(*([0x00] * 128))
+                    empty = u.CreateCursor(None, 0, 0, 32, 32, and_mask, xor_mask)
+                    arrow_blank, empty_blank = win.cursor_is_blank(int(arrow)), win.cursor_is_blank(int(empty or 0))
+                    win._foreground_game()
+                    log.info("SELFTEST pointer test: arrow blank=%s, empty blank=%s, captured now=%s",
+                             arrow_blank, empty_blank, win.mouse_captured())
+                    if arrow_blank or not empty_blank:
+                        errors.append(RuntimeError("pointer test failed"))
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(exc)
                 try:                                # click-through switch on the ball's window
                     import ctypes
                     hwnd = int(self.window.ball.winId())
@@ -11616,7 +11822,7 @@ class App(QObject):
 
     def unlock_hours(self) -> float:
         """Hours that count for unlocking themes and styles (everything, once the code was entered)."""
-        return 1e9 if self.cfg["unlock_all"] else self.usage_hours()
+        return 1e9 if self.unlocked else self.usage_hours()
 
     def _count_usage(self) -> None:
         self.cfg["usage_s"] = self.cfg["usage_s"] + 60.0
