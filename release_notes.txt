@@ -1,11 +1,7 @@
-Rubenium 3.0.0
+Rubenium 1.0
 
-- Welcome screen with a Launch button and a loading animation.
-- Rocket League: 8 new swaps, a new Decals section, and several swaps can be on at once (one per item).
-- Every swap has a spot for a picture of the result.
-- Choose which tabs show in the menu bar. Tabs are in a cleaner order.
-- Ball size setting with a real-size preview.
-- Stronger glow that follows the music better.
-- New theme options (glow, background, corners). Themes unlock faster.
-- New tab that lists what changed.
-- Fixed: time used, timer keys and update checks stopped when the music stopped.
+- The Update button now works on every PC, also when Windows protects the folder Rubenium is in.
+- RL Swap: every swap shows a picture of the result, Black Lunation is ready, and the yellow outline only marks what is about to change.
+- Stats: see which apps use the most processor and memory.
+- Themes: 5 new themes in a better order, plus new styles for the R and the song ring that unlock with time.
+- The New tab stays hidden and only shows up after an update.

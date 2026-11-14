@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 3.0 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.0 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1178,7 +1178,8 @@ from PyQt6.QtGui import QColor, QFont
 
 
 APP_NAME = "Rubenium"
-VERSION = "3.0.0"
+VERSION = "4.0.0"            # build number: only ever goes up, it is what the updater compares
+VERSION_NAME = "1.0"         # the version people see
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -1307,9 +1308,9 @@ def apply_look(cfg) -> None:
     ui.scale = cfg["scale"] / 100
     size = cfg["ball_size"] if cfg["ball_size"] in BALL_SIZES else 100
     ui.ball = size / 100
-    top, bottom = BACKDROPS[cfg["backdrop"] if 0 <= cfg["backdrop"] < len(BACKDROPS) else 0]
+    top, bottom = BACKDROPS[1 if cfg["backdrop"] == 1 else 0]            # dark or black
     ui.bg_top, ui.bg_bottom = QColor(top), QColor(bottom)
-    ui.radius = CORNERS[cfg["corners"] if 0 <= cfg["corners"] < len(CORNERS) else 0]
+    ui.radius = CORNERS[2 if cfg["corners"] == 2 else 0]                 # round or sharp
 HEADER_H = 26
 TABBAR_H = 34
 PAGE_HEIGHTS = {  # content heights at 100 %; tall pages scroll when the screen is small
@@ -1336,6 +1337,9 @@ DEFAULTS: dict = {
     "glow_power": 1,
     "backdrop": 0,
     "corners": 0,
+    "ball_style": "classic",
+    "ring_style": "line",
+    "news_tab": False,
     "welcome": True,
     "card_open": False,
     "seen_version": "",
@@ -1763,6 +1767,24 @@ FR = {
         "Le temps d'utilisation continue de compter quand la musique s'arrête",
     "Timer keys and update checks keep working all day":
         "Les touches du chrono et la recherche de mises à jour fonctionnent toute la journée",
+    # 1.0
+    "RL SWAP": "RL SWAP", "RL Swap": "RL Swap", "Top apps": "Applis les plus gourmandes", "Earlier": "Avant",
+    "Unlocks after {n} h of use": "Se débloque après {n} h d'utilisation",
+    "The update failed. Try again in a moment.": "La mise à jour a échoué. Réessayez dans un instant.",
+    "Hive": "Ruche", "Sonar": "Sonar", "Circuit": "Circuit", "Comets": "Comètes", "Nebula": "Nébuleuse",
+    "Classic": "Classique", "Outline": "Contour", "Neon": "Néon", "Gold": "Or", "Line": "Ligne", "Dashes": "Tirets",
+    "The Update button now works on every PC": "Le bouton Mettre à jour fonctionne maintenant sur tous les PC",
+    "It also works when Windows protects the folder Rubenium is in":
+        "Il fonctionne aussi quand Windows protège le dossier où se trouve Rubenium",
+    "Every swap now shows a picture of the result": "Chaque swap affiche maintenant une image du résultat",
+    "Black Lunation is ready": "Black Lunation est disponible",
+    "The yellow outline only marks what is about to change": "Le contour jaune indique seulement ce qui va changer",
+    "See which apps use the most processor and memory":
+        "Voyez quelles applis utilisent le plus le processeur et la mémoire",
+    "5 new themes, in a better order": "5 nouveaux thèmes, dans un meilleur ordre",
+    "New styles for the R and for the song ring, unlocked with time":
+        "Nouveaux styles pour le R et pour l'anneau du titre, à débloquer avec le temps",
+    "Theme options for glow, background and corners": "Options de style : halo, fond et coins",
 }
 
 
@@ -4337,18 +4359,106 @@ log = logging.getLogger("rubenium.extras")
 # Themes: background designs, sparkles and glow, unlocked by hours of use.
 # They never change the colour (the music / your accent does), so they always show.
 # --------------------------------------------------------------------------- #
-THEMES = [
+THEMES = [      # in unlock order: each one is a little richer than the one before
     dict(id="clean", name="Clean", hours=0, layers=[]),
+    dict(id="dots", name="Dots", hours=1, layers=["dots"]),
     dict(id="grid", name="Grid", hours=2, layers=["grid"]),
-    dict(id="dots", name="Dots", hours=5, layers=["dots"]),
-    dict(id="lines", name="Lines", hours=10, layers=["lines"]),
-    dict(id="waves", name="Waves", hours=20, layers=["waves"]),
-    dict(id="glow", name="Radiance", hours=35, layers=["glow"], glow=1.2),
-    dict(id="stars", name="Stars", hours=50, layers=["glow"], sparkles=7, glow=1.25),
-    dict(id="aurora", name="Aurora", hours=75, layers=["aurora"], sparkles=4, glow=1.3),
+    dict(id="lines", name="Lines", hours=5, layers=["lines"]),
+    dict(id="hex", name="Hive", hours=8, layers=["hex"]),
+    dict(id="waves", name="Waves", hours=12, layers=["waves"]),
+    dict(id="rings", name="Sonar", hours=18, layers=["rings"]),
+    dict(id="glow", name="Radiance", hours=25, layers=["glow"], glow=1.2),
+    dict(id="circuit", name="Circuit", hours=32, layers=["glow", "circuit"], glow=1.2),
+    dict(id="stars", name="Stars", hours=40, layers=["glow"], sparkles=7, glow=1.25),
+    dict(id="comet", name="Comets", hours=50, layers=["glow", "comet"], sparkles=3, glow=1.3),
+    dict(id="aurora", name="Aurora", hours=62, layers=["aurora"], sparkles=4, glow=1.3),
+    dict(id="nebula", name="Nebula", hours=75, layers=["aurora", "hex"], sparkles=9, glow=1.35),
     dict(id="prism", name="Prism", hours=100, layers=["aurora", "dots"], glow=1.35, edge="rainbow"),
     dict(id="legend", name="Legend", hours=150, layers=["glow", "lines"], sparkles=8, glow=1.45, edge="gold"),
 ]
+# Small extras that also unlock with time: the look of the R and of the song ring on the ball.
+R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="outline", name="Outline", hours=3),
+            dict(id="neon", name="Neon", hours=15), dict(id="gold", name="Gold", hours=45),
+            dict(id="prism", name="Prism", hours=90)]
+RING_STYLES = [dict(id="line", name="Line", hours=0), dict(id="dash", name="Dashes", hours=10),
+               dict(id="dots", name="Dots", hours=30)]
+
+
+def unlocked_style(styles: list, ident: str, hours: float) -> str:
+    """The style to use: the chosen one if it is unlocked, otherwise the first (free) one."""
+    for st in styles:
+        if st["id"] == ident and hours >= st["hours"]:
+            return ident
+    return styles[0]["id"]
+
+
+def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now: float = 0.0) -> None:
+    """The R of the ball, centred in `box` for a ball of diameter `d`, in one of R_STYLES."""
+    from PyQt6.QtCore import QPointF
+    from PyQt6.QtGui import QConicalGradient, QFont, QFontMetricsF, QLinearGradient, QPainterPath
+    pass
+    f = font(20, QFont.Weight.ExtraBold)
+    f.setPixelSize(max(8, int(d * 0.46)))
+    p.setFont(f)
+    centre = int(Qt.AlignmentFlag.AlignCenter)
+    if style == "classic":
+        p.setPen(alpha(accent, 0.55))
+        p.drawText(box.translated(0, d * 0.022), centre, "R")
+        p.setPen(QColor(TEXT))
+        p.drawText(box, centre, "R")
+        return
+    fm = QFontMetricsF(f)
+    tb = fm.tightBoundingRect("R")
+    path = QPainterPath()
+    path.addText(QPointF(box.center().x() - tb.width() / 2 - tb.left(), box.center().y() - tb.height() / 2 - tb.top()),
+                 f, "R")
+    p.save()
+    if style == "outline":
+        pen = QPen(QColor(TEXT), max(1.2, d * 0.028))
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(alpha(accent, 0.18))
+        p.drawPath(path)
+    elif style == "neon":
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for width, a in ((d * 0.14, 0.10), (d * 0.09, 0.16), (d * 0.05, 0.28)):
+            pen = QPen(alpha(accent, a), width)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            p.setPen(pen)
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(mix(accent, QColor("#FFFFFF"), 0.55))
+        p.drawPath(path)
+    elif style == "gold":
+        g = QLinearGradient(box.topLeft(), box.bottomRight())
+        g.setColorAt(0.25, QColor("#FFF1C2"))
+        g.setColorAt(0.5, QColor(GOLD))
+        g.setColorAt(0.75, QColor("#B8862B"))
+        p.setPen(QPen(alpha("#000000", 0.35), 1))
+        p.setBrush(g)
+        p.drawPath(path)
+    else:                                               # prism: slowly turning colours
+        g = QConicalGradient(box.center(), (now * 30.0) % 360.0)
+        for i in range(7):
+            g.setColorAt(i / 6, QColor.fromHsvF((i / 6) % 1.0 * 0.999, 0.45, 1.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawPath(path)
+    p.restore()
+
+
+def ring_pen(style: str, color: QColor, width: float) -> QPen:
+    """Pen for the song ring on the ball, in one of RING_STYLES."""
+    pen = QPen(color, width)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    if style == "dash":
+        pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+        pen.setDashPattern([2.6, 1.6])
+    elif style == "dots":
+        pen.setDashPattern([0.1, 2.2])
+    return pen
+
+
 GOLD = "#E8C26A"
 _pattern_cache: dict = {}
 
@@ -4385,6 +4495,70 @@ def _draw_layer(p: QPainter, layer: str, w: float, h: float, accent: QColor, uni
                 p.drawEllipse(QPointF(x, y), 0.9 * unit, 0.9 * unit)
                 x += step
             y += step
+    elif layer == "hex":
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(alpha(accent, 0.13), 1))
+        r = 9 * unit
+        dx, dy = r * 1.732, r * 1.5
+        row, y = 0, 0.0
+        while y < h + r:
+            x = pad + (dx / 2 if row % 2 else 0.0)
+            while x < w + r:
+                cell = QPainterPath()
+                for k in range(6):
+                    ang = math.radians(60 * k - 90)
+                    pt = QPointF(x + r * math.cos(ang), y + r * math.sin(ang))
+                    cell.lineTo(pt) if k else cell.moveTo(pt)
+                cell.closeSubpath()
+                p.drawPath(cell)
+                x += dx
+            y += dy
+            row += 1
+    elif layer == "rings":
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        c = QPointF(w * 0.80, 0)
+        for n in range(1, 11):
+            p.setPen(QPen(alpha(accent, max(0.03, 0.24 - 0.022 * n)), 1.1))
+            p.drawEllipse(c, n * 15 * unit, n * 15 * unit)
+    elif layer == "circuit":
+        import random
+        rnd = random.Random(11)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        step = 12 * unit
+        for _ in range(11):
+            x, y = pad + rnd.randrange(0, max(1, int((w - pad) / step))) * step, rnd.randrange(0, 9) * step
+            trace = QPainterPath(QPointF(x, y))
+            for _seg in range(rnd.randrange(2, 5)):
+                if rnd.random() < 0.5:
+                    x += rnd.choice((-3, -2, 2, 3, 4)) * step
+                else:
+                    y += rnd.choice((1, 2, 3)) * step
+                trace.lineTo(QPointF(x, y))
+            p.setPen(QPen(alpha(accent, 0.20), 1.1))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(trace)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(accent, 0.45))
+            p.drawEllipse(QPointF(x, y), 1.8 * unit, 1.8 * unit)
+    elif layer == "comet":
+        import random
+        from PyQt6.QtGui import QLinearGradient
+        rnd = random.Random(5)
+        white = QColor("#FFFFFF")
+        for _ in range(6):
+            x, y = pad + rnd.random() * (w - pad), rnd.random() * h * 0.55
+            length = (26 + rnd.random() * 34) * unit
+            tail = QPointF(x + length, y - length * 0.45)
+            g = QLinearGradient(QPointF(x, y), tail)
+            g.setColorAt(0.0, alpha(mix(accent, white, 0.5), 0.55))
+            g.setColorAt(1.0, alpha(accent, 0.0))
+            pen = QPen(g, 1.4 * unit)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            p.setPen(pen)
+            p.drawLine(QPointF(x, y), tail)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(white, 0.75))
+            p.drawEllipse(QPointF(x, y), 1.3 * unit, 1.3 * unit)
     elif layer == "lines":
         p.setPen(QPen(alpha(accent, 0.12), 1))
         step = 10 * unit
@@ -4773,22 +4947,30 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
-NEWS_VERSION = "3.0"
-NEWS = [
-    ("Start-up", ["Welcome screen with a Launch button and a loading animation",
-               "Rubenium comes back the way you left it"]),
-    ("Rocket League", ["8 new swaps and a new Decals section",
-                       "Several swaps can be on at once (one per item)",
-                       "Every swap has a spot for a picture of the result",
-                       "Room for more swaps in every section"]),
-    ("Look", ["Stronger glow that follows the music better",
-              "New theme options: glow, background and corners",
-              "Themes unlock faster"]),
-    ("Settings", ["Choose which tabs show in the menu bar",
-                  "Change the size of the ball, with a real-size preview",
-                  "Tabs are in a cleaner order"]),
-    ("Fixes", ["Time used now keeps counting when the music stops",
-               "Timer keys and update checks keep working all day"]),
+NEWS = [        # newest first: (version shown, [(heading, [lines])])
+    ("1.0", [
+        ("Updates", ["The Update button now works on every PC",
+                     "It also works when Windows protects the folder Rubenium is in"]),
+        ("RL Swap", ["Every swap now shows a picture of the result",
+                     "Black Lunation is ready",
+                     "The yellow outline only marks what is about to change"]),
+        ("Stats", ["See which apps use the most processor and memory"]),
+        ("Themes", ["5 new themes, in a better order",
+                    "New styles for the R and for the song ring, unlocked with time"]),
+    ]),
+    ("", [
+        ("Start-up", ["Welcome screen with a Launch button and a loading animation",
+                      "Rubenium comes back the way you left it"]),
+        ("RL Swap", ["8 new swaps and a new Decals section",
+                     "Several swaps can be on at once (one per item)",
+                     "Room for more swaps in every section"]),
+        ("Look", ["Stronger glow that follows the music better",
+                  "Theme options for glow, background and corners"]),
+        ("Settings", ["Choose which tabs show in the menu bar",
+                      "Change the size of the ball, with a real-size preview"]),
+        ("Fixes", ["Time used now keeps counting when the music stops",
+                   "Timer keys and update checks keep working all day"]),
+    ]),
 ]
 
 # --------------------------------------------------------------------------- #
@@ -5584,6 +5766,119 @@ def version_tuple(text: str) -> tuple:
     return tuple(int(n) for n in nums[:4]) if nums else (0,)
 
 
+def app_home() -> Path:
+    """A folder Windows always lets the app write to (used for downloads and, if needed, for the app itself)."""
+    base = os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local")
+    return Path(base) / "Rubenium"
+
+
+def side_exe() -> Path:
+    return app_home() / "app" / "Rubenium.exe"
+
+
+def side_version() -> str:
+    try:
+        return (app_home() / "app" / "version.txt").read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def clean_env() -> dict:
+    """Environment for starting another copy of the app: a packed .exe must not inherit this one's temp folder."""
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith(("_MEI", "_PYI"))}
+    env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    return env
+
+
+def _same_file(a, b) -> bool:
+    try:
+        return os.path.normcase(os.path.realpath(str(a))) == os.path.normcase(os.path.realpath(str(b)))
+    except OSError:
+        return False
+
+
+def _retry(fn, tries: int = 24, wait: float = 0.5):
+    """Windows and antivirus hold new files for a moment: try again for a few seconds before giving up."""
+    last = None
+    for n in range(tries):
+        try:
+            return fn()
+        except OSError as exc:
+            last = exc
+            time.sleep(wait if n else 0.15)
+    raise last
+
+
+def handoff(current: str) -> bool:
+    """If an update had to be installed beside the original .exe (its folder was protected), every start of the
+    original passes straight on to that newer copy. True when it did: the caller just exits."""
+    import subprocess
+    import sys
+    if not getattr(sys, "frozen", False) or "--no-handoff" in sys.argv:
+        return False
+    side = side_exe()
+    try:
+        if (not side.is_file() or _same_file(sys.executable, side)
+                or version_tuple(side_version()) <= version_tuple(current)):
+            return False
+        log.info("handing over to %s (%s)", side, side_version())
+        subprocess.Popen([str(side), *sys.argv[1:]], close_fds=True, env=clean_env(), cwd=str(side.parent))
+        return True
+    except OSError as exc:
+        log.warning("hand-over failed: %s", exc)
+        return False
+
+
+def place_exe(new: Path, version: str) -> str:
+    """Put a downloaded, verified .exe into use and return the path to start.
+    1. Next to the running app: the running file is renamed (Windows allows that), the new one takes its name.
+    2. If that folder cannot be written (Windows 'Controlled folder access', Program Files, read-only...),
+       the new version goes to the app's own folder in AppData and the old .exe hands over to it from then on."""
+    import shutil
+    import sys
+    target = Path(sys.executable).resolve()
+    if not os.environ.get("RUBENIUM_TEST_SIDE"):
+        tmp = target.with_name(target.stem + ".new.exe")
+        old = target.with_name(target.stem + ".old.exe")
+        try:
+            try:
+                old.unlink()
+            except OSError:
+                pass
+            _retry(lambda: shutil.copyfile(new, tmp), tries=6)
+            if file_hash(tmp) != file_hash(new):
+                raise OSError("copy does not match")
+            _retry(lambda: os.replace(target, old))
+            try:
+                _retry(lambda: os.replace(tmp, target))
+            except OSError:
+                _retry(lambda: os.replace(old, target))     # put the working one back
+                raise
+            if _same_file(target, side_exe()):
+                try:
+                    (target.parent / "version.txt").write_text(version, encoding="utf-8")
+                except OSError:
+                    pass
+            return str(target)
+        except OSError as exc:
+            log.warning("could not update in place (%s): installing in %s", exc, app_home())
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+    side = side_exe()
+    if _same_file(target, side):
+        raise PermissionError("the app's own folder cannot be written")
+    side.parent.mkdir(parents=True, exist_ok=True)
+    part = side.with_name("Rubenium.part")
+    _retry(lambda: shutil.copyfile(new, part))
+    if file_hash(part) != file_hash(new):
+        raise OSError("copy does not match")
+    _retry(lambda: os.replace(part, side))
+    (side.parent / "version.txt").write_text(version, encoding="utf-8")
+    return str(side)
+
+
 class Updater(QObject):
     """Checks the latest GitHub release, downloads it, checks its SHA-256 and swaps the app in place.
 
@@ -5640,7 +5935,10 @@ class Updater(QObject):
             tag = str(rel.get("tag_name", ""))
             assets = {str(a.get("name", "")): str(a.get("browser_download_url", ""))
                       for a in rel.get("assets", []) if isinstance(a, dict)}
-            info = {"version": tag.lstrip("vV"), "page": str(rel.get("html_url", UPDATE_PAGE)), "assets": assets}
+            import re
+            shown = re.search(r"\d+(?:\.\d+)+", str(rel.get("name", "")))       # "Rubenium 1.0" -> 1.0
+            info = {"version": tag.lstrip("vV"), "label": shown.group(0) if shown else tag.lstrip("vV"),
+                    "page": str(rel.get("html_url", UPDATE_PAGE)), "assets": assets}
             self.busy = False
             if version_tuple(tag) > version_tuple(self.current):
                 self.latest = info
@@ -5710,23 +6008,32 @@ class Updater(QObject):
         assets = info["assets"]
         try:
             if getattr(sys, "frozen", False):
-                target = Path(sys.executable)
-                new = target.with_name(target.stem + ".download")
-                if not self._fetch_checked(assets, "Rubenium.exe", new, (0, 100)):
-                    raise FileNotFoundError("no exe in release")
-                old = target.with_name(target.stem + ".old.exe")
+                work = app_home() / "update"                  # never the app's own folder: it may be protected
                 try:
-                    old.unlink()
+                    work.mkdir(parents=True, exist_ok=True)
+                except OSError:
+                    import tempfile
+                    work = Path(tempfile.gettempdir())
+                new = work / "Rubenium.download"
+                done = False
+                for attempt in range(3):                      # a dropped connection is tried again
+                    try:
+                        done = self._fetch_checked(assets, "Rubenium.exe", new, (0, 100))
+                        break
+                    except (OSError, ValueError) as exc:
+                        log.info("download attempt %d failed: %s", attempt + 1, exc)
+                        if attempt == 2:
+                            raise
+                        time.sleep(2.0)
+                if not done:
+                    raise FileNotFoundError("no exe in release")
+                path = place_exe(new, info["version"])
+                try:
+                    new.unlink()
                 except OSError:
                     pass
-                os.replace(target, old)               # a running exe can be renamed, not overwritten
-                try:
-                    os.replace(new, target)
-                except OSError:
-                    os.replace(old, target)           # put the working one back
-                    raise
                 self.busy = False
-                self.ready.emit(str(target))
+                self.ready.emit(path)
             else:
                 script = Path(sys.argv[0]).resolve()
                 new = script.with_name(script.name + ".download")
@@ -5764,28 +6071,105 @@ class Updater(QObject):
         """Remove what an earlier update left behind."""
         import sys
         here = Path(sys.executable if getattr(sys, "frozen", False) else sys.argv[0]).resolve()
-        for name in (here.stem + ".old.exe", here.stem + ".download", here.name + ".download", "swaps.zip.download"):
+        junk = [here.parent / n for n in (here.stem + ".old.exe", here.stem + ".new.exe", here.stem + ".download",
+                                          here.name + ".download", "swaps.zip.download")]
+        junk += [app_home() / "update" / "Rubenium.download", app_home() / "app" / "Rubenium.part"]
+        for f in junk:
             try:
-                (here.parent / name).unlink()
+                f.unlink()
             except OSError:
                 pass
 
 
-def restart(path: str) -> bool:
+def restart(path: str, extra: tuple = ()) -> bool:
     """Start the (new) app again; the running copy then quits."""
     import subprocess
     import sys
+    args = ["--updated", *extra]
     try:
         if getattr(sys, "frozen", False):
-            subprocess.Popen([path, "--updated"], close_fds=True)
+            subprocess.Popen([path, *args], close_fds=True, env=clean_env(), cwd=os.path.dirname(path) or None)
         else:
             exe = sys.executable
             pyw = os.path.join(os.path.dirname(exe), "pythonw.exe")
-            subprocess.Popen([pyw if os.path.exists(pyw) else exe, path, "--updated"], close_fds=True)
+            subprocess.Popen([pyw if os.path.exists(pyw) else exe, path, *args], close_fds=True)
         return True
     except OSError as exc:
         log.warning("restart failed: %s", exc)
         return False
+
+
+class TopApps(QObject):
+    """Which apps use the most processor and memory right now (grouped by app name, sampled in a thread)."""
+    ready = pyqtSignal(list, list)      # [(name, percent of the whole processor)], [(name, bytes)]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._timer = QTimer(self)
+        self._timer.setInterval(2000)
+        self._timer.timeout.connect(self._kick)
+        self._busy = False
+        self._procs: dict = {}
+
+    def start(self) -> None:
+        if not self._timer.isActive():
+            self._timer.start()
+            self._kick()
+            QTimer.singleShot(700, self._kick)      # processor use needs two looks: show numbers quickly
+
+    def stop(self) -> None:
+        self._timer.stop()
+
+    def _kick(self) -> None:
+        if self._busy:
+            return
+        self._busy = True
+        import threading
+        threading.Thread(target=self._sample, daemon=True).start()
+
+    def _sample(self) -> None:
+        cpu: dict = {}
+        ram: dict = {}
+        try:
+            import psutil
+            cores = psutil.cpu_count() or 1
+            seen = {}
+            for proc in psutil.process_iter(["pid", "name"]):
+                pid, name = proc.info["pid"], proc.info["name"] or ""
+                if not pid or not name or name in ("System Idle Process", "Idle", "Memory Compression"):
+                    continue
+                keep = self._procs.get(pid)
+                if keep is None or keep[0] != name:
+                    keep = (name, proc)
+                    try:
+                        proc.cpu_percent(None)              # first look: nothing to report yet
+                    except Exception:  # noqa: BLE001
+                        continue
+                    seen[pid] = keep
+                    used = 0.0
+                else:
+                    seen[pid] = keep
+                    try:
+                        used = keep[1].cpu_percent(None) / cores
+                    except Exception:  # noqa: BLE001
+                        continue
+                try:
+                    mem = keep[1].memory_info().rss
+                except Exception:  # noqa: BLE001
+                    mem = 0
+                label = name[:-4] if name.lower().endswith(".exe") else name
+                cpu[label] = cpu.get(label, 0.0) + used
+                ram[label] = ram.get(label, 0) + mem
+            self._procs = seen
+        except Exception as exc:  # noqa: BLE001
+            log.debug("top apps: %s", exc)
+        top_cpu = sorted(cpu.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        top_ram = sorted(ram.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        self._busy = False
+        try:
+            self.ready.emit(top_cpu, top_ram)
+        except RuntimeError:
+            pass
 
 
 # ==================================================================================================
@@ -5799,7 +6183,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QGuiApplication, QPainter, QPen
 from PyQt6.QtWidgets import QAbstractButton, QFileDialog, QGridLayout, QWidget
 
@@ -6644,6 +7028,62 @@ def rate(bps: float) -> str:
     return f"{mb:.1f} Mb/s" if mb >= 1 else f"{bps * 8 / 1e3:.0f} kb/s"
 
 
+class PickGauge(Gauge):
+    """A gauge you can click (to choose what the Top apps list shows)."""
+    clicked = pyqtSignal()
+
+    def __init__(self, caption: str) -> None:
+        super().__init__(caption)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mousePressEvent(self, e) -> None:
+        if e.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+
+
+class TopList(QWidget):
+    """Five rows: app name, how much it uses, and a bar."""
+    ROWS = 5
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.rows: list = []            # (name, value text, fraction of the bar)
+        self.setFixedHeight(S(26) * self.ROWS)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def set_rows(self, rows: list) -> None:
+        if rows != self.rows:
+            self.rows = rows
+            self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        rh, w = S(26), self.width()
+        vw = S(64)
+        for i in range(self.ROWS):
+            y = i * rh
+            if i >= len(self.rows):
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#FFFFFF", 0.05))
+                p.drawRoundedRect(QRectF(0, y + S(17), w, S(3)), 1.5, 1.5)
+                continue
+            name, value, frac = self.rows[i]
+            p.setFont(font(12, QFont.Weight.DemiBold))
+            p.setPen(QColor(TEXT))
+            p.drawText(QRectF(0, y, w - vw - S(8), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight, int(w - vw - S(8))))
+            p.setFont(font(11.5))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(w - vw, y, vw, S(16)), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), value)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.08))
+            p.drawRoundedRect(QRectF(0, y + S(17), w, S(3)), 1.5, 1.5)
+            p.setBrush(ui.accent)
+            p.drawRoundedRect(QRectF(0, y + S(17), max(S(3), w * max(0.0, min(1.0, frac))), S(3)), 1.5, 1.5)
+
+
 class PerfPage(Page):
     key = "perf"
 
@@ -6655,7 +7095,7 @@ class PerfPage(Page):
         lay = vbox(self, 8)
         self.g_gpu = None
         gauges = hbox(spacing=0)
-        self.g_cpu, self.g_ram = Gauge(tr("Processor")), Gauge(tr("Memory"))
+        self.g_cpu, self.g_ram = PickGauge(tr("Processor")), PickGauge(tr("Memory"))
         gauges.addStretch(1)
         gauges.addWidget(self.g_cpu)
         gauges.addStretch(1)
@@ -6673,6 +7113,20 @@ class PerfPage(Page):
         tiles.addWidget(self.t_ping, 1)
         tiles.addWidget(self.t_down, 1)
         lay.addLayout(tiles)
+
+        lay.addWidget(heading(tr("Top apps")))          # click a gauge (or here) to switch
+        self.top_kind = 0
+        self.top_seg = Segmented([tr("Processor"), tr("Memory")], 0)
+        self.top_seg.changed.connect(self._top_pick)
+        lay.addWidget(self.top_seg)
+        self.top_list = TopList()
+        lay.addWidget(self.top_list)
+        self._top_data = ([], [])
+        self.top = extras.TopApps()
+        self.top.setParent(self)
+        self.top.ready.connect(self._top_ready)
+        self.g_cpu.clicked.connect(lambda: self._top_pick(0, True))
+        self.g_ram.clicked.connect(lambda: self._top_pick(1, True))
 
         lay.addWidget(heading(tr("On-screen stats")))
         hud = ctx.cfg["hud"]
@@ -6728,9 +7182,31 @@ class PerfPage(Page):
     def on_show(self) -> None:
         self.t_hud.set_checked(self.ctx.cfg["hud"]["on"])
         self.ctx.sensors.acquire("page")
+        self.top.start()
 
     def on_hide(self) -> None:
         self.ctx.sensors.release("page")
+        self.top.stop()
+
+    def _top_pick(self, kind: int, from_gauge: bool = False) -> None:
+        self.top_kind = kind
+        if from_gauge:
+            self.top_seg.set_index(kind)
+        self._top_show()
+
+    def _top_ready(self, cpu: list, ram: list) -> None:
+        self._top_data = (cpu, ram)
+        self._top_show()
+
+    def _top_show(self) -> None:
+        cpu, ram = self._top_data
+        if self.top_kind == 0:
+            top = max([v for _, v in cpu] + [1.0])
+            rows = [(n, f"{v:.0f}%" if v >= 9.5 else f"{v:.1f}%", v / top) for n, v in cpu]
+        else:
+            top = max([b for _, b in ram] + [1])
+            rows = [(n, f"{b / 2 ** 30:.1f} GB" if b >= 2 ** 30 else f"{b / 2 ** 20:.0f} MB", b / top) for n, b in ram]
+        self.top_list.set_rows(rows)
 
     def _hud_reset(self) -> None:
         pass
@@ -7033,7 +7509,7 @@ class SettingsPage(Page):
         for key, _icon, label in TABS:                 # Home, Lyrics and Settings always stay
             if key in LOCKED_TABS:
                 continue
-            t = Toggle(not cfg["tabs_off"].get(key))
+            t = Toggle(bool(cfg["news_tab"]) if key == "new" else not cfg["tabs_off"].get(key))
             t.toggled_by_user.connect(lambda v, k=key: ctx.set_tab(k, v))
             lay.addWidget(row(tr(label), t))
 
@@ -7052,12 +7528,12 @@ class SettingsPage(Page):
         lay.addWidget(heading(tr("Updates")))
         latest = ctx.updater.latest
         if latest:
-            up = Button(tr("Update to {v}", v=latest["version"]), "primary", 32)
+            up = Button(tr("Update to {v}", v=latest.get("label", latest["version"])), "primary", 32)
             up.clicked.connect(ctx.install_update)
         else:
             up = Button(tr("Check for updates"), "ghost", 32, icon="refresh")
             up.clicked.connect(lambda: ctx.updater.check(manual=True))
-        lay.addWidget(row(tr("Version {v}", v=VERSION), up))
+        lay.addWidget(row(tr("Version {v}", v=VERSION_NAME), up))
         up.setFixedWidth(max(S(150), up.sizeHint().width()))
         t_up = Toggle(cfg["update_check"])
 
@@ -7319,6 +7795,71 @@ class ThemeCard(QAbstractButton):
             p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * min(1.0, hours / th["hours"]), bar.height()), 1.5, 1.5)
 
 
+STYLE_ROWS = (("Glow", "glow_power", ("Normal", "Strong"), (1, 2)),
+              ("Background", "backdrop", ("Dark", "Black"), (0, 1)),
+              ("Corners", "corners", ("Round", "Sharp"), (0, 2)))
+
+
+class UnlockTile(QAbstractButton):
+    """A small ball showing one style of the R or of the song ring. Locked ones show the hours they need."""
+
+    def __init__(self, kind: str, style: dict, key: str, page) -> None:
+        super().__init__()
+        self.kind, self.style, self.key, self.page = kind, style, key, page
+        self.setFixedSize(S(62), S(74))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._hover = Tween(self, on_change=self.update)
+
+    def enterEvent(self, e) -> None:
+        self._hover.to(1.0, 140)
+
+    def leaveEvent(self, e) -> None:
+        self._hover.to(0.0, 220)
+
+    def paintEvent(self, _e) -> None:
+        ctx, st = self.page.ctx, self.style
+        open_ = ctx.usage_hours() >= st["hours"]
+        current = ctx.ball_style() if self.kind == "r" else ctx.ring_style()
+        active = open_ and current == st["id"]
+        h = self._hover.level
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        d = float(S(46))
+        c = QPointF(self.width() / 2, S(4) + d / 2)
+        p.setPen(QPen(mix(alpha("#FFFFFF", 0.10 + 0.12 * h), ui.accent, 1.0 if active else 0.0), 1.3))
+        p.setBrush(QColor("#0A0D0E"))
+        p.drawEllipse(c, d / 2, d / 2)
+        p.setOpacity(1.0 if open_ else 0.38 + 0.2 * h)
+        box = QRectF(c.x() - d / 2, c.y() - d / 2 - d * 0.02, d, d)
+        if self.kind == "r":
+            extras.paint_r(p, box, d, st["id"], ui.accent, 0.0)
+        else:
+            ring = QRectF(c.x() - d / 2, c.y() - d / 2, d, d).adjusted(S(6), S(6), -S(6), -S(6))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(extras.ring_pen(st["id"], alpha("#FFFFFF", 0.12), S(2.4)))
+            p.drawEllipse(ring)
+            p.setPen(extras.ring_pen(st["id"], ui.accent, S(2.4)))
+            p.drawArc(ring, 90 * 16, int(-360 * 16 * 0.68))
+        p.setOpacity(1.0)
+        foot = QRectF(0, S(4) + d + S(4), self.width(), S(16))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        if open_:
+            p.setPen(ui.accent if active else mix(QColor(TEXT_DIM), QColor(TEXT), h))
+            p.drawText(foot, int(Qt.AlignmentFlag.AlignCenter), tr(st["name"]))
+        else:
+            text = f"{st['hours']} h"
+            tw = p.fontMetrics().horizontalAdvance(text) + S(13)
+            x = (self.width() - tw) / 2
+            p.save()
+            p.translate(x + S(5), foot.center().y())
+            p.scale(S(10) / 20, S(10) / 20)
+            draw_icon(p, "lock", QColor(TEXT_DIM))
+            p.restore()
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(x + S(13), foot.top(), tw, foot.height()), int(Qt.AlignmentFlag.AlignVCenter), text)
+
+
 class ThemesPage(Page):
     key = "themes"
 
@@ -7331,14 +7872,23 @@ class ThemesPage(Page):
         lay.addWidget(self.sw)
         lay.addWidget(heading(tr("Style")))
         self.style = {}
-        for label, key, names in ((tr("Glow"), "glow_power", [tr("Soft"), tr("Normal"), tr("Strong")]),
-                                  (tr("Background"), "backdrop", [tr("Dark"), tr("Black"), tr("Night")]),
-                                  (tr("Corners"), "corners", [tr("Round"), tr("Medium"), tr("Sharp")])):
-            seg = Segmented(names, ctx.cfg[key] if 0 <= ctx.cfg[key] < 3 else 0)
-            seg.setFixedWidth(S(214))
-            seg.changed.connect(lambda i, k=key: ctx.set_look(k, i))
+        for label, key, names, values in STYLE_ROWS:       # two choices each: (setting value for 1st, 2nd)
+            seg = Segmented([tr(n) for n in names], 1 if ctx.cfg[key] == values[1] else 0)
+            seg.setFixedWidth(S(170))
+            seg.changed.connect(lambda i, k=key, v=values: ctx.set_look(k, v[i]))
             self.style[key] = seg
-            lay.addWidget(row(label, seg))
+            lay.addWidget(row(tr(label), seg))
+        lay.addWidget(heading(tr("Ball")))
+        self.unlocks = []
+        for kind, styles, key in (("r", extras.R_STYLES, "ball_style"), ("ring", extras.RING_STYLES, "ring_style")):
+            line = hbox(spacing=6)
+            for st in styles:
+                tile = UnlockTile(kind, st, key, self)
+                tile.clicked.connect(lambda _=False, t=tile: self._unlock_pick(t))
+                line.addWidget(tile)
+                self.unlocks.append(tile)
+            line.addStretch(1)
+            lay.addLayout(line)
         lay.addWidget(heading(tr("Themes")))
         self.used = Label("", 12, TEXT_DIM)
         lay.addWidget(self.used)
@@ -7361,9 +7911,11 @@ class ThemesPage(Page):
     def _reset(self) -> None:
         self.ctx.window.drawer.close_now()
         self.ctx.cfg["custom_accent"] = ""
-        for key, value in (("glow_power", 1), ("backdrop", 0), ("corners", 0)):
-            self.ctx.set_look(key, value)
-            self.style[key].set_index(value)
+        for _label, key, _names, values in STYLE_ROWS:
+            self.ctx.set_look(key, values[0])
+            self.style[key].set_index(0)
+        self.ctx.cfg["ball_style"], self.ctx.cfg["ring_style"] = "classic", "line"
+        self.ctx.window.ball.update()
         self.ctx.set_theme("clean")
         self.sw.set_current(ACCENT_DEFAULT)
         self.ctx.refresh_accent()
@@ -7371,6 +7923,14 @@ class ThemesPage(Page):
 
     def on_show(self) -> None:
         self._refresh()
+
+    def _unlock_pick(self, tile) -> None:
+        if self.ctx.usage_hours() < tile.style["hours"]:
+            return self.ctx.toast(tr("Unlocks after {n} h of use", n=tile.style["hours"]), "warn")
+        self.ctx.cfg[tile.key] = tile.style["id"]
+        self.ctx.window.ball.update()
+        for t in self.unlocks:
+            t.update()
 
     def _refresh(self) -> None:
         self.used.set_text(tr("Time used: {t}", t=extras.hours_text(self.ctx.cfg["usage_s"])))
@@ -7698,7 +8258,7 @@ class RocketPage(Page):
                 ready = extras.swap_source(it) is not None
                 on = shown.get(key) == it["id"]
                 tile = SwapTile(it, on, ready)
-                tile.pending = on != (base.get(key) == it["id"])
+                tile.pending = self._waiting(it, shown, base)
                 tile.setEnabled(bool(self.plat) and ready)
                 tile.clicked.connect(lambda _=False, i=it: self._toggle(i))
                 self.tiles.append(tile)
@@ -7731,13 +8291,23 @@ class RocketPage(Page):
             return {}
         return dict(self.pending) if self.pending is not None else self.ctx.rocket.actual()
 
+    @staticmethod
+    def _waiting(item: dict, shown: dict, base: dict) -> bool:
+        """Yellow outline = this tile is about to change: it is being switched on, or switched off with nothing
+        taking its place. A swap that is simply replaced by another one of the same item gets no outline."""
+        key = extras.rl_key(item)
+        now, want = base.get(key) == item["id"], shown.get(key) == item["id"]
+        if want:
+            return not now
+        return now and key not in shown
+
     def _sync(self) -> None:
         base = self.ctx.rocket.actual()
         shown = self._shown()
         for tile in self.tiles:
             key, ident = extras.rl_key(tile.item), tile.item["id"]
             on = shown.get(key) == ident
-            tile.set_state(on, on != (base.get(key) == ident))
+            tile.set_state(on, self._waiting(tile.item, shown, base))
         self._bar()
 
     def _bar(self) -> None:
@@ -7854,18 +8424,23 @@ class NewsPage(Page):
         super().__init__(ctx)
         lay = vbox(self, 6)
         lay.addWidget(Label(tr("What's new"), 16, bold=True))
-        lay.addWidget(Label(tr("Version {v}", v=extras.NEWS_VERSION), 11.5, TEXT_DIM))
-        for title, lines in extras.NEWS:
-            lay.addSpacing(S(4))
-            lay.addWidget(heading(tr(title)))
-            for text in lines:
-                line = hbox(spacing=8)
-                dot = Label("•", 12.5, TEXT_FAINT)
-                dot.setFixedWidth(S(8))
-                line.addWidget(dot, 0, Qt.AlignmentFlag.AlignTop)
-                line.addWidget(Label(tr(text), 12.5, TEXT, wrap_w=self.W - S(18)))
-                line.addStretch(1)
-                lay.addLayout(line)
+        for version, groups in extras.NEWS:
+            if version:
+                lay.addWidget(Label(tr("Version {v}", v=version), 11.5, TEXT_DIM))
+            else:
+                lay.addSpacing(S(10))
+                lay.addWidget(Label(tr("Earlier"), 14, bold=True))
+            for title, lines in groups:
+                lay.addSpacing(S(4))
+                lay.addWidget(heading(tr(title)))
+                for text in lines:
+                    line = hbox(spacing=8)
+                    dot = Label("•", 12.5, TEXT_FAINT)
+                    dot.setFixedWidth(S(8))
+                    line.addWidget(dot, 0, Qt.AlignmentFlag.AlignTop)
+                    line.addWidget(Label(tr(text), 12.5, TEXT, wrap_w=self.W - S(18)))
+                    line.addStretch(1)
+                    lay.addLayout(line)
 
 
 PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": CrosshairPage, "display": DisplayPage,
@@ -7873,15 +8448,25 @@ PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": CrosshairPage, "di
          "rl": RocketPage, "new": NewsPage, "settings": SettingsPage}
 # Fixed order: music first, then what you use in a game, then tools, then the look, settings last.
 TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", "crosshair", "Crosshair"),
-        ("display", "display", "Display"), ("rl", "rocket", "Rocket"), ("launch", "grid", "Apps"),
+        ("display", "display", "Display"), ("rl", "rocket", "RL SWAP"), ("launch", "grid", "Apps"),
         ("perf", "perf", "Stats"), ("timer", "timer", "Timer"), ("tools", "tools", "Tools"),
         ("themes", "gem", "Themes"), ("new", "spark", "New"), ("settings", "cog", "Settings")]
+
+
+TEMP_TABS: set = set()      # tabs shown only until the user leaves them
 
 
 def visible_tabs(cfg) -> list:
     """The tabs the user keeps in the menu bar (Home, Lyrics and Settings cannot be hidden)."""
     off = cfg["tabs_off"] if isinstance(cfg["tabs_off"], dict) else {}
-    return [t for t in TABS if t[0] in LOCKED_TABS or not off.get(t[0])]
+
+    def shown(key: str) -> bool:
+        if key in LOCKED_TABS or key in TEMP_TABS:
+            return True
+        if key == "new":                        # off by default; shows by itself after an update
+            return bool(cfg["news_tab"])
+        return not off.get(key)
+    return [t for t in TABS if shown(t[0])]
 
 
 def make_page(ctx, key: str) -> Page:
@@ -7979,6 +8564,7 @@ def paint_shape(p: QPainter, ctx, shape: QRectF, radius: float, level: float, dp
     """Glow + dark glass body. Returns the body path (for clipping content)."""
     if ctx.cfg["halo"]:
         power = GLOW_POWER[ctx.cfg["glow_power"] if 0 <= ctx.cfg["glow_power"] < 3 else 1]
+        power = max(1.0, power)                             # two strengths: normal and strong
         draw_glow(p, shape, radius, level * min(1.0, power), dpr)
         if power > 1.0:
             draw_glow(p, shape, radius, level * (power - 1.0), dpr)
@@ -8011,21 +8597,14 @@ def paint_ball_face(p: QPainter, ctx, shape: QRectF, opacity: float) -> None:
     if ctx.cfg["ring"] and st.has_track and st.duration_ms > 0:
         frac = max(0.0, min(1.0, ctx.position_ms() / st.duration_ms))
         ring = QRectF(c.x() - d / 2, c.y() - d / 2, d, d).adjusted(S(5), S(5), -S(5), -S(5))
-        pen = QPen(alpha("#FFFFFF", 0.10), S(2.2))
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        p.setPen(pen)
+        style = ctx.ring_style()
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(extras.ring_pen(style, alpha("#FFFFFF", 0.10), S(2.2)))
         p.drawEllipse(ring)
-        pen.setColor(ui.accent)
-        p.setPen(pen)
+        p.setPen(extras.ring_pen(style, ui.accent, S(2.2)))
         p.drawArc(ring, 90 * 16, int(-360 * 16 * frac))
-    f = font(20, QFont.Weight.ExtraBold)
-    f.setPixelSize(max(8, int(d * 0.46)))
-    p.setFont(f)
     box = QRectF(c.x() - d / 2, c.y() - d / 2 - d * 0.02, d, d)
-    p.setPen(alpha(ui.accent, 0.55))
-    p.drawText(box.translated(0, S(1.2)), int(Qt.AlignmentFlag.AlignCenter), "R")
-    p.setPen(QColor(TEXT))
-    p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "R")
+    extras.paint_r(p, box, d, ctx.ball_style(), ui.accent, time.monotonic())
     if ctx.overlay_active():
         p.setPen(QPen(ui.bg_top, S(1.5)))
         p.setBrush(ui.accent)
@@ -8695,14 +9274,8 @@ class Welcome(QWidget):
         if face > 0.0:
             p.setOpacity(a * face)
             c = QPointF(cx, cy)
-            fnt = font(20, QFont.Weight.ExtraBold)
-            fnt.setPixelSize(max(8, int(d * 0.46)))
-            p.setFont(fnt)
             box = QRectF(c.x() - d / 2, c.y() - d / 2 - d * 0.02, d, d)
-            p.setPen(alpha(ui.accent, 0.55))
-            p.drawText(box.translated(0, S(1.2)), int(Qt.AlignmentFlag.AlignCenter), "R")
-            p.setPen(QColor(TEXT))
-            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "R")
+            extras.paint_r(p, box, d, self.ctx.ball_style(), ui.accent, now)
             turn = max(0.0, min(1.0, self.ring.level))
             if self.phase in ("ring", "fly") and turn > 0.0:
                 inset = d * 0.09
@@ -9017,6 +9590,10 @@ class MainWindow(QWidget):
         self.slide.jump(0.0)
         self.slide.to(1.0, 280)
         self.pageh.to(new_h, 320)
+        gone = [k for k in TEMP_TABS if k != key]          # a tab shown only while it was being read
+        if gone:
+            TEMP_TABS.difference_update(gone)
+            self.body.set_tabs()
 
     def _on_slide(self) -> None:
         if self.slide.level >= 0.999 and self._snap_new is not None:
@@ -9161,6 +9738,11 @@ class MainWindow(QWidget):
         if page:
             page.on_hide()
         self.body.hide()
+        if self.current in TEMP_TABS:                      # the temporary tab goes away with the card
+            TEMP_TABS.clear()
+            self.current = "home"
+            self.ctx.cfg["page"] = "home"
+            self.body.set_tabs()
         self.morph.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self.morph.to(0.0, 300)
         self.ctx.on_visibility()
@@ -9501,7 +10083,9 @@ class MainWindow(QWidget):
 import atexit
 import logging
 import math
+import os
 import sys
+from pathlib import Path
 import time
 
 from PyQt6.QtCore import QLocale, QObject, QPointF, QTimer, Qt
@@ -9665,8 +10249,10 @@ class App(QObject):
         was_open, self._was_open = self._was_open, False
         if self._closing or "--selftest" in sys.argv:
             return
-        if self._news:
+        if self._news:                              # after an update: the New tab shows up while it is read
             self._news = False
+            TEMP_TABS.add("new")
+            self.window.tabs_changed()
             self.window.goto("new")
         elif was_open:
             self.window.expand()
@@ -9699,7 +10285,10 @@ class App(QObject):
         QTimer.singleShot(8000, lambda: self._safe("tray retry", self._retry_tray))
         QTimer.singleShot(12000, lambda: self._safe("display again", self._reapply_display))
         QTimer.singleShot(30000, lambda: self._safe("tray retry", self._retry_tray))
-        if selftest:
+        swap = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--selftest-update=")), "")
+        if swap:                                    # build test: install a local .exe exactly like an update
+            QTimer.singleShot(1500, lambda: self._selftest_update(swap))
+        elif selftest:
             QTimer.singleShot(1500, self._selftest)
 
     def _sync_autostart(self) -> None:
@@ -9718,6 +10307,17 @@ class App(QObject):
         if self.cfg["display"]["active"] in ("A", "B") and not self._closing:
             self.display.apply()
 
+    def _selftest_update(self, new_exe: str) -> None:
+        try:
+            path = extras.place_exe(Path(new_exe), "999.0.0" if os.environ.get("RUBENIUM_TEST_SIDE") else VERSION)
+            log.info("UPDATE SWAP OK %s", path)
+            ok = extras.restart(path, ("--selftest",))
+        except Exception:  # noqa: BLE001
+            log.exception("UPDATE SWAP FAILED")
+            ok = False
+        self.shutdown()
+        self.qapp.exit(0 if ok else 1)
+
     def _selftest(self) -> None:
         """--selftest: open every tab in both languages, then quit. Exit code 0 only if nothing went wrong.
         The automatic build runs this on Windows before publishing a release."""
@@ -9730,6 +10330,8 @@ class App(QObject):
         sys.excepthook = hook
         w = self.window
         lang = self.cfg["lang"]
+        TEMP_TABS.add("new")
+        w.tabs_changed()
         if self.welcome is not None:               # the welcome screen is part of the test: press Launch
             self.welcome.launch()
             return QTimer.singleShot(3500, self._selftest)
@@ -9915,6 +10517,12 @@ class App(QObject):
         self.window.update()
         self.window.ball.update()
 
+    def ball_style(self) -> str:
+        return extras.unlocked_style(extras.R_STYLES, self.cfg["ball_style"], self.usage_hours())
+
+    def ring_style(self) -> str:
+        return extras.unlocked_style(extras.RING_STYLES, self.cfg["ring_style"], self.usage_hours())
+
     def set_look(self, key: str, value: int) -> None:
         """Ball size, glow strength, background and corners (Settings and Themes)."""
         if self.cfg[key] == value:
@@ -9931,6 +10539,9 @@ class App(QObject):
 
     def set_tab(self, key: str, on: bool) -> None:
         """Show or hide one tab of the menu bar."""
+        if key == "new":                            # off unless the user asks for it
+            self.cfg["news_tab"] = on
+            return self.window.tabs_changed()
         off = dict(self.cfg["tabs_off"])
         if on:
             off.pop(key, None)
@@ -10040,7 +10651,7 @@ class App(QObject):
             self.window.reload_page()
         self.offer_update()
         if self.tray is not None and not self.window.expanded:
-            self.tray.showMessage("Rubenium", tr("Update {v} available", v=info["version"]),
+            self.tray.showMessage("Rubenium", tr("Update {v} available", v=info["label"]),
                                   QSystemTrayIcon.MessageIcon.Information, 5000)
 
     def offer_update(self) -> None:
@@ -10050,7 +10661,7 @@ class App(QObject):
         if self.window.confirm_w.isVisible() or self.window.busy_w.isVisible():
             return
         self._update_prompted = info["version"]
-        self.window.confirm(tr("Update {v} available", v=info["version"]), self.install_update,
+        self.window.confirm(tr("Update {v} available", v=info["label"]), self.install_update,
                             yes=tr("Update"), no=tr("Later"))
 
     def install_update(self) -> None:
@@ -10074,9 +10685,9 @@ class App(QObject):
         def after() -> None:
             if key == "blocked":
                 self.toast(tr("Windows blocked the update. Download it from GitHub."), "error")
+                win.open_path(self.updater.latest.get("page", extras.UPDATE_PAGE))
             else:
-                self.toast(tr("The update failed. Nothing was changed."), "error")
-            win.open_path(self.updater.latest.get("page", extras.UPDATE_PAGE))
+                self.toast(tr("The update failed. Try again in a moment."), "error")
         self.window.end_busy(after)
 
     def apply_config(self) -> None:
@@ -10165,6 +10776,8 @@ class App(QObject):
 
 def main() -> int:
     setup_logging()
+    if extras.handoff(VERSION):                     # a newer copy installed by the updater takes over
+        return 0
     if not win.single_instance(wait=8.0 if ("--elevated" in sys.argv or "--updated" in sys.argv) else 0.0):
         return 0
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)

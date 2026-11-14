@@ -33,8 +33,10 @@ jobs:
           import os, re
           text = open("Rubenium.py", encoding="utf-8").read()
           version = re.search(r'^VERSION = "([0-9][0-9.]*)"', text, re.M).group(1)
+          name = re.search(r'^VERSION_NAME = "([0-9][0-9.]*)"', text, re.M)
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"version={version}\n")
+              out.write(f"name={name.group(1) if name else version}\n")
           print("version", version)
 
       - name: Already released?
@@ -80,6 +82,48 @@ jobs:
           if (-not (Select-String -Path $log -Pattern "SELFTEST OK" -Quiet)) { Write-Error "No SELFTEST OK in the log"; exit 1 }
           Write-Host "Rubenium.exe opened and ran every tab without errors."
 
+      - name: Test the updater on Windows (swap in place, protected folder, hand-over)
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        run: |
+          $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
+          function Wait-Gone {
+            Start-Sleep 4; $t = 0
+            while ((Get-Process Rubenium -ErrorAction SilentlyContinue) -and $t -lt 160) { Start-Sleep 2; $t += 2 }
+            if (Get-Process Rubenium -ErrorAction SilentlyContinue) {
+              Get-Process Rubenium | Stop-Process -Force; Get-Content $log -Tail 60; Write-Error "Rubenium did not finish"; exit 1 }
+          }
+          function Need($text) {
+            if (-not (Select-String -Path $log -Pattern $text -SimpleMatch -Quiet)) {
+              Get-Content $log -Tail 60; Write-Error "Not in the log: $text"; exit 1 }
+          }
+          $work = Join-Path $env:RUNNER_TEMP "rbtest"
+          New-Item -ItemType Directory -Force "$work\app", "$work\new" | Out-Null
+          Copy-Item dist\Rubenium.exe "$work\app\Rubenium.exe"
+          Copy-Item dist\Rubenium.exe "$work\new\Rubenium.exe"
+          $side = Join-Path $env:LOCALAPPDATA "Rubenium\app\Rubenium.exe"
+
+          Write-Host "1. Update in place: the running exe is replaced and the new one starts"
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Start-Process "$work\app\Rubenium.exe" -ArgumentList "--selftest-update=$work\new\Rubenium.exe"
+          Wait-Gone; Need "UPDATE SWAP OK"; Need "SELFTEST OK"
+          if (Test-Path $side) { Write-Error "In-place update should not have used the side folder"; exit 1 }
+
+          Write-Host "2. Folder cannot be written: the new version is installed in AppData and started from there"
+          Remove-Item $log -ErrorAction SilentlyContinue
+          $env:RUBENIUM_TEST_SIDE = "1"
+          Start-Process "$work\app\Rubenium.exe" -ArgumentList "--selftest-update=$work\new\Rubenium.exe"
+          Wait-Gone; Need "UPDATE SWAP OK"; Need "SELFTEST OK"
+          $env:RUBENIUM_TEST_SIDE = $null
+          if (-not (Test-Path $side)) { Write-Error "Side install missing"; exit 1 }
+
+          Write-Host "3. Starting the old exe again hands over to the newer copy"
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Start-Process "$work\app\Rubenium.exe" -ArgumentList "--selftest"
+          Wait-Gone; Need "handing over to"; Need "SELFTEST OK"
+          Remove-Item (Join-Path $env:LOCALAPPDATA "Rubenium") -Recurse -Force -ErrorAction SilentlyContinue
+          Write-Host "Updater works: in place, protected folder and hand-over."
+
       - name: Publish the release
         if: steps.exists.outputs.skip == '0'
         shell: bash
@@ -87,4 +131,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           v="${{ steps.ver.outputs.version }}"
-          gh release create "v$v" out/* --title "Rubenium $v" --notes-file release_notes.txt --latest
+          gh release create "v$v" out/* --title "Rubenium ${{ steps.ver.outputs.name }}" --notes-file release_notes.txt --latest

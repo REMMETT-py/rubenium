@@ -9,7 +9,7 @@ Rubenium checks this repository for new versions and offers to install them (Set
 
 ## Publishing an update
 
-1. Change `VERSION = "..."` near the top of the CORE section in `Rubenium.py` (for example `3.0.0` → `3.1.0`).
+1. Change `VERSION = "..."` near the top of the CORE section in `Rubenium.py` (for example `4.0.0` → `4.1.0`). This build number must always go up. `VERSION_NAME` just below it is the version people see (for example `1.0` → `1.1`).
 2. Write what changed in `release_notes.txt`.
 3. Commit / upload both files to `main`.
 
