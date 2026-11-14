@@ -1,4 +1,11 @@
-Rubenium 2.4.0
+Rubenium 3.0.0
 
-- New Rocket League swap in Goal explosions: Splash -> Adidas.
-- New website with a one-click download of the latest version.
+- Welcome screen with a Launch button and a loading animation.
+- Rocket League: 8 new swaps, a new Decals section, and several swaps can be on at once (one per item).
+- Every swap has a spot for a picture of the result.
+- Choose which tabs show in the menu bar. Tabs are in a cleaner order.
+- Ball size setting with a real-size preview.
+- Stronger glow that follows the music better.
+- New theme options (glow, background, corners). Themes unlock faster.
+- New tab that lists what changed.
+- Fixed: time used, timer keys and update checks stopped when the music stopped.

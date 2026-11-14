@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.4 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 3.0 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1178,7 +1178,7 @@ from PyQt6.QtGui import QColor, QFont
 
 
 APP_NAME = "Rubenium"
-VERSION = "2.4.0"
+VERSION = "3.0.0"
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -1246,6 +1246,8 @@ class _UI:
     accent = QColor(ACCENT_DEFAULT)
     bg_top = QColor(BG_TOP)
     bg_bottom = QColor(BG_BOTTOM)
+    ball = 1.0              # size of the ball, on top of the UI scale
+    radius = 18             # card corner radius at 100 %
 
 
 ui = _UI()
@@ -1284,10 +1286,30 @@ def alpha(c: QColor | str, a: float) -> QColor:
 
 # Metrics at 100 % (the window multiplies through S()).
 CARD_W = 380
-GLOW = 16
+GLOW = 22
 RADIUS = 18
 PAD = 14
 BALL = 56
+BALL_SIZES = (80, 90, 100, 110, 120, 130, 140)     # per cent of BALL: never tiny, never huge
+BACKDROPS = (("#0B0F10", "#101415"), ("#000000", "#050607"), ("#0E1218", "#141A22"))   # dark, black, night blue
+CORNERS = (18, 12, 6)
+GLOW_POWER = (0.65, 1.0, 1.4)
+LOCKED_TABS = ("home", "lyrics", "settings")       # always shown
+
+
+def BD() -> int:
+    """Diameter of the ball in pixels (UI scale x the ball size the user picked)."""
+    return int(round(BALL * ui.scale * ui.ball))
+
+
+def apply_look(cfg) -> None:
+    """Copy the look settings into the live theme state."""
+    ui.scale = cfg["scale"] / 100
+    size = cfg["ball_size"] if cfg["ball_size"] in BALL_SIZES else 100
+    ui.ball = size / 100
+    top, bottom = BACKDROPS[cfg["backdrop"] if 0 <= cfg["backdrop"] < len(BACKDROPS) else 0]
+    ui.bg_top, ui.bg_bottom = QColor(top), QColor(bottom)
+    ui.radius = CORNERS[cfg["corners"] if 0 <= cfg["corners"] < len(CORNERS) else 0]
 HEADER_H = 26
 TABBAR_H = 34
 PAGE_HEIGHTS = {  # content heights at 100 %; tall pages scroll when the screen is small
@@ -1310,6 +1332,14 @@ DEFAULTS: dict = {
     "lang": "",
     "scale": 100,
     "opacity": 100,
+    "ball_size": 100,
+    "glow_power": 1,
+    "backdrop": 0,
+    "corners": 0,
+    "welcome": True,
+    "card_open": False,
+    "seen_version": "",
+    "tabs_off": {},
     "halo": True,
     "autohide": True,
     "ring": True,
@@ -1335,7 +1365,7 @@ DEFAULTS: dict = {
     "rl": {"auto_fix": True, "platform": "", "installs": {},
            "folder": "", "app": "", "active": {}, "orig": {}, "stamp": ""},      # last line: 2.0, migrated
 }
-FREE_DICTS = {"saved", "slots", "crosshair_presets", "active", "orig", "installs"}   # dicts whose keys are user data
+FREE_DICTS = {"tabs_off", "saved", "slots", "crosshair_presets", "active", "orig", "installs"}   # dicts whose keys are user data
 
 
 def _merge(default, loaded, key=""):
@@ -1702,9 +1732,37 @@ FR = {
     "Downloading update… {p}%": "Téléchargement… {p} %", "Restarting…": "Redémarrage…",
     "Rubenium is up to date": "Rubenium est à jour", "Could not check for updates": "Impossible de vérifier les mises à jour",
     "Update installed. Restart Rubenium.": "Mise à jour installée. Redémarrez Rubenium.",
-    "Windows blocked the update. Download it from the website.":
-        "Windows a bloqué la mise à jour. Téléchargez-la sur le site.",
+    "Windows blocked the update. Download it from GitHub.":
+        "Windows a bloqué la mise à jour. Téléchargez-la sur GitHub.",
     "The update failed. Nothing was changed.": "La mise à jour a échoué. Rien n'a été modifié.",
+    # 3.0
+    "Welcome to": "Bienvenue sur", "Launch": "Lancer", "Welcome screen": "Écran de bienvenue",
+    "New": "Nouveautés", "What's new": "Nouveautés", "Decals": "Stickers", "Coming soon": "Bientôt disponible",
+    "Only one swap at a time for {name}": "Un seul swap à la fois pour {name}",
+    "Ball": "Bulle", "Ball size": "Taille de la bulle", "Menu bar": "Barre de menu",
+    "Style": "Style", "Background": "Fond", "Corners": "Coins",
+    "Soft": "Doux", "Normal": "Normal", "Strong": "Fort",
+    "Dark": "Sombre", "Black": "Noir", "Night": "Nuit",
+    "Round": "Ronds", "Medium": "Moyens", "Sharp": "Nets",
+    "Start-up": "Démarrage", "Fixes": "Corrections",
+    "Welcome screen with a Launch button and a loading animation":
+        "Écran de bienvenue avec un bouton Lancer et une animation de chargement",
+    "Rubenium comes back the way you left it": "Rubenium reprend là où vous l'aviez laissée",
+    "8 new swaps and a new Decals section": "8 nouveaux swaps et une nouvelle section Stickers",
+    "Several swaps can be on at once (one per item)": "Plusieurs swaps actifs en même temps (un par objet)",
+    "Every swap has a spot for a picture of the result": "Chaque swap a un emplacement pour une image du résultat",
+    "Room for more swaps in every section": "De la place pour d'autres swaps dans chaque section",
+    "Stronger glow that follows the music better": "Halo plus fort, qui suit mieux la musique",
+    "New theme options: glow, background and corners": "Nouvelles options de style : halo, fond et coins",
+    "Themes unlock faster": "Les thèmes se débloquent plus vite",
+    "Choose which tabs show in the menu bar": "Choisissez les onglets affichés dans la barre de menu",
+    "Change the size of the ball, with a real-size preview":
+        "Changez la taille de la bulle, avec un aperçu en taille réelle",
+    "Tabs are in a cleaner order": "Onglets rangés dans un ordre plus clair",
+    "Time used now keeps counting when the music stops":
+        "Le temps d'utilisation continue de compter quand la musique s'arrête",
+    "Timer keys and update checks keep working all day":
+        "Les touches du chrono et la recherche de mises à jour fonctionnent toute la journée",
 }
 
 
@@ -1906,6 +1964,10 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
         p.drawPath(_poly((-8, -2), (-4, -7), (4, -7), (8, -2), (0, 8), (-8, -2)))
         p.drawPath(_poly((-8, -2), (8, -2)))
         p.drawPath(_poly((-3, -2), (0, 8), (3, -2)))
+    elif kind == "spark":
+        star = _poly((0, -8.5), (2.2, -2.2), (8.5, 0), (2.2, 2.2), (0, 8.5), (-2.2, 2.2), (-8.5, 0), (-2.2, -2.2))
+        star.closeSubpath()
+        p.drawPath(star)
     elif kind == "grid":
         for gx, gy in ((-7.5, -7.5), (1.5, -7.5), (-7.5, 1.5), (1.5, 1.5)):
             p.drawRoundedRect(QRectF(gx, gy, 6, 6), 1.5, 1.5)
@@ -4277,15 +4339,15 @@ log = logging.getLogger("rubenium.extras")
 # --------------------------------------------------------------------------- #
 THEMES = [
     dict(id="clean", name="Clean", hours=0, layers=[]),
-    dict(id="grid", name="Grid", hours=6, layers=["grid"]),
-    dict(id="dots", name="Dots", hours=12, layers=["dots"]),
-    dict(id="lines", name="Lines", hours=24, layers=["lines"]),
-    dict(id="waves", name="Waves", hours=48, layers=["waves"]),
-    dict(id="glow", name="Radiance", hours=100, layers=["glow"], glow=1.2),
-    dict(id="stars", name="Stars", hours=200, layers=["glow"], sparkles=7, glow=1.25),
-    dict(id="aurora", name="Aurora", hours=350, layers=["aurora"], sparkles=4, glow=1.3),
-    dict(id="prism", name="Prism", hours=500, layers=["aurora", "dots"], glow=1.35, edge="rainbow"),
-    dict(id="legend", name="Legend", hours=720, layers=["glow", "lines"], sparkles=8, glow=1.45, edge="gold"),
+    dict(id="grid", name="Grid", hours=2, layers=["grid"]),
+    dict(id="dots", name="Dots", hours=5, layers=["dots"]),
+    dict(id="lines", name="Lines", hours=10, layers=["lines"]),
+    dict(id="waves", name="Waves", hours=20, layers=["waves"]),
+    dict(id="glow", name="Radiance", hours=35, layers=["glow"], glow=1.2),
+    dict(id="stars", name="Stars", hours=50, layers=["glow"], sparkles=7, glow=1.25),
+    dict(id="aurora", name="Aurora", hours=75, layers=["aurora"], sparkles=4, glow=1.3),
+    dict(id="prism", name="Prism", hours=100, layers=["aurora", "dots"], glow=1.35, edge="rainbow"),
+    dict(id="legend", name="Legend", hours=150, layers=["glow", "lines"], sparkles=8, glow=1.45, edge="gold"),
 ]
 GOLD = "#E8C26A"
 _pattern_cache: dict = {}
@@ -4709,20 +4771,95 @@ def close_app(exe: str) -> bool:
 
 
 # --------------------------------------------------------------------------- #
+# What's new (shown in the New tab; English text is the key, French is in lang_fr)
+# --------------------------------------------------------------------------- #
+NEWS_VERSION = "3.0"
+NEWS = [
+    ("Start-up", ["Welcome screen with a Launch button and a loading animation",
+               "Rubenium comes back the way you left it"]),
+    ("Rocket League", ["8 new swaps and a new Decals section",
+                       "Several swaps can be on at once (one per item)",
+                       "Every swap has a spot for a picture of the result",
+                       "Room for more swaps in every section"]),
+    ("Look", ["Stronger glow that follows the music better",
+              "New theme options: glow, background and corners",
+              "Themes unlock faster"]),
+    ("Settings", ["Choose which tabs show in the menu bar",
+                  "Change the size of the ball, with a real-size preview",
+                  "Tabs are in a cleaner order"]),
+    ("Fixes", ["Time used now keeps counting when the music stops",
+               "Timer keys and update checks keep working all day"]),
+]
+
+# --------------------------------------------------------------------------- #
 # Rocket League: find the game, swap item files, keep the originals safe
 # --------------------------------------------------------------------------- #
-RL_CATS = [("goal", "Goal explosions"), ("body", "Car bodies"), ("boost", "Boosts"), ("wheels", "Wheels"),
-           ("trail", "Trails")]
-RL_SLOTS = 4
+RL_CATS = [("goal", "Goal explosions"), ("body", "Car bodies"), ("decal", "Decals"), ("boost", "Boosts"),
+           ("wheels", "Wheels"), ("trail", "Trails")]
+# One entry per swap. `old` is the item you equip in the game, `new` is what it turns into, `file` is the game
+# file it replaces. Several swaps of one category can be on together; two swaps of the SAME file cannot.
+# To add a swap: put its file in swaps/<id>/<file> (and, if you have one, a picture named preview.png) and
+# add one line here.
 RL_ITEMS = [
     dict(id="atomizer_gentlemates", cat="goal", old="Atomizer", new="Gentle Mates 2025", file="explosion_Rekt_SF.upk"),
-    dict(id="splash_adidas", cat="goal", old="Splash", new="Adidas", file="explosion_splash_SF.upk"),
+    dict(id="splash_adidas", cat="goal", old="Big Splash", new="Adidas", file="explosion_splash_SF.upk"),
+    dict(id="splash_supernova", cat="goal", old="Big Splash", new="SuperNova III", file="explosion_splash_SF.upk"),
     dict(id="octane_fennec", cat="body", old="Octane", new="Fennec", file="Body_Octane_SF.upk"),
+    dict(id="fennec_flames_likescraft", cat="decal", old="Fennec: Flames", new="Likescraft",
+         file="skin_grain_flames_SF.upk"),
+    dict(id="fennec_flames_blacklunation", cat="decal", old="Fennec: Flames", new="Black Lunation",
+         file="skin_grain_flames_SF.upk"),
+    dict(id="fennec_stripes_falcons", cat="decal", old="Fennec: Stripes", new="RLCS Falcons",
+         file="skin_grain_stripes_SF.upk"),
+    dict(id="fennec_nitty_gc", cat="decal", old="Fennec: Nitty Gritty", new="S-13 Grand Champion",
+         file="skin_grain_racelines_SF.upk"),
+    dict(id="octane_lightning_ssg", cat="decal", old="Octane: Lightning", new="RLCS SSG",
+         file="Skin_Octane_Lightning_SF.upk"),
+    dict(id="octane_stripes_joyo", cat="decal", old="Octane: Stripes", new="Joyo Octane",
+         file="Skin_Octane_Stripes_SF.upk"),
     dict(id="bubbles_alpha", cat="boost", old="Bubbles", new="Alpha Boost", file="Boost_Bubble_SF.upk"),
     dict(id="bubbles_dev", cat="boost", old="Bubbles", new="Dev Boost", file="Boost_Bubble_SF.upk"),
+    dict(id="bubbles_purple", cat="boost", old="Bubbles", new="Standard Purple", file="Boost_Bubble_SF.upk"),
 ]
 RL_BY_ID = {it["id"]: it for it in RL_ITEMS}
 RL_EXE = "rocketleague.exe"
+
+
+def rl_key(item: dict) -> str:
+    """Swaps are told apart by the game file they replace: one swap per file."""
+    return item["file"].lower()
+
+
+def _swap_roots() -> list:
+    import sys
+    return [Path(getattr(sys, "_MEIPASS", "")) / "swaps", Path(sys.argv[0]).resolve().parent / "swaps",
+            Path(sys.executable).resolve().parent / "swaps"]
+
+
+_previews: dict = {}
+
+
+def swap_preview(item: dict):
+    """The picture of what a swap looks like (swaps/<id>/preview.png), or None when there is none yet."""
+    from PyQt6.QtGui import QPixmap
+    ident = item["id"]
+    if ident not in _previews:
+        found = None
+        for root in [_rl_store() / "swaps"] + _swap_roots():
+            for name in ("preview.png", "preview.jpg", "preview.webp"):
+                f = root / ident / name
+                try:
+                    if f.is_file():
+                        pm = QPixmap(str(f))
+                        if not pm.isNull():
+                            found = pm
+                            break
+                except OSError:
+                    continue
+            if found is not None:
+                break
+        _previews[ident] = found
+    return _previews[ident]
 
 
 def _rl_store():
@@ -4867,11 +5004,8 @@ def swap_source(item: dict):
     """Where this swap's replacement file is. Files shipped with the app are copied once into
     Documents/Rubenium/rocket_league/swaps so they survive app updates."""
     import shutil
-    import sys
     store = _rl_store() / "swaps" / item["id"] / item["file"]
-    roots = [Path(getattr(sys, "_MEIPASS", "")) / "swaps", Path(sys.argv[0]).resolve().parent / "swaps",
-             Path(sys.executable).resolve().parent / "swaps"]
-    for root in roots:
+    for root in _swap_roots():
         src = root / item["id"] / item["file"]
         if src.is_file():
             if store.is_file():
@@ -4886,7 +5020,7 @@ def swap_source(item: dict):
                 return store
             except OSError:
                 return src
-    return None
+    return store if store.is_file() else None
 
 
 def _known_customs() -> dict:
@@ -5060,17 +5194,18 @@ class RocketSwaps(QObject):
         return Path(self.folder(plat)) / "TAGame" / "CookedPCConsole"
 
     def active(self, plat: str = "") -> dict:
-        """The swaps the user wants on this install: {category: item id}, one per category."""
+        """The swaps the user wants on this install: {game file: item id}, one per game file.
+        (Before 3.0 this was stored per category; only the item ids matter, so old settings still load.)"""
         plat = plat or self.platform()
         out = {}
-        for cat, ident in self._entry(plat)["active"].items() if plat else []:
+        for ident in self._entry(plat)["active"].values() if plat else []:
             it = RL_BY_ID.get(ident)
-            if it and it["cat"] == cat:
-                out[cat] = ident
+            if it:
+                out[rl_key(it)] = ident
         return out
 
     def actual(self, plat: str = "") -> dict:
-        """What the game files really are right now: {category: item id}."""
+        """What the game files really are right now: {game file: item id}."""
         plat = plat or self.platform()
         out = {}
         if not plat:
@@ -5079,7 +5214,7 @@ class RocketSwaps(QObject):
             src = swap_source(it)
             game = self.cooked(plat) / it["file"]
             if src is not None and game.is_file() and file_hash(game) == file_hash(src):
-                out[it["cat"]] = it["id"]
+                out[rl_key(it)] = it["id"]
         return out
 
     def stamp(self, plat: str = "") -> str:
@@ -5155,6 +5290,7 @@ class RocketSwaps(QObject):
             self.done.emit(False, "nogame", {"quiet": quiet})
             return False
         self.working = True
+        desired = {rl_key(RL_BY_ID[i]): i for i in desired.values() if i in RL_BY_ID}
         e = self._entry(plat)
         job = {"plat": plat, "cooked": self.cooked(plat), "orig": dict(e["orig"]), "stamp_saved": e["stamp"],
                "stamp_now": self.stamp(plat)}
@@ -5603,8 +5739,8 @@ class Updater(QObject):
                         for member in z.infolist():
                             parts = Path(member.filename).parts
                             if (member.is_dir() or len(parts) != 3 or parts[0] != "swaps" or ".." in parts
-                                    or not parts[2].lower().endswith(".upk")):
-                                continue            # only swaps/<id>/<file>.upk, nothing else
+                                    or not parts[2].lower().endswith((".upk", ".png", ".jpg", ".webp"))):
+                                continue            # only swaps/<id>/<file>: game files and pictures
                             dest = root / parts[1] / parts[2]
                             dest.parent.mkdir(parents=True, exist_ok=True)
                             tmp = dest.with_name(dest.name + ".part")
@@ -6820,6 +6956,36 @@ class ToolsPage(Page):
 # --------------------------------------------------------------------------- #
 
 
+class BallPreview(QWidget):
+    """The ball exactly as it is on screen: same size, same glow, same painting code."""
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.setFixedHeight(int(BALL * ui.scale * max(BALL_SIZES) / 100) + 2 * S(GLOW) + S(4))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._clock = QTimer(self)
+        self._clock.setInterval(33)
+        self._clock.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._clock.start()
+
+    def hideEvent(self, _e) -> None:
+        self._clock.stop()
+
+    def paintEvent(self, _e) -> None:
+        pass
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        d = BD()
+        shape = QRectF(self.width() / 2 - d / 2, self.height() / 2 - d / 2, d, d)
+        level = self.ctx.glow_level()
+        paint_shape(p, self.ctx, shape, d / 2, level, self.devicePixelRatioF())
+        paint_ball_face(p, self.ctx, shape, 1.0)
+        paint_edge(p, self.ctx, shape, d / 2, level)
+
+
 class SettingsPage(Page):
     key = "settings"
 
@@ -6844,6 +7010,7 @@ class SettingsPage(Page):
         toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
         toggle(tr("Match album colour"), "accent_from_art", after=lambda v: ctx.refresh_accent())
         toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
+        toggle(tr("Welcome screen"), "welcome")
         seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
         seg.setFixedWidth(S(170))
         seg.changed.connect(lambda i: ctx.set_language("fr" if i else "en"))
@@ -6852,6 +7019,23 @@ class SettingsPage(Page):
                          marks=list(range(70, 151, 10)))
         size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
         lay.addWidget(size)
+
+        lay.addWidget(heading(tr("Ball")))
+        self.preview = BallPreview(ctx)
+        lay.addWidget(self.preview)
+        ball = SliderRow(tr("Ball size"), min(BALL_SIZES), max(BALL_SIZES), cfg["ball_size"], 10, 100,
+                         lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
+        ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
+        lay.addWidget(ball)
+
+        lay.addWidget(heading(tr("Menu bar")))
+        pass
+        for key, _icon, label in TABS:                 # Home, Lyrics and Settings always stay
+            if key in LOCKED_TABS:
+                continue
+            t = Toggle(not cfg["tabs_off"].get(key))
+            t.toggled_by_user.connect(lambda v, k=key: ctx.set_tab(k, v))
+            lay.addWidget(row(tr(label), t))
 
         if win.IS_WIN:
             lay.addWidget(heading(tr("Windows")))
@@ -7145,6 +7329,16 @@ class ThemesPage(Page):
         self.sw = Swatches(ACCENTS, ctx.cfg["custom_accent"] or ACCENT_DEFAULT, per_row=8)
         self.sw.picked.connect(self._accent)
         lay.addWidget(self.sw)
+        lay.addWidget(heading(tr("Style")))
+        self.style = {}
+        for label, key, names in ((tr("Glow"), "glow_power", [tr("Soft"), tr("Normal"), tr("Strong")]),
+                                  (tr("Background"), "backdrop", [tr("Dark"), tr("Black"), tr("Night")]),
+                                  (tr("Corners"), "corners", [tr("Round"), tr("Medium"), tr("Sharp")])):
+            seg = Segmented(names, ctx.cfg[key] if 0 <= ctx.cfg[key] < 3 else 0)
+            seg.setFixedWidth(S(214))
+            seg.changed.connect(lambda i, k=key: ctx.set_look(k, i))
+            self.style[key] = seg
+            lay.addWidget(row(label, seg))
         lay.addWidget(heading(tr("Themes")))
         self.used = Label("", 12, TEXT_DIM)
         lay.addWidget(self.used)
@@ -7167,6 +7361,9 @@ class ThemesPage(Page):
     def _reset(self) -> None:
         self.ctx.window.drawer.close_now()
         self.ctx.cfg["custom_accent"] = ""
+        for key, value in (("glow_power", 1), ("backdrop", 0), ("corners", 0)):
+            self.ctx.set_look(key, value)
+            self.style[key].set_index(value)
         self.ctx.set_theme("clean")
         self.sw.set_current(ACCENT_DEFAULT)
         self.ctx.refresh_accent()
@@ -7331,16 +7528,18 @@ class LauncherPage(Page):
 # Rocket League: item swaps
 # --------------------------------------------------------------------------- #
 class SwapTile(QAbstractButton):
-    """One slot: a swap you can switch on, or an empty "?" slot kept for later."""
+    """One swap: picture of the result, the item you equip, what it becomes, and a tick.
+    With no item it is an empty "?" slot kept for a future swap."""
 
     def __init__(self, item, on: bool, ready: bool) -> None:
         super().__init__()
         self.item, self.on, self.ready = item, on, ready
-        self.setFixedHeight(S(52))
+        self.setFixedHeight(S(50) if item is not None else S(34))
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._pm = extras.swap_preview(item) if item is not None else None
+        self._thumb = None
         if item is not None:
             self.setCursor(Qt.CursorShape.PointingHandCursor)
-            self.setToolTip(f"{item['old']}  →  {item['new']}")
         self._hover = Tween(self, on_change=self.update)
         self._on = Tween(self, 1.0 if on else 0.0, self.update)
         self.pending = False
@@ -7359,6 +7558,19 @@ class SwapTile(QAbstractButton):
     def leaveEvent(self, e) -> None:
         self._hover.to(0.0, 220)
 
+    def _picture(self, side: int):
+        """The preview, cropped to a square and scaled once for this size."""
+        dpr = self.devicePixelRatioF()
+        key = (side, round(dpr * 100))
+        if self._pm is not None and (self._thumb is None or self._thumb[0] != key):
+            px = max(1, int(round(side * dpr)))
+            pm = self._pm.scaled(px, px, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                                 Qt.TransformationMode.SmoothTransformation)
+            pm = pm.copy((pm.width() - px) // 2, (pm.height() - px) // 2, px, px)
+            pm.setDevicePixelRatio(dpr)
+            self._thumb = (key, pm)
+        return self._thumb[1] if self._thumb else None
+
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -7371,7 +7583,7 @@ class SwapTile(QAbstractButton):
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRoundedRect(r, rad, rad)
             p.setPen(alpha(TEXT_DIM, 0.45))
-            p.setFont(font(16, QFont.Weight.Bold))
+            p.setFont(font(15, QFont.Weight.Bold))
             p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), "?")
             return
         if not self.ready:
@@ -7382,17 +7594,34 @@ class SwapTile(QAbstractButton):
             p.setPen(QPen(mix(alpha("#FFFFFF", 0.08 + 0.10 * h), ui.accent, on), 1.2))
         p.setBrush(mix(alpha("#FFFFFF", 0.04 + 0.04 * h), alpha(ui.accent, 0.16), on))
         p.drawRoundedRect(r, rad, rad)
-        x, w = r.left() + S(11), r.width() - S(36)
+
+        side = int(r.height() - S(10))                      # picture of the result (black until one is added)
+        box = QRectF(r.left() + S(5), r.top() + S(5), side, side)
+        clip = QPainterPath()
+        clip.addRoundedRect(box, S(7), S(7))
+        p.fillPath(clip, QColor("#000000"))
+        pm = self._picture(side)
+        if pm is not None:
+            p.save()
+            p.setClipPath(clip)
+            p.drawPixmap(box.topLeft(), pm)
+            p.restore()
+        p.setPen(QPen(alpha("#FFFFFF", 0.10), 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRoundedRect(box, S(7), S(7))
+
+        x = box.right() + S(10)
+        w = r.right() - S(34) - x
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
-        old = self.item["old"] if self.ready else tr("File missing")
+        old = self.item["old"] if self.ready else tr("Coming soon")
         p.drawText(QRectF(x, r.top() + S(7), w, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
                    p.fontMetrics().elidedText(old, Qt.TextElideMode.ElideRight, int(w)))
         p.setPen(QColor(TEXT))
         p.setFont(font(12.5, QFont.Weight.Bold))
-        p.drawText(QRectF(x, r.top() + S(24), w, S(19)), int(Qt.AlignmentFlag.AlignVCenter),
+        p.drawText(QRectF(x, r.top() + S(23), w, S(19)), int(Qt.AlignmentFlag.AlignVCenter),
                    p.fontMetrics().elidedText("→ " + self.item["new"], Qt.TextElideMode.ElideRight, int(w)))
-        cx, cy, cr = r.right() - S(15), r.center().y(), S(7)          # round tick on the right
+        cx, cy, cr = r.right() - S(17), r.center().y(), S(7)          # round tick on the right
         p.setPen(QPen(mix(alpha("#FFFFFF", 0.25), ui.accent, on), 1.3))
         p.setBrush(alpha(ui.accent, on))
         p.drawEllipse(QPointF(cx, cy), cr, cr)
@@ -7463,24 +7692,19 @@ class RocketPage(Page):
         base = eng.actual() if self.plat else {}
         for cat, name in extras.RL_CATS:
             cl.addWidget(heading(tr(name)))
-            grid = QGridLayout()
-            grid.setContentsMargins(0, 0, 0, 0)
-            grid.setSpacing(S(6))
-            items = [it for it in extras.RL_ITEMS if it["cat"] == cat][:extras.RL_SLOTS]
-            for n in range(extras.RL_SLOTS):
-                it = items[n] if n < len(items) else None
-                ready = it is not None and extras.swap_source(it) is not None
-                on = it is not None and shown.get(cat) == it["id"]
+            col = vbox(spacing=5)
+            for it in [x for x in extras.RL_ITEMS if x["cat"] == cat]:
+                key = extras.rl_key(it)
+                ready = extras.swap_source(it) is not None
+                on = shown.get(key) == it["id"]
                 tile = SwapTile(it, on, ready)
-                if it is not None:
-                    tile.pending = on != (base.get(cat) == it["id"])
-                    tile.setEnabled(bool(self.plat) and ready)
-                    tile.clicked.connect(lambda _=False, i=it: self._toggle(i))
-                    self.tiles.append(tile)
-                grid.addWidget(tile, n // 2, n % 2)
-            grid.setColumnStretch(0, 1)
-            grid.setColumnStretch(1, 1)
-            cl.addLayout(grid)
+                tile.pending = on != (base.get(key) == it["id"])
+                tile.setEnabled(bool(self.plat) and ready)
+                tile.clicked.connect(lambda _=False, i=it: self._toggle(i))
+                self.tiles.append(tile)
+                col.addWidget(tile)
+            col.addWidget(SwapTile(None, False, False))      # room for the next swap
+            cl.addLayout(col)
         t = Toggle(ctx.cfg["rl"]["auto_fix"])
         t.toggled_by_user.connect(self._auto)
         cl.addSpacing(S(2))
@@ -7511,9 +7735,9 @@ class RocketPage(Page):
         base = self.ctx.rocket.actual()
         shown = self._shown()
         for tile in self.tiles:
-            cat, ident = tile.item["cat"], tile.item["id"]
-            on = shown.get(cat) == ident
-            tile.set_state(on, on != (base.get(cat) == ident))
+            key, ident = extras.rl_key(tile.item), tile.item["id"]
+            on = shown.get(key) == ident
+            tile.set_state(on, on != (base.get(key) == ident))
         self._bar()
 
     def _bar(self) -> None:
@@ -7522,7 +7746,7 @@ class RocketPage(Page):
             return
         eng = self.ctx.rocket
         base = eng.actual()
-        n = sum(1 for cat, _ in extras.RL_CATS if self.pending.get(cat) != base.get(cat))
+        n = sum(1 for key in set(self.pending) | set(base) if self.pending.get(key) != base.get(key))
         if n == 0:
             self.pending = None
             self.ctx.window.confirm_w.hide()
@@ -7547,10 +7771,13 @@ class RocketPage(Page):
         if eng.working or not self.plat:
             return
         desired = self._shown()
-        if desired.get(item["cat"]) == item["id"]:
-            desired.pop(item["cat"])               # off: the original comes back
+        key = extras.rl_key(item)
+        if desired.get(key) == item["id"]:
+            desired.pop(key)                       # off: the original comes back
         else:
-            desired[item["cat"]] = item["id"]      # one swap per category
+            if key in desired:                     # two swaps of the same item cannot be on together
+                self.ctx.toast(tr("Only one swap at a time for {name}", name=item["old"]), "warn")
+            desired[key] = item["id"]
         self._choose(desired)
 
     def _choose(self, desired: dict) -> None:
@@ -7619,13 +7846,42 @@ class RocketPage(Page):
             self.ctx.toast(tr("That is not the Rocket League folder"), "error")
 
 
+class NewsPage(Page):
+    """What changed in this version."""
+    key = "new"
+
+    def __init__(self, ctx) -> None:
+        super().__init__(ctx)
+        lay = vbox(self, 6)
+        lay.addWidget(Label(tr("What's new"), 16, bold=True))
+        lay.addWidget(Label(tr("Version {v}", v=extras.NEWS_VERSION), 11.5, TEXT_DIM))
+        for title, lines in extras.NEWS:
+            lay.addSpacing(S(4))
+            lay.addWidget(heading(tr(title)))
+            for text in lines:
+                line = hbox(spacing=8)
+                dot = Label("•", 12.5, TEXT_FAINT)
+                dot.setFixedWidth(S(8))
+                line.addWidget(dot, 0, Qt.AlignmentFlag.AlignTop)
+                line.addWidget(Label(tr(text), 12.5, TEXT, wrap_w=self.W - S(18)))
+                line.addStretch(1)
+                lay.addLayout(line)
+
+
 PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": CrosshairPage, "display": DisplayPage,
          "perf": PerfPage, "tools": ToolsPage, "timer": TimersPage, "launch": LauncherPage, "themes": ThemesPage,
-         "rl": RocketPage, "settings": SettingsPage}
+         "rl": RocketPage, "new": NewsPage, "settings": SettingsPage}
+# Fixed order: music first, then what you use in a game, then tools, then the look, settings last.
 TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", "crosshair", "Crosshair"),
-        ("display", "display", "Display"), ("perf", "perf", "Stats"), ("tools", "tools", "Tools"),
-        ("timer", "timer", "Timer"), ("launch", "grid", "Apps"), ("themes", "gem", "Themes"),
-        ("rl", "rocket", "Rocket"), ("settings", "cog", "Settings")]
+        ("display", "display", "Display"), ("rl", "rocket", "Rocket"), ("launch", "grid", "Apps"),
+        ("perf", "perf", "Stats"), ("timer", "timer", "Timer"), ("tools", "tools", "Tools"),
+        ("themes", "gem", "Themes"), ("new", "spark", "New"), ("settings", "cog", "Settings")]
+
+
+def visible_tabs(cfg) -> list:
+    """The tabs the user keeps in the menu bar (Home, Lyrics and Settings cannot be hidden)."""
+    off = cfg["tabs_off"] if isinstance(cfg["tabs_off"], dict) else {}
+    return [t for t in TABS if t[0] in LOCKED_TABS or not off.get(t[0])]
 
 
 def make_page(ctx, key: str) -> Page:
@@ -7639,7 +7895,7 @@ import time
 
 from PyQt6.QtCore import QEasingCurve, QPoint, QPointF, QRect, QRectF, QTimer, Qt
 from PyQt6.QtGui import (QCursor, QColor, QFont, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap,
-                         QRegion)
+                         QRadialGradient, QRegion)
 from PyQt6.QtWidgets import QFileDialog, QWidget
 
 import math
@@ -7685,10 +7941,10 @@ def _glow_tile(radius: int, dpr: float):
         p.scale(dpr, dpr)
         inner = 2 * radius + mid / dpr
         rect = QRectF(g, g, inner, inner)
-        layers, reach = 14, g - 1.0                 # many faint rings: bright at the edge, fading to nothing
+        layers, reach = 16, g - 1.0                 # many faint rings: bright at the edge, fading to nothing
         p.setBrush(Qt.BrushStyle.NoBrush)
         for i in range(layers, 0, -1):
-            a = 0.012 + 0.055 * ((layers - i) / layers) ** 2
+            a = 0.013 + 0.062 * ((layers - i) / layers) ** 2
             pen = QPen(alpha(ui.accent, a), 2.0 * reach * i / layers)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             p.setPen(pen)
@@ -7722,7 +7978,10 @@ def draw_glow(p: QPainter, shape: QRectF, radius: float, level: float, dpr: floa
 def paint_shape(p: QPainter, ctx, shape: QRectF, radius: float, level: float, dpr: float) -> QPainterPath:
     """Glow + dark glass body. Returns the body path (for clipping content)."""
     if ctx.cfg["halo"]:
-        draw_glow(p, shape, radius, level, dpr)
+        power = GLOW_POWER[ctx.cfg["glow_power"] if 0 <= ctx.cfg["glow_power"] < 3 else 1]
+        draw_glow(p, shape, radius, level * min(1.0, power), dpr)
+        if power > 1.0:
+            draw_glow(p, shape, radius, level * (power - 1.0), dpr)
         extra = ctx.theme().get("glow", 1.0) - 1.0          # richer themes get a stronger halo
         if extra > 0.01:
             draw_glow(p, shape, radius, level * extra, dpr)
@@ -7803,7 +8062,7 @@ class BallWindow(QWidget):
 
     # -- geometry
     def rect_global(self) -> QRect:
-        d = S(BALL)
+        d = BD()
         return QRect(self.center.x() - d // 2, self.center.y() - d // 2, d, d)
 
     def place(self) -> None:
@@ -7816,13 +8075,13 @@ class BallWindow(QWidget):
 
     def clamp(self) -> None:
         wa = work_area(self.center)
-        r = S(BALL) // 2 + S(6)
+        r = BD() // 2 + S(6)
         self.center = QPoint(max(wa.left() + r, min(wa.right() - r, self.center.x())),
                              max(wa.top() + r, min(wa.bottom() - r, self.center.y())))
 
     @staticmethod
     def corner_point(wa: QRect, left: bool, top: bool) -> QPoint:
-        m = S(14) + S(BALL) // 2
+        m = S(14) + BD() // 2
         return QPoint(wa.left() + m if left else wa.right() - m, wa.top() + m if top else wa.bottom() - m)
 
     def nearest_corner(self, point: QPoint) -> QPoint:
@@ -7868,7 +8127,7 @@ class BallWindow(QWidget):
         if a < 1.0:
             p.setOpacity(max(0.0, min(1.0, a)))
         k = (0.6 + 0.4 * min(1.15, a)) * (1 + 0.07 * self.hover.level - 0.06 * self.press.level)
-        g, d = S(GLOW), S(BALL)
+        g, d = S(GLOW), BD()
         w = d * k
         shape = QRectF(g + d / 2 - w / 2, g + d / 2 - w / 2, w, w)
         level = self.ctx.glow_level(max(0.0, self.hover.level))
@@ -8086,7 +8345,7 @@ class Busy(QWidget):
         t = self._fade.level
         r = QRectF(self.rect())
         path = QPainterPath()
-        path.addRoundedRect(r, S(RADIUS), S(RADIUS))
+        path.addRoundedRect(r, S(ui.radius), S(ui.radius))
         p.fillPath(path, QColor(ui.bg_top.red(), ui.bg_top.green(), ui.bg_top.blue(), int(232 * t)))
         p.setOpacity(t)
         c = QPointF(r.center().x(), r.center().y() - S(10))
@@ -8230,6 +8489,236 @@ class PreviewDrawer(QWidget):
                    int(Qt.AlignmentFlag.AlignVCenter), f"{int(have)} / {need} h")
 
 
+class Welcome(QWidget):
+    """The start-up screen: a welcome card with one Launch button. Launch folds the card into a round R,
+    a ring loads around it, then it flies to where the ball lives and becomes the ball."""
+    CW, CH, BIG = 440, 250, 92
+
+    def __init__(self, ctx, on_done) -> None:
+        super().__init__()
+        self.ctx, self._on_done = ctx, on_done
+        self.setWindowTitle("Rubenium")
+        self.setWindowFlags(WINDOW_FLAGS)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setMouseTracking(True)
+        self.phase = "card"                      # card -> fold -> ring -> fly -> done
+        self.appear = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self.fold = Tween(self, 0.0, self.update, QEasingCurve.Type.InOutCubic)
+        self.ring = Tween(self, 0.0, self.update, QEasingCurve.Type.InOutCubic)
+        self.fly = Tween(self, 0.0, self._on_fly, QEasingCurve.Type.InOutCubic)
+        self.hover = Tween(self, 0.0, self.update)
+        self.press = Tween(self, 0.0, self.update)
+        self.fold.finished.connect(self._folded)
+        self.ring.finished.connect(self._loaded)
+        self.fly.finished.connect(self._landed)
+        self._down = False
+        self._from = self._to = QPoint()
+        self._clock = QTimer(self)
+        self._clock.setTimerType(Qt.TimerType.PreciseTimer)
+        self._clock.setInterval(16)
+        self._clock.timeout.connect(self.update)
+
+    def start(self) -> None:
+        ball = self.ctx.window.ball
+        wa = work_area(ball.center)
+        m = S(GLOW) + S(14)
+        w, h = S(self.CW) + 2 * m, S(self.CH) + 2 * m
+        self.setGeometry(wa.center().x() - w // 2, wa.center().y() - h // 2, w, h)
+        self.show()
+        self.appear.to(1.0, 420)
+        self._clock.start()
+
+    # -- geometry
+    def _button(self) -> QRectF:
+        bw, bh = S(176), S(44)
+        return QRectF(self.width() / 2 - bw / 2, self.height() / 2 + S(self.CH) * 0.24, bw, bh)
+
+    def _circle_d(self) -> float:
+        f = self.fly.level if self.phase in ("fly", "done") else 0.0
+        return lerp(float(S(self.BIG)), float(BD()), f)
+
+    # -- the sequence
+    def launch(self) -> None:
+        if self.phase != "card":
+            return
+        self.phase = "fold"
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+        self.hover.to(0.0, 120)
+        self.fold.to(1.0, 520)
+
+    def _folded(self) -> None:
+        if self.phase == "fold":
+            self.phase = "ring"
+            self.ring.to(1.0, 640)
+
+    def _loaded(self) -> None:
+        if self.phase != "ring":
+            return
+        self.phase = "fly"
+        self._from = self.geometry().center()
+        self._to = QPoint(self.ctx.window.ball.center)
+        dist = (self._to - self._from).manhattanLength()
+        self.fly.to(1.0, int(max(480, min(760, 380 + dist * 0.22))))
+
+    def _on_fly(self) -> None:
+        if self.phase == "fly":
+            f = self.fly.level
+            c = QPoint(round(lerp(self._from.x(), self._to.x(), f)), round(lerp(self._from.y(), self._to.y(), f)))
+            self.move(c.x() - self.width() // 2, c.y() - self.height() // 2)
+        self.update()
+
+    def _landed(self) -> None:
+        if self.phase != "fly":
+            return
+        self.phase = "done"
+        self._clock.stop()
+        ball = self.ctx.window.ball
+        ball.appear.jump(1.0)
+        ball.place()
+        ball.show()
+        ball.repaint()                             # the real ball is drawn before this window goes away
+        self.hide()
+        done, self._on_done = self._on_done, None
+        if done is not None:
+            done()
+        self.deleteLater()
+
+    # -- mouse: only the Launch button does anything
+    def mouseMoveEvent(self, e) -> None:
+        over = self.phase == "card" and self._button().contains(e.position())
+        self.setCursor(Qt.CursorShape.PointingHandCursor if over else Qt.CursorShape.ArrowCursor)
+        self.hover.to(1.0 if over else 0.0, 140)
+
+    def leaveEvent(self, _e) -> None:
+        self.hover.to(0.0, 200)
+
+    def mousePressEvent(self, e) -> None:
+        if (self.phase == "card" and e.button() == Qt.MouseButton.LeftButton
+                and self._button().contains(e.position())):
+            self._down = True
+            self.press.to(1.0, 80)
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self._down:
+            self._down = False
+            self.press.to(0.0, 160)
+            if self._button().contains(e.position()):
+                self.launch()
+
+    def closeEvent(self, e) -> None:
+        if self.phase != "done":
+            e.ignore()                             # there is no way to close it: Launch is the way in
+
+    # -- painting
+    def paintEvent(self, _e) -> None:
+        import math
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        a = max(0.0, min(1.0, self.appear.level))
+        m = max(0.0, min(1.0, self.fold.level))
+        f = max(0.0, min(1.0, self.fly.level)) if self.phase in ("fly", "done") else 0.0
+        d = self._circle_d()
+        if self.phase == "fly":
+            d *= 1.0 + 0.14 * math.sin(math.pi * min(1.0, f / 0.4))        # a soft pop as it takes off
+        k = 0.94 + 0.06 * a
+        w, h = lerp(S(self.CW) * k, d, m), lerp(S(self.CH) * k, d, m)
+        cx, cy = self.width() // 2, self.height() // 2
+        shape = QRectF(cx - w / 2, cy - h / 2, w, h)
+        radius = lerp(float(S(24)), d / 2, m)
+        p.setOpacity(a)
+        level = lerp(max(0.72, self.ctx.glow_level()), self.ctx.glow_level(), f)
+        path = paint_shape(p, self.ctx, shape, radius, level, self.devicePixelRatioF())
+
+        show = max(0.0, 1.0 - m / 0.45)                    # the card's content leaves first
+        if show > 0.0:
+            p.save()
+            p.setClipPath(path)
+            p.setOpacity(a * show)
+            other = QColor.fromHsvF((max(0.0, ui.accent.hsvHueF()) + 0.17) % 1.0,
+                                    min(1.0, ui.accent.hsvSaturationF() * 0.9 + 0.1), 1.0)
+            spots = ((ui.accent, 0.34, 0.28 + 0.20 * math.sin(now * 0.55), 0.20 + 0.22 * math.cos(now * 0.43), 0.62),
+                     (other, 0.24, 0.76 + 0.16 * math.cos(now * 0.37), 0.84 + 0.14 * math.sin(now * 0.61), 0.55),
+                     (ui.accent, 0.16, 0.55 + 0.30 * math.sin(now * 0.29 + 2.0), 0.55 + 0.25 * math.cos(now * 0.33), 0.40))
+            for col, strength, fx, fy, size in spots:    # slow drifting lights
+                c = QPointF(shape.left() + w * fx, shape.top() + h * fy)
+                g = QRadialGradient(c, w * size)
+                g.setColorAt(0.0, alpha(col, strength))
+                g.setColorAt(1.0, alpha(col, 0.0))
+                p.fillRect(shape, g)
+            sweep = (now * 0.16) % 1.6 - 0.3               # a faint band of light crossing now and then
+            band = QLinearGradient(QPointF(shape.left() + w * (sweep - 0.18), shape.top()),
+                                   QPointF(shape.left() + w * (sweep + 0.18), shape.bottom()))
+            band.setColorAt(0.0, alpha("#FFFFFF", 0.0))
+            band.setColorAt(0.5, alpha("#FFFFFF", 0.05))
+            band.setColorAt(1.0, alpha("#FFFFFF", 0.0))
+            p.fillRect(shape, band)
+
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(14, QFont.Weight.DemiBold, 0.3))
+            p.drawText(QRectF(shape.left(), cy - S(self.CH) * 0.36, w, S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Welcome to"))
+            p.setFont(font(42, QFont.Weight.ExtraBold, 0.5))
+            fm = p.fontMetrics()
+            word = "Rubenium"
+            full = fm.horizontalAdvance(word)
+            x0 = cx - full / 2
+            split = x0 + full - fm.horizontalAdvance("ium")
+            line = QRectF(x0, cy - S(self.CH) * 0.25, full + S(4), S(56))
+            p.save()
+            p.setClipRect(QRectF(0, 0, split, self.height()), Qt.ClipOperation.IntersectClip)
+            p.setPen(QColor(TEXT))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter), word)
+            p.restore()
+            p.save()
+            p.setClipRect(QRectF(split, 0, self.width(), self.height()), Qt.ClipOperation.IntersectClip)
+            p.setPen(ui.accent)
+            p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter), word)
+            p.restore()
+
+            b = self._button()
+            hv, pr = self.hover.level, self.press.level
+            grow = S(2) * hv - S(1.5) * pr
+            b = b.adjusted(-grow, -grow * 0.5, grow, grow * 0.5)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(ui.accent, 0.22 + 0.10 * hv))
+            p.drawRoundedRect(b.adjusted(-S(3), -S(3), S(3), S(3)), S(16), S(16))
+            p.setBrush(mix(ui.accent, QColor("#FFFFFF"), 0.10 * hv))
+            p.drawRoundedRect(b, S(13), S(13))
+            p.setPen(QColor("#06110A" if ui.accent.lightnessF() > 0.6 else "#FFFFFF"))
+            p.setFont(font(15, QFont.Weight.Bold, 0.3))
+            p.drawText(b, int(Qt.AlignmentFlag.AlignCenter), tr("Launch"))
+            p.restore()
+
+        face = max(0.0, min(1.0, (m - 0.5) / 0.5))         # the R arrives as the circle forms
+        if face > 0.0:
+            p.setOpacity(a * face)
+            c = QPointF(cx, cy)
+            fnt = font(20, QFont.Weight.ExtraBold)
+            fnt.setPixelSize(max(8, int(d * 0.46)))
+            p.setFont(fnt)
+            box = QRectF(c.x() - d / 2, c.y() - d / 2 - d * 0.02, d, d)
+            p.setPen(alpha(ui.accent, 0.55))
+            p.drawText(box.translated(0, S(1.2)), int(Qt.AlignmentFlag.AlignCenter), "R")
+            p.setPen(QColor(TEXT))
+            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "R")
+            turn = max(0.0, min(1.0, self.ring.level))
+            if self.phase in ("ring", "fly") and turn > 0.0:
+                inset = d * 0.09
+                ring = QRectF(c.x() - d / 2 + inset, c.y() - d / 2 + inset, d - 2 * inset, d - 2 * inset)
+                pen = QPen(alpha("#FFFFFF", 0.10 * (1.0 - f)), max(1.5, d * 0.04))
+                pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.setPen(pen)
+                p.drawEllipse(ring)
+                pen.setColor(alpha(ui.accent, 1.0 - f))
+                p.setPen(pen)
+                p.drawArc(ring, 90 * 16, int(-360 * 16 * turn))
+        p.setOpacity(a)
+        paint_edge(p, self.ctx, shape, radius, level)
+
+
 class Body(QWidget):
     """Card chrome: wordmark, status dots, the R button (back to the ball), tab bar and the page host."""
 
@@ -8237,13 +8726,24 @@ class Body(QWidget):
         super().__init__(window)
         self.win = window
         self.to_ball = IconButton("rball", 28, tip=tr("Close to the ball"), parent=self)
-        tabs = [(k, icon, tr(label), False) for k, icon, label in TABS]
-        self.tabbar = TabBar(tabs, window.current, self)
+        self.tabbar = None
         self.host = QWidget(self)
+        self.set_tabs()
         self.to_ball.clicked.connect(window.collapse)
-        self.tabbar.changed.connect(window.goto)
         self._press = None
         self._moved = False
+
+    def set_tabs(self) -> None:
+        """(Re)build the tab row from the tabs the user keeps switched on."""
+        old = self.tabbar
+        tabs = [(k, icon, tr(label), False) for k, icon, label in visible_tabs(self.win.ctx.cfg)]
+        self.tabbar = TabBar(tabs, self.win.current, self)
+        self.tabbar.changed.connect(self.win.goto)
+        if old is not None:
+            old.hide()
+            old.deleteLater()
+            self.tabbar.show()
+            self.resizeEvent(None)
 
     def offset(self) -> int:
         return int(round((1.0 - self.win.chrome.level) * S(COMPACT)))
@@ -8332,7 +8832,7 @@ class MainWindow(QWidget):
         super().__init__()
         self.ctx = ctx
         cfg = ctx.cfg
-        self.current = cfg["page"] if cfg["page"] in [t[0] for t in TABS] else "home"
+        self.current = cfg["page"] if cfg["page"] in self.tab_keys() else "home"
         self.expanded = False
         self.modal = False
         self.game_state = 0
@@ -8385,11 +8885,21 @@ class MainWindow(QWidget):
         self._pulse.setTimerType(Qt.TimerType.PreciseTimer)
         self._pulse.timeout.connect(self._tick)
 
+    def tab_keys(self) -> list:
+        return [t[0] for t in visible_tabs(self.ctx.cfg)]
+
+    def tabs_changed(self) -> None:
+        """A tab was switched on or off in Settings."""
+        self.body.set_tabs()
+        for key in list(self.pages):
+            if key not in self.tab_keys() and key != self.current:
+                self._drop_page(key)
+
     # ------------------------------------------------------------------ geometry
     def _place(self, ball: QRect, card_tl=None) -> None:
         """Lay the canvas out. With `card_tl` the card sits exactly there (kept on screen); without it the
         card opens at the ball. The card is always anchored by its top-left corner, so it never shuffles."""
-        g, cw, m, d = S(GLOW), S(CARD_W), S(8), S(BALL)
+        g, cw, m, d = S(GLOW), S(CARD_W), S(8), BD()
         if card_tl is None:
             wa = work_area(ball.center())
             x = ball.left() if ball.center().x() < wa.center().x() else ball.right() + 1 - cw
@@ -8437,7 +8947,7 @@ class MainWindow(QWidget):
         b, c = self._ball_l, self._card_rect()
         r = QRectF(lerp(b.left(), c.left(), t), lerp(b.top(), c.top(), t),
                    lerp(b.width(), c.width(), t), lerp(b.height(), c.height(), t))
-        return r, lerp(b.width() / 2, S(RADIUS), max(0.0, min(1.0, t)))
+        return r, lerp(b.width() / 2, S(ui.radius), max(0.0, min(1.0, t)))
 
     def _card_h(self, key: str) -> float:
         return float(min(S(CHROME_TOP + CHROME_BOTTOM) + self.pages[key][2], self.card_max_h))
@@ -8476,7 +8986,7 @@ class MainWindow(QWidget):
             self.slide.jump(1.0)
 
     def goto(self, key: str) -> None:
-        if key not in [t[0] for t in TABS]:
+        if key not in self.tab_keys():
             return
         if not self.expanded:
             self.current = key
@@ -8491,7 +9001,7 @@ class MainWindow(QWidget):
         self.toast_w.hide()
         self.confirm_w.hide()
         self.drawer.close_now()
-        keys = [t[0] for t in TABS]
+        keys = self.tab_keys()
         self._dir = 1 if keys.index(key) > keys.index(self.current) else -1
         old_sa, old_page, _ = self._ensure_page(self.current)
         self._snap_old = snapshot(old_sa)
@@ -8562,7 +9072,7 @@ class MainWindow(QWidget):
         self.ball.place()
         if self.expanded:
             home = self.card_pos or self.card_global().topLeft()       # same top-left corner as before
-            d = S(BALL)
+            d = BD()
             self._place(QRect(home.x(), home.y(), d, d), home)
             sa, page, _ = self._ensure_page(self.current)
             self.pageh.jump(self._card_h(self.current))
@@ -8589,13 +9099,13 @@ class MainWindow(QWidget):
 
     def expand(self) -> None:
         """Open the card where it lives. If the ball is parked in a corner it first flies back there."""
-        if self.expanded or self.morph.busy or self.ball.gliding:
+        if self.expanded or self.morph.busy or self.ball.gliding or self.ctx.welcome is not None:
             return
         home, b = self.card_pos, self.ball
         parked = self._docked is not None and (b.center - self._docked).manhattanLength() < 4
         self._pending_home = home if (home is not None and parked) else None
         if self._pending_home is not None:
-            d, cw = S(BALL), S(CARD_W)
+            d, cw = BD(), S(CARD_W)
             target = QPoint(max(home.x() + d // 2, min(b.center.x(), home.x() + cw - d // 2)), home.y() + d // 2)
             if (target - b.center).manhattanLength() > 6:
                 b.hover.jump(0.0)
@@ -8607,6 +9117,7 @@ class MainWindow(QWidget):
             return
         self.chrome.jump(1.0)
         self.expanded = True
+        self.ctx.cfg["card_open"] = True
         self.ball.appear.jump(1.0)
         self.ball.hover.jump(0.0)
         self._place(self.ball.rect_global(), self._pending_home)   # laid out while hidden: nothing can flash
@@ -8638,7 +9149,8 @@ class MainWindow(QWidget):
         self._spark_timer.stop()
         self._idle.stop()
         self.expanded = False
-        c, d = self._card_rect(), S(BALL)
+        self.ctx.cfg["card_open"] = False
+        c, d = self._card_rect(), BD()
         centre = self.mapToGlobal(c.center().toPoint())
         wa = work_area(centre)
         left, top = centre.x() < wa.center().x(), centre.y() < wa.center().y()
@@ -8935,7 +9447,7 @@ class MainWindow(QWidget):
         self._drag_origin = None
         if moved and self.expanded and not self.morph.busy:
             home = self.card_global().topLeft()                         # this is now where the card lives
-            d = S(BALL)
+            d = BD()
             self._place(QRect(home.x(), home.y(), d, d), home)
             self._layout_body()
             if self.current in self.pages:
@@ -9063,8 +9575,12 @@ class App(QObject):
         super().__init__()
         self.qapp = qapp
         self.cfg = Config()
+        self._was_open = bool(self.cfg["card_open"])
+        self.cfg["card_open"] = False
+        self._news = False
         set_lang(self.cfg["lang"] or ("fr" if QLocale.system().language() == QLocale.Language.French else "en"))
-        ui.scale = self.cfg["scale"] / 100
+        apply_look(self.cfg)
+        self.welcome = None
         self._preview = ""
         self._apps = None
         ui.accent = self.base_accent()
@@ -9119,10 +9635,42 @@ class App(QObject):
         qapp.aboutToQuit.connect(self.shutdown)
         atexit.register(self._last_resort)
 
-        self.window.show_ball()                      # the ball is on screen before anything heavy starts
+        self._intro()                                # the welcome screen (or the ball) is up before anything heavy
         QTimer.singleShot(0, self._late_start)
 
     # ------------------------------------------------------------------ start-up
+    def _intro(self) -> None:
+        """Welcome screen -> Launch -> the ball lands where it was left. Skipped when the app restarts itself
+        (after an update or to get admin rights) and when the user switched it off."""
+        self._news = self.cfg["seen_version"] != VERSION and self.cfg["usage_s"] > 0    # updated, not new
+        self.cfg["seen_version"] = VERSION
+        restarted = "--updated" in sys.argv or "--elevated" in sys.argv
+        if not self.cfg["welcome"] or restarted:
+            self.window.show_ball()
+            QTimer.singleShot(700, self._after_intro)
+            return
+        try:
+            self.window._restore_position()
+            self.window._retime()
+            self.welcome = Welcome(self, self._after_intro)
+            self.welcome.start()
+        except Exception:  # noqa: BLE001
+            log.exception("welcome screen failed")
+            self.welcome = None
+            self.window.show_ball()
+
+    def _after_intro(self) -> None:
+        """Back to how the app was left: the card opens again if it was open (or to show what is new)."""
+        self.welcome = None
+        was_open, self._was_open = self._was_open, False
+        if self._closing or "--selftest" in sys.argv:
+            return
+        if self._news:
+            self._news = False
+            self.window.goto("new")
+        elif was_open:
+            self.window.expand()
+
     @staticmethod
     def _safe(name: str, fn) -> None:
         """One start-up step. If it fails it is logged and the app carries on: the ball always appears."""
@@ -9182,6 +9730,9 @@ class App(QObject):
         sys.excepthook = hook
         w = self.window
         lang = self.cfg["lang"]
+        if self.welcome is not None:               # the welcome screen is part of the test: press Launch
+            self.welcome.launch()
+            return QTimer.singleShot(3500, self._selftest)
         steps = [w.expand] + [lambda k=k: w.goto(k) for k, _, _ in TABS]
         steps += [lambda: self.set_language("fr"), lambda: w.goto("home"), lambda: w.goto("rl"),
                   lambda: self.set_language(lang or "en"), w.collapse, w.expand, w.collapse]
@@ -9214,7 +9765,9 @@ class App(QObject):
 
     def _housekeeping(self) -> None:
         for overlay in (self.window, self.window.ball, self.window.drawer, self.crosshair, self.hud,
-                        self.timer_overlay):
+                        self.timer_overlay, self.welcome):
+            if overlay is None:
+                continue
             if overlay is self.window and self.window.modal:
                 continue
             if overlay.isVisible():
@@ -9295,24 +9848,19 @@ class App(QObject):
             self._audio.start()
         elif not want and self._audio.isActive():
             self._audio.stop()
-            self._usage.stop()
-            self.rocket.stop()
-            self.updater.stop()
-            self.hotkeys.close()
-            self.timer_overlay.hide()
-            self.meter.close()
+            self._env = 0.0
 
     def _sample_audio(self) -> None:
         peak = self.meter.peak()
         if peak is None:
             return self._sync_audio()
         target = min(1.0, (peak ** 0.8) * 1.25)
-        self._env += (target - self._env) * (0.55 if target > self._env else 0.10)   # quick rise, soft fall
+        self._env += (target - self._env) * (0.65 if target > self._env else 0.13)   # quick rise, soft fall
 
     def glow_level(self, hover: float = 0.0) -> float:
         pulse = 0.5 + 0.5 * math.sin(time.monotonic() * 2.0 * math.pi / 3.0)         # 3 s breathing cycle
         if self._audio.isActive():
-            level = 0.38 + 0.12 * pulse + 0.50 * self._env                           # breathes, and follows the music
+            level = 0.30 + 0.10 * pulse + 0.62 * self._env                           # breathes, and follows the music
         else:
             level = 0.55 + 0.45 * pulse
             if self.state.status is not Status.PLAYING:
@@ -9366,6 +9914,30 @@ class App(QObject):
         self.on_visibility()
         self.window.update()
         self.window.ball.update()
+
+    def set_look(self, key: str, value: int) -> None:
+        """Ball size, glow strength, background and corners (Settings and Themes)."""
+        if self.cfg[key] == value:
+            return
+        self.cfg[key] = value
+        apply_look(self.cfg)
+        w = self.window
+        w.ball.clamp()
+        w.ball.place()
+        w.update()
+        w.ball.update()
+        if w.body.isVisible():
+            w.body.update()
+
+    def set_tab(self, key: str, on: bool) -> None:
+        """Show or hide one tab of the menu bar."""
+        off = dict(self.cfg["tabs_off"])
+        if on:
+            off.pop(key, None)
+        else:
+            off[key] = True
+        self.cfg["tabs_off"] = off
+        self.window.tabs_changed()
 
     def set_scale(self, pct: int) -> None:
         if pct != self.cfg["scale"]:
@@ -9501,7 +10073,7 @@ class App(QObject):
     def _update_failed(self, key: str) -> None:
         def after() -> None:
             if key == "blocked":
-                self.toast(tr("Windows blocked the update. Download it from the website."), "error")
+                self.toast(tr("Windows blocked the update. Download it from GitHub."), "error")
             else:
                 self.toast(tr("The update failed. Nothing was changed."), "error")
             win.open_path(self.updater.latest.get("page", extras.UPDATE_PAGE))
@@ -9511,7 +10083,7 @@ class App(QObject):
         """A whole new config was loaded (restore / reset)."""
         self.apply_timer()
         set_lang(self.cfg["lang"] or "en")
-        ui.scale = self.cfg["scale"] / 100
+        apply_look(self.cfg)
         self.media.set_preferred(self.cfg["source"])
         self.refresh_accent()
         self.rebuild_ui()
@@ -9569,6 +10141,9 @@ class App(QObject):
             self.meter.close()
             self.window.hide()
             self.window.ball.hide()
+            if self.welcome is not None:
+                self.welcome.phase = "done"
+                self.welcome.hide()
             self.crosshair.hide()
             self.hud.hide()
             if self.tray is not None:

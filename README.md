@@ -9,13 +9,22 @@ Rubenium checks this repository for new versions and offers to install them (Set
 
 ## Publishing an update
 
-1. Change `VERSION = "..."` near the top of the CORE section in `Rubenium.py` (for example `2.2.0` → `2.3.0`).
+1. Change `VERSION = "..."` near the top of the CORE section in `Rubenium.py` (for example `3.0.0` → `3.1.0`).
 2. Write what changed in `release_notes.txt`.
 3. Commit / upload both files to `main`.
 
 GitHub then builds `Rubenium.exe` on Windows and publishes the release by itself (Actions tab, about 5 minutes).
 Every running Rubenium sees it within 6 hours, or straight away from Settings → Updates.
 Downloads are checked against their SHA-256 file before anything is replaced.
+
+## Adding a Rocket League swap
+
+1. Make a folder `swaps/<id>/` and put the replacement file in it, named exactly like the game file
+   (for example `swaps/fennec_flames_blacklunation/skin_grain_flames_SF.upk`).
+2. Optional: add a square picture of the result as `swaps/<id>/preview.png`. It shows on the swap's tile.
+3. Add one line for it to `RL_ITEMS` in `Rubenium.py` (only needed for a swap that is not listed yet).
+
+Several swaps can be on at once. Two swaps that replace the same game file cannot.
 
 ## Files
 
@@ -25,6 +34,5 @@ Downloads are checked against their SHA-256 file before anything is replaced.
 | `swaps/` | Rocket League replacement files, packed into the .exe |
 | `Rubenium.spec`, `build.bat`, `make_icon.py`, `make_version_info.py` | Building the .exe |
 | `.github/workflows/release.yml` | Automatic build and release |
-| `docs/index.html` | The download page |
 
 Modding Rocket League's files goes against its rules. The swaps are local and visual only: use at your own risk.
