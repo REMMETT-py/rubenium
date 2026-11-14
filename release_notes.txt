@@ -1,9 +1,13 @@
-Rubenium 1.2
+Rubenium 1.3
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-- Games: Rubenium ignores the mouse while a game uses it to aim or turn the camera, also in borderless fullscreen and in games that keep an invisible pointer. In game menus it works as normal.
-- Moving the menu: hold it, and the spot you hold stays exactly under the mouse. It follows smoothly, even with fast moves.
-- The ball can never sit in the top-right corner of a screen, over the close buttons of windows.
-- The welcome-screen code only lasts until Rubenium is closed.
+- Coins replace hours: 25 coins every 15 minutes Rubenium is open, with a timer for the next drop. Hours already played became coins, and what was already unlocked stays yours.
+- Shop: themes, ball styles, rings, colours, badges and titles are bought with coins. Themes are bought in order.
+- Colours: white is free. Buy the 16 little squares one by one; with all 16 they melt into the full colour line. Then the same for the second colour.
+- Games: blackjack, chicken, wheel and slots, played with coins only. No debt. One free spin a day.
+- Badges and titles show on the music tab.
+- Tidier menu: Screen = crosshair + display. PC = stats, tools and apps.
+- Resetting the settings takes two clicks and a hold. It never touches coins or what you bought.
+- Rocket League: Strongline removed. Lantern Lift, Monsoon and Electric banner are marked Coming soon (switched back to the original automatically).
