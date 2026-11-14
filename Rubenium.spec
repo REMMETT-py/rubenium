@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Builds dist\Rubenium.exe: one file, no console window, the swaps folder packed inside.
+# Builds dist\Rubenium\ (Rubenium.exe and its files, no console window). installer.iss turns that folder into
+# RubeniumSetup.exe. A folder app starts from where it is installed instead of unpacking itself on every start.
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 datas, binaries, hidden = [("swaps", "swaps")], [], []
@@ -26,5 +27,6 @@ EXCLUDES = ["tkinter", "unittest", "pydoc", "doctest", "test", "lib2to3", "sqlit
 a = Analysis(["Rubenium.py"], pathex=["."], binaries=binaries, datas=datas, hiddenimports=hidden,
              excludes=EXCLUDES, noarchive=False)
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name="Rubenium", debug=False, strip=False, upx=False,
+exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="Rubenium", debug=False, strip=False, upx=False,
           console=False, uac_admin=False, icon="rubenium.ico", version="version_info.txt")
+coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="Rubenium")

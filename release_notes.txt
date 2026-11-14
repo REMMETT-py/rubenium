@@ -1,7 +1,10 @@
 Rubenium 1.0
 
-- The Update button now works on every PC, also when Windows protects the folder Rubenium is in.
-- RL Swap: every swap shows a picture of the result, Black Lunation is ready, and the yellow outline only marks what is about to change.
-- Stats: see which apps use the most processor and memory.
-- Themes: 5 new themes in a better order, plus new styles for the R and the song ring that unlock with time.
-- The New tab stays hidden and only shows up after an update.
+Download RubeniumSetup.exe below. It installs Rubenium for your Windows account (no admin rights needed), adds it to the Start menu, and it can be removed from Settings > Apps. Updates then install by themselves.
+
+- Install and updates: Rubenium installs like a normal Windows app, and the Update button installs new versions in the background.
+- Sound: soft, very quiet sounds when you switch something on or off (can be turned off in Settings > Audio).
+- Stats: Top apps measured like Task Manager, with bars on a fixed scale. Much lighter on the PC.
+- RL Swap: pictures for every swap, Black Lunation ready, clearer outlines for pending changes.
+- Themes: 15 themes, plus styles for the R and the song ring that unlock with time.
+- Rubenium uses much less processor.

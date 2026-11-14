@@ -3,17 +3,19 @@
 A glowing ball for Windows 10 / 11 that opens into a gamer command centre: music for any app, lyrics,
 crosshair, screen colours, stats, timer, app launcher, themes and Rocket League item swaps.
 
-**Download:** [Rubenium.exe (latest)](https://github.com/REMMETT-py/rubenium/releases/latest/download/Rubenium.exe)
+**Download:** [RubeniumSetup.exe (latest)](https://github.com/REMMETT-py/rubenium/releases/latest/download/RubeniumSetup.exe)
+
+It installs for your Windows account only (no admin rights), adds Rubenium to the Start menu, and can be removed from Settings → Apps.
 
 Rubenium checks this repository for new versions and offers to install them (Settings → Updates).
 
 ## Publishing an update
 
-1. Change `VERSION = "..."` near the top of the CORE section in `Rubenium.py` (for example `4.0.0` → `4.1.0`). This build number must always go up. `VERSION_NAME` just below it is the version people see (for example `1.0` → `1.1`).
+1. Change `VERSION = "..."` and `VERSION_NAME = "..."` near the top of the CORE section in `Rubenium.py` (for example `1.0.0` / `1.0` → `1.0.1` / `1.0.1`). `VERSION` must always go up: it is what the updater compares.
 2. Write what changed in `release_notes.txt`.
 3. Commit / upload both files to `main`.
 
-GitHub then builds `Rubenium.exe` on Windows and publishes the release by itself (Actions tab, about 5 minutes).
+GitHub then builds the app and `RubeniumSetup.exe` on Windows, tests installing, updating and uninstalling it, and publishes the release by itself (Actions tab, about 10 minutes).
 Every running Rubenium sees it within 6 hours, or straight away from Settings → Updates.
 Downloads are checked against their SHA-256 file before anything is replaced.
 
@@ -32,7 +34,7 @@ Several swaps can be on at once. Two swaps that replace the same game file canno
 | --- | --- |
 | `Rubenium.py` | The whole app |
 | `swaps/` | Rocket League replacement files, packed into the .exe |
-| `Rubenium.spec`, `build.bat`, `make_icon.py`, `make_version_info.py` | Building the .exe |
+| `Rubenium.spec`, `installer.iss`, `build.bat`, `make_icon.py`, `make_version_info.py` | Building the app and its setup |
 | `.github/workflows/release.yml` | Automatic build and release |
 
 Modding Rocket League's files goes against its rules. The swaps are local and visual only: use at your own risk.

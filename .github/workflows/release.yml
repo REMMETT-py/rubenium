@@ -4,8 +4,8 @@ name: Release
 
 on:
   push:
-    branches: [main]
-    paths: ["Rubenium.py", "swaps/**", "release_notes.txt", "Rubenium.spec", "requirements.txt",
+    branches: [main, build-test]
+    paths: ["Rubenium.py", "swaps/**", "release_notes.txt", "Rubenium.spec", "installer.iss", "requirements.txt",
             ".github/workflows/release.yml"]
   workflow_dispatch:
 
@@ -51,81 +51,114 @@ jobs:
             echo "skip=0" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build Rubenium.exe
+      - name: Build Rubenium (PyInstaller with its starter program compiled here, not the shared prebuilt one)
         if: steps.exists.outputs.skip == '0'
-        shell: bash
+        shell: pwsh
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
+          $ErrorActionPreference = "Stop"
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
+          $piv = (python -c "import PyInstaller; print(PyInstaller.__version__)").Trim()
+          git clone --depth 1 --branch "v$piv" https://github.com/pyinstaller/pyinstaller.git "$env:RUNNER_TEMP\pyi"
+          Push-Location "$env:RUNNER_TEMP\pyi\bootloader"
+          python ./waf distclean all
+          if ($LASTEXITCODE -ne 0) { throw "bootloader build failed" }
+          Pop-Location
+          pip install --force-reinstall --no-deps "$env:RUNNER_TEMP\pyi"
+          $boot = python -c "import PyInstaller, os; print(os.path.join(os.path.dirname(PyInstaller.__file__), 'bootloader', 'Windows-64bit-intel', 'runw.exe'))"
+          Write-Host "bootloader: $boot  $((Get-FileHash $boot).Hash)"
           python make_icon.py
           python make_version_info.py "${{ steps.ver.outputs.version }}"
           pyinstaller --noconfirm --clean Rubenium.spec
-          mkdir out
-          cp dist/Rubenium.exe out/
-          cp Rubenium.py out/
-          python -c "import shutil; shutil.make_archive('out/swaps', 'zip', '.', 'swaps')"
-          cd out
-          for f in Rubenium.exe Rubenium.py swaps.zip; do sha256sum "$f" > "$f.sha256"; done
-          ls -l
+          if (-not (Test-Path dist\Rubenium\Rubenium.exe)) { throw "no dist\Rubenium\Rubenium.exe" }
 
-      - name: Self-test the .exe on Windows (open every tab, both languages)
+      - name: Self-test the app on Windows (open every tab, both languages)
         if: steps.exists.outputs.skip == '0'
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath "dist\Rubenium.exe" -ArgumentList "--selftest" -PassThru
+          $p = Start-Process -FilePath "dist\Rubenium\Rubenium.exe" -ArgumentList "--selftest" -PassThru
           if (-not $p.WaitForExit(150000)) { $p.Kill(); Write-Error "Self-test timed out"; exit 1 }
           $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
           if (Test-Path $log) { Get-Content $log -Tail 40 }
           if ($p.ExitCode -ne 0) { Write-Error "Self-test failed (exit code $($p.ExitCode))"; exit 1 }
           if (-not (Select-String -Path $log -Pattern "SELFTEST OK" -Quiet)) { Write-Error "No SELFTEST OK in the log"; exit 1 }
-          Write-Host "Rubenium.exe opened and ran every tab without errors."
 
-      - name: Test the updater on Windows (swap in place, protected folder, hand-over)
+      - name: Build RubeniumSetup.exe
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          if (-not (Test-Path $iscc)) { $iscc = (Get-Command iscc.exe -ErrorAction Stop).Source }
+          & $iscc /Qp "/DVersion=${{ steps.ver.outputs.version }}" "/DVersionName=${{ steps.ver.outputs.name }}" installer.iss
+          if ($LASTEXITCODE -ne 0) { Write-Error "setup build failed"; exit 1 }
+          Get-Item out\RubeniumSetup.exe | Format-List Name,Length
+
+      - name: Test install, update and uninstall on Windows
         if: steps.exists.outputs.skip == '0'
         shell: pwsh
         run: |
           $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
+          $app = Join-Path $env:LOCALAPPDATA "Programs\Rubenium"
+          $setup = (Resolve-Path out\RubeniumSetup.exe).Path
           function Wait-Gone {
             Start-Sleep 4; $t = 0
-            while ((Get-Process Rubenium -ErrorAction SilentlyContinue) -and $t -lt 160) { Start-Sleep 2; $t += 2 }
-            if (Get-Process Rubenium -ErrorAction SilentlyContinue) {
-              Get-Process Rubenium | Stop-Process -Force; Get-Content $log -Tail 60; Write-Error "Rubenium did not finish"; exit 1 }
+            while ((Get-Process | Where-Object { $_.Name -like "Rubenium*" }) -and $t -lt 240) { Start-Sleep 2; $t += 2 }
+            if (Get-Process | Where-Object { $_.Name -like "Rubenium*" }) {
+              Get-Process | Where-Object { $_.Name -like "Rubenium*" } | Stop-Process -Force
+              if (Test-Path $log) { Get-Content $log -Tail 60 }; Write-Error "Rubenium did not finish"; exit 1 }
           }
           function Need($text) {
             if (-not (Select-String -Path $log -Pattern $text -SimpleMatch -Quiet)) {
-              Get-Content $log -Tail 60; Write-Error "Not in the log: $text"; exit 1 }
+              if (Test-Path $log) { Get-Content $log -Tail 60 }; Write-Error "Not in the log: $text"; exit 1 }
           }
-          $work = Join-Path $env:RUNNER_TEMP "rbtest"
-          New-Item -ItemType Directory -Force "$work\app", "$work\new" | Out-Null
-          Copy-Item dist\Rubenium.exe "$work\app\Rubenium.exe"
-          Copy-Item dist\Rubenium.exe "$work\new\Rubenium.exe"
-          $side = Join-Path $env:LOCALAPPDATA "Rubenium\app\Rubenium.exe"
 
-          Write-Host "1. Update in place: the running exe is replaced and the new one starts"
+          Write-Host "1. Silent install (what an update does), then the installed app runs its self-test"
           Remove-Item $log -ErrorAction SilentlyContinue
-          Start-Process "$work\app\Rubenium.exe" -ArgumentList "--selftest-update=$work\new\Rubenium.exe"
-          Wait-Gone; Need "UPDATE SWAP OK"; Need "SELFTEST OK"
-          if (Test-Path $side) { Write-Error "In-place update should not have used the side folder"; exit 1 }
+          Start-Process $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/RUBENIUMARGS=--selftest"
+          Wait-Gone; Need "SELFTEST OK"
+          if (-not (Test-Path "$app\Rubenium.exe")) { Write-Error "Not installed in $app"; exit 1 }
+          if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Rubenium.lnk")) { Write-Error "No Start menu entry"; exit 1 }
 
-          Write-Host "2. Folder cannot be written: the new version is installed in AppData and started from there"
+          Write-Host "2. Update from inside the installed app: it starts the setup and closes; the new version starts"
           Remove-Item $log -ErrorAction SilentlyContinue
-          $env:RUBENIUM_TEST_SIDE = "1"
-          Start-Process "$work\app\Rubenium.exe" -ArgumentList "--selftest-update=$work\new\Rubenium.exe"
-          Wait-Gone; Need "UPDATE SWAP OK"; Need "SELFTEST OK"
-          $env:RUBENIUM_TEST_SIDE = $null
-          if (-not (Test-Path $side)) { Write-Error "Side install missing"; exit 1 }
+          Start-Process "$app\Rubenium.exe" -ArgumentList "--selftest-update=$setup"
+          Wait-Gone; Need "UPDATE SETUP STARTED"; Need "SELFTEST OK"
 
-          Write-Host "3. Starting the old exe again hands over to the newer copy"
-          Remove-Item $log -ErrorAction SilentlyContinue
-          Start-Process "$work\app\Rubenium.exe" -ArgumentList "--selftest"
-          Wait-Gone; Need "handing over to"; Need "SELFTEST OK"
-          Remove-Item (Join-Path $env:LOCALAPPDATA "Rubenium") -Recurse -Force -ErrorAction SilentlyContinue
-          Write-Host "Updater works: in place, protected folder and hand-over."
+          Write-Host "3. Uninstall removes the app and its start-with-Windows entry"
+          New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "Rubenium" -Value "`"$app\Rubenium.exe`"" -Force | Out-Null
+          Start-Process "$app\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          Start-Sleep 3
+          if (Test-Path "$app\Rubenium.exe") { Write-Error "Uninstall left the app behind"; exit 1 }
+          if (Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "Rubenium" -ErrorAction SilentlyContinue) {
+            Write-Error "Uninstall left the start-with-Windows entry"; exit 1 }
+          Write-Host "Install, update from the app and uninstall all work."
+
+      - name: Scan with Microsoft Defender
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        run: |
+          try { Update-MpSignature -ErrorAction Stop } catch { Write-Host "signature update failed: $_" }
+          $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe"
+          foreach ($f in @("out\RubeniumSetup.exe", "dist\Rubenium\Rubenium.exe")) {
+            & $mp -Scan -ScanType 3 -File (Resolve-Path $f).Path -DisableRemediation
+            if ($LASTEXITCODE -eq 2) { Write-Error "Defender flags $f"; exit 1 }
+          }
+
+      - name: Collect the release files
+        if: steps.exists.outputs.skip == '0'
+        shell: bash
+        run: |
+          cp Rubenium.py out/
+          python -c "import shutil; shutil.make_archive('out/swaps', 'zip', '.', 'swaps')"
+          cd out
+          for f in RubeniumSetup.exe Rubenium.py swaps.zip; do sha256sum "$f" > "$f.sha256"; done
+          ls -l
 
       - name: Publish the release
-        if: steps.exists.outputs.skip == '0'
+        if: steps.exists.outputs.skip == '0' && github.ref == 'refs/heads/main'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

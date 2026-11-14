@@ -1160,6 +1160,79 @@ def windows_version() -> str:
     return f"Windows {'11' if v.build >= 22000 else '10'} (build {v.build})"
 
 
+# --------------------------------------------------------------------------- #
+# Every process in ONE system call (name, processor time, memory), like Task Manager.
+# No handle is opened on any process, so nothing is denied and it costs about a millisecond.
+# --------------------------------------------------------------------------- #
+class _UNICODE_STRING(ctypes.Structure):
+    _fields_ = [("Length", ctypes.c_ushort), ("MaximumLength", ctypes.c_ushort), ("Buffer", ctypes.c_void_p)]
+
+
+class _SYSTEM_PROCESS_INFORMATION(ctypes.Structure):
+    _fields_ = [("NextEntryOffset", ctypes.c_uint32), ("NumberOfThreads", ctypes.c_uint32),
+                ("WorkingSetPrivateSize", ctypes.c_longlong), ("HardFaultCount", ctypes.c_uint32),
+                ("NumberOfThreadsHighWatermark", ctypes.c_uint32), ("CycleTime", ctypes.c_ulonglong),
+                ("CreateTime", ctypes.c_longlong), ("UserTime", ctypes.c_longlong), ("KernelTime", ctypes.c_longlong),
+                ("ImageName", _UNICODE_STRING), ("BasePriority", ctypes.c_int32),
+                ("UniqueProcessId", ctypes.c_void_p), ("InheritedFromUniqueProcessId", ctypes.c_void_p),
+                ("HandleCount", ctypes.c_uint32), ("SessionId", ctypes.c_uint32), ("UniqueProcessKey", ctypes.c_void_p),
+                ("PeakVirtualSize", ctypes.c_size_t), ("VirtualSize", ctypes.c_size_t),
+                ("PageFaultCount", ctypes.c_uint32), ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t)]
+
+
+_snap_buf = None
+
+
+def process_snapshot():
+    """[(pid, name, processor time in 100 ns units, private memory in bytes)] or None if not available."""
+    global _snap_buf
+    if not IS_WIN:
+        return None
+    try:
+        ntdll = ctypes.WinDLL("ntdll")
+        size = len(_snap_buf) if _snap_buf is not None else 1 << 20
+        for _ in range(6):
+            if _snap_buf is None or len(_snap_buf) < size:
+                _snap_buf = ctypes.create_string_buffer(size)
+            need = ctypes.c_ulong(0)
+            status = ntdll.NtQuerySystemInformation(5, _snap_buf, len(_snap_buf), ctypes.byref(need)) & 0xFFFFFFFF
+            if status == 0:
+                break
+            if status != 0xC0000004:                     # anything but "buffer too small"
+                return None
+            size = max(len(_snap_buf) * 2, need.value + 65536)
+        else:
+            return None
+        base = ctypes.addressof(_snap_buf)
+        out, offset = [], 0
+        while True:
+            info = _SYSTEM_PROCESS_INFORMATION.from_address(base + offset)
+            pid = int(info.UniqueProcessId or 0)
+            name = ""
+            if info.ImageName.Buffer and info.ImageName.Length:
+                name = ctypes.wstring_at(info.ImageName.Buffer, info.ImageName.Length // 2)
+            out.append((pid, name, int(info.UserTime) + int(info.KernelTime), int(info.WorkingSetPrivateSize)))
+            if not info.NextEntryOffset:
+                break
+            offset += info.NextEntryOffset
+        return out
+    except Exception as exc:  # noqa: BLE001
+        log.debug("process snapshot failed: %s", exc)
+        return None
+
+
+def play_sound(path: str) -> None:
+    """Play a short .wav without waiting (a new sound cuts the previous one: no pile-up)."""
+    if not IS_WIN:
+        return
+    try:
+        import winsound
+        winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+    except Exception as exc:  # noqa: BLE001
+        log.debug("sound failed: %s", exc)
+
+
 # ==================================================================================================
 # SECTION: core
 # ==================================================================================================
@@ -1178,7 +1251,7 @@ from PyQt6.QtGui import QColor, QFont
 
 
 APP_NAME = "Rubenium"
-VERSION = "4.0.0"            # build number: only ever goes up, it is what the updater compares
+VERSION = "1.0.0"            # what the updater compares (major.minor.patch)
 VERSION_NAME = "1.0"         # the version people see
 log = logging.getLogger("rubenium")
 
@@ -1298,6 +1371,67 @@ GLOW_POWER = (0.65, 1.0, 1.4)
 LOCKED_TABS = ("home", "lyrics", "settings")       # always shown
 
 
+class Sfx:
+    """Very quiet, soft interface sounds (switch on, switch off, pick). Made in code once, cached as .wav files.
+    Only for things you change, never for hovering."""
+    RATE = 44100
+    SOUNDS = {          # (start Hz, end Hz, length s, loudness 0-1)
+        "on": (740.0, 1110.0, 0.12, 0.060),
+        "off": (880.0, 590.0, 0.11, 0.050),
+        "pick": (1240.0, 1180.0, 0.06, 0.035),
+    }
+
+    def __init__(self) -> None:
+        self.enabled = True
+        self._files: dict = {}
+        self._last = 0.0
+
+    def _make(self, name: str) -> str:
+        import math
+        import struct
+        import wave
+        f0, f1, length, gain = self.SOUNDS[name]
+        folder = DATA_DIR / "sounds"
+        path = folder / f"{name}_1.wav"                 # bump the number when a sound changes
+        if not path.is_file():
+            folder.mkdir(parents=True, exist_ok=True)
+            n = int(self.RATE * length)
+            frames, phase = bytearray(), 0.0
+            for i in range(n):
+                t = i / n
+                freq = f0 + (f1 - f0) * (1 - (1 - t) ** 3)          # glides, then settles
+                phase += 2 * math.pi * freq / self.RATE
+                env = min(1.0, i / (0.004 * self.RATE)) * math.exp(-5.0 * t) * min(1.0, (n - i) / (0.01 * self.RATE))
+                v = math.sin(phase) + 0.18 * math.sin(2 * phase)          # a touch of warmth
+                frames += struct.pack("<h", int(max(-1.0, min(1.0, v * env * gain)) * 32767))
+            tmp = path.with_suffix(".tmp")
+            with wave.open(str(tmp), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(self.RATE)
+                w.writeframes(bytes(frames))
+            os.replace(tmp, path)
+        return str(path)
+
+    def play(self, name: str) -> None:
+        if not self.enabled or name not in self.SOUNDS or not win.IS_WIN:
+            return
+        import time
+        now = time.monotonic()
+        if now - self._last < 0.03:                    # two widgets reacting to one click: one sound
+            return
+        self._last = now
+        try:
+            if name not in self._files:
+                self._files[name] = self._make(name)
+            win.play_sound(self._files[name])
+        except OSError as exc:
+            log.debug("sound %s failed: %s", name, exc)
+
+
+sfx = Sfx()
+
+
 def BD() -> int:
     """Diameter of the ball in pixels (UI scale x the ball size the user picked)."""
     return int(round(BALL * ui.scale * ui.ball))
@@ -1341,6 +1475,7 @@ DEFAULTS: dict = {
     "ring_style": "line",
     "news_tab": False,
     "welcome": True,
+    "sounds": True,
     "card_open": False,
     "seen_version": "",
     "tabs_off": {},
@@ -1773,9 +1908,11 @@ FR = {
     "The update failed. Try again in a moment.": "La mise à jour a échoué. Réessayez dans un instant.",
     "Hive": "Ruche", "Sonar": "Sonar", "Circuit": "Circuit", "Comets": "Comètes", "Nebula": "Nébuleuse",
     "Classic": "Classique", "Outline": "Contour", "Neon": "Néon", "Gold": "Or", "Line": "Ligne", "Dashes": "Tirets",
-    "The Update button now works on every PC": "Le bouton Mettre à jour fonctionne maintenant sur tous les PC",
-    "It also works when Windows protects the folder Rubenium is in":
-        "Il fonctionne aussi quand Windows protège le dossier où se trouve Rubenium",
+    "Install and updates": "Installation et mises à jour",
+    "Rubenium installs like a normal Windows app, with a Start menu entry and an uninstaller":
+        "Rubenium s'installe comme une appli Windows normale, avec une entrée dans le menu Démarrer et un désinstalleur",
+    "The Update button installs the new version by itself, in the background":
+        "Le bouton Mettre à jour installe la nouvelle version tout seul, en arrière-plan",
     "Every swap now shows a picture of the result": "Chaque swap affiche maintenant une image du résultat",
     "Black Lunation is ready": "Black Lunation est disponible",
     "The yellow outline only marks what is about to change": "Le contour jaune indique seulement ce qui va changer",
@@ -1785,6 +1922,15 @@ FR = {
     "New styles for the R and for the song ring, unlocked with time":
         "Nouveaux styles pour le R et pour l'anneau du titre, à débloquer avec le temps",
     "Theme options for glow, background and corners": "Options de style : halo, fond et coins",
+    "Audio": "Audio", "Interface sounds": "Sons de l'interface", "Sound": "Son",
+    "Rubenium itself: {v}": "Rubenium elle-même : {v}",
+    "Soft, very quiet sounds when you switch something on or off (Settings, Audio)":
+        "Des sons doux et très discrets quand vous activez ou désactivez quelque chose (Réglages, Audio)",
+    "Top apps measured like Task Manager: accurate, smooth and light on your PC":
+        "Applis mesurées comme dans le Gestionnaire des tâches : précis, fluide et léger pour le PC",
+    "Bars use a fixed scale, so 2 % looks small and 50 % fills half":
+        "Les barres ont une échelle fixe : 2 % reste petit et 50 % remplit la moitié",
+    "Rubenium uses much less processor": "Rubenium utilise beaucoup moins le processeur",
 }
 
 
@@ -2245,6 +2391,7 @@ class Toggle(QAbstractButton):
 
     def _clicked(self) -> None:
         self._pos.to(1.0 if self.isChecked() else 0.0, 220)
+        sfx.play("on" if self.isChecked() else "off")
         self.toggled_by_user.emit(self.isChecked())
 
     def set_checked(self, on: bool) -> None:
@@ -2423,6 +2570,10 @@ class Segmented(QWidget):
         i = int(e.position().x() / max(1, self.width()) * len(self._labels))
         i = max(0, min(len(self._labels) - 1, i))
         if i != self._index:
+            if i in self.faint:
+                sfx.play("off")
+            else:
+                sfx.play("pick")
             self.set_index(i)
             self.changed.emit(i)
 
@@ -2481,6 +2632,8 @@ class Swatches(QWidget):
         col = int(e.position().x() / cell)
         i = col + int(e.position().y() / S(26)) * self._per_row
         if 0 <= col < self._per_row and 0 <= i < len(self._colors):
+            if self._current != self._colors[i].upper():
+                sfx.play("pick")
             self._current = self._colors[i].upper()
             self.update()
             self.picked.emit(self._colors[i])
@@ -4949,12 +5102,15 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # newest first: (version shown, [(heading, [lines])])
     ("1.0", [
-        ("Updates", ["The Update button now works on every PC",
-                     "It also works when Windows protects the folder Rubenium is in"]),
+        ("Sound", ["Soft, very quiet sounds when you switch something on or off (Settings, Audio)"]),
+        ("Stats", ["Top apps measured like Task Manager: accurate, smooth and light on your PC",
+                   "Bars use a fixed scale, so 2 % looks small and 50 % fills half",
+                   "Rubenium uses much less processor"]),
+        ("Install and updates", ["Rubenium installs like a normal Windows app, with a Start menu entry and an uninstaller",
+                                 "The Update button installs the new version by itself, in the background"]),
         ("RL Swap", ["Every swap now shows a picture of the result",
                      "Black Lunation is ready",
                      "The yellow outline only marks what is about to change"]),
-        ("Stats", ["See which apps use the most processor and memory"]),
         ("Themes", ["5 new themes, in a better order",
                     "New styles for the R and for the song ring, unlocked with time"]),
     ]),
@@ -5772,118 +5928,36 @@ def app_home() -> Path:
     return Path(base) / "Rubenium"
 
 
-def side_exe() -> Path:
-    return app_home() / "app" / "Rubenium.exe"
-
-
-def side_version() -> str:
-    try:
-        return (app_home() / "app" / "version.txt").read_text(encoding="utf-8").strip()
-    except OSError:
-        return ""
-
-
 def clean_env() -> dict:
-    """Environment for starting another copy of the app: a packed .exe must not inherit this one's temp folder."""
+    """Environment for starting another program: it must not inherit this app's packaging variables."""
     env = {k: v for k, v in os.environ.items() if not k.upper().startswith(("_MEI", "_PYI"))}
     env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
     return env
 
 
-def _same_file(a, b) -> bool:
-    try:
-        return os.path.normcase(os.path.realpath(str(a))) == os.path.normcase(os.path.realpath(str(b)))
-    except OSError:
-        return False
+SETUP = "RubeniumSetup.exe"
+SETUP_ARGS = ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"]
 
 
-def _retry(fn, tries: int = 24, wait: float = 0.5):
-    """Windows and antivirus hold new files for a moment: try again for a few seconds before giving up."""
-    last = None
-    for n in range(tries):
-        try:
-            return fn()
-        except OSError as exc:
-            last = exc
-            time.sleep(wait if n else 0.15)
-    raise last
-
-
-def handoff(current: str) -> bool:
-    """If an update had to be installed beside the original .exe (its folder was protected), every start of the
-    original passes straight on to that newer copy. True when it did: the caller just exits."""
+def run_setup(path: str, extra: str = "") -> bool:
+    """Start the downloaded setup without any window. It waits for this app to close, installs over it and
+    starts the new version. Returns False if it could not be started."""
     import subprocess
-    import sys
-    if not getattr(sys, "frozen", False) or "--no-handoff" in sys.argv:
-        return False
-    side = side_exe()
+    args = [path, *SETUP_ARGS] + ([f"/RUBENIUMARGS={extra}"] if extra else [])
     try:
-        if (not side.is_file() or _same_file(sys.executable, side)
-                or version_tuple(side_version()) <= version_tuple(current)):
-            return False
-        log.info("handing over to %s (%s)", side, side_version())
-        subprocess.Popen([str(side), *sys.argv[1:]], close_fds=True, env=clean_env(), cwd=str(side.parent))
+        subprocess.Popen(args, close_fds=True, env=clean_env(), cwd=os.path.dirname(path) or None)
         return True
     except OSError as exc:
-        log.warning("hand-over failed: %s", exc)
+        log.warning("could not start the setup: %s", exc)
         return False
-
-
-def place_exe(new: Path, version: str) -> str:
-    """Put a downloaded, verified .exe into use and return the path to start.
-    1. Next to the running app: the running file is renamed (Windows allows that), the new one takes its name.
-    2. If that folder cannot be written (Windows 'Controlled folder access', Program Files, read-only...),
-       the new version goes to the app's own folder in AppData and the old .exe hands over to it from then on."""
-    import shutil
-    import sys
-    target = Path(sys.executable).resolve()
-    if not os.environ.get("RUBENIUM_TEST_SIDE"):
-        tmp = target.with_name(target.stem + ".new.exe")
-        old = target.with_name(target.stem + ".old.exe")
-        try:
-            try:
-                old.unlink()
-            except OSError:
-                pass
-            _retry(lambda: shutil.copyfile(new, tmp), tries=6)
-            if file_hash(tmp) != file_hash(new):
-                raise OSError("copy does not match")
-            _retry(lambda: os.replace(target, old))
-            try:
-                _retry(lambda: os.replace(tmp, target))
-            except OSError:
-                _retry(lambda: os.replace(old, target))     # put the working one back
-                raise
-            if _same_file(target, side_exe()):
-                try:
-                    (target.parent / "version.txt").write_text(version, encoding="utf-8")
-                except OSError:
-                    pass
-            return str(target)
-        except OSError as exc:
-            log.warning("could not update in place (%s): installing in %s", exc, app_home())
-            try:
-                tmp.unlink()
-            except OSError:
-                pass
-    side = side_exe()
-    if _same_file(target, side):
-        raise PermissionError("the app's own folder cannot be written")
-    side.parent.mkdir(parents=True, exist_ok=True)
-    part = side.with_name("Rubenium.part")
-    _retry(lambda: shutil.copyfile(new, part))
-    if file_hash(part) != file_hash(new):
-        raise OSError("copy does not match")
-    _retry(lambda: os.replace(part, side))
-    (side.parent / "version.txt").write_text(version, encoding="utf-8")
-    return str(side)
 
 
 class Updater(QObject):
     """Checks the latest GitHub release, downloads it, checks its SHA-256 and swaps the app in place.
 
-    Release assets it understands: Rubenium.exe, Rubenium.py, swaps.zip, each with a matching .sha256 file.
-    Nothing is installed unless its checksum matches."""
+    Release assets it understands: RubeniumSetup.exe (the installed app updates by running it silently, like
+    any Windows program), Rubenium.py and swaps.zip (the script version), each with a matching .sha256 file.
+    Nothing is run or installed unless its checksum matches."""
     found = pyqtSignal(dict)          # a newer version is out
     checked = pyqtSignal(bool, str)   # manual check finished: ok, message key ("latest" / "offline")
     progress = pyqtSignal(int)        # download percent
@@ -6008,17 +6082,17 @@ class Updater(QObject):
         assets = info["assets"]
         try:
             if getattr(sys, "frozen", False):
-                work = app_home() / "update"                  # never the app's own folder: it may be protected
+                work = app_home() / "update"                  # a folder Windows always lets us write to
                 try:
                     work.mkdir(parents=True, exist_ok=True)
                 except OSError:
                     import tempfile
                     work = Path(tempfile.gettempdir())
-                new = work / "Rubenium.download"
+                setup = work / SETUP
                 done = False
                 for attempt in range(3):                      # a dropped connection is tried again
                     try:
-                        done = self._fetch_checked(assets, "Rubenium.exe", new, (0, 100))
+                        done = self._fetch_checked(assets, SETUP, setup, (0, 100))
                         break
                     except (OSError, ValueError) as exc:
                         log.info("download attempt %d failed: %s", attempt + 1, exc)
@@ -6026,14 +6100,9 @@ class Updater(QObject):
                             raise
                         time.sleep(2.0)
                 if not done:
-                    raise FileNotFoundError("no exe in release")
-                path = place_exe(new, info["version"])
-                try:
-                    new.unlink()
-                except OSError:
-                    pass
+                    raise FileNotFoundError("no setup in release")
                 self.busy = False
-                self.ready.emit(path)
+                self.ready.emit(str(setup))
             else:
                 script = Path(sys.argv[0]).resolve()
                 new = script.with_name(script.name + ".download")
@@ -6073,12 +6142,17 @@ class Updater(QObject):
         here = Path(sys.executable if getattr(sys, "frozen", False) else sys.argv[0]).resolve()
         junk = [here.parent / n for n in (here.stem + ".old.exe", here.stem + ".new.exe", here.stem + ".download",
                                           here.name + ".download", "swaps.zip.download")]
-        junk += [app_home() / "update" / "Rubenium.download", app_home() / "app" / "Rubenium.part"]
+        junk += [app_home() / "update" / "Rubenium.download", app_home() / "update" / SETUP]
         for f in junk:
             try:
                 f.unlink()
             except OSError:
                 pass
+        import shutil
+        for old in ("app", "current"):                     # copies an older updater put there
+            folder = app_home() / old
+            if folder.is_dir() and not str(here).lower().startswith(str(folder).lower()):
+                shutil.rmtree(folder, ignore_errors=True)
 
 
 def restart(path: str, extra: tuple = ()) -> bool:
@@ -6100,74 +6174,88 @@ def restart(path: str, extra: tuple = ()) -> bool:
 
 
 class TopApps(QObject):
-    """Which apps use the most processor and memory right now (grouped by app name, sampled in a thread)."""
-    ready = pyqtSignal(list, list)      # [(name, percent of the whole processor)], [(name, bytes)]
+    """Which apps use the most processor and memory, measured like Task Manager (processor = share of the whole
+    PC, memory = private memory), grouped by app name and smoothed so the list does not jump around.
+    On Windows one system call reads every process (about a millisecond), so measuring costs next to nothing.
+    Rubenium itself is reported on its own line, not in the ranking."""
+    ready = pyqtSignal(list, list, float, float)    # [(name, %)], [(name, bytes)], Rubenium %, Rubenium bytes
+    HIDDEN = {"", "idle", "system idle process", "registry", "memory compression", "secure system"}
 
     def __init__(self) -> None:
         super().__init__()
         self._timer = QTimer(self)
-        self._timer.setInterval(2000)
-        self._timer.timeout.connect(self._kick)
-        self._busy = False
-        self._procs: dict = {}
+        self._timer.setInterval(1500)
+        self._timer.timeout.connect(self._sample)
+        self._last: dict = {}           # pid -> (name, processor time)
+        self._t = 0.0
+        self._smooth: dict = {}         # name -> smoothed %
+        self._me = os.getpid()
+        self._psutil_procs: dict = {}
 
     def start(self) -> None:
         if not self._timer.isActive():
             self._timer.start()
-            self._kick()
-            QTimer.singleShot(700, self._kick)      # processor use needs two looks: show numbers quickly
+            self._sample()
+            QTimer.singleShot(500, self._sample)        # processor use needs two looks: numbers show quickly
 
     def stop(self) -> None:
         self._timer.stop()
 
-    def _kick(self) -> None:
-        if self._busy:
-            return
-        self._busy = True
-        import threading
-        threading.Thread(target=self._sample, daemon=True).start()
+    def _read(self):
+        snap = win.process_snapshot()
+        if snap is not None:
+            return snap, 1e-7                          # processor time is in 100 ns steps
+        try:                                           # other systems (and tests): psutil, slower but fine
+            import psutil
+            out = []
+            for proc in psutil.process_iter(["pid", "name", "cpu_times", "memory_info"]):
+                info = proc.info
+                ct, mem = info.get("cpu_times"), info.get("memory_info")
+                if ct is None:
+                    continue
+                out.append((info["pid"], info["name"] or "", ct.user + ct.system, getattr(mem, "rss", 0) if mem else 0))
+            return out, 1.0
+        except Exception:  # noqa: BLE001
+            return [], 1.0
 
     def _sample(self) -> None:
+        snap, unit = self._read()
+        now = time.monotonic()
+        wall = now - self._t if self._t else 0.0
+        self._t = now
+        cores = max(1, os.cpu_count() or 1)
         cpu: dict = {}
         ram: dict = {}
-        try:
-            import psutil
-            cores = psutil.cpu_count() or 1
-            seen = {}
-            for proc in psutil.process_iter(["pid", "name"]):
-                pid, name = proc.info["pid"], proc.info["name"] or ""
-                if not pid or not name or name in ("System Idle Process", "Idle", "Memory Compression"):
-                    continue
-                keep = self._procs.get(pid)
-                if keep is None or keep[0] != name:
-                    keep = (name, proc)
-                    try:
-                        proc.cpu_percent(None)              # first look: nothing to report yet
-                    except Exception:  # noqa: BLE001
-                        continue
-                    seen[pid] = keep
-                    used = 0.0
-                else:
-                    seen[pid] = keep
-                    try:
-                        used = keep[1].cpu_percent(None) / cores
-                    except Exception:  # noqa: BLE001
-                        continue
-                try:
-                    mem = keep[1].memory_info().rss
-                except Exception:  # noqa: BLE001
-                    mem = 0
-                label = name[:-4] if name.lower().endswith(".exe") else name
-                cpu[label] = cpu.get(label, 0.0) + used
-                ram[label] = ram.get(label, 0) + mem
-            self._procs = seen
-        except Exception as exc:  # noqa: BLE001
-            log.debug("top apps: %s", exc)
-        top_cpu = sorted(cpu.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        seen: dict = {}
+        me_cpu, me_ram = 0.0, 0.0
+        for pid, name, used, mem in snap:
+            seen[pid] = (name, used)
+            label = name[:-4] if name.lower().endswith(".exe") else name
+            if label.lower() in self.HIDDEN or not pid:
+                continue
+            prev = self._last.get(pid)
+            pct = 0.0
+            if prev is not None and prev[0] == name and wall > 0.2:
+                pct = max(0.0, (used - prev[1]) * unit / (wall * cores) * 100.0)
+            if pid == self._me:
+                me_cpu, me_ram = pct, float(mem)
+                continue
+            cpu[label] = cpu.get(label, 0.0) + pct
+            ram[label] = ram.get(label, 0) + mem
+        self._last = seen
+        if wall <= 0.2:
+            return                                     # first look: nothing to compare with yet
+        smooth = {}
+        for label in set(cpu) | set(self._smooth):    # smooth: rises quickly, falls gently
+            new, old = min(100.0, cpu.get(label, 0.0)), self._smooth.get(label, 0.0)
+            v = old + (new - old) * (0.7 if new > old else 0.35)
+            if v > 0.05 or label in cpu:
+                smooth[label] = v
+        self._smooth = smooth
+        top_cpu = sorted(((n, v) for n, v in smooth.items() if n in cpu), key=lambda kv: kv[1], reverse=True)[:5]
         top_ram = sorted(ram.items(), key=lambda kv: kv[1], reverse=True)[:5]
-        self._busy = False
         try:
-            self.ready.emit(top_cpu, top_ram)
+            self.ready.emit(top_cpu, top_ram, me_cpu, me_ram)
         except RuntimeError:
             pass
 
@@ -7043,19 +7131,41 @@ class PickGauge(Gauge):
 
 
 class TopList(QWidget):
-    """Five rows: app name, how much it uses, and a bar."""
+    """Five rows: app name, how much it uses, and a bar on a fixed scale (the whole processor, or all of the
+    memory), so 2 % looks small and 50 % fills half. Bars glide to their new length."""
     ROWS = 5
 
     def __init__(self) -> None:
         super().__init__()
-        self.rows: list = []            # (name, value text, fraction of the bar)
+        self.rows: list = []            # (name, value text, fraction of the whole)
+        self._shown: dict = {}          # name -> drawn fraction
         self.setFixedHeight(S(26) * self.ROWS)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._anim = QTimer(self)
+        self._anim.setInterval(16)
+        self._anim.timeout.connect(self._step)
 
     def set_rows(self, rows: list) -> None:
         if rows != self.rows:
+            names = {r[0] for r in rows}
+            self._shown = {n: v for n, v in self._shown.items() if n in names}
             self.rows = rows
+            self._anim.start()
             self.update()
+
+    def _step(self) -> None:
+        moving = False
+        for name, _text, frac in self.rows:
+            cur = self._shown.get(name, 0.0)
+            nxt = cur + (frac - cur) * 0.22
+            if abs(frac - nxt) < 0.001:
+                nxt = frac
+            else:
+                moving = True
+            self._shown[name] = nxt
+        if not moving:
+            self._anim.stop()
+        self.update()
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -7064,12 +7174,13 @@ class TopList(QWidget):
         vw = S(64)
         for i in range(self.ROWS):
             y = i * rh
+            track = QRectF(0, y + S(17), w, S(3))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.08 if i < len(self.rows) else 0.05))
+            p.drawRoundedRect(track, 1.5, 1.5)
             if i >= len(self.rows):
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(alpha("#FFFFFF", 0.05))
-                p.drawRoundedRect(QRectF(0, y + S(17), w, S(3)), 1.5, 1.5)
                 continue
-            name, value, frac = self.rows[i]
+            name, value, _frac = self.rows[i]
             p.setFont(font(12, QFont.Weight.DemiBold))
             p.setPen(QColor(TEXT))
             p.drawText(QRectF(0, y, w - vw - S(8), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
@@ -7077,11 +7188,10 @@ class TopList(QWidget):
             p.setFont(font(11.5))
             p.setPen(QColor(TEXT_DIM))
             p.drawText(QRectF(w - vw, y, vw, S(16)), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), value)
+            frac = max(0.0, min(1.0, self._shown.get(name, 0.0)))
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(alpha("#FFFFFF", 0.08))
-            p.drawRoundedRect(QRectF(0, y + S(17), w, S(3)), 1.5, 1.5)
             p.setBrush(ui.accent)
-            p.drawRoundedRect(QRectF(0, y + S(17), max(S(3), w * max(0.0, min(1.0, frac))), S(3)), 1.5, 1.5)
+            p.drawRoundedRect(QRectF(0, track.top(), max(S(3), w * frac), track.height()), 1.5, 1.5)
 
 
 class PerfPage(Page):
@@ -7121,7 +7231,9 @@ class PerfPage(Page):
         lay.addWidget(self.top_seg)
         self.top_list = TopList()
         lay.addWidget(self.top_list)
-        self._top_data = ([], [])
+        self.top_me = Label("", 10.5, TEXT_FAINT)
+        lay.addWidget(self.top_me)
+        self._top_data = ([], [], 0.0, 0.0)
         self.top = extras.TopApps()
         self.top.setParent(self)
         self.top.ready.connect(self._top_ready)
@@ -7194,19 +7306,31 @@ class PerfPage(Page):
             self.top_seg.set_index(kind)
         self._top_show()
 
-    def _top_ready(self, cpu: list, ram: list) -> None:
-        self._top_data = (cpu, ram)
+    def _top_ready(self, cpu: list, ram: list, me_cpu: float, me_ram: float) -> None:
+        self._top_data = (cpu, ram, me_cpu, me_ram)
         self._top_show()
 
+    @staticmethod
+    def _pct(v: float) -> str:
+        return f"{v:.0f}%" if v >= 9.5 else f"{v:.1f}%"
+
+    @staticmethod
+    def _size(b: float) -> str:
+        return f"{b / 2 ** 30:.1f} GB" if b >= 2 ** 30 else f"{b / 2 ** 20:.0f} MB"
+
     def _top_show(self) -> None:
-        cpu, ram = self._top_data
+        cpu, ram, me_cpu, me_ram = self._top_data
         if self.top_kind == 0:
-            top = max([v for _, v in cpu] + [1.0])
-            rows = [(n, f"{v:.0f}%" if v >= 9.5 else f"{v:.1f}%", v / top) for n, v in cpu]
+            rows = [(n, self._pct(v), v / 100.0) for n, v in cpu]
+            me = self._pct(me_cpu)
         else:
-            top = max([b for _, b in ram] + [1])
-            rows = [(n, f"{b / 2 ** 30:.1f} GB" if b >= 2 ** 30 else f"{b / 2 ** 20:.0f} MB", b / top) for n, b in ram]
+            import psutil
+            total = max(1, psutil.virtual_memory().total)
+            rows = [(n, self._size(b), b / total) for n, b in ram]
+            me = self._size(me_ram)
         self.top_list.set_rows(rows)
+        if self._top_data[0] or self._top_data[1]:
+            self.top_me.set_text(tr("Rubenium itself: {v}", v=me))
 
     def _hud_reset(self) -> None:
         pass
@@ -7495,6 +7619,17 @@ class SettingsPage(Page):
                          marks=list(range(70, 151, 10)))
         size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
         lay.addWidget(size)
+
+        lay.addWidget(heading(tr("Audio")))
+
+        def sounds(v: bool) -> None:
+            cfg["sounds"] = v
+            sfx.enabled = v
+            if v:
+                sfx.play("on")                      # a sample of how quiet they are
+        snd = Toggle(cfg["sounds"])
+        snd.toggled_by_user.connect(sounds)
+        lay.addWidget(row(tr("Interface sounds"), snd))
 
         lay.addWidget(heading(tr("Ball")))
         self.preview = BallPreview(ctx)
@@ -7927,6 +8062,8 @@ class ThemesPage(Page):
     def _unlock_pick(self, tile) -> None:
         if self.ctx.usage_hours() < tile.style["hours"]:
             return self.ctx.toast(tr("Unlocks after {n} h of use", n=tile.style["hours"]), "warn")
+        if self.ctx.cfg[tile.key] != tile.style["id"]:
+            sfx.play("pick")
         self.ctx.cfg[tile.key] = tile.style["id"]
         self.ctx.window.ball.update()
         for t in self.unlocks:
@@ -7941,6 +8078,8 @@ class ThemesPage(Page):
         drawer = self.ctx.window.drawer
         if self.ctx.usage_hours() >= th["hours"]:
             drawer.close_now()
+            if self.ctx.cfg["theme"] != th["id"]:
+                sfx.play("pick")
             self.ctx.set_theme(th["id"])
         elif drawer.is_open() and drawer.theme is th:
             drawer.close_drawer()
@@ -8343,8 +8482,10 @@ class RocketPage(Page):
         desired = self._shown()
         key = extras.rl_key(item)
         if desired.get(key) == item["id"]:
+            sfx.play("off")
             desired.pop(key)                       # off: the original comes back
         else:
+            sfx.play("on")
             if key in desired:                     # two swaps of the same item cannot be on together
                 self.ctx.toast(tr("Only one swap at a time for {name}", name=item["old"]), "warn")
             desired[key] = item["id"]
@@ -9122,6 +9263,7 @@ class Welcome(QWidget):
         if self.phase != "card":
             return
         self.phase = "fold"
+        sfx.play("on")
         self.setCursor(Qt.CursorShape.ArrowCursor)
         self.hover.to(0.0, 120)
         self.fold.to(1.0, 520)
@@ -9880,7 +10022,8 @@ class MainWindow(QWidget):
             self._retime()
 
     def _retime(self) -> None:
-        """Animation clock: 60 fps for the card, 30 for the ball, nothing in exclusive fullscreen."""
+        """Animation clock. The glow only needs to be smooth when it follows music: 60 fps on the open card while
+        music plays, 30 otherwise, 20 for the breathing ball, nothing in exclusive fullscreen. Keeps Rubenium light."""
         if self.game_state == 2:
             self._pulse.stop()
             self._spark_timer.stop()
@@ -9890,7 +10033,11 @@ class MainWindow(QWidget):
         else:
             self._spark_timer.stop()
         if self.ctx.cfg["halo"]:
-            ms = 16 if self.expanded else 33
+            music = self.ctx.state.status is Status.PLAYING
+            if self.expanded:
+                ms = 16 if music else 33
+            else:
+                ms = 33 if music else 50
             if self.game_state == 1:
                 ms = 66
         else:
@@ -9914,6 +10061,10 @@ class MainWindow(QWidget):
             self.body.update(self.body.dots_rect())
 
     def on_state(self, st) -> None:
+        playing = st.status is Status.PLAYING
+        if playing != getattr(self, "_was_playing", None):
+            self._was_playing = playing
+            self._retime()
         for page in self.each_page():
             page.on_state(st)
         if self.body.isVisible():
@@ -10164,6 +10315,7 @@ class App(QObject):
         self._news = False
         set_lang(self.cfg["lang"] or ("fr" if QLocale.system().language() == QLocale.Language.French else "en"))
         apply_look(self.cfg)
+        sfx.enabled = bool(self.cfg["sounds"])
         self.welcome = None
         self._preview = ""
         self._apps = None
@@ -10307,14 +10459,10 @@ class App(QObject):
         if self.cfg["display"]["active"] in ("A", "B") and not self._closing:
             self.display.apply()
 
-    def _selftest_update(self, new_exe: str) -> None:
-        try:
-            path = extras.place_exe(Path(new_exe), "999.0.0" if os.environ.get("RUBENIUM_TEST_SIDE") else VERSION)
-            log.info("UPDATE SWAP OK %s", path)
-            ok = extras.restart(path, ("--selftest",))
-        except Exception:  # noqa: BLE001
-            log.exception("UPDATE SWAP FAILED")
-            ok = False
+    def _selftest_update(self, setup: str) -> None:
+        """Build test: update exactly like the Update button does (silent setup, then the new app starts)."""
+        ok = extras.run_setup(setup, "--selftest")
+        log.info("UPDATE SETUP %s", "STARTED" if ok else "FAILED")
         self.shutdown()
         self.qapp.exit(0 if ok else 1)
 
@@ -10349,6 +10497,18 @@ class App(QObject):
                 QTimer.singleShot(900, lambda: run(i + 1))
                 return
             sys.excepthook = old_hook
+            if win.IS_WIN:                          # the Stats tab's process reader must work on real Windows
+                snap = win.process_snapshot()
+                log.info("SELFTEST processes read: %s", None if snap is None else len(snap))
+                if not snap or len(snap) < 10 or not any(n.lower() == "explorer.exe" or n.lower().startswith("rubenium")
+                                                         for _p, n, _c, _m in snap):
+                    errors.append(RuntimeError("process snapshot failed"))
+                try:
+                    sfx.enabled = True
+                    sfx.play("on")                  # the sound files can be made and played
+                    log.info("SELFTEST sound file: %s", sfx._files.get("on"))
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(exc)
             log.info("SELFTEST %s (%d problems)", "OK" if not errors else "FAILED", len(errors))
             self.shutdown()
             self.qapp.exit(1 if errors else 0)
@@ -10676,8 +10836,9 @@ class App(QObject):
 
     def _update_ready(self, path: str) -> None:
         self.window.show_busy(tr("Restarting…"))
-        if extras.restart(path):
-            QTimer.singleShot(400, self.quit)
+        started = extras.run_setup(path) if path.lower().endswith(".exe") else extras.restart(path)
+        if started:
+            QTimer.singleShot(400, self.quit)        # the setup waits for Rubenium to close, then installs
         else:
             self.window.end_busy(lambda: self.toast(tr("Update installed. Restart Rubenium."), "ok"))
 
@@ -10695,6 +10856,7 @@ class App(QObject):
         self.apply_timer()
         set_lang(self.cfg["lang"] or "en")
         apply_look(self.cfg)
+        sfx.enabled = bool(self.cfg["sounds"])
         self.media.set_preferred(self.cfg["source"])
         self.refresh_accent()
         self.rebuild_ui()
@@ -10776,8 +10938,6 @@ class App(QObject):
 
 def main() -> int:
     setup_logging()
-    if extras.handoff(VERSION):                     # a newer copy installed by the updater takes over
-        return 0
     if not win.single_instance(wait=8.0 if ("--elevated" in sys.argv or "--updated" in sys.argv) else 0.0):
         return 0
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
