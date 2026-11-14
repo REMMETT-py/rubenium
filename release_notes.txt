@@ -1,11 +1,11 @@
-Rubenium 1.0
+Rubenium 1.1
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-- Hold to open: hold the ball to open Rubenium, so it never opens by accident in a game. The hold time is in Settings, and it can be switched off.
-- Hold the menu for a moment to move it.
-- RL Swap: 9 new swaps (Lantern Lift, Monsoon, Cosmological, Strongline, Ombre, Sparkles, Anodized Pearl, Electric and S21 SSL banners), separate Fennec and Octane decals, and a Paint finishes section.
-- Apps: open apps move to the top.
-- Themes: new white styles for the R (Echo, Stripes).
-- Updates tab: the full history of every version.
+- Themes rebuilt: one night sky that fills with stars as the hours go by, then turns to gold (2, 6, 12, 24, 48, 72, 100, 150, 200 and 250 h).
+- Colours: pick any colour on a colour line, and add a second colour after 24 h. "Use the colours of the music" is now at the top of Themes.
+- Ball: R styles Classic, Outline, Echo, Gold; rings Dots, Line, Comet, Gold.
+- Rubenium start screen when Rocket League and Fortnite load (can be switched off in Settings > Games).
+- Softer interface sounds, a smooth menu size change, and a new app icon.
+- RL Swap: the Electric banner now replaces the Diamond Tile banner.

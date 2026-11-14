@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.0 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.1 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1305,8 +1305,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.0"         # the version people see
-BUILD = "2026.11.14.3"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "1.1"         # the version people see
+BUILD = "2026.11.14.4"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -1372,6 +1372,7 @@ class _UI:
     """Live theme state: every widget reads these at paint time."""
     scale = 1.0
     accent = QColor(ACCENT_DEFAULT)
+    accent2 = None          # optional second colour (QColor), mixed into the outline and the header
     bg_top = QColor(BG_TOP)
     bg_bottom = QColor(BG_BOTTOM)
     ball = 1.0              # size of the ball, on top of the UI scale
@@ -1429,10 +1430,10 @@ class Sfx:
     """Very quiet, soft interface sounds (switch on, switch off, pick). Made in code once, cached as .wav files.
     Only for things you change, never for hovering."""
     RATE = 44100
-    SOUNDS = {          # (start Hz, end Hz, length s, loudness 0-1)
-        "on": (740.0, 1110.0, 0.12, 0.060),
-        "off": (880.0, 590.0, 0.11, 0.050),
-        "pick": (1240.0, 1180.0, 0.06, 0.035),
+    SOUNDS = {          # (start Hz, end Hz, length s, loudness 0-1): low, round and short
+        "on": (330.0, 440.0, 0.17, 0.050),
+        "off": (392.0, 294.0, 0.16, 0.045),
+        "pick": (494.0, 466.0, 0.09, 0.030),
     }
 
     def __init__(self) -> None:
@@ -1446,7 +1447,7 @@ class Sfx:
         import wave
         f0, f1, length, gain = self.SOUNDS[name]
         folder = DATA_DIR / "sounds"
-        path = folder / f"{name}_1.wav"                 # bump the number when a sound changes
+        path = folder / f"{name}_2.wav"                 # bump the number when a sound changes
         if not path.is_file():
             folder.mkdir(parents=True, exist_ok=True)
             n = int(self.RATE * length)
@@ -1455,8 +1456,9 @@ class Sfx:
                 t = i / n
                 freq = f0 + (f1 - f0) * (1 - (1 - t) ** 3)          # glides, then settles
                 phase += 2 * math.pi * freq / self.RATE
-                env = min(1.0, i / (0.004 * self.RATE)) * math.exp(-5.0 * t) * min(1.0, (n - i) / (0.01 * self.RATE))
-                v = math.sin(phase) + 0.18 * math.sin(2 * phase)          # a touch of warmth
+                attack = min(1.0, i / (0.018 * self.RATE))
+                env = (0.5 - 0.5 * math.cos(math.pi * attack)) * math.exp(-4.2 * t) * min(1.0, (n - i) / (0.03 * self.RATE))
+                v = math.sin(phase)                                       # a pure tone: nothing sharp in it
                 frames += struct.pack("<h", int(max(-1.0, min(1.0, v * env * gain)) * 32767))
             tmp = path.with_suffix(".tmp")
             with wave.open(str(tmp), "wb") as w:
@@ -1526,10 +1528,13 @@ DEFAULTS: dict = {
     "backdrop": 0,
     "corners": 0,
     "ball_style": "classic",
-    "ring_style": "line",
+    "ring_style": "dots",
     "news_tab": False,
     "welcome": True,
     "sounds": True,
+    "accent2": "#B56BFF",
+    "accent2_on": False,
+    "splash": True,
     "hold_open": True,
     "hold_ms": 400,
     "unlock_all": False,
@@ -2057,6 +2062,22 @@ FR = {
     "Settings saved in Documents": "Réglages enregistrés dans Documents",
     "First version: music, lyrics, crosshair, screen colours and tools in one glowing ball":
         "Première version : musique, paroles, viseur, couleurs d'écran et outils dans une bulle lumineuse",
+    # 1.1
+    "First Stars": "Premières étoiles", "Starfield": "Ciel étoilé", "Constellation": "Constellation", "Nova": "Nova",
+    "Gilded": "Doré", "Royal": "Royal",
+    "Use the colours of the music": "Utiliser les couleurs de la musique", "Your colour": "Votre couleur",
+    "Second colour": "Deuxième couleur", "Games": "Jeux", "Rubenium start screen": "Écran de démarrage Rubenium",
+    "Themes rebuilt: one night sky that fills with stars, then turns to gold":
+        "Thèmes refaits : un ciel de nuit qui se remplit d'étoiles, puis devient doré",
+    "Pick any colour on a colour line, and add a second colour after 24 h":
+        "Choisissez n'importe quelle couleur sur une ligne, et ajoutez-en une deuxième après 24 h",
+    "New ball styles, with a gold ring": "Nouveaux styles de bulle, avec un anneau doré",
+    "Rubenium start screen when Rocket League and Fortnite load":
+        "Écran de démarrage Rubenium au lancement de Rocket League et Fortnite",
+    "Softer interface sounds": "Sons d'interface plus doux",
+    "The menu size changes smoothly": "La taille du menu change en douceur",
+    "New app icon": "Nouvelle icône",
+    "New swap: Diamond Tile banner to Electric": "Nouveau swap : bannière Diamond Tile vers Electric",
 }
 
 
@@ -4638,30 +4659,37 @@ log = logging.getLogger("rubenium.extras")
 # Themes: background designs, sparkles and glow, unlocked by hours of use.
 # They never change the colour (the music / your accent does), so they always show.
 # --------------------------------------------------------------------------- #
-THEMES = [      # in unlock order: each one is a little richer than the one before
-    dict(id="clean", name="Clean", hours=0, layers=[]),
-    dict(id="dots", name="Dots", hours=1, layers=["dots"]),
-    dict(id="grid", name="Grid", hours=2, layers=["grid"]),
-    dict(id="lines", name="Lines", hours=5, layers=["lines"]),
-    dict(id="hex", name="Hive", hours=8, layers=["hex"]),
-    dict(id="waves", name="Waves", hours=12, layers=["waves"]),
-    dict(id="rings", name="Sonar", hours=18, layers=["rings"]),
-    dict(id="glow", name="Radiance", hours=25, layers=["glow"], glow=1.2),
-    dict(id="circuit", name="Circuit", hours=32, layers=["glow", "circuit"], glow=1.2),
-    dict(id="stars", name="Stars", hours=40, layers=["glow"], sparkles=7, glow=1.25),
-    dict(id="comet", name="Comets", hours=50, layers=["glow", "comet"], sparkles=3, glow=1.3),
-    dict(id="aurora", name="Aurora", hours=62, layers=["aurora"], sparkles=4, glow=1.3),
-    dict(id="nebula", name="Nebula", hours=75, layers=["aurora", "hex"], sparkles=9, glow=1.35),
-    dict(id="mythic", name="Mythic", hours=100, layers=["glow", "lines"], sparkles=6, glow=1.4, edge="shine"),
-    dict(id="legend", name="Legend", hours=150, layers=["glow", "lines"], sparkles=8, glow=1.45, edge="gold"),
+def _theme(ident, name, hours, glow=0, stars=0, links=0, comets=0, aurora=False, gold=0.0, sparkles=0,
+           halo=1.0, edge=""):
+    return dict(id=ident, name=name, hours=hours, layers=bool(glow or stars), glow_n=glow, stars=stars, links=links,
+                comets=comets, aurora=aurora, gold=gold, sparkles=sparkles, glow=halo, edge=edge)
+
+
+# One night sky that fills up as the hours go by: first a glow, then stars, then lines between them, comets, a
+# second light, and from 100 h more and more gold. Every theme keeps everything the one before it had.
+THEMES = [
+    _theme("clean", "Clean", 0),
+    _theme("glow", "Glow", 2, glow=1),
+    _theme("stars", "First Stars", 6, glow=1, stars=14),
+    _theme("starfield", "Starfield", 12, glow=1, stars=34, sparkles=3),
+    _theme("constellation", "Constellation", 24, glow=2, stars=42, links=7, sparkles=4, halo=1.1),
+    _theme("comets", "Comets", 48, glow=2, stars=48, links=8, comets=3, sparkles=5, halo=1.15),
+    _theme("aurora", "Aurora", 72, glow=2, stars=56, links=9, comets=3, aurora=True, sparkles=6, halo=1.2),
+    _theme("nova", "Nova", 100, glow=2, stars=60, links=10, comets=4, aurora=True, gold=0.35, sparkles=7, halo=1.25,
+           edge="shine"),
+    _theme("gilded", "Gilded", 150, glow=2, stars=64, links=11, comets=4, aurora=True, gold=0.6, sparkles=9,
+           halo=1.3, edge="gold"),
+    _theme("royal", "Royal", 200, glow=3, stars=68, links=12, comets=5, aurora=True, gold=0.85, sparkles=11,
+           halo=1.4, edge="goldshine"),
+    _theme("legend", "Legend", 250, glow=3, stars=76, links=14, comets=6, aurora=True, gold=1.0, sparkles=14,
+           halo=1.5, edge="legend"),
 ]
 # Small extras that also unlock with time: the look of the R and of the song ring on the ball.
-R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="outline", name="Outline", hours=3),
-            dict(id="echo", name="Echo", hours=15), dict(id="slice", name="Stripes", hours=45),
-            dict(id="gold", name="Gold", hours=90)]
-RING_STYLES = [dict(id="line", name="Line", hours=0), dict(id="dash", name="Dashes", hours=10),
-               dict(id="dots", name="Dots", hours=30), dict(id="comet", name="Comet", hours=60),
-               dict(id="aura", name="Aura", hours=120)]
+R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="outline", name="Outline", hours=6),
+            dict(id="echo", name="Echo", hours=24), dict(id="gold", name="Gold", hours=100)]
+RING_STYLES = [dict(id="dots", name="Dots", hours=0), dict(id="line", name="Line", hours=12),
+               dict(id="comet", name="Comet", hours=48), dict(id="gold", name="Gold", hours=150)]
+SECOND_COLOUR_HOURS = 24
 
 
 def unlocked_style(styles: list, ident: str, hours: float) -> str:
@@ -4692,7 +4720,6 @@ def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now:
     path = QPainterPath()
     path.addText(QPointF(box.center().x() - tb.width() / 2 - tb.left(), box.center().y() - tb.height() / 2 - tb.top()),
                  f, "R")
-    tb_top = box.center().y() - tb.height() / 2
     p.save()
     if style == "outline":
         pen = QPen(QColor(TEXT), max(1.2, d * 0.028))
@@ -4714,24 +4741,6 @@ def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now:
         p.setPen(pen)
         p.setBrush(QColor("#0A0D0E"))
         p.drawPath(path.translated(-step * 0.5, -step * 0.5))
-    elif style == "slice":                             # white letter cut into fine stripes, inside an outline
-        p.save()
-        p.setClipPath(path)
-        p.setPen(Qt.PenStyle.NoPen)
-        bar, gap = max(1.0, d * 0.030), max(1.0, d * 0.024)
-        y, n = box.top(), 0
-        while y < box.bottom():
-            fade = 1.0 - 0.55 * max(0.0, min(1.0, (y - tb_top) / max(1.0, tb.height())))
-            p.setBrush(alpha(TEXT, fade))
-            p.drawRect(QRectF(box.left(), y, box.width(), bar))
-            y += bar + gap
-            n += 1
-        p.restore()
-        pen = QPen(QColor(TEXT), max(1.0, d * 0.018))
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        p.setPen(pen)
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawPath(path)
     else:                                               # gold
         g = QLinearGradient(box.topLeft(), box.bottomRight())
         g.setColorAt(0.25, QColor("#FFF1C2"))
@@ -4775,17 +4784,17 @@ def paint_ring(p: QPainter, ring: QRectF, style: str, frac: float, accent: QColo
         p.setPen(ring_pen(style, accent, width))
         p.drawArc(ring, 90 * 16, span)
         return
-    # comet / aura: the arc fades in from its start and ends in a bright head
-    # Qt's conical gradient runs anticlockwise from the top; the arc runs clockwise from the top, so the arc
-    # covers positions 1 - frac (its head) up to 1.0 (its start).
-    g = QConicalGradient(ring.center(), 90.0)
-    faded = alpha(accent, 0.04 if style == "comet" else 0.30)
+    # comet / gold: the arc fades in from its start and ends in a bright head
+    gold = style == "gold"
+    col = QColor(GOLD) if gold else accent
+    g = QConicalGradient(ring.center(), 90.0)        # runs anticlockwise from the top; the arc covers 1-frac .. 1
+    faded = alpha(QColor("#8A6A22") if gold else col, 0.35 if gold else 0.04)
     g.setColorAt(0.0, faded)
-    g.setColorAt(max(0.001, min(0.998, 1.0 - frac)), alpha(accent, 1.0))
+    g.setColorAt(max(0.001, min(0.998, 1.0 - frac)), alpha(QColor("#FFF1C2") if gold else col, 1.0))
     g.setColorAt(1.0, faded)
-    if style == "aura":                                  # soft light under the line
-        for w, a in ((width * 3.2, 0.10), (width * 2.0, 0.16)):
-            pen = QPen(alpha(accent, a), w)
+    if gold:                                             # warm light under the line
+        for w, a in ((width * 3.4, 0.10), (width * 2.1, 0.18)):
+            pen = QPen(alpha(col, a), w)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             p.setPen(pen)
             p.drawArc(ring, 90 * 16, span)
@@ -4794,10 +4803,23 @@ def paint_ring(p: QPainter, ring: QRectF, style: str, frac: float, accent: QColo
     p.setPen(pen)
     p.drawArc(ring, 90 * 16, span)
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(alpha(accent, 0.35))
+    p.setBrush(alpha(col, 0.35))
     p.drawEllipse(head, width * 1.6, width * 1.6)
-    p.setBrush(mix(accent, QColor("#FFFFFF"), 0.7))
-    p.drawEllipse(head, width * 0.75, width * 0.75)
+    if gold:                                             # the head is a small four-point star
+        from PyQt6.QtGui import QPainterPath
+        r1, r2 = width * 2.3, width * 0.6
+        star = QPainterPath()
+        for n in range(8):
+            ang = math.radians(45 * n)
+            rr = r1 if n % 2 == 0 else r2
+            pt = QPointF(head.x() + rr * math.cos(ang), head.y() + rr * math.sin(ang))
+            star.lineTo(pt) if n else star.moveTo(pt)
+        star.closeSubpath()
+        p.setBrush(QColor("#FFF6D8"))
+        p.drawPath(star)
+    else:
+        p.setBrush(mix(accent, QColor("#FFFFFF"), 0.7))
+        p.drawEllipse(head, width * 0.75, width * 0.75)
 
 
 GOLD = "#E8C26A"
@@ -4808,141 +4830,103 @@ def theme_by_id(ident: str) -> dict:
     return next((t for t in THEMES if t["id"] == ident), THEMES[0])
 
 
-def _draw_layer(p: QPainter, layer: str, w: float, h: float, accent: QColor, unit: float) -> None:
-    """One quiet background layer. Patterns start one card-padding in from the left edge so they line up
-    with the content; a fade applied afterwards keeps them in the header area only."""
+def theme_colour(theme: dict, accent: QColor) -> QColor:
+    """The colour a theme draws with: your colour, turning to gold in the last themes."""
+    return mix(accent, QColor(GOLD), theme.get("gold", 0.0))
+
+
+def _sky(theme: dict, w: float, h: float, unit: float) -> list:
+    """Star positions. The same sky for every theme: a richer theme simply shows more of it."""
+    import random
+    rnd = random.Random(2008)
+    stars = [(rnd.uniform(0.03, 0.97), rnd.uniform(0.05, 0.92), rnd.uniform(0.55, 1.35), rnd.uniform(0.35, 0.95))
+             for _ in range(80)]
+    return [(x * w, y * h, r * unit, a) for x, y, r, a in stars[:theme.get("stars", 0)]]
+
+
+def _draw_theme(p: QPainter, theme: dict, w: float, h: float, accent: QColor, second, unit: float) -> None:
     from PyQt6.QtCore import QPointF
-    from PyQt6.QtGui import QPainterPath, QRadialGradient
-    pad = 14 * unit
-    if layer == "grid":
-        p.setPen(QPen(alpha(accent, 0.11), 1))
-        step = 16 * unit
-        x = pad
-        while x < w:
-            p.drawLine(QPointF(x, 0), QPointF(x, h))
-            x += step
-        y = step
-        while y < h:
-            p.drawLine(QPointF(0, y), QPointF(w, y))
-            y += step
-    elif layer == "dots":
+    from PyQt6.QtGui import QLinearGradient, QRadialGradient
+    col = theme_colour(theme, accent)
+    gold = theme.get("gold", 0.0)
+    white = QColor("#FFFFFF")
+    if second is not None:
+        other = mix(second, QColor(GOLD), gold * 0.5)
+    else:
+        shifted = QColor.fromHsvF((max(0.0, accent.hsvHueF()) + 0.14) % 1.0, max(0.35, accent.hsvSaturationF()),
+                                  max(0.6, accent.valueF()))
+        other = mix(shifted, QColor("#FFD98A"), gold)
+    p.setPen(Qt.PenStyle.NoPen)
+    n = theme.get("glow_n", 0)
+    if n:                                                # light from the top-left corner
+        g = QRadialGradient(QPointF(w * 0.16, -h * 0.05), w * (0.55 + 0.1 * n))
+        g.setColorAt(0, alpha(col, 0.12 + 0.05 * n))
+        g.setColorAt(1, alpha(col, 0.0))
+        p.setBrush(g)
+        p.drawRect(QRectF(0, 0, w, h))
+    if theme.get("aurora") or second is not None:        # a second light from the other corner
+        g = QRadialGradient(QPointF(w * 0.86, -h * 0.12), w * 0.6)
+        g.setColorAt(0, alpha(other, 0.24 if theme.get("aurora") else 0.16))
+        g.setColorAt(1, alpha(other, 0.0))
+        p.setBrush(g)
+        p.drawRect(QRectF(0, 0, w, h))
+    sky = _sky(theme, w, h, unit)
+    links = theme.get("links", 0)
+    if links and len(sky) > 3:                           # lines between the brightest stars
+        bright = sorted(sorted(sky, key=lambda s: -s[3])[:links + 4], key=lambda s: s[0])
+        pen = QPen(alpha(mix(col, white, 0.25), 0.26), max(1.0, 0.8 * unit))
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(pen)
+        drawn = 0
+        for a, b in zip(bright, bright[1:]):
+            if drawn >= links:
+                break
+            if math.hypot(b[0] - a[0], b[1] - a[1]) < w * 0.34:
+                p.drawLine(QPointF(a[0], a[1]), QPointF(b[0], b[1]))
+                drawn += 1
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha(accent, 0.30))
-        step = 12 * unit
-        y = step / 2
-        while y < h:
-            x = pad
-            while x < w:
-                p.drawEllipse(QPointF(x, y), 0.9 * unit, 0.9 * unit)
-                x += step
-            y += step
-    elif layer == "hex":
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.setPen(QPen(alpha(accent, 0.13), 1))
-        r = 9 * unit
-        dx, dy = r * 1.732, r * 1.5
-        row, y = 0, 0.0
-        while y < h + r:
-            x = pad + (dx / 2 if row % 2 else 0.0)
-            while x < w + r:
-                cell = QPainterPath()
-                for k in range(6):
-                    ang = math.radians(60 * k - 90)
-                    pt = QPointF(x + r * math.cos(ang), y + r * math.sin(ang))
-                    cell.lineTo(pt) if k else cell.moveTo(pt)
-                cell.closeSubpath()
-                p.drawPath(cell)
-                x += dx
-            y += dy
-            row += 1
-    elif layer == "rings":
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        c = QPointF(w * 0.80, 0)
-        for n in range(1, 11):
-            p.setPen(QPen(alpha(accent, max(0.03, 0.24 - 0.022 * n)), 1.1))
-            p.drawEllipse(c, n * 15 * unit, n * 15 * unit)
-    elif layer == "circuit":
+    for x, y, r, a in sky:
+        p.setBrush(alpha(mix(white, col, 0.25 + 0.55 * gold), a))
+        p.drawEllipse(QPointF(x, y), r, r)
+        if r > 1.15 * unit:                              # the biggest ones get a soft halo
+            p.setBrush(alpha(col, 0.16))
+            p.drawEllipse(QPointF(x, y), r * 2.6, r * 2.6)
+    comets = theme.get("comets", 0)
+    if comets:
         import random
-        rnd = random.Random(11)
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        step = 12 * unit
-        for _ in range(11):
-            x, y = pad + rnd.randrange(0, max(1, int((w - pad) / step))) * step, rnd.randrange(0, 9) * step
-            trace = QPainterPath(QPointF(x, y))
-            for _seg in range(rnd.randrange(2, 5)):
-                if rnd.random() < 0.5:
-                    x += rnd.choice((-3, -2, 2, 3, 4)) * step
-                else:
-                    y += rnd.choice((1, 2, 3)) * step
-                trace.lineTo(QPointF(x, y))
-            p.setPen(QPen(alpha(accent, 0.20), 1.1))
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawPath(trace)
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(alpha(accent, 0.45))
-            p.drawEllipse(QPointF(x, y), 1.8 * unit, 1.8 * unit)
-    elif layer == "comet":
-        import random
-        from PyQt6.QtGui import QLinearGradient
         rnd = random.Random(5)
-        white = QColor("#FFFFFF")
-        for _ in range(6):
-            x, y = pad + rnd.random() * (w - pad), rnd.random() * h * 0.55
-            length = (26 + rnd.random() * 34) * unit
-            tail = QPointF(x + length, y - length * 0.45)
+        for _ in range(comets):
+            x, y = rnd.uniform(0.08, 0.80) * w, rnd.uniform(0.12, 0.62) * h
+            length = rnd.uniform(26, 54) * unit
+            tail = QPointF(x + length, y - length * 0.42)
             g = QLinearGradient(QPointF(x, y), tail)
-            g.setColorAt(0.0, alpha(mix(accent, white, 0.5), 0.55))
-            g.setColorAt(1.0, alpha(accent, 0.0))
+            g.setColorAt(0.0, alpha(mix(col, white, 0.5), 0.6))
+            g.setColorAt(1.0, alpha(col, 0.0))
             pen = QPen(g, 1.4 * unit)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             p.setPen(pen)
             p.drawLine(QPointF(x, y), tail)
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(alpha(white, 0.75))
+            p.setBrush(alpha(white, 0.8))
             p.drawEllipse(QPointF(x, y), 1.3 * unit, 1.3 * unit)
-    elif layer == "lines":
-        p.setPen(QPen(alpha(accent, 0.12), 1))
-        step = 10 * unit
-        x = -h
-        while x < w:
-            p.drawLine(QPointF(x, h), QPointF(x + h, 0))
-            x += step
-    elif layer == "waves":
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        for n in range(3):
-            path = QPainterPath()
-            base, amp = (18 + n * 16) * unit, (5 + n) * unit
-            for i in range(0, int(w) + 9, 6):
-                y = base + math.sin(i / (38.0 * unit) + n * 1.7) * amp
-                path.lineTo(i, y) if i else path.moveTo(i, y)
-            p.setPen(QPen(alpha(accent, 0.22 - 0.05 * n), 1.2))
-            p.drawPath(path)
-    elif layer == "glow":
-        g = QRadialGradient(QPointF(w * 0.18, 0), w * 0.75)
-        g.setColorAt(0, alpha(accent, 0.20))
-        g.setColorAt(1, alpha(accent, 0.0))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(g)
-        p.drawRect(QRectF(0, 0, w, h))
-    elif layer == "aurora":
-        other = QColor.fromHsvF((max(0.0, accent.hsvHueF()) + 0.14) % 1.0,
-                                max(0.35, accent.hsvSaturationF()), max(0.6, accent.valueF()))
-        p.setPen(Qt.PenStyle.NoPen)
-        for cx, col in ((0.15, accent), (0.85, other)):
-            g = QRadialGradient(QPointF(w * cx, -h * 0.15), w * 0.6)
-            g.setColorAt(0, alpha(col, 0.22))
-            g.setColorAt(1, alpha(col, 0.0))
-            p.setBrush(g)
-            p.drawRect(QRectF(0, 0, w, h))
+    if gold >= 0.6:                                      # fine gold dust along the top
+        import random
+        rnd = random.Random(31)
+        for _ in range(int(40 * gold)):
+            p.setBrush(alpha(GOLD, rnd.uniform(0.15, 0.5)))
+            r = rnd.uniform(0.35, 0.8) * unit
+            p.drawEllipse(QPointF(rnd.uniform(0, w), rnd.uniform(0, h * 0.5) ** 1.0), r, r)
 
 
 def theme_pattern(theme: dict, w: int, h: int, accent: QColor, dpr: float, unit: float, band: float = 0.0):
-    """Cached pixmap of a theme's layers, faded out below `band` pixels (None for a plain theme)."""
+    """Cached pixmap of a theme's background, faded out below `band` pixels (None when there is nothing)."""
     from PyQt6.QtGui import QLinearGradient, QPixmap
-    if not theme["layers"] or w < 2 or h < 2:
+    second = ui.accent2
+    if (not theme["layers"] and second is None) or w < 2 or h < 2:
         return None
     band = band or h
-    key = (theme["id"], w, h, accent.rgb(), round(dpr * 100), round(unit * 100), round(band))
+    key = (theme["id"], w, h, accent.rgb(), second.rgb() if second is not None else 0, round(dpr * 100),
+           round(unit * 100), round(band))
     pm = _pattern_cache.get(key)
     if pm is None:
         if len(_pattern_cache) > 40:
@@ -4952,8 +4936,7 @@ def theme_pattern(theme: dict, w: int, h: int, accent: QColor, dpr: float, unit:
         pm.fill(Qt.GlobalColor.transparent)
         p = QPainter(pm)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        for layer in theme["layers"]:
-            _draw_layer(p, layer, w, min(h, band), accent, unit)
+        _draw_theme(p, theme, w, min(h, band), accent, second, unit)
         fade = QLinearGradient(0, 0, 0, band)                 # strongest under the header, gone below it
         fade.setColorAt(0.0, QColor(0, 0, 0, 255))
         fade.setColorAt(0.55, QColor(0, 0, 0, 150))
@@ -4966,27 +4949,28 @@ def theme_pattern(theme: dict, w: int, h: int, accent: QColor, dpr: float, unit:
 
 
 def theme_sparkles(theme: dict, w: float, h: float, band: float = 0.0) -> list:
-    """[(x, y, size, phase, speed)], stable for a theme; kept inside the header band."""
+    """[(x, y, size, phase, speed, gold)] twinkling stars, stable for a theme; kept inside the header band."""
     import random
     n = theme.get("sparkles", 0)
     if not n:
         return []
     band = min(h, band or h)
-    rnd = random.Random(theme["id"])
+    rnd = random.Random(77)                                    # the same ones in every theme, just more of them
     return [(rnd.uniform(0.06, 0.94) * w, rnd.uniform(0.10, 0.85) * band, rnd.uniform(1.4, 2.6),
-             rnd.uniform(0, 6.28), rnd.uniform(0.6, 1.2)) for _ in range(n)]
+             rnd.uniform(0, 6.28), rnd.uniform(0.6, 1.2), theme.get("gold", 0.0)) for _ in range(n)]
 
 
 def paint_sparkles(p: QPainter, sparks: list, ox: float, oy: float, accent: QColor, now: float, unit: float) -> None:
     from PyQt6.QtCore import QPointF
     white = QColor("#FFFFFF")
-    for x, y, size, phase, speed in sparks:
+    for x, y, size, phase, speed, gold in sparks:
         b = max(0.0, math.sin(now * speed + phase)) ** 3
         if b < 0.03:
             continue
+        col = mix(accent, QColor(GOLD), gold)
         r = size * unit * (0.6 + 0.4 * b)
         c = QPointF(ox + x, oy + y)
-        pen = QPen(alpha(mix(accent, white, 0.55), 0.6 * b), max(1.0, 0.8 * unit))
+        pen = QPen(alpha(mix(col, white, 0.55 - 0.3 * gold), 0.6 * b), max(1.0, 0.8 * unit))
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         p.setPen(pen)
         p.drawLine(QPointF(c.x() - r, c.y()), QPointF(c.x() + r, c.y()))
@@ -4998,28 +4982,41 @@ def paint_sparkles(p: QPainter, sparks: list, ox: float, oy: float, accent: QCol
 
 def paint_theme_edge(p: QPainter, theme: dict, shape: QRectF, radius: float, level: float, halo: bool,
                      now: float) -> None:
-    """Card outline: plain accent, accent with a travelling light (shine) or gold."""
-    from PyQt6.QtGui import QConicalGradient
+    """Card outline: your colour (two colours if a second one is set), then a travelling light, then gold."""
+    from PyQt6.QtGui import QConicalGradient, QLinearGradient
     p.setBrush(Qt.BrushStyle.NoBrush)
     a = (80 + 110 * level) / 255 if halo else 0.35
     r = shape.adjusted(0.6, 0.6, -0.6, -0.6)
     style = theme.get("edge", "")
-    if style == "shine":
-        p.setPen(QPen(alpha(ui.accent, a), 1.2))
-        p.drawRoundedRect(r, radius, radius)
-        g = QConicalGradient(shape.center(), (now * 40.0) % 360.0)
-        g.setColorAt(0.0, alpha("#FFFFFF", 0.0))
-        g.setColorAt(0.04, alpha(mix(ui.accent, QColor("#FFFFFF"), 0.6), min(1.0, a + 0.25)))
-        g.setColorAt(0.09, alpha("#FFFFFF", 0.0))
-        g.setColorAt(1.0, alpha("#FFFFFF", 0.0))
-        p.setPen(QPen(g, 1.6))
-        p.drawRoundedRect(r, radius, radius)
-    elif style == "gold":
-        p.setPen(QPen(alpha(GOLD, min(1.0, a + 0.15)), 1.3))
-        p.drawRoundedRect(r, radius, radius)
+    golden = style in ("gold", "goldshine", "legend")
+    if golden:
+        base = QLinearGradient(shape.topLeft(), shape.bottomRight())
+        base.setColorAt(0.0, alpha("#FFF1C2", min(1.0, a + 0.2)))
+        base.setColorAt(0.5, alpha(GOLD, min(1.0, a + 0.15)))
+        base.setColorAt(1.0, alpha("#B8862B", min(1.0, a + 0.15)))
+        p.setPen(QPen(base, 1.3))
+    elif ui.accent2 is not None:
+        base = QLinearGradient(shape.topLeft(), shape.bottomRight())
+        base.setColorAt(0.0, alpha(ui.accent, a))
+        base.setColorAt(1.0, alpha(ui.accent2, a))
+        p.setPen(QPen(base, 1.2))
     else:
         p.setPen(QPen(alpha(ui.accent, a), 1.2))
-        p.drawRoundedRect(r, radius, radius)
+    p.drawRoundedRect(r, radius, radius)
+    if style == "legend":                                # a second, fine line just inside
+        inner = shape.adjusted(3.4, 3.4, -3.4, -3.4)
+        p.setPen(QPen(alpha(GOLD, min(1.0, a * 0.55)), 1.0))
+        p.drawRoundedRect(inner, max(0.0, radius - 3.0), max(0.0, radius - 3.0))
+    if style in ("shine", "goldshine", "legend"):        # a light travelling around the outline
+        tint = QColor("#FFF6D8") if golden else mix(ui.accent, QColor("#FFFFFF"), 0.6)
+        for offset in ((0.0, 0.5) if style == "legend" else (0.0,)):
+            g = QConicalGradient(shape.center(), (now * 40.0 + offset * 360.0) % 360.0)
+            g.setColorAt(0.0, alpha("#FFFFFF", 0.0))
+            g.setColorAt(0.04, alpha(tint, min(1.0, a + 0.3)))
+            g.setColorAt(0.09, alpha("#FFFFFF", 0.0))
+            g.setColorAt(1.0, alpha("#FFFFFF", 0.0))
+            p.setPen(QPen(g, 1.7))
+            p.drawRoundedRect(r, radius, radius)
 
 
 # --------------------------------------------------------------------------- #
@@ -5380,6 +5377,14 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("1.1", ["Themes rebuilt: one night sky that fills with stars, then turns to gold",
+             "Pick any colour on a colour line, and add a second colour after 24 h",
+             "New ball styles, with a gold ring",
+             "Rubenium start screen when Rocket League and Fortnite load",
+             "Softer interface sounds",
+             "The menu size changes smoothly",
+             "New app icon",
+             "New swap: Diamond Tile banner to Electric"]),
     ("1.0", ["Hold the ball to open Rubenium, so it never opens by accident in a game",
              "Hold the menu for a moment to move it",
              "9 new swaps, separate Fennec and Octane decals, and a Paint finishes section",
@@ -5461,12 +5466,16 @@ RL_ITEMS = [
          file="playerBanner_RLShield_SF.upk"),
     dict(id="banner_ssl_s21", cat="banner", old="Standard", new="S21 Supersonic Legend",
          file="playerBanner_RLShield_SF.upk"),
-    dict(id="banner_electric", cat="banner", old="Standard", new="Electric", file="playerBanner_RLShield_SF.upk"),
+    dict(id="diamond_electric", cat="banner", old="Diamond Tile", new="Electric",
+         file="playerBanner_DiamondTile_SF.upk"),
 ]
 RL_BY_ID = {it["id"]: it for it in RL_ITEMS}
 RL_EXE = "rocketleague.exe"
 
 
+# Swap files that were in an earlier version and are gone: {hash: game file}. If one is still in the game
+# folder it is recognised and the original is put back.
+RETIRED = {"f1cb440607e0dd4cabfd155b71c29ad444d2d44b7322251455b3f1e1ea30a9fd": "playerBanner_RLShield_SF.upk"}
 ABSENT = "absent"      # marks a swap file the game did not have: switching the swap off removes it
 
 
@@ -5918,6 +5927,7 @@ class RocketSwaps(QObject):
 
     def _customs(self, filename: str) -> set:
         out = {h for h, name in _known_customs().items() if name.lower() == filename.lower()}
+        out |= {h for h, name in RETIRED.items() if name.lower() == filename.lower()}
         for it in RL_ITEMS:
             if it["file"].lower() == filename.lower():
                 src = swap_source(it)
@@ -6125,6 +6135,9 @@ class RocketSwaps(QObject):
         if self.working:
             return
         for plat in self.available():
+            if self._retired_present(plat) and not self.running(plat):
+                self.apply(self.active(plat), quiet=True, plat=plat)       # puts the original back
+                return
             if not self.active(plat):
                 continue
             state = self.check(plat)
@@ -6135,6 +6148,17 @@ class RocketSwaps(QObject):
                 self._noticed = plat + state
                 self.changed.emit()
 
+    def _retired_present(self, plat: str) -> bool:
+        """Is a swap file from an earlier version (no longer offered) still in the game folder?"""
+        want = {rl_key(RL_BY_ID[i]) for i in self.active(plat).values()}
+        for digest, name in RETIRED.items():
+            if name.lower() in want:
+                continue
+            game = self.game_file(plat, name)
+            if game.is_file() and file_hash(game) == digest:
+                return True
+        return False
+
     def _settled(self, plat: str) -> bool:
         """True once the game files have not moved for a minute (an update has finished)."""
         newest = 0.0
@@ -6144,6 +6168,126 @@ class RocketSwaps(QObject):
             except OSError:
                 pass
         return time.time() - newest > 60
+
+
+# --------------------------------------------------------------------------- #
+# Game start screen: the picture Easy Anti-Cheat shows while Rocket League and Fortnite start
+# --------------------------------------------------------------------------- #
+class Splash(QObject):
+    """Replaces EasyAntiCheat\\SplashScreen.png in the game folders with Rubenium's picture (the original is
+    kept and comes back when the setting is switched off). A game update puts its own picture back, so this is
+    checked again from time to time. Only this one picture is touched."""
+    NAME = "SplashScreen.png"
+
+    def __init__(self, cfg, rocket) -> None:
+        super().__init__()
+        self.cfg, self.rocket = cfg, rocket
+        self._busy = False
+        self._targets = None
+        self._timer = QTimer(self)
+        self._timer.setInterval(10 * 60 * 1000)
+        self._timer.timeout.connect(self.sync)
+
+    def start(self) -> None:
+        QTimer.singleShot(6000, self.sync)
+        self._timer.start()
+
+    def stop(self) -> None:
+        self._timer.stop()
+
+    @staticmethod
+    def source():
+        for root in _swap_roots() + [_rl_store() / "swaps"]:
+            f = root / "_splash" / Splash.NAME
+            try:
+                if f.is_file():
+                    return f
+            except OSError:
+                continue
+        return None
+
+    def _roots(self) -> list:
+        roots = [info.get("folder", "") for info in self.rocket.found.values()]
+        program_data = os.environ.get("PROGRAMDATA", r"C:\ProgramData")
+        try:
+            for item in (Path(program_data) / "Epic" / "EpicGamesLauncher" / "Data" / "Manifests").glob("*.item"):
+                try:
+                    data = json.loads(item.read_text(encoding="utf-8", errors="ignore"))
+                except (OSError, ValueError):
+                    continue
+                if str(data.get("AppName", "")) == "Fortnite" or str(data.get("DisplayName", "")).lower() == "fortnite":
+                    roots.append(str(data.get("InstallLocation", "")))
+        except OSError:
+            pass
+        return [r for r in dict.fromkeys(roots) if r and os.path.isdir(r)]
+
+    def _find(self) -> list:
+        """Every EasyAntiCheat*\\SplashScreen.png in the game folders (a short search, a few folders deep)."""
+        found = []
+        skip = {"content", "paks", "cookedpcconsole", "movies", "localization", "engine", "plugins", "saved"}
+        for root in self._roots():
+            level = [root]
+            for _depth in range(5):
+                nxt = []
+                for folder in level:
+                    try:
+                        with os.scandir(folder) as it:
+                            for e in it:
+                                if not e.is_dir(follow_symlinks=False):
+                                    continue
+                                low = e.name.lower()
+                                if low.startswith("easyanticheat"):
+                                    f = os.path.join(e.path, self.NAME)
+                                    if os.path.isfile(f):
+                                        found.append(f)
+                                elif low not in skip:
+                                    nxt.append(e.path)
+                    except OSError:
+                        continue
+                level = nxt[:400]
+        return list(dict.fromkeys(found))
+
+    def sync(self) -> None:
+        if self._busy or not win.IS_WIN:
+            return
+        self._busy = True
+        import threading
+        threading.Thread(target=self._work, args=(bool(self.cfg["splash"]),), daemon=True).start()
+
+    def _work(self, on: bool) -> None:
+        try:
+            self.apply(on, self._find())
+        except Exception as exc:  # noqa: BLE001
+            log.debug("splash: %s", exc)
+        finally:
+            self._busy = False
+
+    def apply(self, on: bool, targets: list) -> int:
+        """Returns how many pictures were changed."""
+        import hashlib
+        src = self.source()
+        if src is None:
+            return 0
+        ours = file_hash(src)
+        keep = _rl_store().parent / "splash_originals"
+        changed = 0
+        for target in targets:
+            backup = keep / (hashlib.sha1(os.path.normcase(target).encode("utf-8")).hexdigest()[:16] + ".png")
+            try:
+                current = file_hash(Path(target))
+                if on and current != ours:
+                    keep.mkdir(parents=True, exist_ok=True)
+                    _atomic_copy(Path(target), backup)             # the game's own picture (also after an update)
+                    _atomic_copy(src, Path(target))
+                    changed += 1
+                elif not on and current == ours and backup.is_file():
+                    _atomic_copy(backup, Path(target))
+                    changed += 1
+            except OSError as exc:
+                log.debug("splash %s: %s", target, exc)
+        if changed:
+            log.info("game start screen: %d picture(s) %s", changed, "set" if on else "restored")
+        return changed
 
 
 # --------------------------------------------------------------------------- #
@@ -7958,19 +8102,19 @@ class SettingsPage(Page):
             return t
 
         lay.addWidget(heading(tr("Opening")))
-        toggle(tr("Hold to open"), "hold_open")
-        hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
-                         marks=list(range(200, 1001, 100)))
+        toggle(tr("Hold to open"), "hold_open", after=lambda v: ctx.reload_page())
+        if cfg["hold_open"]:                           # the time only matters while hold to open is on
+            hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
+                             marks=list(range(200, 1001, 100)))
 
-        def hold_set(v) -> None:
-            cfg["hold_ms"] = int(v)
-        hold.changed.connect(hold_set)
-        lay.addWidget(hold)
+            def hold_set(v) -> None:
+                cfg["hold_ms"] = int(v)
+            hold.changed.connect(hold_set)
+            lay.addWidget(hold)
 
         lay.addWidget(heading(tr("Appearance")))
         toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
         toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
-        toggle(tr("Match album colour"), "accent_from_art", after=lambda v: ctx.refresh_accent())
         toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
         toggle(tr("Welcome screen"), "welcome")
         seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
@@ -7981,6 +8125,9 @@ class SettingsPage(Page):
                          marks=list(range(70, 151, 10)))
         size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
         lay.addWidget(size)
+
+        lay.addWidget(heading(tr("Games")))
+        toggle(tr("Rubenium start screen"), "splash", after=lambda v: ctx.splash.sync())
 
         lay.addWidget(heading(tr("Audio")))
 
@@ -8353,6 +8500,113 @@ class UnlockTile(QAbstractButton):
             p.drawText(QRectF(x + S(13), foot.top(), tw, foot.height()), int(Qt.AlignmentFlag.AlignVCenter), text)
 
 
+class HueLine(QWidget):
+    """A line of colours: click or slide to pick one. `dim` greys it out (the music is choosing the colour);
+    `locked` shows it dark and barred with the hours it needs."""
+    picked = pyqtSignal(str)
+    SAT, VAL = 0.80, 1.0
+
+    def __init__(self, colour: str, locked_hours: int = 0) -> None:
+        super().__init__()
+        self.setFixedHeight(S(30))
+        self.dim = False
+        self.locked = False
+        self.locked_hours = locked_hours
+        self._hue = self._hue_of(colour)
+        self._down = False
+        self._knob = Tween(self, self._hue, self.update)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    @staticmethod
+    def _hue_of(colour: str) -> float:
+        h = QColor(colour).hsvHueF()
+        return max(0.0, min(0.999, h if h >= 0 else 0.58))
+
+    def colour(self) -> QColor:
+        return QColor.fromHsvF(self._hue, self.SAT, self.VAL)
+
+    def set_colour(self, colour: str) -> None:
+        self._hue = self._hue_of(colour)
+        self._knob.to(self._hue, 200)
+
+    def set_state(self, dim: bool, locked: bool) -> None:
+        self.dim, self.locked = dim, locked
+        self.setCursor(Qt.CursorShape.ArrowCursor if (dim or locked) else Qt.CursorShape.PointingHandCursor)
+        self.update()
+
+    def _bar(self) -> QRectF:
+        return QRectF(S(9), self.height() / 2 - S(5), self.width() - S(18), S(10))
+
+    def _pick(self, x: float, glide: bool) -> None:
+        bar = self._bar()
+        self._hue = max(0.0, min(0.999, (x - bar.left()) / max(1.0, bar.width())))
+        self._knob.to(self._hue, 160) if glide else self._knob.jump(self._hue)
+        self.picked.emit(self.colour().name())
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        if e.button() == Qt.MouseButton.LeftButton and not (self.dim or self.locked):
+            self._down = True
+            self._pick(e.position().x(), True)
+        e.accept()                               # never drags the card
+
+    def mouseMoveEvent(self, e) -> None:
+        if self._down:
+            self._pick(e.position().x(), False)
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self._down:
+            self._down = False
+            sfx.play("pick")
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        bar = self._bar()
+        g = QLinearGradient(bar.topLeft(), bar.topRight())
+        for i in range(13):
+            g.setColorAt(i / 12, QColor.fromHsvF(min(0.999, i / 12), self.SAT, self.VAL))
+        off = self.dim or self.locked
+        p.setOpacity(0.16 if self.locked else (0.28 if self.dim else 1.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRoundedRect(bar, bar.height() / 2, bar.height() / 2)
+        p.setOpacity(1.0)
+        if self.locked:                           # dark, barred, with the hours it needs
+            clip = QPainterPath()
+            clip.addRoundedRect(bar, bar.height() / 2, bar.height() / 2)
+            p.save()
+            p.setClipPath(clip)
+            p.setPen(QPen(alpha("#000000", 0.55), S(3)))
+            x = bar.left() - bar.height()
+            while x < bar.right():
+                p.drawLine(QPointF(x, bar.bottom()), QPointF(x + bar.height(), bar.top()))
+                x += S(9)
+            p.restore()
+            text = f"{self.locked_hours} h"
+            p.setFont(font(10.5, QFont.Weight.Bold))
+            tw = p.fontMetrics().horizontalAdvance(text) + S(34)
+            pill = QRectF(bar.center().x() - tw / 2, bar.center().y() - S(10), tw, S(20))
+            p.setPen(QPen(alpha("#FFFFFF", 0.12), 1))
+            p.setBrush(QColor(14, 17, 18))
+            p.drawRoundedRect(pill, S(10), S(10))
+            p.save()
+            p.translate(pill.left() + S(14), pill.center().y())
+            p.scale(S(11) / 20, S(11) / 20)
+            draw_icon(p, "lock", QColor(TEXT_DIM))
+            p.restore()
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(pill.adjusted(S(22), 0, -S(8), 0), int(Qt.AlignmentFlag.AlignCenter), text)
+            return
+        if off:
+            return
+        x = bar.left() + bar.width() * self._knob.level
+        c = QPointF(x, bar.center().y())
+        p.setPen(QPen(QColor("#FFFFFF"), S(2)))
+        p.setBrush(QColor.fromHsvF(max(0.0, min(0.999, self._knob.level)), self.SAT, self.VAL))
+        p.drawEllipse(c, S(8), S(8))
+
+
 class ThemesPage(Page):
     key = "themes"
 
@@ -8360,9 +8614,20 @@ class ThemesPage(Page):
         super().__init__(ctx)
         lay = vbox(self, 8)
         lay.addWidget(heading(tr("Colour")))
-        self.sw = Swatches(ACCENTS, ctx.cfg["custom_accent"] or ACCENT_DEFAULT, per_row=8)
-        self.sw.picked.connect(self._accent)
-        lay.addWidget(self.sw)
+        self.t_music = Toggle(bool(ctx.cfg["accent_from_art"]))
+        self.t_music.toggled_by_user.connect(self._music)
+        lay.addWidget(row(tr("Use the colours of the music"), self.t_music))
+        self.line = HueLine(ctx.cfg["custom_accent"] or ACCENT_DEFAULT)
+        self.line.picked.connect(self._accent)
+        lay.addWidget(Label(tr("Your colour"), 12.5))
+        lay.addWidget(self.line)
+        self.t_second = Toggle(bool(ctx.cfg["accent2_on"]))
+        self.t_second.toggled_by_user.connect(self._second_on)
+        self.second_row = row(tr("Second colour"), self.t_second)
+        lay.addWidget(self.second_row)
+        self.line2 = HueLine(ctx.cfg["accent2"], extras.SECOND_COLOUR_HOURS)
+        self.line2.picked.connect(self._second)
+        lay.addWidget(self.line2)
         lay.addWidget(heading(tr("Style")))
         self.style = {}
         for label, key, names, values in STYLE_ROWS:       # two choices each: (setting value for 1st, 2nd)
@@ -8407,10 +8672,12 @@ class ThemesPage(Page):
         for _label, key, _names, values in STYLE_ROWS:
             self.ctx.set_look(key, values[0])
             self.style[key].set_index(0)
-        self.ctx.cfg["ball_style"], self.ctx.cfg["ring_style"] = "classic", "line"
+        self.ctx.cfg["ball_style"], self.ctx.cfg["ring_style"] = "classic", "dots"
+        self.ctx.cfg["accent2_on"] = False
+        self.t_second.set_checked(False)
         self.ctx.window.ball.update()
         self.ctx.set_theme("clean")
-        self.sw.set_current(ACCENT_DEFAULT)
+        self.line.set_colour(ACCENT_DEFAULT)
         self.ctx.refresh_accent()
         self._refresh()
 
@@ -8428,6 +8695,7 @@ class ThemesPage(Page):
             t.update()
 
     def _refresh(self) -> None:
+        self._lines()
         self.used.set_text(tr("Time used: {t}", t=extras.hours_text(self.ctx.cfg["usage_s"])))
         for c in self.cards:
             c.update()
@@ -8446,8 +8714,34 @@ class ThemesPage(Page):
         self._refresh()
 
     def _accent(self, col: str) -> None:
-        self.ctx.cfg["custom_accent"] = "" if col.upper() == ACCENT_DEFAULT.upper() else col
+        self.ctx.cfg["custom_accent"] = col
         self.ctx.refresh_accent()
+
+    def _music(self, on: bool) -> None:
+        self.ctx.cfg["accent_from_art"] = on
+        self.ctx.refresh_accent()
+        self._lines()
+
+    def _second_on(self, on: bool) -> None:
+        self.ctx.cfg["accent2_on"] = on
+        self.ctx.refresh_accent()
+        self._lines()
+
+    def _second(self, col: str) -> None:
+        self.ctx.cfg["accent2"] = col
+        if not self.ctx.cfg["accent2_on"]:           # picking a colour switches it on
+            self.ctx.cfg["accent2_on"] = True
+            self.t_second.set_checked(True)
+        self.ctx.refresh_accent()
+
+    def _lines(self) -> None:
+        """With the music's colours on, your own colours are greyed out. The second colour unlocks with time."""
+        music = bool(self.ctx.cfg["accent_from_art"])
+        opened = self.ctx.second_colour_open()
+        self.line.set_state(music, False)
+        self.line2.set_state(music, not opened)
+        self.t_second.setEnabled(opened and not music)
+        self.t_second.setVisible(opened)
 
 
 # --------------------------------------------------------------------------- #
@@ -10166,6 +10460,9 @@ class MainWindow(QWidget):
         self._accent_from, self._accent_to = QColor(ui.accent), QColor(ui.accent)
         self.accent_t = Tween(self, 1.0, self._on_accent)
         self.fade = Tween(self, 1.0, self._on_fade)
+        self.zoom = Tween(self, 1.0, self.update, QEasingCurve.Type.OutCubic)
+        self._zoom_from = 1.0
+        self._scale_shown = ui.scale
         self.chrome = Tween(self, 1.0, self._on_chrome, QEasingCurve.Type.InOutCubic)
         self._idle = QTimer(self)
         self._idle.setInterval(150)
@@ -10410,7 +10707,14 @@ class MainWindow(QWidget):
             self._fsnap = snapshot(self.body)                         # the new layout fades in
             self.body.hide()
             self.fade.jump(0.0)
-            self.fade.to(1.0, 240)
+            self._zoom_from = self._scale_shown / ui.scale if ui.scale else 1.0
+            if abs(self._zoom_from - 1.0) > 0.001:                    # a new size glides in from the old one
+                self.zoom.jump(0.0)
+                self.zoom.to(1.0, 320)
+                self.fade.to(1.0, 320)
+            else:
+                self.fade.to(1.0, 240)
+        self._scale_shown = ui.scale
         self.update()
         self.ball.update()
 
@@ -10622,7 +10926,7 @@ class MainWindow(QWidget):
         card, m = self._card_rect(), self._max_l
         region = QRegion()
         pad = S(6)
-        for x, y, _size, _phase, _speed in self._sparks:
+        for x, y, *_rest in self._sparks:
             px, py = m.left() + x, m.top() + y
             if py < card.bottom():
                 region = region.united(QRegion(int(px - pad), int(py - pad), 2 * pad, 2 * pad))
@@ -10732,11 +11036,18 @@ class MainWindow(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         t = max(0.0, min(1.0, self.morph.level))
+        if self.zoom.busy and self._zoom_from != 1.0:       # size changed: the card grows or shrinks into place
+            k = lerp(self._zoom_from, 1.0, self.zoom.level)
+            o = self._max_l.topLeft()
+            p.translate(o.x(), o.y())
+            p.scale(k, k)
+            p.translate(-o.x(), -o.y())
+            p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         shape, radius = self._shape()
         level = self.ctx.glow_level()
         path = paint_shape(p, self.ctx, shape, radius, level, self.devicePixelRatioF())
         th = self.ctx.theme()
-        if t > 0.3 and (th["layers"] or self._sparks):
+        if t > 0.3 and (th["layers"] or self._sparks or ui.accent2 is not None):
             m = self._max_l
             p.save()
             p.setClipPath(path)
@@ -10869,7 +11180,7 @@ from pathlib import Path
 import time
 
 from PyQt6.QtCore import QLocale, QObject, QPointF, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QGuiApplication, QIcon, QImage, QPainter, QPixmap
+from PyQt6.QtGui import QColor, QFont, QGuiApplication, QIcon, QImage, QPainter, QPainterPath, QPixmap
 from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 
@@ -10912,22 +11223,39 @@ def accent_from_image(pixmap: QPixmap):
     return QColor.fromHsvF(hue, sat, 0.93)
 
 
+def r_mark(size: float) -> QPainterPath:
+    """A simple, bold R drawn from shapes (no font needed), for a square of `size` pixels."""
+    from PyQt6.QtCore import QRectF
+    from PyQt6.QtGui import QPolygonF
+    u = size
+    stem = QPainterPath()
+    stem.addRect(QRectF(.30 * u, .24 * u, .13 * u, .52 * u))
+    outer = QPainterPath()
+    outer.addRect(QRectF(.30 * u, .24 * u, .26 * u, .30 * u))
+    bulge = QPainterPath()
+    bulge.addEllipse(QPointF(.56 * u, .39 * u), .15 * u, .15 * u)
+    inner = QPainterPath()
+    inner.addRect(QRectF(.43 * u, .35 * u, .13 * u, .08 * u))
+    hole = QPainterPath()
+    hole.addEllipse(QPointF(.56 * u, .39 * u), .04 * u, .04 * u)
+    leg = QPainterPath()
+    leg.addPolygon(QPolygonF([QPointF(.47 * u, .53 * u), QPointF(.61 * u, .53 * u), QPointF(.74 * u, .76 * u),
+                              QPointF(.60 * u, .76 * u)]))
+    leg.closeSubpath()
+    return stem.united(outer.united(bulge).subtracted(inner.united(hole))).united(leg)
+
+
 def app_icon() -> QIcon:
+    """Black tile, white R."""
     pm = QPixmap(64, 64)
     pm.fill(Qt.GlobalColor.transparent)
     p = QPainter(pm)
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(alpha(ACCENT_DEFAULT, 0.35))
-    p.drawEllipse(QPointF(32, 32), 31, 31)
-    p.setBrush(QColor("#0B0F10"))
-    p.drawEllipse(QPointF(32, 32), 27, 27)
-    f = QFont("Segoe UI")
-    f.setPixelSize(36)
-    f.setWeight(QFont.Weight.ExtraBold)
-    p.setFont(f)
-    p.setPen(QColor(ACCENT_DEFAULT))
-    p.drawText(pm.rect(), int(Qt.AlignmentFlag.AlignCenter), "R")
+    p.setBrush(QColor("#0A0A0A"))
+    p.drawRoundedRect(1, 1, 62, 62, 14, 14)
+    p.setBrush(QColor("#FFFFFF"))
+    p.drawPath(r_mark(64))
     p.end()
     return QIcon(pm)
 
@@ -10974,6 +11302,7 @@ class App(QObject):
         self._audio.setInterval(33)
         self._audio.timeout.connect(self._sample_audio)
         self.rocket = extras.RocketSwaps(self.cfg)
+        self.splash = extras.Splash(self.cfg, self.rocket)
         self.rocket.busy.connect(self._rocket_busy)
         self.rocket.done.connect(self._rocket_done)
         self.rocket.changed.connect(self._rocket_changed)
@@ -11051,6 +11380,7 @@ class App(QObject):
             log.exception("start-up step '%s' failed", name)
 
     def _late_start(self) -> None:
+        self._safe("colours", self.refresh_accent)
         selftest = "--selftest" in sys.argv
         self._safe("media", self.media.start)
         if not selftest:
@@ -11060,6 +11390,7 @@ class App(QObject):
         self._safe("timer", self.apply_timer)
         self._safe("accent", self.refresh_accent)
         self._safe("rocket", self.rocket.start)
+        self._safe("splash", self.splash.start)
         if self.cfg["update_check"] and not selftest:
             self._safe("updates", self.updater.start)
         self._pin = QTimer(self)
@@ -11117,6 +11448,8 @@ class App(QObject):
             self.welcome.launch()
             return QTimer.singleShot(3500, self._selftest)
         steps = [w.expand] + [lambda k=k: w.goto(k) for k, _, _ in TABS]
+        steps += [lambda t=t: self.preview_theme(t["id"]) for t in extras.THEMES]      # every theme paints
+        steps += [lambda: self.preview_theme("")]
         steps += [lambda: self.set_language("fr"), lambda: w.goto("home"), lambda: w.goto("rl"),
                   lambda: self.set_language(lang or "en"), w.collapse, w.expand, w.collapse]
 
@@ -11312,10 +11645,20 @@ class App(QObject):
             return QColor(custom)
         return QColor(ACCENT_DEFAULT)
 
+    def second_colour_open(self) -> bool:
+        return self.unlock_hours() >= extras.SECOND_COLOUR_HOURS
+
     def refresh_accent(self) -> None:
         target = None
         if self.cfg["accent_from_art"] and self.art_pixmap is not None:
             target = accent_from_image(self.art_pixmap)
+        second = QColor(self.cfg["accent2"])
+        # The second colour belongs to your own colours: it is not used while the music picks the colour.
+        use = (self.cfg["accent2_on"] and second.isValid() and self.second_colour_open()
+               and not self.cfg["accent_from_art"])
+        ui.accent2 = second if use else None
+        self.window.update()
+        self.window.ball.update()
         self.window.set_accent(target or self.base_accent())
         for overlay in (self.hud,):
             if overlay.isVisible():
