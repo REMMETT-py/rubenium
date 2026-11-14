@@ -7298,10 +7298,10 @@ class DisplayPage(Page):
         self.seg = Segmented([tr("Default"), tr("Custom")], 1 if eng.manual == "A" else 0)
         self.seg.changed.connect(self._mode)
         lay.addWidget(self.seg)
-        self.hint = Label("", 11, TEXT_DIM, wrap_w=self.W)
-        self.hint.setFixedHeight(S(32))                # two lines in both modes: the card never jumps
-        self.hint.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        lay.addWidget(self.hint)
+        holder = QWidget()                             # room for two lines in both modes: the card never jumps
+        holder.setFixedHeight(S(32))
+        self.hint = Label("", 11, TEXT_DIM, wrap_w=self.W, parent=holder)
+        lay.addWidget(holder)
 
         self.rows: dict = {}
         pct = lambda v: f"{int(v):+d}"  # noqa: E731
