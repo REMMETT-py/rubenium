@@ -5,7 +5,7 @@ name: Release
 on:
   push:
     branches: [main, build-test]
-    paths: ["Rubenium.py", "swaps/**", "release_notes.txt", "release_tag.txt", "Rubenium.spec", "Rubenium-portable.spec", "installer.iss", "requirements.txt",
+    paths: ["Rubenium.py", "swaps/**", "release_notes.txt", "Rubenium.spec", "Rubenium-portable.spec", "installer.iss", "requirements.txt",
             ".github/workflows/release.yml"]
   workflow_dispatch:
 
@@ -30,15 +30,16 @@ jobs:
         id: ver
         shell: python
         run: |
-          import os, re
+          import os, re, sys
           text = open("Rubenium.py", encoding="utf-8").read()
           version = re.search(r'^VERSION = "([0-9][0-9.]*)"', text, re.M).group(1)
           name = re.search(r'^VERSION_NAME = "([0-9][0-9.]*)"', text, re.M)
-          # The tag is normally v<VERSION>. release_tag.txt can set another one: a release meant for older
-          # Rubenium versions needs a tag they read as newer (the app itself goes by the release title).
-          tag = f"v{version}"
-          if os.path.exists("release_tag.txt"):
-              tag = open("release_tag.txt", encoding="utf-8").read().strip() or tag
+          # The release tag is BUILD in Rubenium.py: a date that only ever goes up. Every Rubenium, old or
+          # new, reads a later date as a newer version.
+          build = re.search(r'^BUILD = "([0-9][0-9.]*)"', text, re.M)
+          if not build:
+              sys.exit("Could not find BUILD in Rubenium.py")
+          tag = build.group(1)
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"tag={tag}\n")
               out.write(f"version={version}\n")
@@ -201,4 +202,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.ver.outputs.tag }}" out/* --title "Rubenium ${{ steps.ver.outputs.name }}" --notes-file release_notes.txt --latest
+          gh release create "${{ steps.ver.outputs.tag }}" out/* --title "${{ steps.ver.outputs.tag }} - Rubenium ${{ steps.ver.outputs.name }}" --notes-file release_notes.txt --latest

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.1 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.0 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1304,8 +1304,9 @@ from PyQt6.QtGui import QColor, QFont
 
 
 APP_NAME = "Rubenium"
-VERSION = "1.1.0"            # what the updater compares (major.minor.patch)
-VERSION_NAME = "1.1"         # the version people see
+VERSION = "1.0.0"            # file version of the .exe and setup
+VERSION_NAME = "1.0"         # the version people see
+BUILD = "2026.11.14.3"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -1529,6 +1530,8 @@ DEFAULTS: dict = {
     "news_tab": False,
     "welcome": True,
     "sounds": True,
+    "hold_open": True,
+    "hold_ms": 400,
     "unlock_all": False,
     "card_open": False,
     "seen_version": "",
@@ -2007,6 +2010,53 @@ FR = {
     "Mythic replaces Prism": "Mythique remplace Prisme",
     "New R styles Bloom and Shine, and two new rings: Comet and Aura":
         "Nouveaux styles de R Lueur et Éclat, et deux nouveaux anneaux : Comète et Aura",
+    # 1.0 (final)
+    "Fennec decals": "Stickers Fennec", "Octane decals": "Stickers Octane", "Paint finishes": "Finitions de peinture",
+    "Opening": "Ouverture", "Hold to open": "Maintenir pour ouvrir", "Hold time": "Durée du maintien",
+    "This version": "Cette version", "Echo": "Écho", "Stripes": "Rayures",
+    "Hold the ball to open Rubenium, so it never opens by accident in a game":
+        "Maintenez la bulle pour ouvrir Rubenium : elle ne s'ouvre plus par accident en jeu",
+    "Hold the menu for a moment to move it": "Maintenez le menu un instant pour le déplacer",
+    "9 new swaps, separate Fennec and Octane decals, and a Paint finishes section":
+        "9 nouveaux swaps, stickers Fennec et Octane séparés, et une section Finitions de peinture",
+    "Open apps move to the top of the Apps tab": "Les applis ouvertes remontent en haut de l'onglet Applis",
+    "New white styles for the R": "Nouveaux styles blancs pour le R",
+    "The full update history is in this tab": "Tout l'historique des mises à jour est dans cet onglet",
+    "New swaps and a Player banners section": "Nouveaux swaps et une section Bannières",
+    "The ball stays where you leave it and snaps to corners and edges":
+        "La bulle reste là où vous la laissez et s'aimante aux coins et aux bords",
+    "Clicks go through Rubenium while a game hides or locks the mouse":
+        "Les clics traversent Rubenium quand un jeu cache ou bloque la souris",
+    "Display has just two choices: Default and Custom": "Écran n'a plus que deux choix : Par défaut et Custom",
+    "Apps finds every game installed with Steam or Epic": "Applis trouve tous les jeux installés avec Steam ou Epic",
+    "Rubenium installs like a normal Windows app and updates by itself":
+        "Rubenium s'installe comme une appli Windows normale et se met à jour toute seule",
+    "Soft, quiet interface sounds": "Sons d'interface doux et discrets",
+    "Top apps in Stats, measured like Task Manager":
+        "Applis les plus gourmandes dans Stats, mesurées comme dans le Gestionnaire des tâches",
+    "A picture on every swap": "Une image sur chaque swap",
+    "5 new themes, and styles for the R and the song ring": "5 nouveaux thèmes, et des styles pour le R et l'anneau du titre",
+    "A more reliable Update button": "Un bouton Mettre à jour plus fiable",
+    "Welcome screen with a Launch button": "Écran de bienvenue avec un bouton Lancer",
+    "8 new swaps, and several swaps on at once": "8 nouveaux swaps, et plusieurs swaps actifs en même temps",
+    "Choose your tabs and the size of the ball": "Choisissez vos onglets et la taille de la bulle",
+    "Stronger glow that follows the music": "Halo plus fort qui suit la musique",
+    "Updates from inside the app": "Mises à jour depuis l'appli",
+    "New swap: Big Splash to Adidas": "Nouveau swap : Big Splash vers Adidas",
+    "Rocket League swaps for Steam and Epic, with backups of the original files":
+        "Swaps Rocket League pour Steam et Epic, avec sauvegarde des fichiers d'origine",
+    "The menu bar hides when you are not using it": "La barre de menu se cache quand vous ne l'utilisez pas",
+    "6 save slots for crosshairs": "6 emplacements pour les viseurs",
+    "New tabs: Stats, Timer, Apps, Themes and Rocket League":
+        "Nouveaux onglets : Stats, Chrono, Applis, Thèmes et Rocket League",
+    "Crosshair presets": "Modèles de viseur",
+    "Themes that unlock with time": "Des thèmes à débloquer avec le temps",
+    "No licence key needed": "Plus besoin de clé de licence",
+    "The glow follows the music": "Le halo suit la musique",
+    "Simpler wording in English and French": "Textes plus simples en français et en anglais",
+    "Settings saved in Documents": "Réglages enregistrés dans Documents",
+    "First version: music, lyrics, crosshair, screen colours and tools in one glowing ball":
+        "Première version : musique, paroles, viseur, couleurs d'écran et outils dans une bulle lumineuse",
 }
 
 
@@ -4607,8 +4657,8 @@ THEMES = [      # in unlock order: each one is a little richer than the one befo
 ]
 # Small extras that also unlock with time: the look of the R and of the song ring on the ball.
 R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="outline", name="Outline", hours=3),
-            dict(id="glow", name="Bloom", hours=15), dict(id="gold", name="Gold", hours=45),
-            dict(id="shine", name="Shine", hours=90)]
+            dict(id="echo", name="Echo", hours=15), dict(id="slice", name="Stripes", hours=45),
+            dict(id="gold", name="Gold", hours=90)]
 RING_STYLES = [dict(id="line", name="Line", hours=0), dict(id="dash", name="Dashes", hours=10),
                dict(id="dots", name="Dots", hours=30), dict(id="comet", name="Comet", hours=60),
                dict(id="aura", name="Aura", hours=120)]
@@ -4642,6 +4692,7 @@ def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now:
     path = QPainterPath()
     path.addText(QPointF(box.center().x() - tb.width() / 2 - tb.left(), box.center().y() - tb.height() / 2 - tb.top()),
                  f, "R")
+    tb_top = box.center().y() - tb.height() / 2
     p.save()
     if style == "outline":
         pen = QPen(QColor(TEXT), max(1.2, d * 0.028))
@@ -4649,20 +4700,39 @@ def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now:
         p.setPen(pen)
         p.setBrush(alpha(accent, 0.18))
         p.drawPath(path)
-    elif style == "glow":                              # soft light around a bright accent letter
-        for grow, a in ((d * 0.10, 0.07), (d * 0.06, 0.10), (d * 0.03, 0.16)):
-            pen = QPen(alpha(accent, a), grow)
+    elif style == "echo":                              # white outline with two fading copies behind it
+        width = max(1.2, d * 0.026)
+        step = d * 0.034
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for n, a in ((2, 0.22), (1, 0.45)):
+            pen = QPen(alpha(TEXT, a), width)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             p.setPen(pen)
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawPath(path)
-        g = QLinearGradient(box.topLeft(), box.bottomLeft())
-        g.setColorAt(0.25, mix(accent, QColor("#FFFFFF"), 0.75))
-        g.setColorAt(0.80, mix(accent, QColor("#FFFFFF"), 0.25))
+            p.drawPath(path.translated(step * n, step * n))
+        pen = QPen(QColor(TEXT), width)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(QColor("#0A0D0E"))
+        p.drawPath(path.translated(-step * 0.5, -step * 0.5))
+    elif style == "slice":                             # white letter cut into fine stripes, inside an outline
+        p.save()
+        p.setClipPath(path)
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(g)
+        bar, gap = max(1.0, d * 0.030), max(1.0, d * 0.024)
+        y, n = box.top(), 0
+        while y < box.bottom():
+            fade = 1.0 - 0.55 * max(0.0, min(1.0, (y - tb_top) / max(1.0, tb.height())))
+            p.setBrush(alpha(TEXT, fade))
+            p.drawRect(QRectF(box.left(), y, box.width(), bar))
+            y += bar + gap
+            n += 1
+        p.restore()
+        pen = QPen(QColor(TEXT), max(1.0, d * 0.018))
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawPath(path)
-    elif style == "gold":
+    else:                                               # gold
         g = QLinearGradient(box.topLeft(), box.bottomRight())
         g.setColorAt(0.25, QColor("#FFF1C2"))
         g.setColorAt(0.5, QColor(GOLD))
@@ -4670,23 +4740,6 @@ def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now:
         p.setPen(QPen(alpha("#000000", 0.35), 1))
         p.setBrush(g)
         p.drawPath(path)
-    else:                                               # shine: accent letter, a glint passes over it now and then
-        base = QLinearGradient(box.topLeft(), box.bottomLeft())
-        base.setColorAt(0.2, mix(accent, QColor("#FFFFFF"), 0.45))
-        base.setColorAt(0.85, accent)
-        p.setPen(QPen(alpha("#FFFFFF", 0.55), max(1.0, d * 0.012)))
-        p.setBrush(base)
-        p.drawPath(path)
-        sweep = (now % 3.2) / 1.1 - 0.25                # crosses in ~1 s, then rests ~2 s
-        if -0.25 < sweep < 1.25:
-            x = box.left() + box.width() * sweep
-            glint = QLinearGradient(QPointF(x - d * 0.16, box.top()), QPointF(x + d * 0.16, box.bottom()))
-            glint.setColorAt(0.0, alpha("#FFFFFF", 0.0))
-            glint.setColorAt(0.5, alpha("#FFFFFF", 0.85))
-            glint.setColorAt(1.0, alpha("#FFFFFF", 0.0))
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(glint)
-            p.drawPath(path)
     p.restore()
 
 
@@ -5326,85 +5379,89 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
-NEWS = [        # newest first: (version shown, [(heading, [lines])])
-    ("1.1", [
-        ("RL Swap", ["6 new swaps and a new Player banners section",
-                     "Swaps now also work for items the game has not downloaded yet"]),
-        ("Ball", ["The ball stays where you leave it",
-                  "Drop it close to a corner or the middle of an edge and it snaps there",
-                  "While a game hides or locks the mouse, clicks go through Rubenium to the game"]),
-        ("Display", ["Just two choices: Default and Custom. Moving a slider switches to Custom"]),
-        ("Apps", ["Finds every game installed with Steam or Epic"]),
-        ("Stats", ["The Stats tab is fully unloaded when you leave it"]),
-        ("Themes", ["Mythic replaces Prism",
-                    "New R styles Bloom and Shine, and two new rings: Comet and Aura"]),
-    ]),
-    ("1.0", [
-        ("Sound", ["Soft, very quiet sounds when you switch something on or off (Settings, Audio)"]),
-        ("Stats", ["Top apps measured like Task Manager: accurate, smooth and light on your PC",
-                   "Bars use a fixed scale, so 2 % looks small and 50 % fills half",
-                   "Rubenium uses much less processor"]),
-        ("Install and updates", ["Rubenium installs like a normal Windows app, with a Start menu entry and an uninstaller",
-                                 "The Update button installs the new version by itself, in the background"]),
-        ("RL Swap", ["Every swap now shows a picture of the result",
-                     "Black Lunation is ready",
-                     "The yellow outline only marks what is about to change"]),
-        ("Themes", ["5 new themes, in a better order",
-                    "New styles for the R and for the song ring, unlocked with time"]),
-    ]),
-    ("", [
-        ("Start-up", ["Welcome screen with a Launch button and a loading animation",
-                      "Rubenium comes back the way you left it"]),
-        ("RL Swap", ["8 new swaps and a new Decals section",
-                     "Several swaps can be on at once (one per item)",
-                     "Room for more swaps in every section"]),
-        ("Look", ["Stronger glow that follows the music better",
-                  "Theme options for glow, background and corners"]),
-        ("Settings", ["Choose which tabs show in the menu bar",
-                      "Change the size of the ball, with a real-size preview"]),
-        ("Fixes", ["Time used now keeps counting when the music stops",
-                   "Timer keys and update checks keep working all day"]),
-    ]),
+NEWS = [        # every version, newest first: (version, [lines])
+    ("1.0", ["Hold the ball to open Rubenium, so it never opens by accident in a game",
+             "Hold the menu for a moment to move it",
+             "9 new swaps, separate Fennec and Octane decals, and a Paint finishes section",
+             "Open apps move to the top of the Apps tab",
+             "New white styles for the R",
+             "The full update history is in this tab"]),
+    ("0.9", ["New swaps and a Player banners section",
+             "The ball stays where you leave it and snaps to corners and edges",
+             "Clicks go through Rubenium while a game hides or locks the mouse",
+             "Display has just two choices: Default and Custom",
+             "Apps finds every game installed with Steam or Epic"]),
+    ("0.8", ["Rubenium installs like a normal Windows app and updates by itself",
+             "Soft, quiet interface sounds",
+             "Top apps in Stats, measured like Task Manager",
+             "Rubenium uses much less processor"]),
+    ("0.7", ["A picture on every swap",
+             "5 new themes, and styles for the R and the song ring",
+             "A more reliable Update button"]),
+    ("0.6", ["Welcome screen with a Launch button",
+             "8 new swaps, and several swaps on at once",
+             "Choose your tabs and the size of the ball",
+             "Stronger glow that follows the music"]),
+    ("0.5", ["Updates from inside the app",
+             "New swap: Big Splash to Adidas"]),
+    ("0.4", ["Rocket League swaps for Steam and Epic, with backups of the original files",
+             "The menu bar hides when you are not using it",
+             "6 save slots for crosshairs"]),
+    ("0.3", ["New tabs: Stats, Timer, Apps, Themes and Rocket League",
+             "Crosshair presets",
+             "Themes that unlock with time"]),
+    ("0.2", ["No licence key needed",
+             "The glow follows the music",
+             "Simpler wording in English and French",
+             "Settings saved in Documents"]),
+    ("0.1", ["First version: music, lyrics, crosshair, screen colours and tools in one glowing ball"]),
 ]
 
 # --------------------------------------------------------------------------- #
 # Rocket League: find the game, swap item files, keep the originals safe
 # --------------------------------------------------------------------------- #
-RL_CATS = [("goal", "Goal explosions"), ("body", "Car bodies"), ("decal", "Decals"), ("boost", "Boosts"),
-           ("wheels", "Wheels"), ("banner", "Player banners"), ("trail", "Trails")]
+RL_CATS = [("goal", "Goal explosions"), ("body", "Car bodies"), ("fdecal", "Fennec decals"),
+           ("odecal", "Octane decals"), ("boost", "Boosts"), ("wheels", "Wheels"), ("paint", "Paint finishes"),
+           ("banner", "Player banners"), ("trail", "Trails")]
 # One entry per swap. `old` is the item you equip in the game, `new` is what it turns into, `file` is the game
 # file it replaces. Several swaps of one category can be on together; two swaps of the SAME file cannot.
 # To add a swap: put its file in swaps/<id>/<file> (and, if you have one, a picture named preview.png) and
-# add one line here.
+# add one line here. preview=False: the tile never shows a picture.
 RL_ITEMS = [
     dict(id="atomizer_gentlemates", cat="goal", old="Atomizer", new="Gentle Mates 2025", file="explosion_Rekt_SF.upk"),
     dict(id="splash_adidas", cat="goal", old="Big Splash", new="Adidas", file="explosion_splash_SF.upk"),
     dict(id="splash_supernova", cat="goal", old="Big Splash", new="SuperNova III", file="explosion_splash_SF.upk"),
+    dict(id="dragons_lanternlift", cat="goal", old="Dueling Dragons", new="Lantern Lift", file="explosion_Dragon_SF.upk"),
+    dict(id="dragons_monsoon", cat="goal", old="Dueling Dragons", new="Monsoon", file="explosion_Dragon_SF.upk"),
     dict(id="octane_fennec", cat="body", old="Octane", new="Fennec", file="Body_Octane_SF.upk"),
-    dict(id="fennec_flames_likescraft", cat="decal", old="Fennec: Flames", new="Likescraft",
+    dict(id="fennec_flames_likescraft", cat="fdecal", old="Flames", new="Likescraft", file="skin_grain_flames_SF.upk"),
+    dict(id="fennec_flames_blacklunation", cat="fdecal", old="Flames", new="Black Lunation",
          file="skin_grain_flames_SF.upk"),
-    dict(id="fennec_flames_blacklunation", cat="decal", old="Fennec: Flames", new="Black Lunation",
-         file="skin_grain_flames_SF.upk"),
-    dict(id="fennec_stripes_falcons", cat="decal", old="Fennec: Stripes", new="RLCS Falcons",
+    dict(id="fennec_stripes_falcons", cat="fdecal", old="Stripes", new="RLCS Falcons", file="skin_grain_stripes_SF.upk"),
+    dict(id="fennec_stripes_cosmological", cat="fdecal", old="Stripes", new="Cosmological",
          file="skin_grain_stripes_SF.upk"),
-    dict(id="fennec_nitty_gc", cat="decal", old="Fennec: Nitty Gritty", new="S-13 Grand Champion",
+    dict(id="fennec_stripes_strongline", cat="fdecal", old="Stripes", new="Strongline",
+         file="skin_grain_stripes_SF.upk"),
+    dict(id="fennec_stripes_ombre", cat="fdecal", old="Stripes", new="Ombre", file="skin_grain_stripes_SF.upk"),
+    dict(id="fennec_nitty_gc", cat="fdecal", old="Nitty Gritty", new="S-13 Grand Champion",
          file="skin_grain_racelines_SF.upk"),
-    dict(id="octane_lightning_ssg", cat="decal", old="Octane: Lightning", new="RLCS SSG",
-         file="Skin_Octane_Lightning_SF.upk"),
-    dict(id="octane_stripes_joyo", cat="decal", old="Octane: Stripes", new="Joyo Octane",
-         file="Skin_Octane_Stripes_SF.upk"),
+    dict(id="fennec_ribbon_affluenter", cat="fdecal", old="Ribbon", new="Affluenter", file="skin_grain_block_SF.upk"),
+    dict(id="octane_lightning_ssg", cat="odecal", old="Lightning", new="RLCS SSG", file="Skin_Octane_Lightning_SF.upk"),
+    dict(id="octane_stripes_joyo", cat="odecal", old="Stripes", new="Joyo Octane", file="Skin_Octane_Stripes_SF.upk"),
     dict(id="bubbles_alpha", cat="boost", old="Bubbles", new="Alpha Boost", file="Boost_Bubble_SF.upk"),
     dict(id="bubbles_dev", cat="boost", old="Bubbles", new="Dev Boost", file="Boost_Bubble_SF.upk"),
-    dict(id="bubbles_purple", cat="boost", old="Bubbles", new="Standard Purple", file="Boost_Bubble_SF.upk"),
+    dict(id="bubbles_purple", cat="boost", old="Bubbles", new="Invisible Boost", file="Boost_Bubble_SF.upk",
+         preview=False),
     dict(id="standard_purple", cat="boost", old="Standard", new="Purple Standard", file="Boost_Standard_SF.upk"),
-    dict(id="fennec_ribbon_affluenter", cat="decal", old="Fennec: Ribbon", new="Affluenter",
-         file="skin_grain_block_SF.upk"),
-    dict(id="dieci_black_infinium", cat="wheels", old="Dieci", new="Black Infinium", file="WHEEL_Caliber_SF.upk"),
+    dict(id="flamethrower_sparkles", cat="boost", old="Flamethrower", new="Sparkles", file="Boost_Flamethrower_SF.upk"),
+    dict(id="dieci_black_infinium", cat="wheels", old="Black Dieci", new="Infinium", file="WHEEL_Caliber_SF.upk"),
     dict(id="stern_alpha", cat="wheels", old="Stern", new="Alpha Wheels", file="WHEEL_Hydra_SF.upk"),
-    dict(id="banner_ssl_s8", cat="banner", old="Rocket League", new="S8 Supersonic Legend",
+    dict(id="anodized_pearl", cat="paint", old="Anodized", new="Anodized Pearl", file="paintfinish_anodized_SF.upk"),
+    dict(id="banner_ssl_s8", cat="banner", old="Standard", new="S8 Supersonic Legend",
          file="playerBanner_RLShield_SF.upk"),
-    dict(id="banner_ssl_s21", cat="banner", old="Rocket League", new="S21 Supersonic Legend",
+    dict(id="banner_ssl_s21", cat="banner", old="Standard", new="S21 Supersonic Legend",
          file="playerBanner_RLShield_SF.upk"),
+    dict(id="banner_electric", cat="banner", old="Standard", new="Electric", file="playerBanner_RLShield_SF.upk"),
 ]
 RL_BY_ID = {it["id"]: it for it in RL_ITEMS}
 RL_EXE = "rocketleague.exe"
@@ -5431,6 +5488,8 @@ def swap_preview(item: dict):
     """The picture of what a swap looks like (swaps/<id>/preview.png), or None when there is none yet."""
     from PyQt6.QtGui import QPixmap
     ident = item["id"]
+    if item.get("preview") is False:
+        return None
     if ident not in _previews:
         found = None
         for root in [_rl_store() / "swaps"] + _swap_roots():
@@ -6299,13 +6358,13 @@ class Updater(QObject):
             assets = {str(a.get("name", "")): str(a.get("browser_download_url", ""))
                       for a in rel.get("assets", []) if isinstance(a, dict)}
             import re
-            shown = re.search(r"\d+(?:\.\d+)+", str(rel.get("name", "")))       # "Rubenium 1.0" -> 1.0
-            info = {"version": tag.lstrip("vV"), "label": shown.group(0) if shown else tag.lstrip("vV"),
+            shown = re.search(r"Rubenium\s+v?(\d+(?:\.\d+)*)", str(rel.get("name", "")))   # "... Rubenium 1.0" -> 1.0
+            info = {"version": tag.lstrip("vV"), "label": shown.group(1) if shown else tag.lstrip("vV"),
                     "page": str(rel.get("html_url", UPDATE_PAGE)), "assets": assets}
             self.busy = False
-            # The version is the one in the release title ("Rubenium 1.0.1"). The tag can differ: a release meant
-            # for older Rubenium versions carries a tag they read as newer, without this version seeing it as one.
-            if version_tuple(info["label"]) > version_tuple(self.current):
+            # Releases are told apart by their tag, a date such as 2026.11.14.3, which only ever goes up.
+            # (The title starts with the same date so that Rubenium 0.8 and 0.9, which read the title, update too.)
+            if version_tuple(tag) > version_tuple(self.current):
                 self.latest = info
                 self.found.emit(info)
                 if manual:
@@ -7898,6 +7957,16 @@ class SettingsPage(Page):
             lay.addWidget(row(label, t))
             return t
 
+        lay.addWidget(heading(tr("Opening")))
+        toggle(tr("Hold to open"), "hold_open")
+        hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
+                         marks=list(range(200, 1001, 100)))
+
+        def hold_set(v) -> None:
+            cfg["hold_ms"] = int(v)
+        hold.changed.connect(hold_set)
+        lay.addWidget(hold)
+
         lay.addWidget(heading(tr("Appearance")))
         toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
         toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
@@ -7994,7 +8063,7 @@ class SettingsPage(Page):
 # ==================================================================================================
 import os
 
-from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
+from PyQt6.QtCore import QEasingCurve, QPoint, QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import QAbstractButton, QFileDialog, QGridLayout, QWidget
 
@@ -8445,6 +8514,55 @@ class AppTile(QAbstractButton):
         p.drawText(QRectF(r.left(), r.bottom() - S(22), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), text)
 
 
+class AppGrid(QWidget):
+    """Four tiles per row. Open apps sit at the top; when one opens or closes, the tiles glide to their new places."""
+    COLS = 4
+
+    def __init__(self, tiles: list, width: int) -> None:
+        super().__init__()
+        self.tiles = tiles
+        self.gap = S(4)
+        self.tw = (width - self.gap * (self.COLS - 1)) // self.COLS
+        self.th = S(76)
+        rows = (len(tiles) + self.COLS - 1) // self.COLS
+        self.setFixedSize(width, max(self.th, rows * (self.th + self.gap) - self.gap))
+        for t in tiles:
+            t.setParent(self)
+            t.setFixedSize(self.tw, self.th)
+        self._order: list = []
+        self._from: dict = {}
+        self._to: dict = {}
+        self._move = Tween(self, 1.0, self._step, QEasingCurve.Type.InOutCubic)
+        self.arrange(False)
+
+    def _spot(self, i: int) -> QPoint:
+        return QPoint((i % self.COLS) * (self.tw + self.gap), (i // self.COLS) * (self.th + self.gap))
+
+    def arrange(self, animate: bool) -> None:
+        order = sorted(range(len(self.tiles)), key=lambda i: (not self.tiles[i].running, i))
+        if order == self._order:
+            return
+        self._order = order
+        self._to = {self.tiles[i]: self._spot(n) for n, i in enumerate(order)}
+        if animate and self.isVisible():
+            self._from = {t: t.pos() for t in self.tiles}
+            for t in self.tiles:
+                if t.running:
+                    t.raise_()                  # open apps pass over the others on their way up
+            self._move.jump(0.0)
+            self._move.to(1.0, 460)
+        else:
+            self._move.jump(1.0)
+            for t, pt in self._to.items():
+                t.move(pt)
+
+    def _step(self) -> None:
+        f = self._move.level
+        for t, pt in self._to.items():
+            a = self._from.get(t, pt)
+            t.move(round(a.x() + (pt.x() - a.x()) * f), round(a.y() + (pt.y() - a.y()) * f))
+
+
 class LauncherPage(Page):
     key = "launch"
 
@@ -8453,23 +8571,21 @@ class LauncherPage(Page):
         lay = vbox(self, 8)
         apps = ctx.apps()
         self.tiles = []
+        self.grid = None
         if not apps:
             lay.addSpacing(S(16))
             lay.addWidget(Glyph("grid", 52), 0, Qt.AlignmentFlag.AlignHCenter)
             lay.addWidget(Label(tr("No apps found"), 12.5, TEXT_DIM, align=Qt.AlignmentFlag.AlignHCenter))
             lay.addSpacing(S(8))
         else:
-            grid = QGridLayout()
-            grid.setContentsMargins(0, 0, 0, 0)
-            grid.setSpacing(S(4))
-            for i, app in enumerate(apps):
+            names = extras.running_names()
+            for app in apps:
                 tile = AppTile(app)
+                tile.running = bool(app["exe"]) and app["exe"] in names
                 tile.clicked.connect(lambda _=False, t=tile: self._click(t))
-                grid.addWidget(tile, i // 4, i % 4)
                 self.tiles.append(tile)
-            for c in range(4):
-                grid.setColumnStretch(c, 1)
-            lay.addLayout(grid)
+            self.grid = AppGrid(self.tiles, self.W)
+            lay.addWidget(self.grid)
         again = Button(tr("Search again"), "quiet", 28, icon="refresh")
         again.clicked.connect(self._rescan)
         lay.addWidget(again)
@@ -8490,6 +8606,8 @@ class LauncherPage(Page):
         names = extras.running_names()
         for t in self.tiles:
             t.set_running(bool(t.app["exe"]) and t.app["exe"] in names)
+        if self.grid is not None:
+            self.grid.arrange(True)
 
     def _rescan(self) -> None:
         self.ctx.apps(force=True)
@@ -8501,6 +8619,7 @@ class LauncherPage(Page):
             def close(t=tile) -> None:
                 if extras.close_app(t.app["exe"]):
                     t.set_running(False)
+                    self.grid.arrange(True)
                     self.ctx.toast(tr("{name} closed", name=t.app["name"]))
                 else:
                     self.ctx.toast(tr("Could not close {name}", name=t.app["name"]), "error")
@@ -8847,30 +8966,29 @@ class RocketPage(Page):
 
 
 class NewsPage(Page):
-    """What changed in this version."""
+    """Every update since the first version, newest first."""
     key = "new"
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
         lay = vbox(self, 6)
-        lay.addWidget(Label(tr("What's new"), 16, bold=True))
-        for version, groups in extras.NEWS:
-            if version:
-                lay.addWidget(Label(tr("Version {v}", v=version), 11.5, TEXT_DIM))
-            else:
-                lay.addSpacing(S(10))
-                lay.addWidget(Label(tr("Earlier"), 14, bold=True))
-            for title, lines in groups:
-                lay.addSpacing(S(4))
-                lay.addWidget(heading(tr(title)))
-                for text in lines:
-                    line = hbox(spacing=8)
-                    dot = Label("•", 12.5, TEXT_FAINT)
-                    dot.setFixedWidth(S(8))
-                    line.addWidget(dot, 0, Qt.AlignmentFlag.AlignTop)
-                    line.addWidget(Label(tr(text), 12.5, TEXT, wrap_w=self.W - S(18)))
-                    line.addStretch(1)
-                    lay.addLayout(line)
+        lay.addWidget(Label(tr("Updates"), 16, bold=True))
+        for n, (version, lines) in enumerate(extras.NEWS):
+            lay.addSpacing(S(6))
+            head = hbox(spacing=8)
+            head.addWidget(Label(tr("Version {v}", v=version), 13, ui.accent.name() if n == 0 else TEXT, bold=True).fit())
+            if n == 0:
+                head.addWidget(Label(tr("This version"), 10.5, TEXT_DIM).fit())
+            head.addStretch(1)
+            lay.addLayout(head)
+            for text in lines:
+                line = hbox(spacing=8)
+                dot = Label("•", 12.5, TEXT_FAINT)
+                dot.setFixedWidth(S(8))
+                line.addWidget(dot, 0, Qt.AlignmentFlag.AlignTop)
+                line.addWidget(Label(tr(text), 12.5, TEXT if n == 0 else TEXT_DIM, wrap_w=self.W - S(18)))
+                line.addStretch(1)
+                lay.addLayout(line)
 
 
 PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": CrosshairPage, "display": DisplayPage,
@@ -8879,8 +8997,8 @@ PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": CrosshairPage, "di
 # Fixed order: music first, then what you use in a game, then tools, then the look, settings last.
 TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", "crosshair", "Crosshair"),
         ("display", "display", "Display"), ("rl", "rocket", "RL SWAP"), ("launch", "grid", "Apps"),
-        ("perf", "perf", "Stats"), ("timer", "timer", "Timer"), ("tools", "tools", "Tools"),
-        ("themes", "gem", "Themes"), ("new", "spark", "New"), ("settings", "cog", "Settings")]
+        ("perf", "perf", "Stats"), ("tools", "tools", "Tools"), ("timer", "timer", "Timer"),
+        ("themes", "gem", "Themes"), ("new", "spark", "Updates"), ("settings", "cog", "Settings")]
 
 
 TEMP_TABS: set = set()      # tabs shown only until the user leaves them
@@ -9063,6 +9181,25 @@ class BallWindow(QWidget):
         self._from, self._to = QPoint(), QPoint()
         self._press_pos = None
         self._moved = False
+        self.charge = Tween(self, 0.0, self.update, QEasingCurve.Type.Linear)     # hold-to-open progress
+        self.charge.finished.connect(self._charged)
+
+    # -- hold to open
+    def _charged(self) -> None:
+        if self._press_pos is None or self._moved or self.charge.target < 1.0 or self.charge.level < 0.999:
+            return
+        self._press_pos = None
+        self.press.to(0.0, 200)
+        sfx.play("on")
+        self.owner.expand()
+        QTimer.singleShot(450, lambda: self.charge.jump(0.0))      # reset once the ball is out of sight
+
+    def cancel_press(self) -> None:
+        """Drop a press in progress (a game took the mouse)."""
+        if self._press_pos is not None and not self._moved:
+            self._press_pos = None
+            self.press.to(0.0, 150)
+            self.charge.to(0.0, 150)
 
     # -- geometry
     def rect_global(self) -> QRect:
@@ -9158,8 +9295,17 @@ class BallWindow(QWidget):
         paint_shape(p, self.ctx, shape, w / 2, level, self.devicePixelRatioF())
         paint_ball_face(p, self.ctx, shape, 1.0)
         paint_edge(p, self.ctx, shape, w / 2, level)
+        c = max(0.0, min(1.0, self.charge.level))
+        if c > 0.0:                                         # hold to open: a circle fills around the edge
+            ring = shape.adjusted(S(1.5), S(1.5), -S(1.5), -S(1.5))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width, a in ((S(6), 0.18), (S(3), 1.0)):
+                pen = QPen(alpha(mix(ui.accent, QColor("#FFFFFF"), 0.55), a), width)
+                pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                p.setPen(pen)
+                p.drawArc(ring, 90 * 16, int(-360 * 16 * c))
 
-    # -- mouse: click opens, drag moves (kept on screen)
+    # -- mouse: hold (or click) opens, drag moves (kept on screen)
     def enterEvent(self, e) -> None:
         self.hover.to(1.0, 260)
 
@@ -9174,6 +9320,9 @@ class BallWindow(QWidget):
             self._origin = QPoint(self.center)
             self._moved = False
             self.press.to(1.0, 80)
+            if self.ctx.cfg["hold_open"]:
+                self.charge.jump(0.0)
+                self.charge.to(1.0, max(200, min(1000, int(self.ctx.cfg["hold_ms"]))))
 
     def mouseMoveEvent(self, e) -> None:
         if self._press_pos is None:
@@ -9181,6 +9330,7 @@ class BallWindow(QWidget):
         pos = e.globalPosition().toPoint()
         if not self._moved and (pos - self._press_pos).manhattanLength() >= 5:
             self._moved = True
+            self.charge.to(0.0, 120)                        # dragging, not opening
         if self._moved:
             self.center = self._origin + (pos - self._press_pos)      # stored origin + total delta: no drift
             self.clamp()
@@ -9197,6 +9347,8 @@ class BallWindow(QWidget):
                 self.glide_to(target, fast=True)           # saves the position when it arrives
             else:
                 self.owner.save_position()
+        elif self.ctx.cfg["hold_open"]:
+            self.charge.to(0.0, 160)                        # let go too early: nothing opens
         else:
             self.owner.expand()
 
@@ -9933,25 +10085,36 @@ class Body(QWidget):
             p.drawEllipse(QPointF(x + i * S(6), base.center().y() + S(4) - lift), S(1.7), S(1.7))
 
     # drag the card from anywhere that is not a control
+    # Hold the card for a moment, then move it. A quick click or flick never moves it; if you press and move
+    # straight away, the card simply starts following after that moment.
+    HOLD_MS = 200
+
     def mousePressEvent(self, e) -> None:
+        if win.mouse_captured():               # a game has the mouse: not meant for Rubenium
+            return
         self.win.show_chrome()
         if e.button() == Qt.MouseButton.LeftButton:
             self._press = e.globalPosition().toPoint()
-            self._moved = False
-            self.win.begin_drag(self._press)
+            self._armed = False
+            QTimer.singleShot(self.HOLD_MS, lambda at=self._press: self._arm(at))
+
+    def _arm(self, at: QPoint) -> None:
+        if self._press is None or self._press is not at or win.mouse_captured():
+            return
+        self._armed = True
+        self.setCursor(Qt.CursorShape.SizeAllCursor)
+        self.win.begin_drag(QCursor.pos())      # from where the mouse is now: no jump
 
     def mouseMoveEvent(self, e) -> None:
-        if self._press is None:
-            return
-        pos = e.globalPosition().toPoint()
-        if not self._moved and (pos - self._press).manhattanLength() >= 4:
-            self._moved = True
-        if self._moved:
-            self.win.drag_to(pos)
+        if self._press is not None and getattr(self, "_armed", False):
+            self.win.drag_to(e.globalPosition().toPoint())
 
     def mouseReleaseEvent(self, e) -> None:
         self._press = None
-        self.win.end_drag()
+        if getattr(self, "_armed", False):
+            self._armed = False
+            self.unsetCursor()
+            self.win.end_drag()
 
 
 # --------------------------------------------------------------------------- #
@@ -9979,7 +10142,7 @@ class MainWindow(QWidget):
         self._closed_at_card = False         # True: the ball sits in the card's top corner (card was moved)
         self._through = False                # clicks pass through Rubenium (a game has the mouse)
         self._guard = QTimer(self)
-        self._guard.setInterval(50)
+        self._guard.setInterval(30)
         self._guard.timeout.connect(self._mouse_guard)
         if win.IS_WIN:
             self._guard.start()
@@ -10167,7 +10330,10 @@ class MainWindow(QWidget):
     def _mouse_guard(self) -> None:
         """While a game hides or locks the mouse pointer, every Rubenium window lets clicks through to the
         game: aiming or clicking in a game can never open, drag or press anything in Rubenium."""
-        through = win.mouse_captured() and self.ball._press_pos is None and self._drag_origin is None
+        captured = win.mouse_captured()
+        if captured:
+            self.ball.cancel_press()            # a press that began just before the game took the mouse
+        through = captured and self.ball._press_pos is None and self._drag_origin is None
         if through != self._through or through:
             for w in (self.ball, self, self.drawer):
                 hwnd = int(w.internalWinId() or 0)
@@ -10811,7 +10977,7 @@ class App(QObject):
         self.rocket.busy.connect(self._rocket_busy)
         self.rocket.done.connect(self._rocket_done)
         self.rocket.changed.connect(self._rocket_changed)
-        self.updater = extras.Updater(VERSION)
+        self.updater = extras.Updater(BUILD)
         self.updater.found.connect(self._update_found)
         self.updater.checked.connect(self._update_checked)
         self.updater.progress.connect(lambda pct: self.window.show_busy(tr("Downloading update… {p}%", p=pct)))
@@ -10845,8 +11011,8 @@ class App(QObject):
     def _intro(self) -> None:
         """Welcome screen -> Launch -> the ball lands where it was left. Skipped when the app restarts itself
         (after an update or to get admin rights) and when the user switched it off."""
-        self._news = self.cfg["seen_version"] != VERSION and self.cfg["usage_s"] > 0    # updated, not new
-        self.cfg["seen_version"] = VERSION
+        self._news = self.cfg["seen_version"] != BUILD and self.cfg["usage_s"] > 0    # updated, not new
+        self.cfg["seen_version"] = BUILD
         restarted = "--updated" in sys.argv or "--elevated" in sys.argv
         if not self.cfg["welcome"] or restarted:
             self.window.show_ball()

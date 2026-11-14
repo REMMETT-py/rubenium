@@ -1,12 +1,11 @@
-Rubenium 1.1
+Rubenium 1.0
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-- RL Swap: 6 new swaps (Purple Standard boost, Affluenter, Black Infinium, Alpha wheels, S8 SSL banner) and a new Player banners section. Swaps now also work for items the game has not downloaded yet.
-- Ball: stays where you leave it, snaps to a corner or the middle of an edge only when dropped close to one, and works on every monitor.
-- Games: while a game hides or locks the mouse, clicks go through Rubenium to the game, so it can't be opened or dragged by accident.
-- Display: just Default and Custom. Moving a slider switches to Custom; your settings are saved.
-- Apps: finds every game installed with Steam or Epic.
-- Stats: fully unloaded when you leave the tab.
-- Themes: Mythic replaces Prism, new R styles (Bloom, Shine) and rings (Comet, Aura).
+- Hold to open: hold the ball to open Rubenium, so it never opens by accident in a game. The hold time is in Settings, and it can be switched off.
+- Hold the menu for a moment to move it.
+- RL Swap: 9 new swaps (Lantern Lift, Monsoon, Cosmological, Strongline, Ombre, Sparkles, Anodized Pearl, Electric and S21 SSL banners), separate Fennec and Octane decals, and a Paint finishes section.
+- Apps: open apps move to the top.
+- Themes: new white styles for the R (Echo, Stripes).
+- Updates tab: the full history of every version.

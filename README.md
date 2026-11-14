@@ -11,7 +11,7 @@ Rubenium checks this repository for new versions and offers to install them (Set
 
 ## Publishing an update
 
-1. Change `VERSION = "..."` and `VERSION_NAME = "..."` near the top of the CORE section in `Rubenium.py` (for example `1.0.0` / `1.0` → `1.0.1` / `1.0.1`). The app compares the version in the release title. The release tag comes from `release_tag.txt` (a date, for example `2026.11.14.2`): every older Rubenium, even from before 1.0, reads a date as newer, so they all keep updating. Change it for every release.
+1. Near the top of the CORE section in `Rubenium.py`, change `BUILD = "..."` to a later date (for example `2026.11.14.3` → `2026.12.1`) and `VERSION_NAME` to the version people should see (for example `1.0` → `1.1`). `BUILD` is the release tag and must always go up: it is what every Rubenium compares to find updates. Add the changes to `NEWS` so they show in the Updates tab.
 2. Write what changed in `release_notes.txt`.
 3. Commit / upload both files to `main`.
 
