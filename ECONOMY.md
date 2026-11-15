@@ -39,3 +39,30 @@ music is off, and never more than 400 coins a day.
 ## Progression (time only, never tradeable)
 Clean theme 0 h, Theme 2 2 h, Ball 1 5 h, Circle 1 8 h, Theme 3 12 h, Theme 4 20 h, Ball 2 30 h, Circle 2 40 h,
 Theme 5 55 h, Theme 6 75 h, Ball 3 100 h, Circle 3 125 h, Theme 7 150 h, Theme 8 200 h.
+
+## Cases (1 key + coins each)
+Odds are shown in the app. "Value back" is the average worth of what comes out, measured over thousands of
+openings on a test database; selling the drops to the vendor returns under half of that, so cases never print coins.
+
+| Case | Price | Coins | Standard | Rare | Special | Epic | Exotic | Guaranteed | Value back |
+|---|---|---|---|---|---|---|---|---|---|
+| Starter | 100 | 79% | 18.3% | 2.45% | 0.25% | - | - | Rare or better within 30 | about 90% |
+| Standard | 300 | 61% | 27.5% | 9% | 2.2% | 0.3% | - | Special or better within 25 | about 89% |
+| Premium | 800 | 35.55% | 20% | 30% | 10.5% | 3.7% | 0.25% | Special or better within 10 | about 90% |
+| Vault | 2 000 | 20% | - | 37.5% | 27% | 14% | 1.5% | Epic or better within 10 | about 85% |
+
+Exotic badges only come from Premium and Vault. Black, White and Gold badges only come from cases.
+
+## Free things
+- Free spin every 3 hours: 20 to 500 coins or a key (about 60 coins on average). The prize waits for "Collect".
+- Daily case every 24 hours: 60% coins (30-120), 15% a key, 20% Standard badge, 4.5% Rare, 0.5% Special.
+
+## Casino (bets 10 to 1 000, a single win never above 50 000)
+| Game | Returned to players over time |
+|---|---|
+| Slots | about 96% |
+| Plinko (3 risk levels) | about 96% |
+| Dice (choose your chance, 5-95%) | 97% |
+| Bombs | 97% however you play |
+| Rocket (cash out before it blows up) | 96% |
+| Blackjack (3:2, dealer stands on 17) | about 99% with perfect play, about 94% copying the dealer |
