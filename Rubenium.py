@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.4 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.5 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1423,8 +1423,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.4"         # the version people see
-BUILD = "2026.11.15.2"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "1.5"         # the version people see
+BUILD = "2026.11.15.3"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -2354,6 +2354,11 @@ FR = {
     'A fresh start: everyone begins again from zero coins': 'Nouveau départ : tout le monde repart de zéro pièce',
     'Droplet': 'Goutte',
     'Opens after 1 hour with Rubenium: {n} min left': "S'ouvre après 1 heure avec Rubenium : encore {n} min",
+    # 1.5
+    'Reset Swaps': 'Réinitialiser les swaps',
+    'Coming soon swaps are back: Lantern Lift, Monsoon and Electric banner': 'Les swaps « Bientôt » sont de retour : Lantern Lift, Monsoon et la bannière Electric',
+    'Turn off all swaps is now Reset Swaps: it puts every original file back': 'Désactiver tous les swaps devient Réinitialiser les swaps : chaque fichier d’origine revient',
+    'Wrong, left-over or broken swap files are found and fixed automatically': 'Les fichiers de swap incorrects, oubliés ou abîmés sont détectés et réparés automatiquement',
 }
 
 
@@ -5693,6 +5698,9 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("1.5", ["Coming soon swaps are back: Lantern Lift, Monsoon and Electric banner",
+             "Turn off all swaps is now Reset Swaps: it puts every original file back",
+             "Wrong, left-over or broken swap files are found and fixed automatically"]),
     ("1.4", ["Casino lobby: the menu only grows when you go in, and goes back when you leave",
              "New games: Plinko and Bombs. Slots now show every prize",
              "50 badges in 17 colours, from basic to gold. Show 3 of them on the music tab",
@@ -5768,10 +5776,8 @@ RL_ITEMS = [
     dict(id="atomizer_gentlemates", cat="goal", old="Atomizer", new="Gentle Mates 2025", file="explosion_Rekt_SF.upk"),
     dict(id="splash_adidas", cat="goal", old="Big Splash", new="Adidas", file="explosion_splash_SF.upk"),
     dict(id="splash_supernova", cat="goal", old="Big Splash", new="SuperNova III", file="explosion_splash_SF.upk"),
-    dict(id="dragons_lanternlift", cat="goal", old="Dueling Dragons", new="Lantern Lift", file="explosion_Dragon_SF.upk",
-         soon=True),
-    dict(id="dragons_monsoon", cat="goal", old="Dueling Dragons", new="Monsoon", file="explosion_Dragon_SF.upk",
-         soon=True),
+    dict(id="dragons_lanternlift", cat="goal", old="Dueling Dragons", new="Lantern Lift", file="explosion_Dragon_SF.upk"),
+    dict(id="dragons_monsoon", cat="goal", old="Dueling Dragons", new="Monsoon", file="explosion_Dragon_SF.upk"),
     dict(id="octane_fennec", cat="body", old="Octane", new="Fennec", file="Body_Octane_SF.upk"),
     dict(id="fennec_flames_likescraft", cat="fdecal", old="Flames", new="Likescraft", file="skin_grain_flames_SF.upk"),
     dict(id="fennec_flames_blacklunation", cat="fdecal", old="Flames", new="Black Lunation",
@@ -5799,17 +5805,49 @@ RL_ITEMS = [
     dict(id="banner_ssl_s21", cat="banner", old="Standard", new="S21 Supersonic Legend",
          file="playerBanner_RLShield_SF.upk"),
     dict(id="diamond_electric", cat="banner", old="Diamond Tile", new="Electric",
-         file="playerBanner_DiamondTile_SF.upk", soon=True),
+         file="playerBanner_DiamondTile_SF.upk"),
 ]
 RL_BY_ID = {it["id"]: it for it in RL_ITEMS}
 RL_EXE = "rocketleague.exe"
 
 
 # Swap files that were in an earlier version and are gone: {hash: game file}. If one is still in the game
-# folder it is recognised and the original is put back.
+# folder it is recognised and the original is put back (see RocketSwaps.needs_repair).
 RETIRED = {"f1cb440607e0dd4cabfd155b71c29ad444d2d44b7322251455b3f1e1ea30a9fd": "playerBanner_RLShield_SF.upk",
-           "4a2c413d16f1683509728f38604bcd8a453fa07b6325ebb84b14a927a712be27": "skin_grain_stripes_SF.upk", "ed71a46b22a8f4608e27a57502e22f569b4c1f661ba9e130faf720df2742bdfd": "explosion_Dragon_SF.upk",
-           "ed814c9961159e70f1dcef48755cdb54e455fee66110b0ef6e19e05662617827": "explosion_Dragon_SF.upk", "122727c810efe7df76f3fada4caf085b18af1781e63d4f70697fa7c744ab018d": "playerBanner_DiamondTile_SF.upk"}
+           "4a2c413d16f1683509728f38604bcd8a453fa07b6325ebb84b14a927a712be27": "skin_grain_stripes_SF.upk"}
+
+# Clean game files shipped with the app in swaps/_originals: used to put a game file back when the player's own
+# saved copy is missing or unusable. Only files checked to be untouched originals are listed (and a shipped
+# file is only ever used if it still matches its fingerprint here).
+ORIGINALS = {
+    "Body_Octane_SF.upk": "3359efe77733d8aae7e21e227b841e4e25822b7758a072e7eef104ee06c48ba4",
+    "WHEEL_Caliber_SF.upk": "0e5006251eef9d30a281c724a62a2b8de0b204c5ebc8c8ad33bc2f0c5c6db4a1",
+    "explosion_Dragon_SF.upk": "633e72e7924b76727587c2b94a4097564930965ca6d512aff6f654a38718c9f0",
+    "playerBanner_DiamondTile_SF.upk": "05aadcd1aa89cacebedbf1b74a689ead278f60b08cd24a28e968d4bb89e59eb4",
+}
+UPK_MAGIC = b"\xc1\x83\x2a\x9e"           # how every Rocket League package file starts
+
+
+def upk_ok(path) -> bool:
+    """Does this look like a whole Rocket League package (not empty, not cut off at the start)?"""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(4)
+        return head == UPK_MAGIC and os.path.getsize(path) > 1024
+    except OSError:
+        return False
+
+
+def bundled_original(name: str):
+    """The clean copy of game file `name` shipped with Rubenium, or None."""
+    want = next((h for f, h in ORIGINALS.items() if f.lower() == name.lower()), None)
+    if not want:
+        return None
+    for root in _swap_roots():
+        f = root / "_originals" / name
+        if f.is_file() and file_hash(f) == want:
+            return f
+    return None
 ABSENT = "absent"      # marks a swap file the game did not have: switching the swap off removes it
 
 
@@ -6089,6 +6127,7 @@ class RocketSwaps(QObject):
         self._timer.timeout.connect(self.watch)
         self.done.connect(self._finished)
         self._detected = False
+        self._repair_wait: dict = {}               # per install: no new repair before this time
         self._index: dict = {}                     # per install: game file name -> path (from a folder search)
         self._migrate()
 
@@ -6313,7 +6352,8 @@ class RocketSwaps(QObject):
         e = self._entry(plat)
         paths = {it["file"].lower(): self.game_file(plat, it["file"]) for it in RL_ITEMS}
         job = {"plat": plat, "cooked": self.cooked(plat), "paths": paths, "orig": dict(e["orig"]),
-               "stamp_saved": e["stamp"], "stamp_now": self.stamp(plat)}
+               "stamp_saved": e["stamp"], "stamp_now": self.stamp(plat),
+               "was": {RL_BY_ID[i]["file"].lower() for i in e["active"].values() if i in RL_BY_ID}}
         import threading
         threading.Thread(target=self._work, args=(dict(desired), reload, quiet, job), daemon=True).start()
         return True
@@ -6396,6 +6436,7 @@ class RocketSwaps(QObject):
             cur = file_hash(game)
             customs = self._customs(name)
             backup = backups / name
+            broken = not upk_ok(game)                  # empty or cut off: never kept as an original
             if want:
                 src = swap_source(want)
                 if src is None:
@@ -6403,9 +6444,9 @@ class RocketSwaps(QObject):
                 want_hash = file_hash(src)
                 if cur == want_hash:
                     continue
-                if cur not in customs and orig.get(name) == ABSENT:
+                if cur not in customs and not broken and orig.get(name) == ABSENT:
                     orig.pop(name, None)                # the game has the file now (an update): a real original
-                if cur not in customs:
+                if cur not in customs and not broken:
                     # The file in the game is an original. Keep it, unless it is a stranger's file
                     # (same game version but different from the original we saved).
                     tampered = (not updated) and orig.get(name) and orig.get(name) != cur and backup.is_file()
@@ -6414,20 +6455,65 @@ class RocketSwaps(QObject):
                         if file_hash(backup) != cur:
                             return False, "error", orig
                         orig[name] = cur
-                if not backup.is_file():
-                    return False, "nobackup", orig
+                if self._restore_source(name, backups, customs) is None:
+                    return False, "nobackup", orig     # never swap without a way back
                 _atomic_copy(src, game)
                 if file_hash(game) != want_hash:
                     return False, "error", orig
             elif cur in customs and orig.get(name) == ABSENT:
                 game.unlink()                           # it was added by a swap: remove it again
-            elif cur in customs:
-                if not backup.is_file():
-                    return False, "nobackup", orig
-                _atomic_copy(backup, game)
-                if orig.get(name) and file_hash(game) != orig[name]:
+            elif cur in customs or broken:
+                # A swap that is not wanted (left over, from another tool, or from an old version) or a broken
+                # file: put the original back, from the player's own saved copy or the clean copy shipped
+                # with Rubenium.
+                src = self._restore_source(name, backups, customs)
+                if src is None:
+                    if name.lower() in job.get("was", set()):
+                        return False, "nobackup", orig  # the swap being switched off cannot be undone
+                    continue                            # a left-over we cannot fix yet: leave it, fix the rest
+                good = file_hash(src)
+                _atomic_copy(src, game)
+                if file_hash(game) != good:
                     return False, "error", orig
+                if src != backup:
+                    orig[name] = good
         return True, "ok", orig
+
+    @staticmethod
+    def _restore_source(name: str, backups: Path, customs: set):
+        """Where to take the original of `name` from: the player's own saved copy if it is sound, otherwise
+        the clean copy shipped with Rubenium (None if neither)."""
+        backup = backups / name
+        if backup.is_file() and upk_ok(backup) and file_hash(backup) not in customs:
+            return backup
+        return bundled_original(name)
+
+    def needs_repair(self, plat: str) -> bool:
+        """Is a game file a swap the player does not want (another swap, a left-over, one from an old version),
+        or broken, while it can be fixed? Checked for everyone, also new users with no swaps on."""
+        want = {}
+        for ident in self.active(plat).values():
+            it = RL_BY_ID[ident]
+            want[it["file"].lower()] = it
+        backups = _rl_store() / "originals" / plat
+        orig = self._entry(plat)["orig"]
+        for name in sorted({it["file"] for it in RL_ITEMS}, key=str.lower):
+            game = self.game_file(plat, name)
+            if not game.is_file():
+                continue
+            cur = file_hash(game)
+            customs = self._customs(name)
+            item = want.get(name.lower())
+            if item is not None:
+                src = swap_source(item)
+                if src is not None and cur in customs and cur != file_hash(src):
+                    return True                         # the wrong swap is in the game
+                continue
+            if cur in customs and orig.get(name) == ABSENT:
+                return True
+            if (cur in customs or not upk_ok(game)) and self._restore_source(name, backups, customs) is not None:
+                return True
+        return False
 
     def _finished(self, ok: bool, key: str, info: dict) -> None:
         self.working = False
@@ -6440,6 +6526,7 @@ class RocketSwaps(QObject):
                 e["active"] = dict(info.get("desired", {}))
                 e["stamp"] = info.get("stamp", "")
                 self._noticed = ""
+                self._repair_wait.pop(plat, None)
         self.cfg.save()
         self.changed.emit()
 
@@ -6471,8 +6558,11 @@ class RocketSwaps(QObject):
         if self.working:
             return
         for plat in self.available():
-            if self._retired_present(plat) and not self.running(plat):
-                self.apply(self.active(plat), quiet=True, plat=plat)       # puts the original back
+            if self.running(plat) or time.monotonic() < self._repair_wait.get(plat, 0.0):
+                continue
+            if self.needs_repair(plat) and self._settled(plat):
+                self._repair_wait[plat] = time.monotonic() + 600            # if it cannot be fixed: retry later
+                self.apply(self.active(plat), quiet=True, plat=plat)       # puts the right files back
                 return
             if not self.active(plat):
                 continue
@@ -6483,17 +6573,6 @@ class RocketSwaps(QObject):
             if state in ("changed", "undone", "missing") and self._noticed != plat + state:
                 self._noticed = plat + state
                 self.changed.emit()
-
-    def _retired_present(self, plat: str) -> bool:
-        """Is a swap file from an earlier version (no longer offered) still in the game folder?"""
-        want = {rl_key(RL_BY_ID[i]) for i in self.active(plat).values()}
-        for digest, name in RETIRED.items():
-            if name.lower() in want:
-                continue
-            game = self.game_file(plat, name)
-            if game.is_file() and file_hash(game) == digest:
-                return True
-        return False
 
     def _settled(self, plat: str) -> bool:
         """True once the game files have not moved for a minute (an update has finished)."""
@@ -13266,7 +13345,7 @@ class RocketPage(Page):
         cl.addSpacing(S(2))
         cl.addWidget(row(tr("Fix automatically after updates"), t))
         cl.addSpacing(S(4))
-        reset = Button(tr("Turn off all swaps"), "danger", 34)
+        reset = Button(tr("Reset Swaps"), "danger", 34)
         reset.clicked.connect(self._reset)
         cl.addWidget(reset)
         if not self.plat:                           # nothing to swap until the game is found
@@ -13369,8 +13448,8 @@ class RocketPage(Page):
         self._choose(self.ctx.rocket.active())
 
     def _reset(self) -> None:
-        if self._shown():
-            self._choose({})
+        """Every swap off and every swap file back to the original (also repairs broken files)."""
+        self._choose({})
 
     def _auto(self, on: bool) -> None:
         self.ctx.cfg["rl"]["auto_fix"] = on

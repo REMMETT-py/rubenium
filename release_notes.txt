@@ -1,16 +1,9 @@
-Rubenium 1.4
+Rubenium 1.5
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-A fresh start: with this update everyone begins again from zero coins and nothing unlocked. From now on everything you earn is kept.
-
-- Casino lobby: the Games tab opens on a small lobby (coins, keys, daily spin). The menu only grows when you enter the casino, and goes back to its size when you leave.
-- New games: Plinko (3 risk levels) and Bombs (find the R gems, pick 1 to 20 bombs). They replace Chicken and the Wheel.
-- Slots show every prize, and light up the one you hit.
-- Badges: 50 badges, each in 17 colours. Basic colours are bought; Rare, Very rare and Gold only come out of cases.
-- Cases: 5 cases with their real odds shown, and an opening animation. Each case costs coins and 1 key. Keys are earned by playing in the casino (1 for every 1 000 coins played, up to 10). A badge you already have turns into coins.
-- Show up to 3 badges on the music tab. Titles are gone.
-- New Neon ball style and ring (5 of each now, Gold is the best).
-- Colours cost 100 coins each. White or black, or a colour from the line: one or the other.
-- The music's colours open for free after 1 hour with Rubenium.
+- Rocket League: Lantern Lift, Monsoon and the Electric banner are back (no longer Coming soon).
+- "Turn off all swaps" is now "Reset Swaps": every swap goes off and every original file comes back.
+- Automatic repair: a swap you did not choose (left over, from another tool, or the wrong one), or a broken game file, is found and the right file is put back. This runs for everyone, also new users, whenever the game is closed.
+- Rubenium now ships clean original files to fall back on when your own saved copy is missing or damaged.
