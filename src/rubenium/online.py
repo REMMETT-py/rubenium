@@ -266,6 +266,8 @@ class Online(QObject):
     # -- calls for a logged-in account
     def _token(self) -> str:
         """A valid access token (renewed when it is about to run out). Called off the main thread."""
+        if not self.s.get("refresh_token"):
+            raise ApiError("offline")
         if time.time() > float(self.s.get("expires_at", 0)) - 120:
             try:
                 ans = _request("/auth/v1/token?grant_type=refresh_token", {"refresh_token": self.s["refresh_token"]})

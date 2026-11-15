@@ -8,7 +8,25 @@ from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import (QColor, QLinearGradient, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF,
                          QRadialGradient, QTransform)
 
-from .wallet import VARIANT
+# (id, name, rarity, main colour, light colour)
+VARIANTS = [("gold", "Gold", "super", "#E8C26A", "#FFF1C2"),
+            ("titanium", "Titanium White", "very", "#EEF1F4", "#FFFFFF"),
+            ("black", "Black", "very", "#16191C", "#5A626B"),
+            ("lava", "Lava Red", "rare", "#FF3D1F", "#FFB199"),
+            ("purple", "Rich Purple", "rare", "#A43DFF", "#E2B8FF"),
+            ("sky", "Sky Blue", "rare", "#2EC5FF", "#B8EEFF"),
+            ("lime", "Juicy Lime", "rare", "#8CFF2E", "#DDFFB8"),
+            ("pink", "Hot Pink", "rare", "#FF2E9A", "#FFB8DD"),
+            ("beam", "Yellow Beam", "rare", "#FFEE2E", "#FFFBC2"),
+            ("blue", "Blue", "basic", "#4A6FB8", "#7F9DD6"),
+            ("green", "Green", "basic", "#4C8A5A", "#7DB389"),
+            ("red", "Red", "basic", "#A84444", "#CC7676"),
+            ("yellow", "Yellow", "basic", "#B89B42", "#D6BE76"),
+            ("orange", "Orange", "basic", "#B8703A", "#D69B6E"),
+            ("brown", "Brown", "basic", "#7A5A40", "#A0826A"),
+            ("grey", "Grey", "basic", "#7A828A", "#A2A9B0"),
+            ("teal", "Teal", "basic", "#3C8C8A", "#71B3B1")]
+VARIANT = {v[0]: v for v in VARIANTS}
 
 _unit_cache: dict = {}
 K = 100.0          # shapes are built 100x larger so that joining and cutting them keeps curves smooth

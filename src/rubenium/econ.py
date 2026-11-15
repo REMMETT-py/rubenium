@@ -152,21 +152,27 @@ class Econ(QObject):
         if before != (self.coins, self.keys, self.minutes):
             self.changed.emit()
 
-    def call(self, fn: str, args: dict, done=None, once: bool = False) -> None:
+    def adjust(self, coins: int = 0, keys: int = 0) -> None:
+        """Change the balance on screen (a bet leaving, a prize landing): the server already did it for real."""
+        self.coins = max(0, self.coins + int(coins))
+        self.keys = max(0, self.keys + int(keys))
+        self.changed.emit()
+
+    def call(self, fn: str, args: dict, done=None, once: bool = False, hold: bool = False) -> None:
         """Ask the server to do something. `done(ok, answer or message)` runs on the main thread, after the
         balance in the answer was taken. `once` adds an id so a resend can never be done twice."""
         if once:
             args = dict(args, req=uuid.uuid4().hex)
 
         def back(ok: bool, data) -> None:
-            if ok:
+            if ok and not hold:                 # hold: the game shows the result first, then the coins
                 self.absorb(data)
-            else:
+            if not ok:
                 data = ERRORS.get(next((k for k in ERRORS if k in str(data)), ""),
                                   "No internet connection" if data == "offline" else "Something went wrong: try again")
             if done is not None:
                 done(ok, data)
-            if ok:
+            if ok and not hold:
                 self.changed.emit()
         self.online.ask(fn, args, back, raw=True)
 

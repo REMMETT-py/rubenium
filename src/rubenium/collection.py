@@ -1,32 +1,41 @@
-"""Shop > Badges and Shop > Cases: your badge collection, the showcase on the music tab, and the cases.
+"""Shop > Badges and Shop > Cases: the badge collection, the three badges on show, the vendor and the cases.
 
-Basic colours of a badge are bought directly. Rare, very rare and super rare colours only come out of cases.
-A case costs coins and one key; keys are earned by playing in the casino."""
+Everything here asks the server (econ.py): buying a colour, selling to the vendor, opening a case."""
 import math
 import random
 import time
 
-from PyQt6.QtCore import QEasingCurve, QPointF, QRectF, QTimer, Qt, pyqtSignal
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
-from .badges import animated, paint_badge
+from .badges import item_animated, paint_item
 from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, lang, mix, tr, ui
+from .econ import RARITY_COLOURS, RARITY_NAMES, TIERS
 from .shop import GOLD_TEXT, paint_price
-from .wallet import (BADGE_NAME, BADGES, CASE_OF, CASES, RARITIES, RARITY_COLOUR, RARITY_NAME, VARIANT, VARIANTS,
-                     coins_text, variants_of)
+from .wallet import (BADGE_NAME, BADGES, COLOUR_IDS, EXOTICS, EXOTIC_IDS, PRESTIGE_IDS, VARIANT_NAME, badge_item,
+                     coins_text, paint_coin, variants_for)
 from .widgets import Tween, draw_icon
 
 SHOWCASE = 3
+SLOTS = ("badge1", "badge2", "badge3")
+CASE_NAMES = {"starter": "Starter Case", "standard": "Standard Case", "premium": "Premium Case", "vault": "Exotic Vault"}
+CASE_COLOURS = {"starter": "#7FA3B8", "standard": "#4FA8FF", "premium": "#B36BFF", "vault": "#FFC94D"}
+CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "bolt"),
+              "premium": ("sword", "skull", "comet"), "vault": ("galaxy", "phoenix", "dragon")}
 
 
 def worn(ctx) -> list:
-    items = ctx.cfg["badges"] if isinstance(ctx.cfg["badges"], list) else []
-    return [i for i in items if "/" in str(i)][:SHOWCASE]
+    return ctx.econ.badges_worn()
 
 
-def badge_label(ident: str, var: str) -> str:
-    return f"{tr(BADGE_NAME[ident])} · {tr(VARIANT[var][1])}"
+def badge_label(item: str) -> str:
+    _k, base, var = (item.split(":") + ["", ""])[:3]
+    return f"{tr(BADGE_NAME.get(base, base))} · {tr(VARIANT_NAME.get(var, var))}"
+
+
+def rarity_colour(ctx, item: str) -> QColor:
+    return QColor(RARITY_COLOURS[ctx.econ.rarity(item)])
 
 
 class _Shiny(QWidget):
@@ -60,7 +69,7 @@ class _Shiny(QWidget):
 # Badges
 # --------------------------------------------------------------------------- #
 class Showcase(_Shiny):
-    """The three badges shown on the music tab. Click one to take it off."""
+    """The three badges shown on the music tab and on your profile. Click one to take it off."""
 
     def __init__(self, page) -> None:
         super().__init__()
@@ -68,10 +77,13 @@ class Showcase(_Shiny):
         self.setFixedHeight(S(60))
         self.setMouseTracking(True)
         self._hover = -1
-        self.ctx.wallet.changed.connect(self.update)
+        self.ctx.econ.changed.connect(self.restart)
+
+    def _filled(self) -> list:
+        return [(s, self.ctx.econ.worn(s)) for s in SLOTS if self.ctx.econ.worn(s)]
 
     def shiny(self) -> bool:
-        return any(animated(i.split("/")[1]) for i in worn(self.ctx))
+        return any(item_animated(i) for _s, i in self._filled())
 
     def _slot(self, k: int) -> QRectF:
         d = S(50)
@@ -81,7 +93,7 @@ class Showcase(_Shiny):
         k = next((k for k in range(SHOWCASE) if self._slot(k).contains(e.position())), -1)
         if k != self._hover:
             self._hover = k
-            filled = 0 <= k < len(worn(self.ctx))
+            filled = 0 <= k < len(self._filled())
             self.setCursor(Qt.CursorShape.PointingHandCursor if filled else Qt.CursorShape.ArrowCursor)
             self.setToolTip(tr("Take off") if filled else "")
             self.update()
@@ -92,39 +104,39 @@ class Showcase(_Shiny):
 
     def mousePressEvent(self, e) -> None:
         e.accept()
-        items = worn(self.ctx)
+        items = self._filled()
         k = next((k for k in range(SHOWCASE) if self._slot(k).contains(e.position())), -1)
         if 0 <= k < len(items) and e.button() == Qt.MouseButton.LeftButton:
             sfx.play("pick")
-            items.pop(k)
-            self.page.set_worn(items)
+            self.ctx.econ.wear(items[k][0], "")
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        items = worn(self.ctx)
+        items = self._filled()
         now = time.monotonic()
         for k in range(SHOWCASE):
             r = self._slot(k)
             if k < len(items):
-                ident, var = items[k].split("/")
-                col = QColor(RARITY_COLOUR[VARIANT[var][2]])
+                item = items[k][1]
+                col = rarity_colour(self.ctx, item)
                 p.setPen(QPen(alpha(col, 0.75 if k == self._hover else 0.45), 1.3))
                 p.setBrush(alpha(col, 0.10))
                 p.drawRoundedRect(r, S(12), S(12))
-                paint_badge(p, ident, r.adjusted(S(13), S(13), -S(13), -S(13)), var, now)
+                paint_item(p, item, r.adjusted(S(14), S(14), -S(14), -S(14)), now)
             else:
-                pen = QPen(alpha("#FFFFFF", 0.14), 1.2, Qt.PenStyle.DashLine)
-                p.setPen(pen)
+                p.setPen(QPen(alpha("#FFFFFF", 0.14), 1.2, Qt.PenStyle.DashLine))
                 p.setBrush(Qt.BrushStyle.NoBrush)
                 p.drawRoundedRect(r, S(12), S(12))
                 p.setPen(QPen(alpha("#FFFFFF", 0.22), S(1.6)))
                 c = r.center()
                 p.drawLine(QPointF(c.x() - S(6), c.y()), QPointF(c.x() + S(6), c.y()))
                 p.drawLine(QPointF(c.x(), c.y() - S(6)), QPointF(c.x(), c.y() + S(6)))
+        ec = self.ctx.econ
         right = QRectF(self._slot(SHOWCASE - 1).right() + S(14), 0, 0, self.height())
         right.setRight(self.width())
-        total = len(BADGES) * len(VARIANTS)
+        total = sum(1 for v in ec.catalog.values() if v.get("kind") == "badge") or 870
+        have = len({i["item"] for i in ec.items if i["item"].startswith("badge:")})
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.drawText(QRectF(right.left(), right.top() + S(10), right.width(), S(16)),
@@ -132,41 +144,49 @@ class Showcase(_Shiny):
         p.setPen(QColor(TEXT))
         p.setFont(font(15, QFont.Weight.Bold))
         p.drawText(QRectF(right.left(), right.top() + S(26), right.width(), S(24)),
-                   int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
-                   f"{coins_text(self.ctx.wallet.badge_total())} / {coins_text(total)}")
+                   int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), f"{have} / {total}")
 
 
 class BadgeGrid(_Shiny):
-    """All 50 badges. Each shows the rarest colour you have (or a dark outline) and how many colours you own."""
+    """Every badge. Each shows the best colour you have. One you no longer have is greyed out; an Exotic you
+    never had is a question mark."""
     COLS = 6
 
     def __init__(self, page, idents=None) -> None:
         super().__init__()
         self.page, self.ctx = page, page.ctx
-        self.idents = idents or [b[0] for b in BADGES]
+        self.idents = idents or [b for b, _n in BADGES + EXOTICS]
         self.cw, self.ch = page.W / self.COLS, S(62)
         rows = (len(self.idents) + self.COLS - 1) // self.COLS
         self.setFixedSize(page.W, int(rows * self.ch))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMouseTracking(True)
         self._hover = -1
+        self.ctx.econ.changed.connect(self.restart)
+
+    def state(self, base: str) -> tuple:
+        """(colours owned, best owned colour or '', a colour owned before or '')"""
+        ec = self.ctx.econ
+        have = [v for v in variants_for(base) if ec.owns(badge_item(base, v))]
+        before = next((v for v in variants_for(base) if ec.had(badge_item(base, v))), "")
+        return have, (have[0] if have else ""), before
 
     def shiny(self) -> bool:
-        w = self.ctx.wallet
-        return any(animated(v) for b in self.idents for v in w.badge_variants(b)[:1])
-
-    def _cell(self, i: int) -> QRectF:
-        return QRectF((i % self.COLS) * self.cw, (i // self.COLS) * self.ch, self.cw, self.ch)
+        return any(item_animated(badge_item(b, self.state(b)[1])) for b in self.idents if self.state(b)[1])
 
     def _at(self, pos) -> int:
         i = int(pos.y() // self.ch) * self.COLS + int(pos.x() // self.cw)
         return i if 0 <= i < len(self.idents) and pos.x() < self.COLS * self.cw else -1
 
+    def _secret(self, base: str) -> bool:
+        have, _b, before = self.state(base)
+        return base in EXOTIC_IDS and not have and not before
+
     def mouseMoveEvent(self, e) -> None:
         i = self._at(e.position())
         if i != self._hover:
             self._hover = i
-            self.setToolTip(tr(BADGE_NAME[self.idents[i]]) if i >= 0 else "")
+            self.setToolTip("" if i < 0 else ("?" if self._secret(self.idents[i]) else tr(BADGE_NAME[self.idents[i]])))
             self.update()
 
     def leaveEvent(self, _e) -> None:
@@ -183,49 +203,52 @@ class BadgeGrid(_Shiny):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w = self.ctx.wallet
-        wearing = {i.split("/")[0] for i in worn(self.ctx)}
+        wearing = {i.split(":")[1] for i in worn(self.ctx) if i.count(":") == 2}
         now = time.monotonic()
-        for i, ident in enumerate(self.idents):
-            cell = self._cell(i)
-            have = w.badge_variants(ident)
-            best = have[0] if have else ""
+        for i, base in enumerate(self.idents):
+            cell = QRectF((i % self.COLS) * self.cw, (i // self.COLS) * self.ch, self.cw, self.ch)
+            have, best, before = self.state(base)
             d = S(40)
             c = QPointF(cell.center().x(), cell.top() + S(4) + d / 2)
             hov = i == self._hover
-            ring = QColor(RARITY_COLOUR[VARIANT[best][2]]) if best else QColor("#FFFFFF")
-            p.setPen(QPen(ui.accent if ident in wearing else alpha(ring, (0.55 if best else 0.10) + (0.2 if hov else 0)),
+            ring = rarity_colour(self.ctx, badge_item(base, best)) if best else QColor("#FFFFFF")
+            p.setPen(QPen(ui.accent if base in wearing else alpha(ring, (0.55 if best else 0.10) + (0.2 if hov else 0)),
                           1.3))
             p.setBrush(alpha(ring, 0.08) if best else QColor("#0A0D0E"))
             p.drawEllipse(c, d / 2, d / 2)
-            g = S(21)
+            g = S(20) if base in EXOTIC_IDS else S(21)
             box = QRectF(c.x() - g / 2, c.y() - g / 2, g, g)
             if best:
-                paint_badge(p, ident, box, best, now, effects=True)
+                paint_item(p, badge_item(base, best), box, now)
+            elif self._secret(base):
+                p.setPen(alpha("#FFFFFF", 0.35 + (0.2 if hov else 0)))
+                p.setFont(font(15, QFont.Weight.ExtraBold))
+                p.drawText(QRectF(c.x() - d / 2, c.y() - d / 2, d, d), int(Qt.AlignmentFlag.AlignCenter), "?")
             else:
-                paint_badge(p, ident, box, "grey", 0, effects=False, dim=0.28 + (0.2 if hov else 0.0))
+                paint_item(p, badge_item(base, before or ("prime" if base in EXOTIC_IDS else "grey")), box, 0,
+                           effects=False, dim=(0.42 if before else 0.26) + (0.15 if hov else 0.0))
             p.setFont(font(9, QFont.Weight.DemiBold))
             p.setPen(ring if best else QColor(TEXT_FAINT))
             p.drawText(QRectF(cell.left(), cell.top() + S(4) + d + S(1), cell.width(), S(14)),
-                       int(Qt.AlignmentFlag.AlignCenter), f"{len(have)}/{len(VARIANTS)}")
+                       int(Qt.AlignmentFlag.AlignCenter), f"{len(have)}/{len(variants_for(base))}")
 
 
 class BigBadge(_Shiny):
-    """One badge, large, in the colour picked below it, with its name and rarity."""
+    """One badge, large, in the colour picked below it, with its name, rarity and whether you have it."""
 
     def __init__(self, page) -> None:
         super().__init__()
-        self.page = page
-        self.ident, self.var = "star", "grey"
-        self.setFixedHeight(S(136))
+        self.page, self.ctx = page, page.ctx
+        self.item = "badge:star:grey"
+        self.setFixedHeight(S(140))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._born = time.monotonic()
 
     def shiny(self) -> bool:
-        return True                                    # the glow behind it breathes
+        return True
 
-    def show_variant(self, ident: str, var: str) -> None:
-        self.ident, self.var = ident, var
+    def show_item(self, item: str) -> None:
+        self.item = item
         self._born = time.monotonic()
         self.restart()
 
@@ -233,9 +256,10 @@ class BigBadge(_Shiny):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         now = time.monotonic()
-        rarity = VARIANT[self.var][2]
-        owned = self.page.ctx.wallet.has_badge(self.ident, self.var)
-        col = QColor(RARITY_COLOUR[rarity])
+        ec = self.ctx.econ
+        rarity = ec.rarity(self.item)
+        owned, before = ec.owns(self.item), ec.had(self.item)
+        col = QColor(RARITY_COLOURS[rarity])
         c = QPointF(self.width() / 2, S(54))
         breath = 0.5 + 0.5 * math.sin(now * 2.0)
         glow = QRadialGradient(c, S(70))
@@ -244,77 +268,77 @@ class BigBadge(_Shiny):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(glow)
         p.drawEllipse(c, S(70), S(70))
-        if rarity in ("very", "super") and owned:          # slow light rays
+        if rarity in ("epic", "exotic") and owned:
             p.save()
             p.translate(c)
             p.rotate(now * 12)
-            for k in range(10):
+            for _k in range(10):
                 p.rotate(36)
-                path = QPainterPath()
-                path.moveTo(0, 0)
-                path.lineTo(S(64), -S(7))
-                path.lineTo(S(64), S(7))
-                path.closeSubpath()
-                p.setBrush(alpha(col, 0.07 if rarity == "very" else 0.11))
-                p.drawPath(path)
+                ray = QPainterPath()
+                ray.moveTo(0, 0)
+                ray.lineTo(S(64), -S(7))
+                ray.lineTo(S(64), S(7))
+                ray.closeSubpath()
+                p.setBrush(alpha(col, 0.07 if rarity == "epic" else 0.12))
+                p.drawPath(ray)
             p.restore()
         pop = min(1.0, (now - self._born) / 0.25)
-        size = S(74) * (0.85 + 0.15 * (1 - (1 - pop) ** 3))
-        paint_badge(p, self.ident, QRectF(c.x() - size / 2, c.y() - size / 2, size, size), self.var, now,
-                    dim=1.0 if owned else 0.35)
-        if not owned:
-            p.save()
-            p.translate(c.x() + S(30), c.y() + S(28))
-            p.setBrush(QColor(14, 17, 18))
-            p.setPen(QPen(alpha("#FFFFFF", 0.14), 1))
-            p.drawEllipse(QPointF(0, 0), S(11), S(11))
-            p.scale(S(12) / 20, S(12) / 20)
-            draw_icon(p, "lock", QColor(TEXT_DIM))
-            p.restore()
+        size = S(66) * (0.85 + 0.15 * (1 - (1 - pop) ** 3))
+        paint_item(p, self.item, QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now, effects=owned,
+                   dim=1.0 if owned else 0.35)
+        count = len(ec.copies(self.item))
         p.setPen(QColor(TEXT))
         p.setFont(font(13, QFont.Weight.Bold))
-        p.drawText(QRectF(0, S(98), self.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), tr(VARIANT[self.var][1]))
+        name = tr(VARIANT_NAME.get(self.item.split(":")[2], "")) + (f"  ×{count}" if count > 1 else "")
+        p.drawText(QRectF(0, S(98), self.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), name)
+        tag = tr(RARITY_NAMES[rarity]) + ("" if owned else "  ·  " + (tr("No longer owned") if before else tr("Not owned")))
         p.setPen(col)
         p.setFont(font(10.5, QFont.Weight.Bold))
-        p.drawText(QRectF(0, S(117), self.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr(RARITY_NAME[rarity]))
+        p.drawText(QRectF(0, S(118), self.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tag)
 
 
 class VariantPicker(_Shiny):
-    """The 17 colours of one badge, in four rows from rarest to basic."""
+    """Every colour of one badge: prestige finishes on top, then the colours, then grey."""
     picked = pyqtSignal(str)
 
-    def __init__(self, page, ident: str) -> None:
+    def __init__(self, page, base: str) -> None:
         super().__init__()
-        self.page, self.ctx, self.ident = page, page.ctx, ident
+        self.page, self.ctx, self.base = page, page.ctx, base
         self.var = ""
-        self.label_w = S(80)
+        self.label_w = S(74)
         self.sq, self.gap = S(28), S(5)
-        self.rows = [variants_of(k) for k, _n, _c in RARITIES][::-1]          # super, very, rare, basic
+        if base in EXOTIC_IDS:
+            self.rows = [("Exotic", PRESTIGE_IDS[::-1]), ("Epic", ["prime"])]
+        else:
+            self.rows = [("Cases only", PRESTIGE_IDS[::-1]), ("Colours", COLOUR_IDS[7:][::-1]), ("", COLOUR_IDS[:7][::-1]),
+                         ("Plain", ["grey"])]
         self.row_h = S(36)
         self.setFixedSize(page.W, int(self.row_h * len(self.rows)))
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._hover = ""
+        self.ctx.econ.changed.connect(self.restart)
 
     def shiny(self) -> bool:
-        return any(animated(v) for v in self.ctx.wallet.badge_variants(self.ident))
+        return any(self.ctx.econ.owns(badge_item(self.base, v)) and item_animated(badge_item(self.base, v))
+                   for _t, vs in self.rows for v in vs)
 
     def _rect(self, row: int, k: int) -> QRectF:
         return QRectF(self.label_w + k * (self.sq + self.gap), row * self.row_h + (self.row_h - self.sq) / 2,
                       self.sq, self.sq)
 
     def _at(self, pos) -> str:
-        for row, vs in enumerate(self.rows):
+        for row, (_t, vs) in enumerate(self.rows):
             for k, v in enumerate(vs):
                 if self._rect(row, k).adjusted(-2, -2, 2, 2).contains(pos):
-                    return v[0]
+                    return v
         return ""
 
     def mouseMoveEvent(self, e) -> None:
         v = self._at(e.position())
         if v != self._hover:
             self._hover = v
-            self.setToolTip(tr(VARIANT[v][1]) if v else "")
+            self.setToolTip(tr(VARIANT_NAME[v]) if v else "")
             self.update()
 
     def leaveEvent(self, _e) -> None:
@@ -333,33 +357,26 @@ class VariantPicker(_Shiny):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w = self.ctx.wallet
+        ec = self.ctx.econ
         wearing = set(worn(self.ctx))
         now = time.monotonic()
-        for row, vs in enumerate(self.rows):
-            rarity = vs[0][2]
-            col = QColor(RARITY_COLOUR[rarity])
-            p.setPen(col)
+        for row, (title, vs) in enumerate(self.rows):
+            p.setPen(QColor(TEXT_DIM))
             p.setFont(font(10, QFont.Weight.Bold))
             p.drawText(QRectF(0, row * self.row_h, self.label_w - S(6), self.row_h), int(Qt.AlignmentFlag.AlignVCenter),
-                       tr(RARITY_NAME[rarity]))
-            for k, (vid, _name, _r, main, _light) in enumerate(vs):
+                       tr(title) if title else "")
+            for k, v in enumerate(vs):
+                item = badge_item(self.base, v)
                 r = self._rect(row, k)
-                have = w.has_badge(self.ident, vid)
-                sel = vid == self.var
-                hov = vid == self._hover
-                p.setPen(QPen(QColor("#FFFFFF") if sel else alpha(col, 0.5 if have else (0.25 if hov else 0.10)),
+                col = QColor(RARITY_COLOURS[ec.rarity(item)])
+                have, sel, hov = ec.owns(item), v == self.var, v == self._hover
+                p.setPen(QPen(QColor("#FFFFFF") if sel else alpha(col, 0.55 if have else (0.3 if hov else 0.12)),
                               S(1.6) if sel else 1.1))
                 p.setBrush(alpha(col, 0.10) if have else QColor("#0C1013"))
                 p.drawRoundedRect(r, S(7), S(7))
-                inner = r.adjusted(S(6), S(6), -S(6), -S(6))
-                if have:
-                    paint_badge(p, self.ident, inner, vid, now, effects=rarity != "basic")
-                else:
-                    p.setPen(QPen(alpha("#FFFFFF", 0.25), 1) if vid == "black" else Qt.PenStyle.NoPen)
-                    p.setBrush(alpha(QColor(main), 0.9 if vid == "black" else 0.45))
-                    p.drawEllipse(r.center(), S(4.5), S(4.5))
-                if f"{self.ident}/{vid}" in wearing:
+                paint_item(p, item, r.adjusted(S(6.5), S(6.5), -S(6.5), -S(6.5)), now, effects=have,
+                           dim=1.0 if have else (0.5 if ec.had(item) else 0.3))
+                if item in wearing:
                     p.setPen(Qt.PenStyle.NoPen)
                     p.setBrush(ui.accent)
                     p.drawEllipse(QPointF(r.right() - S(3), r.top() + S(3)), S(3), S(3))
@@ -368,17 +385,13 @@ class VariantPicker(_Shiny):
 # --------------------------------------------------------------------------- #
 # Cases
 # --------------------------------------------------------------------------- #
-def case_by_id(ident: str) -> dict:
-    return next((c for c in CASES if c["id"] == ident), CASES[0])
-
-
-def paint_case(p: QPainter, rect: QRectF, case: dict, shake: float = 0.0) -> None:
-    """A small closed case in the case's colour, with three of its badges on the front."""
+def paint_case(p: QPainter, rect: QRectF, case_id: str, shake: float = 0.0) -> None:
+    """A small closed case in its colour, with three of its badges on the front."""
     p.save()
     p.translate(rect.center().x() + shake, rect.center().y())
     w, h = rect.width(), rect.height() * 0.72
     body = QRectF(-w / 2, -h / 2 + rect.height() * 0.08, w, h)
-    col = QColor(case["colour"])
+    col = QColor(CASE_COLOURS.get(case_id, "#3DDC84"))
     g = QLinearGradient(body.topLeft(), body.bottomLeft())
     g.setColorAt(0.0, mix(col, QColor("#FFFFFF"), 0.18))
     g.setColorAt(1.0, mix(col, QColor("#000000"), 0.45))
@@ -387,24 +400,24 @@ def paint_case(p: QPainter, rect: QRectF, case: dict, shake: float = 0.0) -> Non
     p.drawRoundedRect(body, w * 0.12, w * 0.12)
     p.setBrush(alpha("#000000", 0.28))
     p.drawRect(QRectF(body.left(), body.top() + h * 0.32, w, h * 0.12))
-    handle = QRectF(-w * 0.18, body.top() - h * 0.16, w * 0.36, h * 0.2)
     p.setBrush(Qt.BrushStyle.NoBrush)
     p.setPen(QPen(mix(col, QColor("#000000"), 0.3), max(1.5, w * 0.06)))
-    p.drawRoundedRect(handle, w * 0.06, w * 0.06)
-    bs = w * 0.22
-    for k, ident in enumerate(case["badges"][:3]):
-        x = -bs * 1.25 + k * bs * 1.25
-        paint_badge(p, ident, QRectF(x - bs / 2, body.top() + h * 0.56 - bs / 2, bs, bs), "titanium", 0, effects=False)
+    p.drawRoundedRect(QRectF(-w * 0.18, body.top() - h * 0.16, w * 0.36, h * 0.2), w * 0.06, w * 0.06)
+    bs = w * 0.2
+    for k, base in enumerate(CASE_FRONT.get(case_id, ("heart", "star", "note"))):
+        x = -bs * 1.3 + k * bs * 1.3
+        paint_item(p, badge_item(base, "prime" if base in EXOTIC_IDS else "white"),
+                   QRectF(x - bs / 2, body.top() + h * 0.56 - bs / 2, bs, bs), 0, effects=False)
     p.restore()
 
 
 class CaseCard(QWidget):
-    """A case in the list: picture, name, price, and how much of it you have collected."""
+    """A case in the list (or the free daily case): picture, name, price or countdown."""
 
     def __init__(self, page, case: dict) -> None:
         super().__init__()
         self.page, self.ctx, self.case = page, page.ctx, case
-        self.setFixedHeight(S(80))
+        self.setFixedHeight(S(64))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._hover = Tween(self, on_change=self.update)
 
@@ -423,127 +436,133 @@ class CaseCard(QWidget):
             self.page.open_case(self.case["id"])
 
     def paintEvent(self, _e) -> None:
+        from .shop import clock_text
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         h = self._hover.level
+        cid = self.case["id"]
         r = QRectF(self.rect()).adjusted(1.5, 1.5, -1.5, -1.5)
-        col = QColor(self.case["colour"])
+        col = QColor(CASE_COLOURS.get(cid, "#3DDC84"))
         p.setPen(QPen(mix(alpha("#FFFFFF", 0.08), col, 0.4 + 0.5 * h), 1.2))
         bg = QLinearGradient(r.topLeft(), r.topRight())
         bg.setColorAt(0.0, alpha(col, 0.14 + 0.06 * h))
         bg.setColorAt(0.6, QColor("#0C1113"))
         p.setBrush(bg)
         p.drawRoundedRect(r, S(12), S(12))
-        paint_case(p, QRectF(r.left() + S(12), r.top() + S(10), S(58), r.height() - S(20)), self.case,
+        paint_case(p, QRectF(r.left() + S(12), r.top() + S(8), S(48), r.height() - S(16)), cid,
                    math.sin(time.monotonic() * 40) * S(1.2) * h)
-        x = r.left() + S(84)
+        x = r.left() + S(74)
         p.setPen(QColor(TEXT))
         p.setFont(font(13.5, QFont.Weight.Bold))
-        p.drawText(QRectF(x, r.top() + S(12), r.width() - S(90), S(22)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr(self.case["name"]))
-        paint_price(p, QRectF(x, r.top() + S(36), S(80), S(18)), self.case["price"], 11, GOLD_TEXT, centre=False)
-        p.setFont(font(11, QFont.Weight.DemiBold))
-        pw = p.fontMetrics().horizontalAdvance(coins_text(self.case["price"])) + S(26)
-        p.setPen(QColor(TEXT_DIM))
-        p.drawText(QRectF(x + pw, r.top() + S(36), S(14), S(18)), int(Qt.AlignmentFlag.AlignVCenter), "+")
-        p.save()
-        p.translate(x + pw + S(20), r.top() + S(45))
-        p.scale(S(12) / 20, S(12) / 20)
-        draw_icon(p, "key", ui.accent)
-        p.restore()
-        w = self.ctx.wallet
-        total = len(self.case["badges"]) * len(VARIANTS)
-        have = sum(len(w.badge_variants(b)) for b in self.case["badges"])
-        bar = QRectF(x, r.bottom() - S(16), r.width() - S(98), S(4))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.08))
-        p.drawRoundedRect(bar, S(2), S(2))
-        p.setBrush(col)
-        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(S(4), bar.width() * have / total), bar.height()), S(2), S(2))
-        p.setPen(QColor(TEXT_DIM))
-        p.setFont(font(9.5, QFont.Weight.DemiBold))
-        p.drawText(QRectF(bar.left(), bar.top() - S(17), bar.width(), S(14)),
-                   int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), f"{have} / {total}")
+        p.drawText(QRectF(x, r.top() + S(9), r.width() - S(90), S(22)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr(CASE_NAMES.get(cid, "Daily Case")))
+        line = QRectF(x, r.top() + S(33), r.width() - S(90), S(18))
+        if cid == "daily":
+            wait = self.page.daily_wait()
+            p.setPen(QColor(GOLD_TEXT) if wait == 0 else QColor(TEXT_DIM))
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter),
+                       tr("Free: ready") if wait == 0 else ("…" if wait is None else tr("Free again in {t}", t=clock_text(wait))))
+        else:
+            paint_price(p, line, self.case["price"], 11, GOLD_TEXT, centre=False)
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            pw = p.fontMetrics().horizontalAdvance(coins_text(self.case["price"])) + S(26)
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(x + pw, line.top(), S(14), S(18)), int(Qt.AlignmentFlag.AlignVCenter), "+")
+            p.save()
+            p.translate(x + pw + S(20), line.center().y())
+            p.scale(S(12) / 20, S(12) / 20)
+            draw_icon(p, "key", ui.accent)
+            p.restore()
 
 
 class OddsTable(QWidget):
-    """The real chance of each rarity in this case."""
+    """The real chance of each kind of drop in this case, and what is certain after a number of openings."""
 
     def __init__(self, case: dict, width: int) -> None:
         super().__init__()
         self.case = case
+        self.rows = [(i, share) for i, share in enumerate(case["odds"]) if share > 0][::-1]
         self.row_h = S(24)
-        self.setFixedSize(width, int(self.row_h * 4))
+        self.setFixedSize(width, int(self.row_h * len(self.rows) + S(22)))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        order = list(zip(("basic", "rare", "very", "super"), self.case["odds"]))[::-1]
-        for k, (rarity, share) in enumerate(order):
+        case = self.case
+        for k, (tier, share) in enumerate(self.rows):
             r = QRectF(0, k * self.row_h, self.width(), self.row_h)
-            col = QColor(RARITY_COLOUR[rarity])
+            col = QColor(RARITY_COLOURS[TIERS[tier - 1]]) if tier else QColor(GOLD_TEXT)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(col, 0.07))
             p.drawRoundedRect(r.adjusted(0, S(1.5), 0, -S(1.5)), S(6), S(6))
-            p.setBrush(col)
-            p.drawEllipse(QPointF(r.left() + S(12), r.center().y()), S(4), S(4))
+            if tier:
+                p.setBrush(col)
+                p.drawEllipse(QPointF(r.left() + S(12), r.center().y()), S(4), S(4))
+            else:
+                paint_coin(p, QPointF(r.left() + S(12), r.center().y()), S(5))
             p.setPen(col)
             p.setFont(font(11, QFont.Weight.Bold))
-            p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), tr(RARITY_NAME[rarity]))
-            names = ", ".join(tr(v[1]) for v in variants_of(rarity)) if rarity != "basic" else tr("8 plain colours")
-            p.setPen(QColor(TEXT_DIM))
-            p.setFont(font(9.5, QFont.Weight.DemiBold))
-            fm = p.fontMetrics()
-            name_w = self.width() * 0.48
-            p.drawText(QRectF(r.left() + self.width() * 0.32, r.top(), name_w, r.height()), int(Qt.AlignmentFlag.AlignVCenter),
-                       fm.elidedText(names, Qt.TextElideMode.ElideRight, int(name_w)))
+            name = tr(RARITY_NAMES[TIERS[tier - 1]]) if tier else \
+                tr("{a} to {b} coins", a=case["coin_min"], b=case["coin_max"])
+            p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
             pct = share / 100
             text = f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
             p.setPen(QColor(TEXT))
-            p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        text.replace(".", ",") if lang() == "fr" else text)
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        p.drawText(QRectF(0, len(self.rows) * self.row_h + S(4), self.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("{rarity} or better is certain within {n} openings",
+                      rarity=tr(RARITY_NAMES[TIERS[case["pity_tier"] - 1]]), n=case["pity_after"]))
 
 
 class CaseReel(QWidget):
-    """The opening: a strip of badges races past the marker and slows down until it stops on yours."""
+    """The opening: a strip of drops races past the marker and slows down until it stops on yours. The server
+    already decided and saved the drop before the strip starts."""
     done = pyqtSignal()
-    ITEMS = 52
-    WIN = 46
-    SPIN_S = 6.6
+    ITEMS, WIN, SPIN_S = 52, 46, 6.6
 
     def __init__(self, page, case: dict) -> None:
         super().__init__()
         self.page, self.ctx, self.case = page, page.ctx, case
         self.setFixedHeight(S(178))
         self.cw, self.gap = S(64), S(6)
-        self.state = "idle"                              # idle -> spin -> result
+        self.state = "idle"                              # idle -> spin -> landed -> result
         self.result = None
-        rnd = random.Random(hash(case["id"]) & 0xFFFF)
+        self._pool = {}
+        rnd = random.Random(sum(map(ord, case["id"])))
         self.strip = [self._filler(rnd) for _ in range(self.ITEMS)]
         self.offset = self._start()
-        self._t0 = 0.0
-        self._target = 0.0
+        self._t0 = self._target = self._last_tick = self._stop_t = 0.0
         self._last_cell = 0
-        self._last_tick = 0.0
-        self._stop_t = 0.0
         self._frames = QTimer(self)
         self._frames.setTimerType(Qt.TimerType.PreciseTimer)
         self._frames.setInterval(16)
         self._frames.timeout.connect(self._step)
         self._sparks: list = []
 
+    def _badges_of(self, tier: int) -> list:
+        if tier not in self._pool:
+            want = TIERS[tier - 1]
+            self._pool[tier] = [k for k, v in self.ctx.econ.catalog.items() if v.get("kind") == "badge"
+                                and v.get("rarity") == want
+                                and (self.case.get("exotics") or v.get("base") not in EXOTIC_IDS)] or ["badge:star:grey"]
+        return self._pool[tier]
+
     def _filler(self, rnd) -> tuple:
-        """A random badge for the strip, drawn with the case's real odds (so the strip looks like the case)."""
-        roll = rnd.randrange(10000)
-        rarity = "super"
-        for kind, share in zip(("basic", "rare", "very", "super"), self.case["odds"]):
+        """A drop for the strip, picked with the case's real odds (so the strip looks like the case)."""
+        roll, tier = rnd.randrange(10000), 0
+        for i, share in enumerate(self.case["odds"]):
             if roll < share:
-                rarity = kind
+                tier = i
                 break
             roll -= share
-        return rnd.choice(self.case["badges"]), rnd.choice(variants_of(rarity))[0]
+        if tier == 0:
+            return ("coins", rnd.randint(self.case["coin_min"], self.case["coin_max"]))
+        return ("item", rnd.choice(self._badges_of(tier)))
 
     def _start(self) -> float:
         return 2 * (self.cw + self.gap) + self.cw / 2
@@ -554,7 +573,7 @@ class CaseReel(QWidget):
     def spin(self, result: dict) -> None:
         rnd = random.Random()
         self.strip = [self._filler(rnd) for _ in range(self.ITEMS)]
-        self.strip[self.WIN] = (result["badge"], result["var"])
+        self.strip[self.WIN] = ("item", result["item"]) if result.get("item") else ("coins", int(result.get("won", 0)))
         self.result = result
         self.state = "spin"
         self.offset = self._start()
@@ -562,10 +581,10 @@ class CaseReel(QWidget):
         self._t0 = time.monotonic()
         self._last_cell = int(self.offset // (self.cw + self.gap))
         self._sparks = []
+        self._frames.setInterval(16)
         self._frames.start()
 
     def skip(self) -> None:
-        """Jump to the end (the Shop was left mid-opening)."""
         if self.state == "spin":
             self._t0 = time.monotonic() - self.SPIN_S
             self._step()
@@ -574,9 +593,8 @@ class CaseReel(QWidget):
         now = time.monotonic()
         if self.state == "spin":
             t = min(1.0, (now - self._t0) / self.SPIN_S)
-            eased = 1.0 - (1.0 - t) ** 4.2
             start = self._start()
-            self.offset = start + (self._target - start) * eased
+            self.offset = start + (self._target - start) * (1.0 - (1.0 - t) ** 4.2)
             cell = int((self.offset + self.gap / 2) // (self.cw + self.gap))
             if cell != self._last_cell:
                 self._last_cell = cell
@@ -587,56 +605,57 @@ class CaseReel(QWidget):
                 self.state = "landed"
                 self._stop_t = now
                 QTimer.singleShot(650, self._reveal)
-        elif self.state == "result" and now - self._stop_t > 6.0 and self.result["rarity"] == "basic":
-            self._frames.setInterval(40)
         self.update()
+
+    def _tier(self) -> int:
+        return int((self.result or {}).get("tier", 0))
 
     def _reveal(self) -> None:
         if self.result is None:
             return
         self.state = "result"
         self._stop_t = time.monotonic()
-        rarity = self.result["rarity"]
+        tier = self._tier()
         sfx.play("on")
-        if rarity in ("very", "super"):
+        if tier >= 4:
             QTimer.singleShot(180, lambda: sfx.play("on"))
-        n = {"basic": 0, "rare": 14, "very": 26, "super": 46}[rarity]
+        n = [0, 0, 10, 18, 30, 60][tier]
         rnd = random.Random()
         self._sparks = [(rnd.uniform(0, math.tau), rnd.uniform(S(60), S(150)), rnd.uniform(0.6, 1.3)) for _ in range(n)]
-        refund = self.ctx.wallet.pay_refund()
-        if refund:
-            self.result["refund"] = refund
         self.done.emit()
-
-    def back_to_strip(self) -> None:
-        if self.state == "result":
-            self.state = "idle"
-            self._frames.stop()
-            self.update()
 
     def mousePressEvent(self, e) -> None:
         e.accept()
         if self.state == "result" and not self.busy():
-            self.back_to_strip()
+            self.state = "idle"
+            self._frames.stop()
+            self.update()
 
     def hideEvent(self, _e) -> None:
         self.skip()
 
-    # -- painting
-    def _card(self, p: QPainter, rect: QRectF, ident: str, var: str, now: float, flash: float = 0.0) -> None:
-        rarity = VARIANT[var][2]
-        col = QColor(RARITY_COLOUR[rarity])
+    def _card(self, p: QPainter, rect: QRectF, drop: tuple, now: float, flash: float = 0.0) -> None:
+        kind, what = drop
+        col = QColor(GOLD_TEXT) if kind == "coins" else rarity_colour(self.ctx, what)
         g = QLinearGradient(rect.topLeft(), rect.bottomLeft())
         g.setColorAt(0.0, QColor("#11171A"))
-        g.setColorAt(1.0, mix(QColor("#11171A"), col, 0.32))
+        g.setColorAt(1.0, mix(QColor("#11171A"), col, 0.32 if kind == "item" else 0.12))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(g)
         p.drawRoundedRect(rect, S(8), S(8))
-        p.setBrush(col)
+        p.setBrush(col if kind == "item" else alpha(col, 0.5))
         p.drawRoundedRect(QRectF(rect.left() + S(6), rect.bottom() - S(5), rect.width() - S(12), S(3)), S(1.5), S(1.5))
-        size = rect.width() * 0.56
-        paint_badge(p, ident, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size), var,
-                    now, effects=self.state != "spin")
+        if kind == "coins":
+            paint_coin(p, QPointF(rect.center().x(), rect.center().y() - S(10)), S(11))
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(11, QFont.Weight.Bold))
+            p.drawText(QRectF(rect.left(), rect.center().y() + S(6), rect.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       coins_text(what))
+            p.setPen(Qt.PenStyle.NoPen)
+        else:
+            size = rect.width() * 0.5
+            paint_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
+                       now, effects=self.state != "spin")
         if flash > 0:
             p.setBrush(QColor(255, 255, 255, int(150 * flash)))
             p.drawRoundedRect(rect, S(8), S(8))
@@ -661,30 +680,21 @@ class CaseReel(QWidget):
         p.drawRoundedRect(r, S(12), S(12))
 
     def _paint_strip(self, p: QPainter, r: QRectF, now: float) -> None:
-        cx = r.center().x()
-        ch = S(88)
+        cx, ch = r.center().x(), S(88)
         top = r.center().y() - ch / 2
         step = self.cw + self.gap
         first = max(0, int((self.offset - cx) // step) - 1)
-        speed = 0.0
-        if self.state == "spin":
-            t = min(1.0, (now - self._t0) / self.SPIN_S)
-            speed = (1.0 - t) ** 3.2
+        speed = (1.0 - min(1.0, (now - self._t0) / self.SPIN_S)) ** 3.2 if self.state == "spin" else 0.0
         for i in range(first, min(self.ITEMS, first + int(r.width() // step) + 4)):
-            x = cx - self.offset + i * step
-            ident, var = self.strip[i]
             flash = 0.0
             if self.state == "landed" and i == self.WIN:
                 flash = max(0.0, 1.0 - (now - self._stop_t) / 0.6) * (0.5 + 0.5 * math.sin((now - self._stop_t) * 30))
-            self._card(p, QRectF(x, top, self.cw, ch), ident, var, now, flash)
-        fade = QLinearGradient(r.topLeft(), r.topRight())                      # dark edges
-        fade.setColorAt(0.0, QColor(9, 12, 13, 250))
-        fade.setColorAt(0.22, QColor(9, 12, 13, 0))
-        fade.setColorAt(0.78, QColor(9, 12, 13, 0))
-        fade.setColorAt(1.0, QColor(9, 12, 13, 250))
+            self._card(p, QRectF(cx - self.offset + i * step, top, self.cw, ch), self.strip[i], now, flash)
+        fade = QLinearGradient(r.topLeft(), r.topRight())
+        for at, a in ((0.0, 250), (0.22, 0), (0.78, 0), (1.0, 250)):
+            fade.setColorAt(at, QColor(9, 12, 13, a))
         p.fillRect(r, fade)
-        heat = speed if self.state == "spin" else 0.0
-        mark = mix(QColor(GOLD_TEXT), QColor("#FFFFFF"), heat)
+        mark = mix(QColor(GOLD_TEXT), QColor("#FFFFFF"), speed)
         p.setPen(QPen(alpha(mark, 0.35), S(6)))
         p.drawLine(QPointF(cx, top - S(10)), QPointF(cx, top + ch + S(10)))
         p.setPen(QPen(mark, S(2)))
@@ -692,84 +702,64 @@ class CaseReel(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(mark)
         for y, d in ((top - S(14), 1), (top + ch + S(14), -1)):
-            path = QPainterPath()
-            path.moveTo(cx - S(7), y)
-            path.lineTo(cx + S(7), y)
-            path.lineTo(cx, y + d * S(9))
-            path.closeSubpath()
-            p.drawPath(path)
-        if self.state == "idle" and self.result is None:
-            p.setPen(QColor(TEXT_DIM))
-            p.setFont(font(10, QFont.Weight.DemiBold))
-            p.drawText(QRectF(r.left(), r.bottom() - S(26), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                       tr("{n} badges, 17 colours each", n=len(self.case["badges"])))
+            tri = QPainterPath()
+            tri.moveTo(cx - S(7), y)
+            tri.lineTo(cx + S(7), y)
+            tri.lineTo(cx, y + d * S(9))
+            tri.closeSubpath()
+            p.drawPath(tri)
 
     def _paint_result(self, p: QPainter, r: QRectF, now: float) -> None:
-        res = self.result
-        rarity = res["rarity"]
-        col = QColor(RARITY_COLOUR[rarity])
+        res, tier = self.result, self._tier()
+        col = QColor(RARITY_COLOURS[TIERS[tier - 1]]) if tier else QColor(GOLD_TEXT)
         age = now - self._stop_t
         c = QPointF(r.center().x(), r.top() + S(66))
         burst = QRadialGradient(c, S(150))
-        burst.setColorAt(0.0, alpha(col, 0.42 if rarity != "basic" else 0.18))
+        burst.setColorAt(0.0, alpha(col, 0.42 if tier >= 2 else 0.18))
         burst.setColorAt(1.0, alpha(col, 0.0))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(burst)
         p.drawEllipse(c, S(150), S(150))
-        if rarity != "basic":                                               # rays
-            rays = {"rare": 8, "very": 12, "super": 16}[rarity]
+        if tier >= 2:
+            rays = [0, 0, 8, 10, 14, 18][tier]
             p.save()
             p.translate(c)
-            p.rotate(now * (14 if rarity == "rare" else 22))
-            for k in range(rays):
+            p.rotate(now * (12 + 4 * tier))
+            for _k in range(rays):
                 p.rotate(360 / rays)
-                path = QPainterPath()
-                path.moveTo(0, 0)
-                path.lineTo(S(170), -S(10))
-                path.lineTo(S(170), S(10))
-                path.closeSubpath()
-                p.setBrush(alpha(col, 0.10 if rarity == "rare" else 0.16))
-                p.drawPath(path)
+                ray = QPainterPath()
+                ray.moveTo(0, 0)
+                ray.lineTo(S(170), -S(10))
+                ray.lineTo(S(170), S(10))
+                ray.closeSubpath()
+                p.setBrush(alpha(col, 0.08 + 0.03 * (tier - 2)))
+                p.drawPath(ray)
             p.restore()
-        if age < 0.35:                                                      # white flash as it opens
-            p.setBrush(QColor(255, 255, 255, int(200 * (1 - age / 0.35))))
+        if age < 0.35 and tier >= 2:
+            p.setBrush(QColor(255, 255, 255, int((120 + 30 * tier) * (1 - age / 0.35))))
             p.drawRect(r)
-        for ang, dist, spd in self._sparks:                                 # sparks flying out
+        for ang, dist, spd in self._sparks:
             k = min(1.0, age * spd / 1.4)
-            if k >= 1.0:
-                continue
-            d = dist * (1 - (1 - k) ** 3)
-            pt = QPointF(c.x() + d * math.cos(ang), c.y() + d * math.sin(ang))
-            sc = QColor("#FFF6D8") if rarity == "super" else mix(col, QColor("#FFFFFF"), 0.5)
-            sc.setAlphaF(1.0 - k)
-            p.setBrush(sc)
-            p.drawEllipse(pt, S(2.2) * (1 - k * 0.5), S(2.2) * (1 - k * 0.5))
+            if k < 1.0:
+                d = dist * (1 - (1 - k) ** 3)
+                sc = mix(col, QColor("#FFFFFF"), 0.5)
+                sc.setAlphaF(1.0 - k)
+                p.setBrush(sc)
+                p.drawEllipse(QPointF(c.x() + d * math.cos(ang), c.y() + d * math.sin(ang)), S(2.2), S(2.2))
         pop = min(1.0, age / 0.45)
-        over = 1 + 0.18 * math.sin(pop * math.pi) * (1 - pop)
-        size = S(70) * (0.4 + 0.6 * (1 - (1 - pop) ** 3)) * over
-        paint_badge(p, res["badge"], QRectF(c.x() - size / 2, c.y() - size / 2, size, size), res["var"], now)
+        size = S(64) * (0.4 + 0.6 * (1 - (1 - pop) ** 3)) * (1 + 0.18 * math.sin(pop * math.pi) * (1 - pop))
+        if res.get("item"):
+            paint_item(p, res["item"], QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now)
+            title, tag = badge_label(res["item"]), tr(RARITY_NAMES[TIERS[tier - 1]]).upper()
+        else:
+            paint_coin(p, c, size * 0.42)
+            title, tag = "+" + coins_text(int(res.get("won", 0))), tr("Coins").upper()
+        if int(res.get("won_keys", 0) or 0):
+            title, tag = "+1 " + tr("key"), tr("Key").upper()
         p.setPen(QColor(TEXT))
         p.setFont(font(14, QFont.Weight.Bold))
-        p.drawText(QRectF(r.left(), r.top() + S(110), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
-                   badge_label(res["badge"], res["var"]))
+        p.drawText(QRectF(r.left(), r.top() + S(112), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), title)
         p.setPen(col)
         p.setFont(font(10.5, QFont.Weight.ExtraBold))
-        p.drawText(QRectF(r.left(), r.top() + S(131), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr(RARITY_NAME[rarity]).upper())
-        if res["new"] or self.ctx.wallet.admin:
-            text, tc, bgc = tr("NEW"), "#0A0D0E", ui.accent
-        else:
-            text, tc, bgc = tr("Duplicate: +{n} coins", n=coins_text(res.get("refund", 0))), GOLD_TEXT, alpha(GOLD_TEXT, 0.14)
-        p.setFont(font(10, QFont.Weight.ExtraBold))
-        tw = p.fontMetrics().horizontalAdvance(text) + S(20)
-        pill = QRectF(c.x() - tw / 2, r.top() + S(150), tw, S(20))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(bgc)
-        p.drawRoundedRect(pill, S(10), S(10))
-        p.setPen(QColor(tc))
-        p.drawText(pill, int(Qt.AlignmentFlag.AlignCenter), text)
-
-
-class CaseContents(BadgeGrid):
-    """The ten badges a case can give, with how many colours of each you own."""
-    COLS = 5
+        p.drawText(QRectF(r.left(), r.top() + S(134), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                   tag + ("  ·  " + tr("GUARANTEED") if res.get("pity") else ""))

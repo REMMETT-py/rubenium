@@ -67,20 +67,15 @@ class Flair(QWidget):
         self.fit()
 
     def _parts(self) -> list:
-        wallet, cfg = self.ctx.wallet, self.ctx.cfg
-        out = []
-        for item in cfg["badges"] if isinstance(cfg["badges"], list) else []:
-            ident, _s, var = str(item).partition("/")
-            if wallet.has_badge(ident, var):
-                out.append((ident, var))
-        return out[:3]
+        """The badges on show (server items, e.g. "badge:star:gold")."""
+        return self.ctx.econ.badges_worn()[:3]
 
     def fit(self) -> None:
         n = len(self._parts())
         self.setFixedSize(max(1, int(n * S(20) - (S(4) if n else 0))), S(20))
         self.setVisible(bool(n))
-        from .badges import animated
-        moving = self.isVisible() and self.fade > 0.01 and any(animated(v) for _i, v in self._parts())
+        from .badges import item_animated
+        moving = self.isVisible() and self.fade > 0.01 and any(item_animated(i) for i in self._parts())
         if moving and not self._shine.isActive():
             self._shine.start()
         elif not moving:
@@ -89,13 +84,13 @@ class Flair(QWidget):
     def paintEvent(self, _e) -> None:
         if self.fade <= 0.01:
             return
-        from .badges import paint_badge
+        from .badges import paint_item
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setOpacity(self.fade)
         now = time.monotonic()
-        for k, (ident, var) in enumerate(self._parts()):
-            paint_badge(p, ident, QRectF(k * S(20) + S(1), S(2), S(16), S(16)), var, now)
+        for k, item in enumerate(self._parts()):
+            paint_item(p, item, QRectF(k * S(20) + S(2), S(3), S(14), S(14)), now)
 
 
 class HoldButton(QAbstractButton):

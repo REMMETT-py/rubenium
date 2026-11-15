@@ -6,18 +6,18 @@ import math
 import random
 import time
 
-from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF
 from PyQt6.QtWidgets import QGridLayout, QWidget
 
 from .core import S, sfx, TEXT, TEXT_DIM, alpha, font, mix, tr, ui
 from .pages import Page
 from .shop import CoinBar, GOLD_TEXT, clock_text
-from .wallet import KEY_EVERY, KEY_MAX, coins_text, paint_coin
+from .wallet import coins_text, paint_coin
 from .widgets import Button, IconButton, Label, Segmented, Tween, draw_icon, hbox, vbox
 
 RNG = random.SystemRandom()
-BETS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000]
+BETS = [10, 25, 50, 100, 250, 500, 1000]
 WIN, LOSE = "#35E0A1", "#FF5C6C"
 TABLE_H = 260
 
@@ -36,6 +36,8 @@ class Game(QWidget):
         self.setFixedSize(page.W, S(TABLE_H))
         self.stake = 0
         self.busy = False                        # a round is running: the bet is locked
+        self.waiting = False                     # a request to the server is on its way
+        self.econ = page.ctx.econ
         self._flash = ("", "", 0.0)
         self._frames = QTimer(self)
         self._frames.setTimerType(Qt.TimerType.PreciseTimer)
@@ -90,21 +92,48 @@ class Game(QWidget):
         self._frames.stop()
 
     def take(self) -> bool:
-        """Take the bet for a new round. False when there are not enough coins."""
+        """Take the bet for a new round (on screen; the server takes it for real with the request)."""
         bet = self.page.bet()
-        if bet <= 0 or not self.wallet.bet(bet):
+        if not self.econ.ready:
+            self.ctx.toast(tr("No internet connection"), "warn")
+            return False
+        if bet <= 0 or bet > self.econ.coins:
             self.ctx.toast(tr("Not enough coins"), "warn")
             return False
         self.stake = bet
         self.busy = True
+        self.econ.adjust(-bet)
         self.page.sync()
         return True
+
+    def ask(self, fn: str, args: dict, on_ok, once: bool = False, refund: int = 0) -> None:
+        """Send a move to the server. On an error the coins taken on screen are put back."""
+        self.waiting = True
+        self.page.sync()
+
+        def back(ok: bool, data) -> None:
+            try:
+                self.waiting = False
+                if ok:
+                    on_ok(data)
+                else:
+                    if refund:
+                        self.econ.adjust(refund)
+                    self.failed(str(data))
+                self.page.sync()
+            except RuntimeError:                      # the page was closed meanwhile
+                pass
+        self.econ.call(fn, args, back, once=once, hold=True)
+
+    def failed(self, message: str) -> None:
+        self.busy = False
+        self.ctx.toast(tr(message), "warn")
 
     def finish(self, payout: int) -> None:
         """End of the round: pay what was won (0 = lost) and show it."""
         payout = int(payout)
         if payout > 0:
-            self.wallet.add(payout)
+            self.econ.adjust(payout)
         gain = payout - self.stake
         if gain > 0:
             self.flash("+" + coins_text(gain), WIN)
@@ -178,88 +207,99 @@ class Blackjack(Game):
         self.dealer: list = []
         self.phase = "idle"              # idle -> player -> dealer -> idle
 
-    def _card(self, hidden: bool = False, delay: float = 0.0) -> dict:
-        return {"rank": RNG.choice(RANKS), "suit": RNG.choice(SUITS), "born": time.monotonic() + delay,
-                "hidden": hidden, "turned": 0.0}
+    def _card(self, code, hidden: bool = False, delay: float = 0.0) -> dict:
+        """A card as the server names it (0..51), or a face-down one (None)."""
+        rank = RANKS[code % 13] if code is not None else "A"
+        suit = SUITS[code // 13] if code is not None else "♠"
+        return {"rank": rank, "suit": suit, "born": time.monotonic() + delay, "hidden": hidden, "turned": 0.0}
 
     def deal(self) -> None:
-        if self.busy or not self.take():
+        if self.busy or self.waiting or not self.take():
             return
-        self.player = [self._card(delay=0.0), self._card(delay=0.36)]
-        self.dealer = [self._card(delay=0.18), self._card(hidden=True, delay=0.54)]
+        self.player, self.dealer, self.phase = [], [], "wait"
+        self.ask("rb_blackjack", {"action": "start", "bet": self.stake}, self._dealt, refund=self.stake)
+
+    def failed(self, message: str) -> None:
+        if message == "Finish your round first":         # a hand from before is still open: finish it
+            self.phase = "wait"
+            return self.ask("rb_blackjack", {"action": "stand", "bet": None}, self._old_round)
+        self.phase = "idle" if not self.player else "player"
+        self.busy = bool(self.player)
+        self.ctx.toast(tr(message), "warn")
+
+    def _old_round(self, ans: dict) -> None:
+        self.stake = int(ans.get("stake") or 0)
+        self.player = [self._card(c) for c in ans.get("me") or []]
+        self.dealer = [self._card(c) for c in ans.get("dealer") or []]
+        self.phase = "idle"
+        self.animate(0.6)
+        self.finish(int(ans.get("paid") or 0) + 0)
+
+    def _dealt(self, ans: dict) -> None:
+        me, shown = ans["me"], ans["dealer"]
+        self.player = [self._card(me[0], delay=0.0), self._card(me[1], delay=0.36)]
+        self.dealer = [self._card(shown[0], delay=0.18), self._card(None, hidden=True, delay=0.54)]
         self.phase = "player"
         self.animate(1.2)
-        self.page.sync()
-        if hand_total(self.player) == 21:
-            QTimer.singleShot(1000, self.stand)
+        if not ans["open"]:                              # a natural: the round is already over
+            self.phase = "dealer"
+            QTimer.singleShot(1000, lambda: self._reveal(ans))
 
     def hit(self) -> None:
-        if self.phase != "player":
+        if self.phase != "player" or self.waiting:
             return
-        self.player.append(self._card())
-        self.animate(0.6)
-        if hand_total(self.player) > 21:
-            self.phase = "dealer"
-            self.page.sync()
-            QTimer.singleShot(650, lambda: self._end(0))
-        elif hand_total(self.player) == 21:
-            self.stand()
+        self.ask("rb_blackjack", {"action": "hit", "bet": None}, self._drew)
 
     def double(self) -> None:
-        if self.phase != "player" or len(self.player) != 2 or not self.wallet.bet(self.stake):
+        if self.phase != "player" or self.waiting or len(self.player) != 2 or self.econ.coins < self.stake:
             return
-        self.stake *= 2
-        self.player.append(self._card())
+        self.econ.adjust(-self.stake)
+        self.ask("rb_blackjack", {"action": "double", "bet": None}, self._doubled, refund=self.stake)
+
+    def _doubled(self, ans: dict) -> None:
+        self.stake = int(ans.get("stake") or self.stake * 2)
+        self._drew(ans)
+
+    def _drew(self, ans: dict) -> None:
+        self.player.append(self._card(ans["me"][-1]))
         self.animate(0.6)
-        if hand_total(self.player) > 21:
+        if not ans["open"]:
             self.phase = "dealer"
-            self.page.sync()
-            QTimer.singleShot(650, lambda: self._end(0))
-        else:
-            self.stand()
+            QTimer.singleShot(650, lambda: self._reveal(ans))
 
     def stand(self) -> None:
-        if self.phase != "player":
+        if self.phase != "player" or self.waiting:
             return
         self.phase = "dealer"
-        self.page.sync()
-        self.dealer[1]["hidden"] = False
-        self.dealer[1]["turned"] = time.monotonic()
-        self.animate(0.8)
-        QTimer.singleShot(750, self._dealer_step)
+        self.ask("rb_blackjack", {"action": "stand", "bet": None}, self._reveal)
 
-    def _dealer_step(self) -> None:
-        if self.phase != "dealer":
-            return
-        natural = len(self.player) == 2 and hand_total(self.player) == 21
-        if hand_total(self.dealer) < 17 and not natural:
-            self.dealer.append(self._card())
-            self.animate(0.7)
-            QTimer.singleShot(700, self._dealer_step)
-            return
-        me, house = hand_total(self.player), hand_total(self.dealer)
-        house_natural = len(self.dealer) == 2 and house == 21
-        if natural and not house_natural:
-            pay = int(self.stake * 2.5)
-        elif house > 21 or me > house:
-            pay = self.stake * 2
-        elif me == house and natural == house_natural:
-            pay = self.stake
-        else:
-            pay = 0
-        self._end(pay)
+    def _reveal(self, ans: dict) -> None:
+        """The round is over on the server: turn the hidden card, show the dealer's draws, then the result."""
+        cards = ans.get("dealer") or []
+        if len(self.dealer) > 1 and len(cards) > 1:
+            self.dealer[1] = dict(self._card(cards[1]), born=self.dealer[1]["born"], turned=time.monotonic())
+        self.animate(0.8)
+        rest = [] if int(ans.get("total") or 0) > 21 else list(cards[2:])
+        self._dealer_step(rest, int(ans.get("paid") or 0))
+
+    def _dealer_step(self, rest: list, paid: int) -> None:
+        if rest:
+            def draw() -> None:
+                self.dealer.append(self._card(rest[0]))
+                self.animate(0.7)
+                self._dealer_step(rest[1:], paid)
+            return QTimer.singleShot(700, draw)
+        QTimer.singleShot(650, lambda: self._end(paid))
 
     def _end(self, pay: int) -> None:
-        if self.dealer and self.dealer[1]["hidden"]:
-            self.dealer[1]["hidden"] = False
-            self.dealer[1]["turned"] = time.monotonic()
         self.phase = "idle"
         self.finish(pay)
 
     def buttons(self) -> list:
         if self.phase == "player":
-            can_double = len(self.player) == 2 and self.wallet.balance() >= self.stake
-            return [(tr("Hit"), "primary", self.hit, True), (tr("Stand"), "ghost", self.stand, True),
+            go = not self.waiting
+            can_double = go and len(self.player) == 2 and self.econ.coins >= self.stake
+            return [(tr("Hit"), "primary", self.hit, go), (tr("Stand"), "ghost", self.stand, go),
                     (tr("Double"), "ghost", self.double, can_double)]
         return [(tr("Deal"), "primary", self.deal, self.phase == "idle" and not self.busy)]
 
@@ -348,6 +388,7 @@ class Plinko(Game):
         self._cool = 0.0
         self._hits: dict = {}                     # box -> time it was last hit
         self._pops: list = []                     # (text, colour, box, time)
+        self._flying = 0                          # balls asked for and not landed yet
 
     def options(self):
         return [tr(n) for n in self.RISKS], self.risk
@@ -371,46 +412,55 @@ class Plinko(Game):
         now = time.monotonic()
         if now < self._cool:
             return self.ctx.toast(tr("Slow down"), "warn")
-        if len(self.balls) >= self.MAX_BALLS or now - self._last < self.GAP:
+        if self._flying >= self.MAX_BALLS or now - self._last < self.GAP:
             return
         if self._too_regular(now):
             self._cool = now + 20.0
             self._presses = []
             return self.ctx.toast(tr("Slow down"), "warn")
         bet = self.page.bet()
-        if bet <= 0 or not self.wallet.bet(bet):
+        if not self.econ.ready or bet <= 0 or bet > self.econ.coins:
             return self.ctx.toast(tr("Not enough coins"), "warn")
         self._last = now
-        path = [RNG.choice((-1, 1)) for _ in range(self.ROWS)]      # decided now, shown as it falls
-        box = sum(1 for d in path if d > 0)
-        self.balls.append(dict(path=path, box=box, born=now, stake=bet, risk=self.risk,
-                               jit=RNG.uniform(-0.25, 0.25)))
         self.stake = bet
         self.busy = True
-        self.animate(self.ROWS * self.STEP + 1.5)
-        self.page.sync()
-        QTimer.singleShot(int((self.ROWS * self.STEP + 0.12) * 1000), self._land)
+        self._flying += 1
+        self.econ.adjust(-bet)
+        risk = self.risk
+
+        def dropped(ans: dict) -> None:                  # the server decided the path: the ball shows it
+            path = [1 if d else -1 for d in ans["path"]]
+            self.balls.append(dict(path=path, box=int(ans["box"]), born=time.monotonic(), stake=bet, risk=risk,
+                                   pay=int(ans["paid"]), mult=float(ans["mult"])))
+            self.animate(self.ROWS * self.STEP + 1.5)
+            QTimer.singleShot(int((self.ROWS * self.STEP + 0.12) * 1000), self._land)
+        self.ask("rb_plinko", {"bet": bet, "risk": risk}, dropped, once=True, refund=bet)
+
+    def failed(self, message: str) -> None:
+        self._flying = max(0, self._flying - 1)
+        self.busy = self._flying > 0
+        self.ctx.toast(tr(message), "warn")
 
     def _land(self) -> None:
         if not self.balls:
             return
         ball = self.balls.pop(0)
-        mult = self.MULTS[ball["risk"]][ball["box"]]
-        pay = int(ball["stake"] * mult)
+        mult, pay = ball["mult"], ball["pay"]
+        self._flying = max(0, self._flying - 1)
         if pay:
-            self.wallet.add(pay)
+            self.econ.adjust(pay)
         now = time.monotonic()
         self._hits[ball["box"]] = now
         colour = WIN if mult >= 1 else (TEXT_DIM if mult >= 0.5 else LOSE)
         self._pops = [x for x in self._pops if now - x[3] < 1.2] + [(f"×{mult:g}", colour, ball["box"], now)]
         sfx.play("on" if mult >= 2 else "pick")
         self.animate(1.3)
-        if not self.balls:
+        if not self._flying:
             self.busy = False
         self.page.sync()
 
     def buttons(self) -> list:
-        return [(tr("Drop"), "primary", self.drop, len(self.balls) < self.MAX_BALLS)]
+        return [(tr("Drop"), "primary", self.drop, self._flying < self.MAX_BALLS)]
 
     def _geo(self, r: QRectF):
         top, bottom = r.top() + S(22), r.bottom() - S(40)
@@ -518,13 +568,35 @@ class Bombs(Game):
         return sum(1 for t in self.shown if t not in self.board) if self.phase == "play" else 0
 
     def start(self) -> None:
-        if self.busy or not self.take():
+        if self.busy or self.waiting or not self.take():
             return
-        self.board = set(RNG.sample(range(self.N), self.bombs()))
-        self.shown, self.boom, self.phase = {}, -1, "play"
-        self.picked = set()
+        self.board, self.shown, self.boom, self.picked = set(), {}, -1, set()
+        self.ask("rb_mines", {"action": "start", "arg": self.bombs() * 10000 + self.stake}, self._started,
+                 refund=self.stake)
+
+    def _started(self, ans: dict) -> None:
+        self.phase = "play"
         self.animate(0.5)
-        self.page.sync()
+
+    def failed(self, message: str) -> None:
+        if message == "Finish your round first":         # a board from before is still open: carry on with it
+            return self.ask("rb_mines", {"action": "look", "arg": None}, self._resumed)
+        if self.phase != "play":
+            self.busy = False
+        self.ctx.toast(tr(message), "warn")
+
+    def _resumed(self, ans: dict) -> None:
+        if not ans.get("open"):
+            self.busy = False
+            return
+        self.stake = int(ans["bet"])
+        if int(ans["bombs"]) in self.CHOICES:
+            self.choice = self.CHOICES.index(int(ans["bombs"]))
+        now = time.monotonic()
+        self.picked = set(ans.get("picked") or [])
+        self.shown = {t: now for t in self.picked}
+        self.board, self.boom, self.phase, self.busy = set(), -1, "play", True
+        self.animate(0.5)
 
     def _grid(self, r: QRectF):
         gap = S(6)
@@ -558,16 +630,20 @@ class Bombs(Game):
 
     def mousePressEvent(self, e) -> None:
         e.accept()
-        if e.button() != Qt.MouseButton.LeftButton or self.phase != "play":
+        if e.button() != Qt.MouseButton.LeftButton or self.phase != "play" or self.waiting:
             return
         i = self._at(e.position())
         if i < 0 or i in self.shown:
             return
+        return self.ask("rb_mines", {"action": "pick", "arg": i}, lambda ans: self._picked(i, ans))
+
+    def _picked(self, i: int, ans: dict) -> None:
         now = time.monotonic()
         self.shown[i] = now
         self.picked.add(i)
         self.animate(0.6)
-        if i in self.board:                              # bomb: the round is lost, then every card is shown
+        if ans.get("hit"):                               # bomb: the round is lost, then every card is shown
+            self.board = set(ans.get("board") or [i])
             self.boom = i
             self.phase = "lost"
             sfx.play("off")
@@ -576,8 +652,8 @@ class Bombs(Game):
             QTimer.singleShot(1100, lambda: self._end(0))
             return
         sfx.play("pick")
-        if self.found() >= self.N - self.bombs():
-            QTimer.singleShot(350, self.cash)
+        if not ans.get("open"):                          # every gem found: the server paid already
+            self._cashed(ans)
         self.page.sync()
 
     def _reveal_all(self) -> None:
@@ -587,12 +663,15 @@ class Bombs(Game):
         self.animate(0.8)
 
     def cash(self) -> None:
-        if self.phase != "play" or self.found() < 1:
+        if self.phase != "play" or self.found() < 1 or self.waiting:
             return
-        pay = int(self.stake * bombs_mult(self.found(), self.bombs()))
+        self.ask("rb_mines", {"action": "cash", "arg": None}, self._cashed)
+
+    def _cashed(self, ans: dict) -> None:
+        self.board = set(ans.get("board") or [])
         self.phase = "won"
         self._reveal_all()
-        self._end(pay)
+        self._end(int(ans.get("paid") or 0))
 
     def _end(self, pay: int) -> None:
         self.phase = "idle"
@@ -601,7 +680,7 @@ class Bombs(Game):
     def buttons(self) -> list:
         if self.phase == "play":
             mult = bombs_mult(self.found(), self.bombs())
-            return [(tr("Cash out") + f"  ×{mult:g}", "primary", self.cash, self.found() >= 1)]
+            return [(tr("Cash out") + f"  ×{mult:g}", "primary", self.cash, self.found() >= 1 and not self.waiting)]
         return [(tr("Bet"), "primary", self.start, self.phase == "idle" and not self.busy)]
 
     def draw(self, p: QPainter, r: QRectF, now: float) -> None:
@@ -726,9 +805,13 @@ class Slots(Game):
         self.win_at = 0.0
 
     def spin(self) -> None:
-        if self.busy or not self.take():
+        if self.busy or self.waiting or not self.take():
             return
-        self.final = [RNG.choices(self.SYMBOLS, self.WEIGHTS)[0] for _ in range(3)]
+        self.ask("rb_slots", {"bet": self.stake}, self._rolled, once=True, refund=self.stake)
+
+    def _rolled(self, ans: dict) -> None:
+        self.final = [self.SYMBOLS[int(i)] for i in ans["reels"]]
+        self._paid = int(ans["paid"])
         for i in range(3):
             strip = [RNG.choices(self.SYMBOLS, self.WEIGHTS)[0] for _ in range(40)]
             strip[1] = self.final[i]
@@ -738,16 +821,8 @@ class Slots(Game):
         self.animate(3.0)
         QTimer.singleShot(2450, self._done)
 
-    def payout(self) -> int:
-        a, b, c = self.final
-        if a == b == c:
-            return self.stake * self.TRIPLE[a]
-        if a == b or b == c or a == c:
-            return int(self.stake * self.PAIR)
-        return 0
-
     def _done(self) -> None:
-        pay = self.payout()
+        pay = getattr(self, "_paid", 0)
         if pay:
             self.win_at = time.monotonic()
         self.finish(pay)
@@ -879,9 +954,7 @@ class Slots(Game):
 # --------------------------------------------------------------------------- #
 class Daily(Game):
     # (coins, keys) on each slice
-    PRIZES = [(50, 0), (100, 0), (0, 1), (250, 0), (75, 0), (150, 0), (0, 1), (500, 0), (50, 0), (1000, 0), (0, 3),
-              (100, 0)]
-    WEIGHTS = [18, 12, 9, 5, 16, 8, 9, 2, 18, 1, 2, 12]
+    PRIZES = [(20, 0), (40, 0), (60, 0), (100, 0), (150, 0), (250, 0), (500, 0), (0, 1)]      # as the server numbers them
 
     def __init__(self, page) -> None:
         super().__init__(page)
@@ -889,6 +962,7 @@ class Daily(Game):
         self._from = self._to = 0.0
         self._t0 = 0.0
         self.result = -1
+        self.collect = None                      # the prize waiting for "Collect": (coins, keys)
         self.wallet.time_checked.connect(self._checked)
 
     def always_moving(self) -> bool:
@@ -899,35 +973,57 @@ class Daily(Game):
         self.wallet.check_time()
 
     def _checked(self) -> None:
+        waiting = self.wallet.spin_waiting
+        if waiting and self.collect is None and not self.busy:      # a prize from before was never collected
+            self.result = int(waiting.get("slot", 0))
+            self.collect = (int(waiting.get("won", 0)), int(waiting.get("won_keys", 0)))
+            self.angle = (self.result + 0.5) * 360.0 / len(self.PRIZES)
         self.page.sync()
         self.update()
 
     def spin(self) -> None:
-        if self.busy or self.wallet.daily_wait() != 0:
-            return
-        self.result = RNG.choices(range(len(self.PRIZES)), self.WEIGHTS)[0]
-        coins, keys = self.PRIZES[self.result]
-        if not self.wallet.claim_daily(coins, keys):              # paid at once: the wheel only shows it
+        if self.busy or self.waiting or self.collect is not None or self.wallet.daily_wait() != 0:
             return
         self.busy = True
         self.stake = 0
+        self.ask("rb_spin", {}, self._rolled)
+
+    def _rolled(self, ans: dict) -> None:
+        self.result = int(ans.get("slot", 0))
+        self._prize = (int(ans.get("won", 0)), int(ans.get("won_keys", 0)))
+        self.wallet.spin_used()
         seg = 360.0 / len(self.PRIZES)
         self._from = self.angle % 360.0
         self._to = 360.0 * 5 + (self.result + 0.5 + RNG.uniform(-0.3, 0.3)) * seg
         self._t0 = time.monotonic()
         self.animate(5.0)
-        self.page.sync()
         QTimer.singleShot(4700, self._done)
 
     def _done(self) -> None:
         self.angle = self._to % 360.0
-        coins, keys = self.PRIZES[self.result]
-        self.flash("+" + (coins_text(coins) if coins else f"{keys} " + (tr("key") if keys == 1 else tr("keys"))), WIN)
+        self.collect = self._prize                       # shown, and kept by the server until collected
         sfx.play("on")
         self.busy = False
         self.page.sync()
 
+    def take_prize(self) -> None:
+        if self.collect is None or self.waiting:
+            return
+        coins, keys = self.collect
+
+        def got(_ans: dict) -> None:
+            self.collect = None
+            self.wallet.spin_waiting = None
+            self.econ.adjust(coins, keys)
+            self.flash("+" + (coins_text(coins) if coins else f"{keys} " + (tr("key") if keys == 1 else tr("keys"))), WIN)
+            sfx.play("on")
+        self.ask("rb_spin_collect", {}, got)
+
     def buttons(self) -> list:
+        if self.collect is not None:
+            coins, keys = self.collect
+            what = coins_text(coins) if coins else f"{keys} " + (tr("key") if keys == 1 else tr("keys"))
+            return [(tr("Collect") + f"  +{what}", "primary", self.take_prize, not self.waiting)]
         wait = self.wallet.daily_wait()
         if wait is None:
             return [(tr("Try again"), "ghost", self.wallet.check_time, not self.wallet.checking())]
@@ -942,7 +1038,7 @@ class Daily(Game):
         seg = 360.0 / n
         box = QRectF(c.x() - radius, c.y() - radius, radius * 2, radius * 2)
         wait = self.wallet.daily_wait()
-        ready = wait == 0 or self.busy
+        ready = wait == 0 or self.busy or self.collect is not None
         p.setOpacity(1.0 if ready else 0.35)
         for i, (coins, keys) in enumerate(self.PRIZES):
             start = 90.0 - (i * seg - self.angle)
@@ -991,6 +1087,254 @@ class Daily(Game):
 # --------------------------------------------------------------------------- #
 # The page
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# Dice: choose your chance, roll under it
+# --------------------------------------------------------------------------- #
+class Dice(Game):
+    """Pick your chance to win. A number from 0 to 99 is rolled: below your chance wins. The lower the chance,
+    the bigger the prize (3% for the house)."""
+    CHANCES = [10, 25, 50, 75, 90]
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        self.choice = 2
+        self.roll = -1
+        self.won = False
+        self._t0 = 0.0
+        self._from = 50.0
+
+    def chance(self) -> int:
+        return self.CHANCES[self.choice]
+
+    def mult(self) -> float:
+        return math.floor(9700.0 / self.chance()) / 100
+
+    def options(self):
+        return [f"{c}%" for c in self.CHANCES], self.choice
+
+    def set_option(self, i: int) -> None:
+        if not self.busy:
+            self.choice = i
+            self.update()
+
+    def play(self) -> None:
+        if self.busy or self.waiting or not self.take():
+            return
+        self.ask("rb_dice", {"bet": self.stake, "chance": self.chance()}, self._rolled, once=True, refund=self.stake)
+
+    def _rolled(self, ans: dict) -> None:
+        self._from = float(self.roll if self.roll >= 0 else 50)
+        self.roll, self.won, self._paid = int(ans["roll"]), bool(ans["win"]), int(ans["paid"])
+        self._t0 = time.monotonic()
+        self.animate(1.6)
+        QTimer.singleShot(1150, lambda: self.finish(self._paid))
+
+    def buttons(self) -> list:
+        return [(tr("Roll"), "primary", self.play, not self.busy)]
+
+    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
+        chance = self.chance()
+        bar = QRectF(r.left() + S(22), r.center().y() + S(8), r.width() - S(44), S(16))
+        win_w = bar.width() * chance / 100
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha(LOSE, 0.35))
+        p.drawRoundedRect(bar, S(8), S(8))
+        p.setBrush(QColor(WIN))
+        clip = QPainterPath()
+        clip.addRoundedRect(bar, S(8), S(8))
+        p.save()
+        p.setClipPath(clip)
+        p.drawRect(QRectF(bar.left(), bar.top(), win_w, bar.height()))
+        p.restore()
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9.5, QFont.Weight.DemiBold))
+        for mark in (0, 25, 50, 75, 100):
+            x = bar.left() + bar.width() * mark / 100
+            p.drawText(QRectF(x - S(16), bar.bottom() + S(4), S(32), S(14)), int(Qt.AlignmentFlag.AlignCenter), str(mark))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(26, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left(), r.top() + S(22), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter),
+                   f"×{self.mult():g}")
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left(), r.top() + S(64), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Win if the roll is under {n}", n=chance))
+        if self.roll >= 0:                                    # the marker slides to the number rolled
+            t = ease_out((now - self._t0) / 1.0, 4) if self._t0 else 1.0
+            value = self._from + (self.roll - self._from) * t
+            x = bar.left() + bar.width() * (value + 0.5) / 100
+            landed = t >= 0.999
+            col = QColor(WIN if self.won else LOSE) if landed else QColor("#FFFFFF")
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col)
+            pin = QPainterPath()
+            pin.moveTo(x, bar.top() - S(3))
+            pin.lineTo(x - S(7), bar.top() - S(14))
+            pin.lineTo(x + S(7), bar.top() - S(14))
+            pin.closeSubpath()
+            p.drawPath(pin)
+            p.drawRoundedRect(QRectF(x - S(1.5), bar.top() - S(3), S(3), bar.height() + S(6)), S(1.5), S(1.5))
+            p.setPen(col)
+            p.setFont(font(13, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(x - S(24), bar.top() - S(36), S(48), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                       str(int(round(value))))
+
+
+# --------------------------------------------------------------------------- #
+# Rocket: cash out before it blows up
+# --------------------------------------------------------------------------- #
+class Rocket(Game):
+    """The multiplier climbs while the rocket flies. Cash out to win the bet times the multiplier; if it blows
+    up first, the bet is lost. The moment it blows up is decided by the server when the round starts."""
+    RATE = 0.08                                          # the multiplier is e^(RATE x seconds), as on the server
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        self.phase = "idle"                              # idle -> fly -> idle
+        self._t0 = 0.0
+        self.end_mult = 1.0
+        self.crashed = False
+        self._poll = QTimer(self)
+        self._poll.setInterval(700)
+        self._poll.timeout.connect(self._look)
+
+    def mult_now(self) -> float:
+        if self.phase != "fly":
+            return self.end_mult
+        return math.floor(math.exp(self.RATE * (time.monotonic() - self._t0)) * 100) / 100
+
+    def always_moving(self) -> bool:
+        return self.phase == "fly"
+
+    def start(self) -> None:
+        if self.busy or self.waiting or not self.take():
+            return
+        self.ask("rb_rocket", {"action": "start", "bet": self.stake}, self._started, refund=self.stake)
+
+    def _started(self, ans: dict) -> None:
+        self._t0 = time.monotonic() - float(ans.get("age") or 0)
+        self.phase, self.crashed, self.end_mult = "fly", False, 1.0
+        self._frames.start()
+        self._poll.start()
+
+    def failed(self, message: str) -> None:
+        if message == "Finish your round first":         # a flight from before: see how it ended
+            return self.ask("rb_rocket", {"action": "cash", "bet": None}, self._ended)
+        if self.phase != "fly":
+            self.busy = False
+        self.ctx.toast(tr(message), "warn")
+
+    def _look(self) -> None:
+        if self.phase == "fly" and not self.waiting:
+            self.ask("rb_rocket", {"action": "look", "bet": None}, lambda ans: None if ans.get("open") else self._ended(ans))
+
+    def cash(self) -> None:
+        if self.phase == "fly" and not self.waiting:
+            self.ask("rb_rocket", {"action": "cash", "bet": None}, self._ended)
+
+    def _ended(self, ans: dict) -> None:
+        if self.phase != "fly" and not self.busy:
+            return
+        self._poll.stop()
+        self.crashed = bool(ans.get("crashed", True))
+        self.end_mult = float(ans.get("crash") or 1.0) if self.crashed else float(ans.get("mult") or 1.0)
+        self.phase = "idle"
+        self.animate(1.8)
+        self.finish(int(ans.get("paid") or 0))
+
+    def buttons(self) -> list:
+        if self.phase == "fly":
+            pay = int(self.stake * self.mult_now())
+            return [(tr("Cash out") + f"  {coins_text(pay)}", "primary", self.cash, not self.waiting)]
+        return [(tr("Launch"), "primary", self.start, not self.busy)]
+
+    def hideEvent(self, e) -> None:
+        super().hideEvent(e)
+        self._poll.stop()
+
+    def showEvent(self, e) -> None:
+        super().showEvent(e)
+        if self.phase == "fly":
+            self._poll.start()
+
+    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
+        flying = self.phase == "fly"
+        m = self.mult_now()
+        if flying:
+            self.page.sync_labels()
+        area = r.adjusted(S(22), S(54), -S(22), -S(22))
+        p.setPen(QPen(alpha("#FFFFFF", 0.07), 1))
+        for k in range(4):
+            y = area.bottom() - area.height() * k / 3
+            p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
+        top = max(2.0, m * 1.15)                             # the view grows with the multiplier
+        t_end = math.log(max(m, 1.0001)) / self.RATE
+        span = max(4.0, t_end * 1.15)
+        path = QPainterPath()
+        steps = 48
+        for k in range(steps + 1):
+            t = t_end * k / steps
+            val = math.exp(self.RATE * t)
+            pt = QPointF(area.left() + area.width() * t / span,
+                         area.bottom() - area.height() * (val - 1.0) / (top - 1.0))
+            path.lineTo(pt) if k else path.moveTo(pt)
+        col = QColor(LOSE) if (self.crashed and not flying) else ui.accent
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(alpha(col, 0.25), S(7)))
+        p.drawPath(path)
+        p.setPen(QPen(col, S(2.6)))
+        p.drawPath(path)
+        head = path.currentPosition()
+        p.setPen(Qt.PenStyle.NoPen)
+        if self.crashed and not flying:
+            for k in range(8):
+                ang = k * math.pi / 4
+                p.setBrush(alpha("#FFB04D", 0.85))
+                p.drawEllipse(QPointF(head.x() + S(11) * math.cos(ang), head.y() + S(11) * math.sin(ang)), S(2.6), S(2.6))
+        else:
+            p.setBrush(alpha(col, 0.3))
+            p.drawEllipse(head, S(9), S(9))
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawEllipse(head, S(4.2), S(4.2))
+        p.setPen(QColor(LOSE) if (self.crashed and not flying) else QColor(TEXT))
+        p.setFont(font(28, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left(), r.top() + S(10), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter), f"×{m:.2f}")
+
+
+class GamePicker(QWidget):
+    """Which game: two rows of small buttons (one is lit)."""
+    changed = pyqtSignal(int)
+
+    def __init__(self, labels: list, index: int = 0) -> None:
+        super().__init__()
+        self._index = index
+        self.buttons: list = []
+        grid = QGridLayout(self)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(S(4))
+        per_row = (len(labels) + 1) // 2
+        for i, text in enumerate(labels):
+            b = Button(text, "primary" if i == index else "ghost", 26)
+            b.clicked.connect(lambda _=False, n=i: self._pick(n))
+            grid.addWidget(b, i // per_row, i % per_row)
+            self.buttons.append(b)
+        self.setFixedHeight(S(26) * 2 + S(4))
+
+    def index(self) -> int:
+        return self._index
+
+    def set_index(self, i: int) -> None:
+        self._index = i
+        for n, b in enumerate(self.buttons):
+            b.set_kind("primary" if n == i else "ghost")
+
+    def _pick(self, i: int) -> None:
+        if i != self._index:
+            sfx.play("pick")
+            self.set_index(i)
+            self.changed.emit(i)
+
+
 class BetBox(QWidget):
     """The bet: a coin and an amount."""
 
@@ -1049,18 +1393,19 @@ class KeyCard(QWidget):
                    tr("Keys"))
         p.setFont(font(13, QFont.Weight.Bold))
         p.drawText(QRectF(r.center().x(), r.top() + S(10), r.width() / 2 - S(12), S(24)),
-                   int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), f"{min(w.keys(), KEY_MAX)} / {KEY_MAX}")
+                   int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), str(w.keys()))
         bar = QRectF(r.left() + S(46), r.top() + S(38), r.width() - S(58), S(5))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(alpha("#FFFFFF", 0.08))
         p.drawRoundedRect(bar, bar.height() / 2, bar.height() / 2)
         p.setBrush(ui.accent)
-        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * w.key_progress()), bar.height()),
+        ec = self.ctx.econ
+        every = max(1, int(ec.cfg.get("key_every_min", 60)))
+        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * min(1.0, ec.key_min / every)), bar.height()),
                           bar.height() / 2, bar.height() / 2)
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
-        text = tr("Full: open a case in the Shop") if w.keys() >= KEY_MAX else \
-            tr("1 key for every {n} coins played", n=coins_text(KEY_EVERY))
+        text = tr("1 key for every hour with Rubenium")
         p.drawText(QRectF(bar.left(), bar.bottom() + S(2), bar.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter), text)
 
 
@@ -1125,6 +1470,22 @@ class GameTile(QWidget):
                 cell = QRectF(art.x() - S(17) + (i % 3) * S(12), art.y() - S(17) + (i // 3) * S(12), S(10), S(10))
                 p.setBrush(alpha(ui.accent, 0.85) if i == 4 else QColor("#1A2125"))
                 p.drawRoundedRect(cell, S(2.5), S(2.5))
+        elif self.index == 4:                                  # a die
+            p.setBrush(QColor("#F4F5F6"))
+            p.drawRoundedRect(QRectF(art.x() - S(14), art.y() - S(14), S(28), S(28)), S(6), S(6))
+            p.setBrush(QColor("#14181A"))
+            for dx, dy in ((-7, -7), (7, 7), (0, 0), (7, -7), (-7, 7)):
+                p.drawEllipse(QPointF(art.x() + S(dx), art.y() + S(dy)), S(2.3), S(2.3))
+        elif self.index == 5:                                  # a climbing line
+            line = QPainterPath()
+            line.moveTo(art.x() - S(20), art.y() + S(14))
+            line.cubicTo(art.x() - S(4), art.y() + S(12), art.x() + S(8), art.y() + S(2), art.x() + S(18), art.y() - S(15))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(ui.accent, S(2.4)))
+            p.drawPath(line)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawEllipse(QPointF(art.x() + S(18), art.y() - S(15)), S(3.4), S(3.4))
         else:                                                  # 777
             p.setPen(QColor("#FF4B5C"))
             p.setFont(font(16, QFont.Weight.ExtraBold))
@@ -1161,7 +1522,7 @@ class DailyRow(QWidget):
 
     def mouseReleaseEvent(self, e) -> None:
         if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
-            self.page.enter(4)
+            self.page.enter(6)
 
     def paintEvent(self, _e) -> None:
         w = self.ctx.wallet
@@ -1177,7 +1538,7 @@ class DailyRow(QWidget):
         p.setPen(QColor(TEXT))
         p.setFont(font(12.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(r.left() + S(36), r.top(), r.width() * 0.6, r.height()), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("Free daily spin"))
+                   tr("Free spin"))
         if wait is None:
             text, col = ("…" if w.checking() else tr("Offline")), TEXT_DIM
         elif ready:
@@ -1192,7 +1553,7 @@ class DailyRow(QWidget):
 class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
-    NAMES = ["Blackjack", "Plinko", "Bombs", "Slots", "Daily"]
+    NAMES = ["Blackjack", "Plinko", "Bombs", "Slots", "Dice", "Rocket", "Free spin"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -1214,7 +1575,7 @@ class GamesPage(Page):
         gl = QGridLayout(grid)
         gl.setContentsMargins(0, 0, 0, 0)
         gl.setSpacing(S(6))
-        for i, name in enumerate(self.NAMES[:4]):
+        for i, name in enumerate(self.NAMES[:6]):
             gl.addWidget(GameTile(self, i, name), i // 2, i % 2)
         lay.addWidget(grid)
         go = Button(tr("Enter casino"), "primary", 40)
@@ -1257,10 +1618,10 @@ class GamesPage(Page):
         top.addWidget(CoinBar(ctx, keys=True), 1)
         lay.addLayout(top)
         which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < len(self.NAMES) else 0
-        self.seg = Segmented([tr(n) for n in self.NAMES], which)
+        self.seg = GamePicker([tr(n) for n in self.NAMES], which)
         self.seg.changed.connect(self._choose)
         lay.addWidget(self.seg)
-        self.games = [Blackjack(self), Plinko(self), Bombs(self), Slots(self), Daily(self)]
+        self.games = [Blackjack(self), Plinko(self), Bombs(self), Slots(self), Dice(self), Rocket(self), Daily(self)]
         for g in self.games:
             g.setVisible(False)
             lay.addWidget(g)
@@ -1307,7 +1668,7 @@ class GamesPage(Page):
         """The bet, never more than you have."""
         bal = self.ctx.wallet.balance()
         want = BETS[self._bet]
-        if self.game is not None and self.game.busy:
+        if self.game is not None and self.game.busy and not isinstance(self.game, Plinko):
             return self.game.stake
         return want if want <= bal else max([b for b in BETS if b <= bal], default=0)
 
@@ -1337,7 +1698,7 @@ class GamesPage(Page):
             if self.opts[n] is not None:
                 self.opts[n].setVisible(n == i)
         self.game = self.games[i]
-        self.bet_row.setVisible(i != 4)
+        self.bet_row.setVisible(i != 6)
         self.sync()
 
     def sync(self) -> None:
@@ -1371,6 +1732,15 @@ class GamesPage(Page):
     def busy(self) -> bool:
         return self.game is not None and self.game.busy
 
+    def sync_labels(self) -> None:
+        """While the rocket flies its button shows the growing prize: refresh the text only."""
+        for b, (text, _k, _c, on) in zip(self.act_buttons, self.game.buttons()):
+            if b._text != text:
+                b._text = text
+                b.text_key = text
+                b.update()
+            b.setEnabled(bool(on))
+
     def wrap_up(self) -> None:
         """You left the casino mid-round: a waiting hand stands, an open board cashes out (or gives the bet back
         if no card was turned). Rounds already running simply finish."""
@@ -1380,13 +1750,12 @@ class GamesPage(Page):
         elif isinstance(g, Bombs) and g.phase == "play":
             if g.found():
                 g.cash()
-            else:
-                g.phase = "idle"
-                g.board = set()
-                g.wallet.add(g.stake)
-                g.stake = 0
+            else:                                   # nothing turned yet: the board waits on the server and
+                g.phase = "idle"                    # comes back the next time Bombs is started
                 g.busy = False
                 self.sync()
+        elif isinstance(g, Rocket) and g.phase == "fly":
+            g.cash()
 
     def on_show(self) -> None:
         self.sync()

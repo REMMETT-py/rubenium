@@ -37,28 +37,27 @@ def _theme(ident, name, hours, glow=0, stars=0, links=0, comets=0, aurora=False,
 THEMES = [
     _theme("clean", "Clean", 0),
     _theme("glow", "Glow", 2, glow=1),
-    _theme("stars", "First Stars", 6, glow=1, stars=14),
-    _theme("starfield", "Starfield", 12, glow=1, stars=34, sparkles=3),
-    _theme("constellation", "Constellation", 24, glow=2, stars=42, links=7, sparkles=4, halo=1.1),
-    _theme("comets", "Comets", 48, glow=2, stars=48, links=8, comets=3, sparkles=5, halo=1.15),
-    _theme("aurora", "Aurora", 72, glow=2, stars=56, links=9, comets=3, aurora=True, sparkles=6, halo=1.2),
-    _theme("nova", "Nova", 100, glow=2, stars=60, links=10, comets=4, aurora=True, gold=0.35, sparkles=7, halo=1.25,
+    _theme("stars", "First Stars", 12, glow=1, stars=14),
+    _theme("starfield", "Starfield", 20, glow=1, stars=34, sparkles=3),
+    _theme("aurora", "Aurora", 55, glow=2, stars=56, links=9, comets=3, aurora=True, sparkles=6, halo=1.2),
+    _theme("nova", "Nova", 75, glow=2, stars=60, links=10, comets=4, aurora=True, gold=0.35, sparkles=7, halo=1.25,
            edge="shine"),
-    _theme("gilded", "Gilded", 150, glow=2, stars=64, links=11, comets=4, aurora=True, gold=0.6, sparkles=9,
-           halo=1.3, edge="gold"),
-    _theme("royal", "Royal", 200, glow=3, stars=68, links=12, comets=5, aurora=True, gold=0.85, sparkles=11,
+    _theme("royal", "Royal", 150, glow=3, stars=68, links=12, comets=5, aurora=True, gold=0.85, sparkles=11,
            halo=1.4, edge="goldshine"),
-    _theme("legend", "Legend", 250, glow=3, stars=76, links=14, comets=6, aurora=True, gold=1.0, sparkles=14,
+    _theme("legend", "Legend", 200, glow=3, stars=76, links=14, comets=6, aurora=True, gold=1.0, sparkles=14,
            halo=1.5, edge="legend"),
 ]
 # Small extras that also unlock with time: the look of the R and of the song ring on the ball.
-R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="outline", name="Outline", hours=6),
-            dict(id="neon", name="Neon", hours=24), dict(id="whitegold", name="White Gold", hours=60),
+R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="whitegold", name="White Gold", hours=30),
             dict(id="gold", name="Gold", hours=100)]
-RING_STYLES = [dict(id="dots", name="Dots", hours=0), dict(id="line", name="Line", hours=12),
-               dict(id="neon", name="Neon", hours=48), dict(id="whitegold", name="White Gold", hours=90),
-               dict(id="gold", name="Gold", hours=150)]
-RETIRED_STYLES = {"echo": "neon", "comet": "neon"}      # 1.6: styles that were removed, and what owners get
+RING_STYLES = [dict(id="line", name="Line", hours=0), dict(id="whitegold", name="White Gold", hours=40),
+               dict(id="gold", name="Gold", hours=125)]
+RETIRED_STYLES = {"echo": "classic", "comet": "line", "outline": "classic", "neon": "classic", "dots": "line"}
+# what the server calls each progression unlock (shown on your profile)
+PROG_IDS = {"theme": {"clean": "prog:theme:1", "glow": "prog:theme:2", "stars": "prog:theme:3", "starfield": "prog:theme:4",
+                      "aurora": "prog:theme:5", "nova": "prog:theme:6", "royal": "prog:theme:7", "legend": "prog:theme:8"},
+            "ball_style": {"classic": "prog:ball:0", "whitegold": "prog:ball:2", "gold": "prog:ball:3"},
+            "ring_style": {"line": "prog:ring:0", "whitegold": "prog:ring:2", "gold": "prog:ring:3"}}
 SECOND_COLOUR_HOURS = 24
 
 
@@ -800,6 +799,15 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.0", ["The online update: coins, keys and items now live on your account",
+             "Everyone starts fresh: 500 coins and 3 keys",
+             "Coins come with time (10 every 15 minutes) and 1 key every hour",
+             "Five rarities: Standard, Rare, Special, Epic, Exotic. 55 badges, 5 of them Exotic",
+             "Sell badges to the vendor for quick coins",
+             "Four new cases with their odds shown, and a free daily case",
+             "Casino played on the server, with two new games: Dice and Rocket",
+             "Free spin every 3 hours: press Collect to take the prize",
+             "Themes, ball and ring now unlock with hours played"]),
     ("1.10", ["Logged in? Rubenium starts by itself after 5 seconds (click the card to start at once)"]),
     ("1.9", ["Friends: add players by username and see who is online",
              "Profiles show time played and, soon, badges and play history"]),

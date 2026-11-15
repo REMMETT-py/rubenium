@@ -118,7 +118,9 @@ class App(QObject):
             self.cfg[key] = value
         self.online = Online(self)                   # the account (log in on the welcome screen)
         self.econ = Econ(self)                       # coins, keys and items as the server has them
-        self.wallet = Wallet(self.cfg)
+        self.wallet = Wallet(self)
+        self.econ.changed.connect(self.sync_look)
+        self.econ.changed.connect(self._flair_changed)
         self.casino = False                          # inside the casino (Games tab, shown bigger)
         self.casino_ask = None                       # the gambling warning is being shown
         self._wear_only_owned()
@@ -493,13 +495,29 @@ class App(QObject):
     # themes: background designs unlocked by hours of use; a locked one can be previewed
     # ------------------------------------------------------------------ coins and what they bought
     def _colour_ok(self, kind: str, hexa: str, real: bool = False) -> bool:
-        """May this colour be used? Any colour once all sixteen are owned, else only an owned one."""
-        owns = self.wallet.really_owns if real else self.wallet.owns
-        if not hexa or not QColor(hexa).isValid():
-            return False
-        if all(owns(f"{kind}:{ident}") for ident, _n, _h in COLOURS):
-            return True
-        return any(h.upper() == hexa.upper() and owns(f"{kind}:{ident}") for ident, _n, h in COLOURS)
+        """Colours are free: any valid colour may be used."""
+        return bool(hexa) and QColor(hexa).isValid()
+
+    def _flair_changed(self) -> None:
+        if getattr(self, "window", None) is None:
+            return
+        for page in self.window.each_page():
+            fl = getattr(page, "flair", None)
+            if fl is not None:
+                fl.fit()
+                fl.update()
+
+    def sync_look(self) -> None:
+        """Tell the server which progression theme, ball and ring are on (shown on your profile)."""
+        ec = self.econ
+        if not ec.ready or getattr(self, "_syncing_look", False):
+            return
+        for slot, key in (("theme", "theme"), ("ball", "ball_style"), ("ring", "ring_style")):
+            want = extras.PROG_IDS[key].get(self.cfg[key], "")
+            if want and ec.worn(slot) != want and ec.unlocked(want):
+                self._syncing_look = True
+                ec.wear(slot, want, lambda _ok, _d: setattr(self, "_syncing_look", False))
+                return
 
     def _wear_only_owned(self) -> None:
         """At start: anything worn that is not really owned (tried in test mode, or edited in) comes off."""
@@ -511,19 +529,11 @@ class App(QObject):
         if not w.really_owns(f"r:{cfg['ball_style']}"):
             cfg["ball_style"] = "classic"
         if not w.really_owns(f"ring:{cfg['ring_style']}"):
-            cfg["ring_style"] = "dots"
-        worn = []
-        for item in cfg["badges"] if isinstance(cfg["badges"], list) else []:
-            ident, _s, var = str(item).partition("/")
-            if w.really_has_badge(ident, var) and item not in worn:
-                worn.append(item)
-        cfg["badges"] = worn[:3]
+            cfg["ring_style"] = "line"
         if not self._colour_ok("c1", cfg["custom_accent"], real=True):
             cfg["custom_accent"] = ""
         if not self._colour_ok("c2", cfg["accent2"], real=True):
             cfg["accent2_on"] = False
-        if not w.really_owns("music"):
-            cfg["accent_from_art"] = False
 
     # ------------------------------------------------------------------ casino
     def _casino_scale(self, base: int) -> int:
@@ -638,7 +648,7 @@ class App(QObject):
         return self.cfg["ball_style"] if self.wallet.owns(f"r:{self.cfg['ball_style']}") else "classic"
 
     def ring_style(self) -> str:
-        return self.cfg["ring_style"] if self.wallet.owns(f"ring:{self.cfg['ring_style']}") else "dots"
+        return self.cfg["ring_style"] if self.wallet.owns(f"ring:{self.cfg['ring_style']}") else "line"
 
     def set_look(self, key: str, value: int) -> None:
         """Ball size, glow strength, background and corners (Settings and Themes)."""

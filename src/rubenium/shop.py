@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QAbstractButton, QGridLayout, QWidget
 from . import extras
 from .core import lang, S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
 from .pages import Page
-from .wallet import CATALOG, COLOURS, COLOUR_HEX, DROP_COINS, coins_text, paint_coin
+from .wallet import COLOURS, COLOUR_HEX, coins_text, paint_coin
 from .widgets import Button, IconButton, Label, Segmented, Toggle, Tween, draw_icon, hbox, heading, row, vbox
 
 GOLD_TEXT = "#E8C26A"
@@ -74,7 +74,10 @@ class CoinBar(QWidget):
         right = QRectF(r.center().x(), r.top(), r.width() / 2 - S(12), r.height())
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(11, QFont.Weight.DemiBold))
-        text = "∞" if self.ctx.wallet.admin else f"+{DROP_COINS}  ·  {clock_text(self.ctx.wallet.next_drop())}"
+        ec = self.ctx.econ
+        text = f"+{int(ec.cfg.get('coin_amount', 10))}  ·  {clock_text(ec.next_coin_s())}"
+        if not ec.ready:
+            text = tr("Offline") if self.ctx.online.offline or not self.ctx.online.logged_in() else "…"
         p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
         if self.keys:
             tw = p.fontMetrics().horizontalAdvance(text)
@@ -91,8 +94,22 @@ class CoinBar(QWidget):
             p.restore()
 
 
-def paint_price(p: QPainter, rect: QRectF, price: int, size: float = 10.0, colour=TEXT_DIM, centre: bool = True) -> None:
-    """A small coin followed by a price, inside `rect`."""
+def paint_price(p: QPainter, rect: QRectF, price, size: float = 10.0, colour=TEXT_DIM, centre: bool = True,
+                hours: bool = False) -> None:
+    """A small coin followed by a price, inside `rect` (or, for progression, the hours of play it needs)."""
+    if hours:
+        text = f"{price:g} h"
+        p.setFont(font(size, QFont.Weight.DemiBold))
+        tw = p.fontMetrics().horizontalAdvance(text)
+        x = rect.center().x() - (tw + S(size)) / 2 if centre else rect.left()
+        p.save()
+        p.translate(x + S(size * 0.4), rect.center().y())
+        p.scale(S(size * 0.95) / 20, S(size * 0.95) / 20)
+        draw_icon(p, "lock", QColor(colour))
+        p.restore()
+        p.setPen(QColor(colour))
+        p.drawText(QRectF(x + S(size), rect.top(), tw + S(2), rect.height()), int(Qt.AlignmentFlag.AlignVCenter), text)
+        return
     text = coins_text(price)
     p.setFont(font(size, QFont.Weight.DemiBold))
     tw = p.fontMetrics().horizontalAdvance(text)
@@ -172,7 +189,7 @@ class ThemeCard(QAbstractButton):
             draw_icon(p, "lock", QColor(TEXT_DIM))
             p.restore()
             paint_price(p, QRectF(foot.left() + S(18), foot.top(), foot.width() - S(18), foot.height()),
-                        ctx.wallet.price(ident), 10.5, GOLD_TEXT if nxt else TEXT_DIM, centre=False)
+                        ctx.wallet.hours_for(ident), 10.5, GOLD_TEXT if nxt else TEXT_DIM, centre=False, hours=True)
 
 
 class UnlockTile(QAbstractButton):
@@ -220,7 +237,7 @@ class UnlockTile(QAbstractButton):
             p.setPen(ui.accent if active else mix(QColor(TEXT_DIM), QColor(TEXT), h))
             p.drawText(foot, int(Qt.AlignmentFlag.AlignCenter), tr(st["name"]))
         else:
-            paint_price(p, foot, ctx.wallet.price(self.ident), 9.5)
+            paint_price(p, foot, ctx.wallet.hours_for(self.ident), 9.5, hours=True)
 
 
 class HueLine(QWidget):
@@ -546,7 +563,8 @@ class ShopPage(Page):
         self.c2 = ColourRow(self, "c2", "accent2")
         lay.addWidget(self.c2)
 
-        lay.addWidget(heading(tr("Ball")))
+        lay.addWidget(heading(tr("Progression")))
+        lay.addWidget(UnlockBar(self))
         for kind, styles, key in (("r", extras.R_STYLES, "ball_style"), ("ring", extras.RING_STYLES, "ring_style")):
             line = hbox(spacing=0)
             for n, st in enumerate(styles):
@@ -586,28 +604,30 @@ class ShopPage(Page):
     # -- Badges
     def _badges(self, lay) -> None:
         from .collection import BadgeGrid, BigBadge, Showcase, VariantPicker, worn
-        ctx = self.ctx
-        ident = getattr(ctx, "shop_badge", None)
-        if not ident:
-            lay.addWidget(heading(tr("Showcase")))
+        from .wallet import BADGE_NAME, badge_item, variants_for
+        ctx, ec = self.ctx, self.ctx.econ
+        base = getattr(ctx, "shop_badge", None)
+        if not ec.ready:
+            return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see your badges"),
+                                       12, TEXT_DIM))
+        if not base:
+            lay.addWidget(heading(tr("On show")))
             self.showcase = Showcase(self)
             lay.addWidget(self.showcase)
             lay.addWidget(heading(tr("Collection")))
             lay.addWidget(BadgeGrid(self))
             return
-        from .wallet import BADGE_NAME, CASE_OF
         top = hbox(spacing=8)
         back = IconButton("back", 32, tip=tr("Back"))
         back.clicked.connect(lambda: self.open_badge(None))
         top.addWidget(back)
-        top.addWidget(Label(tr(BADGE_NAME[ident]), 15, bold=True), 1)
-        top.addWidget(Label(tr(CASE_OF[ident]["name"]), 10.5, TEXT_DIM, align=Qt.AlignmentFlag.AlignRight), 1)
+        top.addWidget(Label(tr(BADGE_NAME[base]), 15, bold=True), 1)
         lay.addLayout(top)
         self.big = BigBadge(self)
         lay.addWidget(self.big)
-        self.picker = VariantPicker(self, ident)
-        have = ctx.wallet.badge_variants(ident)
-        first = next((v for v in have if f"{ident}/{v}" in worn(ctx)), have[0] if have else "grey")
+        self.picker = VariantPicker(self, base)
+        have = [v for v in variants_for(base) if ec.owns(badge_item(base, v))]
+        first = next((v for v in have if badge_item(base, v) in worn(ctx)), have[0] if have else variants_for(base)[-1])
         self.picker.var = getattr(ctx, "shop_var", "") or first
         ctx.shop_var = ""
         self.picker.picked.connect(self._variant)
@@ -615,116 +635,173 @@ class ShopPage(Page):
         self.badge_btn = Button("", "primary", 38)
         self.badge_btn.clicked.connect(self._badge_action)
         lay.addWidget(self.badge_btn)
+        self.sell_btn = Button("", "ghost", 32)
+        self.sell_btn.clicked.connect(self._sell)
+        lay.addWidget(self.sell_btn)
         self._variant(self.picker.var)
 
-    def open_badge(self, ident) -> None:
+    def open_badge(self, base) -> None:
         if self.reel is not None and self.reel.busy():
             return
         self.ctx.shop_tab = 1
-        self.ctx.shop_badge = ident
+        self.ctx.shop_badge = base
         self.ctx.reload_page()
 
+    def _item(self) -> str:
+        from .wallet import badge_item
+        return badge_item(self.ctx.shop_badge, self.picker.var)
+
     def _variant(self, var: str) -> None:
-        from .collection import case_by_id, worn
-        from .wallet import CASE_OF, VARIANT, badge_price
-        ident = self.ctx.shop_badge
-        self.big.show_variant(ident, var)
-        w = self.ctx.wallet
-        rarity = VARIANT[var][2]
-        if w.has_badge(ident, var):
-            on = f"{ident}/{var}" in worn(self.ctx)
+        from .collection import worn
+        ec = self.ctx.econ
+        self.picker.var = var
+        item = self._item()
+        self.big.show_item(item)
+        price = ec.price(item)
+        if ec.owns(item):
+            on = item in worn(self.ctx)
             self.badge_btn.set_text(tr("Take off") if on else tr("Show on the music tab"))
             self.badge_btn.set_kind("ghost" if on else "primary")
-        elif rarity == "basic":
-            self.badge_btn.set_text(tr("Buy for {n} coins", n=coins_text(badge_price(ident))))
+        elif price is not None:
+            self.badge_btn.set_text(tr("Buy for {n} coins", n=coins_text(price)))
             self.badge_btn.set_kind("primary")
         else:
-            self.badge_btn.set_text(tr("Find it in the {case}", case=tr(case_by_id(CASE_OF[ident]["id"])["name"])))
+            self.badge_btn.set_text(tr("Only from cases"))
             self.badge_btn.set_kind("ghost")
+        self.badge_btn.setEnabled(True)
+        sell = ec.vendor_price(item) if ec.owns(item) else 0
+        self.sell_btn.setVisible(bool(sell))
+        self.sell_btn.set_text(tr("Sell to the vendor for {n} coins", n=coins_text(sell)))
         self.badge_btn.update()
 
+    def _answer(self, ok: bool, data) -> None:
+        """After the server answered: show an error, or refresh what this page shows."""
+        if not ok:
+            sfx.play("off")
+            self.ctx.toast(tr(str(data)), "warn")
+        if getattr(self, "picker", None) is not None and self.ctx.window.current == "themes":
+            try:
+                self._variant(self.picker.var)
+                self.picker.restart()
+            except RuntimeError:
+                pass
+
     def _badge_action(self) -> None:
-        from .collection import worn
-        from .wallet import BADGE_NAME, CASE_OF, VARIANT, badge_price
-        ctx, w = self.ctx, self.ctx.wallet
-        ident, var = ctx.shop_badge, self.picker.var
-        item = f"{ident}/{var}"
-        if w.has_badge(ident, var):
-            items = worn(ctx)
-            if item in items:
-                items.remove(item)
-            elif len(items) >= 3:
+        from .collection import SLOTS, worn
+        from .econ import RARITY_NAMES
+        ctx, ec = self.ctx, self.ctx.econ
+        item = self._item()
+        if ec.owns(item):
+            if item in worn(ctx):
+                slot = next(s for s in SLOTS if ec.worn(s) == item)
+                sfx.play("pick")
+                return ec.wear(slot, "", self._answer)
+            free = next((s for s in SLOTS if not ec.worn(s)), None)
+            if free is None:
                 return ctx.toast(tr("Your showcase is full: take one off first"), "warn")
-            else:
-                items.append(item)
             sfx.play("pick")
-            self.set_worn(items)
-            self._variant(var)
-            self.picker.update()
-        elif VARIANT[var][2] == "basic":
-            price = badge_price(ident)
-            if price > w.balance():
-                return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(price - w.balance())), "warn")
-            name = f"{tr(BADGE_NAME[ident])} · {tr(VARIANT[var][1])}"
-            ctx.window.confirm(tr("Buy {name} for {n} coins?", name=name, n=coins_text(price)),
-                               lambda: self._bought_badge(ident, var), yes=tr("Buy"))
-        else:
-            self.open_case(CASE_OF[ident]["id"])
+            return ec.wear(free, item, self._answer)
+        price = ec.price(item)
+        if price is None:
+            self.ctx.shop_tab = 2
+            self.ctx.shop_badge = None
+            return ctx.reload_page()
+        if price > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(price - ec.coins)), "warn")
+        from .collection import badge_label
+        text = tr("Buy {name} ({rarity}) for {n} coins?", name=badge_label(item), rarity=tr(RARITY_NAMES[ec.rarity(item)]),
+                  n=coins_text(price))
+        ctx.window.confirm(text, lambda: (self.badge_btn.setEnabled(False), ec.buy(item, self._bought_item)), yes=tr("Buy"))
 
-    def _bought_badge(self, ident: str, var: str) -> None:
-        from .collection import worn
-        if not self.ctx.wallet.buy_badge(ident, var):
+    def _bought_item(self, ok: bool, data) -> None:
+        if ok:
+            sfx.play("on")
+        self._answer(ok, data)
+
+    def _sell(self) -> None:
+        from .collection import badge_label
+        ctx, ec = self.ctx, self.ctx.econ
+        item = self._item()
+        copies = ec.copies(item)
+        if not copies:
             return
-        sfx.play("on")
-        items = worn(self.ctx)
-        if len(items) < 3:
-            items.append(f"{ident}/{var}")
-            self.set_worn(items)
-        self._variant(var)
-        self.picker.restart()
+        pay = ec.vendor_price(item)
+        rare = ec.rarity(item) in ("epic", "exotic")
 
-    def set_worn(self, items: list) -> None:
-        self.ctx.cfg["badges"] = list(items)[:3]
-        self.ctx.cfg.save()
-        for page in self.ctx.window.each_page():
-            fl = getattr(page, "flair", None)
-            if fl is not None:
-                fl.fit()
-                fl.update()
-        sc = getattr(self, "showcase", None)
-        if sc is not None:
-            sc.restart()
+        def go() -> None:
+            ec.sell(copies[-1], lambda ok, data: (sfx.play("on") if ok else None, self._answer(ok, data)))
+
+        def ask_again() -> None:
+            ctx.window.confirm(tr("Really sell this {rarity} badge? This cannot be undone.",
+                                  rarity=tr(ec.rarity(item).capitalize())),
+                               go, yes=tr("Sell"))
+        ctx.window.confirm(tr("Sell {name} for {n} coins?", name=badge_label(item), n=coins_text(pay)),
+                           (lambda: QTimer.singleShot(250, ask_again)) if rare else go, yes=tr("Sell"))
 
     # -- Cases
+    DAILY = {"id": "daily", "price": 0, "odds": [7500, 2000, 450, 50, 0, 0], "coin_min": 30, "coin_max": 120,
+             "exotics": False, "pity_tier": 1, "pity_after": 0}
+
+    def daily_wait(self):
+        """Seconds until the free daily case (0 = ready, None = not known yet)."""
+        return getattr(self.ctx, "daily_wait_s", None)
+
+    def _timers(self) -> None:
+        import time as _time
+
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, dict):
+                self.ctx.daily_ready_at = _time.monotonic() + int(data.get("daily") or 0)
+                self._tick_daily()
+        self.ctx.econ.call("rb_timers", {}, got)
+
+    def _tick_daily(self) -> None:
+        import time as _time
+        at = getattr(self.ctx, "daily_ready_at", None)
+        self.ctx.daily_wait_s = None if at is None else max(0, int(at - _time.monotonic()))
+        for card in self.findChildren(QWidget):
+            if getattr(card, "case", None) is not None and card.case.get("id") == "daily":
+                card.update()
+
     def _cases(self, lay) -> None:
-        from .collection import CaseCard, CaseContents, CaseReel, OddsTable, case_by_id
-        ctx = self.ctx
+        from .collection import CASE_NAMES, CaseCard, CaseReel, OddsTable
+        ctx, ec = self.ctx, self.ctx.econ
+        if not ec.ready or not ec.cases:
+            return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to open cases"),
+                                       12, TEXT_DIM))
         cid = getattr(ctx, "shop_case", None)
+        self._daily_timer = QTimer(self)
+        self._daily_timer.setInterval(1000)
+        self._daily_timer.timeout.connect(self._tick_daily)
+        self._daily_timer.start()
+        self._timers()
         if not cid:
-            from .wallet import CASES
-            for case in CASES:
+            lay.addWidget(CaseCard(self, self.DAILY))
+            for case in ec.cases:
                 lay.addWidget(CaseCard(self, case))
-            note = Label(tr("Keys come from playing in the casino. Basic colours can also be bought in Badges."), 10.5,
-                         TEXT_DIM, wrap_w=self.W)
-            lay.addWidget(note)
+            lay.addWidget(Label(tr("A case costs coins and 1 key. You earn 1 key for every hour with Rubenium."), 10.5,
+                                TEXT_DIM, wrap_w=self.W))
             return
-        case = case_by_id(cid)
+        case = self.DAILY if cid == "daily" else next((c for c in ec.cases if c["id"] == cid), ec.cases[0])
         top = hbox(spacing=8)
         self.case_back = IconButton("back", 32, tip=tr("Back"))
         self.case_back.clicked.connect(lambda: self.open_case(None))
         top.addWidget(self.case_back)
-        top.addWidget(Label(tr(case["name"]), 15, bold=True), 1)
+        top.addWidget(Label(tr(CASE_NAMES.get(case["id"], "Daily Case")), 15, bold=True), 1)
         lay.addLayout(top)
         self.reel = CaseReel(self, case)
         self.reel.done.connect(self._opened)
         lay.addWidget(self.reel)
-        self.open_btn = Button(tr("Open for {n} coins + 1 key", n=coins_text(case["price"])), "primary", 40)
+        text = tr("Open for free") if cid == "daily" else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))
+        self.open_btn = Button(text, "primary", 40)
         self.open_btn.clicked.connect(lambda: self._open(case))
         lay.addWidget(self.open_btn)
-        lay.addWidget(heading(tr("Chances")))
-        lay.addWidget(OddsTable(case, self.W))
-        lay.addWidget(heading(tr("Inside")))
-        lay.addWidget(CaseContents(self, case["badges"]))
+        if cid != "daily":
+            lay.addWidget(heading(tr("Chances")))
+            lay.addWidget(OddsTable(case, self.W))
+        else:
+            lay.addWidget(Label(tr("Once a day: coins, a key or a badge (Standard, sometimes Rare, rarely Special)."),
+                                10.5, TEXT_DIM, wrap_w=self.W))
 
     def open_case(self, cid) -> None:
         if self.reel is not None and self.reel.busy():
@@ -735,66 +812,53 @@ class ShopPage(Page):
         self.ctx.reload_page()
 
     def _open(self, case: dict) -> None:
-        w = self.ctx.wallet
-        if self.reel.busy():
+        ctx, ec = self.ctx, self.ctx.econ
+        if self.reel.busy() or getattr(self, "_asking", False):
             return
-        if w.keys() < 1:
-            return self.ctx.toast(tr("You need a key: play in the casino"), "warn")
-        if case["price"] > w.balance():
-            return self.ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - w.balance())), "warn")
-        res = w.open_case(case["id"])
-        if res is None:
-            return
-        self.reel.spin(res)
+        daily = case["id"] == "daily"
+        if daily and self.daily_wait() != 0:
+            return ctx.toast(tr("Not ready yet"), "warn")
+        if not daily and ec.keys < 1:
+            return ctx.toast(tr("You need a key: 1 key for every hour with Rubenium"), "warn")
+        if not daily and case["price"] > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - ec.coins)), "warn")
+        self._asking = True
         self._lock(True)
+
+        def got(ok: bool, data) -> None:
+            self._asking = False
+            if not ok:
+                self._lock(False)
+                sfx.play("off")
+                return ctx.toast(tr(str(data)), "warn")
+            if data.get("item") and data.get("id"):          # it is already yours: the strip only shows it
+                ec.gained(data["item"], data["id"], "case")
+            if daily:
+                import time as _time
+                ctx.daily_ready_at = _time.monotonic() + 24 * 3600
+            try:
+                self.reel.spin(data)
+            except RuntimeError:
+                pass
+        if daily:
+            ec.call("rb_daily_case", {}, got)
+        else:
+            ec.call("rb_open_case", {"which": case["id"]}, got, once=True)
 
     def _opened(self) -> None:
         QTimer.singleShot(900, lambda: self._lock(False))
 
     def _lock(self, on: bool) -> None:
-        for wdg in (self.open_btn, self.case_back, self.seg):
-            wdg.setEnabled(not on)
+        try:
+            for wdg in (self.open_btn, self.case_back, self.seg):
+                wdg.setEnabled(not on)
+        except RuntimeError:
+            pass
 
-    def open_badge_from_case(self, ident: str) -> None:
-        self.open_badge(ident)
-
-    # -- buying
+    # -- progression: nothing is bought, it opens with time played
     def buy(self, ident: str) -> None:
-        wallet, item = self.ctx.wallet, CATALOG[ident]
-        if wallet.owns(ident):
-            return
-        blocked = wallet.blocked_by(ident)
-        if blocked == "c1:*":
-            return self.ctx.toast(tr("Unlock every Colour 1 first"), "warn")
-        if blocked:
-            return self.ctx.toast(tr("Unlock {name} first", name=tr(CATALOG[blocked]["name"])), "warn")
-        price = wallet.price(ident)
-        if price > wallet.balance():
-            return self.ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(price - wallet.balance())), "warn")
-        self.ctx.window.confirm(tr("Buy {name} for {n} coins?", name=tr(item["name"]), n=coins_text(price)),
-                                lambda: self._bought(ident), yes=tr("Buy"))
-
-    def _bought(self, ident: str) -> None:
-        wallet = self.ctx.wallet
-        if not wallet.buy(ident):
-            return
-        sfx.play("on")
-        kind = CATALOG[ident]["kind"]
-        value = ident.split(":", 1)[1] if ":" in ident else ""
-        if kind == "theme":                                  # what you buy is put on straight away
-            self.ctx.window.drawer.close_now()
-            self.ctx.set_theme(value)
-        elif kind == "r":
-            self.ctx.cfg["ball_style"] = value
-        elif kind == "ring":
-            self.ctx.cfg["ring_style"] = value
-        elif kind in ("c1", "c2"):
-            self.set_colour(kind, COLOUR_HEX[value])
-            row_w = self.c1 if kind == "c1" else self.c2
-            if wallet.all_colours(kind):
-                row_w.start_melt()
-        self.ctx.window.ball.update()
-        self._refresh()
+        hours = self.ctx.wallet.hours_for(ident)
+        self.ctx.toast(tr("Unlocks after {n} h with Rubenium", n=f"{hours:g}"), "warn")
 
     def flair_changed(self) -> None:
         self.ctx.cfg.save()
@@ -888,3 +952,39 @@ class PriceTag(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         paint_price(p, QRectF(self.rect()), self.price, 10.5, GOLD_TEXT)
+
+
+class UnlockBar(QWidget):
+    """Time played, and how far the next unlock is."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.ctx = page.ctx
+        self.setFixedHeight(S(40))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.ctx.wallet.changed.connect(self.update)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        hours = self.ctx.wallet.minutes() / 60
+        steps = sorted({float(st["hours"]) for group in (extras.THEMES, extras.R_STYLES, extras.RING_STYLES)
+                        for st in group})
+        nxt = next((h for h in steps if h > hours), None)
+        prev = max([h for h in steps if h <= hours] or [0.0])
+        r = QRectF(self.rect())
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12.5, QFont.Weight.DemiBold))
+        shown = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
+        p.drawText(QRectF(0, 0, r.width(), S(20)), int(Qt.AlignmentFlag.AlignVCenter), tr("{n} h played", n=shown))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.drawText(QRectF(0, 0, r.width(), S(20)), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   tr("Everything unlocked") if nxt is None else tr("Next unlock at {n} h", n=f"{nxt:g}"))
+        bar = QRectF(0, S(26), r.width(), S(6))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.08))
+        p.drawRoundedRect(bar, S(3), S(3))
+        frac = 1.0 if nxt is None else max(0.0, min(1.0, (hours - prev) / max(0.01, nxt - prev)))
+        p.setBrush(ui.accent)
+        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * frac), bar.height()), S(3), S(3))

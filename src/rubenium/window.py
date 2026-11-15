@@ -578,6 +578,7 @@ class PreviewDrawer(QWidget):
         self._close.clicked.connect(self.close_drawer)
         self._buy = Button(tr("Buy"), "primary", 30, parent=self)
         self._buy.clicked.connect(self._buy_theme)
+        self._buy.hide()                              # themes unlock with time: nothing to buy
         self._frame = QTimer(self)
         self._frame.setInterval(33)
         self._frame.timeout.connect(self.update)
@@ -686,7 +687,7 @@ class PreviewDrawer(QWidget):
                    int(Qt.AlignmentFlag.AlignVCenter), tr(th["name"]))
         from .shop import paint_price
         paint_price(p, QRectF(S(15), tile.bottom() + S(34), self.width() - S(30), S(18)),
-                    self.ctx.wallet.price(f"theme:{th['id']}"), 11.5, "#E8C26A", centre=False)
+                    self.ctx.wallet.hours_for(f"theme:{th['id']}"), 11.5, "#E8C26A", centre=False, hours=True)
 
 
 class DeleteDialog(QWidget):

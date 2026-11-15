@@ -19,8 +19,8 @@ from . import win
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.10"         # the version people see
-BUILD = "2026.11.15.8"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.0"         # the version people see
+BUILD = "2026.11.15.9"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -243,7 +243,8 @@ DEFAULTS: dict = {
     "backdrop": 1,
     "corners": 0,
     "ball_style": "classic",
-    "ring_style": "dots",
+    "ring_style": "line",
+    "casino_warned": False,
     "news_tab": False,
     "welcome": True,
     "sounds": True,
