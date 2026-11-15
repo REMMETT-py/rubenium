@@ -799,6 +799,8 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.1", ["Quests: three daily and three weekly goals that pay coins",
+             "Friends: a refresh button, and badges on profiles"]),
     ("2.0", ["The online update: coins, keys and items now live on your account",
              "Everyone starts fresh: 500 coins and 3 keys",
              "Coins come with time (10 every 15 minutes) and 1 key every hour",

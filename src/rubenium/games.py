@@ -1550,6 +1550,61 @@ class DailyRow(QWidget):
         p.drawText(r.adjusted(0, 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
 
 
+class QuestRow(QWidget):
+    """One quest: what to do, how far you are, and the reward (a Claim button once it is done)."""
+
+    def __init__(self, page, q: dict) -> None:
+        super().__init__()
+        self.q = q
+        self.setFixedHeight(S(46))
+        lay = hbox(self, 0, (0, 0, 8, 0))
+        lay.addStretch(1)
+        done = int(q.get("progress", 0)) >= int(q.get("goal", 1))
+        if done and not q.get("claimed"):
+            b = Button(tr("Claim") + f"  +{coins_text(int(q['reward']))}", "primary", 30)
+            b.setFixedWidth(max(S(100), b.sizeHint().width()))
+            b.clicked.connect(lambda: page.claim(q["quest"]))
+            lay.addWidget(b)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        q = self.q
+        r = QRectF(self.rect()).adjusted(0.5, 2, -0.5, -2)
+        goal, prog = int(q.get("goal", 1)), int(q.get("progress", 0))
+        done, claimed = prog >= goal, bool(q.get("claimed"))
+        p.setPen(QPen(alpha(GOLD_TEXT, 0.5) if (done and not claimed) else alpha("#FFFFFF", 0.08), 1.1))
+        p.setBrush(alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(r, S(10), S(10))
+        p.setOpacity(0.45 if claimed else 1.0)
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12, QFont.Weight.DemiBold))
+        text = tr(GamesPage.QUESTS.get(q.get("quest"), ""), n=coins_text(goal))
+        p.drawText(QRectF(r.left() + S(12), r.top() + S(5), r.width() * 0.62, S(18)), int(Qt.AlignmentFlag.AlignVCenter), text)
+        bar = QRectF(r.left() + S(12), r.bottom() - S(13), r.width() * 0.56, S(5))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.08))
+        p.drawRoundedRect(bar, S(2.5), S(2.5))
+        p.setBrush(QColor(GOLD_TEXT) if done else ui.accent)
+        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * min(1.0, prog / max(1, goal))),
+                                 bar.height()), S(2.5), S(2.5))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        if claimed or not done:                       # (when it can be claimed, the button sits here)
+            p.drawText(QRectF(bar.right() + S(8), bar.top() - S(6), S(90), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                       f"{coins_text(prog)} / {coins_text(goal)}")
+        if claimed or not done:
+            right = r.adjusted(0, 0, -S(12), 0)
+            if claimed:
+                p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), tr("Done"))
+            else:
+                paint_coin(p, QPointF(right.right() - p.fontMetrics().horizontalAdvance(coins_text(int(q["reward"]))) - S(12),
+                                      right.center().y()), S(6))
+                p.setPen(QColor(GOLD_TEXT))
+                p.setFont(font(11.5, QFont.Weight.Bold))
+                p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), coins_text(int(q["reward"])))
+
+
 class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
@@ -1563,6 +1618,8 @@ class GamesPage(Page):
         if not ctx.casino:
             if getattr(ctx, "casino_ask", None) is not None and not ctx.wallet.warned():
                 return self._warning(lay)
+            if getattr(ctx, "quests_open", False):
+                return self._quests(lay)
             return self._lobby(lay)
         self._casino(lay)
 
@@ -1571,6 +1628,9 @@ class GamesPage(Page):
         lay.addWidget(CoinBar(self.ctx))
         lay.addWidget(KeyCard(self.ctx))
         lay.addWidget(DailyRow(self))
+        quests = Button(tr("Quests"), "ghost", 34, icon="spark")
+        quests.clicked.connect(lambda: self._show_quests(True))
+        lay.addWidget(quests)
         grid = QWidget()
         gl = QGridLayout(grid)
         gl.setContentsMargins(0, 0, 0, 0)
@@ -1581,6 +1641,52 @@ class GamesPage(Page):
         go = Button(tr("Enter casino"), "primary", 40)
         go.clicked.connect(lambda: self.enter(None))
         lay.addWidget(go)
+
+    # -- quests: small goals for coins, counted by the server
+    QUESTS = {"d_rounds": "Play {n} casino rounds", "d_case": "Open a case", "d_spin": "Collect a free spin",
+              "w_rounds": "Play {n} casino rounds", "w_cases": "Open {n} cases", "w_won": "Win {n} coins in the casino"}
+
+    def _show_quests(self, on: bool) -> None:
+        sfx.play("pick")
+        self.ctx.quests_open = on
+        self.ctx.reload_page()
+
+    def _quests(self, lay) -> None:
+        ctx = self.ctx
+        top = hbox(spacing=8)
+        back = IconButton("back", 32, tip=tr("Back"))
+        back.clicked.connect(lambda: self._show_quests(False))
+        top.addWidget(back)
+        top.addWidget(Label(tr("Quests"), 16, bold=True), 1)
+        lay.addLayout(top)
+        lay.addWidget(CoinBar(ctx))
+        data = getattr(ctx, "quests_data", None)
+        if data is None:
+            lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+        else:
+            for daily, title in ((True, tr("Today")), (False, tr("This week"))):
+                lay.addWidget(Label(title.upper(), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+                for q in [x for x in data if bool(x.get("daily")) == daily]:
+                    lay.addWidget(QuestRow(self, q))
+        ctx.econ.call("rb_quests", {}, self._got_quests)
+
+    def _got_quests(self, ok: bool, data) -> None:
+        if ok and isinstance(data, list) and data != getattr(self.ctx, "quests_data", None):
+            self.ctx.quests_data = data
+            if self.ctx.window.current == "games" and getattr(self.ctx, "quests_open", False):
+                self.ctx.reload_page()
+
+    def claim(self, quest: str) -> None:
+        def done(ok: bool, data) -> None:
+            if ok:
+                sfx.play("on")
+                self.ctx.toast("+" + coins_text(int(data.get("paid", 0))))
+                self.ctx.quests_data = None
+                if self.ctx.window.current == "games" and getattr(self.ctx, "quests_open", False):
+                    self.ctx.reload_page()
+            else:
+                self.ctx.toast(tr(str(data)), "warn")
+        self.ctx.econ.call("rb_quest_claim", {"which": quest}, done)
 
     def enter(self, game) -> None:
         sfx.play("pick")

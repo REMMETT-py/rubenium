@@ -21,7 +21,8 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
           "rb_too_soon": "Not ready yet", "rb_bad_bet": "Bet between 10 and 1 000",
           "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
-          "rb_nothing_to_collect": "Nothing to collect"}
+          "rb_nothing_to_collect": "Nothing to collect", "rb_not_done": "Not finished yet",
+          "rb_already_claimed": "Already claimed"}
 
 
 class Econ(QObject):

@@ -168,6 +168,9 @@ class FriendsPage(Page):
             return self._profile(who)
         top = hbox(spacing=8)
         top.addWidget(Label(tr("Friends"), 16, bold=True), 1)
+        again = IconButton("refresh", 30, tip=tr("Refresh"))
+        again.clicked.connect(self._refresh_all)
+        top.addWidget(again)
         add = Button(tr("Add friend"), "primary", 30)
         add.setFixedWidth(max(S(110), add.sizeHint().width()))
         add.clicked.connect(self._add)
@@ -194,6 +197,18 @@ class FriendsPage(Page):
     def _redo(self) -> None:
         if self.ctx.window.current == "friends" and self.ctx.window.expanded:
             self.ctx.reload_page()
+
+    def _refresh_all(self) -> None:
+        """The refresh button: friends, the open profile, and your own coins, items and time played."""
+        sfx.play("pick")
+        self.ctx.econ.refresh()
+        self.ctx.online._tick()
+        if getattr(self.ctx, "friends_profile", None):
+            self.ctx.friends_data = None
+            self.ctx.reload_page()
+        else:
+            self.refresh()
+            self.ctx.toast(tr("Refreshed"))
 
     # -- server
     def refresh(self) -> None:
@@ -247,6 +262,9 @@ class FriendsPage(Page):
         back.clicked.connect(lambda: self.open_profile(None))
         top.addWidget(back)
         top.addWidget(Label(name, 16, bold=True), 1)
+        again = IconButton("refresh", 30, tip=tr("Refresh"))
+        again.clicked.connect(self._refresh_all)
+        top.addWidget(again)
         self.lay.addLayout(top)
         if data is None:
             self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -261,6 +279,13 @@ class FriendsPage(Page):
                                yes=tr("Remove")))
             line.addWidget(rm, 1)
         self.lay.addLayout(line)
+        badges = list(prof.get("badges") or [])
+        self.lay.addWidget(heading(tr("Badges") + f"  ·  {len(badges)}"))
+        if badges:
+            worn_now = [(prof.get("equip") or {}).get(k) for k in ("badge1", "badge2", "badge3")]
+            self.lay.addWidget(BadgeStrip(ctx, badges, [w for w in worn_now if w], self.W))
+        else:
+            self.lay.addWidget(Label(tr("No badges yet"), 12, TEXT_DIM))
         self.lay.addWidget(heading(tr("History")))
         if hist is None:
             self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -370,3 +395,51 @@ class HistoryList(QWidget):
             p.drawText(r.adjusted(0, 0, -S(8), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        ("+" if paid else "") + coins_text(paid))
 
+
+
+class BadgeStrip(QWidget):
+    """A player's badges, best first; the three they have on show come first with a light ring."""
+    COLS = 9
+
+    def __init__(self, ctx, items: list, worn: list, width: int) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.items = (worn + [i for i in items if i not in worn])[:36]
+        self.worn = set(worn)
+        self.cell = width / self.COLS
+        rows = (len(self.items) + self.COLS - 1) // self.COLS
+        self.setFixedSize(width, int(rows * self.cell))
+        self.setMouseTracking(True)
+        self._tick = QTimer(self)
+        self._tick.setInterval(50)
+        self._tick.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        from .badges import item_animated
+        if any(item_animated(i) for i in self.items):
+            self._tick.start()
+
+    def hideEvent(self, _e) -> None:
+        self._tick.stop()
+
+    def mouseMoveEvent(self, e) -> None:
+        from .collection import badge_label
+        i = int(e.position().y() // self.cell) * self.COLS + int(e.position().x() // self.cell)
+        self.setToolTip(badge_label(self.items[i]) if 0 <= i < len(self.items) else "")
+
+    def paintEvent(self, _e) -> None:
+        import time
+        from .badges import paint_item
+        from .econ import RARITY_COLOURS
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        for i, item in enumerate(self.items):
+            c = QPointF((i % self.COLS + 0.5) * self.cell, (i // self.COLS + 0.5) * self.cell)
+            col = QColor(RARITY_COLOURS.get(self.ctx.econ.rarity(item), "#9AA4AD"))
+            d = self.cell - S(6)
+            p.setPen(QPen(QColor("#FFFFFF") if item in self.worn else alpha(col, 0.5), 1.2))
+            p.setBrush(alpha(col, 0.10))
+            p.drawEllipse(c, d / 2, d / 2)
+            g = d * 0.5
+            paint_item(p, item, QRectF(c.x() - g / 2, c.y() - g / 2, g, g), now)
