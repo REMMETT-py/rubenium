@@ -12,7 +12,7 @@ from .core import DATA_DIR
 
 log = logging.getLogger("rubenium.econ")
 
-RARITIES = ["standard", "rare", "special", "epic", "exotic"]
+TIERS = ["standard", "rare", "special", "epic", "exotic"]
 RARITY_NAMES = {"standard": "Standard", "rare": "Rare", "special": "Special", "epic": "Epic", "exotic": "Exotic"}
 RARITY_COLOURS = {"standard": "#9AA4AD", "rare": "#4FA8FF", "special": "#B36BFF", "epic": "#FF5CC8",
                   "exotic": "#FFC94D"}
