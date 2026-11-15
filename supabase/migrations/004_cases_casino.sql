@@ -42,6 +42,7 @@ create table if not exists public.rb_rounds (
     game text not null, bet integer not null, secret jsonb not null, open boolean not null default true,
     paid integer not null default 0, at timestamptz not null default clock_timestamp());
 create unique index if not exists rb_rounds_one_open on public.rb_rounds (owner, game) where open;
+create index if not exists rb_rounds_history on public.rb_rounds (owner, at desc) where not open;
 do $$ declare t text; begin
     foreach t in array array['rb_cases', 'rb_case_stats', 'rb_rounds'] loop
         execute format('alter table public.%I enable row level security', t);
@@ -98,6 +99,9 @@ begin
         what := public.rb_pick_badge(tier, c.exotics);
         new_id := public.rb_give(p.id, what, 'case:' || c.id);
     end if;
+    insert into public.rb_rounds (owner, game, bet, secret, open, paid) values (p.id, 'case:' || c.id, c.price,
+        jsonb_build_object('item', what, 'tier', tier), false,
+        coins + coalesce((select value from public.rb_catalog where id = what), 0));
     update public.rb_case_stats set opens = opens + 1, dry = case when tier >= c.pity_tier then 0 else dry + 1 end
      where owner = p.id and rb_case_stats.case_id = c.id;
     return public.rb_remember(p.id, req, jsonb_build_object('tier', tier, 'item', what, 'id', new_id, 'won', coins,
@@ -125,6 +129,9 @@ begin
         new_id := public.rb_give(p.id, what, 'daily');
     end if;
     update public.profiles set daily_at = now() where id = p.id;
+    insert into public.rb_rounds (owner, game, bet, secret, open, paid) values (p.id, 'daily', 0,
+        jsonb_build_object('item', what, 'tier', tier, 'keys', keys), false,
+        coins + coalesce((select value from public.rb_catalog where id = what), 0));
     perform public.rb_pay(p.id, coins, keys, 'daily_case', null);
     return jsonb_build_object('tier', tier, 'item', what, 'id', new_id, 'won', coins, 'won_keys', keys,
                               'coins', p.coins + coins, 'keys', p.keys + keys);
@@ -155,6 +162,8 @@ begin
     p := public.rb_lock_me();
     if p.spin_prize is null then raise exception 'rb_nothing_to_collect'; end if;
     update public.profiles set spin_prize = null where id = p.id;
+    insert into public.rb_rounds (owner, game, bet, secret, open, paid) values (p.id, 'spin', 0,
+        jsonb_build_object('keys', (p.spin_prize ->> 'won_keys')::int), false, (p.spin_prize ->> 'won')::int);
     perform public.rb_pay(p.id, (p.spin_prize ->> 'won')::int, (p.spin_prize ->> 'won_keys')::int, 'spin', null);
     return jsonb_build_object('coins', p.coins + (p.spin_prize ->> 'won')::int,
                               'keys', p.keys + (p.spin_prize ->> 'won_keys')::int);
@@ -202,6 +211,7 @@ begin
     if r[1] = r[2] and r[2] = r[3] then mult := triple[r[1] + 1];
     elsif r[1] = r[2] or r[2] = r[3] or r[1] = r[3] then mult := 1.5; end if;
     pay := public.rb_win(p.id, bet * mult, 'slots');
+    insert into public.rb_rounds (owner, game, bet, secret, open, paid) values (p.id, 'slots', bet, '{}'::jsonb, false, pay);
     return public.rb_remember(p.id, req, jsonb_build_object('reels', to_jsonb(r), 'mult', mult, 'paid', pay,
                                                             'coins', p.coins - bet + pay));
 end $$;
@@ -226,6 +236,7 @@ begin
     end loop;
     mult := tables[risk + 1][box + 1];
     pay := public.rb_win(p.id, bet * mult, 'plinko');
+    insert into public.rb_rounds (owner, game, bet, secret, open, paid) values (p.id, 'plinko', bet, '{}'::jsonb, false, pay);
     return public.rb_remember(p.id, req, jsonb_build_object('path', to_jsonb(path), 'box', box, 'mult', mult,
                                                             'paid', pay, 'coins', p.coins - bet + pay));
 end $$;
@@ -243,6 +254,7 @@ begin
     roll := floor(public.rb_rand() * 100)::int;                    -- 0..99; you win below your chance
     mult := floor(9700.0 / chance) / 100;
     if roll < chance then pay := public.rb_win(p.id, bet * mult, 'dice'); end if;
+    insert into public.rb_rounds (owner, game, bet, secret, open, paid) values (p.id, 'dice', bet, '{}'::jsonb, false, pay);
     return public.rb_remember(p.id, req, jsonb_build_object('roll', roll, 'mult', mult, 'win', roll < chance,
                                                             'paid', pay, 'coins', p.coins - bet + pay));
 end $$;
