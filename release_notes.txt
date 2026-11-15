@@ -1,8 +1,7 @@
-Rubenium 1.9
+Rubenium 1.10
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-- New Friends tab: add players by their username, accept or decline requests, and see who is online.
-- Open a friend's profile to see their status, time played and when they joined.
-- Play history (casino, cases, spins) will fill in once the online casino arrives in the next big update.
+- Logged in? No button to press: a line runs around the welcome card for 5 seconds, then Rubenium starts. Click the card to start at once.
+- Logged out or no account: the card asks you to log in, as before.

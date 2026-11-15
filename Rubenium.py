@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.9 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.10 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1472,8 +1472,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.9"         # the version people see
-BUILD = "2026.11.15.7"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "1.10"         # the version people see
+BUILD = "2026.11.15.8"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -2025,6 +2025,7 @@ def _unseal(data: bytes) -> bytes:
 
 class Online(QObject):
     changed = pyqtSignal()                    # logged in / out, or the profile changed
+    beat = pyqtSignal(dict)                   # the server's answer to a heartbeat (balance, time)
     answered = pyqtSignal(str, bool, str)     # what ("login" | "signup" | "free:<name>"), ok, message key
     _back = pyqtSignal(object)                # run on the main thread
 
@@ -2191,14 +2192,14 @@ class Online(QObject):
         """Call a server function as the logged-in account. Off the main thread only."""
         return _request("/rest/v1/rpc/" + name, args, self._token())
 
-    def ask(self, fn: str, args: dict, done) -> None:
+    def ask(self, fn: str, args: dict, done, raw: bool = False) -> None:
         """Call a server function for the logged-in account; `done(ok, answer or message)` runs on the main thread."""
         def work():
             try:
                 ans = self.rpc(fn, args)
                 self._back.emit(lambda: done(True, ans))
             except ApiError as err:
-                msg = explain(err)
+                msg = err.key if (raw and err.key != "offline") else explain(err)
                 self._back.emit(lambda: done(False, msg))
             except Exception:  # noqa: BLE001
                 log.exception("%s failed", fn)
@@ -2244,6 +2245,257 @@ class Online(QObject):
         if before != (self.minutes, self.elsewhere, False, self.username()):
             self._save()
             self.changed.emit()
+        self.beat.emit(ans)
+
+
+# ==================================================================================================
+# SECTION: econ
+# ==================================================================================================
+import json
+import logging
+import threading
+import uuid
+
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
+
+
+log = logging.getLogger("rubenium.econ")
+
+TIERS = ["standard", "rare", "special", "epic", "exotic"]
+RARITY_NAMES = {"standard": "Standard", "rare": "Rare", "special": "Special", "epic": "Epic", "exotic": "Exotic"}
+RARITY_COLOURS = {"standard": "#9AA4AD", "rare": "#4FA8FF", "special": "#B36BFF", "epic": "#FF5CC8",
+                  "exotic": "#FFC94D"}
+ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not for sale",
+          "rb_already_owned": "You already have it", "rb_not_yours": "You do not have this",
+          "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
+          "rb_too_soon": "Not ready yet", "rb_bad_bet": "Bet between 10 and 1 000",
+          "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
+          "rb_nothing_to_collect": "Nothing to collect"}
+
+
+class Econ(QObject):
+    changed = pyqtSignal()          # coins, keys, items or what is worn changed
+    loaded = pyqtSignal()           # the first full answer from the server arrived
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        self.ctx, self.online = ctx, ctx.online
+        self.ready = False
+        self.coins = self.keys = self.minutes = 0
+        self.coin_min = self.key_min = self.day_coins = 0
+        self.items: list = []                    # [{id, item, locked, origin}]
+        self.seen: set = set()                   # every item ever owned
+        self.equip: dict = {}
+        self.imported = True
+        self.catalog: dict = {}                  # item id -> {kind, base, variant, rarity, price, value, tradeable}
+        self.cases: list = []
+        self.cfg: dict = {}
+        self._owned: dict = {}                   # item id -> [instance ids]
+        self._load_catalog_file()
+        self.online.changed.connect(self._account)
+        self.online.beat.connect(self._beat)
+        self._was_in = False
+
+    # -- what the app asks about
+    def owns(self, item: str) -> bool:
+        return item in self._owned
+
+    def copies(self, item: str) -> list:
+        return list(self._owned.get(item, ()))
+
+    def had(self, item: str) -> bool:
+        """Owned once, not any more (shown greyed out)."""
+        return item in self.seen and item not in self._owned
+
+    def info(self, item: str) -> dict:
+        return self.catalog.get(item, {})
+
+    def rarity(self, item: str) -> str:
+        return self.info(item).get("rarity", "standard")
+
+    def price(self, item: str):
+        return self.info(item).get("price")
+
+    def vendor_price(self, item: str) -> int:
+        info = self.info(item)
+        if not info or not info.get("tradeable"):
+            return 0
+        return max(1, int(int(info.get("value", 0)) * float(self.cfg.get("vendor_share", 0.45))))
+
+    def unlocked(self, prog: str) -> bool:
+        """A progression item: unlocked by time played."""
+        info = self.info(prog)
+        return bool(info) and info.get("kind") == "prog" and int(info.get("value", 0)) <= self.minutes
+
+    def can_wear(self, item: str) -> bool:
+        return self.owns(item) or self.unlocked(item)
+
+    def worn(self, slot: str) -> str:
+        return str(self.equip.get(slot, "") or "")
+
+    def badges_worn(self) -> list:
+        return [self.worn(s) for s in ("badge1", "badge2", "badge3") if self.worn(s)]
+
+    def next_coin_s(self) -> int:
+        every = int(self.cfg.get("coin_every_min", 15))
+        return max(60, (every - self.coin_min) * 60)
+
+    def next_key_s(self) -> int:
+        every = int(self.cfg.get("key_every_min", 60))
+        return max(60, (every - self.key_min) * 60)
+
+    # -- talking to the server
+    def start(self) -> None:
+        self._account()
+
+    def _account(self) -> None:
+        now_in = self.online.logged_in()
+        if now_in and not self._was_in:
+            self.refresh()
+            self.fetch_catalog()
+        elif not now_in and self._was_in:
+            self.ready = False
+            self.coins = self.keys = self.minutes = 0
+            self.items, self.seen, self.equip, self._owned = [], set(), {}, {}
+            self.changed.emit()
+        self._was_in = now_in
+
+    def refresh(self) -> None:
+        if self.online.logged_in():
+            self.online.ask("rb_state", {}, self._state)
+
+    def _state(self, ok: bool, data) -> None:
+        if not ok or not isinstance(data, dict):
+            return QTimer.singleShot(15000, self.refresh) if not self.ready else None
+        first = not self.ready
+        self.ready = True
+        self.minutes = int(data.get("minutes", 0))
+        self.day_coins = int(data.get("day_coins", 0))
+        self.imported = bool(data.get("imported", True))
+        self.items = list(data.get("items") or [])
+        self.seen = set(data.get("seen") or [])
+        self._index()
+        self.absorb(data)
+        if first:
+            self.loaded.emit()
+        self.changed.emit()
+
+    def _index(self) -> None:
+        self._owned = {}
+        for it in self.items:
+            self._owned.setdefault(it["item"], []).append(it["id"])
+
+    def absorb(self, ans) -> None:
+        """Take the balance (and what is worn) from any server answer."""
+        if not isinstance(ans, dict):
+            return
+        for key in ("coins", "keys", "coin_min", "key_min", "minutes"):
+            if ans.get(key) is not None:
+                setattr(self, key, int(ans[key]))
+        if isinstance(ans.get("equip"), dict):
+            self.equip = dict(ans["equip"])
+
+    def _beat(self, ans: dict) -> None:
+        before = (self.coins, self.keys, self.minutes)
+        self.absorb(ans)
+        if before != (self.coins, self.keys, self.minutes):
+            self.changed.emit()
+
+    def call(self, fn: str, args: dict, done=None, once: bool = False) -> None:
+        """Ask the server to do something. `done(ok, answer or message)` runs on the main thread, after the
+        balance in the answer was taken. `once` adds an id so a resend can never be done twice."""
+        if once:
+            args = dict(args, req=uuid.uuid4().hex)
+
+        def back(ok: bool, data) -> None:
+            if ok:
+                self.absorb(data)
+            else:
+                data = ERRORS.get(next((k for k in ERRORS if k in str(data)), ""),
+                                  "No internet connection" if data == "offline" else "Something went wrong: try again")
+            if done is not None:
+                done(ok, data)
+            if ok:
+                self.changed.emit()
+        self.online.ask(fn, args, back, raw=True)
+
+    # -- actions
+    def gained(self, item: str, instance: str, origin: str = "") -> None:
+        """An item arrived (shop, case): put it in the local copy right away."""
+        if item and instance and instance not in {i["id"] for i in self.items}:
+            self.items.append({"id": instance, "item": item, "locked": None, "origin": origin})
+            self.seen.add(item)
+            self._index()
+
+    def buy(self, item: str, done=None) -> None:
+        def back(ok: bool, data) -> None:
+            if ok:
+                self.gained(data.get("item"), data.get("id"), "shop")
+            if done:
+                done(ok, data)
+        self.call("rb_buy", {"what": item}, back, once=True)
+
+    def sell(self, instance: str, done=None) -> None:
+        def back(ok: bool, data) -> None:
+            if ok:
+                self.items = [i for i in self.items if i["id"] != instance]
+                self._index()
+            if done:
+                done(ok, data)
+        self.call("rb_sell", {"item_id": instance}, back, once=True)
+
+    def wear(self, slot: str, item: str, done=None) -> None:
+        def back(ok: bool, data) -> None:
+            if ok and isinstance(data, dict):
+                self.equip = dict(data)
+            if done:
+                done(ok, data)
+        self.call("rb_equip", {"slot": slot, "what": item or ""}, back)
+
+    # -- the catalogue (prices, rarities): fetched from the server, kept on disk between starts
+    def _catalog_path(self):
+        return DATA_DIR / "catalog.json"
+
+    def _load_catalog_file(self) -> None:
+        try:
+            data = json.loads(self._catalog_path().read_text(encoding="utf-8"))
+            self.catalog, self.cases, self.cfg = data["catalog"], data["cases"], data["cfg"]
+        except Exception:  # noqa: BLE001
+            pass
+
+    def fetch_catalog(self) -> None:
+        pass
+
+        def work():
+            try:
+                rows, offset = [], 0
+                while True:                                   # the server gives at most 1 000 rows at a time
+                    part = _request(f"/rest/v1/rb_catalog?select=*&order=id&limit=1000&offset={offset}", method="GET")
+                    rows += part or []
+                    if not part or len(part) < 1000:
+                        break
+                    offset += 1000
+                cases = _request("/rest/v1/rb_cases?select=*&order=pos", method="GET") or []
+                cfg = {r["key"]: r["value"] for r in (_request("/rest/v1/rb_config?select=*", method="GET") or [])}
+                catalog = {r["id"]: {k: r[k] for k in ("kind", "base", "variant", "rarity", "price", "value", "tradeable")}
+                           for r in rows}
+                if catalog:
+                    self.online._back.emit(lambda: self._got_catalog(catalog, cases, cfg))
+            except ApiError:
+                pass
+            except Exception:  # noqa: BLE001
+                log.exception("catalogue fetch failed")
+        threading.Thread(target=work, daemon=True).start()
+
+    def _got_catalog(self, catalog: dict, cases: list, cfg: dict) -> None:
+        self.catalog, self.cases, self.cfg = catalog, cases, cfg
+        try:
+            path = self._catalog_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"catalog": catalog, "cases": cases, "cfg": cfg}), encoding="utf-8")
+        except OSError:
+            pass
+        self.changed.emit()
 
 
 # ==================================================================================================
@@ -2818,6 +3070,8 @@ FR = {
     'Your friends list is full': "Ta liste d'amis est pleine",
     'Friends: add players by username and see who is online': 'Amis : ajoute des joueurs par leur nom et vois qui est en ligne',
     'Profiles show time played and, soon, badges and play history': "Les profils montrent le temps joué et, bientôt, les badges et l'historique",
+    # 1.10
+    'Logged in? Rubenium starts by itself after 5 seconds (click the card to start at once)': 'Connecté ? Rubenium démarre tout seul après 5 secondes (clique sur la carte pour démarrer tout de suite)',
 }
 
 
@@ -6229,6 +6483,7 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("1.10", ["Logged in? Rubenium starts by itself after 5 seconds (click the card to start at once)"]),
     ("1.9", ["Friends: add players by username and see who is online",
              "Profiles show time played and, soon, badges and play history"]),
     ("1.8", ["The login now sits inside the start screen",
@@ -8621,6 +8876,87 @@ def _build(ident: str) -> QPainterPath:
                    (0.7, 0.84), (0.7, 1), (-0.7, 1), (-0.7, 0.84), (-0.6, 0.84), (-0.6, 0.6), (-0.12, 0), (-0.6, -0.6),
                    (-0.6, -0.84), (-0.7, -0.84))
         return glass.subtracted(_p((-0.44, -0.72), (0.44, -0.72), (0.3, -0.5), (-0.3, -0.5)))
+    if ident == "pickaxe":
+        head = _P()
+        head.moveTo(-0.95, -0.3)
+        head.cubicTo(-0.45, -1.0, 0.45, -1.0, 0.95, -0.3)
+        head.cubicTo(0.4, -0.66, -0.4, -0.66, -0.95, -0.3)
+        return _u(head, _ln([(0, -0.72), (0, 0.98)], 0.17), _r(-0.17, -0.82, 0.34, 0.2, 0.05))
+    if ident == "quill":
+        path.moveTo(0.9, -0.98)
+        path.cubicTo(-0.1, -0.9, -0.6, -0.2, -0.5, 0.45)
+        path.cubicTo(0.15, 0.4, 0.85, -0.2, 0.9, -0.98)
+        nib = _p((-0.5, 0.45), (-0.3, 0.5), (-0.92, 0.98), (-0.56, 0.3))
+        return _u(path.subtracted(_ln([(0.72, -0.8), (-0.45, 0.4)], 0.07)), nib, _ln([(-0.95, 0.98), (-0.2, 0.98)], 0.07))
+    if ident == "bigplanet":
+        ball = _c(0, 0, 0.88)
+        cut = _u(_ln([(-0.95, -0.28), (-0.2, -0.42), (0.4, -0.2), (0.95, -0.34)], 0.11, curve=True),
+                 _ln([(-0.95, 0.3), (-0.3, 0.12), (0.3, 0.42), (0.95, 0.2)], 0.11, curve=True),
+                 _c(0.34, 0.02, 0.15, 0.1))
+        return ball.subtracted(cut)
+    if ident == "shootingstar":
+        star = QTransform().translate(K * 0.38, -K * 0.38).scale(0.58, 0.58).map(_star(5, 1.0, 0.42))
+        return _u(star, _ln([(-0.05, 0.05), (-0.95, 0.95)], 0.13), _ln([(0.1, 0.4), (-0.5, 0.98)], 0.09),
+                  _ln([(-0.4, -0.1), (-0.98, 0.5)], 0.09))
+    if ident == "goldenstar":
+        inner = QTransform().scale(0.42, 0.42).map(_star(5, 1.0, 0.42))
+        ring = _star(5, 1.0, 0.5).subtracted(QTransform().scale(0.74, 0.74).map(_star(5, 1.0, 0.5)))
+        return _u(ring, inner)
+    if ident == "sunburst":
+        return _star(12, 1.0, 0.62).subtracted(_c(0, 0, 0.36)).united(_c(0, 0, 0.2))
+    if ident == "galaxy":
+        parts = [_c(0, 0, 0.2)]
+        for k in range(3):
+            a = math.radians(120 * k)
+            pts = []
+            for n in range(4):
+                t = n / 3
+                ang, rad = a + t * 2.6, 0.22 + t * 0.72
+                pts.append((rad * math.cos(ang), rad * math.sin(ang)))
+            parts.append(_ln(pts, 0.2, curve=True))
+            parts.append(_c(0.95 * math.cos(a + 3.3), 0.95 * math.sin(a + 3.3), 0.07))
+        return _u(*parts)
+    if ident == "phoenix":
+        body = _P()
+        body.moveTo(0, -0.55)
+        body.cubicTo(0.22, -0.3, 0.2, 0.35, 0, 0.98)
+        body.cubicTo(-0.2, 0.35, -0.22, -0.3, 0, -0.55)
+        wings = []
+        for sgn in (-1, 1):
+            w = _P()
+            w.moveTo(0, -0.1)
+            w.cubicTo(sgn * 0.4, -0.5, sgn * 0.7, -0.95, sgn * 0.98, -0.9)
+            w.cubicTo(sgn * 0.95, -0.45, sgn * 0.8, -0.2, sgn * 0.98, 0.05)
+            w.cubicTo(sgn * 0.7, 0.0, sgn * 0.62, 0.15, sgn * 0.7, 0.45)
+            w.cubicTo(sgn * 0.42, 0.3, sgn * 0.2, 0.3, 0, 0.4)
+            w.closeSubpath()
+            wings.append(w)
+        return _u(body, _c(0, -0.7, 0.17), _p((0, -0.98), (0.1, -0.8), (-0.1, -0.8)), *wings)
+    if ident == "glitch":
+        gem = _p((0, -0.98), (0.8, 0), (0, 0.98), (-0.8, 0))
+        top = gem.intersected(_r(-1.2, -1.0, 2.4, 0.62))
+        mid = gem.intersected(_r(-1.2, -0.3, 2.4, 0.5))
+        low = gem.intersected(_r(-1.2, 0.3, 2.4, 0.7))
+        shift = QTransform().translate(K * 0.2, 0)
+        back = QTransform().translate(-K * 0.16, 0)
+        return _u(top, shift.map(mid), back.map(low), _r(-0.98, -0.34, 0.3, 0.07), _r(0.62, 0.2, 0.36, 0.07))
+    if ident == "crystal":
+        heart = _heart()
+        cuts = _u(_ln([(0, -0.38), (0, 0.9)], 0.06), _ln([(-0.92, -0.25), (0, 0.1), (0.92, -0.25)], 0.06),
+                  _ln([(-0.5, -0.82), (0, 0.1), (0.5, -0.82)], 0.06))
+        return heart.subtracted(cuts)
+    if ident == "dragon":
+        eye = _P()
+        eye.moveTo(-0.98, 0.1)
+        eye.cubicTo(-0.45, -0.62, 0.45, -0.62, 0.98, 0.1)
+        eye.cubicTo(0.45, 0.72, -0.45, 0.72, -0.98, 0.1)
+        slit = _P()
+        slit.moveTo(0, -0.42)
+        slit.cubicTo(0.2, -0.1, 0.2, 0.3, 0, 0.6)
+        slit.cubicTo(-0.2, 0.3, -0.2, -0.1, 0, -0.42)
+        horns = _u(_p((-0.75, -0.42), (-0.5, -0.98), (-0.35, -0.5)), _p((0.75, -0.42), (0.5, -0.98), (0.35, -0.5)),
+                   _p((-0.12, -0.6), (0, -0.98), (0.12, -0.6)))
+        return _u(eye.subtracted(_c(0, 0.08, 0.42)), slit, horns)
     return _c(0, 0, 0.8)
 
 
@@ -8743,6 +9079,92 @@ def paint_badge(p: QPainter, ident: str, rect: QRectF, var: str = "grey", now: f
         aura.setColorAt(1.0, QColor(220, 235, 255, 0))
         p.setBrush(aura)
         p.drawEllipse(rect.center(), u * 1.25, u * 1.25)
+    p.restore()
+
+
+# --------------------------------------------------------------------------- #
+# Online items: "badge:<design>:<colour>" as the server names them
+# --------------------------------------------------------------------------- #
+EXOTIC = ("galaxy", "phoenix", "glitch", "crystal", "dragon")
+SHAPE_OF = {"octagon": "gem", "saturn": "planet", "planet": "bigplanet"}      # server design -> drawing
+COLOUR_OF = {"white": "titanium"}                                              # server colour -> drawing
+
+
+def badge_parts(item: str) -> tuple:
+    parts = (item or "").split(":")
+    return (parts[1], parts[2]) if len(parts) == 3 and parts[0] == "badge" else ("star", "grey")
+
+
+def item_animated(item: str) -> bool:
+    base, var = badge_parts(item)
+    return base in EXOTIC or var in ("black", "white", "gold")
+
+
+def paint_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: bool = True, dim: float = 1.0) -> None:
+    """Draw a server badge. The five Exotic designs get a turning light frame and drifting sparks; their first
+    form ("prime") shimmers through every colour."""
+    base, var = badge_parts(item)
+    shape = SHAPE_OF.get(base, base)
+    if base not in EXOTIC:
+        return paint_badge(p, shape, rect, COLOUR_OF.get(var, var), now, effects, dim)
+    u = min(rect.width(), rect.height()) / 2
+    c = rect.center()
+    lit = effects and dim >= 1.0
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    if lit:                                                   # a ring of light turning around it
+        from PyQt6.QtGui import QConicalGradient
+        g = QConicalGradient(c, (now * 70) % 360)
+        cols = ("#FF5CC8", "#FFC94D", "#4FE3FF", "#B36BFF", "#FF5CC8") if var == "prime" else \
+            {"gold": ("#FFF1C2", "#B8862B", "#FFE08A", "#8A6A22", "#FFF1C2"),
+             "white": ("#FFFFFF", "#9FB4C8", "#FFFFFF", "#C8D6E4", "#FFFFFF"),
+             "black": ("#FFFFFF", "#16191C", "#8A93A0", "#16191C", "#FFFFFF")}[var if var in ("gold", "white", "black") else "gold"]
+        for i, col in enumerate(cols):
+            g.setColorAt(i / (len(cols) - 1), QColor(col))
+        p.setPen(QPen(g, max(1.0, u * 0.09)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(c, u * 1.2, u * 1.2)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k in range(5):                                    # sparks drifting around the ring
+            ang = now * (0.9 + 0.13 * k) + k * 1.257
+            rad = u * (1.2 + 0.1 * math.sin(now * 2 + k))
+            sp = QColor(cols[k % len(cols)])
+            sp.setAlphaF(0.55 + 0.45 * math.sin(now * 3 + k * 2))
+            p.setBrush(sp)
+            p.drawEllipse(QPointF(c.x() + rad * math.cos(ang), c.y() + rad * math.sin(ang)), u * 0.07, u * 0.07)
+    p.restore()
+    inner = QRectF(c.x() - u * 0.82, c.y() - u * 0.82, u * 1.64, u * 1.64)
+    if var != "prime":
+        return paint_badge(p, shape, inner, COLOUR_OF.get(var, var), now, effects, dim)
+    path = badge_path(shape, inner)
+    box = path.boundingRect()
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setOpacity(p.opacity() * dim)
+    hue = (now * 0.12) % 1.0 if lit else 0.86
+    g = QLinearGradient(box.topLeft(), box.bottomRight())
+    for i in range(4):
+        g.setColorAt(i / 3, QColor.fromHsvF((hue + i * 0.16) % 1.0, 0.62, 1.0))
+    if lit:
+        halo = QColor.fromHsvF(hue, 0.7, 1.0)
+        halo.setAlphaF(0.22)
+        pen = QPen(halo, u * 0.3)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(g)
+    p.drawPath(path)
+    if lit:
+        t = (now % 2.4) / 2.4
+        x = box.left() - box.width() + t * box.width() * 3
+        band = QLinearGradient(QPointF(x, box.top()), QPointF(x + box.width() * 0.6, box.bottom()))
+        band.setColorAt(0.0, QColor(255, 255, 255, 0))
+        band.setColorAt(0.5, QColor(255, 255, 255, 200))
+        band.setColorAt(1.0, QColor(255, 255, 255, 0))
+        p.setClipPath(path)
+        p.fillRect(box.adjusted(-2, -2, 2, 2), band)
     p.restore()
 
 
@@ -15470,10 +15892,12 @@ class Welcome(QWidget):
         self._logout_x, self._logout_w = 0.0, 0.0
         # The card is a little taller with a name under Launch, and taller still while it holds the login form.
         self.tall = Tween(self, 0.0, self._relayout, QEasingCurve.Type.InOutCubic)
+        # Logged in: no button to press. A line runs around the card for 5 seconds, then Rubenium starts.
+        self.count = Tween(self, 0.0, self._counted, QEasingCurve.Type.Linear)
         self.panel = AccountPanel(self)
         self.ctx.online.changed.connect(self._account_changed)
 
-    IN, OUT = 26, 92                           # extra card height: logged in (name line) / logged out (form)
+    IN, OUT = 0, 92                           # extra card height: logged in (name line) / logged out (form)
 
     def logged_in(self) -> bool:
         return self.ctx.online.logged_in()
@@ -15495,10 +15919,24 @@ class Welcome(QWidget):
         self.panel.place()
         self.update()
 
+    COUNT_MS = 5000
+
+    def _countdown(self) -> None:
+        """Start (logged in) or stop (logged out) the 5 second line around the card."""
+        self.count.jump(0.0)
+        if self.logged_in() and self.phase == "card":
+            self.count.to(1.0, self.COUNT_MS)
+
+    def _counted(self) -> None:
+        if self.count.level >= 0.999 and self.phase == "card" and self.logged_in():
+            self.launch()
+        self.update()
+
     def _account_changed(self) -> None:
         if self.phase == "card":
             self.tall.to(self._extra(), 420)
             self.panel.sync()
+            self._countdown()
             self.update()
 
     def _take_keyboard(self) -> None:
@@ -15512,7 +15950,7 @@ class Welcome(QWidget):
 
     def _link_rect(self) -> QRectF:
         """The small "Name · Log out" line under the Launch button, inside the card."""
-        top = self.card_top() + S(self.CH) * 0.74 + S(44) + S(9)
+        top = self.card_top() + S(self.CH) * 0.74 + S(12)
         return QRectF(self.width() / 2 - S(150), top, S(300), S(20))
 
     def start(self) -> None:
@@ -15527,6 +15965,7 @@ class Welcome(QWidget):
             self._take_keyboard()
         self.show()
         self.panel.sync()
+        QTimer.singleShot(450, self._countdown)
         self.appear.to(1.0, 420)
         self._clock.start()
 
@@ -15589,13 +16028,16 @@ class Welcome(QWidget):
 
     # -- mouse: only the Launch button does anything
     def mouseMoveEvent(self, e) -> None:
-        over = self.phase == "card" and self.logged_in() and (self._button().contains(e.position())
-                                                              or self._logout_rect().contains(e.position()))
+        over = self.phase == "card" and self.logged_in() and self._card_rect().contains(e.position())
         self.setCursor(Qt.CursorShape.PointingHandCursor if over else Qt.CursorShape.ArrowCursor)
         self.hover.to(1.0 if over else 0.0, 140)
 
     def leaveEvent(self, _e) -> None:
         self.hover.to(0.0, 200)
+
+    def _card_rect(self) -> QRectF:
+        h = self.card_h()
+        return QRectF(self.width() / 2 - S(self.CW) / 2, self.height() / 2 - h / 2, S(self.CW), h)
 
     def _logout_rect(self) -> QRectF:
         r = self._link_rect()
@@ -15610,7 +16052,7 @@ class Welcome(QWidget):
             self.panel.sync()
             return
         if (self.phase == "card" and self.logged_in() and e.button() == Qt.MouseButton.LeftButton
-                and self._button().contains(e.position())):
+                and self._card_rect().contains(e.position())):           # a click on the card starts right away
             self._down = True
             self.press.to(1.0, 80)
 
@@ -15618,7 +16060,7 @@ class Welcome(QWidget):
         if self._down:
             self._down = False
             self.press.to(0.0, 160)
-            if self._button().contains(e.position()):
+            if self._card_rect().contains(e.position()):
                 self.launch()
 
     def closeEvent(self, e) -> None:
@@ -15693,20 +16135,8 @@ class Welcome(QWidget):
             p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter), word)
             p.restore()
 
-            b = self._button()
-            hv, pr = self.hover.level, self.press.level
-            grow = S(2) * hv - S(1.5) * pr
-            b = b.adjusted(-grow, -grow * 0.5, grow, grow * 0.5)
-            shown_in = max(0.0, 1.0 - self.out_level() * 2)   # Launch and the name fade in once the form is gone
+            shown_in = max(0.0, 1.0 - self.out_level() * 2)   # the name fades in once the form is gone
             p.setOpacity(a * show * shown_in)
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(alpha(ui.accent, 0.22 + 0.10 * hv))
-            p.drawRoundedRect(b.adjusted(-S(3), -S(3), S(3), S(3)), S(16), S(16))
-            p.setBrush(mix(ui.accent, QColor("#FFFFFF"), 0.10 * hv))
-            p.drawRoundedRect(b, S(13), S(13))
-            p.setPen(QColor("#06110A" if ui.accent.lightnessF() > 0.6 else "#FFFFFF"))
-            p.setFont(font(15, QFont.Weight.Bold, 0.3))
-            p.drawText(b, int(Qt.AlignmentFlag.AlignCenter), tr("Launch"))
             if self.logged_in():                               # "Name · Log out" under the button
                 r = self._link_rect()
                 p.setFont(font(11, QFont.Weight.DemiBold))
@@ -15747,6 +16177,29 @@ class Welcome(QWidget):
                 p.drawArc(ring, 90 * 16, int(-360 * 16 * turn))
         p.setOpacity(a)
         paint_edge(p, self.ctx, shape, radius, level)
+        if self.phase == "card" and self.count.level > 0.0 and self.logged_in():      # the 5 second line
+            rr = shape.adjusted(S(1.5), S(1.5), -S(1.5), -S(1.5))
+            rad = max(1.0, radius - S(1.5))
+            line = QPainterPath()
+            line.moveTo(rr.center().x(), rr.top())                    # from the top middle, clockwise
+            line.lineTo(rr.right() - rad, rr.top())
+            line.arcTo(QRectF(rr.right() - 2 * rad, rr.top(), 2 * rad, 2 * rad), 90, -90)
+            line.lineTo(rr.right(), rr.bottom() - rad)
+            line.arcTo(QRectF(rr.right() - 2 * rad, rr.bottom() - 2 * rad, 2 * rad, 2 * rad), 0, -90)
+            line.lineTo(rr.left() + rad, rr.bottom())
+            line.arcTo(QRectF(rr.left(), rr.bottom() - 2 * rad, 2 * rad, 2 * rad), 270, -90)
+            line.lineTo(rr.left(), rr.top() + rad)
+            line.arcTo(QRectF(rr.left(), rr.top(), 2 * rad, 2 * rad), 180, -90)
+            line.lineTo(rr.center().x(), rr.top())
+            width = S(3)
+            pen = QPen(ui.accent, width)
+            pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+            pen.setDashPattern([max(0.001, line.length() * self.count.level / width), 100000.0])
+            p.setOpacity(a * max(0.0, 1.0 - self.out_level() * 2))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(pen)
+            p.drawPath(line)
+            p.setOpacity(a)
 
 
 class Body(QWidget):
@@ -16791,6 +17244,7 @@ class App(QObject):
         for key, value in (("glow_power", 2), ("backdrop", 1), ("corners", 0)):     # 1.7: one look for everyone
             self.cfg[key] = value
         self.online = Online(self)                   # the account (log in on the welcome screen)
+        self.econ = Econ(self)                       # coins, keys and items as the server has them
         self.wallet = Wallet(self.cfg)
         self.casino = False                          # inside the casino (Games tab, shown bigger)
         self.casino_ask = None                       # the gambling warning is being shown
@@ -16922,6 +17376,7 @@ class App(QObject):
         self._safe("coins", self.wallet.start)
         if "--selftest" not in sys.argv:
             self._safe("account", self.online.start)
+            self._safe("economy", self.econ.start)
         self._zoomer = QTimer(self)
         self._zoomer.setInterval(350)
         self._zoomer.timeout.connect(self.game_zoom)
