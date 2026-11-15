@@ -1,12 +1,10 @@
-Rubenium 1.6
+Rubenium 1.7
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-- Rocket League: Lantern Lift and Monsoon no longer crash the game (new files for the current game version). If you had them on, the new files are put in automatically.
-- Timer is now at the bottom of the Screen tab. On the PC tab, Tools come after Apps.
-- Ball and ring styles: Classic, Outline, Neon, the new White Gold, and Gold.
-- Long song names get smaller to fit instead of being cut. Medal is no longer picked up as a music app.
-- Badges on the music tab have a little room from the edge.
-- Colours: when a plain colour is picked, the slider rests (knob off the line, no value). When the slider is used, the colour dots are greyed a little.
-- "Use the colours of the music" now just shows how far you are (e.g. 0.4 / 1 hour to unlock).
+- Accounts: create an account or log in on the welcome screen. Launch unlocks once you are logged in.
+- You stay logged in after closing Rubenium or restarting the PC. Log out is under the welcome card and in Settings.
+- Username: 3 to 10 letters or numbers. Password: 8 characters or more. There is no password recovery, so remember it.
+- Time played is now counted online for your account.
+- One look for everyone: strong glow, black background, round corners.
