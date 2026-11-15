@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.0 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 2.1 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1472,8 +1472,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.0"         # the version people see
-BUILD = "2026.11.15.9"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.1"         # the version people see
+BUILD = "2026.11.15.10"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -2273,7 +2273,8 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
           "rb_too_soon": "Not ready yet", "rb_bad_bet": "Bet between 10 and 1 000",
           "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
-          "rb_nothing_to_collect": "Nothing to collect"}
+          "rb_nothing_to_collect": "Nothing to collect", "rb_not_done": "Not finished yet",
+          "rb_already_claimed": "Already claimed"}
 
 
 class Econ(QObject):
@@ -3163,6 +3164,23 @@ FR = {
     'Casino played on the server, with two new games: Dice and Rocket': 'Casino joué sur le serveur, avec deux nouveaux jeux : Dés et Fusée',
     'Free spin every 3 hours: press Collect to take the prize': 'Tour gratuit toutes les 3 heures : appuie sur Récupérer pour prendre le gain',
     'Themes, ball and ring now unlock with hours played': 'Thèmes, bulle et anneau se débloquent maintenant avec les heures jouées',
+    # 2.1
+    'Quests': 'Quêtes',
+    'Today': "Aujourd'hui",
+    'This week': 'Cette semaine',
+    'Play {n} casino rounds': 'Joue {n} parties au casino',
+    'Open a case': 'Ouvre une caisse',
+    'Collect a free spin': 'Récupère un tour gratuit',
+    'Open {n} cases': 'Ouvre {n} caisses',
+    'Win {n} coins in the casino': 'Gagne {n} pièces au casino',
+    'Claim': 'Récupérer',
+    'Refresh': 'Actualiser',
+    'Refreshed': 'Actualisé',
+    'No badges yet': 'Pas encore de badges',
+    'Not finished yet': 'Pas encore terminé',
+    'Already claimed': 'Déjà récupéré',
+    'Quests: three daily and three weekly goals that pay coins': 'Quêtes : trois objectifs par jour et trois par semaine qui rapportent des pièces',
+    'Friends: a refresh button, and badges on profiles': 'Amis : un bouton Actualiser, et les badges sur les profils',
 }
 
 
@@ -6573,6 +6591,8 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.1", ["Quests: three daily and three weekly goals that pay coins",
+             "Friends: a refresh button, and badges on profiles"]),
     ("2.0", ["The online update: coins, keys and items now live on your account",
              "Everyone starts fresh: 500 coins and 3 keys",
              "Coins come with time (10 every 15 minutes) and 1 key every hour",
@@ -13780,6 +13800,61 @@ class DailyRow(QWidget):
         p.drawText(r.adjusted(0, 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
 
 
+class QuestRow(QWidget):
+    """One quest: what to do, how far you are, and the reward (a Claim button once it is done)."""
+
+    def __init__(self, page, q: dict) -> None:
+        super().__init__()
+        self.q = q
+        self.setFixedHeight(S(46))
+        lay = hbox(self, 0, (0, 0, 8, 0))
+        lay.addStretch(1)
+        done = int(q.get("progress", 0)) >= int(q.get("goal", 1))
+        if done and not q.get("claimed"):
+            b = Button(tr("Claim") + f"  +{coins_text(int(q['reward']))}", "primary", 30)
+            b.setFixedWidth(max(S(100), b.sizeHint().width()))
+            b.clicked.connect(lambda: page.claim(q["quest"]))
+            lay.addWidget(b)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        q = self.q
+        r = QRectF(self.rect()).adjusted(0.5, 2, -0.5, -2)
+        goal, prog = int(q.get("goal", 1)), int(q.get("progress", 0))
+        done, claimed = prog >= goal, bool(q.get("claimed"))
+        p.setPen(QPen(alpha(GOLD_TEXT, 0.5) if (done and not claimed) else alpha("#FFFFFF", 0.08), 1.1))
+        p.setBrush(alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(r, S(10), S(10))
+        p.setOpacity(0.45 if claimed else 1.0)
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12, QFont.Weight.DemiBold))
+        text = tr(GamesPage.QUESTS.get(q.get("quest"), ""), n=coins_text(goal))
+        p.drawText(QRectF(r.left() + S(12), r.top() + S(5), r.width() * 0.62, S(18)), int(Qt.AlignmentFlag.AlignVCenter), text)
+        bar = QRectF(r.left() + S(12), r.bottom() - S(13), r.width() * 0.56, S(5))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.08))
+        p.drawRoundedRect(bar, S(2.5), S(2.5))
+        p.setBrush(QColor(GOLD_TEXT) if done else ui.accent)
+        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * min(1.0, prog / max(1, goal))),
+                                 bar.height()), S(2.5), S(2.5))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        if claimed or not done:                       # (when it can be claimed, the button sits here)
+            p.drawText(QRectF(bar.right() + S(8), bar.top() - S(6), S(90), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                       f"{coins_text(prog)} / {coins_text(goal)}")
+        if claimed or not done:
+            right = r.adjusted(0, 0, -S(12), 0)
+            if claimed:
+                p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), tr("Done"))
+            else:
+                paint_coin(p, QPointF(right.right() - p.fontMetrics().horizontalAdvance(coins_text(int(q["reward"]))) - S(12),
+                                      right.center().y()), S(6))
+                p.setPen(QColor(GOLD_TEXT))
+                p.setFont(font(11.5, QFont.Weight.Bold))
+                p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), coins_text(int(q["reward"])))
+
+
 class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
@@ -13793,6 +13868,8 @@ class GamesPage(Page):
         if not ctx.casino:
             if getattr(ctx, "casino_ask", None) is not None and not ctx.wallet.warned():
                 return self._warning(lay)
+            if getattr(ctx, "quests_open", False):
+                return self._quests(lay)
             return self._lobby(lay)
         self._casino(lay)
 
@@ -13801,6 +13878,9 @@ class GamesPage(Page):
         lay.addWidget(CoinBar(self.ctx))
         lay.addWidget(KeyCard(self.ctx))
         lay.addWidget(DailyRow(self))
+        quests = Button(tr("Quests"), "ghost", 34, icon="spark")
+        quests.clicked.connect(lambda: self._show_quests(True))
+        lay.addWidget(quests)
         grid = QWidget()
         gl = QGridLayout(grid)
         gl.setContentsMargins(0, 0, 0, 0)
@@ -13811,6 +13891,52 @@ class GamesPage(Page):
         go = Button(tr("Enter casino"), "primary", 40)
         go.clicked.connect(lambda: self.enter(None))
         lay.addWidget(go)
+
+    # -- quests: small goals for coins, counted by the server
+    QUESTS = {"d_rounds": "Play {n} casino rounds", "d_case": "Open a case", "d_spin": "Collect a free spin",
+              "w_rounds": "Play {n} casino rounds", "w_cases": "Open {n} cases", "w_won": "Win {n} coins in the casino"}
+
+    def _show_quests(self, on: bool) -> None:
+        sfx.play("pick")
+        self.ctx.quests_open = on
+        self.ctx.reload_page()
+
+    def _quests(self, lay) -> None:
+        ctx = self.ctx
+        top = hbox(spacing=8)
+        back = IconButton("back", 32, tip=tr("Back"))
+        back.clicked.connect(lambda: self._show_quests(False))
+        top.addWidget(back)
+        top.addWidget(Label(tr("Quests"), 16, bold=True), 1)
+        lay.addLayout(top)
+        lay.addWidget(CoinBar(ctx))
+        data = getattr(ctx, "quests_data", None)
+        if data is None:
+            lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+        else:
+            for daily, title in ((True, tr("Today")), (False, tr("This week"))):
+                lay.addWidget(Label(title.upper(), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+                for q in [x for x in data if bool(x.get("daily")) == daily]:
+                    lay.addWidget(QuestRow(self, q))
+        ctx.econ.call("rb_quests", {}, self._got_quests)
+
+    def _got_quests(self, ok: bool, data) -> None:
+        if ok and isinstance(data, list) and data != getattr(self.ctx, "quests_data", None):
+            self.ctx.quests_data = data
+            if self.ctx.window.current == "games" and getattr(self.ctx, "quests_open", False):
+                self.ctx.reload_page()
+
+    def claim(self, quest: str) -> None:
+        def done(ok: bool, data) -> None:
+            if ok:
+                sfx.play("on")
+                self.ctx.toast("+" + coins_text(int(data.get("paid", 0))))
+                self.ctx.quests_data = None
+                if self.ctx.window.current == "games" and getattr(self.ctx, "quests_open", False):
+                    self.ctx.reload_page()
+            else:
+                self.ctx.toast(tr(str(data)), "warn")
+        self.ctx.econ.call("rb_quest_claim", {"which": quest}, done)
 
     def enter(self, game) -> None:
         sfx.play("pick")
@@ -14160,6 +14286,9 @@ class FriendsPage(Page):
             return self._profile(who)
         top = hbox(spacing=8)
         top.addWidget(Label(tr("Friends"), 16, bold=True), 1)
+        again = IconButton("refresh", 30, tip=tr("Refresh"))
+        again.clicked.connect(self._refresh_all)
+        top.addWidget(again)
         add = Button(tr("Add friend"), "primary", 30)
         add.setFixedWidth(max(S(110), add.sizeHint().width()))
         add.clicked.connect(self._add)
@@ -14186,6 +14315,18 @@ class FriendsPage(Page):
     def _redo(self) -> None:
         if self.ctx.window.current == "friends" and self.ctx.window.expanded:
             self.ctx.reload_page()
+
+    def _refresh_all(self) -> None:
+        """The refresh button: friends, the open profile, and your own coins, items and time played."""
+        sfx.play("pick")
+        self.ctx.econ.refresh()
+        self.ctx.online._tick()
+        if getattr(self.ctx, "friends_profile", None):
+            self.ctx.friends_data = None
+            self.ctx.reload_page()
+        else:
+            self.refresh()
+            self.ctx.toast(tr("Refreshed"))
 
     # -- server
     def refresh(self) -> None:
@@ -14239,6 +14380,9 @@ class FriendsPage(Page):
         back.clicked.connect(lambda: self.open_profile(None))
         top.addWidget(back)
         top.addWidget(Label(name, 16, bold=True), 1)
+        again = IconButton("refresh", 30, tip=tr("Refresh"))
+        again.clicked.connect(self._refresh_all)
+        top.addWidget(again)
         self.lay.addLayout(top)
         if data is None:
             self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -14253,6 +14397,13 @@ class FriendsPage(Page):
                                yes=tr("Remove")))
             line.addWidget(rm, 1)
         self.lay.addLayout(line)
+        badges = list(prof.get("badges") or [])
+        self.lay.addWidget(heading(tr("Badges") + f"  ·  {len(badges)}"))
+        if badges:
+            worn_now = [(prof.get("equip") or {}).get(k) for k in ("badge1", "badge2", "badge3")]
+            self.lay.addWidget(BadgeStrip(ctx, badges, [w for w in worn_now if w], self.W))
+        else:
+            self.lay.addWidget(Label(tr("No badges yet"), 12, TEXT_DIM))
         self.lay.addWidget(heading(tr("History")))
         if hist is None:
             self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -14361,6 +14512,55 @@ class HistoryList(QWidget):
             p.setFont(font(11.5, QFont.Weight.Bold))
             p.drawText(r.adjusted(0, 0, -S(8), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        ("+" if paid else "") + coins_text(paid))
+
+
+
+class BadgeStrip(QWidget):
+    """A player's badges, best first; the three they have on show come first with a light ring."""
+    COLS = 9
+
+    def __init__(self, ctx, items: list, worn: list, width: int) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.items = (worn + [i for i in items if i not in worn])[:36]
+        self.worn = set(worn)
+        self.cell = width / self.COLS
+        rows = (len(self.items) + self.COLS - 1) // self.COLS
+        self.setFixedSize(width, int(rows * self.cell))
+        self.setMouseTracking(True)
+        self._tick = QTimer(self)
+        self._tick.setInterval(50)
+        self._tick.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        pass
+        if any(item_animated(i) for i in self.items):
+            self._tick.start()
+
+    def hideEvent(self, _e) -> None:
+        self._tick.stop()
+
+    def mouseMoveEvent(self, e) -> None:
+        pass
+        i = int(e.position().y() // self.cell) * self.COLS + int(e.position().x() // self.cell)
+        self.setToolTip(badge_label(self.items[i]) if 0 <= i < len(self.items) else "")
+
+    def paintEvent(self, _e) -> None:
+        import time
+        pass
+        pass
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        for i, item in enumerate(self.items):
+            c = QPointF((i % self.COLS + 0.5) * self.cell, (i // self.COLS + 0.5) * self.cell)
+            col = QColor(RARITY_COLOURS.get(self.ctx.econ.rarity(item), "#9AA4AD"))
+            d = self.cell - S(6)
+            p.setPen(QPen(QColor("#FFFFFF") if item in self.worn else alpha(col, 0.5), 1.2))
+            p.setBrush(alpha(col, 0.10))
+            p.drawEllipse(c, d / 2, d / 2)
+            g = d * 0.5
+            paint_item(p, item, QRectF(c.x() - g / 2, c.y() - g / 2, g, g), now)
 
 
 # ==================================================================================================

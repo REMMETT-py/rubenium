@@ -1,15 +1,8 @@
-Rubenium 2.0 - the online update
+Rubenium 2.1
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-Everyone starts fresh: 500 coins and 3 keys. Coins, keys and items now live on your account, not on the PC.
-
-- Coins come with time: 10 every 15 minutes with Rubenium in use (up to 400 a day), and 1 key every hour.
-- Five rarities: Standard, Rare, Special, Epic and Exotic. 50 badges ranked from Heart to Sunburst Star, each in grey, 13 colours and Black / White / Gold, plus 5 Exotic badges that only come from cases.
-- Badges: buy colours with coins, show 3 on the music tab, sell any badge to the vendor for quick coins. A badge you no longer have stays in the collection, greyed out.
-- Four new cases (1 key + coins) with their real odds shown, and a free daily case.
-- Casino played on the server: Blackjack, Plinko, Bombs, Slots, and two new games, Dice and Rocket. Bets from 10 to 1 000.
-- Free spin every 3 hours: the prize waits until you press Collect.
-- Themes (8), the ball (3) and its ring (3) now unlock with hours played. Colours are free.
-- The shop and the casino need an internet connection. Music, crosshair and swaps work offline as before.
+- Quests (Games tab): three goals every day and three every week that pay coins. Progress is counted by the server from what you really played.
+- Friends: a refresh button on the list and on profiles (it also refreshes your own coins and time played).
+- Profiles now show a friend's badges, with the three they have on show first.
