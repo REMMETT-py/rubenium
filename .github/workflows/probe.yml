@@ -1,0 +1,19 @@
+name: probe
+on:
+  push:
+    branches: [build-test]
+    paths: ["probe/**"]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          U=https://nrdcdjeahvvtkswkvacz.supabase.co; K=sb_publishable_cdVja4ZFwumAmMQIfZgaOw_pQbCbAXp
+          S=$(curl -sS -H "apikey: $K" $U/auth/v1/settings); echo "SETTINGS $S"
+          if echo "$S" | grep -q '"mailer_autoconfirm":true'; then
+            for D in users.rubenium.local rubenium.invalid; do
+              echo "SIGNUP $D $(curl -sS -X POST -H "apikey: $K" -H 'Content-Type: application/json' -d "{\"email\":\"rbprobe7@$D\",\"password\":\"Probe-pass-91xz\",\"data\":{\"username\":\"RbProbe7\"}}" $U/auth/v1/signup | head -c 400)"
+            done
+            echo "LOGIN $(curl -sS -X POST -H "apikey: $K" -H 'Content-Type: application/json' -d '{"email":"rbprobe7@users.rubenium.local","password":"Probe-pass-91xz"}' "$U/auth/v1/token?grant_type=password" | head -c 200)"
+          fi
+          echo "RPC $(curl -sS -X POST -H "apikey: $K" -H 'Content-Type: application/json' -d '{}' $U/rest/v1/rpc/rb_ping | head -c 300)"
