@@ -947,10 +947,12 @@ class Welcome(QWidget):
         self._logout_x, self._logout_w = 0.0, 0.0
         # The card is a little taller with a name under Launch, and taller still while it holds the login form.
         self.tall = Tween(self, 0.0, self._relayout, QEasingCurve.Type.InOutCubic)
+        # Logged in: no button to press. A line runs around the card for 5 seconds, then Rubenium starts.
+        self.count = Tween(self, 0.0, self._counted, QEasingCurve.Type.Linear)
         self.panel = AccountPanel(self)
         self.ctx.online.changed.connect(self._account_changed)
 
-    IN, OUT = 26, 92                           # extra card height: logged in (name line) / logged out (form)
+    IN, OUT = 0, 92                           # extra card height: logged in (name line) / logged out (form)
 
     def logged_in(self) -> bool:
         return self.ctx.online.logged_in()
@@ -972,10 +974,24 @@ class Welcome(QWidget):
         self.panel.place()
         self.update()
 
+    COUNT_MS = 5000
+
+    def _countdown(self) -> None:
+        """Start (logged in) or stop (logged out) the 5 second line around the card."""
+        self.count.jump(0.0)
+        if self.logged_in() and self.phase == "card":
+            self.count.to(1.0, self.COUNT_MS)
+
+    def _counted(self) -> None:
+        if self.count.level >= 0.999 and self.phase == "card" and self.logged_in():
+            self.launch()
+        self.update()
+
     def _account_changed(self) -> None:
         if self.phase == "card":
             self.tall.to(self._extra(), 420)
             self.panel.sync()
+            self._countdown()
             self.update()
 
     def _take_keyboard(self) -> None:
@@ -989,7 +1005,7 @@ class Welcome(QWidget):
 
     def _link_rect(self) -> QRectF:
         """The small "Name · Log out" line under the Launch button, inside the card."""
-        top = self.card_top() + S(self.CH) * 0.74 + S(44) + S(9)
+        top = self.card_top() + S(self.CH) * 0.74 + S(12)
         return QRectF(self.width() / 2 - S(150), top, S(300), S(20))
 
     def start(self) -> None:
@@ -1004,6 +1020,7 @@ class Welcome(QWidget):
             self._take_keyboard()
         self.show()
         self.panel.sync()
+        QTimer.singleShot(450, self._countdown)
         self.appear.to(1.0, 420)
         self._clock.start()
 
@@ -1066,13 +1083,16 @@ class Welcome(QWidget):
 
     # -- mouse: only the Launch button does anything
     def mouseMoveEvent(self, e) -> None:
-        over = self.phase == "card" and self.logged_in() and (self._button().contains(e.position())
-                                                              or self._logout_rect().contains(e.position()))
+        over = self.phase == "card" and self.logged_in() and self._card_rect().contains(e.position())
         self.setCursor(Qt.CursorShape.PointingHandCursor if over else Qt.CursorShape.ArrowCursor)
         self.hover.to(1.0 if over else 0.0, 140)
 
     def leaveEvent(self, _e) -> None:
         self.hover.to(0.0, 200)
+
+    def _card_rect(self) -> QRectF:
+        h = self.card_h()
+        return QRectF(self.width() / 2 - S(self.CW) / 2, self.height() / 2 - h / 2, S(self.CW), h)
 
     def _logout_rect(self) -> QRectF:
         r = self._link_rect()
@@ -1087,7 +1107,7 @@ class Welcome(QWidget):
             self.panel.sync()
             return
         if (self.phase == "card" and self.logged_in() and e.button() == Qt.MouseButton.LeftButton
-                and self._button().contains(e.position())):
+                and self._card_rect().contains(e.position())):           # a click on the card starts right away
             self._down = True
             self.press.to(1.0, 80)
 
@@ -1095,7 +1115,7 @@ class Welcome(QWidget):
         if self._down:
             self._down = False
             self.press.to(0.0, 160)
-            if self._button().contains(e.position()):
+            if self._card_rect().contains(e.position()):
                 self.launch()
 
     def closeEvent(self, e) -> None:
@@ -1170,20 +1190,8 @@ class Welcome(QWidget):
             p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter), word)
             p.restore()
 
-            b = self._button()
-            hv, pr = self.hover.level, self.press.level
-            grow = S(2) * hv - S(1.5) * pr
-            b = b.adjusted(-grow, -grow * 0.5, grow, grow * 0.5)
-            shown_in = max(0.0, 1.0 - self.out_level() * 2)   # Launch and the name fade in once the form is gone
+            shown_in = max(0.0, 1.0 - self.out_level() * 2)   # the name fades in once the form is gone
             p.setOpacity(a * show * shown_in)
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(alpha(ui.accent, 0.22 + 0.10 * hv))
-            p.drawRoundedRect(b.adjusted(-S(3), -S(3), S(3), S(3)), S(16), S(16))
-            p.setBrush(mix(ui.accent, QColor("#FFFFFF"), 0.10 * hv))
-            p.drawRoundedRect(b, S(13), S(13))
-            p.setPen(QColor("#06110A" if ui.accent.lightnessF() > 0.6 else "#FFFFFF"))
-            p.setFont(font(15, QFont.Weight.Bold, 0.3))
-            p.drawText(b, int(Qt.AlignmentFlag.AlignCenter), tr("Launch"))
             if self.logged_in():                               # "Name · Log out" under the button
                 r = self._link_rect()
                 p.setFont(font(11, QFont.Weight.DemiBold))
@@ -1224,6 +1232,29 @@ class Welcome(QWidget):
                 p.drawArc(ring, 90 * 16, int(-360 * 16 * turn))
         p.setOpacity(a)
         paint_edge(p, self.ctx, shape, radius, level)
+        if self.phase == "card" and self.count.level > 0.0 and self.logged_in():      # the 5 second line
+            rr = shape.adjusted(S(1.5), S(1.5), -S(1.5), -S(1.5))
+            rad = max(1.0, radius - S(1.5))
+            line = QPainterPath()
+            line.moveTo(rr.center().x(), rr.top())                    # from the top middle, clockwise
+            line.lineTo(rr.right() - rad, rr.top())
+            line.arcTo(QRectF(rr.right() - 2 * rad, rr.top(), 2 * rad, 2 * rad), 90, -90)
+            line.lineTo(rr.right(), rr.bottom() - rad)
+            line.arcTo(QRectF(rr.right() - 2 * rad, rr.bottom() - 2 * rad, 2 * rad, 2 * rad), 0, -90)
+            line.lineTo(rr.left() + rad, rr.bottom())
+            line.arcTo(QRectF(rr.left(), rr.bottom() - 2 * rad, 2 * rad, 2 * rad), 270, -90)
+            line.lineTo(rr.left(), rr.top() + rad)
+            line.arcTo(QRectF(rr.left(), rr.top(), 2 * rad, 2 * rad), 180, -90)
+            line.lineTo(rr.center().x(), rr.top())
+            width = S(3)
+            pen = QPen(ui.accent, width)
+            pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+            pen.setDashPattern([max(0.001, line.length() * self.count.level / width), 100000.0])
+            p.setOpacity(a * max(0.0, 1.0 - self.out_level() * 2))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(pen)
+            p.drawPath(line)
+            p.setOpacity(a)
 
 
 class Body(QWidget):

@@ -800,6 +800,7 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("1.10", ["Logged in? Rubenium starts by itself after 5 seconds (click the card to start at once)"]),
     ("1.9", ["Friends: add players by username and see who is online",
              "Profiles show time played and, soon, badges and play history"]),
     ("1.8", ["The login now sits inside the start screen",

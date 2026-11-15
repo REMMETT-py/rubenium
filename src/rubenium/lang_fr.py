@@ -570,4 +570,6 @@ FR = {
     'Your friends list is full': "Ta liste d'amis est pleine",
     'Friends: add players by username and see who is online': 'Amis : ajoute des joueurs par leur nom et vois qui est en ligne',
     'Profiles show time played and, soon, badges and play history': "Les profils montrent le temps joué et, bientôt, les badges et l'historique",
+    # 1.10
+    'Logged in? Rubenium starts by itself after 5 seconds (click the card to start at once)': 'Connecté ? Rubenium démarre tout seul après 5 secondes (clique sur la carte pour démarrer tout de suite)',
 }

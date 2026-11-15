@@ -19,8 +19,8 @@ from . import win
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.9"         # the version people see
-BUILD = "2026.11.15.7"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "1.10"         # the version people see
+BUILD = "2026.11.15.8"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
