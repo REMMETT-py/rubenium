@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.6 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.7 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1404,6 +1404,55 @@ def set_click_through(hwnd: int, on: bool) -> None:
         log.debug("click-through failed: %s", exc)
 
 
+
+# --------------------------------------------------------------------------- #
+# Small helpers for accounts: secrets kept by Windows, and time since the last input
+# --------------------------------------------------------------------------- #
+class _BLOB(ctypes.Structure):
+    _fields_ = [("cbData", W.DWORD), ("pbData", ctypes.POINTER(ctypes.c_char))]
+
+
+def _crypt(data: bytes, protect_it: bool) -> bytes:
+    """Windows data protection (DPAPI): only this Windows user on this PC can read the result back."""
+    buf = ctypes.create_string_buffer(data, len(data))
+    src = _BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
+    out = _BLOB()
+    crypt32, kernel32 = ctypes.windll.crypt32, ctypes.windll.kernel32
+    fn = crypt32.CryptProtectData if protect_it else crypt32.CryptUnprotectData
+    if not fn(ctypes.byref(src), None, None, None, None, 0x01, ctypes.byref(out)):       # 0x01: never show UI
+        raise OSError("data protection failed")
+    try:
+        return ctypes.string_at(out.pbData, out.cbData)
+    finally:
+        kernel32.LocalFree.argtypes = [ctypes.c_void_p]
+        kernel32.LocalFree(ctypes.cast(out.pbData, ctypes.c_void_p))
+
+
+def protect(data: bytes) -> bytes:
+    return _crypt(data, True)
+
+
+def unprotect(data: bytes) -> bytes:
+    return _crypt(data, False)
+
+
+class _LASTINPUT(ctypes.Structure):
+    _fields_ = [("cbSize", W.UINT), ("dwTime", W.DWORD)]
+
+
+def idle_seconds() -> float:
+    """Seconds since the mouse or keyboard was last used (0 when it cannot be told)."""
+    if not IS_WIN:
+        return 0.0
+    try:
+        info = _LASTINPUT(ctypes.sizeof(_LASTINPUT), 0)
+        if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(info)):
+            return 0.0
+        return ((ctypes.windll.kernel32.GetTickCount() - info.dwTime) & 0xFFFFFFFF) / 1000.0
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
 # ==================================================================================================
 # SECTION: core
 # ==================================================================================================
@@ -1423,8 +1472,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.6"         # the version people see
-BUILD = "2026.11.15.4"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "1.7"         # the version people see
+BUILD = "2026.11.15.5"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -1642,8 +1691,8 @@ DEFAULTS: dict = {
     "scale": 100,
     "opacity": 100,
     "ball_size": 100,
-    "glow_power": 1,
-    "backdrop": 0,
+    "glow_power": 2,
+    "backdrop": 1,
     "corners": 0,
     "ball_style": "classic",
     "ring_style": "dots",
@@ -1860,6 +1909,308 @@ def lang() -> str:
 def tr(text: str, **kw) -> str:
     out = _fr.get(text, text) if _lang == "fr" else text
     return out.format(**kw) if kw else out
+
+
+# ==================================================================================================
+# SECTION: online
+# ==================================================================================================
+import base64
+import json
+import logging
+import os
+import re
+import threading
+import time
+import uuid
+
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
+
+
+log = logging.getLogger("rubenium.online")
+
+API_URL = os.environ.get("RUBENIUM_API", "https://nrdcdjeahvvtkswkvacz.supabase.co")
+API_KEY = "sb_publishable_cdVja4ZFwumAmMQIfZgaOw_pQbCbAXp"
+MAIL = "@users.rubenium.app"                 # accounts have no real e-mail: the username is turned into one
+USERNAME_RE = re.compile(r"^[A-Za-z0-9]{3,10}$")
+PASSWORD_MIN = 8
+BEAT_S = 60                                  # the server counts time from these, once a minute
+ACTIVE_S = 600                               # "in use" = music playing, or mouse/keyboard in the last 10 min
+
+
+class ApiError(Exception):
+    def __init__(self, key: str, status: int = 0) -> None:
+        super().__init__(key)
+        self.key, self.status = key, status
+
+
+def _request(path: str, body=None, token: str = "", method: str = "POST", timeout: float = 12.0):
+    """One call to the server. Returns the decoded answer; raises ApiError('offline' | a server message)."""
+    import ssl
+    import urllib.error
+    import urllib.request
+    try:
+        import certifi
+        ctx = ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # noqa: BLE001
+        ctx = ssl.create_default_context()
+    headers = {"apikey": API_KEY, "Content-Type": "application/json", "User-Agent": "Rubenium"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    data = None if body is None else json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(API_URL + path, data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx if API_URL.startswith("https") else None) as r:  # noqa: S310
+            raw = r.read()
+            return json.loads(raw.decode("utf-8")) if raw else None
+    except urllib.error.HTTPError as exc:
+        try:
+            info = json.loads(exc.read().decode("utf-8"))
+        except Exception:  # noqa: BLE001
+            info = {}
+        text = " ".join(str(info.get(k, "")) for k in ("error_code", "code", "msg", "message", "error_description"))
+        raise ApiError(text.strip() or f"http {exc.code}", exc.code) from None
+    except Exception as exc:  # noqa: BLE001  (no internet, DNS, timeout...)
+        raise ApiError("offline") from exc
+
+
+def explain(err: ApiError) -> str:
+    """A server or network error as a short sentence for the login screen (English key for tr())."""
+    text = (err.key or "").lower()
+    if text == "offline":
+        return "No internet connection"
+    if "rb_username_taken" in text or "already registered" in text or "user_already_exists" in text:
+        return "This username is taken"
+    if "invalid login" in text or "invalid_credentials" in text:
+        return "Wrong username or password"
+    if "rate limit" in text or err.status == 429:
+        return "Too many tries: wait a minute"
+    if "weak_password" in text or "password should" in text:
+        return "Password too short (8 or more)"
+    if "rb_bad_username" in text:
+        return "3 to 10 letters or numbers"
+    if "not confirmed" in text or "email_address_invalid" in text or "signup" in text and "disabled" in text:
+        return "Accounts are not open yet"
+    return "Something went wrong: try again"
+
+
+def password_strength(pw: str) -> int:
+    """0 too short, 1 weak, 2 ok, 3 strong."""
+    if len(pw) < PASSWORD_MIN:
+        return 0
+    kinds = sum(bool(re.search(p, pw)) for p in (r"[a-z]", r"[A-Z]", r"[0-9]", r"[^A-Za-z0-9]"))
+    return 3 if (kinds >= 3 and len(pw) >= 10) else (2 if kinds >= 2 else 1)
+
+
+# -- the saved login: encrypted by Windows for this Windows user (never a plain-text file)
+def _session_path():
+    return DATA_DIR / "session.dat"
+
+
+def _seal(data: bytes) -> bytes:
+    return win.protect(data) if win.IS_WIN else base64.b64encode(data)
+
+
+def _unseal(data: bytes) -> bytes:
+    return win.unprotect(data) if win.IS_WIN else base64.b64decode(data)
+
+
+class Online(QObject):
+    changed = pyqtSignal()                    # logged in / out, or the profile changed
+    answered = pyqtSignal(str, bool, str)     # what ("login" | "signup" | "free:<name>"), ok, message key
+    _back = pyqtSignal(object)                # run on the main thread
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.s: dict = {}                     # access_token, refresh_token, expires_at, username, user_id
+        self.minutes = 0
+        self.offline = False
+        self.elsewhere = False                # another PC of this account is counting time right now
+        self.busy = False
+        self.device = uuid.uuid4().hex        # this run of the app (only one earns time per account)
+        self._back.connect(lambda fn: fn())
+        self._beat = QTimer(self)
+        self._beat.setInterval(BEAT_S * 1000)
+        self._beat.timeout.connect(self._tick)
+        self._load()
+
+    # -- state
+    def logged_in(self) -> bool:
+        return bool(self.s.get("refresh_token"))
+
+    def username(self) -> str:
+        return str(self.s.get("username", ""))
+
+    def hours(self) -> float:
+        return self.minutes / 60.0
+
+    def _load(self) -> None:
+        try:
+            data = json.loads(_unseal(_session_path().read_bytes()).decode("utf-8"))
+            if isinstance(data, dict) and data.get("refresh_token") and data.get("username"):
+                self.s = data
+                self.minutes = int(data.get("minutes", 0))
+        except Exception:  # noqa: BLE001  (no file yet, or not readable on this PC)
+            self.s = {}
+
+    def _save(self) -> None:
+        try:
+            path = _session_path()
+            if not self.s:
+                path.unlink(missing_ok=True)
+                return
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_name(path.name + ".tmp")
+            tmp.write_bytes(_seal(json.dumps(dict(self.s, minutes=self.minutes)).encode("utf-8")))
+            os.replace(tmp, path)
+        except Exception:  # noqa: BLE001
+            log.warning("could not save the login", exc_info=True)
+
+    def _adopt(self, ans: dict, username: str = "") -> None:
+        user = ans.get("user") or {}
+        name = username or (user.get("user_metadata") or {}).get("username") or self.username()
+        self.s = {"access_token": ans["access_token"], "refresh_token": ans["refresh_token"],
+                  "expires_at": time.time() + float(ans.get("expires_in", 3600)), "username": name,
+                  "user_id": user.get("id", self.s.get("user_id", ""))}
+        self.offline = False
+        self._save()
+
+    # -- start / stop
+    def start(self) -> None:
+        self._beat.start()
+        if self.logged_in():
+            QTimer.singleShot(1500, self._tick)
+
+    def stop(self) -> None:
+        self._beat.stop()
+
+    # -- log in, create, log out (the work runs off the main thread)
+    def _run(self, what: str, job) -> None:
+        def work():
+            try:
+                done = job()
+                self._back.emit(lambda: (done(), self._finish(what, True, "")))
+            except ApiError as err:
+                msg = explain(err)
+                log.info("%s failed: %s", what, err.key)
+                self._back.emit(lambda: self._finish(what, False, msg))
+            except Exception:  # noqa: BLE001
+                log.exception("%s failed", what)
+                self._back.emit(lambda: self._finish(what, False, "Something went wrong: try again"))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _finish(self, what: str, ok: bool, msg: str) -> None:
+        if what in ("login", "signup"):
+            self.busy = False
+            if ok:
+                self.changed.emit()
+                QTimer.singleShot(200, self._tick)
+        self.answered.emit(what, ok, msg)
+
+    def log_in(self, username: str, password: str) -> None:
+        if self.busy:
+            return
+        self.busy = True
+
+        def job():
+            ans = _request("/auth/v1/token?grant_type=password",
+                           {"email": username.lower() + MAIL, "password": password})
+            return lambda: self._adopt(ans)
+        self._run("login", job)
+
+    def sign_up(self, username: str, password: str) -> None:
+        if self.busy:
+            return
+        self.busy = True
+
+        def job():
+            ans = _request("/auth/v1/signup", {"email": username.lower() + MAIL, "password": password,
+                                               "data": {"username": username}})
+            if not ans or not ans.get("access_token"):
+                raise ApiError("email not confirmed")           # the server is not set up for accounts yet
+            return lambda: self._adopt(ans, username)
+        self._run("signup", job)
+
+    def check_free(self, username: str) -> None:
+        def job():
+            free = _request("/rest/v1/rpc/rb_username_free", {"name": username}, timeout=8)
+            if free is not True:
+                raise ApiError("rb_username_taken")
+            return lambda: None
+        self._run("free:" + username, job)
+
+    def log_out(self) -> None:
+        token = self.s.get("access_token", "")
+        self.s, self.minutes, self.elsewhere = {}, 0, False
+        self._save()
+        self.changed.emit()
+        if token:
+            threading.Thread(target=lambda: self._quiet("/auth/v1/logout?scope=local", token), daemon=True).start()
+
+    @staticmethod
+    def _quiet(path: str, token: str) -> None:
+        try:
+            _request(path, {}, token, timeout=6)
+        except ApiError:
+            pass
+
+    # -- calls for a logged-in account
+    def _token(self) -> str:
+        """A valid access token (renewed when it is about to run out). Called off the main thread."""
+        if time.time() > float(self.s.get("expires_at", 0)) - 120:
+            try:
+                ans = _request("/auth/v1/token?grant_type=refresh_token", {"refresh_token": self.s["refresh_token"]})
+            except ApiError as err:
+                if err.key != "offline" and err.status in (400, 401, 403):      # the login is no longer valid
+                    self._back.emit(self.log_out)
+                raise
+            self._back.emit(lambda: self._adopt(ans))
+            return ans["access_token"]
+        return self.s["access_token"]
+
+    def rpc(self, name: str, args: dict):
+        """Call a server function as the logged-in account. Off the main thread only."""
+        return _request("/rest/v1/rpc/" + name, args, self._token())
+
+    def _in_use(self) -> bool:
+        try:
+            pass
+            if getattr(self.ctx, "state", None) is not None and self.ctx.state.status is Status.PLAYING:
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        return win.idle_seconds() < ACTIVE_S
+
+    def _tick(self) -> None:
+        if not self.logged_in() or not self._in_use():
+            return
+
+        def work():
+            try:
+                ans = self.rpc("rb_heartbeat", {"device": self.device}) or {}
+                self._back.emit(lambda: self._beaten(ans))
+            except ApiError as err:
+                off = err.key == "offline"
+                self._back.emit(lambda: self._set_offline(off))
+            except Exception:  # noqa: BLE001
+                log.exception("heartbeat failed")
+        threading.Thread(target=work, daemon=True).start()
+
+    def _set_offline(self, off: bool) -> None:
+        if off != self.offline:
+            self.offline = off
+            self.changed.emit()
+
+    def _beaten(self, ans: dict) -> None:
+        before = (self.minutes, self.elsewhere, self.offline, self.username())
+        self.minutes = int(ans.get("minutes", self.minutes))
+        self.elsewhere = bool(ans.get("elsewhere"))
+        self.offline = False
+        if ans.get("username"):
+            self.s["username"] = ans["username"]
+        if before != (self.minutes, self.elsewhere, False, self.username()):
+            self._save()
+            self.changed.emit()
 
 
 # ==================================================================================================
@@ -2367,6 +2718,32 @@ FR = {
     'New ball and ring: White Gold. Neon is now number 3': 'Nouvelle bulle et anneau : Or blanc. Néon passe en 3e',
     'Long song names get smaller instead of being cut': 'Les titres longs rétrécissent au lieu d’être coupés',
     'Medal is no longer picked up as a music app': 'Medal n’est plus pris pour une appli de musique',
+    # 1.7 accounts
+    'Log in': 'Connexion',
+    'Create account': 'Créer un compte',
+    'Username': "Nom d'utilisateur",
+    'Password': 'Mot de passe',
+    'Show': 'Voir',
+    'Hide': 'Cacher',
+    '3 to 10 letters or numbers': '3 à 10 lettres ou chiffres',
+    'Checking…': 'Vérification…',
+    'Password too short (8 or more)': 'Mot de passe trop court (8 ou plus)',
+    'Password: weak': 'Mot de passe : faible',
+    'Password: good': 'Mot de passe : bon',
+    'Password: strong': 'Mot de passe : fort',
+    'Username is free': 'Nom disponible',
+    'This username is taken': 'Ce nom est déjà pris',
+    'One moment…': 'Un instant…',
+    'Log out': 'Déconnexion',
+    'Wrong username or password': 'Nom ou mot de passe incorrect',
+    'Too many tries: wait a minute': "Trop d'essais : attends une minute",
+    'Accounts are not open yet': 'Les comptes ne sont pas encore ouverts',
+    'Something went wrong: try again': 'Un problème est survenu : réessaie',
+    'Account': 'Compte',
+    'Log out and close Rubenium?': 'Se déconnecter et fermer Rubenium ?',
+    'Accounts: create one or log in on the welcome screen. You stay logged in': "Comptes : crée-en un ou connecte-toi sur l'écran d'accueil. Tu restes connecté",
+    'Time played is now counted online, for your account': 'Le temps joué est maintenant compté en ligne, pour ton compte',
+    'One look for everyone: strong glow, black background, round corners': 'Un seul style pour tous : lueur forte, fond noir, coins arrondis',
 }
 
 
@@ -5767,6 +6144,9 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("1.7", ["Accounts: create one or log in on the welcome screen. You stay logged in",
+             "Time played is now counted online, for your account",
+             "One look for everyone: strong glow, black background, round corners"]),
     ("1.6", ["Lantern Lift and Monsoon fixed: they no longer crash the game",
              "Timer moved to the bottom of the Screen tab",
              "New ball and ring: White Gold. Neon is now number 3",
@@ -9744,6 +10124,10 @@ class BallPreview(QWidget):
 
 
 class SettingsPage(Page):
+    def _log_out(self) -> None:
+        self.ctx.online.log_out()
+        self.ctx.quit()
+
     key = "settings"
 
     def __init__(self, ctx) -> None:
@@ -9829,6 +10213,16 @@ class SettingsPage(Page):
                     t.set_checked(not v)
             t.toggled_by_user.connect(auto)
             lay.addWidget(row(tr("Start with Windows"), t))
+
+        if ctx.online.logged_in():
+            lay.addWidget(heading(tr("Account")))
+            out = Button(tr("Log out"), "ghost", 32)
+            out.setFixedWidth(max(S(150), out.sizeHint().width()))
+            out.clicked.connect(lambda: ctx.window.confirm(tr("Log out and close Rubenium?"), self._log_out,
+                                                           yes=tr("Log out")))
+            hours = ctx.online.hours()
+            played = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
+            lay.addWidget(row(f"{ctx.online.username()}  ·  {played} h", out))
 
         lay.addWidget(heading(tr("Updates")))
         latest = ctx.updater.latest
@@ -10034,11 +10428,6 @@ class ThemeCard(QAbstractButton):
             p.restore()
             paint_price(p, QRectF(foot.left() + S(18), foot.top(), foot.width() - S(18), foot.height()),
                         ctx.wallet.price(ident), 10.5, GOLD_TEXT if nxt else TEXT_DIM, centre=False)
-
-
-STYLE_ROWS = (("Glow", "glow_power", ("Normal", "Strong"), (1, 2)),
-              ("Background", "backdrop", ("Dark", "Black"), (0, 1)),
-              ("Corners", "corners", ("Round", "Sharp"), (0, 2)))
 
 
 class UnlockTile(QAbstractButton):
@@ -10411,15 +10800,6 @@ class ShopPage(Page):
         lay.addWidget(row(tr("Colour 2"), self.t_second))
         self.c2 = ColourRow(self, "c2", "accent2")
         lay.addWidget(self.c2)
-
-        lay.addWidget(heading(tr("Style")))
-        self.style = {}
-        for label, key, names, values in STYLE_ROWS:       # two choices each: (setting value for 1st, 2nd)
-            seg = Segmented([tr(n) for n in names], 1 if ctx.cfg[key] == values[1] else 0)
-            seg.setFixedWidth(S(170))
-            seg.changed.connect(lambda i, k=key, v=values: ctx.set_look(k, v[i]))
-            self.style[key] = seg
-            lay.addWidget(row(tr(label), seg))
 
         lay.addWidget(heading(tr("Ball")))
         for kind, styles, key in (("r", extras.R_STYLES, "ball_style"), ("ring", extras.RING_STYLES, "ring_style")):
@@ -14362,6 +14742,152 @@ class PreviewDrawer(QWidget):
                     self.ctx.wallet.price(f"theme:{th['id']}"), 11.5, "#E8C26A", centre=False)
 
 
+class AccountPanel(QWidget):
+    """Log in / Create account, shown under the welcome card until someone is logged in."""
+
+    def __init__(self, welcome) -> None:
+        super().__init__(welcome)
+        from PyQt6.QtWidgets import QLineEdit
+        self.w, self.online = welcome, welcome.ctx.online
+        self.mode = 0                                  # 0 log in, 1 create account
+        self._free = ""                                # the last name the server said is free
+        lay = vbox(self, 8, (14, 14, 14, 14))
+        self.seg = Segmented([tr("Log in"), tr("Create account")], 0)
+        self.seg.changed.connect(self._mode)
+        lay.addWidget(self.seg)
+        css = (f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
+               f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px;"
+               f" selection-background-color: rgba(255,255,255,0.25); }}"
+               f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
+        self.user = QLineEdit()
+        self.user.setPlaceholderText(tr("Username"))
+        self.user.setMaxLength(10)
+        self.pw = QLineEdit()
+        self.pw.setPlaceholderText(tr("Password"))
+        self.pw.setMaxLength(72)
+        self.pw.setEchoMode(QLineEdit.EchoMode.Password)
+        for edit in (self.user, self.pw):
+            edit.setFixedHeight(S(34))
+            edit.setStyleSheet(css)
+            edit.returnPressed.connect(self._submit)
+        self.eye = Button(tr("Show"), "quiet", 34)
+        self.eye.setFixedWidth(max(S(64), self.eye.sizeHint().width()))
+        self.eye.clicked.connect(self._eye)
+        line = hbox(spacing=6)
+        line.addWidget(self.pw, 1)
+        line.addWidget(self.eye)
+        lay.addWidget(self.user)
+        lay.addLayout(line)
+        self.hint = Label("", 11, TEXT_DIM)
+        self.hint.setFixedHeight(S(16))
+        lay.addWidget(self.hint)
+        self.go = Button(tr("Log in"), "primary", 38)
+        self.go.clicked.connect(self._submit)
+        lay.addWidget(self.go)
+        self._wait = QTimer(self)                      # ask the server only when typing pauses
+        self._wait.setSingleShot(True)
+        self._wait.setInterval(450)
+        self._wait.timeout.connect(self._ask_free)
+        self.user.textChanged.connect(self._typed)
+        self.pw.textChanged.connect(self._typed)
+        self.online.answered.connect(self._answered)
+        self.hide()
+
+    def place(self) -> None:
+        w, h = S(320), S(206)
+        top = self.w.height() / 2 + S(self.w.CH) / 2 + S(GLOW) + S(4)
+        self.setGeometry(int(self.w.width() / 2 - w / 2), int(top), w, h)
+
+    def sync(self) -> None:
+        show = not self.online.logged_in() and self.w.phase == "card"
+        self.setVisible(show)
+        if show:
+            self.raise_()
+            self.user.setFocus()
+
+    def _say(self, text: str, colour: str = TEXT_DIM) -> None:
+        self.hint.set_color(colour)
+        self.hint.set_text(text)
+
+    def _mode(self, i: int) -> None:
+        self.mode = i
+        self.go.set_text(tr("Create account") if i else tr("Log in"))
+        self._typed()
+
+    def _eye(self) -> None:
+        from PyQt6.QtWidgets import QLineEdit
+        hidden = self.pw.echoMode() == QLineEdit.EchoMode.Password
+        self.pw.setEchoMode(QLineEdit.EchoMode.Normal if hidden else QLineEdit.EchoMode.Password)
+        self.eye.set_text(tr("Hide") if hidden else tr("Show"))
+
+    def _typed(self) -> None:
+        pass
+        name, pw = self.user.text(), self.pw.text()
+        self._wait.stop()
+        if not self.mode:
+            return self._say("")
+        if name and not USERNAME_RE.match(name):
+            return self._say(tr("3 to 10 letters or numbers"), WARN)
+        if name and name.lower() != self._free.lower():
+            self._say(tr("Checking…"))
+            return self._wait.start()
+        if pw:
+            level = password_strength(pw)
+            return self._say([tr("Password too short (8 or more)"), tr("Password: weak"), tr("Password: good"),
+                              tr("Password: strong")][level], [WARN, WARN, TEXT_DIM, ui.accent.name()][level])
+        self._say(tr("Username is free") if name else "", ui.accent.name())
+
+    def _ask_free(self) -> None:
+        pass
+        if self.mode and USERNAME_RE.match(self.user.text()):
+            self.online.check_free(self.user.text())
+
+    def _answered(self, what: str, ok: bool, msg: str) -> None:
+        if what.startswith("free:"):
+            if what[5:] != self.user.text() or not self.mode:
+                return
+            if ok:
+                self._free = what[5:]
+                return self._typed()
+            if msg == "This username is taken":
+                return self._say(tr(msg), DANGER)
+            self._free = what[5:]                      # could not check now: creating the account will tell
+            return self._typed()
+        self.go.setEnabled(True)
+        if ok:
+            sfx.play("on")
+            self.pw.clear()
+            self._free = ""
+            self.w.setFocus()
+        else:
+            sfx.play("off")
+            self._say(tr(msg), DANGER)
+
+    def _submit(self) -> None:
+        pass
+        name, pw = self.user.text().strip(), self.pw.text()
+        if self.online.busy:
+            return
+        if not USERNAME_RE.match(name):
+            return self._say(tr("3 to 10 letters or numbers"), WARN)
+        if len(pw) < PASSWORD_MIN:
+            return self._say(tr("Password too short (8 or more)"), WARN)
+        self.go.setEnabled(False)
+        self._say(tr("One moment…"))
+        (self.online.sign_up if self.mode else self.online.log_in)(name, pw)
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha(ui.accent, 0.35), 1.2))
+        p.setBrush(QColor(12, 15, 16, 248))
+        p.drawRoundedRect(r, S(14), S(14))
+
+
 class Welcome(QWidget):
     """The start-up screen: a welcome card with one Launch button. Launch folds the card into a round R,
     a ring loads around it, then it flies to where the ball lives and becomes the ball."""
@@ -14396,20 +14922,49 @@ class Welcome(QWidget):
         self._hold.setSingleShot(True)
         self._hold.timeout.connect(self._reveal)
         self._held = False
+        self._logout_x, self._logout_w = 0.0, 0.0
         self.code = ""
         self.code_in = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
         self.shake = Tween(self, 0.0, self.update)
         self._good = False
+        self.panel = AccountPanel(self)
+        self.ctx.online.changed.connect(self._account_changed)
 
     SECRET = "01092008"
+
+    def logged_in(self) -> bool:
+        return self.ctx.online.logged_in()
+
+    def _account_changed(self) -> None:
+        if self.phase == "card":
+            self.panel.sync()
+            self.update()
+
+    def _take_keyboard(self) -> None:
+        """Typing needs the keyboard: this window may take focus (it is the start screen)."""
+        self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _link_rect(self) -> QRectF:
+        """The small "Log out" line under the card."""
+        top = self.height() / 2 + S(self.CH) / 2 + S(GLOW) + S(4)
+        return QRectF(self.width() / 2 - S(150), top, S(300), S(26))
 
     def start(self) -> None:
         ball = self.ctx.window.ball
         wa = work_area(ball.center)
         m = S(GLOW) + S(14)
-        w, h = S(self.CW) + 2 * m, S(self.CH) + 2 * m + 2 * S(64)     # room under the card for the code bar
+        w, h = S(self.CW) + 2 * m, S(self.CH) + 2 * m + 2 * (S(236) + S(GLOW))    # room under the card for the account panel
         self.setGeometry(wa.center().x() - w // 2, wa.center().y() - h // 2, w, h)
+        self.panel.place()
+        if not self.logged_in():
+            self._take_keyboard()
         self.show()
+        self.panel.sync()
         self.appear.to(1.0, 420)
         self._clock.start()
 
@@ -14423,9 +14978,10 @@ class Welcome(QWidget):
         return lerp(float(S(self.BIG)), float(BD()), f)
 
     # -- the sequence
-    def launch(self) -> None:
-        if self.phase != "card":
+    def launch(self, force: bool = False) -> None:
+        if self.phase != "card" or not (force or self.logged_in()):
             return
+        self.panel.hide()
         self._hold.stop()
         self.code_in.to(0.0, 160)
         self.phase = "fold"
@@ -14473,15 +15029,27 @@ class Welcome(QWidget):
 
     # -- mouse: only the Launch button does anything
     def mouseMoveEvent(self, e) -> None:
-        over = self.phase == "card" and self._button().contains(e.position())
+        over = self.phase == "card" and self.logged_in() and (self._button().contains(e.position())
+                                                              or self._logout_rect().contains(e.position()))
         self.setCursor(Qt.CursorShape.PointingHandCursor if over else Qt.CursorShape.ArrowCursor)
         self.hover.to(1.0 if over else 0.0, 140)
 
     def leaveEvent(self, _e) -> None:
         self.hover.to(0.0, 200)
 
+    def _logout_rect(self) -> QRectF:
+        r = self._link_rect()
+        return QRectF(r.center().x() + self._logout_x, r.top(), self._logout_w, r.height())
+
     def mousePressEvent(self, e) -> None:
-        if (self.phase == "card" and e.button() == Qt.MouseButton.LeftButton
+        if self.phase == "card" and self.logged_in() and e.button() == Qt.MouseButton.LeftButton \
+                and self._logout_rect().contains(e.position()) and self.code_in.target < 0.5:
+            sfx.play("pick")
+            self.ctx.online.log_out()
+            self._take_keyboard()
+            self.panel.sync()
+            return
+        if (self.phase == "card" and self.logged_in() and e.button() == Qt.MouseButton.LeftButton
                 and self._button().contains(e.position())):
             self._down = True
             self._held = False
@@ -14503,7 +15071,7 @@ class Welcome(QWidget):
     def _code_rect(self) -> QRectF:
         w, h = S(232), S(42)
         k = 0.94 + 0.06 * max(0.0, min(1.0, self.appear.level))
-        top = self.height() / 2 + S(self.CH) * k / 2 + S(14)
+        top = self.height() / 2 + S(self.CH) * k / 2 + S(GLOW) + S(38)
         dx = S(10) * math.sin(self.shake.level * math.pi * 6) * (1.0 - self.shake.level)
         return QRectF(self.width() / 2 - w / 2 + dx, top, w, h)
 
@@ -14513,13 +15081,7 @@ class Welcome(QWidget):
         self._held = True
         self.code = ""
         sfx.play("pick")
-        # The bar needs the keyboard: from now on this window may take focus (it is the start screen).
-        self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, False)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.show()
-        self.raise_()
-        self.activateWindow()
+        self._take_keyboard()
         self.setFocus()
         self.code_in.to(1.0, 260)
 
@@ -14656,6 +15218,9 @@ class Welcome(QWidget):
             hv, pr = self.hover.level, self.press.level
             grow = S(2) * hv - S(1.5) * pr
             b = b.adjusted(-grow, -grow * 0.5, grow, grow * 0.5)
+            locked = not self.logged_in()                     # log in first: Launch waits
+            if locked:
+                p.setOpacity(a * show * 0.35)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(ui.accent, 0.22 + 0.10 * hv))
             p.drawRoundedRect(b.adjusted(-S(3), -S(3), S(3), S(3)), S(16), S(16))
@@ -14689,6 +15254,28 @@ class Welcome(QWidget):
         if self.phase == "card":
             p.setOpacity(1.0)
             self._paint_code(p)
+            if self.logged_in():                               # "Name · Log out" under the card
+                r = self._link_rect()
+                p.setOpacity(a)
+                p.setFont(font(11, QFont.Weight.DemiBold))
+                fm = p.fontMetrics()
+                name, sep, out = self.ctx.online.username(), "  ·  ", tr("Log out")
+                total = fm.horizontalAdvance(name + sep + out)
+                x0 = r.center().x() - total / 2
+                p.setPen(QPen(alpha("#FFFFFF", 0.10), 1))
+                p.setBrush(QColor(12, 15, 16, 245))
+                p.drawRoundedRect(QRectF(x0 - S(14), r.top(), total + S(28), r.height()), r.height() / 2, r.height() / 2)
+                p.setPen(QColor(TEXT))
+                p.drawText(QRectF(x0, r.top(), total, r.height()), int(Qt.AlignmentFlag.AlignVCenter), name)
+                p.setPen(QColor(TEXT_DIM))
+                x1 = x0 + fm.horizontalAdvance(name + sep)
+                p.drawText(QRectF(x0 + fm.horizontalAdvance(name), r.top(), total, r.height()),
+                           int(Qt.AlignmentFlag.AlignVCenter), sep)
+                f2 = font(11, QFont.Weight.DemiBold)
+                f2.setUnderline(True)
+                p.setFont(f2)
+                p.drawText(QRectF(x1, r.top(), total, r.height()), int(Qt.AlignmentFlag.AlignVCenter), out)
+                self._logout_x, self._logout_w = x1 - r.center().x(), fm.horizontalAdvance(out)
 
 
 class Body(QWidget):
@@ -14773,6 +15360,26 @@ class Body(QWidget):
             lift = math.sin(now * 5.0 - i * 0.9) * S(2.6) if playing else 0.0
             p.setBrush(alpha(ui.accent, 1.0 if playing else (0.6 if live else 0.25)))
             p.drawEllipse(QPointF(x + i * S(6), base.center().y() + S(4) - lift), S(1.7), S(1.7))
+        name = self.win.ctx.online.username()
+        if name:                                             # who is logged in: a small pill, right of the title
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            tw = p.fontMetrics().horizontalAdvance(name)
+            h = S(20)
+            pill = QRectF(self.width() - S(PAD) - S(34) - tw - S(30), base.center().y() - h / 2, tw + S(30), h)
+            if pill.left() > x + S(26):
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#FFFFFF", 0.06))
+                p.drawRoundedRect(pill, h / 2, h / 2)
+                dot = QPointF(pill.left() + h / 2, pill.center().y())
+                p.setBrush(alpha(ui.accent, 0.9 if not self.win.ctx.online.offline else 0.3))
+                p.drawEllipse(dot, S(7), S(7))
+                p.setPen(QColor("#06110A" if ui.accent.lightnessF() > 0.6 else "#FFFFFF"))
+                p.setFont(font(9, QFont.Weight.ExtraBold))
+                p.drawText(QRectF(dot.x() - S(7), dot.y() - S(7), S(14), S(14)), int(Qt.AlignmentFlag.AlignCenter),
+                           name[0].upper())
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10.5, QFont.Weight.DemiBold))
+                p.drawText(pill.adjusted(S(22), 0, -S(6), 0), int(Qt.AlignmentFlag.AlignVCenter), name)
 
     # drag the card from anywhere that is not a control
     # Hold the card for a moment, then move it. A quick click or flick never moves it; if you press and move
@@ -15710,6 +16317,9 @@ class App(QObject):
         if self.cfg["scale_before_games"]:           # the Games tab had made the menu bigger: back to your size
             self.cfg["scale"] = self.cfg["scale_before_games"]
             self.cfg["scale_before_games"] = 0
+        for key, value in (("glow_power", 2), ("backdrop", 1), ("corners", 0)):     # 1.7: one look for everyone
+            self.cfg[key] = value
+        self.online = Online(self)                   # the account (log in on the welcome screen)
         self.wallet = Wallet(self.cfg)
         self.casino = False                          # inside the casino (Games tab, shown bigger)
         self.casino_ask = None                       # the gambling warning is being shown
@@ -15789,7 +16399,8 @@ class App(QObject):
         self._news = self.cfg["seen_version"] != BUILD and self.cfg["usage_s"] > 0    # updated, not new
         self.cfg["seen_version"] = BUILD
         restarted = "--updated" in sys.argv or "--elevated" in sys.argv
-        if not self.cfg["welcome"] or restarted:
+        selftest = "--selftest" in sys.argv or any(x.startswith("--selftest-update=") for x in sys.argv)
+        if (not self.cfg["welcome"] or restarted) and (self.online.logged_in() or selftest):
             self.window.show_ball()
             QTimer.singleShot(700, self._after_intro)
             return
@@ -15838,6 +16449,8 @@ class App(QObject):
         self._safe("rocket", self.rocket.start)
         self._safe("splash", self.splash.start)
         self._safe("coins", self.wallet.start)
+        if "--selftest" not in sys.argv:
+            self._safe("account", self.online.start)
         self._zoomer = QTimer(self)
         self._zoomer.setInterval(350)
         self._zoomer.timeout.connect(self.game_zoom)
@@ -15896,7 +16509,7 @@ class App(QObject):
         TEMP_TABS.add("new")
         w.tabs_changed()
         if self.welcome is not None:               # the welcome screen is part of the test: press Launch
-            self.welcome.launch()
+            self.welcome.launch(force=True)
             return QTimer.singleShot(3500, self._selftest)
         steps = [w.expand] + [lambda k=k: w.goto(k) for k, _, _ in TABS]
         steps += [lambda t=t: self.preview_theme(t["id"]) for t in extras.THEMES]      # every theme paints
@@ -16454,6 +17067,7 @@ class App(QObject):
             self._usage.stop()
             self.rocket.stop()
             self.wallet.stop()
+            self.online.stop()
             self.updater.stop()
             self.hotkeys.close()
             self.timer_overlay.hide()
