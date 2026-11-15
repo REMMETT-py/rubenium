@@ -1,9 +1,12 @@
-Rubenium 1.5
+Rubenium 1.6
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-- Rocket League: Lantern Lift, Monsoon and the Electric banner are back (no longer Coming soon).
-- "Turn off all swaps" is now "Reset Swaps": every swap goes off and every original file comes back.
-- Automatic repair: a swap you did not choose (left over, from another tool, or the wrong one), or a broken game file, is found and the right file is put back. This runs for everyone, also new users, whenever the game is closed.
-- Rubenium now ships clean original files to fall back on when your own saved copy is missing or damaged.
+- Rocket League: Lantern Lift and Monsoon no longer crash the game (new files for the current game version). If you had them on, the new files are put in automatically.
+- Timer is now at the bottom of the Screen tab. On the PC tab, Tools come after Apps.
+- Ball and ring styles: Classic, Outline, Neon, the new White Gold, and Gold.
+- Long song names get smaller to fit instead of being cut. Medal is no longer picked up as a music app.
+- Badges on the music tab have a little room from the edge.
+- Colours: when a plain colour is picked, the slider rests (knob off the line, no value). When the slider is used, the colour dots are greyed a little.
+- "Use the colours of the music" now just shows how far you are (e.g. 0.4 / 1 hour to unlock).

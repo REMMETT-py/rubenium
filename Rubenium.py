@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.5 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.6 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1423,8 +1423,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.5"         # the version people see
-BUILD = "2026.11.15.3"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "1.6"         # the version people see
+BUILD = "2026.11.15.4"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -2359,6 +2359,14 @@ FR = {
     'Coming soon swaps are back: Lantern Lift, Monsoon and Electric banner': 'Les swaps « Bientôt » sont de retour : Lantern Lift, Monsoon et la bannière Electric',
     'Turn off all swaps is now Reset Swaps: it puts every original file back': 'Désactiver tous les swaps devient Réinitialiser les swaps : chaque fichier d’origine revient',
     'Wrong, left-over or broken swap files are found and fixed automatically': 'Les fichiers de swap incorrects, oubliés ou abîmés sont détectés et réparés automatiquement',
+    # 1.6
+    '{x} / 1 hour to unlock': '{x} / 1 heure pour débloquer',
+    'White Gold': 'Or blanc',
+    'Lantern Lift and Monsoon fixed: they no longer crash the game': 'Lantern Lift et Monsoon réparés : le jeu ne plante plus',
+    'Timer moved to the bottom of the Screen tab': 'Le chrono est maintenant en bas de l’onglet Écran',
+    'New ball and ring: White Gold. Neon is now number 3': 'Nouvelle bulle et anneau : Or blanc. Néon passe en 3e',
+    'Long song names get smaller instead of being cut': 'Les titres longs rétrécissent au lieu d’être coupés',
+    'Medal is no longer picked up as a music app': 'Medal n’est plus pris pour une appli de musique',
 }
 
 
@@ -2954,6 +2962,8 @@ class Slider(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         x = m + w * self._shown.level
         if self.rainbow:
+            if getattr(self, "parked", False) and not self._drag:
+                p.setOpacity(p.opacity() * 0.6)
             g = QLinearGradient(track.topLeft(), track.topRight())
             for i in range(7):
                 g.setColorAt(i / 6, QColor.fromHsvF(min(0.999, i / 6), 0.9, 1.0))
@@ -2976,6 +2986,11 @@ class Slider(QWidget):
             mx = m + w * self._frac(mark)
             p.setBrush(alpha("#FFFFFF", 0.55 if abs(mark - self._value) < 1e-6 else 0.22))
             p.drawEllipse(QPointF(mx, cy + th / 2 + S(4)), S(1.3), S(1.3))
+        if getattr(self, "parked", False) and not self._drag:   # a plain colour is in use: knob rests off the line
+            p.setPen(QPen(alpha("#FFFFFF", 0.55), S(1.3)))
+            p.setBrush(QColor(14, 17, 18))
+            p.drawEllipse(QPointF(x, cy + S(7)), S(3.8), S(3.8))
+            return
         kr = S(5.5) + self._hover.level * S(1.2) + (S(1) if self._drag else 0)
         p.setBrush(QColor("#FFFFFF"))
         p.drawEllipse(QPointF(x, cy), kr, kr)
@@ -3048,6 +3063,7 @@ class Swatches(QWidget):
         super().__init__(parent)
         self._colors = colors
         self._current = current.upper()
+        self.resting = False                  # the slider is in use: dots greyed a little (still clickable)
         self._per_row = per_row or len(colors)
         rows = (len(colors) + self._per_row - 1) // self._per_row
         self.setFixedHeight(S(26) * rows)
@@ -3079,6 +3095,8 @@ class Swatches(QWidget):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(AA)
+        if self.resting:
+            p.setOpacity(0.4)
         for i, c in enumerate(self._colors):
             centre = self._centre(i)
             if c.upper() == self._current:
@@ -3097,9 +3115,11 @@ class Label(QWidget):
     """Painted label. Single line elides; pass wrap_w to wrap at a fixed width."""
 
     def __init__(self, text: str = "", px: float = 12, color: str = TEXT, bold: bool = False,
-                 align=Qt.AlignmentFlag.AlignLeft, wrap_w: int = 0, weight=None, parent=None) -> None:
+                 align=Qt.AlignmentFlag.AlignLeft, wrap_w: int = 0, weight=None, parent=None, shrink: float = 0) -> None:
         super().__init__(parent)
-        self._font = font(px, weight or (QFont.Weight.Bold if bold else QFont.Weight.Normal))
+        self._px, self._shrink = px, shrink          # shrink: smallest size a long single line may shrink to
+        self._weight = weight or (QFont.Weight.Bold if bold else QFont.Weight.Normal)
+        self._font = font(px, self._weight)
         self._color = QColor(color)
         self._align = align
         self._wrap_w = wrap_w
@@ -3149,6 +3169,11 @@ class Label(QWidget):
         if self._wrap_w:
             p.drawText(self.rect(), int(self._align | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), self._text)
         else:
+            if self._shrink and p.fontMetrics().horizontalAdvance(self._text) > self.width():
+                px = self._px                      # smaller until it fits, before ever cutting it with "…"
+                while px > self._shrink and p.fontMetrics().horizontalAdvance(self._text) > self.width():
+                    px = max(self._shrink, px - 0.5)
+                    p.setFont(font(px, self._weight))
             text = p.fontMetrics().elidedText(self._text, Qt.TextElideMode.ElideRight, self.width())
             p.drawText(self.rect(), int(self._align | Qt.AlignmentFlag.AlignVCenter), text)
 
@@ -3658,6 +3683,13 @@ class SliderRow(QWidget):
         self.slider.set_value(v)
         self._val.set_text(self._fmt(self.slider.value()))
 
+    def set_parked(self, on: bool) -> None:
+        """A plain colour is picked instead: the knob rests off the line and the value is hidden."""
+        self.slider.parked = on
+        self._val.setVisible(True)
+        self._val.set_color(QColor(0, 0, 0, 0) if on else QColor(TEXT_DIM))
+        self.slider.update()
+
 
 def notice(icon: str, title: str, text: str, width: int, button: Optional[QWidget] = None) -> QWidget:
     """Designed explained state: used instead of ever showing a dead control."""
@@ -3743,6 +3775,15 @@ APP_NAMES = [("spotify", "Spotify"), ("applemusic", "Apple Music"), ("itunes", "
              ("musicbee", "MusicBee"), ("aimp", "AIMP"), ("winamp", "Winamp"), ("zunemusic", "Media Player"),
              ("wmplayer", "Media Player"), ("mediaplayer", "Media Player"), ("plex", "Plex"), ("cider", "Cider"),
              ("discord", "Discord")]
+
+
+# Apps that report "media" to Windows but are not music players: never shown or used on the music tab.
+BLOCKED_SOURCES = ("medal",)
+
+
+def blocked_source(app_id: str) -> bool:
+    low = (app_id or "").lower()
+    return any(word in low for word in BLOCKED_SOURCES)
 
 
 def pretty_source(app_id: str) -> str:
@@ -3901,7 +3942,7 @@ class WindowsBackend:
 
     def _sessions(self) -> list:
         try:
-            return list(self._manager.get_sessions())
+            return [s for s in self._manager.get_sessions() if not blocked_source(s.source_app_user_model_id or "")]
         except Exception:  # noqa: BLE001
             return []
 
@@ -3927,6 +3968,8 @@ class WindowsBackend:
         current = None
         try:
             current = self._manager.get_current_session()
+            if current is not None and blocked_source(current.source_app_user_model_id or ""):
+                current = None
         except Exception:  # noqa: BLE001
             pass
         if current is not None and playing(current):
@@ -4977,11 +5020,12 @@ THEMES = [
 ]
 # Small extras that also unlock with time: the look of the R and of the song ring on the ball.
 R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="outline", name="Outline", hours=6),
-            dict(id="echo", name="Echo", hours=24), dict(id="neon", name="Neon", hours=60),
+            dict(id="neon", name="Neon", hours=24), dict(id="whitegold", name="White Gold", hours=60),
             dict(id="gold", name="Gold", hours=100)]
 RING_STYLES = [dict(id="dots", name="Dots", hours=0), dict(id="line", name="Line", hours=12),
-               dict(id="comet", name="Comet", hours=48), dict(id="neon", name="Neon", hours=90),
+               dict(id="neon", name="Neon", hours=48), dict(id="whitegold", name="White Gold", hours=90),
                dict(id="gold", name="Gold", hours=150)]
+RETIRED_STYLES = {"echo": "neon", "comet": "neon"}      # 1.6: styles that were removed, and what owners get
 SECOND_COLOUR_HOURS = 24
 
 
@@ -5034,6 +5078,18 @@ def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now:
         p.setPen(pen)
         p.setBrush(QColor("#0A0D0E"))
         p.drawPath(path.translated(-step * 0.5, -step * 0.5))
+    elif style == "whitegold":                         # a solid white R with a thin gold edge
+        g = QLinearGradient(box.topLeft(), box.bottomRight())
+        g.setColorAt(0.3, QColor("#E8C26A"))
+        g.setColorAt(0.7, QColor("#B8862B"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(0, 0, 0, 60))
+        p.drawPath(path.translated(0, d * 0.02))
+        pen = QPen(g, max(1.0, d * 0.02))
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawPath(path)
     elif style == "neon":                              # a glowing tube in your colour with a white-hot core
         for w, a in ((d * 0.10, 0.10), (d * 0.065, 0.20), (d * 0.04, 0.45)):
             pen = QPen(alpha(accent, a), w)
@@ -5088,6 +5144,19 @@ def paint_ring(p: QPainter, ring: QRectF, style: str, frac: float, accent: QColo
     if style in ("line", "dash", "dots"):
         p.setPen(ring_pen(style, accent, width))
         p.drawArc(ring, 90 * 16, span)
+        return
+    if style == "whitegold":                             # a white band edged in gold, with a pearl head
+        pen = QPen(QColor("#C9A04A"), width * 1.45)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(pen)
+        p.drawArc(ring, 90 * 16, span)
+        pen = QPen(QColor("#FFFFFF"), width * 0.95)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(pen)
+        p.drawArc(ring, 90 * 16, span)
+        p.setPen(QPen(QColor("#C9A04A"), max(1.0, width * 0.5)))
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawEllipse(head, width * 1.35, width * 1.35)
         return
     if style == "neon":                                  # glowing tube with a white-hot core and a bright head
         for w, a in ((width * 3.6, 0.10), (width * 2.3, 0.22)):
@@ -5698,6 +5767,11 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("1.6", ["Lantern Lift and Monsoon fixed: they no longer crash the game",
+             "Timer moved to the bottom of the Screen tab",
+             "New ball and ring: White Gold. Neon is now number 3",
+             "Long song names get smaller instead of being cut",
+             "Medal is no longer picked up as a music app"]),
     ("1.5", ["Coming soon swaps are back: Lantern Lift, Monsoon and Electric banner",
              "Turn off all swaps is now Reset Swaps: it puts every original file back",
              "Wrong, left-over or broken swap files are found and fixed automatically"]),
@@ -5814,7 +5888,10 @@ RL_EXE = "rocketleague.exe"
 # Swap files that were in an earlier version and are gone: {hash: game file}. If one is still in the game
 # folder it is recognised and the original is put back (see RocketSwaps.needs_repair).
 RETIRED = {"f1cb440607e0dd4cabfd155b71c29ad444d2d44b7322251455b3f1e1ea30a9fd": "playerBanner_RLShield_SF.upk",
-           "4a2c413d16f1683509728f38604bcd8a453fa07b6325ebb84b14a927a712be27": "skin_grain_stripes_SF.upk"}
+           "4a2c413d16f1683509728f38604bcd8a453fa07b6325ebb84b14a927a712be27": "skin_grain_stripes_SF.upk",
+           # 1.6: Lantern Lift and Monsoon from an older game version (crashed the game): replaced automatically
+           "ed71a46b22a8f4608e27a57502e22f569b4c1f661ba9e130faf720df2742bdfd": "explosion_Dragon_SF.upk",
+           "ed814c9961159e70f1dcef48755cdb54e455fee66110b0ef6e19e05662617827": "explosion_Dragon_SF.upk"}
 
 # Clean game files shipped with the app in swaps/_originals: used to put a game file back when the player's own
 # saved copy is missing or unusable. Only files checked to be untouched originals are listed (and a shipped
@@ -7437,6 +7514,10 @@ class Wallet(QObject):
             base = self._blank()
             base.update(data)
             base["coins"] = max(0, int(base["coins"]))
+            for old, new in extras.RETIRED_STYLES.items():          # removed styles: owners get the new one
+                for kind in ("r", "ring"):
+                    if f"{kind}:{old}" in base["owned"] and f"{kind}:{new}" not in base["owned"]:
+                        base["owned"].append(f"{kind}:{new}")
             base["owned"] = [str(i) for i in base["owned"] if str(i) in CATALOG]
             base["inv"] = [str(i) for i in base["inv"] if self._valid_badge(str(i))]
             base["keys"] = max(0, min(KEY_MAX, int(base["keys"])))
@@ -8370,7 +8451,7 @@ class HomePage(Page):
         self.art = ArtWidget(88)
         info = vbox(spacing=1)
         top = hbox(spacing=6)
-        self.title = Label("", 15, bold=True)
+        self.title = Label("", 15, bold=True, shrink=10.5)         # long names get smaller instead of "…"
         self.title.setFixedHeight(S(22))
         self.chip = Button("", "quiet", 20)
         self.chip.setToolTip(tr("Click to choose the music app"))
@@ -8490,7 +8571,7 @@ class HomePage(Page):
         if fl.isVisible() or fl.fade > 0:
             fl.fit()
             y = self.title.mapTo(self, QPoint(0, 0)).y() + (self.title.height() - fl.height()) // 2
-            fl.move(self.W - fl.width(), max(0, y))
+            fl.move(self.W - fl.width() - S(6), max(0, y))     # a little room from the edge
             fl.raise_()
             fl.update()
 
@@ -8911,6 +8992,7 @@ class CrosshairPage(Page):
         self.hue.slider.rainbow = True
         self.hue.changed.connect(self._hue)
         lay.addWidget(self.hue)
+        self._colour_mode()
 
         lay.addWidget(heading(tr("Shape")))
         self.rows: dict = {}
@@ -9025,10 +9107,18 @@ class CrosshairPage(Page):
         self.ctx.crosshair.refresh()
         self._sync()
 
+    def _colour_mode(self) -> None:
+        """A dot colour or the slider: one or the other, and it is clear which one is in use."""
+        preset = (self.ctx.cfg["crosshair"]["color"] or "").upper() in [c.upper() for c in XH_COLORS]
+        self.sw.resting = not preset
+        self.sw.update()
+        self.hue.set_parked(preset)
+
     def _set(self, key: str, value) -> None:
         self.ctx.cfg["crosshair"][key] = value
         if key == "color":
             self.sw.set_current(value)
+            self._colour_mode()
         self._apply()
 
     def _hue(self, v: float) -> None:
@@ -10068,7 +10158,8 @@ class HueLine(QWidget):
         for i in range(13):
             g.setColorAt(i / 12, QColor.fromHsvF(min(0.999, i / 12), self.SAT, self.VAL))
         off = self.dim or self.locked
-        p.setOpacity(0.16 if self.locked else (0.28 if self.dim else 1.0))
+        parked = not self.knob_on and not off            # a plain colour is in use: the line rests
+        p.setOpacity(0.16 if self.locked else (0.28 if self.dim else (0.6 if parked else 1.0)))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(g)
         p.drawRoundedRect(bar, bar.height() / 2, bar.height() / 2)
@@ -10099,9 +10190,14 @@ class HueLine(QWidget):
             p.setPen(QColor(TEXT_DIM))
             p.drawText(pill.adjusted(S(22), 0, -S(8), 0), int(Qt.AlignmentFlag.AlignCenter), text)
             return
-        if off or not self.knob_on:
+        if off:
             return
         x = bar.left() + bar.width() * self._knob.level
+        if parked:                                       # the knob sits just off the line, empty: not in use
+            p.setPen(QPen(alpha("#FFFFFF", 0.55), S(1.4)))
+            p.setBrush(QColor(14, 17, 18))
+            p.drawEllipse(QPointF(x, bar.bottom() + S(4.5)), S(4.2), S(4.2))
+            return
         c = QPointF(x, bar.center().y())
         p.setPen(QPen(QColor("#FFFFFF"), S(2)))
         p.setBrush(QColor.fromHsvF(max(0.0, min(0.999, self._knob.level)), self.SAT, self.VAL))
@@ -10228,7 +10324,8 @@ class ColourRow(QWidget):
             owned = wallet.owns(f"{self.kind}:{ident}")
             col = QColor(hexa)
             rad = S(5) * (1.0 - t) if i > 1 else S(5)
-            p.setOpacity(base * (1.0 if owned else 0.9))
+            resting = self.fused and i <= 1 and not plain and not self.dim     # the line is in use: greyed a bit
+            p.setOpacity(base * (1.0 if owned else 0.9) * (0.4 if resting else 1.0))
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(col if owned else alpha(col, 0.20))
             p.drawRoundedRect(r, rad, rad)
@@ -10354,8 +10451,10 @@ class ShopPage(Page):
 
     def _music_text(self) -> None:
         wait = self.ctx.wallet.music_wait()
-        self.music_wait.set_text("" if not wait else tr("Opens after 1 hour with Rubenium: {n} min left",
-                                                        n=max(1, (wait + 59) // 60)))
+        done = max(0.0, (3600 - wait) / 3600)
+        hours = f"{min(0.9, done):.1f}"
+        self.music_wait.set_text("" if not wait else tr("{x} / 1 hour to unlock",
+                                                        x=hours.replace(".", ",") if lang() == "fr" else hours))
         self.music_wait.setVisible(bool(wait))
         self.t_music.setEnabled(not wait)
 
@@ -13554,19 +13653,19 @@ class Combined(Page):
 
 class ScreenPage(Combined):
     key = "crosshair"
-    parts = ((CrosshairPage, "Crosshair"), (DisplayPage, "Display"))
+    parts = ((CrosshairPage, "Crosshair"), (DisplayPage, "Display"), (TimersPage, "Timer"))
 
 
 class PcPage(Combined):
     key = "perf"
-    parts = ((PerfPage, "Stats"), (ToolsPage, "Tools"), (LauncherPage, "Apps"))
+    parts = ((PerfPage, "Stats"), (LauncherPage, "Apps"), (ToolsPage, "Tools"))
 
 
 PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": ScreenPage, "rl": RocketPage, "perf": PcPage,
-         "timer": TimersPage, "games": GamesPage, "themes": ShopPage, "new": NewsPage, "settings": SettingsPage}
+         "games": GamesPage, "themes": ShopPage, "new": NewsPage, "settings": SettingsPage}
 # Fixed order: music first, then what you use in a game, then the PC, then fun and looks, settings last.
 TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", "display", "Screen"),
-        ("rl", "rocket", "RL SWAP"), ("perf", "perf", "PC"), ("timer", "timer", "Timer"),
+        ("rl", "rocket", "RL SWAP"), ("perf", "perf", "PC"),
         ("games", "dice", "Games"), ("themes", "gem", "Shop"), ("new", "spark", "Updates"),
         ("settings", "cog", "Settings")]
 
@@ -15993,6 +16092,8 @@ class App(QObject):
     def _wear_only_owned(self) -> None:
         """At start: anything worn that is not really owned (tried in test mode, or edited in) comes off."""
         w, cfg = self.wallet, self.cfg
+        for key in ("ball_style", "ring_style"):                   # a removed style is swapped for its new one
+            cfg[key] = extras.RETIRED_STYLES.get(cfg[key], cfg[key])
         if not w.really_owns(f"theme:{cfg['theme']}"):
             cfg["theme"] = "clean"
         if not w.really_owns(f"r:{cfg['ball_style']}"):
