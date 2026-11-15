@@ -15,6 +15,7 @@ from PyQt6.QtGui import QColor, QFont, QGuiApplication, QIcon, QImage, QPainter,
 from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from . import win
+from .econ import Econ
 from .online import Online
 from .wallet import COLOURS, Wallet
 from .core import BUILD, APP_NAME, ACCENT_DEFAULT, Config, alpha, apply_look, set_lang, sfx, setup_logging, tr, ui
@@ -116,6 +117,7 @@ class App(QObject):
         for key, value in (("glow_power", 2), ("backdrop", 1), ("corners", 0)):     # 1.7: one look for everyone
             self.cfg[key] = value
         self.online = Online(self)                   # the account (log in on the welcome screen)
+        self.econ = Econ(self)                       # coins, keys and items as the server has them
         self.wallet = Wallet(self.cfg)
         self.casino = False                          # inside the casino (Games tab, shown bigger)
         self.casino_ask = None                       # the gambling warning is being shown
@@ -247,6 +249,7 @@ class App(QObject):
         self._safe("coins", self.wallet.start)
         if "--selftest" not in sys.argv:
             self._safe("account", self.online.start)
+            self._safe("economy", self.econ.start)
         self._zoomer = QTimer(self)
         self._zoomer.setInterval(350)
         self._zoomer.timeout.connect(self.game_zoom)

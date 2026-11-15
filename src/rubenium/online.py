@@ -114,6 +114,7 @@ def _unseal(data: bytes) -> bytes:
 
 class Online(QObject):
     changed = pyqtSignal()                    # logged in / out, or the profile changed
+    beat = pyqtSignal(dict)                   # the server's answer to a heartbeat (balance, time)
     answered = pyqtSignal(str, bool, str)     # what ("login" | "signup" | "free:<name>"), ok, message key
     _back = pyqtSignal(object)                # run on the main thread
 
@@ -280,14 +281,14 @@ class Online(QObject):
         """Call a server function as the logged-in account. Off the main thread only."""
         return _request("/rest/v1/rpc/" + name, args, self._token())
 
-    def ask(self, fn: str, args: dict, done) -> None:
+    def ask(self, fn: str, args: dict, done, raw: bool = False) -> None:
         """Call a server function for the logged-in account; `done(ok, answer or message)` runs on the main thread."""
         def work():
             try:
                 ans = self.rpc(fn, args)
                 self._back.emit(lambda: done(True, ans))
             except ApiError as err:
-                msg = explain(err)
+                msg = err.key if (raw and err.key != "offline") else explain(err)
                 self._back.emit(lambda: done(False, msg))
             except Exception:  # noqa: BLE001
                 log.exception("%s failed", fn)
@@ -333,3 +334,4 @@ class Online(QObject):
         if before != (self.minutes, self.elsewhere, False, self.username()):
             self._save()
             self.changed.emit()
+        self.beat.emit(ans)

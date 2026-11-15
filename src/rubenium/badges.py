@@ -323,6 +323,87 @@ def _build(ident: str) -> QPainterPath:
                    (0.7, 0.84), (0.7, 1), (-0.7, 1), (-0.7, 0.84), (-0.6, 0.84), (-0.6, 0.6), (-0.12, 0), (-0.6, -0.6),
                    (-0.6, -0.84), (-0.7, -0.84))
         return glass.subtracted(_p((-0.44, -0.72), (0.44, -0.72), (0.3, -0.5), (-0.3, -0.5)))
+    if ident == "pickaxe":
+        head = _P()
+        head.moveTo(-0.95, -0.3)
+        head.cubicTo(-0.45, -1.0, 0.45, -1.0, 0.95, -0.3)
+        head.cubicTo(0.4, -0.66, -0.4, -0.66, -0.95, -0.3)
+        return _u(head, _ln([(0, -0.72), (0, 0.98)], 0.17), _r(-0.17, -0.82, 0.34, 0.2, 0.05))
+    if ident == "quill":
+        path.moveTo(0.9, -0.98)
+        path.cubicTo(-0.1, -0.9, -0.6, -0.2, -0.5, 0.45)
+        path.cubicTo(0.15, 0.4, 0.85, -0.2, 0.9, -0.98)
+        nib = _p((-0.5, 0.45), (-0.3, 0.5), (-0.92, 0.98), (-0.56, 0.3))
+        return _u(path.subtracted(_ln([(0.72, -0.8), (-0.45, 0.4)], 0.07)), nib, _ln([(-0.95, 0.98), (-0.2, 0.98)], 0.07))
+    if ident == "bigplanet":
+        ball = _c(0, 0, 0.88)
+        cut = _u(_ln([(-0.95, -0.28), (-0.2, -0.42), (0.4, -0.2), (0.95, -0.34)], 0.11, curve=True),
+                 _ln([(-0.95, 0.3), (-0.3, 0.12), (0.3, 0.42), (0.95, 0.2)], 0.11, curve=True),
+                 _c(0.34, 0.02, 0.15, 0.1))
+        return ball.subtracted(cut)
+    if ident == "shootingstar":
+        star = QTransform().translate(K * 0.38, -K * 0.38).scale(0.58, 0.58).map(_star(5, 1.0, 0.42))
+        return _u(star, _ln([(-0.05, 0.05), (-0.95, 0.95)], 0.13), _ln([(0.1, 0.4), (-0.5, 0.98)], 0.09),
+                  _ln([(-0.4, -0.1), (-0.98, 0.5)], 0.09))
+    if ident == "goldenstar":
+        inner = QTransform().scale(0.42, 0.42).map(_star(5, 1.0, 0.42))
+        ring = _star(5, 1.0, 0.5).subtracted(QTransform().scale(0.74, 0.74).map(_star(5, 1.0, 0.5)))
+        return _u(ring, inner)
+    if ident == "sunburst":
+        return _star(12, 1.0, 0.62).subtracted(_c(0, 0, 0.36)).united(_c(0, 0, 0.2))
+    if ident == "galaxy":
+        parts = [_c(0, 0, 0.2)]
+        for k in range(3):
+            a = math.radians(120 * k)
+            pts = []
+            for n in range(4):
+                t = n / 3
+                ang, rad = a + t * 2.6, 0.22 + t * 0.72
+                pts.append((rad * math.cos(ang), rad * math.sin(ang)))
+            parts.append(_ln(pts, 0.2, curve=True))
+            parts.append(_c(0.95 * math.cos(a + 3.3), 0.95 * math.sin(a + 3.3), 0.07))
+        return _u(*parts)
+    if ident == "phoenix":
+        body = _P()
+        body.moveTo(0, -0.55)
+        body.cubicTo(0.22, -0.3, 0.2, 0.35, 0, 0.98)
+        body.cubicTo(-0.2, 0.35, -0.22, -0.3, 0, -0.55)
+        wings = []
+        for sgn in (-1, 1):
+            w = _P()
+            w.moveTo(0, -0.1)
+            w.cubicTo(sgn * 0.4, -0.5, sgn * 0.7, -0.95, sgn * 0.98, -0.9)
+            w.cubicTo(sgn * 0.95, -0.45, sgn * 0.8, -0.2, sgn * 0.98, 0.05)
+            w.cubicTo(sgn * 0.7, 0.0, sgn * 0.62, 0.15, sgn * 0.7, 0.45)
+            w.cubicTo(sgn * 0.42, 0.3, sgn * 0.2, 0.3, 0, 0.4)
+            w.closeSubpath()
+            wings.append(w)
+        return _u(body, _c(0, -0.7, 0.17), _p((0, -0.98), (0.1, -0.8), (-0.1, -0.8)), *wings)
+    if ident == "glitch":
+        gem = _p((0, -0.98), (0.8, 0), (0, 0.98), (-0.8, 0))
+        top = gem.intersected(_r(-1.2, -1.0, 2.4, 0.62))
+        mid = gem.intersected(_r(-1.2, -0.3, 2.4, 0.5))
+        low = gem.intersected(_r(-1.2, 0.3, 2.4, 0.7))
+        shift = QTransform().translate(K * 0.2, 0)
+        back = QTransform().translate(-K * 0.16, 0)
+        return _u(top, shift.map(mid), back.map(low), _r(-0.98, -0.34, 0.3, 0.07), _r(0.62, 0.2, 0.36, 0.07))
+    if ident == "crystal":
+        heart = _heart()
+        cuts = _u(_ln([(0, -0.38), (0, 0.9)], 0.06), _ln([(-0.92, -0.25), (0, 0.1), (0.92, -0.25)], 0.06),
+                  _ln([(-0.5, -0.82), (0, 0.1), (0.5, -0.82)], 0.06))
+        return heart.subtracted(cuts)
+    if ident == "dragon":
+        eye = _P()
+        eye.moveTo(-0.98, 0.1)
+        eye.cubicTo(-0.45, -0.62, 0.45, -0.62, 0.98, 0.1)
+        eye.cubicTo(0.45, 0.72, -0.45, 0.72, -0.98, 0.1)
+        slit = _P()
+        slit.moveTo(0, -0.42)
+        slit.cubicTo(0.2, -0.1, 0.2, 0.3, 0, 0.6)
+        slit.cubicTo(-0.2, 0.3, -0.2, -0.1, 0, -0.42)
+        horns = _u(_p((-0.75, -0.42), (-0.5, -0.98), (-0.35, -0.5)), _p((0.75, -0.42), (0.5, -0.98), (0.35, -0.5)),
+                   _p((-0.12, -0.6), (0, -0.98), (0.12, -0.6)))
+        return _u(eye.subtracted(_c(0, 0.08, 0.42)), slit, horns)
     return _c(0, 0, 0.8)
 
 
@@ -445,4 +526,90 @@ def paint_badge(p: QPainter, ident: str, rect: QRectF, var: str = "grey", now: f
         aura.setColorAt(1.0, QColor(220, 235, 255, 0))
         p.setBrush(aura)
         p.drawEllipse(rect.center(), u * 1.25, u * 1.25)
+    p.restore()
+
+
+# --------------------------------------------------------------------------- #
+# Online items: "badge:<design>:<colour>" as the server names them
+# --------------------------------------------------------------------------- #
+EXOTIC = ("galaxy", "phoenix", "glitch", "crystal", "dragon")
+SHAPE_OF = {"octagon": "gem", "saturn": "planet", "planet": "bigplanet"}      # server design -> drawing
+COLOUR_OF = {"white": "titanium"}                                              # server colour -> drawing
+
+
+def badge_parts(item: str) -> tuple:
+    parts = (item or "").split(":")
+    return (parts[1], parts[2]) if len(parts) == 3 and parts[0] == "badge" else ("star", "grey")
+
+
+def item_animated(item: str) -> bool:
+    base, var = badge_parts(item)
+    return base in EXOTIC or var in ("black", "white", "gold")
+
+
+def paint_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: bool = True, dim: float = 1.0) -> None:
+    """Draw a server badge. The five Exotic designs get a turning light frame and drifting sparks; their first
+    form ("prime") shimmers through every colour."""
+    base, var = badge_parts(item)
+    shape = SHAPE_OF.get(base, base)
+    if base not in EXOTIC:
+        return paint_badge(p, shape, rect, COLOUR_OF.get(var, var), now, effects, dim)
+    u = min(rect.width(), rect.height()) / 2
+    c = rect.center()
+    lit = effects and dim >= 1.0
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    if lit:                                                   # a ring of light turning around it
+        from PyQt6.QtGui import QConicalGradient
+        g = QConicalGradient(c, (now * 70) % 360)
+        cols = ("#FF5CC8", "#FFC94D", "#4FE3FF", "#B36BFF", "#FF5CC8") if var == "prime" else \
+            {"gold": ("#FFF1C2", "#B8862B", "#FFE08A", "#8A6A22", "#FFF1C2"),
+             "white": ("#FFFFFF", "#9FB4C8", "#FFFFFF", "#C8D6E4", "#FFFFFF"),
+             "black": ("#FFFFFF", "#16191C", "#8A93A0", "#16191C", "#FFFFFF")}[var if var in ("gold", "white", "black") else "gold"]
+        for i, col in enumerate(cols):
+            g.setColorAt(i / (len(cols) - 1), QColor(col))
+        p.setPen(QPen(g, max(1.0, u * 0.09)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(c, u * 1.2, u * 1.2)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k in range(5):                                    # sparks drifting around the ring
+            ang = now * (0.9 + 0.13 * k) + k * 1.257
+            rad = u * (1.2 + 0.1 * math.sin(now * 2 + k))
+            sp = QColor(cols[k % len(cols)])
+            sp.setAlphaF(0.55 + 0.45 * math.sin(now * 3 + k * 2))
+            p.setBrush(sp)
+            p.drawEllipse(QPointF(c.x() + rad * math.cos(ang), c.y() + rad * math.sin(ang)), u * 0.07, u * 0.07)
+    p.restore()
+    inner = QRectF(c.x() - u * 0.82, c.y() - u * 0.82, u * 1.64, u * 1.64)
+    if var != "prime":
+        return paint_badge(p, shape, inner, COLOUR_OF.get(var, var), now, effects, dim)
+    path = badge_path(shape, inner)
+    box = path.boundingRect()
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setOpacity(p.opacity() * dim)
+    hue = (now * 0.12) % 1.0 if lit else 0.86
+    g = QLinearGradient(box.topLeft(), box.bottomRight())
+    for i in range(4):
+        g.setColorAt(i / 3, QColor.fromHsvF((hue + i * 0.16) % 1.0, 0.62, 1.0))
+    if lit:
+        halo = QColor.fromHsvF(hue, 0.7, 1.0)
+        halo.setAlphaF(0.22)
+        pen = QPen(halo, u * 0.3)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(g)
+    p.drawPath(path)
+    if lit:
+        t = (now % 2.4) / 2.4
+        x = box.left() - box.width() + t * box.width() * 3
+        band = QLinearGradient(QPointF(x, box.top()), QPointF(x + box.width() * 0.6, box.bottom()))
+        band.setColorAt(0.0, QColor(255, 255, 255, 0))
+        band.setColorAt(0.5, QColor(255, 255, 255, 200))
+        band.setColorAt(1.0, QColor(255, 255, 255, 0))
+        p.setClipPath(path)
+        p.fillRect(box.adjusted(-2, -2, 2, 2), band)
     p.restore()
