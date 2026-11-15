@@ -30,3 +30,13 @@ Choices made where the request left room, newest last.
 - Quit is a small link at the bottom of Settings (with a confirmation) and stays in the tray menu.
 - Lantern Lift, Monsoon and Electric banner are gone for good; every version of their files is still recognised
   so the original game file is restored for anyone who had one on.
+
+## 2.0 (the online economy)
+- Hard reset: every account starts at 500 coins and 3 keys (006_fresh_start.sql). No import of old progress.
+- Progression: 3 balls (Classic 0 h, White Gold 30 h, Gold 100 h), 3 rings (Line 0 h, White Gold 40 h, Gold 125 h),
+  8 themes (0, 2, 12, 20, 55, 75, 150, 200 h). Not tradeable, never sold.
+- Colours of the menu (colour 1, colour 2, the music's colours) are free for everyone.
+- Black / White / Gold badges and the 5 Exotic badges only come from cases (and, later, trading).
+- The casino shows the bet leaving at once and the prize when the animation ends; the server did both already.
+- A round left open (app closed mid-hand) is picked up again the next time that game is started.
+- Not in 2.0 yet: the 10 balls / 10 lines / 5 fonts / shop themes, quests, the minigame, trading, the market.

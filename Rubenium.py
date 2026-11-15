@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.10 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 2.0 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1472,8 +1472,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.10"         # the version people see
-BUILD = "2026.11.15.8"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.0"         # the version people see
+BUILD = "2026.11.15.9"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -1696,7 +1696,8 @@ DEFAULTS: dict = {
     "backdrop": 1,
     "corners": 0,
     "ball_style": "classic",
-    "ring_style": "dots",
+    "ring_style": "line",
+    "casino_warned": False,
     "news_tab": False,
     "welcome": True,
     "sounds": True,
@@ -2177,6 +2178,8 @@ class Online(QObject):
     # -- calls for a logged-in account
     def _token(self) -> str:
         """A valid access token (renewed when it is about to run out). Called off the main thread."""
+        if not self.s.get("refresh_token"):
+            raise ApiError("offline")
         if time.time() > float(self.s.get("expires_at", 0)) - 120:
             try:
                 ans = _request("/auth/v1/token?grant_type=refresh_token", {"refresh_token": self.s["refresh_token"]})
@@ -2401,21 +2404,27 @@ class Econ(QObject):
         if before != (self.coins, self.keys, self.minutes):
             self.changed.emit()
 
-    def call(self, fn: str, args: dict, done=None, once: bool = False) -> None:
+    def adjust(self, coins: int = 0, keys: int = 0) -> None:
+        """Change the balance on screen (a bet leaving, a prize landing): the server already did it for real."""
+        self.coins = max(0, self.coins + int(coins))
+        self.keys = max(0, self.keys + int(keys))
+        self.changed.emit()
+
+    def call(self, fn: str, args: dict, done=None, once: bool = False, hold: bool = False) -> None:
         """Ask the server to do something. `done(ok, answer or message)` runs on the main thread, after the
         balance in the answer was taken. `once` adds an id so a resend can never be done twice."""
         if once:
             args = dict(args, req=uuid.uuid4().hex)
 
         def back(ok: bool, data) -> None:
-            if ok:
+            if ok and not hold:                 # hold: the game shows the result first, then the coins
                 self.absorb(data)
-            else:
+            if not ok:
                 data = ERRORS.get(next((k for k in ERRORS if k in str(data)), ""),
                                   "No internet connection" if data == "offline" else "Something went wrong: try again")
             if done is not None:
                 done(ok, data)
-            if ok:
+            if ok and not hold:
                 self.changed.emit()
         self.online.ask(fn, args, back, raw=True)
 
@@ -3072,6 +3081,88 @@ FR = {
     'Profiles show time played and, soon, badges and play history': "Les profils montrent le temps joué et, bientôt, les badges et l'historique",
     # 1.10
     'Logged in? Rubenium starts by itself after 5 seconds (click the card to start at once)': 'Connecté ? Rubenium démarre tout seul après 5 secondes (clique sur la carte pour démarrer tout de suite)',
+    # 2.0 online economy
+    '1 key for every hour with Rubenium': '1 clé pour chaque heure avec Rubenium',
+    'A case costs coins and 1 key. You earn 1 key for every hour with Rubenium.': 'Une caisse coûte des pièces et 1 clé. Tu gagnes 1 clé par heure avec Rubenium.',
+    'Buy {name} ({rarity}) for {n} coins?': 'Acheter {name} ({rarity}) pour {n} pièces ?',
+    'Coins': 'Pièces',
+    'Collect': 'Récupérer',
+    'Connecting…': 'Connexion…',
+    'Everything unlocked': 'Tout est débloqué',
+    'Free again in {t}': 'Gratuite dans {t}',
+    'Free: ready': 'Gratuite : prête',
+    'GUARANTEED': 'GARANTI',
+    'Log in to open cases': 'Connecte-toi pour ouvrir des caisses',
+    'Log in to see your badges': 'Connecte-toi pour voir tes badges',
+    'Next unlock at {n} h': 'Prochain déblocage à {n} h',
+    'No longer owned': 'Plus possédé',
+    'Not owned': 'Non possédé',
+    'Not ready yet': 'Pas encore prêt',
+    'On show': 'En vitrine',
+    'Once a day: coins, a key or a badge (Standard, sometimes Rare, rarely Special).': 'Une fois par jour : des pièces, une clé ou un badge (Standard, parfois Rare, rarement Spécial).',
+    'Only from cases': 'Seulement dans les caisses',
+    'Open for free': 'Ouvrir gratuitement',
+    'Progression': 'Progression',
+    'Really sell this {rarity} badge? This cannot be undone.': 'Vendre vraiment ce badge {rarity} ? Impossible d’annuler.',
+    'Roll': 'Lancer le dé',
+    'Sell': 'Vendre',
+    'Sell to the vendor for {n} coins': 'Vendre au marchand pour {n} pièces',
+    'Sell {name} for {n} coins?': 'Vendre {name} pour {n} pièces ?',
+    'Unlocks after {n} h with Rubenium': 'Se débloque après {n} h avec Rubenium',
+    'Win if the roll is under {n}': 'Gagné si le dé fait moins de {n}',
+    'You need a key: 1 key for every hour with Rubenium': 'Il te faut une clé : 1 clé par heure avec Rubenium',
+    '{a} to {b} coins': '{a} à {b} pièces',
+    '{n} h played': '{n} h jouées',
+    '{rarity} or better is certain within {n} openings': '{rarity} ou mieux garanti en {n} ouvertures',
+    'Paw Print': 'Patte',
+    'Cherries': 'Cerises',
+    'Music Note': 'Note de musique',
+    'Headphones': 'Casque audio',
+    'Game Controller': 'Manette',
+    'Octagon': 'Octogone',
+    'Lightning Bolt': 'Éclair',
+    'Pickaxe': 'Pioche',
+    'Quill': 'Plume d’écriture',
+    'Saturn': 'Saturne',
+    'Shooting Star': 'Étoile filante',
+    'Golden Star': 'Étoile dorée',
+    'Sunburst Star': 'Étoile solaire',
+    'Galaxy': 'Galaxie',
+    'Phoenix': 'Phénix',
+    'Glitch': 'Glitch',
+    'Crystal Heart': 'Cœur de cristal',
+    'Dragon Eye': 'Œil de dragon',
+    'Prismatic': 'Prismatique',
+    'Standard': 'Standard',
+    'Special': 'Spécial',
+    'Epic': 'Épique',
+    'Exotic': 'Exotique',
+    'Starter Case': 'Caisse Débutant',
+    'Standard Case': 'Caisse Standard',
+    'Premium Case': 'Caisse Premium',
+    'Exotic Vault': 'Coffre Exotique',
+    'Daily Case': 'Caisse du jour',
+    'Cases only': 'Caisses',
+    'Colours': 'Couleurs',
+    'Plain': 'Simple',
+    'This is not for sale': 'Ce n’est pas à vendre',
+    'You already have it': 'Tu l’as déjà',
+    'You do not have this': 'Tu ne l’as pas',
+    'This item is in a trade': 'Cet objet est dans un échange',
+    'This cannot be sold': 'Impossible à vendre',
+    'Bet between 10 and 1 000': 'Mise entre 10 et 1 000',
+    'Finish your round first': 'Termine d’abord ta partie',
+    'Already on show': 'Déjà en vitrine',
+    'Nothing to collect': 'Rien à récupérer',
+    'The online update: coins, keys and items now live on your account': 'La mise à jour en ligne : pièces, clés et objets sont maintenant sur ton compte',
+    'Everyone starts fresh: 500 coins and 3 keys': 'Tout le monde repart de zéro : 500 pièces et 3 clés',
+    'Coins come with time (10 every 15 minutes) and 1 key every hour': 'Les pièces viennent avec le temps (10 toutes les 15 minutes) et 1 clé par heure',
+    'Five rarities: Standard, Rare, Special, Epic, Exotic. 55 badges, 5 of them Exotic': 'Cinq raretés : Standard, Rare, Spécial, Épique, Exotique. 55 badges, dont 5 Exotiques',
+    'Sell badges to the vendor for quick coins': 'Vends des badges au marchand pour des pièces rapides',
+    'Four new cases with their odds shown, and a free daily case': 'Quatre nouvelles caisses avec leurs chances affichées, et une caisse gratuite par jour',
+    'Casino played on the server, with two new games: Dice and Rocket': 'Casino joué sur le serveur, avec deux nouveaux jeux : Dés et Fusée',
+    'Free spin every 3 hours: press Collect to take the prize': 'Tour gratuit toutes les 3 heures : appuie sur Récupérer pour prendre le gain',
+    'Themes, ball and ring now unlock with hours played': 'Thèmes, bulle et anneau se débloquent maintenant avec les heures jouées',
 }
 
 
@@ -5720,28 +5811,27 @@ def _theme(ident, name, hours, glow=0, stars=0, links=0, comets=0, aurora=False,
 THEMES = [
     _theme("clean", "Clean", 0),
     _theme("glow", "Glow", 2, glow=1),
-    _theme("stars", "First Stars", 6, glow=1, stars=14),
-    _theme("starfield", "Starfield", 12, glow=1, stars=34, sparkles=3),
-    _theme("constellation", "Constellation", 24, glow=2, stars=42, links=7, sparkles=4, halo=1.1),
-    _theme("comets", "Comets", 48, glow=2, stars=48, links=8, comets=3, sparkles=5, halo=1.15),
-    _theme("aurora", "Aurora", 72, glow=2, stars=56, links=9, comets=3, aurora=True, sparkles=6, halo=1.2),
-    _theme("nova", "Nova", 100, glow=2, stars=60, links=10, comets=4, aurora=True, gold=0.35, sparkles=7, halo=1.25,
+    _theme("stars", "First Stars", 12, glow=1, stars=14),
+    _theme("starfield", "Starfield", 20, glow=1, stars=34, sparkles=3),
+    _theme("aurora", "Aurora", 55, glow=2, stars=56, links=9, comets=3, aurora=True, sparkles=6, halo=1.2),
+    _theme("nova", "Nova", 75, glow=2, stars=60, links=10, comets=4, aurora=True, gold=0.35, sparkles=7, halo=1.25,
            edge="shine"),
-    _theme("gilded", "Gilded", 150, glow=2, stars=64, links=11, comets=4, aurora=True, gold=0.6, sparkles=9,
-           halo=1.3, edge="gold"),
-    _theme("royal", "Royal", 200, glow=3, stars=68, links=12, comets=5, aurora=True, gold=0.85, sparkles=11,
+    _theme("royal", "Royal", 150, glow=3, stars=68, links=12, comets=5, aurora=True, gold=0.85, sparkles=11,
            halo=1.4, edge="goldshine"),
-    _theme("legend", "Legend", 250, glow=3, stars=76, links=14, comets=6, aurora=True, gold=1.0, sparkles=14,
+    _theme("legend", "Legend", 200, glow=3, stars=76, links=14, comets=6, aurora=True, gold=1.0, sparkles=14,
            halo=1.5, edge="legend"),
 ]
 # Small extras that also unlock with time: the look of the R and of the song ring on the ball.
-R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="outline", name="Outline", hours=6),
-            dict(id="neon", name="Neon", hours=24), dict(id="whitegold", name="White Gold", hours=60),
+R_STYLES = [dict(id="classic", name="Classic", hours=0), dict(id="whitegold", name="White Gold", hours=30),
             dict(id="gold", name="Gold", hours=100)]
-RING_STYLES = [dict(id="dots", name="Dots", hours=0), dict(id="line", name="Line", hours=12),
-               dict(id="neon", name="Neon", hours=48), dict(id="whitegold", name="White Gold", hours=90),
-               dict(id="gold", name="Gold", hours=150)]
-RETIRED_STYLES = {"echo": "neon", "comet": "neon"}      # 1.6: styles that were removed, and what owners get
+RING_STYLES = [dict(id="line", name="Line", hours=0), dict(id="whitegold", name="White Gold", hours=40),
+               dict(id="gold", name="Gold", hours=125)]
+RETIRED_STYLES = {"echo": "classic", "comet": "line", "outline": "classic", "neon": "classic", "dots": "line"}
+# what the server calls each progression unlock (shown on your profile)
+PROG_IDS = {"theme": {"clean": "prog:theme:1", "glow": "prog:theme:2", "stars": "prog:theme:3", "starfield": "prog:theme:4",
+                      "aurora": "prog:theme:5", "nova": "prog:theme:6", "royal": "prog:theme:7", "legend": "prog:theme:8"},
+            "ball_style": {"classic": "prog:ball:0", "whitegold": "prog:ball:2", "gold": "prog:ball:3"},
+            "ring_style": {"line": "prog:ring:0", "whitegold": "prog:ring:2", "gold": "prog:ring:3"}}
 SECOND_COLOUR_HOURS = 24
 
 
@@ -6483,6 +6573,15 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.0", ["The online update: coins, keys and items now live on your account",
+             "Everyone starts fresh: 500 coins and 3 keys",
+             "Coins come with time (10 every 15 minutes) and 1 key every hour",
+             "Five rarities: Standard, Rare, Special, Epic, Exotic. 55 badges, 5 of them Exotic",
+             "Sell badges to the vendor for quick coins",
+             "Four new cases with their odds shown, and a free daily case",
+             "Casino played on the server, with two new games: Dice and Rocket",
+             "Free spin every 3 hours: press Collect to take the prize",
+             "Themes, ball and ring now unlock with hours played"]),
     ("1.10", ["Logged in? Rubenium starts by itself after 5 seconds (click the card to start at once)"]),
     ("1.9", ["Friends: add players by username and see who is online",
              "Profiles show time played and, soon, badges and play history"]),
@@ -7985,28 +8084,9 @@ class TopApps(QObject):
 # ==================================================================================================
 # SECTION: wallet
 # ==================================================================================================
-import base64
-import hashlib
-import hmac
-import json
-import logging
-import math
-import os
-import random
-import threading
-import time
+from PyQt6.QtCore import QObject, QPointF, QRectF, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QPainter, QPen
 
-from PyQt6.QtCore import QObject, QPointF, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF
-
-
-log = logging.getLogger("rubenium.wallet")
-
-DROP_S = 15 * 60            # a coin drop every 15 minutes...
-DROP_COINS = 25             # ...of 25 coins (100 an hour)
-COINS_PER_HOUR = 100
-DAILY_WAIT_S = 20 * 3600    # the free daily spin comes back after 20 hours
-ADMIN_COINS = 999_999
 
 # Sixteen colours, white and black included. White is the free base colour.
 COLOURS = [("white", "White", "#FFFFFF"), ("black", "Black", "#3A3F46"), ("red", "Red", "#FF4B4B"),
@@ -8016,532 +8096,147 @@ COLOURS = [("white", "White", "#FFFFFF"), ("black", "Black", "#3A3F46"), ("red",
            ("purple", "Purple", "#9B5CFF"), ("magenta", "Magenta", "#D94BFF"), ("pink", "Pink", "#FF5CB8"),
            ("rose", "Rose", "#FF6F91")]
 COLOUR_HEX = {ident: hexa for ident, _name, hexa in COLOURS}
-C1_PRICE, C2_PRICE = 100, 100
-MUSIC_S = 3600              # the music's colours open after 1 hour with Rubenium (free, not bought)
-KEY_EVERY = 1000            # a key for every 1 000 coins played in the casino...
-KEY_MAX = 10                # ...and never more than 10 keys at once
 
 # --------------------------------------------------------------------------- #
-# Badges: 50 designs, each in 17 colours of four rarities
+# Badges: 50 designs from Heart (lowest) to Sunburst Star (highest), then the 5 Exotic ones
 # --------------------------------------------------------------------------- #
-BADGES = [("star", "Star"), ("bolt", "Bolt"), ("flame", "Flame"), ("heart", "Heart"), ("sun", "Sun"),
-          ("moon", "Moon"), ("clover", "Clover"), ("drop", "Droplet"), ("leaf", "Leaf"), ("note", "Note"),
-          ("gamepad", "Gamepad"), ("dice", "Dice"), ("ghost", "Ghost"), ("alien", "Alien"), ("mushroom", "Mushroom"),
-          ("cherry", "Cherry"), ("cube", "Cube"), ("headset", "Headset"), ("spade", "Spade"), ("club", "Club"),
-          ("cat", "Cat"), ("paw", "Paw"), ("fish", "Fish"), ("feather", "Feather"), ("wing", "Wing"),
-          ("tree", "Tree"), ("mountain", "Mountain"), ("wave", "Wave"), ("snowflake", "Snowflake"), ("eye", "Eye"),
-          ("sword", "Sword"), ("axe", "Axe"), ("shield", "Shield"), ("skull", "Skull"), ("bomb", "Bomb"),
-          ("crosshair", "Crosshair"), ("target", "Target"), ("shuriken", "Shuriken"), ("trident", "Trident"),
-          ("anchor", "Anchor"),
-          ("crown", "Crown"), ("trophy", "Trophy"), ("diamond", "Diamond"), ("gem", "Gem"), ("rocket", "Rocket ship"),
-          ("planet", "Planet"), ("comet", "Comet"), ("key", "Key"), ("rook", "Rook"), ("hourglass", "Hourglass")]
-BADGE_NAME = dict(BADGES)
-RARITIES = [("basic", "Basic", "#9AA4AD"), ("rare", "Rare", "#4FA8FF"), ("very", "Very rare", "#C77DFF"),
-            ("super", "Super rare", "#E8C26A")]
-RARITY_COLOUR = {k: c for k, _n, c in RARITIES}
-RARITY_NAME = {k: n for k, n, _c in RARITIES}
-# (id, name, rarity, main colour, light colour)
-VARIANTS = [("gold", "Gold", "super", "#E8C26A", "#FFF1C2"),
-            ("titanium", "Titanium White", "very", "#EEF1F4", "#FFFFFF"),
-            ("black", "Black", "very", "#16191C", "#5A626B"),
-            ("lava", "Lava Red", "rare", "#FF3D1F", "#FFB199"),
-            ("purple", "Rich Purple", "rare", "#A43DFF", "#E2B8FF"),
-            ("sky", "Sky Blue", "rare", "#2EC5FF", "#B8EEFF"),
-            ("lime", "Juicy Lime", "rare", "#8CFF2E", "#DDFFB8"),
-            ("pink", "Hot Pink", "rare", "#FF2E9A", "#FFB8DD"),
-            ("beam", "Yellow Beam", "rare", "#FFEE2E", "#FFFBC2"),
-            ("blue", "Blue", "basic", "#4A6FB8", "#7F9DD6"),
-            ("green", "Green", "basic", "#4C8A5A", "#7DB389"),
-            ("red", "Red", "basic", "#A84444", "#CC7676"),
-            ("yellow", "Yellow", "basic", "#B89B42", "#D6BE76"),
-            ("orange", "Orange", "basic", "#B8703A", "#D69B6E"),
-            ("brown", "Brown", "basic", "#7A5A40", "#A0826A"),
-            ("grey", "Grey", "basic", "#7A828A", "#A2A9B0"),
-            ("teal", "Teal", "basic", "#3C8C8A", "#71B3B1")]
-VARIANT = {v[0]: v for v in VARIANTS}
-RARITY_ORDER = {"super": 0, "very": 1, "rare": 2, "basic": 3}
-# Cases: each holds 10 badges. Odds are out of 10 000 for (basic, rare, very rare, super rare).
-CASES = [dict(id="street", name="Street Case", price=200, basic=200, odds=(8200, 1500, 270, 30),
-              colour="#7FA3B8", badges=["star", "bolt", "flame", "heart", "sun", "moon", "clover", "drop", "leaf", "note"]),
-         dict(id="arcade", name="Arcade Case", price=400, basic=300, odds=(8000, 1650, 310, 40),
-              colour="#4FA8FF", badges=["gamepad", "dice", "ghost", "alien", "mushroom", "cherry", "cube", "headset",
-                                        "spade", "club"]),
-         dict(id="wild", name="Wild Case", price=600, basic=400, odds=(7900, 1700, 350, 50),
-              colour="#4CC98A", badges=["cat", "paw", "fish", "feather", "wing", "tree", "mountain", "wave",
-                                        "snowflake", "eye"]),
-         dict(id="warrior", name="Warrior Case", price=900, basic=600, odds=(7700, 1850, 390, 60),
-              colour="#FF5C4D", badges=["sword", "axe", "shield", "skull", "bomb", "crosshair", "target", "shuriken",
-                                        "trident", "anchor"]),
-         dict(id="royal", name="Royal Case", price=1500, basic=800, odds=(7400, 2050, 470, 80),
-              colour="#E8C26A", badges=["crown", "trophy", "diamond", "gem", "rocket", "planet", "comet", "key",
-                                        "rook", "hourglass"])]
-CASE_OF = {b: c for c in CASES for b in c["badges"]}
-# A badge you already have is turned into coins: this share of the case price (never more than the case cost).
-DUPLICATE = {"basic": 0.25, "rare": 1.0, "very": 3.0, "super": 10.0}
+BADGES = [("heart", "Heart"), ("drop", "Droplet"), ("clover", "Clover"), ("paw", "Paw Print"), ("cat", "Cat"),
+          ("fish", "Fish"), ("cherry", "Cherries"), ("feather", "Feather"), ("note", "Music Note"), ("dice", "Dice"),
+          ("headset", "Headphones"), ("gamepad", "Game Controller"), ("mushroom", "Mushroom"), ("tree", "Tree"),
+          ("wave", "Wave"),
+          ("ghost", "Ghost"), ("spade", "Spade"), ("club", "Club"), ("diamond", "Diamond"), ("octagon", "Octagon"),
+          ("cube", "Cube"), ("eye", "Eye"), ("snowflake", "Snowflake"), ("mountain", "Mountain"), ("moon", "Moon"),
+          ("sun", "Sun"), ("star", "Star"), ("bolt", "Lightning Bolt"), ("flame", "Flame"), ("anchor", "Anchor"),
+          ("key", "Key"), ("pickaxe", "Pickaxe"), ("rook", "Rook"), ("shield", "Shield"), ("sword", "Sword"),
+          ("skull", "Skull"), ("trident", "Trident"), ("quill", "Quill"), ("hourglass", "Hourglass"),
+          ("target", "Target"), ("comet", "Comet"), ("saturn", "Saturn"),
+          ("alien", "Alien"), ("rocket", "Rocket ship"), ("shootingstar", "Shooting Star"), ("planet", "Planet"),
+          ("crown", "Crown"), ("trophy", "Trophy"), ("goldenstar", "Golden Star"), ("sunburst", "Sunburst Star")]
+EXOTICS = [("galaxy", "Galaxy"), ("phoenix", "Phoenix"), ("glitch", "Glitch"), ("crystal", "Crystal Heart"),
+           ("dragon", "Dragon Eye")]
+BADGE_NAME = dict(BADGES + EXOTICS)
+EXOTIC_IDS = tuple(b for b, _n in EXOTICS)
+# colours of a badge, in three groups: plain grey, the 13 colours, and the three prestige finishes
+COLOUR_IDS = ["blue", "green", "red", "yellow", "orange", "brown", "teal", "lava", "purple", "sky", "lime", "pink", "beam"]
+PRESTIGE_IDS = ["black", "white", "gold"]
+VARIANT_NAME = {"grey": "Grey", "blue": "Blue", "green": "Green", "red": "Red", "yellow": "Yellow", "orange": "Orange",
+                "brown": "Brown", "teal": "Teal", "lava": "Lava Red", "purple": "Rich Purple", "sky": "Sky Blue",
+                "lime": "Juicy Lime", "pink": "Hot Pink", "beam": "Yellow Beam", "black": "Black",
+                "white": "Titanium White", "gold": "Gold", "prime": "Prismatic"}
 
 
-def variants_of(rarity: str) -> list:
-    return [v for v in VARIANTS if v[2] == rarity]
+def variants_for(base: str) -> list:
+    """Every colour a badge exists in, best first."""
+    if base in EXOTIC_IDS:
+        return ["gold", "white", "black", "prime"]
+    return ["gold", "white", "black"] + COLOUR_IDS[::-1] + ["grey"]
 
 
-def badge_price(ident: str) -> int:
-    """Price of one basic colour of a badge (rare colours only come from cases)."""
-    return int(CASE_OF[ident]["basic"])
-
-
-FREE = {"theme:clean", "r:classic", "ring:dots", "c1:white"}
-
-
-def _build_catalog() -> dict:
-    """Every item of the shop: {id: dict(kind, name, price, needs)}. `needs` is the item to own first."""
-    items: dict = {}
-    prev = None
-    for th in extras.THEMES:                              # themes are bought in order
-        ident = f"theme:{th['id']}"
-        items[ident] = dict(kind="theme", name=th["name"], price=th["hours"] * 2 * COINS_PER_HOUR, needs=prev)
-        prev = ident
-    for kind, styles in (("r", extras.R_STYLES), ("ring", extras.RING_STYLES)):
-        for st in styles:
-            items[f"{kind}:{st['id']}"] = dict(kind=kind, name=st["name"], price=st["hours"] * 2 * COINS_PER_HOUR,
-                                               needs=None)
-    for ident, name, _hexa in COLOURS:
-        items[f"c1:{ident}"] = dict(kind="c1", name=name, price=0 if ident == "white" else C1_PRICE, needs=None)
-        items[f"c2:{ident}"] = dict(kind="c2", name=name, price=C2_PRICE, needs="c1:*")
-    return items
-
-
-CATALOG = _build_catalog()
+def badge_item(base: str, var: str) -> str:
+    return f"badge:{base}:{var}"
 
 
 def coins_text(n: int) -> str:
     return f"{int(n):,}".replace(",", " ")
 
 
-# --------------------------------------------------------------------------- #
-# Signing and storage
-# --------------------------------------------------------------------------- #
-_SALT = b"rubenium/wallet/2/a81c4e07d3f95b26"     # 1.4: a fresh start for everyone
+def hours_label(hours: float) -> str:
+    return f"{hours:g} h"
 
 
-def _machine() -> str:
-    if win.IS_WIN:
-        try:
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography", 0,
-                                winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as key:
-                return str(winreg.QueryValueEx(key, "MachineGuid")[0])
-        except OSError:
-            pass
-    return os.environ.get("COMPUTERNAME", "") or "this-pc"
-
-
-def _key() -> bytes:
-    return hashlib.sha256(_SALT + _machine().encode("utf-8", "ignore")).digest()
-
-
-def _pack(data: dict) -> str:
-    body = base64.b64encode(json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")).decode("ascii")
-    return body + "." + hmac.new(_key(), body.encode("ascii"), hashlib.sha256).hexdigest()
-
-
-def _unpack(text: str):
-    """The wallet stored in `text`, or None if it is not ours or was changed."""
-    try:
-        body, sig = text.strip().rsplit(".", 1)
-        if not hmac.compare_digest(sig, hmac.new(_key(), body.encode("ascii"), hashlib.sha256).hexdigest()):
-            return None
-        data = json.loads(base64.b64decode(body).decode("utf-8"))
-        return data if isinstance(data, dict) else None
-    except Exception:  # noqa: BLE001
-        return None
-
-
-def _file():
-    return DATA_DIR / "wallet2.dat"
-
-
-def _read_file() -> str:
-    try:
-        return _file().read_text(encoding="ascii")
-    except (OSError, UnicodeError):
-        return ""
-
-
-def _read_registry() -> str:
-    if not win.IS_WIN:
-        return ""
-    try:
-        import winreg
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Rubenium") as key:
-            return str(winreg.QueryValueEx(key, "Wallet2")[0])
-    except OSError:
-        return ""
-
-
-def _write(text: str) -> None:
-    try:
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        tmp = _file().with_suffix(".tmp")
-        tmp.write_text(text, encoding="ascii")
-        os.replace(tmp, _file())
-    except OSError as exc:
-        log.debug("wallet file: %s", exc)
-    if win.IS_WIN:
-        try:
-            import winreg
-            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Rubenium") as key:
-                winreg.SetValueEx(key, "Wallet2", 0, winreg.REG_SZ, text)
-        except OSError as exc:
-            log.debug("wallet registry: %s", exc)
-
-
-def internet_time(timeout: float = 4.0):
-    """The current time (seconds since 1970) from the internet, or None when offline. Used for the daily spin,
-    so changing the PC clock does nothing."""
-    import urllib.request
-    from email.utils import parsedate_to_datetime
-    for url in ("https://www.google.com", "https://www.cloudflare.com", "https://api.github.com"):
-        try:
-            req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "Rubenium"})
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                stamp = resp.headers.get("Date")
-            if stamp:
-                return parsedate_to_datetime(stamp).timestamp()
-        except Exception:  # noqa: BLE001
-            continue
-    return None
-
-
-# --------------------------------------------------------------------------- #
-# The wallet
-# --------------------------------------------------------------------------- #
 class Wallet(QObject):
     changed = pyqtSignal()
-    dropped = pyqtSignal(int)           # coins just earned by time
-    time_checked = pyqtSignal()         # the internet date arrived (or failed)
+    dropped = pyqtSignal(int)
+    time_checked = pyqtSignal()
 
-    def __init__(self, cfg) -> None:
+    def __init__(self, ctx) -> None:
         super().__init__()
-        self.cfg = cfg
-        self.admin = False              # test mode: endless coins, everything open, nothing is kept
-        self.tampered = False
-        self.net_offset = None          # internet time minus PC time, once known
-        self._checking = False
-        self._dirty = False
-        self.d = self._load()
-        self._last = time.monotonic()
-        self._clock = QTimer(self)
-        self._clock.setInterval(1000)
-        self._clock.timeout.connect(self._second)
-        self._saver = QTimer(self)
-        self._saver.setInterval(60000)
-        self._saver.timeout.connect(self.save)
+        self.ctx, self.cfg, self.econ = ctx, ctx.cfg, ctx.econ
+        self.admin = False
+        self.econ.changed.connect(self.changed)
+        ctx.online.changed.connect(self.changed)
 
-    # -- loading
-    def _blank(self) -> dict:
-        return {"v": 2, "coins": 0, "owned": [], "progress": 0.0, "daily": 0.0, "seq": 0, "warned": False,
-                "won": 0, "lost": 0, "inv": [], "keys": 0, "kprog": 0.0, "played": 0.0, "opened": 0, "pending": 0}
+    def start(self) -> None: ...
 
-    def _load(self) -> dict:
-        texts = [t for t in (_read_file(), _read_registry()) if t]
-        valid = [d for d in (_unpack(t) for t in texts) if d]
-        if valid:
-            data = max(valid, key=lambda d: int(d.get("seq", 0)))
-            base = self._blank()
-            base.update(data)
-            base["coins"] = max(0, int(base["coins"]))
-            for old, new in extras.RETIRED_STYLES.items():          # removed styles: owners get the new one
-                for kind in ("r", "ring"):
-                    if f"{kind}:{old}" in base["owned"] and f"{kind}:{new}" not in base["owned"]:
-                        base["owned"].append(f"{kind}:{new}")
-            base["owned"] = [str(i) for i in base["owned"] if str(i) in CATALOG]
-            base["inv"] = [str(i) for i in base["inv"] if self._valid_badge(str(i))]
-            base["keys"] = max(0, min(KEY_MAX, int(base["keys"])))
-            if int(base.get("pending", 0)) > 0:          # coins from a duplicate whose case was still opening
-                base["coins"] += int(base["pending"])
-                base["pending"] = 0
-                self._dirty = True
-            return base
-        data = self._blank()
-        if texts:                                   # a wallet exists but it was changed by hand: start again
-            self.tampered = True
-            log.warning("wallet did not pass its check: starting from zero")
-        self._dirty = True
-        return data
+    def stop(self) -> None: ...
 
-    @staticmethod
-    def _valid_badge(item: str) -> bool:
-        ident, _s, var = item.partition("/")
-        return ident in BADGE_NAME and var in VARIANT
+    # -- balance (from the server)
+    def balance(self) -> int:
+        return int(self.econ.coins)
 
-    def start(self) -> None:
-        self._last = time.monotonic()
-        self._clock.start()
-        self._saver.start()
-        if self._dirty:
-            self.save()
-
-    def stop(self) -> None:
-        self._clock.stop()
-        self._saver.stop()
-        self.save()
-
-    def save(self) -> None:
-        if self.admin or not self._dirty:
-            return
-        self.d["seq"] = int(self.d.get("seq", 0)) + 1
-        _write(_pack(self.d))
-        self._dirty = False
-
-    # -- earning by time
-    def _second(self) -> None:
-        now = time.monotonic()
-        step, self._last = now - self._last, now
-        if step <= 0 or step > 5 or self.admin:         # the PC slept: that time does not count
-            return
-        before = float(self.d.get("played", 0.0))
-        self.d["played"] = before + step
-        if before < MUSIC_S <= self.d["played"]:
-            self.changed.emit()
-        self.d["progress"] = float(self.d["progress"]) + step
-        self._dirty = True
-        if self.d["progress"] >= DROP_S:
-            self.d["progress"] -= DROP_S
-            self.d["coins"] += DROP_COINS
-            self.save()
-            self.dropped.emit(DROP_COINS)
-            self.changed.emit()
+    def keys(self) -> int:
+        return int(self.econ.keys)
 
     def next_drop(self) -> int:
-        """Seconds until the next coin drop."""
-        return max(0, int(math.ceil(DROP_S - float(self.d["progress"]))))
+        return self.econ.next_coin_s()
 
-    # -- coins
-    def balance(self) -> int:
-        return ADMIN_COINS if self.admin else int(self.d["coins"])
+    def minutes(self) -> int:
+        return max(int(self.econ.minutes), int(self.ctx.online.minutes))
 
-    def spend(self, n: int) -> bool:
-        """Take n coins. False (and nothing happens) when there are not enough: no debt, ever."""
-        n = int(n)
-        if n < 0 or n > self.balance():
-            return False
-        if not self.admin:
-            self.d["coins"] -= n
-            self.d["lost"] = int(self.d.get("lost", 0)) + n
-            self._dirty = True
-            self.save()
-        self.changed.emit()
+    # -- progression: themes, the R of the ball and its ring unlock with time played
+    def hours_for(self, ident: str) -> float:
+        kind, _s, value = ident.partition(":")
+        styles = {"theme": extras.THEMES, "r": extras.R_STYLES, "ring": extras.RING_STYLES}.get(kind)
+        if styles is None:
+            return 0.0                                   # colours and the music's colours are free
+        return next((float(st["hours"]) for st in styles if st["id"] == value), 1e9)
+
+    def owns(self, ident: str) -> bool:
+        return self.minutes() >= self.hours_for(ident) * 60
+
+    really_owns = owns
+
+    def all_colours(self, _kind: str) -> bool:
         return True
 
-    def add(self, n: int) -> None:
-        n = max(0, int(n))
-        if n and not self.admin:
-            self.d["coins"] += n
-            self.d["won"] = int(self.d.get("won", 0)) + n
-            self._dirty = True
-            self.save()
-        self.changed.emit()
-
-    # -- the shop
-    def owns(self, ident: str) -> bool:
-        return self.admin or self.really_owns(ident)
-
-    def really_owns(self, ident: str) -> bool:
-        """Owned for real (not through test mode): what is kept when Rubenium restarts."""
-        if ident == "music":
-            return float(self.d.get("played", 0.0)) >= MUSIC_S
-        return ident in FREE or ident in self.d["owned"]
+    def blocked_by(self, _ident: str) -> str:
+        return ""
 
     def music_wait(self) -> int:
-        """Seconds of Rubenium still needed before the music's colours open."""
-        return 0 if self.owns("music") else max(0, int(math.ceil(MUSIC_S - float(self.d.get("played", 0.0)))))
+        return 0
 
-    def all_colours(self, kind: str) -> bool:
-        return all(self.owns(f"{kind}:{ident}") for ident, _n, _h in COLOURS)
+    # -- the free spin (every 3 hours) and the daily case: when they are ready again
+    spin_waiting = None                       # a prize that was rolled and not collected yet
+    _spin_at = _daily_at = None
+    _checking = False
 
-    def price(self, ident: str) -> int:
-        return int(CATALOG[ident]["price"])
-
-    def blocked_by(self, ident: str) -> str:
-        """'' when the item can be bought now, else the id of what has to be owned first ('c1:*' = every
-        first colour)."""
-        needs = CATALOG[ident]["needs"]
-        if needs == "c1:*":
-            return "" if self.all_colours("c1") else "c1:*"
-        return "" if (not needs or self.owns(needs)) else needs
-
-    def buy(self, ident: str) -> bool:
-        if ident not in CATALOG or self.owns(ident) or self.blocked_by(ident):
-            return False
-        price = self.price(ident)
-        if price > self.balance():
-            return False
-        if not self.admin:
-            self.d["coins"] -= price
-            self.d["owned"].append(ident)
-            self._dirty = True
-            self.save()
-        self.changed.emit()
-        return True
-
-    # -- casino keys
-    def keys(self) -> int:
-        return 99 if self.admin else int(self.d["keys"])
-
-    def key_progress(self) -> float:
-        """0..1 towards the next key (1 when the key holder is full)."""
-        if self.keys() >= KEY_MAX:
-            return 1.0
-        return max(0.0, min(1.0, float(self.d["kprog"]) / KEY_EVERY))
-
-    def bet(self, n: int) -> bool:
-        """A casino bet: taken like any spend, and it counts towards the next key."""
-        if not self.spend(n):
-            return False
-        if not self.admin and int(self.d["keys"]) < KEY_MAX:
-            self.d["kprog"] = float(self.d["kprog"]) + int(n)
-            while self.d["kprog"] >= KEY_EVERY and int(self.d["keys"]) < KEY_MAX:
-                self.d["kprog"] -= KEY_EVERY
-                self.d["keys"] = int(self.d["keys"]) + 1
-            if int(self.d["keys"]) >= KEY_MAX:
-                self.d["kprog"] = 0.0
-            self._dirty = True
-            self.save()
-            self.changed.emit()
-        return True
-
-    def add_keys(self, n: int) -> None:
-        if not self.admin:
-            self.d["keys"] = min(KEY_MAX, int(self.d["keys"]) + max(0, int(n)))
-            self._dirty = True
-            self.save()
-        self.changed.emit()
-
-    # -- badges
-    def has_badge(self, ident: str, var: str) -> bool:
-        return self.admin or f"{ident}/{var}" in self.d["inv"]
-
-    def really_has_badge(self, ident: str, var: str) -> bool:
-        return f"{ident}/{var}" in self.d["inv"]
-
-    def badge_variants(self, ident: str) -> list:
-        """The colours of a badge you own, rarest first."""
-        if self.admin:
-            return [v[0] for v in VARIANTS]
-        have = {i.split("/", 1)[1] for i in self.d["inv"] if i.startswith(ident + "/")}
-        return [v[0] for v in VARIANTS if v[0] in have]
-
-    def badge_total(self) -> int:
-        return len(BADGES) * len(VARIANTS) if self.admin else len(self.d["inv"])
-
-    def buy_badge(self, ident: str, var: str) -> bool:
-        """Basic colours can be bought; rarer ones only come from cases."""
-        if ident not in BADGE_NAME or var not in VARIANT or VARIANT[var][2] != "basic" or self.has_badge(ident, var):
-            return False
-        price = badge_price(ident)
-        if price > self.balance():
-            return False
-        if not self.admin:
-            self.d["coins"] -= price
-            self.d["inv"].append(f"{ident}/{var}")
-            self._dirty = True
-            self.save()
-        self.changed.emit()
-        return True
-
-    def open_case(self, case_id: str):
-        """Open a case: costs its price and one key. Returns dict(badge, var, rarity, new, refund) or None."""
-        case = next((c for c in CASES if c["id"] == case_id), None)
-        if case is None or self.keys() < 1 or case["price"] > self.balance():
-            return None
-        rng = random.SystemRandom()
-        roll = rng.randrange(10000)
-        rarity = "super"
-        for kind, share in zip(("basic", "rare", "very", "super"), case["odds"]):
-            if roll < share:
-                rarity = kind
-                break
-            roll -= share
-        ident = rng.choice(case["badges"])
-        var = rng.choice(variants_of(rarity))[0]
-        new = not self.really_has_badge(ident, var)
-        refund = 0 if new else int(case["price"] * DUPLICATE[rarity])
-        if not self.admin:
-            self.d["coins"] -= case["price"]
-            self.d["keys"] = int(self.d["keys"]) - 1
-            self.d["opened"] = int(self.d.get("opened", 0)) + 1
-            if new:
-                self.d["inv"].append(f"{ident}/{var}")
-            self.d["pending"] = int(self.d.get("pending", 0)) + refund     # paid when the case shows it
-            self._dirty = True
-            self.save()
-        self.changed.emit()
-        return dict(badge=ident, var=var, rarity=rarity, new=new, refund=refund)
-
-    def pay_refund(self) -> int:
-        """Coins for duplicates, paid when the case animation shows them (or at the next start)."""
-        n = int(self.d.get("pending", 0))
-        if n > 0 and not self.admin:
-            self.d["coins"] += n
-            self.d["pending"] = 0
-            self._dirty = True
-            self.save()
-        self.changed.emit()
-        return n
-
-    # -- gambling warning
-    def warned(self) -> bool:
-        return bool(self.d.get("warned"))
-
-    def accept_warning(self) -> None:
-        self.d["warned"] = True
-        self._dirty = True
-        self.save()
-
-    # -- daily spin (internet date only)
     def check_time(self) -> None:
         if self._checking:
             return
         self._checking = True
 
-        def work() -> None:
-            stamp = internet_time()
-            if stamp is not None:                                # counted on from here with a clock the PC date cannot move
-                self.net_offset = stamp - time.monotonic()
+        def got(ok: bool, data) -> None:
+            import time
             self._checking = False
-            try:
-                self.time_checked.emit()
-            except RuntimeError:
-                pass
-        threading.Thread(target=work, daemon=True).start()
+            if ok and isinstance(data, dict):
+                now = time.monotonic()
+                self._spin_at = now + int(data.get("spin") or 0)
+                self._daily_at = now + int(data.get("daily") or 0)
+                self.spin_waiting = data.get("spin_waiting")
+            self.time_checked.emit()
+        self.econ.call("rb_timers", {}, got)
 
     def checking(self) -> bool:
         return self._checking
 
     def daily_wait(self):
-        """Seconds until the daily spin is free again (0 = ready), or None while the date is not known."""
-        if self.net_offset is None:
-            return None
-        now = time.monotonic() + self.net_offset
-        return max(0, int(math.ceil(float(self.d["daily"]) + DAILY_WAIT_S - now)))
+        """Seconds until the free spin (0 = ready, None = not known yet)."""
+        import time
+        return None if self._spin_at is None else max(0, int(self._spin_at - time.monotonic()))
 
-    def claim_daily(self, coins: int, keys: int = 0) -> bool:
-        """Mark today's free spin as used and pay its prize at once (so closing Rubenium mid-spin loses nothing)."""
-        if self.daily_wait() != 0:
-            return False
-        if not self.admin:
-            self.d["daily"] = time.monotonic() + self.net_offset
-            self.d["coins"] += max(0, int(coins))
-            self.d["keys"] = min(KEY_MAX, int(self.d["keys"]) + max(0, int(keys)))
-            self._dirty = True
-            self.save()
-        self.changed.emit()
-        return True
+    def spin_used(self) -> None:
+        import time
+        self._spin_at = time.monotonic() + float(self.econ.cfg.get("spin_hours", 3)) * 3600
+
+    # -- the gambling warning (accepted once per PC)
+    def warned(self) -> bool:
+        return bool(self.cfg["casino_warned"])
+
+    def accept_warning(self) -> None:
+        self.cfg["casino_warned"] = True
+        self.cfg.save()
 
 
-# --------------------------------------------------------------------------- #
-# Small pictures: the coin and the badges
-# --------------------------------------------------------------------------- #
 def paint_coin(p: QPainter, c: QPointF, r: float) -> None:
     p.save()
     p.setPen(QPen(QColor("#B8862B"), max(1.0, r * 0.14)))
@@ -8562,6 +8257,25 @@ from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import (QColor, QLinearGradient, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF,
                          QRadialGradient, QTransform)
 
+# (id, name, rarity, main colour, light colour)
+VARIANTS = [("gold", "Gold", "super", "#E8C26A", "#FFF1C2"),
+            ("titanium", "Titanium White", "very", "#EEF1F4", "#FFFFFF"),
+            ("black", "Black", "very", "#16191C", "#5A626B"),
+            ("lava", "Lava Red", "rare", "#FF3D1F", "#FFB199"),
+            ("purple", "Rich Purple", "rare", "#A43DFF", "#E2B8FF"),
+            ("sky", "Sky Blue", "rare", "#2EC5FF", "#B8EEFF"),
+            ("lime", "Juicy Lime", "rare", "#8CFF2E", "#DDFFB8"),
+            ("pink", "Hot Pink", "rare", "#FF2E9A", "#FFB8DD"),
+            ("beam", "Yellow Beam", "rare", "#FFEE2E", "#FFFBC2"),
+            ("blue", "Blue", "basic", "#4A6FB8", "#7F9DD6"),
+            ("green", "Green", "basic", "#4C8A5A", "#7DB389"),
+            ("red", "Red", "basic", "#A84444", "#CC7676"),
+            ("yellow", "Yellow", "basic", "#B89B42", "#D6BE76"),
+            ("orange", "Orange", "basic", "#B8703A", "#D69B6E"),
+            ("brown", "Brown", "basic", "#7A5A40", "#A0826A"),
+            ("grey", "Grey", "basic", "#7A828A", "#A2A9B0"),
+            ("teal", "Teal", "basic", "#3C8C8A", "#71B3B1")]
+VARIANT = {v[0]: v for v in VARIANTS}
 
 _unit_cache: dict = {}
 K = 100.0          # shapes are built 100x larger so that joining and cutting them keeps curves smooth
@@ -9229,20 +8943,15 @@ class Flair(QWidget):
         self.fit()
 
     def _parts(self) -> list:
-        wallet, cfg = self.ctx.wallet, self.ctx.cfg
-        out = []
-        for item in cfg["badges"] if isinstance(cfg["badges"], list) else []:
-            ident, _s, var = str(item).partition("/")
-            if wallet.has_badge(ident, var):
-                out.append((ident, var))
-        return out[:3]
+        """The badges on show (server items, e.g. "badge:star:gold")."""
+        return self.ctx.econ.badges_worn()[:3]
 
     def fit(self) -> None:
         n = len(self._parts())
         self.setFixedSize(max(1, int(n * S(20) - (S(4) if n else 0))), S(20))
         self.setVisible(bool(n))
         pass
-        moving = self.isVisible() and self.fade > 0.01 and any(animated(v) for _i, v in self._parts())
+        moving = self.isVisible() and self.fade > 0.01 and any(item_animated(i) for i in self._parts())
         if moving and not self._shine.isActive():
             self._shine.start()
         elif not moving:
@@ -9256,8 +8965,8 @@ class Flair(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setOpacity(self.fade)
         now = time.monotonic()
-        for k, (ident, var) in enumerate(self._parts()):
-            paint_badge(p, ident, QRectF(k * S(20) + S(1), S(2), S(16), S(16)), var, now)
+        for k, item in enumerate(self._parts()):
+            paint_item(p, item, QRectF(k * S(20) + S(2), S(3), S(14), S(14)), now)
 
 
 class HoldButton(QAbstractButton):
@@ -10849,7 +10558,10 @@ class CoinBar(QWidget):
         right = QRectF(r.center().x(), r.top(), r.width() / 2 - S(12), r.height())
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(11, QFont.Weight.DemiBold))
-        text = "∞" if self.ctx.wallet.admin else f"+{DROP_COINS}  ·  {clock_text(self.ctx.wallet.next_drop())}"
+        ec = self.ctx.econ
+        text = f"+{int(ec.cfg.get('coin_amount', 10))}  ·  {clock_text(ec.next_coin_s())}"
+        if not ec.ready:
+            text = tr("Offline") if self.ctx.online.offline or not self.ctx.online.logged_in() else "…"
         p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
         if self.keys:
             tw = p.fontMetrics().horizontalAdvance(text)
@@ -10866,8 +10578,22 @@ class CoinBar(QWidget):
             p.restore()
 
 
-def paint_price(p: QPainter, rect: QRectF, price: int, size: float = 10.0, colour=TEXT_DIM, centre: bool = True) -> None:
-    """A small coin followed by a price, inside `rect`."""
+def paint_price(p: QPainter, rect: QRectF, price, size: float = 10.0, colour=TEXT_DIM, centre: bool = True,
+                hours: bool = False) -> None:
+    """A small coin followed by a price, inside `rect` (or, for progression, the hours of play it needs)."""
+    if hours:
+        text = f"{price:g} h"
+        p.setFont(font(size, QFont.Weight.DemiBold))
+        tw = p.fontMetrics().horizontalAdvance(text)
+        x = rect.center().x() - (tw + S(size)) / 2 if centre else rect.left()
+        p.save()
+        p.translate(x + S(size * 0.4), rect.center().y())
+        p.scale(S(size * 0.95) / 20, S(size * 0.95) / 20)
+        draw_icon(p, "lock", QColor(colour))
+        p.restore()
+        p.setPen(QColor(colour))
+        p.drawText(QRectF(x + S(size), rect.top(), tw + S(2), rect.height()), int(Qt.AlignmentFlag.AlignVCenter), text)
+        return
     text = coins_text(price)
     p.setFont(font(size, QFont.Weight.DemiBold))
     tw = p.fontMetrics().horizontalAdvance(text)
@@ -10947,7 +10673,7 @@ class ThemeCard(QAbstractButton):
             draw_icon(p, "lock", QColor(TEXT_DIM))
             p.restore()
             paint_price(p, QRectF(foot.left() + S(18), foot.top(), foot.width() - S(18), foot.height()),
-                        ctx.wallet.price(ident), 10.5, GOLD_TEXT if nxt else TEXT_DIM, centre=False)
+                        ctx.wallet.hours_for(ident), 10.5, GOLD_TEXT if nxt else TEXT_DIM, centre=False, hours=True)
 
 
 class UnlockTile(QAbstractButton):
@@ -10995,7 +10721,7 @@ class UnlockTile(QAbstractButton):
             p.setPen(ui.accent if active else mix(QColor(TEXT_DIM), QColor(TEXT), h))
             p.drawText(foot, int(Qt.AlignmentFlag.AlignCenter), tr(st["name"]))
         else:
-            paint_price(p, foot, ctx.wallet.price(self.ident), 9.5)
+            paint_price(p, foot, ctx.wallet.hours_for(self.ident), 9.5, hours=True)
 
 
 class HueLine(QWidget):
@@ -11321,7 +11047,8 @@ class ShopPage(Page):
         self.c2 = ColourRow(self, "c2", "accent2")
         lay.addWidget(self.c2)
 
-        lay.addWidget(heading(tr("Ball")))
+        lay.addWidget(heading(tr("Progression")))
+        lay.addWidget(UnlockBar(self))
         for kind, styles, key in (("r", extras.R_STYLES, "ball_style"), ("ring", extras.RING_STYLES, "ring_style")):
             line = hbox(spacing=0)
             for n, st in enumerate(styles):
@@ -11361,28 +11088,30 @@ class ShopPage(Page):
     # -- Badges
     def _badges(self, lay) -> None:
         pass
-        ctx = self.ctx
-        ident = getattr(ctx, "shop_badge", None)
-        if not ident:
-            lay.addWidget(heading(tr("Showcase")))
+        pass
+        ctx, ec = self.ctx, self.ctx.econ
+        base = getattr(ctx, "shop_badge", None)
+        if not ec.ready:
+            return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see your badges"),
+                                       12, TEXT_DIM))
+        if not base:
+            lay.addWidget(heading(tr("On show")))
             self.showcase = Showcase(self)
             lay.addWidget(self.showcase)
             lay.addWidget(heading(tr("Collection")))
             lay.addWidget(BadgeGrid(self))
             return
-        pass
         top = hbox(spacing=8)
         back = IconButton("back", 32, tip=tr("Back"))
         back.clicked.connect(lambda: self.open_badge(None))
         top.addWidget(back)
-        top.addWidget(Label(tr(BADGE_NAME[ident]), 15, bold=True), 1)
-        top.addWidget(Label(tr(CASE_OF[ident]["name"]), 10.5, TEXT_DIM, align=Qt.AlignmentFlag.AlignRight), 1)
+        top.addWidget(Label(tr(BADGE_NAME[base]), 15, bold=True), 1)
         lay.addLayout(top)
         self.big = BigBadge(self)
         lay.addWidget(self.big)
-        self.picker = VariantPicker(self, ident)
-        have = ctx.wallet.badge_variants(ident)
-        first = next((v for v in have if f"{ident}/{v}" in worn(ctx)), have[0] if have else "grey")
+        self.picker = VariantPicker(self, base)
+        have = [v for v in variants_for(base) if ec.owns(badge_item(base, v))]
+        first = next((v for v in have if badge_item(base, v) in worn(ctx)), have[0] if have else variants_for(base)[-1])
         self.picker.var = getattr(ctx, "shop_var", "") or first
         ctx.shop_var = ""
         self.picker.picked.connect(self._variant)
@@ -11390,116 +11119,173 @@ class ShopPage(Page):
         self.badge_btn = Button("", "primary", 38)
         self.badge_btn.clicked.connect(self._badge_action)
         lay.addWidget(self.badge_btn)
+        self.sell_btn = Button("", "ghost", 32)
+        self.sell_btn.clicked.connect(self._sell)
+        lay.addWidget(self.sell_btn)
         self._variant(self.picker.var)
 
-    def open_badge(self, ident) -> None:
+    def open_badge(self, base) -> None:
         if self.reel is not None and self.reel.busy():
             return
         self.ctx.shop_tab = 1
-        self.ctx.shop_badge = ident
+        self.ctx.shop_badge = base
         self.ctx.reload_page()
+
+    def _item(self) -> str:
+        pass
+        return badge_item(self.ctx.shop_badge, self.picker.var)
 
     def _variant(self, var: str) -> None:
         pass
-        pass
-        ident = self.ctx.shop_badge
-        self.big.show_variant(ident, var)
-        w = self.ctx.wallet
-        rarity = VARIANT[var][2]
-        if w.has_badge(ident, var):
-            on = f"{ident}/{var}" in worn(self.ctx)
+        ec = self.ctx.econ
+        self.picker.var = var
+        item = self._item()
+        self.big.show_item(item)
+        price = ec.price(item)
+        if ec.owns(item):
+            on = item in worn(self.ctx)
             self.badge_btn.set_text(tr("Take off") if on else tr("Show on the music tab"))
             self.badge_btn.set_kind("ghost" if on else "primary")
-        elif rarity == "basic":
-            self.badge_btn.set_text(tr("Buy for {n} coins", n=coins_text(badge_price(ident))))
+        elif price is not None:
+            self.badge_btn.set_text(tr("Buy for {n} coins", n=coins_text(price)))
             self.badge_btn.set_kind("primary")
         else:
-            self.badge_btn.set_text(tr("Find it in the {case}", case=tr(case_by_id(CASE_OF[ident]["id"])["name"])))
+            self.badge_btn.set_text(tr("Only from cases"))
             self.badge_btn.set_kind("ghost")
+        self.badge_btn.setEnabled(True)
+        sell = ec.vendor_price(item) if ec.owns(item) else 0
+        self.sell_btn.setVisible(bool(sell))
+        self.sell_btn.set_text(tr("Sell to the vendor for {n} coins", n=coins_text(sell)))
         self.badge_btn.update()
+
+    def _answer(self, ok: bool, data) -> None:
+        """After the server answered: show an error, or refresh what this page shows."""
+        if not ok:
+            sfx.play("off")
+            self.ctx.toast(tr(str(data)), "warn")
+        if getattr(self, "picker", None) is not None and self.ctx.window.current == "themes":
+            try:
+                self._variant(self.picker.var)
+                self.picker.restart()
+            except RuntimeError:
+                pass
 
     def _badge_action(self) -> None:
         pass
         pass
-        ctx, w = self.ctx, self.ctx.wallet
-        ident, var = ctx.shop_badge, self.picker.var
-        item = f"{ident}/{var}"
-        if w.has_badge(ident, var):
-            items = worn(ctx)
-            if item in items:
-                items.remove(item)
-            elif len(items) >= 3:
+        ctx, ec = self.ctx, self.ctx.econ
+        item = self._item()
+        if ec.owns(item):
+            if item in worn(ctx):
+                slot = next(s for s in SLOTS if ec.worn(s) == item)
+                sfx.play("pick")
+                return ec.wear(slot, "", self._answer)
+            free = next((s for s in SLOTS if not ec.worn(s)), None)
+            if free is None:
                 return ctx.toast(tr("Your showcase is full: take one off first"), "warn")
-            else:
-                items.append(item)
             sfx.play("pick")
-            self.set_worn(items)
-            self._variant(var)
-            self.picker.update()
-        elif VARIANT[var][2] == "basic":
-            price = badge_price(ident)
-            if price > w.balance():
-                return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(price - w.balance())), "warn")
-            name = f"{tr(BADGE_NAME[ident])} · {tr(VARIANT[var][1])}"
-            ctx.window.confirm(tr("Buy {name} for {n} coins?", name=name, n=coins_text(price)),
-                               lambda: self._bought_badge(ident, var), yes=tr("Buy"))
-        else:
-            self.open_case(CASE_OF[ident]["id"])
-
-    def _bought_badge(self, ident: str, var: str) -> None:
+            return ec.wear(free, item, self._answer)
+        price = ec.price(item)
+        if price is None:
+            self.ctx.shop_tab = 2
+            self.ctx.shop_badge = None
+            return ctx.reload_page()
+        if price > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(price - ec.coins)), "warn")
         pass
-        if not self.ctx.wallet.buy_badge(ident, var):
-            return
-        sfx.play("on")
-        items = worn(self.ctx)
-        if len(items) < 3:
-            items.append(f"{ident}/{var}")
-            self.set_worn(items)
-        self._variant(var)
-        self.picker.restart()
+        text = tr("Buy {name} ({rarity}) for {n} coins?", name=badge_label(item), rarity=tr(RARITY_NAMES[ec.rarity(item)]),
+                  n=coins_text(price))
+        ctx.window.confirm(text, lambda: (self.badge_btn.setEnabled(False), ec.buy(item, self._bought_item)), yes=tr("Buy"))
 
-    def set_worn(self, items: list) -> None:
-        self.ctx.cfg["badges"] = list(items)[:3]
-        self.ctx.cfg.save()
-        for page in self.ctx.window.each_page():
-            fl = getattr(page, "flair", None)
-            if fl is not None:
-                fl.fit()
-                fl.update()
-        sc = getattr(self, "showcase", None)
-        if sc is not None:
-            sc.restart()
+    def _bought_item(self, ok: bool, data) -> None:
+        if ok:
+            sfx.play("on")
+        self._answer(ok, data)
+
+    def _sell(self) -> None:
+        pass
+        ctx, ec = self.ctx, self.ctx.econ
+        item = self._item()
+        copies = ec.copies(item)
+        if not copies:
+            return
+        pay = ec.vendor_price(item)
+        rare = ec.rarity(item) in ("epic", "exotic")
+
+        def go() -> None:
+            ec.sell(copies[-1], lambda ok, data: (sfx.play("on") if ok else None, self._answer(ok, data)))
+
+        def ask_again() -> None:
+            ctx.window.confirm(tr("Really sell this {rarity} badge? This cannot be undone.",
+                                  rarity=tr(ec.rarity(item).capitalize())),
+                               go, yes=tr("Sell"))
+        ctx.window.confirm(tr("Sell {name} for {n} coins?", name=badge_label(item), n=coins_text(pay)),
+                           (lambda: QTimer.singleShot(250, ask_again)) if rare else go, yes=tr("Sell"))
 
     # -- Cases
+    DAILY = {"id": "daily", "price": 0, "odds": [7500, 2000, 450, 50, 0, 0], "coin_min": 30, "coin_max": 120,
+             "exotics": False, "pity_tier": 1, "pity_after": 0}
+
+    def daily_wait(self):
+        """Seconds until the free daily case (0 = ready, None = not known yet)."""
+        return getattr(self.ctx, "daily_wait_s", None)
+
+    def _timers(self) -> None:
+        import time as _time
+
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, dict):
+                self.ctx.daily_ready_at = _time.monotonic() + int(data.get("daily") or 0)
+                self._tick_daily()
+        self.ctx.econ.call("rb_timers", {}, got)
+
+    def _tick_daily(self) -> None:
+        import time as _time
+        at = getattr(self.ctx, "daily_ready_at", None)
+        self.ctx.daily_wait_s = None if at is None else max(0, int(at - _time.monotonic()))
+        for card in self.findChildren(QWidget):
+            if getattr(card, "case", None) is not None and card.case.get("id") == "daily":
+                card.update()
+
     def _cases(self, lay) -> None:
         pass
-        ctx = self.ctx
+        ctx, ec = self.ctx, self.ctx.econ
+        if not ec.ready or not ec.cases:
+            return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to open cases"),
+                                       12, TEXT_DIM))
         cid = getattr(ctx, "shop_case", None)
+        self._daily_timer = QTimer(self)
+        self._daily_timer.setInterval(1000)
+        self._daily_timer.timeout.connect(self._tick_daily)
+        self._daily_timer.start()
+        self._timers()
         if not cid:
-            pass
-            for case in CASES:
+            lay.addWidget(CaseCard(self, self.DAILY))
+            for case in ec.cases:
                 lay.addWidget(CaseCard(self, case))
-            note = Label(tr("Keys come from playing in the casino. Basic colours can also be bought in Badges."), 10.5,
-                         TEXT_DIM, wrap_w=self.W)
-            lay.addWidget(note)
+            lay.addWidget(Label(tr("A case costs coins and 1 key. You earn 1 key for every hour with Rubenium."), 10.5,
+                                TEXT_DIM, wrap_w=self.W))
             return
-        case = case_by_id(cid)
+        case = self.DAILY if cid == "daily" else next((c for c in ec.cases if c["id"] == cid), ec.cases[0])
         top = hbox(spacing=8)
         self.case_back = IconButton("back", 32, tip=tr("Back"))
         self.case_back.clicked.connect(lambda: self.open_case(None))
         top.addWidget(self.case_back)
-        top.addWidget(Label(tr(case["name"]), 15, bold=True), 1)
+        top.addWidget(Label(tr(CASE_NAMES.get(case["id"], "Daily Case")), 15, bold=True), 1)
         lay.addLayout(top)
         self.reel = CaseReel(self, case)
         self.reel.done.connect(self._opened)
         lay.addWidget(self.reel)
-        self.open_btn = Button(tr("Open for {n} coins + 1 key", n=coins_text(case["price"])), "primary", 40)
+        text = tr("Open for free") if cid == "daily" else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))
+        self.open_btn = Button(text, "primary", 40)
         self.open_btn.clicked.connect(lambda: self._open(case))
         lay.addWidget(self.open_btn)
-        lay.addWidget(heading(tr("Chances")))
-        lay.addWidget(OddsTable(case, self.W))
-        lay.addWidget(heading(tr("Inside")))
-        lay.addWidget(CaseContents(self, case["badges"]))
+        if cid != "daily":
+            lay.addWidget(heading(tr("Chances")))
+            lay.addWidget(OddsTable(case, self.W))
+        else:
+            lay.addWidget(Label(tr("Once a day: coins, a key or a badge (Standard, sometimes Rare, rarely Special)."),
+                                10.5, TEXT_DIM, wrap_w=self.W))
 
     def open_case(self, cid) -> None:
         if self.reel is not None and self.reel.busy():
@@ -11510,66 +11296,53 @@ class ShopPage(Page):
         self.ctx.reload_page()
 
     def _open(self, case: dict) -> None:
-        w = self.ctx.wallet
-        if self.reel.busy():
+        ctx, ec = self.ctx, self.ctx.econ
+        if self.reel.busy() or getattr(self, "_asking", False):
             return
-        if w.keys() < 1:
-            return self.ctx.toast(tr("You need a key: play in the casino"), "warn")
-        if case["price"] > w.balance():
-            return self.ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - w.balance())), "warn")
-        res = w.open_case(case["id"])
-        if res is None:
-            return
-        self.reel.spin(res)
+        daily = case["id"] == "daily"
+        if daily and self.daily_wait() != 0:
+            return ctx.toast(tr("Not ready yet"), "warn")
+        if not daily and ec.keys < 1:
+            return ctx.toast(tr("You need a key: 1 key for every hour with Rubenium"), "warn")
+        if not daily and case["price"] > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - ec.coins)), "warn")
+        self._asking = True
         self._lock(True)
+
+        def got(ok: bool, data) -> None:
+            self._asking = False
+            if not ok:
+                self._lock(False)
+                sfx.play("off")
+                return ctx.toast(tr(str(data)), "warn")
+            if data.get("item") and data.get("id"):          # it is already yours: the strip only shows it
+                ec.gained(data["item"], data["id"], "case")
+            if daily:
+                import time as _time
+                ctx.daily_ready_at = _time.monotonic() + 24 * 3600
+            try:
+                self.reel.spin(data)
+            except RuntimeError:
+                pass
+        if daily:
+            ec.call("rb_daily_case", {}, got)
+        else:
+            ec.call("rb_open_case", {"which": case["id"]}, got, once=True)
 
     def _opened(self) -> None:
         QTimer.singleShot(900, lambda: self._lock(False))
 
     def _lock(self, on: bool) -> None:
-        for wdg in (self.open_btn, self.case_back, self.seg):
-            wdg.setEnabled(not on)
+        try:
+            for wdg in (self.open_btn, self.case_back, self.seg):
+                wdg.setEnabled(not on)
+        except RuntimeError:
+            pass
 
-    def open_badge_from_case(self, ident: str) -> None:
-        self.open_badge(ident)
-
-    # -- buying
+    # -- progression: nothing is bought, it opens with time played
     def buy(self, ident: str) -> None:
-        wallet, item = self.ctx.wallet, CATALOG[ident]
-        if wallet.owns(ident):
-            return
-        blocked = wallet.blocked_by(ident)
-        if blocked == "c1:*":
-            return self.ctx.toast(tr("Unlock every Colour 1 first"), "warn")
-        if blocked:
-            return self.ctx.toast(tr("Unlock {name} first", name=tr(CATALOG[blocked]["name"])), "warn")
-        price = wallet.price(ident)
-        if price > wallet.balance():
-            return self.ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(price - wallet.balance())), "warn")
-        self.ctx.window.confirm(tr("Buy {name} for {n} coins?", name=tr(item["name"]), n=coins_text(price)),
-                                lambda: self._bought(ident), yes=tr("Buy"))
-
-    def _bought(self, ident: str) -> None:
-        wallet = self.ctx.wallet
-        if not wallet.buy(ident):
-            return
-        sfx.play("on")
-        kind = CATALOG[ident]["kind"]
-        value = ident.split(":", 1)[1] if ":" in ident else ""
-        if kind == "theme":                                  # what you buy is put on straight away
-            self.ctx.window.drawer.close_now()
-            self.ctx.set_theme(value)
-        elif kind == "r":
-            self.ctx.cfg["ball_style"] = value
-        elif kind == "ring":
-            self.ctx.cfg["ring_style"] = value
-        elif kind in ("c1", "c2"):
-            self.set_colour(kind, COLOUR_HEX[value])
-            row_w = self.c1 if kind == "c1" else self.c2
-            if wallet.all_colours(kind):
-                row_w.start_melt()
-        self.ctx.window.ball.update()
-        self._refresh()
+        hours = self.ctx.wallet.hours_for(ident)
+        self.ctx.toast(tr("Unlocks after {n} h with Rubenium", n=f"{hours:g}"), "warn")
 
     def flair_changed(self) -> None:
         self.ctx.cfg.save()
@@ -11665,6 +11438,42 @@ class PriceTag(QWidget):
         paint_price(p, QRectF(self.rect()), self.price, 10.5, GOLD_TEXT)
 
 
+class UnlockBar(QWidget):
+    """Time played, and how far the next unlock is."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.ctx = page.ctx
+        self.setFixedHeight(S(40))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.ctx.wallet.changed.connect(self.update)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        hours = self.ctx.wallet.minutes() / 60
+        steps = sorted({float(st["hours"]) for group in (extras.THEMES, extras.R_STYLES, extras.RING_STYLES)
+                        for st in group})
+        nxt = next((h for h in steps if h > hours), None)
+        prev = max([h for h in steps if h <= hours] or [0.0])
+        r = QRectF(self.rect())
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12.5, QFont.Weight.DemiBold))
+        shown = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
+        p.drawText(QRectF(0, 0, r.width(), S(20)), int(Qt.AlignmentFlag.AlignVCenter), tr("{n} h played", n=shown))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.drawText(QRectF(0, 0, r.width(), S(20)), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   tr("Everything unlocked") if nxt is None else tr("Next unlock at {n} h", n=f"{nxt:g}"))
+        bar = QRectF(0, S(26), r.width(), S(6))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.08))
+        p.drawRoundedRect(bar, S(3), S(3))
+        frac = 1.0 if nxt is None else max(0.0, min(1.0, (hours - prev) / max(0.01, nxt - prev)))
+        p.setBrush(ui.accent)
+        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * frac), bar.height()), S(3), S(3))
+
+
 # ==================================================================================================
 # SECTION: collection
 # ==================================================================================================
@@ -11672,21 +11481,30 @@ import math
 import random
 import time
 
-from PyQt6.QtCore import QEasingCurve, QPointF, QRectF, QTimer, Qt, pyqtSignal
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
 
 SHOWCASE = 3
+SLOTS = ("badge1", "badge2", "badge3")
+CASE_NAMES = {"starter": "Starter Case", "standard": "Standard Case", "premium": "Premium Case", "vault": "Exotic Vault"}
+CASE_COLOURS = {"starter": "#7FA3B8", "standard": "#4FA8FF", "premium": "#B36BFF", "vault": "#FFC94D"}
+CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "bolt"),
+              "premium": ("sword", "skull", "comet"), "vault": ("galaxy", "phoenix", "dragon")}
 
 
 def worn(ctx) -> list:
-    items = ctx.cfg["badges"] if isinstance(ctx.cfg["badges"], list) else []
-    return [i for i in items if "/" in str(i)][:SHOWCASE]
+    return ctx.econ.badges_worn()
 
 
-def badge_label(ident: str, var: str) -> str:
-    return f"{tr(BADGE_NAME[ident])} · {tr(VARIANT[var][1])}"
+def badge_label(item: str) -> str:
+    _k, base, var = (item.split(":") + ["", ""])[:3]
+    return f"{tr(BADGE_NAME.get(base, base))} · {tr(VARIANT_NAME.get(var, var))}"
+
+
+def rarity_colour(ctx, item: str) -> QColor:
+    return QColor(RARITY_COLOURS[ctx.econ.rarity(item)])
 
 
 class _Shiny(QWidget):
@@ -11720,7 +11538,7 @@ class _Shiny(QWidget):
 # Badges
 # --------------------------------------------------------------------------- #
 class Showcase(_Shiny):
-    """The three badges shown on the music tab. Click one to take it off."""
+    """The three badges shown on the music tab and on your profile. Click one to take it off."""
 
     def __init__(self, page) -> None:
         super().__init__()
@@ -11728,10 +11546,13 @@ class Showcase(_Shiny):
         self.setFixedHeight(S(60))
         self.setMouseTracking(True)
         self._hover = -1
-        self.ctx.wallet.changed.connect(self.update)
+        self.ctx.econ.changed.connect(self.restart)
+
+    def _filled(self) -> list:
+        return [(s, self.ctx.econ.worn(s)) for s in SLOTS if self.ctx.econ.worn(s)]
 
     def shiny(self) -> bool:
-        return any(animated(i.split("/")[1]) for i in worn(self.ctx))
+        return any(item_animated(i) for _s, i in self._filled())
 
     def _slot(self, k: int) -> QRectF:
         d = S(50)
@@ -11741,7 +11562,7 @@ class Showcase(_Shiny):
         k = next((k for k in range(SHOWCASE) if self._slot(k).contains(e.position())), -1)
         if k != self._hover:
             self._hover = k
-            filled = 0 <= k < len(worn(self.ctx))
+            filled = 0 <= k < len(self._filled())
             self.setCursor(Qt.CursorShape.PointingHandCursor if filled else Qt.CursorShape.ArrowCursor)
             self.setToolTip(tr("Take off") if filled else "")
             self.update()
@@ -11752,39 +11573,39 @@ class Showcase(_Shiny):
 
     def mousePressEvent(self, e) -> None:
         e.accept()
-        items = worn(self.ctx)
+        items = self._filled()
         k = next((k for k in range(SHOWCASE) if self._slot(k).contains(e.position())), -1)
         if 0 <= k < len(items) and e.button() == Qt.MouseButton.LeftButton:
             sfx.play("pick")
-            items.pop(k)
-            self.page.set_worn(items)
+            self.ctx.econ.wear(items[k][0], "")
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        items = worn(self.ctx)
+        items = self._filled()
         now = time.monotonic()
         for k in range(SHOWCASE):
             r = self._slot(k)
             if k < len(items):
-                ident, var = items[k].split("/")
-                col = QColor(RARITY_COLOUR[VARIANT[var][2]])
+                item = items[k][1]
+                col = rarity_colour(self.ctx, item)
                 p.setPen(QPen(alpha(col, 0.75 if k == self._hover else 0.45), 1.3))
                 p.setBrush(alpha(col, 0.10))
                 p.drawRoundedRect(r, S(12), S(12))
-                paint_badge(p, ident, r.adjusted(S(13), S(13), -S(13), -S(13)), var, now)
+                paint_item(p, item, r.adjusted(S(14), S(14), -S(14), -S(14)), now)
             else:
-                pen = QPen(alpha("#FFFFFF", 0.14), 1.2, Qt.PenStyle.DashLine)
-                p.setPen(pen)
+                p.setPen(QPen(alpha("#FFFFFF", 0.14), 1.2, Qt.PenStyle.DashLine))
                 p.setBrush(Qt.BrushStyle.NoBrush)
                 p.drawRoundedRect(r, S(12), S(12))
                 p.setPen(QPen(alpha("#FFFFFF", 0.22), S(1.6)))
                 c = r.center()
                 p.drawLine(QPointF(c.x() - S(6), c.y()), QPointF(c.x() + S(6), c.y()))
                 p.drawLine(QPointF(c.x(), c.y() - S(6)), QPointF(c.x(), c.y() + S(6)))
+        ec = self.ctx.econ
         right = QRectF(self._slot(SHOWCASE - 1).right() + S(14), 0, 0, self.height())
         right.setRight(self.width())
-        total = len(BADGES) * len(VARIANTS)
+        total = sum(1 for v in ec.catalog.values() if v.get("kind") == "badge") or 870
+        have = len({i["item"] for i in ec.items if i["item"].startswith("badge:")})
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.drawText(QRectF(right.left(), right.top() + S(10), right.width(), S(16)),
@@ -11792,41 +11613,49 @@ class Showcase(_Shiny):
         p.setPen(QColor(TEXT))
         p.setFont(font(15, QFont.Weight.Bold))
         p.drawText(QRectF(right.left(), right.top() + S(26), right.width(), S(24)),
-                   int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
-                   f"{coins_text(self.ctx.wallet.badge_total())} / {coins_text(total)}")
+                   int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), f"{have} / {total}")
 
 
 class BadgeGrid(_Shiny):
-    """All 50 badges. Each shows the rarest colour you have (or a dark outline) and how many colours you own."""
+    """Every badge. Each shows the best colour you have. One you no longer have is greyed out; an Exotic you
+    never had is a question mark."""
     COLS = 6
 
     def __init__(self, page, idents=None) -> None:
         super().__init__()
         self.page, self.ctx = page, page.ctx
-        self.idents = idents or [b[0] for b in BADGES]
+        self.idents = idents or [b for b, _n in BADGES + EXOTICS]
         self.cw, self.ch = page.W / self.COLS, S(62)
         rows = (len(self.idents) + self.COLS - 1) // self.COLS
         self.setFixedSize(page.W, int(rows * self.ch))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMouseTracking(True)
         self._hover = -1
+        self.ctx.econ.changed.connect(self.restart)
+
+    def state(self, base: str) -> tuple:
+        """(colours owned, best owned colour or '', a colour owned before or '')"""
+        ec = self.ctx.econ
+        have = [v for v in variants_for(base) if ec.owns(badge_item(base, v))]
+        before = next((v for v in variants_for(base) if ec.had(badge_item(base, v))), "")
+        return have, (have[0] if have else ""), before
 
     def shiny(self) -> bool:
-        w = self.ctx.wallet
-        return any(animated(v) for b in self.idents for v in w.badge_variants(b)[:1])
-
-    def _cell(self, i: int) -> QRectF:
-        return QRectF((i % self.COLS) * self.cw, (i // self.COLS) * self.ch, self.cw, self.ch)
+        return any(item_animated(badge_item(b, self.state(b)[1])) for b in self.idents if self.state(b)[1])
 
     def _at(self, pos) -> int:
         i = int(pos.y() // self.ch) * self.COLS + int(pos.x() // self.cw)
         return i if 0 <= i < len(self.idents) and pos.x() < self.COLS * self.cw else -1
 
+    def _secret(self, base: str) -> bool:
+        have, _b, before = self.state(base)
+        return base in EXOTIC_IDS and not have and not before
+
     def mouseMoveEvent(self, e) -> None:
         i = self._at(e.position())
         if i != self._hover:
             self._hover = i
-            self.setToolTip(tr(BADGE_NAME[self.idents[i]]) if i >= 0 else "")
+            self.setToolTip("" if i < 0 else ("?" if self._secret(self.idents[i]) else tr(BADGE_NAME[self.idents[i]])))
             self.update()
 
     def leaveEvent(self, _e) -> None:
@@ -11843,49 +11672,52 @@ class BadgeGrid(_Shiny):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w = self.ctx.wallet
-        wearing = {i.split("/")[0] for i in worn(self.ctx)}
+        wearing = {i.split(":")[1] for i in worn(self.ctx) if i.count(":") == 2}
         now = time.monotonic()
-        for i, ident in enumerate(self.idents):
-            cell = self._cell(i)
-            have = w.badge_variants(ident)
-            best = have[0] if have else ""
+        for i, base in enumerate(self.idents):
+            cell = QRectF((i % self.COLS) * self.cw, (i // self.COLS) * self.ch, self.cw, self.ch)
+            have, best, before = self.state(base)
             d = S(40)
             c = QPointF(cell.center().x(), cell.top() + S(4) + d / 2)
             hov = i == self._hover
-            ring = QColor(RARITY_COLOUR[VARIANT[best][2]]) if best else QColor("#FFFFFF")
-            p.setPen(QPen(ui.accent if ident in wearing else alpha(ring, (0.55 if best else 0.10) + (0.2 if hov else 0)),
+            ring = rarity_colour(self.ctx, badge_item(base, best)) if best else QColor("#FFFFFF")
+            p.setPen(QPen(ui.accent if base in wearing else alpha(ring, (0.55 if best else 0.10) + (0.2 if hov else 0)),
                           1.3))
             p.setBrush(alpha(ring, 0.08) if best else QColor("#0A0D0E"))
             p.drawEllipse(c, d / 2, d / 2)
-            g = S(21)
+            g = S(20) if base in EXOTIC_IDS else S(21)
             box = QRectF(c.x() - g / 2, c.y() - g / 2, g, g)
             if best:
-                paint_badge(p, ident, box, best, now, effects=True)
+                paint_item(p, badge_item(base, best), box, now)
+            elif self._secret(base):
+                p.setPen(alpha("#FFFFFF", 0.35 + (0.2 if hov else 0)))
+                p.setFont(font(15, QFont.Weight.ExtraBold))
+                p.drawText(QRectF(c.x() - d / 2, c.y() - d / 2, d, d), int(Qt.AlignmentFlag.AlignCenter), "?")
             else:
-                paint_badge(p, ident, box, "grey", 0, effects=False, dim=0.28 + (0.2 if hov else 0.0))
+                paint_item(p, badge_item(base, before or ("prime" if base in EXOTIC_IDS else "grey")), box, 0,
+                           effects=False, dim=(0.42 if before else 0.26) + (0.15 if hov else 0.0))
             p.setFont(font(9, QFont.Weight.DemiBold))
             p.setPen(ring if best else QColor(TEXT_FAINT))
             p.drawText(QRectF(cell.left(), cell.top() + S(4) + d + S(1), cell.width(), S(14)),
-                       int(Qt.AlignmentFlag.AlignCenter), f"{len(have)}/{len(VARIANTS)}")
+                       int(Qt.AlignmentFlag.AlignCenter), f"{len(have)}/{len(variants_for(base))}")
 
 
 class BigBadge(_Shiny):
-    """One badge, large, in the colour picked below it, with its name and rarity."""
+    """One badge, large, in the colour picked below it, with its name, rarity and whether you have it."""
 
     def __init__(self, page) -> None:
         super().__init__()
-        self.page = page
-        self.ident, self.var = "star", "grey"
-        self.setFixedHeight(S(136))
+        self.page, self.ctx = page, page.ctx
+        self.item = "badge:star:grey"
+        self.setFixedHeight(S(140))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._born = time.monotonic()
 
     def shiny(self) -> bool:
-        return True                                    # the glow behind it breathes
+        return True
 
-    def show_variant(self, ident: str, var: str) -> None:
-        self.ident, self.var = ident, var
+    def show_item(self, item: str) -> None:
+        self.item = item
         self._born = time.monotonic()
         self.restart()
 
@@ -11893,9 +11725,10 @@ class BigBadge(_Shiny):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         now = time.monotonic()
-        rarity = VARIANT[self.var][2]
-        owned = self.page.ctx.wallet.has_badge(self.ident, self.var)
-        col = QColor(RARITY_COLOUR[rarity])
+        ec = self.ctx.econ
+        rarity = ec.rarity(self.item)
+        owned, before = ec.owns(self.item), ec.had(self.item)
+        col = QColor(RARITY_COLOURS[rarity])
         c = QPointF(self.width() / 2, S(54))
         breath = 0.5 + 0.5 * math.sin(now * 2.0)
         glow = QRadialGradient(c, S(70))
@@ -11904,77 +11737,77 @@ class BigBadge(_Shiny):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(glow)
         p.drawEllipse(c, S(70), S(70))
-        if rarity in ("very", "super") and owned:          # slow light rays
+        if rarity in ("epic", "exotic") and owned:
             p.save()
             p.translate(c)
             p.rotate(now * 12)
-            for k in range(10):
+            for _k in range(10):
                 p.rotate(36)
-                path = QPainterPath()
-                path.moveTo(0, 0)
-                path.lineTo(S(64), -S(7))
-                path.lineTo(S(64), S(7))
-                path.closeSubpath()
-                p.setBrush(alpha(col, 0.07 if rarity == "very" else 0.11))
-                p.drawPath(path)
+                ray = QPainterPath()
+                ray.moveTo(0, 0)
+                ray.lineTo(S(64), -S(7))
+                ray.lineTo(S(64), S(7))
+                ray.closeSubpath()
+                p.setBrush(alpha(col, 0.07 if rarity == "epic" else 0.12))
+                p.drawPath(ray)
             p.restore()
         pop = min(1.0, (now - self._born) / 0.25)
-        size = S(74) * (0.85 + 0.15 * (1 - (1 - pop) ** 3))
-        paint_badge(p, self.ident, QRectF(c.x() - size / 2, c.y() - size / 2, size, size), self.var, now,
-                    dim=1.0 if owned else 0.35)
-        if not owned:
-            p.save()
-            p.translate(c.x() + S(30), c.y() + S(28))
-            p.setBrush(QColor(14, 17, 18))
-            p.setPen(QPen(alpha("#FFFFFF", 0.14), 1))
-            p.drawEllipse(QPointF(0, 0), S(11), S(11))
-            p.scale(S(12) / 20, S(12) / 20)
-            draw_icon(p, "lock", QColor(TEXT_DIM))
-            p.restore()
+        size = S(66) * (0.85 + 0.15 * (1 - (1 - pop) ** 3))
+        paint_item(p, self.item, QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now, effects=owned,
+                   dim=1.0 if owned else 0.35)
+        count = len(ec.copies(self.item))
         p.setPen(QColor(TEXT))
         p.setFont(font(13, QFont.Weight.Bold))
-        p.drawText(QRectF(0, S(98), self.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), tr(VARIANT[self.var][1]))
+        name = tr(VARIANT_NAME.get(self.item.split(":")[2], "")) + (f"  ×{count}" if count > 1 else "")
+        p.drawText(QRectF(0, S(98), self.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), name)
+        tag = tr(RARITY_NAMES[rarity]) + ("" if owned else "  ·  " + (tr("No longer owned") if before else tr("Not owned")))
         p.setPen(col)
         p.setFont(font(10.5, QFont.Weight.Bold))
-        p.drawText(QRectF(0, S(117), self.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr(RARITY_NAME[rarity]))
+        p.drawText(QRectF(0, S(118), self.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tag)
 
 
 class VariantPicker(_Shiny):
-    """The 17 colours of one badge, in four rows from rarest to basic."""
+    """Every colour of one badge: prestige finishes on top, then the colours, then grey."""
     picked = pyqtSignal(str)
 
-    def __init__(self, page, ident: str) -> None:
+    def __init__(self, page, base: str) -> None:
         super().__init__()
-        self.page, self.ctx, self.ident = page, page.ctx, ident
+        self.page, self.ctx, self.base = page, page.ctx, base
         self.var = ""
-        self.label_w = S(80)
+        self.label_w = S(74)
         self.sq, self.gap = S(28), S(5)
-        self.rows = [variants_of(k) for k, _n, _c in RARITIES][::-1]          # super, very, rare, basic
+        if base in EXOTIC_IDS:
+            self.rows = [("Exotic", PRESTIGE_IDS[::-1]), ("Epic", ["prime"])]
+        else:
+            self.rows = [("Cases only", PRESTIGE_IDS[::-1]), ("Colours", COLOUR_IDS[7:][::-1]), ("", COLOUR_IDS[:7][::-1]),
+                         ("Plain", ["grey"])]
         self.row_h = S(36)
         self.setFixedSize(page.W, int(self.row_h * len(self.rows)))
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._hover = ""
+        self.ctx.econ.changed.connect(self.restart)
 
     def shiny(self) -> bool:
-        return any(animated(v) for v in self.ctx.wallet.badge_variants(self.ident))
+        return any(self.ctx.econ.owns(badge_item(self.base, v)) and item_animated(badge_item(self.base, v))
+                   for _t, vs in self.rows for v in vs)
 
     def _rect(self, row: int, k: int) -> QRectF:
         return QRectF(self.label_w + k * (self.sq + self.gap), row * self.row_h + (self.row_h - self.sq) / 2,
                       self.sq, self.sq)
 
     def _at(self, pos) -> str:
-        for row, vs in enumerate(self.rows):
+        for row, (_t, vs) in enumerate(self.rows):
             for k, v in enumerate(vs):
                 if self._rect(row, k).adjusted(-2, -2, 2, 2).contains(pos):
-                    return v[0]
+                    return v
         return ""
 
     def mouseMoveEvent(self, e) -> None:
         v = self._at(e.position())
         if v != self._hover:
             self._hover = v
-            self.setToolTip(tr(VARIANT[v][1]) if v else "")
+            self.setToolTip(tr(VARIANT_NAME[v]) if v else "")
             self.update()
 
     def leaveEvent(self, _e) -> None:
@@ -11993,33 +11826,26 @@ class VariantPicker(_Shiny):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w = self.ctx.wallet
+        ec = self.ctx.econ
         wearing = set(worn(self.ctx))
         now = time.monotonic()
-        for row, vs in enumerate(self.rows):
-            rarity = vs[0][2]
-            col = QColor(RARITY_COLOUR[rarity])
-            p.setPen(col)
+        for row, (title, vs) in enumerate(self.rows):
+            p.setPen(QColor(TEXT_DIM))
             p.setFont(font(10, QFont.Weight.Bold))
             p.drawText(QRectF(0, row * self.row_h, self.label_w - S(6), self.row_h), int(Qt.AlignmentFlag.AlignVCenter),
-                       tr(RARITY_NAME[rarity]))
-            for k, (vid, _name, _r, main, _light) in enumerate(vs):
+                       tr(title) if title else "")
+            for k, v in enumerate(vs):
+                item = badge_item(self.base, v)
                 r = self._rect(row, k)
-                have = w.has_badge(self.ident, vid)
-                sel = vid == self.var
-                hov = vid == self._hover
-                p.setPen(QPen(QColor("#FFFFFF") if sel else alpha(col, 0.5 if have else (0.25 if hov else 0.10)),
+                col = QColor(RARITY_COLOURS[ec.rarity(item)])
+                have, sel, hov = ec.owns(item), v == self.var, v == self._hover
+                p.setPen(QPen(QColor("#FFFFFF") if sel else alpha(col, 0.55 if have else (0.3 if hov else 0.12)),
                               S(1.6) if sel else 1.1))
                 p.setBrush(alpha(col, 0.10) if have else QColor("#0C1013"))
                 p.drawRoundedRect(r, S(7), S(7))
-                inner = r.adjusted(S(6), S(6), -S(6), -S(6))
-                if have:
-                    paint_badge(p, self.ident, inner, vid, now, effects=rarity != "basic")
-                else:
-                    p.setPen(QPen(alpha("#FFFFFF", 0.25), 1) if vid == "black" else Qt.PenStyle.NoPen)
-                    p.setBrush(alpha(QColor(main), 0.9 if vid == "black" else 0.45))
-                    p.drawEllipse(r.center(), S(4.5), S(4.5))
-                if f"{self.ident}/{vid}" in wearing:
+                paint_item(p, item, r.adjusted(S(6.5), S(6.5), -S(6.5), -S(6.5)), now, effects=have,
+                           dim=1.0 if have else (0.5 if ec.had(item) else 0.3))
+                if item in wearing:
                     p.setPen(Qt.PenStyle.NoPen)
                     p.setBrush(ui.accent)
                     p.drawEllipse(QPointF(r.right() - S(3), r.top() + S(3)), S(3), S(3))
@@ -12028,17 +11854,13 @@ class VariantPicker(_Shiny):
 # --------------------------------------------------------------------------- #
 # Cases
 # --------------------------------------------------------------------------- #
-def case_by_id(ident: str) -> dict:
-    return next((c for c in CASES if c["id"] == ident), CASES[0])
-
-
-def paint_case(p: QPainter, rect: QRectF, case: dict, shake: float = 0.0) -> None:
-    """A small closed case in the case's colour, with three of its badges on the front."""
+def paint_case(p: QPainter, rect: QRectF, case_id: str, shake: float = 0.0) -> None:
+    """A small closed case in its colour, with three of its badges on the front."""
     p.save()
     p.translate(rect.center().x() + shake, rect.center().y())
     w, h = rect.width(), rect.height() * 0.72
     body = QRectF(-w / 2, -h / 2 + rect.height() * 0.08, w, h)
-    col = QColor(case["colour"])
+    col = QColor(CASE_COLOURS.get(case_id, "#3DDC84"))
     g = QLinearGradient(body.topLeft(), body.bottomLeft())
     g.setColorAt(0.0, mix(col, QColor("#FFFFFF"), 0.18))
     g.setColorAt(1.0, mix(col, QColor("#000000"), 0.45))
@@ -12047,24 +11869,24 @@ def paint_case(p: QPainter, rect: QRectF, case: dict, shake: float = 0.0) -> Non
     p.drawRoundedRect(body, w * 0.12, w * 0.12)
     p.setBrush(alpha("#000000", 0.28))
     p.drawRect(QRectF(body.left(), body.top() + h * 0.32, w, h * 0.12))
-    handle = QRectF(-w * 0.18, body.top() - h * 0.16, w * 0.36, h * 0.2)
     p.setBrush(Qt.BrushStyle.NoBrush)
     p.setPen(QPen(mix(col, QColor("#000000"), 0.3), max(1.5, w * 0.06)))
-    p.drawRoundedRect(handle, w * 0.06, w * 0.06)
-    bs = w * 0.22
-    for k, ident in enumerate(case["badges"][:3]):
-        x = -bs * 1.25 + k * bs * 1.25
-        paint_badge(p, ident, QRectF(x - bs / 2, body.top() + h * 0.56 - bs / 2, bs, bs), "titanium", 0, effects=False)
+    p.drawRoundedRect(QRectF(-w * 0.18, body.top() - h * 0.16, w * 0.36, h * 0.2), w * 0.06, w * 0.06)
+    bs = w * 0.2
+    for k, base in enumerate(CASE_FRONT.get(case_id, ("heart", "star", "note"))):
+        x = -bs * 1.3 + k * bs * 1.3
+        paint_item(p, badge_item(base, "prime" if base in EXOTIC_IDS else "white"),
+                   QRectF(x - bs / 2, body.top() + h * 0.56 - bs / 2, bs, bs), 0, effects=False)
     p.restore()
 
 
 class CaseCard(QWidget):
-    """A case in the list: picture, name, price, and how much of it you have collected."""
+    """A case in the list (or the free daily case): picture, name, price or countdown."""
 
     def __init__(self, page, case: dict) -> None:
         super().__init__()
         self.page, self.ctx, self.case = page, page.ctx, case
-        self.setFixedHeight(S(80))
+        self.setFixedHeight(S(64))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._hover = Tween(self, on_change=self.update)
 
@@ -12083,127 +11905,133 @@ class CaseCard(QWidget):
             self.page.open_case(self.case["id"])
 
     def paintEvent(self, _e) -> None:
+        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         h = self._hover.level
+        cid = self.case["id"]
         r = QRectF(self.rect()).adjusted(1.5, 1.5, -1.5, -1.5)
-        col = QColor(self.case["colour"])
+        col = QColor(CASE_COLOURS.get(cid, "#3DDC84"))
         p.setPen(QPen(mix(alpha("#FFFFFF", 0.08), col, 0.4 + 0.5 * h), 1.2))
         bg = QLinearGradient(r.topLeft(), r.topRight())
         bg.setColorAt(0.0, alpha(col, 0.14 + 0.06 * h))
         bg.setColorAt(0.6, QColor("#0C1113"))
         p.setBrush(bg)
         p.drawRoundedRect(r, S(12), S(12))
-        paint_case(p, QRectF(r.left() + S(12), r.top() + S(10), S(58), r.height() - S(20)), self.case,
+        paint_case(p, QRectF(r.left() + S(12), r.top() + S(8), S(48), r.height() - S(16)), cid,
                    math.sin(time.monotonic() * 40) * S(1.2) * h)
-        x = r.left() + S(84)
+        x = r.left() + S(74)
         p.setPen(QColor(TEXT))
         p.setFont(font(13.5, QFont.Weight.Bold))
-        p.drawText(QRectF(x, r.top() + S(12), r.width() - S(90), S(22)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr(self.case["name"]))
-        paint_price(p, QRectF(x, r.top() + S(36), S(80), S(18)), self.case["price"], 11, GOLD_TEXT, centre=False)
-        p.setFont(font(11, QFont.Weight.DemiBold))
-        pw = p.fontMetrics().horizontalAdvance(coins_text(self.case["price"])) + S(26)
-        p.setPen(QColor(TEXT_DIM))
-        p.drawText(QRectF(x + pw, r.top() + S(36), S(14), S(18)), int(Qt.AlignmentFlag.AlignVCenter), "+")
-        p.save()
-        p.translate(x + pw + S(20), r.top() + S(45))
-        p.scale(S(12) / 20, S(12) / 20)
-        draw_icon(p, "key", ui.accent)
-        p.restore()
-        w = self.ctx.wallet
-        total = len(self.case["badges"]) * len(VARIANTS)
-        have = sum(len(w.badge_variants(b)) for b in self.case["badges"])
-        bar = QRectF(x, r.bottom() - S(16), r.width() - S(98), S(4))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.08))
-        p.drawRoundedRect(bar, S(2), S(2))
-        p.setBrush(col)
-        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(S(4), bar.width() * have / total), bar.height()), S(2), S(2))
-        p.setPen(QColor(TEXT_DIM))
-        p.setFont(font(9.5, QFont.Weight.DemiBold))
-        p.drawText(QRectF(bar.left(), bar.top() - S(17), bar.width(), S(14)),
-                   int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), f"{have} / {total}")
+        p.drawText(QRectF(x, r.top() + S(9), r.width() - S(90), S(22)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr(CASE_NAMES.get(cid, "Daily Case")))
+        line = QRectF(x, r.top() + S(33), r.width() - S(90), S(18))
+        if cid == "daily":
+            wait = self.page.daily_wait()
+            p.setPen(QColor(GOLD_TEXT) if wait == 0 else QColor(TEXT_DIM))
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter),
+                       tr("Free: ready") if wait == 0 else ("…" if wait is None else tr("Free again in {t}", t=clock_text(wait))))
+        else:
+            paint_price(p, line, self.case["price"], 11, GOLD_TEXT, centre=False)
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            pw = p.fontMetrics().horizontalAdvance(coins_text(self.case["price"])) + S(26)
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(x + pw, line.top(), S(14), S(18)), int(Qt.AlignmentFlag.AlignVCenter), "+")
+            p.save()
+            p.translate(x + pw + S(20), line.center().y())
+            p.scale(S(12) / 20, S(12) / 20)
+            draw_icon(p, "key", ui.accent)
+            p.restore()
 
 
 class OddsTable(QWidget):
-    """The real chance of each rarity in this case."""
+    """The real chance of each kind of drop in this case, and what is certain after a number of openings."""
 
     def __init__(self, case: dict, width: int) -> None:
         super().__init__()
         self.case = case
+        self.rows = [(i, share) for i, share in enumerate(case["odds"]) if share > 0][::-1]
         self.row_h = S(24)
-        self.setFixedSize(width, int(self.row_h * 4))
+        self.setFixedSize(width, int(self.row_h * len(self.rows) + S(22)))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        order = list(zip(("basic", "rare", "very", "super"), self.case["odds"]))[::-1]
-        for k, (rarity, share) in enumerate(order):
+        case = self.case
+        for k, (tier, share) in enumerate(self.rows):
             r = QRectF(0, k * self.row_h, self.width(), self.row_h)
-            col = QColor(RARITY_COLOUR[rarity])
+            col = QColor(RARITY_COLOURS[TIERS[tier - 1]]) if tier else QColor(GOLD_TEXT)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(col, 0.07))
             p.drawRoundedRect(r.adjusted(0, S(1.5), 0, -S(1.5)), S(6), S(6))
-            p.setBrush(col)
-            p.drawEllipse(QPointF(r.left() + S(12), r.center().y()), S(4), S(4))
+            if tier:
+                p.setBrush(col)
+                p.drawEllipse(QPointF(r.left() + S(12), r.center().y()), S(4), S(4))
+            else:
+                paint_coin(p, QPointF(r.left() + S(12), r.center().y()), S(5))
             p.setPen(col)
             p.setFont(font(11, QFont.Weight.Bold))
-            p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), tr(RARITY_NAME[rarity]))
-            names = ", ".join(tr(v[1]) for v in variants_of(rarity)) if rarity != "basic" else tr("8 plain colours")
-            p.setPen(QColor(TEXT_DIM))
-            p.setFont(font(9.5, QFont.Weight.DemiBold))
-            fm = p.fontMetrics()
-            name_w = self.width() * 0.48
-            p.drawText(QRectF(r.left() + self.width() * 0.32, r.top(), name_w, r.height()), int(Qt.AlignmentFlag.AlignVCenter),
-                       fm.elidedText(names, Qt.TextElideMode.ElideRight, int(name_w)))
+            name = tr(RARITY_NAMES[TIERS[tier - 1]]) if tier else \
+                tr("{a} to {b} coins", a=case["coin_min"], b=case["coin_max"])
+            p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
             pct = share / 100
             text = f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
             p.setPen(QColor(TEXT))
-            p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        text.replace(".", ",") if lang() == "fr" else text)
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        p.drawText(QRectF(0, len(self.rows) * self.row_h + S(4), self.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("{rarity} or better is certain within {n} openings",
+                      rarity=tr(RARITY_NAMES[TIERS[case["pity_tier"] - 1]]), n=case["pity_after"]))
 
 
 class CaseReel(QWidget):
-    """The opening: a strip of badges races past the marker and slows down until it stops on yours."""
+    """The opening: a strip of drops races past the marker and slows down until it stops on yours. The server
+    already decided and saved the drop before the strip starts."""
     done = pyqtSignal()
-    ITEMS = 52
-    WIN = 46
-    SPIN_S = 6.6
+    ITEMS, WIN, SPIN_S = 52, 46, 6.6
 
     def __init__(self, page, case: dict) -> None:
         super().__init__()
         self.page, self.ctx, self.case = page, page.ctx, case
         self.setFixedHeight(S(178))
         self.cw, self.gap = S(64), S(6)
-        self.state = "idle"                              # idle -> spin -> result
+        self.state = "idle"                              # idle -> spin -> landed -> result
         self.result = None
-        rnd = random.Random(hash(case["id"]) & 0xFFFF)
+        self._pool = {}
+        rnd = random.Random(sum(map(ord, case["id"])))
         self.strip = [self._filler(rnd) for _ in range(self.ITEMS)]
         self.offset = self._start()
-        self._t0 = 0.0
-        self._target = 0.0
+        self._t0 = self._target = self._last_tick = self._stop_t = 0.0
         self._last_cell = 0
-        self._last_tick = 0.0
-        self._stop_t = 0.0
         self._frames = QTimer(self)
         self._frames.setTimerType(Qt.TimerType.PreciseTimer)
         self._frames.setInterval(16)
         self._frames.timeout.connect(self._step)
         self._sparks: list = []
 
+    def _badges_of(self, tier: int) -> list:
+        if tier not in self._pool:
+            want = TIERS[tier - 1]
+            self._pool[tier] = [k for k, v in self.ctx.econ.catalog.items() if v.get("kind") == "badge"
+                                and v.get("rarity") == want
+                                and (self.case.get("exotics") or v.get("base") not in EXOTIC_IDS)] or ["badge:star:grey"]
+        return self._pool[tier]
+
     def _filler(self, rnd) -> tuple:
-        """A random badge for the strip, drawn with the case's real odds (so the strip looks like the case)."""
-        roll = rnd.randrange(10000)
-        rarity = "super"
-        for kind, share in zip(("basic", "rare", "very", "super"), self.case["odds"]):
+        """A drop for the strip, picked with the case's real odds (so the strip looks like the case)."""
+        roll, tier = rnd.randrange(10000), 0
+        for i, share in enumerate(self.case["odds"]):
             if roll < share:
-                rarity = kind
+                tier = i
                 break
             roll -= share
-        return rnd.choice(self.case["badges"]), rnd.choice(variants_of(rarity))[0]
+        if tier == 0:
+            return ("coins", rnd.randint(self.case["coin_min"], self.case["coin_max"]))
+        return ("item", rnd.choice(self._badges_of(tier)))
 
     def _start(self) -> float:
         return 2 * (self.cw + self.gap) + self.cw / 2
@@ -12214,7 +12042,7 @@ class CaseReel(QWidget):
     def spin(self, result: dict) -> None:
         rnd = random.Random()
         self.strip = [self._filler(rnd) for _ in range(self.ITEMS)]
-        self.strip[self.WIN] = (result["badge"], result["var"])
+        self.strip[self.WIN] = ("item", result["item"]) if result.get("item") else ("coins", int(result.get("won", 0)))
         self.result = result
         self.state = "spin"
         self.offset = self._start()
@@ -12222,10 +12050,10 @@ class CaseReel(QWidget):
         self._t0 = time.monotonic()
         self._last_cell = int(self.offset // (self.cw + self.gap))
         self._sparks = []
+        self._frames.setInterval(16)
         self._frames.start()
 
     def skip(self) -> None:
-        """Jump to the end (the Shop was left mid-opening)."""
         if self.state == "spin":
             self._t0 = time.monotonic() - self.SPIN_S
             self._step()
@@ -12234,9 +12062,8 @@ class CaseReel(QWidget):
         now = time.monotonic()
         if self.state == "spin":
             t = min(1.0, (now - self._t0) / self.SPIN_S)
-            eased = 1.0 - (1.0 - t) ** 4.2
             start = self._start()
-            self.offset = start + (self._target - start) * eased
+            self.offset = start + (self._target - start) * (1.0 - (1.0 - t) ** 4.2)
             cell = int((self.offset + self.gap / 2) // (self.cw + self.gap))
             if cell != self._last_cell:
                 self._last_cell = cell
@@ -12247,56 +12074,57 @@ class CaseReel(QWidget):
                 self.state = "landed"
                 self._stop_t = now
                 QTimer.singleShot(650, self._reveal)
-        elif self.state == "result" and now - self._stop_t > 6.0 and self.result["rarity"] == "basic":
-            self._frames.setInterval(40)
         self.update()
+
+    def _tier(self) -> int:
+        return int((self.result or {}).get("tier", 0))
 
     def _reveal(self) -> None:
         if self.result is None:
             return
         self.state = "result"
         self._stop_t = time.monotonic()
-        rarity = self.result["rarity"]
+        tier = self._tier()
         sfx.play("on")
-        if rarity in ("very", "super"):
+        if tier >= 4:
             QTimer.singleShot(180, lambda: sfx.play("on"))
-        n = {"basic": 0, "rare": 14, "very": 26, "super": 46}[rarity]
+        n = [0, 0, 10, 18, 30, 60][tier]
         rnd = random.Random()
         self._sparks = [(rnd.uniform(0, math.tau), rnd.uniform(S(60), S(150)), rnd.uniform(0.6, 1.3)) for _ in range(n)]
-        refund = self.ctx.wallet.pay_refund()
-        if refund:
-            self.result["refund"] = refund
         self.done.emit()
-
-    def back_to_strip(self) -> None:
-        if self.state == "result":
-            self.state = "idle"
-            self._frames.stop()
-            self.update()
 
     def mousePressEvent(self, e) -> None:
         e.accept()
         if self.state == "result" and not self.busy():
-            self.back_to_strip()
+            self.state = "idle"
+            self._frames.stop()
+            self.update()
 
     def hideEvent(self, _e) -> None:
         self.skip()
 
-    # -- painting
-    def _card(self, p: QPainter, rect: QRectF, ident: str, var: str, now: float, flash: float = 0.0) -> None:
-        rarity = VARIANT[var][2]
-        col = QColor(RARITY_COLOUR[rarity])
+    def _card(self, p: QPainter, rect: QRectF, drop: tuple, now: float, flash: float = 0.0) -> None:
+        kind, what = drop
+        col = QColor(GOLD_TEXT) if kind == "coins" else rarity_colour(self.ctx, what)
         g = QLinearGradient(rect.topLeft(), rect.bottomLeft())
         g.setColorAt(0.0, QColor("#11171A"))
-        g.setColorAt(1.0, mix(QColor("#11171A"), col, 0.32))
+        g.setColorAt(1.0, mix(QColor("#11171A"), col, 0.32 if kind == "item" else 0.12))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(g)
         p.drawRoundedRect(rect, S(8), S(8))
-        p.setBrush(col)
+        p.setBrush(col if kind == "item" else alpha(col, 0.5))
         p.drawRoundedRect(QRectF(rect.left() + S(6), rect.bottom() - S(5), rect.width() - S(12), S(3)), S(1.5), S(1.5))
-        size = rect.width() * 0.56
-        paint_badge(p, ident, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size), var,
-                    now, effects=self.state != "spin")
+        if kind == "coins":
+            paint_coin(p, QPointF(rect.center().x(), rect.center().y() - S(10)), S(11))
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(11, QFont.Weight.Bold))
+            p.drawText(QRectF(rect.left(), rect.center().y() + S(6), rect.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       coins_text(what))
+            p.setPen(Qt.PenStyle.NoPen)
+        else:
+            size = rect.width() * 0.5
+            paint_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
+                       now, effects=self.state != "spin")
         if flash > 0:
             p.setBrush(QColor(255, 255, 255, int(150 * flash)))
             p.drawRoundedRect(rect, S(8), S(8))
@@ -12321,30 +12149,21 @@ class CaseReel(QWidget):
         p.drawRoundedRect(r, S(12), S(12))
 
     def _paint_strip(self, p: QPainter, r: QRectF, now: float) -> None:
-        cx = r.center().x()
-        ch = S(88)
+        cx, ch = r.center().x(), S(88)
         top = r.center().y() - ch / 2
         step = self.cw + self.gap
         first = max(0, int((self.offset - cx) // step) - 1)
-        speed = 0.0
-        if self.state == "spin":
-            t = min(1.0, (now - self._t0) / self.SPIN_S)
-            speed = (1.0 - t) ** 3.2
+        speed = (1.0 - min(1.0, (now - self._t0) / self.SPIN_S)) ** 3.2 if self.state == "spin" else 0.0
         for i in range(first, min(self.ITEMS, first + int(r.width() // step) + 4)):
-            x = cx - self.offset + i * step
-            ident, var = self.strip[i]
             flash = 0.0
             if self.state == "landed" and i == self.WIN:
                 flash = max(0.0, 1.0 - (now - self._stop_t) / 0.6) * (0.5 + 0.5 * math.sin((now - self._stop_t) * 30))
-            self._card(p, QRectF(x, top, self.cw, ch), ident, var, now, flash)
-        fade = QLinearGradient(r.topLeft(), r.topRight())                      # dark edges
-        fade.setColorAt(0.0, QColor(9, 12, 13, 250))
-        fade.setColorAt(0.22, QColor(9, 12, 13, 0))
-        fade.setColorAt(0.78, QColor(9, 12, 13, 0))
-        fade.setColorAt(1.0, QColor(9, 12, 13, 250))
+            self._card(p, QRectF(cx - self.offset + i * step, top, self.cw, ch), self.strip[i], now, flash)
+        fade = QLinearGradient(r.topLeft(), r.topRight())
+        for at, a in ((0.0, 250), (0.22, 0), (0.78, 0), (1.0, 250)):
+            fade.setColorAt(at, QColor(9, 12, 13, a))
         p.fillRect(r, fade)
-        heat = speed if self.state == "spin" else 0.0
-        mark = mix(QColor(GOLD_TEXT), QColor("#FFFFFF"), heat)
+        mark = mix(QColor(GOLD_TEXT), QColor("#FFFFFF"), speed)
         p.setPen(QPen(alpha(mark, 0.35), S(6)))
         p.drawLine(QPointF(cx, top - S(10)), QPointF(cx, top + ch + S(10)))
         p.setPen(QPen(mark, S(2)))
@@ -12352,87 +12171,67 @@ class CaseReel(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(mark)
         for y, d in ((top - S(14), 1), (top + ch + S(14), -1)):
-            path = QPainterPath()
-            path.moveTo(cx - S(7), y)
-            path.lineTo(cx + S(7), y)
-            path.lineTo(cx, y + d * S(9))
-            path.closeSubpath()
-            p.drawPath(path)
-        if self.state == "idle" and self.result is None:
-            p.setPen(QColor(TEXT_DIM))
-            p.setFont(font(10, QFont.Weight.DemiBold))
-            p.drawText(QRectF(r.left(), r.bottom() - S(26), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                       tr("{n} badges, 17 colours each", n=len(self.case["badges"])))
+            tri = QPainterPath()
+            tri.moveTo(cx - S(7), y)
+            tri.lineTo(cx + S(7), y)
+            tri.lineTo(cx, y + d * S(9))
+            tri.closeSubpath()
+            p.drawPath(tri)
 
     def _paint_result(self, p: QPainter, r: QRectF, now: float) -> None:
-        res = self.result
-        rarity = res["rarity"]
-        col = QColor(RARITY_COLOUR[rarity])
+        res, tier = self.result, self._tier()
+        col = QColor(RARITY_COLOURS[TIERS[tier - 1]]) if tier else QColor(GOLD_TEXT)
         age = now - self._stop_t
         c = QPointF(r.center().x(), r.top() + S(66))
         burst = QRadialGradient(c, S(150))
-        burst.setColorAt(0.0, alpha(col, 0.42 if rarity != "basic" else 0.18))
+        burst.setColorAt(0.0, alpha(col, 0.42 if tier >= 2 else 0.18))
         burst.setColorAt(1.0, alpha(col, 0.0))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(burst)
         p.drawEllipse(c, S(150), S(150))
-        if rarity != "basic":                                               # rays
-            rays = {"rare": 8, "very": 12, "super": 16}[rarity]
+        if tier >= 2:
+            rays = [0, 0, 8, 10, 14, 18][tier]
             p.save()
             p.translate(c)
-            p.rotate(now * (14 if rarity == "rare" else 22))
-            for k in range(rays):
+            p.rotate(now * (12 + 4 * tier))
+            for _k in range(rays):
                 p.rotate(360 / rays)
-                path = QPainterPath()
-                path.moveTo(0, 0)
-                path.lineTo(S(170), -S(10))
-                path.lineTo(S(170), S(10))
-                path.closeSubpath()
-                p.setBrush(alpha(col, 0.10 if rarity == "rare" else 0.16))
-                p.drawPath(path)
+                ray = QPainterPath()
+                ray.moveTo(0, 0)
+                ray.lineTo(S(170), -S(10))
+                ray.lineTo(S(170), S(10))
+                ray.closeSubpath()
+                p.setBrush(alpha(col, 0.08 + 0.03 * (tier - 2)))
+                p.drawPath(ray)
             p.restore()
-        if age < 0.35:                                                      # white flash as it opens
-            p.setBrush(QColor(255, 255, 255, int(200 * (1 - age / 0.35))))
+        if age < 0.35 and tier >= 2:
+            p.setBrush(QColor(255, 255, 255, int((120 + 30 * tier) * (1 - age / 0.35))))
             p.drawRect(r)
-        for ang, dist, spd in self._sparks:                                 # sparks flying out
+        for ang, dist, spd in self._sparks:
             k = min(1.0, age * spd / 1.4)
-            if k >= 1.0:
-                continue
-            d = dist * (1 - (1 - k) ** 3)
-            pt = QPointF(c.x() + d * math.cos(ang), c.y() + d * math.sin(ang))
-            sc = QColor("#FFF6D8") if rarity == "super" else mix(col, QColor("#FFFFFF"), 0.5)
-            sc.setAlphaF(1.0 - k)
-            p.setBrush(sc)
-            p.drawEllipse(pt, S(2.2) * (1 - k * 0.5), S(2.2) * (1 - k * 0.5))
+            if k < 1.0:
+                d = dist * (1 - (1 - k) ** 3)
+                sc = mix(col, QColor("#FFFFFF"), 0.5)
+                sc.setAlphaF(1.0 - k)
+                p.setBrush(sc)
+                p.drawEllipse(QPointF(c.x() + d * math.cos(ang), c.y() + d * math.sin(ang)), S(2.2), S(2.2))
         pop = min(1.0, age / 0.45)
-        over = 1 + 0.18 * math.sin(pop * math.pi) * (1 - pop)
-        size = S(70) * (0.4 + 0.6 * (1 - (1 - pop) ** 3)) * over
-        paint_badge(p, res["badge"], QRectF(c.x() - size / 2, c.y() - size / 2, size, size), res["var"], now)
+        size = S(64) * (0.4 + 0.6 * (1 - (1 - pop) ** 3)) * (1 + 0.18 * math.sin(pop * math.pi) * (1 - pop))
+        if res.get("item"):
+            paint_item(p, res["item"], QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now)
+            title, tag = badge_label(res["item"]), tr(RARITY_NAMES[TIERS[tier - 1]]).upper()
+        else:
+            paint_coin(p, c, size * 0.42)
+            title, tag = "+" + coins_text(int(res.get("won", 0))), tr("Coins").upper()
+        if int(res.get("won_keys", 0) or 0):
+            title, tag = "+1 " + tr("key"), tr("Key").upper()
         p.setPen(QColor(TEXT))
         p.setFont(font(14, QFont.Weight.Bold))
-        p.drawText(QRectF(r.left(), r.top() + S(110), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
-                   badge_label(res["badge"], res["var"]))
+        p.drawText(QRectF(r.left(), r.top() + S(112), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), title)
         p.setPen(col)
         p.setFont(font(10.5, QFont.Weight.ExtraBold))
-        p.drawText(QRectF(r.left(), r.top() + S(131), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr(RARITY_NAME[rarity]).upper())
-        if res["new"] or self.ctx.wallet.admin:
-            text, tc, bgc = tr("NEW"), "#0A0D0E", ui.accent
-        else:
-            text, tc, bgc = tr("Duplicate: +{n} coins", n=coins_text(res.get("refund", 0))), GOLD_TEXT, alpha(GOLD_TEXT, 0.14)
-        p.setFont(font(10, QFont.Weight.ExtraBold))
-        tw = p.fontMetrics().horizontalAdvance(text) + S(20)
-        pill = QRectF(c.x() - tw / 2, r.top() + S(150), tw, S(20))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(bgc)
-        p.drawRoundedRect(pill, S(10), S(10))
-        p.setPen(QColor(tc))
-        p.drawText(pill, int(Qt.AlignmentFlag.AlignCenter), text)
-
-
-class CaseContents(BadgeGrid):
-    """The ten badges a case can give, with how many colours of each you own."""
-    COLS = 5
+        p.drawText(QRectF(r.left(), r.top() + S(134), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                   tag + ("  ·  " + tr("GUARANTEED") if res.get("pity") else ""))
 
 
 # ==================================================================================================
@@ -12442,13 +12241,13 @@ import math
 import random
 import time
 
-from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF
 from PyQt6.QtWidgets import QGridLayout, QWidget
 
 
 RNG = random.SystemRandom()
-BETS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000]
+BETS = [10, 25, 50, 100, 250, 500, 1000]
 WIN, LOSE = "#35E0A1", "#FF5C6C"
 TABLE_H = 260
 
@@ -12467,6 +12266,8 @@ class Game(QWidget):
         self.setFixedSize(page.W, S(TABLE_H))
         self.stake = 0
         self.busy = False                        # a round is running: the bet is locked
+        self.waiting = False                     # a request to the server is on its way
+        self.econ = page.ctx.econ
         self._flash = ("", "", 0.0)
         self._frames = QTimer(self)
         self._frames.setTimerType(Qt.TimerType.PreciseTimer)
@@ -12521,21 +12322,48 @@ class Game(QWidget):
         self._frames.stop()
 
     def take(self) -> bool:
-        """Take the bet for a new round. False when there are not enough coins."""
+        """Take the bet for a new round (on screen; the server takes it for real with the request)."""
         bet = self.page.bet()
-        if bet <= 0 or not self.wallet.bet(bet):
+        if not self.econ.ready:
+            self.ctx.toast(tr("No internet connection"), "warn")
+            return False
+        if bet <= 0 or bet > self.econ.coins:
             self.ctx.toast(tr("Not enough coins"), "warn")
             return False
         self.stake = bet
         self.busy = True
+        self.econ.adjust(-bet)
         self.page.sync()
         return True
+
+    def ask(self, fn: str, args: dict, on_ok, once: bool = False, refund: int = 0) -> None:
+        """Send a move to the server. On an error the coins taken on screen are put back."""
+        self.waiting = True
+        self.page.sync()
+
+        def back(ok: bool, data) -> None:
+            try:
+                self.waiting = False
+                if ok:
+                    on_ok(data)
+                else:
+                    if refund:
+                        self.econ.adjust(refund)
+                    self.failed(str(data))
+                self.page.sync()
+            except RuntimeError:                      # the page was closed meanwhile
+                pass
+        self.econ.call(fn, args, back, once=once, hold=True)
+
+    def failed(self, message: str) -> None:
+        self.busy = False
+        self.ctx.toast(tr(message), "warn")
 
     def finish(self, payout: int) -> None:
         """End of the round: pay what was won (0 = lost) and show it."""
         payout = int(payout)
         if payout > 0:
-            self.wallet.add(payout)
+            self.econ.adjust(payout)
         gain = payout - self.stake
         if gain > 0:
             self.flash("+" + coins_text(gain), WIN)
@@ -12609,88 +12437,99 @@ class Blackjack(Game):
         self.dealer: list = []
         self.phase = "idle"              # idle -> player -> dealer -> idle
 
-    def _card(self, hidden: bool = False, delay: float = 0.0) -> dict:
-        return {"rank": RNG.choice(RANKS), "suit": RNG.choice(SUITS), "born": time.monotonic() + delay,
-                "hidden": hidden, "turned": 0.0}
+    def _card(self, code, hidden: bool = False, delay: float = 0.0) -> dict:
+        """A card as the server names it (0..51), or a face-down one (None)."""
+        rank = RANKS[code % 13] if code is not None else "A"
+        suit = SUITS[code // 13] if code is not None else "♠"
+        return {"rank": rank, "suit": suit, "born": time.monotonic() + delay, "hidden": hidden, "turned": 0.0}
 
     def deal(self) -> None:
-        if self.busy or not self.take():
+        if self.busy or self.waiting or not self.take():
             return
-        self.player = [self._card(delay=0.0), self._card(delay=0.36)]
-        self.dealer = [self._card(delay=0.18), self._card(hidden=True, delay=0.54)]
+        self.player, self.dealer, self.phase = [], [], "wait"
+        self.ask("rb_blackjack", {"action": "start", "bet": self.stake}, self._dealt, refund=self.stake)
+
+    def failed(self, message: str) -> None:
+        if message == "Finish your round first":         # a hand from before is still open: finish it
+            self.phase = "wait"
+            return self.ask("rb_blackjack", {"action": "stand", "bet": None}, self._old_round)
+        self.phase = "idle" if not self.player else "player"
+        self.busy = bool(self.player)
+        self.ctx.toast(tr(message), "warn")
+
+    def _old_round(self, ans: dict) -> None:
+        self.stake = int(ans.get("stake") or 0)
+        self.player = [self._card(c) for c in ans.get("me") or []]
+        self.dealer = [self._card(c) for c in ans.get("dealer") or []]
+        self.phase = "idle"
+        self.animate(0.6)
+        self.finish(int(ans.get("paid") or 0) + 0)
+
+    def _dealt(self, ans: dict) -> None:
+        me, shown = ans["me"], ans["dealer"]
+        self.player = [self._card(me[0], delay=0.0), self._card(me[1], delay=0.36)]
+        self.dealer = [self._card(shown[0], delay=0.18), self._card(None, hidden=True, delay=0.54)]
         self.phase = "player"
         self.animate(1.2)
-        self.page.sync()
-        if hand_total(self.player) == 21:
-            QTimer.singleShot(1000, self.stand)
+        if not ans["open"]:                              # a natural: the round is already over
+            self.phase = "dealer"
+            QTimer.singleShot(1000, lambda: self._reveal(ans))
 
     def hit(self) -> None:
-        if self.phase != "player":
+        if self.phase != "player" or self.waiting:
             return
-        self.player.append(self._card())
-        self.animate(0.6)
-        if hand_total(self.player) > 21:
-            self.phase = "dealer"
-            self.page.sync()
-            QTimer.singleShot(650, lambda: self._end(0))
-        elif hand_total(self.player) == 21:
-            self.stand()
+        self.ask("rb_blackjack", {"action": "hit", "bet": None}, self._drew)
 
     def double(self) -> None:
-        if self.phase != "player" or len(self.player) != 2 or not self.wallet.bet(self.stake):
+        if self.phase != "player" or self.waiting or len(self.player) != 2 or self.econ.coins < self.stake:
             return
-        self.stake *= 2
-        self.player.append(self._card())
+        self.econ.adjust(-self.stake)
+        self.ask("rb_blackjack", {"action": "double", "bet": None}, self._doubled, refund=self.stake)
+
+    def _doubled(self, ans: dict) -> None:
+        self.stake = int(ans.get("stake") or self.stake * 2)
+        self._drew(ans)
+
+    def _drew(self, ans: dict) -> None:
+        self.player.append(self._card(ans["me"][-1]))
         self.animate(0.6)
-        if hand_total(self.player) > 21:
+        if not ans["open"]:
             self.phase = "dealer"
-            self.page.sync()
-            QTimer.singleShot(650, lambda: self._end(0))
-        else:
-            self.stand()
+            QTimer.singleShot(650, lambda: self._reveal(ans))
 
     def stand(self) -> None:
-        if self.phase != "player":
+        if self.phase != "player" or self.waiting:
             return
         self.phase = "dealer"
-        self.page.sync()
-        self.dealer[1]["hidden"] = False
-        self.dealer[1]["turned"] = time.monotonic()
-        self.animate(0.8)
-        QTimer.singleShot(750, self._dealer_step)
+        self.ask("rb_blackjack", {"action": "stand", "bet": None}, self._reveal)
 
-    def _dealer_step(self) -> None:
-        if self.phase != "dealer":
-            return
-        natural = len(self.player) == 2 and hand_total(self.player) == 21
-        if hand_total(self.dealer) < 17 and not natural:
-            self.dealer.append(self._card())
-            self.animate(0.7)
-            QTimer.singleShot(700, self._dealer_step)
-            return
-        me, house = hand_total(self.player), hand_total(self.dealer)
-        house_natural = len(self.dealer) == 2 and house == 21
-        if natural and not house_natural:
-            pay = int(self.stake * 2.5)
-        elif house > 21 or me > house:
-            pay = self.stake * 2
-        elif me == house and natural == house_natural:
-            pay = self.stake
-        else:
-            pay = 0
-        self._end(pay)
+    def _reveal(self, ans: dict) -> None:
+        """The round is over on the server: turn the hidden card, show the dealer's draws, then the result."""
+        cards = ans.get("dealer") or []
+        if len(self.dealer) > 1 and len(cards) > 1:
+            self.dealer[1] = dict(self._card(cards[1]), born=self.dealer[1]["born"], turned=time.monotonic())
+        self.animate(0.8)
+        rest = [] if int(ans.get("total") or 0) > 21 else list(cards[2:])
+        self._dealer_step(rest, int(ans.get("paid") or 0))
+
+    def _dealer_step(self, rest: list, paid: int) -> None:
+        if rest:
+            def draw() -> None:
+                self.dealer.append(self._card(rest[0]))
+                self.animate(0.7)
+                self._dealer_step(rest[1:], paid)
+            return QTimer.singleShot(700, draw)
+        QTimer.singleShot(650, lambda: self._end(paid))
 
     def _end(self, pay: int) -> None:
-        if self.dealer and self.dealer[1]["hidden"]:
-            self.dealer[1]["hidden"] = False
-            self.dealer[1]["turned"] = time.monotonic()
         self.phase = "idle"
         self.finish(pay)
 
     def buttons(self) -> list:
         if self.phase == "player":
-            can_double = len(self.player) == 2 and self.wallet.balance() >= self.stake
-            return [(tr("Hit"), "primary", self.hit, True), (tr("Stand"), "ghost", self.stand, True),
+            go = not self.waiting
+            can_double = go and len(self.player) == 2 and self.econ.coins >= self.stake
+            return [(tr("Hit"), "primary", self.hit, go), (tr("Stand"), "ghost", self.stand, go),
                     (tr("Double"), "ghost", self.double, can_double)]
         return [(tr("Deal"), "primary", self.deal, self.phase == "idle" and not self.busy)]
 
@@ -12779,6 +12618,7 @@ class Plinko(Game):
         self._cool = 0.0
         self._hits: dict = {}                     # box -> time it was last hit
         self._pops: list = []                     # (text, colour, box, time)
+        self._flying = 0                          # balls asked for and not landed yet
 
     def options(self):
         return [tr(n) for n in self.RISKS], self.risk
@@ -12802,46 +12642,55 @@ class Plinko(Game):
         now = time.monotonic()
         if now < self._cool:
             return self.ctx.toast(tr("Slow down"), "warn")
-        if len(self.balls) >= self.MAX_BALLS or now - self._last < self.GAP:
+        if self._flying >= self.MAX_BALLS or now - self._last < self.GAP:
             return
         if self._too_regular(now):
             self._cool = now + 20.0
             self._presses = []
             return self.ctx.toast(tr("Slow down"), "warn")
         bet = self.page.bet()
-        if bet <= 0 or not self.wallet.bet(bet):
+        if not self.econ.ready or bet <= 0 or bet > self.econ.coins:
             return self.ctx.toast(tr("Not enough coins"), "warn")
         self._last = now
-        path = [RNG.choice((-1, 1)) for _ in range(self.ROWS)]      # decided now, shown as it falls
-        box = sum(1 for d in path if d > 0)
-        self.balls.append(dict(path=path, box=box, born=now, stake=bet, risk=self.risk,
-                               jit=RNG.uniform(-0.25, 0.25)))
         self.stake = bet
         self.busy = True
-        self.animate(self.ROWS * self.STEP + 1.5)
-        self.page.sync()
-        QTimer.singleShot(int((self.ROWS * self.STEP + 0.12) * 1000), self._land)
+        self._flying += 1
+        self.econ.adjust(-bet)
+        risk = self.risk
+
+        def dropped(ans: dict) -> None:                  # the server decided the path: the ball shows it
+            path = [1 if d else -1 for d in ans["path"]]
+            self.balls.append(dict(path=path, box=int(ans["box"]), born=time.monotonic(), stake=bet, risk=risk,
+                                   pay=int(ans["paid"]), mult=float(ans["mult"])))
+            self.animate(self.ROWS * self.STEP + 1.5)
+            QTimer.singleShot(int((self.ROWS * self.STEP + 0.12) * 1000), self._land)
+        self.ask("rb_plinko", {"bet": bet, "risk": risk}, dropped, once=True, refund=bet)
+
+    def failed(self, message: str) -> None:
+        self._flying = max(0, self._flying - 1)
+        self.busy = self._flying > 0
+        self.ctx.toast(tr(message), "warn")
 
     def _land(self) -> None:
         if not self.balls:
             return
         ball = self.balls.pop(0)
-        mult = self.MULTS[ball["risk"]][ball["box"]]
-        pay = int(ball["stake"] * mult)
+        mult, pay = ball["mult"], ball["pay"]
+        self._flying = max(0, self._flying - 1)
         if pay:
-            self.wallet.add(pay)
+            self.econ.adjust(pay)
         now = time.monotonic()
         self._hits[ball["box"]] = now
         colour = WIN if mult >= 1 else (TEXT_DIM if mult >= 0.5 else LOSE)
         self._pops = [x for x in self._pops if now - x[3] < 1.2] + [(f"×{mult:g}", colour, ball["box"], now)]
         sfx.play("on" if mult >= 2 else "pick")
         self.animate(1.3)
-        if not self.balls:
+        if not self._flying:
             self.busy = False
         self.page.sync()
 
     def buttons(self) -> list:
-        return [(tr("Drop"), "primary", self.drop, len(self.balls) < self.MAX_BALLS)]
+        return [(tr("Drop"), "primary", self.drop, self._flying < self.MAX_BALLS)]
 
     def _geo(self, r: QRectF):
         top, bottom = r.top() + S(22), r.bottom() - S(40)
@@ -12949,13 +12798,35 @@ class Bombs(Game):
         return sum(1 for t in self.shown if t not in self.board) if self.phase == "play" else 0
 
     def start(self) -> None:
-        if self.busy or not self.take():
+        if self.busy or self.waiting or not self.take():
             return
-        self.board = set(RNG.sample(range(self.N), self.bombs()))
-        self.shown, self.boom, self.phase = {}, -1, "play"
-        self.picked = set()
+        self.board, self.shown, self.boom, self.picked = set(), {}, -1, set()
+        self.ask("rb_mines", {"action": "start", "arg": self.bombs() * 10000 + self.stake}, self._started,
+                 refund=self.stake)
+
+    def _started(self, ans: dict) -> None:
+        self.phase = "play"
         self.animate(0.5)
-        self.page.sync()
+
+    def failed(self, message: str) -> None:
+        if message == "Finish your round first":         # a board from before is still open: carry on with it
+            return self.ask("rb_mines", {"action": "look", "arg": None}, self._resumed)
+        if self.phase != "play":
+            self.busy = False
+        self.ctx.toast(tr(message), "warn")
+
+    def _resumed(self, ans: dict) -> None:
+        if not ans.get("open"):
+            self.busy = False
+            return
+        self.stake = int(ans["bet"])
+        if int(ans["bombs"]) in self.CHOICES:
+            self.choice = self.CHOICES.index(int(ans["bombs"]))
+        now = time.monotonic()
+        self.picked = set(ans.get("picked") or [])
+        self.shown = {t: now for t in self.picked}
+        self.board, self.boom, self.phase, self.busy = set(), -1, "play", True
+        self.animate(0.5)
 
     def _grid(self, r: QRectF):
         gap = S(6)
@@ -12989,16 +12860,20 @@ class Bombs(Game):
 
     def mousePressEvent(self, e) -> None:
         e.accept()
-        if e.button() != Qt.MouseButton.LeftButton or self.phase != "play":
+        if e.button() != Qt.MouseButton.LeftButton or self.phase != "play" or self.waiting:
             return
         i = self._at(e.position())
         if i < 0 or i in self.shown:
             return
+        return self.ask("rb_mines", {"action": "pick", "arg": i}, lambda ans: self._picked(i, ans))
+
+    def _picked(self, i: int, ans: dict) -> None:
         now = time.monotonic()
         self.shown[i] = now
         self.picked.add(i)
         self.animate(0.6)
-        if i in self.board:                              # bomb: the round is lost, then every card is shown
+        if ans.get("hit"):                               # bomb: the round is lost, then every card is shown
+            self.board = set(ans.get("board") or [i])
             self.boom = i
             self.phase = "lost"
             sfx.play("off")
@@ -13007,8 +12882,8 @@ class Bombs(Game):
             QTimer.singleShot(1100, lambda: self._end(0))
             return
         sfx.play("pick")
-        if self.found() >= self.N - self.bombs():
-            QTimer.singleShot(350, self.cash)
+        if not ans.get("open"):                          # every gem found: the server paid already
+            self._cashed(ans)
         self.page.sync()
 
     def _reveal_all(self) -> None:
@@ -13018,12 +12893,15 @@ class Bombs(Game):
         self.animate(0.8)
 
     def cash(self) -> None:
-        if self.phase != "play" or self.found() < 1:
+        if self.phase != "play" or self.found() < 1 or self.waiting:
             return
-        pay = int(self.stake * bombs_mult(self.found(), self.bombs()))
+        self.ask("rb_mines", {"action": "cash", "arg": None}, self._cashed)
+
+    def _cashed(self, ans: dict) -> None:
+        self.board = set(ans.get("board") or [])
         self.phase = "won"
         self._reveal_all()
-        self._end(pay)
+        self._end(int(ans.get("paid") or 0))
 
     def _end(self, pay: int) -> None:
         self.phase = "idle"
@@ -13032,7 +12910,7 @@ class Bombs(Game):
     def buttons(self) -> list:
         if self.phase == "play":
             mult = bombs_mult(self.found(), self.bombs())
-            return [(tr("Cash out") + f"  ×{mult:g}", "primary", self.cash, self.found() >= 1)]
+            return [(tr("Cash out") + f"  ×{mult:g}", "primary", self.cash, self.found() >= 1 and not self.waiting)]
         return [(tr("Bet"), "primary", self.start, self.phase == "idle" and not self.busy)]
 
     def draw(self, p: QPainter, r: QRectF, now: float) -> None:
@@ -13157,9 +13035,13 @@ class Slots(Game):
         self.win_at = 0.0
 
     def spin(self) -> None:
-        if self.busy or not self.take():
+        if self.busy or self.waiting or not self.take():
             return
-        self.final = [RNG.choices(self.SYMBOLS, self.WEIGHTS)[0] for _ in range(3)]
+        self.ask("rb_slots", {"bet": self.stake}, self._rolled, once=True, refund=self.stake)
+
+    def _rolled(self, ans: dict) -> None:
+        self.final = [self.SYMBOLS[int(i)] for i in ans["reels"]]
+        self._paid = int(ans["paid"])
         for i in range(3):
             strip = [RNG.choices(self.SYMBOLS, self.WEIGHTS)[0] for _ in range(40)]
             strip[1] = self.final[i]
@@ -13169,16 +13051,8 @@ class Slots(Game):
         self.animate(3.0)
         QTimer.singleShot(2450, self._done)
 
-    def payout(self) -> int:
-        a, b, c = self.final
-        if a == b == c:
-            return self.stake * self.TRIPLE[a]
-        if a == b or b == c or a == c:
-            return int(self.stake * self.PAIR)
-        return 0
-
     def _done(self) -> None:
-        pay = self.payout()
+        pay = getattr(self, "_paid", 0)
         if pay:
             self.win_at = time.monotonic()
         self.finish(pay)
@@ -13310,9 +13184,7 @@ class Slots(Game):
 # --------------------------------------------------------------------------- #
 class Daily(Game):
     # (coins, keys) on each slice
-    PRIZES = [(50, 0), (100, 0), (0, 1), (250, 0), (75, 0), (150, 0), (0, 1), (500, 0), (50, 0), (1000, 0), (0, 3),
-              (100, 0)]
-    WEIGHTS = [18, 12, 9, 5, 16, 8, 9, 2, 18, 1, 2, 12]
+    PRIZES = [(20, 0), (40, 0), (60, 0), (100, 0), (150, 0), (250, 0), (500, 0), (0, 1)]      # as the server numbers them
 
     def __init__(self, page) -> None:
         super().__init__(page)
@@ -13320,6 +13192,7 @@ class Daily(Game):
         self._from = self._to = 0.0
         self._t0 = 0.0
         self.result = -1
+        self.collect = None                      # the prize waiting for "Collect": (coins, keys)
         self.wallet.time_checked.connect(self._checked)
 
     def always_moving(self) -> bool:
@@ -13330,35 +13203,57 @@ class Daily(Game):
         self.wallet.check_time()
 
     def _checked(self) -> None:
+        waiting = self.wallet.spin_waiting
+        if waiting and self.collect is None and not self.busy:      # a prize from before was never collected
+            self.result = int(waiting.get("slot", 0))
+            self.collect = (int(waiting.get("won", 0)), int(waiting.get("won_keys", 0)))
+            self.angle = (self.result + 0.5) * 360.0 / len(self.PRIZES)
         self.page.sync()
         self.update()
 
     def spin(self) -> None:
-        if self.busy or self.wallet.daily_wait() != 0:
-            return
-        self.result = RNG.choices(range(len(self.PRIZES)), self.WEIGHTS)[0]
-        coins, keys = self.PRIZES[self.result]
-        if not self.wallet.claim_daily(coins, keys):              # paid at once: the wheel only shows it
+        if self.busy or self.waiting or self.collect is not None or self.wallet.daily_wait() != 0:
             return
         self.busy = True
         self.stake = 0
+        self.ask("rb_spin", {}, self._rolled)
+
+    def _rolled(self, ans: dict) -> None:
+        self.result = int(ans.get("slot", 0))
+        self._prize = (int(ans.get("won", 0)), int(ans.get("won_keys", 0)))
+        self.wallet.spin_used()
         seg = 360.0 / len(self.PRIZES)
         self._from = self.angle % 360.0
         self._to = 360.0 * 5 + (self.result + 0.5 + RNG.uniform(-0.3, 0.3)) * seg
         self._t0 = time.monotonic()
         self.animate(5.0)
-        self.page.sync()
         QTimer.singleShot(4700, self._done)
 
     def _done(self) -> None:
         self.angle = self._to % 360.0
-        coins, keys = self.PRIZES[self.result]
-        self.flash("+" + (coins_text(coins) if coins else f"{keys} " + (tr("key") if keys == 1 else tr("keys"))), WIN)
+        self.collect = self._prize                       # shown, and kept by the server until collected
         sfx.play("on")
         self.busy = False
         self.page.sync()
 
+    def take_prize(self) -> None:
+        if self.collect is None or self.waiting:
+            return
+        coins, keys = self.collect
+
+        def got(_ans: dict) -> None:
+            self.collect = None
+            self.wallet.spin_waiting = None
+            self.econ.adjust(coins, keys)
+            self.flash("+" + (coins_text(coins) if coins else f"{keys} " + (tr("key") if keys == 1 else tr("keys"))), WIN)
+            sfx.play("on")
+        self.ask("rb_spin_collect", {}, got)
+
     def buttons(self) -> list:
+        if self.collect is not None:
+            coins, keys = self.collect
+            what = coins_text(coins) if coins else f"{keys} " + (tr("key") if keys == 1 else tr("keys"))
+            return [(tr("Collect") + f"  +{what}", "primary", self.take_prize, not self.waiting)]
         wait = self.wallet.daily_wait()
         if wait is None:
             return [(tr("Try again"), "ghost", self.wallet.check_time, not self.wallet.checking())]
@@ -13373,7 +13268,7 @@ class Daily(Game):
         seg = 360.0 / n
         box = QRectF(c.x() - radius, c.y() - radius, radius * 2, radius * 2)
         wait = self.wallet.daily_wait()
-        ready = wait == 0 or self.busy
+        ready = wait == 0 or self.busy or self.collect is not None
         p.setOpacity(1.0 if ready else 0.35)
         for i, (coins, keys) in enumerate(self.PRIZES):
             start = 90.0 - (i * seg - self.angle)
@@ -13422,6 +13317,254 @@ class Daily(Game):
 # --------------------------------------------------------------------------- #
 # The page
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# Dice: choose your chance, roll under it
+# --------------------------------------------------------------------------- #
+class Dice(Game):
+    """Pick your chance to win. A number from 0 to 99 is rolled: below your chance wins. The lower the chance,
+    the bigger the prize (3% for the house)."""
+    CHANCES = [10, 25, 50, 75, 90]
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        self.choice = 2
+        self.roll = -1
+        self.won = False
+        self._t0 = 0.0
+        self._from = 50.0
+
+    def chance(self) -> int:
+        return self.CHANCES[self.choice]
+
+    def mult(self) -> float:
+        return math.floor(9700.0 / self.chance()) / 100
+
+    def options(self):
+        return [f"{c}%" for c in self.CHANCES], self.choice
+
+    def set_option(self, i: int) -> None:
+        if not self.busy:
+            self.choice = i
+            self.update()
+
+    def play(self) -> None:
+        if self.busy or self.waiting or not self.take():
+            return
+        self.ask("rb_dice", {"bet": self.stake, "chance": self.chance()}, self._rolled, once=True, refund=self.stake)
+
+    def _rolled(self, ans: dict) -> None:
+        self._from = float(self.roll if self.roll >= 0 else 50)
+        self.roll, self.won, self._paid = int(ans["roll"]), bool(ans["win"]), int(ans["paid"])
+        self._t0 = time.monotonic()
+        self.animate(1.6)
+        QTimer.singleShot(1150, lambda: self.finish(self._paid))
+
+    def buttons(self) -> list:
+        return [(tr("Roll"), "primary", self.play, not self.busy)]
+
+    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
+        chance = self.chance()
+        bar = QRectF(r.left() + S(22), r.center().y() + S(8), r.width() - S(44), S(16))
+        win_w = bar.width() * chance / 100
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha(LOSE, 0.35))
+        p.drawRoundedRect(bar, S(8), S(8))
+        p.setBrush(QColor(WIN))
+        clip = QPainterPath()
+        clip.addRoundedRect(bar, S(8), S(8))
+        p.save()
+        p.setClipPath(clip)
+        p.drawRect(QRectF(bar.left(), bar.top(), win_w, bar.height()))
+        p.restore()
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9.5, QFont.Weight.DemiBold))
+        for mark in (0, 25, 50, 75, 100):
+            x = bar.left() + bar.width() * mark / 100
+            p.drawText(QRectF(x - S(16), bar.bottom() + S(4), S(32), S(14)), int(Qt.AlignmentFlag.AlignCenter), str(mark))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(26, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left(), r.top() + S(22), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter),
+                   f"×{self.mult():g}")
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left(), r.top() + S(64), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Win if the roll is under {n}", n=chance))
+        if self.roll >= 0:                                    # the marker slides to the number rolled
+            t = ease_out((now - self._t0) / 1.0, 4) if self._t0 else 1.0
+            value = self._from + (self.roll - self._from) * t
+            x = bar.left() + bar.width() * (value + 0.5) / 100
+            landed = t >= 0.999
+            col = QColor(WIN if self.won else LOSE) if landed else QColor("#FFFFFF")
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col)
+            pin = QPainterPath()
+            pin.moveTo(x, bar.top() - S(3))
+            pin.lineTo(x - S(7), bar.top() - S(14))
+            pin.lineTo(x + S(7), bar.top() - S(14))
+            pin.closeSubpath()
+            p.drawPath(pin)
+            p.drawRoundedRect(QRectF(x - S(1.5), bar.top() - S(3), S(3), bar.height() + S(6)), S(1.5), S(1.5))
+            p.setPen(col)
+            p.setFont(font(13, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(x - S(24), bar.top() - S(36), S(48), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                       str(int(round(value))))
+
+
+# --------------------------------------------------------------------------- #
+# Rocket: cash out before it blows up
+# --------------------------------------------------------------------------- #
+class Rocket(Game):
+    """The multiplier climbs while the rocket flies. Cash out to win the bet times the multiplier; if it blows
+    up first, the bet is lost. The moment it blows up is decided by the server when the round starts."""
+    RATE = 0.08                                          # the multiplier is e^(RATE x seconds), as on the server
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        self.phase = "idle"                              # idle -> fly -> idle
+        self._t0 = 0.0
+        self.end_mult = 1.0
+        self.crashed = False
+        self._poll = QTimer(self)
+        self._poll.setInterval(700)
+        self._poll.timeout.connect(self._look)
+
+    def mult_now(self) -> float:
+        if self.phase != "fly":
+            return self.end_mult
+        return math.floor(math.exp(self.RATE * (time.monotonic() - self._t0)) * 100) / 100
+
+    def always_moving(self) -> bool:
+        return self.phase == "fly"
+
+    def start(self) -> None:
+        if self.busy or self.waiting or not self.take():
+            return
+        self.ask("rb_rocket", {"action": "start", "bet": self.stake}, self._started, refund=self.stake)
+
+    def _started(self, ans: dict) -> None:
+        self._t0 = time.monotonic() - float(ans.get("age") or 0)
+        self.phase, self.crashed, self.end_mult = "fly", False, 1.0
+        self._frames.start()
+        self._poll.start()
+
+    def failed(self, message: str) -> None:
+        if message == "Finish your round first":         # a flight from before: see how it ended
+            return self.ask("rb_rocket", {"action": "cash", "bet": None}, self._ended)
+        if self.phase != "fly":
+            self.busy = False
+        self.ctx.toast(tr(message), "warn")
+
+    def _look(self) -> None:
+        if self.phase == "fly" and not self.waiting:
+            self.ask("rb_rocket", {"action": "look", "bet": None}, lambda ans: None if ans.get("open") else self._ended(ans))
+
+    def cash(self) -> None:
+        if self.phase == "fly" and not self.waiting:
+            self.ask("rb_rocket", {"action": "cash", "bet": None}, self._ended)
+
+    def _ended(self, ans: dict) -> None:
+        if self.phase != "fly" and not self.busy:
+            return
+        self._poll.stop()
+        self.crashed = bool(ans.get("crashed", True))
+        self.end_mult = float(ans.get("crash") or 1.0) if self.crashed else float(ans.get("mult") or 1.0)
+        self.phase = "idle"
+        self.animate(1.8)
+        self.finish(int(ans.get("paid") or 0))
+
+    def buttons(self) -> list:
+        if self.phase == "fly":
+            pay = int(self.stake * self.mult_now())
+            return [(tr("Cash out") + f"  {coins_text(pay)}", "primary", self.cash, not self.waiting)]
+        return [(tr("Launch"), "primary", self.start, not self.busy)]
+
+    def hideEvent(self, e) -> None:
+        super().hideEvent(e)
+        self._poll.stop()
+
+    def showEvent(self, e) -> None:
+        super().showEvent(e)
+        if self.phase == "fly":
+            self._poll.start()
+
+    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
+        flying = self.phase == "fly"
+        m = self.mult_now()
+        if flying:
+            self.page.sync_labels()
+        area = r.adjusted(S(22), S(54), -S(22), -S(22))
+        p.setPen(QPen(alpha("#FFFFFF", 0.07), 1))
+        for k in range(4):
+            y = area.bottom() - area.height() * k / 3
+            p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
+        top = max(2.0, m * 1.15)                             # the view grows with the multiplier
+        t_end = math.log(max(m, 1.0001)) / self.RATE
+        span = max(4.0, t_end * 1.15)
+        path = QPainterPath()
+        steps = 48
+        for k in range(steps + 1):
+            t = t_end * k / steps
+            val = math.exp(self.RATE * t)
+            pt = QPointF(area.left() + area.width() * t / span,
+                         area.bottom() - area.height() * (val - 1.0) / (top - 1.0))
+            path.lineTo(pt) if k else path.moveTo(pt)
+        col = QColor(LOSE) if (self.crashed and not flying) else ui.accent
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(alpha(col, 0.25), S(7)))
+        p.drawPath(path)
+        p.setPen(QPen(col, S(2.6)))
+        p.drawPath(path)
+        head = path.currentPosition()
+        p.setPen(Qt.PenStyle.NoPen)
+        if self.crashed and not flying:
+            for k in range(8):
+                ang = k * math.pi / 4
+                p.setBrush(alpha("#FFB04D", 0.85))
+                p.drawEllipse(QPointF(head.x() + S(11) * math.cos(ang), head.y() + S(11) * math.sin(ang)), S(2.6), S(2.6))
+        else:
+            p.setBrush(alpha(col, 0.3))
+            p.drawEllipse(head, S(9), S(9))
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawEllipse(head, S(4.2), S(4.2))
+        p.setPen(QColor(LOSE) if (self.crashed and not flying) else QColor(TEXT))
+        p.setFont(font(28, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left(), r.top() + S(10), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter), f"×{m:.2f}")
+
+
+class GamePicker(QWidget):
+    """Which game: two rows of small buttons (one is lit)."""
+    changed = pyqtSignal(int)
+
+    def __init__(self, labels: list, index: int = 0) -> None:
+        super().__init__()
+        self._index = index
+        self.buttons: list = []
+        grid = QGridLayout(self)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(S(4))
+        per_row = (len(labels) + 1) // 2
+        for i, text in enumerate(labels):
+            b = Button(text, "primary" if i == index else "ghost", 26)
+            b.clicked.connect(lambda _=False, n=i: self._pick(n))
+            grid.addWidget(b, i // per_row, i % per_row)
+            self.buttons.append(b)
+        self.setFixedHeight(S(26) * 2 + S(4))
+
+    def index(self) -> int:
+        return self._index
+
+    def set_index(self, i: int) -> None:
+        self._index = i
+        for n, b in enumerate(self.buttons):
+            b.set_kind("primary" if n == i else "ghost")
+
+    def _pick(self, i: int) -> None:
+        if i != self._index:
+            sfx.play("pick")
+            self.set_index(i)
+            self.changed.emit(i)
+
+
 class BetBox(QWidget):
     """The bet: a coin and an amount."""
 
@@ -13480,18 +13623,19 @@ class KeyCard(QWidget):
                    tr("Keys"))
         p.setFont(font(13, QFont.Weight.Bold))
         p.drawText(QRectF(r.center().x(), r.top() + S(10), r.width() / 2 - S(12), S(24)),
-                   int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), f"{min(w.keys(), KEY_MAX)} / {KEY_MAX}")
+                   int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), str(w.keys()))
         bar = QRectF(r.left() + S(46), r.top() + S(38), r.width() - S(58), S(5))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(alpha("#FFFFFF", 0.08))
         p.drawRoundedRect(bar, bar.height() / 2, bar.height() / 2)
         p.setBrush(ui.accent)
-        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * w.key_progress()), bar.height()),
+        ec = self.ctx.econ
+        every = max(1, int(ec.cfg.get("key_every_min", 60)))
+        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * min(1.0, ec.key_min / every)), bar.height()),
                           bar.height() / 2, bar.height() / 2)
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
-        text = tr("Full: open a case in the Shop") if w.keys() >= KEY_MAX else \
-            tr("1 key for every {n} coins played", n=coins_text(KEY_EVERY))
+        text = tr("1 key for every hour with Rubenium")
         p.drawText(QRectF(bar.left(), bar.bottom() + S(2), bar.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter), text)
 
 
@@ -13556,6 +13700,22 @@ class GameTile(QWidget):
                 cell = QRectF(art.x() - S(17) + (i % 3) * S(12), art.y() - S(17) + (i // 3) * S(12), S(10), S(10))
                 p.setBrush(alpha(ui.accent, 0.85) if i == 4 else QColor("#1A2125"))
                 p.drawRoundedRect(cell, S(2.5), S(2.5))
+        elif self.index == 4:                                  # a die
+            p.setBrush(QColor("#F4F5F6"))
+            p.drawRoundedRect(QRectF(art.x() - S(14), art.y() - S(14), S(28), S(28)), S(6), S(6))
+            p.setBrush(QColor("#14181A"))
+            for dx, dy in ((-7, -7), (7, 7), (0, 0), (7, -7), (-7, 7)):
+                p.drawEllipse(QPointF(art.x() + S(dx), art.y() + S(dy)), S(2.3), S(2.3))
+        elif self.index == 5:                                  # a climbing line
+            line = QPainterPath()
+            line.moveTo(art.x() - S(20), art.y() + S(14))
+            line.cubicTo(art.x() - S(4), art.y() + S(12), art.x() + S(8), art.y() + S(2), art.x() + S(18), art.y() - S(15))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(ui.accent, S(2.4)))
+            p.drawPath(line)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawEllipse(QPointF(art.x() + S(18), art.y() - S(15)), S(3.4), S(3.4))
         else:                                                  # 777
             p.setPen(QColor("#FF4B5C"))
             p.setFont(font(16, QFont.Weight.ExtraBold))
@@ -13592,7 +13752,7 @@ class DailyRow(QWidget):
 
     def mouseReleaseEvent(self, e) -> None:
         if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
-            self.page.enter(4)
+            self.page.enter(6)
 
     def paintEvent(self, _e) -> None:
         w = self.ctx.wallet
@@ -13608,7 +13768,7 @@ class DailyRow(QWidget):
         p.setPen(QColor(TEXT))
         p.setFont(font(12.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(r.left() + S(36), r.top(), r.width() * 0.6, r.height()), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("Free daily spin"))
+                   tr("Free spin"))
         if wait is None:
             text, col = ("…" if w.checking() else tr("Offline")), TEXT_DIM
         elif ready:
@@ -13623,7 +13783,7 @@ class DailyRow(QWidget):
 class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
-    NAMES = ["Blackjack", "Plinko", "Bombs", "Slots", "Daily"]
+    NAMES = ["Blackjack", "Plinko", "Bombs", "Slots", "Dice", "Rocket", "Free spin"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -13645,7 +13805,7 @@ class GamesPage(Page):
         gl = QGridLayout(grid)
         gl.setContentsMargins(0, 0, 0, 0)
         gl.setSpacing(S(6))
-        for i, name in enumerate(self.NAMES[:4]):
+        for i, name in enumerate(self.NAMES[:6]):
             gl.addWidget(GameTile(self, i, name), i // 2, i % 2)
         lay.addWidget(grid)
         go = Button(tr("Enter casino"), "primary", 40)
@@ -13688,10 +13848,10 @@ class GamesPage(Page):
         top.addWidget(CoinBar(ctx, keys=True), 1)
         lay.addLayout(top)
         which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < len(self.NAMES) else 0
-        self.seg = Segmented([tr(n) for n in self.NAMES], which)
+        self.seg = GamePicker([tr(n) for n in self.NAMES], which)
         self.seg.changed.connect(self._choose)
         lay.addWidget(self.seg)
-        self.games = [Blackjack(self), Plinko(self), Bombs(self), Slots(self), Daily(self)]
+        self.games = [Blackjack(self), Plinko(self), Bombs(self), Slots(self), Dice(self), Rocket(self), Daily(self)]
         for g in self.games:
             g.setVisible(False)
             lay.addWidget(g)
@@ -13738,7 +13898,7 @@ class GamesPage(Page):
         """The bet, never more than you have."""
         bal = self.ctx.wallet.balance()
         want = BETS[self._bet]
-        if self.game is not None and self.game.busy:
+        if self.game is not None and self.game.busy and not isinstance(self.game, Plinko):
             return self.game.stake
         return want if want <= bal else max([b for b in BETS if b <= bal], default=0)
 
@@ -13768,7 +13928,7 @@ class GamesPage(Page):
             if self.opts[n] is not None:
                 self.opts[n].setVisible(n == i)
         self.game = self.games[i]
-        self.bet_row.setVisible(i != 4)
+        self.bet_row.setVisible(i != 6)
         self.sync()
 
     def sync(self) -> None:
@@ -13802,6 +13962,15 @@ class GamesPage(Page):
     def busy(self) -> bool:
         return self.game is not None and self.game.busy
 
+    def sync_labels(self) -> None:
+        """While the rocket flies its button shows the growing prize: refresh the text only."""
+        for b, (text, _k, _c, on) in zip(self.act_buttons, self.game.buttons()):
+            if b._text != text:
+                b._text = text
+                b.text_key = text
+                b.update()
+            b.setEnabled(bool(on))
+
     def wrap_up(self) -> None:
         """You left the casino mid-round: a waiting hand stands, an open board cashes out (or gives the bet back
         if no card was turned). Rounds already running simply finish."""
@@ -13811,13 +13980,12 @@ class GamesPage(Page):
         elif isinstance(g, Bombs) and g.phase == "play":
             if g.found():
                 g.cash()
-            else:
-                g.phase = "idle"
-                g.board = set()
-                g.wallet.add(g.stake)
-                g.stake = 0
+            else:                                   # nothing turned yet: the board waits on the server and
+                g.phase = "idle"                    # comes back the next time Bombs is started
                 g.busy = False
                 self.sync()
+        elif isinstance(g, Rocket) and g.phase == "fly":
+            g.cash()
 
     def on_show(self) -> None:
         self.sync()
@@ -15523,6 +15691,7 @@ class PreviewDrawer(QWidget):
         self._close.clicked.connect(self.close_drawer)
         self._buy = Button(tr("Buy"), "primary", 30, parent=self)
         self._buy.clicked.connect(self._buy_theme)
+        self._buy.hide()                              # themes unlock with time: nothing to buy
         self._frame = QTimer(self)
         self._frame.setInterval(33)
         self._frame.timeout.connect(self.update)
@@ -15631,7 +15800,7 @@ class PreviewDrawer(QWidget):
                    int(Qt.AlignmentFlag.AlignVCenter), tr(th["name"]))
         pass
         paint_price(p, QRectF(S(15), tile.bottom() + S(34), self.width() - S(30), S(18)),
-                    self.ctx.wallet.price(f"theme:{th['id']}"), 11.5, "#E8C26A", centre=False)
+                    self.ctx.wallet.hours_for(f"theme:{th['id']}"), 11.5, "#E8C26A", centre=False, hours=True)
 
 
 class DeleteDialog(QWidget):
@@ -17245,7 +17414,9 @@ class App(QObject):
             self.cfg[key] = value
         self.online = Online(self)                   # the account (log in on the welcome screen)
         self.econ = Econ(self)                       # coins, keys and items as the server has them
-        self.wallet = Wallet(self.cfg)
+        self.wallet = Wallet(self)
+        self.econ.changed.connect(self.sync_look)
+        self.econ.changed.connect(self._flair_changed)
         self.casino = False                          # inside the casino (Games tab, shown bigger)
         self.casino_ask = None                       # the gambling warning is being shown
         self._wear_only_owned()
@@ -17620,13 +17791,29 @@ class App(QObject):
     # themes: background designs unlocked by hours of use; a locked one can be previewed
     # ------------------------------------------------------------------ coins and what they bought
     def _colour_ok(self, kind: str, hexa: str, real: bool = False) -> bool:
-        """May this colour be used? Any colour once all sixteen are owned, else only an owned one."""
-        owns = self.wallet.really_owns if real else self.wallet.owns
-        if not hexa or not QColor(hexa).isValid():
-            return False
-        if all(owns(f"{kind}:{ident}") for ident, _n, _h in COLOURS):
-            return True
-        return any(h.upper() == hexa.upper() and owns(f"{kind}:{ident}") for ident, _n, h in COLOURS)
+        """Colours are free: any valid colour may be used."""
+        return bool(hexa) and QColor(hexa).isValid()
+
+    def _flair_changed(self) -> None:
+        if getattr(self, "window", None) is None:
+            return
+        for page in self.window.each_page():
+            fl = getattr(page, "flair", None)
+            if fl is not None:
+                fl.fit()
+                fl.update()
+
+    def sync_look(self) -> None:
+        """Tell the server which progression theme, ball and ring are on (shown on your profile)."""
+        ec = self.econ
+        if not ec.ready or getattr(self, "_syncing_look", False):
+            return
+        for slot, key in (("theme", "theme"), ("ball", "ball_style"), ("ring", "ring_style")):
+            want = extras.PROG_IDS[key].get(self.cfg[key], "")
+            if want and ec.worn(slot) != want and ec.unlocked(want):
+                self._syncing_look = True
+                ec.wear(slot, want, lambda _ok, _d: setattr(self, "_syncing_look", False))
+                return
 
     def _wear_only_owned(self) -> None:
         """At start: anything worn that is not really owned (tried in test mode, or edited in) comes off."""
@@ -17638,19 +17825,11 @@ class App(QObject):
         if not w.really_owns(f"r:{cfg['ball_style']}"):
             cfg["ball_style"] = "classic"
         if not w.really_owns(f"ring:{cfg['ring_style']}"):
-            cfg["ring_style"] = "dots"
-        worn = []
-        for item in cfg["badges"] if isinstance(cfg["badges"], list) else []:
-            ident, _s, var = str(item).partition("/")
-            if w.really_has_badge(ident, var) and item not in worn:
-                worn.append(item)
-        cfg["badges"] = worn[:3]
+            cfg["ring_style"] = "line"
         if not self._colour_ok("c1", cfg["custom_accent"], real=True):
             cfg["custom_accent"] = ""
         if not self._colour_ok("c2", cfg["accent2"], real=True):
             cfg["accent2_on"] = False
-        if not w.really_owns("music"):
-            cfg["accent_from_art"] = False
 
     # ------------------------------------------------------------------ casino
     def _casino_scale(self, base: int) -> int:
@@ -17765,7 +17944,7 @@ class App(QObject):
         return self.cfg["ball_style"] if self.wallet.owns(f"r:{self.cfg['ball_style']}") else "classic"
 
     def ring_style(self) -> str:
-        return self.cfg["ring_style"] if self.wallet.owns(f"ring:{self.cfg['ring_style']}") else "dots"
+        return self.cfg["ring_style"] if self.wallet.owns(f"ring:{self.cfg['ring_style']}") else "line"
 
     def set_look(self, key: str, value: int) -> None:
         """Ball size, glow strength, background and corners (Settings and Themes)."""
