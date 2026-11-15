@@ -21,3 +21,12 @@ Choices made where the request left room, newest last.
 - Style is locked: strong glow, black background, round corners.
 - Coins, items and games are still stored on the PC in 1.7. They move to the server in the next stages; the
   one-time import of old progress happens then.
+
+## 1.8
+- The login form lives inside the welcome card (the card grows to hold it), not under it.
+- The hidden code on the Launch button was removed.
+- Account deletion: its own small window (typing needs the keyboard; the menu never takes it from a game). The
+  username must be typed exactly, then the button needs two clicks and a hold. The server checks the name again.
+- Quit is a small link at the bottom of Settings (with a confirmation) and stays in the tray menu.
+- Lantern Lift, Monsoon and Electric banner are gone for good; every version of their files is still recognised
+  so the original game file is restored for anyone who had one on.

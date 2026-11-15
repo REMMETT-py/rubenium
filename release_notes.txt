@@ -1,10 +1,9 @@
-Rubenium 1.7
+Rubenium 1.8
 
 Already have Rubenium? Open it, go to Settings and press Check for updates.
 New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
 
-- Accounts: create an account or log in on the welcome screen. Launch unlocks once you are logged in.
-- You stay logged in after closing Rubenium or restarting the PC. Log out is under the welcome card and in Settings.
-- Username: 3 to 10 letters or numbers. Password: 8 characters or more. There is no password recovery, so remember it.
-- Time played is now counted online for your account.
-- One look for everyone: strong glow, black background, round corners.
+- The login now sits inside the start screen: the card opens to show it and closes again once you are logged in.
+- Delete your account in Settings: type your username, then click twice and hold.
+- "Reset all settings" is gone (each tab keeps its own reset). Quit moved to the very bottom of Settings.
+- Rocket League: the Lantern Lift, Monsoon and Electric banner swaps were removed. If one was on, the original file is put back automatically.

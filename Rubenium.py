@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 1.7 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 1.8 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1472,8 +1472,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "1.7"         # the version people see
-BUILD = "2026.11.15.5"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "1.8"         # the version people see
+BUILD = "2026.11.15.6"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -2139,6 +2139,16 @@ class Online(QObject):
             return lambda: None
         self._run("free:" + username, job)
 
+    def delete_account(self) -> None:
+        """Delete this account for good (the server checks the username again)."""
+        name = self.username()
+
+        def job():
+            if self.rpc("rb_delete_account", {"confirm": name}) is not True:
+                raise ApiError("delete failed")
+            return self.log_out
+        self._run("delete", job)
+
     def log_out(self) -> None:
         token = self.s.get("access_token", "")
         self.s, self.minutes, self.elsewhere = {}, 0, False
@@ -2553,7 +2563,6 @@ FR = {
     "Softer interface sounds": "Sons d'interface plus doux",
     "The menu size changes smoothly": "La taille du menu change en douceur",
     "New app icon": "Nouvelle icône",
-    "New swap: Diamond Tile banner to Electric": "Nouveau swap : bannière Diamond Tile vers Electric",
     # 1.2
     "Rubenium ignores the mouse while a game uses it to aim, even in borderless fullscreen":
         "Rubenium ignore la souris quand un jeu l'utilise pour viser, même en plein écran fenêtré",
@@ -2707,13 +2716,11 @@ FR = {
     'Opens after 1 hour with Rubenium: {n} min left': "S'ouvre après 1 heure avec Rubenium : encore {n} min",
     # 1.5
     'Reset Swaps': 'Réinitialiser les swaps',
-    'Coming soon swaps are back: Lantern Lift, Monsoon and Electric banner': 'Les swaps « Bientôt » sont de retour : Lantern Lift, Monsoon et la bannière Electric',
     'Turn off all swaps is now Reset Swaps: it puts every original file back': 'Désactiver tous les swaps devient Réinitialiser les swaps : chaque fichier d’origine revient',
     'Wrong, left-over or broken swap files are found and fixed automatically': 'Les fichiers de swap incorrects, oubliés ou abîmés sont détectés et réparés automatiquement',
     # 1.6
     '{x} / 1 hour to unlock': '{x} / 1 heure pour débloquer',
     'White Gold': 'Or blanc',
-    'Lantern Lift and Monsoon fixed: they no longer crash the game': 'Lantern Lift et Monsoon réparés : le jeu ne plante plus',
     'Timer moved to the bottom of the Screen tab': 'Le chrono est maintenant en bas de l’onglet Écran',
     'New ball and ring: White Gold. Neon is now number 3': 'Nouvelle bulle et anneau : Or blanc. Néon passe en 3e',
     'Long song names get smaller instead of being cut': 'Les titres longs rétrécissent au lieu d’être coupés',
@@ -2744,6 +2751,17 @@ FR = {
     'Accounts: create one or log in on the welcome screen. You stay logged in': "Comptes : crée-en un ou connecte-toi sur l'écran d'accueil. Tu restes connecté",
     'Time played is now counted online, for your account': 'Le temps joué est maintenant compté en ligne, pour ton compte',
     'One look for everyone: strong glow, black background, round corners': 'Un seul style pour tous : lueur forte, fond noir, coins arrondis',
+    # 1.8
+    'Delete account': 'Supprimer le compte',
+    'This deletes your account for good: username, time played and everything you own. It cannot be undone.': "Cela supprime ton compte pour de bon : nom, temps joué et tout ce que tu possèdes. Impossible d'annuler.",
+    'Type {name} to confirm': 'Écris {name} pour confirmer',
+    'Delete my account': 'Supprimer mon compte',
+    'Quit Rubenium?': 'Quitter Rubenium ?',
+    'Quit': 'Quitter',
+    'The login now sits inside the start screen': "La connexion est maintenant dans l'écran d'accueil",
+    'You can delete your account in Settings (type your name, then hold)': 'Tu peux supprimer ton compte dans Réglages (écris ton nom, puis maintiens)',
+    'Reset all settings is gone (each tab keeps its own reset)': '« Tout réinitialiser » a disparu (chaque onglet garde son bouton)',
+    'Three Rocket League swaps were removed': 'Trois swaps Rocket League ont été retirés',
 }
 
 
@@ -6144,16 +6162,18 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("1.8", ["The login now sits inside the start screen",
+             "You can delete your account in Settings (type your name, then hold)",
+             "Reset all settings is gone (each tab keeps its own reset)",
+             "Three Rocket League swaps were removed"]),
     ("1.7", ["Accounts: create one or log in on the welcome screen. You stay logged in",
              "Time played is now counted online, for your account",
              "One look for everyone: strong glow, black background, round corners"]),
-    ("1.6", ["Lantern Lift and Monsoon fixed: they no longer crash the game",
-             "Timer moved to the bottom of the Screen tab",
+    ("1.6", ["Timer moved to the bottom of the Screen tab",
              "New ball and ring: White Gold. Neon is now number 3",
              "Long song names get smaller instead of being cut",
              "Medal is no longer picked up as a music app"]),
-    ("1.5", ["Coming soon swaps are back: Lantern Lift, Monsoon and Electric banner",
-             "Turn off all swaps is now Reset Swaps: it puts every original file back",
+    ("1.5", ["Turn off all swaps is now Reset Swaps: it puts every original file back",
              "Wrong, left-over or broken swap files are found and fixed automatically"]),
     ("1.4", ["Casino lobby: the menu only grows when you go in, and goes back when you leave",
              "New games: Plinko and Bombs. Slots now show every prize",
@@ -6177,8 +6197,7 @@ NEWS = [        # every version, newest first: (version, [lines])
              "Rubenium start screen when Rocket League and Fortnite load",
              "Softer interface sounds",
              "The menu size changes smoothly",
-             "New app icon",
-             "New swap: Diamond Tile banner to Electric"]),
+             "New app icon"]),
     ("1.0", ["Hold the ball to open Rubenium, so it never opens by accident in a game",
              "Hold the menu for a moment to move it",
              "9 new swaps, separate Fennec and Octane decals, and a Paint finishes section",
@@ -6230,8 +6249,6 @@ RL_ITEMS = [
     dict(id="atomizer_gentlemates", cat="goal", old="Atomizer", new="Gentle Mates 2025", file="explosion_Rekt_SF.upk"),
     dict(id="splash_adidas", cat="goal", old="Big Splash", new="Adidas", file="explosion_splash_SF.upk"),
     dict(id="splash_supernova", cat="goal", old="Big Splash", new="SuperNova III", file="explosion_splash_SF.upk"),
-    dict(id="dragons_lanternlift", cat="goal", old="Dueling Dragons", new="Lantern Lift", file="explosion_Dragon_SF.upk"),
-    dict(id="dragons_monsoon", cat="goal", old="Dueling Dragons", new="Monsoon", file="explosion_Dragon_SF.upk"),
     dict(id="octane_fennec", cat="body", old="Octane", new="Fennec", file="Body_Octane_SF.upk"),
     dict(id="fennec_flames_likescraft", cat="fdecal", old="Flames", new="Likescraft", file="skin_grain_flames_SF.upk"),
     dict(id="fennec_flames_blacklunation", cat="fdecal", old="Flames", new="Black Lunation",
@@ -6258,8 +6275,6 @@ RL_ITEMS = [
          file="playerBanner_RLShield_SF.upk"),
     dict(id="banner_ssl_s21", cat="banner", old="Standard", new="S21 Supersonic Legend",
          file="playerBanner_RLShield_SF.upk"),
-    dict(id="diamond_electric", cat="banner", old="Diamond Tile", new="Electric",
-         file="playerBanner_DiamondTile_SF.upk"),
 ]
 RL_BY_ID = {it["id"]: it for it in RL_ITEMS}
 RL_EXE = "rocketleague.exe"
@@ -6269,9 +6284,21 @@ RL_EXE = "rocketleague.exe"
 # folder it is recognised and the original is put back (see RocketSwaps.needs_repair).
 RETIRED = {"f1cb440607e0dd4cabfd155b71c29ad444d2d44b7322251455b3f1e1ea30a9fd": "playerBanner_RLShield_SF.upk",
            "4a2c413d16f1683509728f38604bcd8a453fa07b6325ebb84b14a927a712be27": "skin_grain_stripes_SF.upk",
-           # 1.6: Lantern Lift and Monsoon from an older game version (crashed the game): replaced automatically
+           # 1.8: three swaps were removed for good. Every version of their files is recognised here, so the
+           # original game file is put back automatically for anyone who still has one in the game.
            "ed71a46b22a8f4608e27a57502e22f569b4c1f661ba9e130faf720df2742bdfd": "explosion_Dragon_SF.upk",
-           "ed814c9961159e70f1dcef48755cdb54e455fee66110b0ef6e19e05662617827": "explosion_Dragon_SF.upk"}
+           "ed814c9961159e70f1dcef48755cdb54e455fee66110b0ef6e19e05662617827": "explosion_Dragon_SF.upk",
+           "b529dea013234bcaebc4841426a0d483360f9ff7509948372af9b6917f4ac2f7": "explosion_Dragon_SF.upk",
+           "3c4680632863f58e2fe4c736802e959d6bc351dcbf74cda4fd5b110b4fab0a6b": "explosion_Dragon_SF.upk",
+           "122727c810efe7df76f3fada4caf085b18af1781e63d4f70697fa7c744ab018d": "playerBanner_DiamondTile_SF.upk"}
+
+
+def swap_files() -> list:
+    """Every game file Rubenium may have replaced: today's swaps and the ones that were removed."""
+    return sorted({it["file"] for it in RL_ITEMS} | set(RETIRED.values()), key=str.lower)
+
+
+REMOVED_SWAPS = ("dragons_lanternlift", "dragons_monsoon", "diamond_electric", "fennec_stripes_strongline")
 
 # Clean game files shipped with the app in swaps/_originals: used to put a game file back when the player's own
 # saved copy is missing or unusable. Only files checked to be untouched originals are listed (and a shipped
@@ -6587,6 +6614,12 @@ class RocketSwaps(QObject):
         self._repair_wait: dict = {}               # per install: no new repair before this time
         self._index: dict = {}                     # per install: game file name -> path (from a folder search)
         self._migrate()
+        for ident in REMOVED_SWAPS:                # swaps that are gone: their saved files go too
+            try:
+                import shutil
+                shutil.rmtree(_rl_store() / "swaps" / ident, ignore_errors=True)
+            except Exception:  # noqa: BLE001
+                pass
 
     # -- settings
     @property
@@ -6807,7 +6840,7 @@ class RocketSwaps(QObject):
         self.working = True
         desired = {rl_key(RL_BY_ID[i]): i for i in desired.values() if i in RL_BY_ID}
         e = self._entry(plat)
-        paths = {it["file"].lower(): self.game_file(plat, it["file"]) for it in RL_ITEMS}
+        paths = {name.lower(): self.game_file(plat, name) for name in swap_files()}
         job = {"plat": plat, "cooked": self.cooked(plat), "paths": paths, "orig": dict(e["orig"]),
                "stamp_saved": e["stamp"], "stamp_now": self.stamp(plat),
                "was": {RL_BY_ID[i]["file"].lower() for i in e["active"].values() if i in RL_BY_ID}}
@@ -6874,8 +6907,7 @@ class RocketSwaps(QObject):
             it = RL_BY_ID.get(ident)
             if it:
                 want_by_file[it["file"].lower()] = it
-        files = sorted({it["file"] for it in RL_ITEMS}, key=str.lower)
-        for name in files:
+        for name in swap_files():
             game = job["paths"].get(name.lower(), cooked / name)
             want = want_by_file.get(name.lower())
             if not game.is_file():
@@ -6954,7 +6986,7 @@ class RocketSwaps(QObject):
             want[it["file"].lower()] = it
         backups = _rl_store() / "originals" / plat
         orig = self._entry(plat)["orig"]
-        for name in sorted({it["file"] for it in RL_ITEMS}, key=str.lower):
+        for name in swap_files():
             game = self.game_file(plat, name)
             if not game.is_file():
                 continue
@@ -10223,6 +10255,10 @@ class SettingsPage(Page):
             hours = ctx.online.hours()
             played = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
             lay.addWidget(row(f"{ctx.online.username()}  ·  {played} h", out))
+            gone = Button(tr("Delete account"), "quiet", 24)
+            gone.setFixedWidth(max(S(120), gone.sizeHint().width()))
+            gone.clicked.connect(ctx.delete_account_dialog)
+            lay.addWidget(gone, 0, Qt.AlignmentFlag.AlignRight)
 
         lay.addWidget(heading(tr("Updates")))
         latest = ctx.updater.latest
@@ -10242,18 +10278,11 @@ class SettingsPage(Page):
         t_up.toggled_by_user.connect(auto_up)
         lay.addWidget(row(tr("Check automatically"), t_up))
 
-        lay.addSpacing(S(6))
-        quit_btn = Button(tr("Quit Rubenium"), "ghost", 34)
-        quit_btn.clicked.connect(ctx.quit)
-        lay.addWidget(quit_btn)
-        reset = HoldButton(tr("Reset settings"))       # two clicks, then a hold. Coins and what you bought stay
-        reset.confirmed.connect(self._reset)
-        lay.addWidget(reset)
-
-    def _reset(self) -> None:
-        self.ctx.cfg.reset()
-        self.ctx.apply_config()
-        self.ctx.toast(tr("Settings reset"))
+        lay.addSpacing(S(10))
+        leave = Button(tr("Quit Rubenium"), "quiet", 22)         # small and last: closing is rarely what you want
+        leave.setFixedWidth(max(S(120), leave.sizeHint().width()))
+        leave.clicked.connect(lambda: ctx.window.confirm(tr("Quit Rubenium?"), ctx.quit, yes=tr("Quit")))
+        lay.addWidget(leave, 0, Qt.AlignmentFlag.AlignHCenter)
 
 
 # ==================================================================================================
@@ -14742,6 +14771,90 @@ class PreviewDrawer(QWidget):
                     self.ctx.wallet.price(f"theme:{th['id']}"), 11.5, "#E8C26A", centre=False)
 
 
+class DeleteDialog(QWidget):
+    """Delete the account for good: type the username, then click twice and hold. Its own small window, because
+    typing needs the keyboard and the menu never takes it from a game."""
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        from PyQt6.QtWidgets import QLineEdit
+        pass
+        self.ctx, self.online = ctx, ctx.online
+        self.setWindowTitle("Rubenium")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.setFixedWidth(S(340))
+        lay = vbox(self, 8, (18, 18, 18, 18))
+        lay.addWidget(Label(tr("Delete account"), 16, bold=True))
+        lay.addWidget(Label(tr("This deletes your account for good: username, time played and everything you own. "
+                               "It cannot be undone."), 12, TEXT_DIM, wrap_w=S(304)))
+        lay.addWidget(Label(tr("Type {name} to confirm", name=self.online.username()), 12, TEXT, wrap_w=S(304)))
+        self.edit = QLineEdit()
+        self.edit.setMaxLength(10)
+        self.edit.setFixedHeight(S(34))
+        self.edit.setStyleSheet(
+            f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
+            f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}"
+            f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
+        self.edit.textChanged.connect(self._typed)
+        lay.addWidget(self.edit)
+        self.hint = Label("", 11, DANGER)
+        self.hint.setFixedHeight(S(16))
+        lay.addWidget(self.hint)
+        self.hold = HoldButton(tr("Delete my account"))
+        self.hold.setEnabled(False)
+        self.hold.confirmed.connect(self._delete)
+        lay.addWidget(self.hold)
+        cancel = Button(tr("Cancel"), "ghost", 34)
+        cancel.clicked.connect(self.close)
+        lay.addWidget(cancel)
+        self.online.answered.connect(self._answered)
+        self.adjustSize()
+        area = work_area(ctx.window.card_global().center())
+        self.move(area.center().x() - self.width() // 2, area.center().y() - self.height() // 2)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        self.edit.setFocus()
+
+    def _typed(self, text: str) -> None:
+        self.hold.setEnabled(text == self.online.username())      # exactly, capitals included
+
+    def _delete(self) -> None:
+        if self.edit.text() != self.online.username():
+            return
+        self.hold.setEnabled(False)
+        self.edit.setEnabled(False)
+        self.hint.set_color(TEXT_DIM)
+        self.hint.set_text(tr("One moment…"))
+        self.online.delete_account()
+
+    def _answered(self, what: str, ok: bool, msg: str) -> None:
+        if what != "delete":
+            return
+        if ok:
+            self.close()
+            self.ctx.quit()
+        else:
+            self.edit.setEnabled(True)
+            self._typed(self.edit.text())
+            self.hint.set_color(DANGER)
+            self.hint.set_text(tr(msg))
+
+    def keyPressEvent(self, e) -> None:
+        if e.key() == Qt.Key.Key_Escape:
+            self.close()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.setPen(QPen(alpha(DANGER, 0.55), 1.2))
+        p.setBrush(QColor(12, 15, 16, 252))
+        p.drawRoundedRect(r, S(16), S(16))
+
+
 class AccountPanel(QWidget):
     """Log in / Create account, shown under the welcome card until someone is logged in."""
 
@@ -14751,7 +14864,10 @@ class AccountPanel(QWidget):
         self.w, self.online = welcome, welcome.ctx.online
         self.mode = 0                                  # 0 log in, 1 create account
         self._free = ""                                # the last name the server said is free
-        lay = vbox(self, 8, (14, 14, 14, 14))
+        from PyQt6.QtWidgets import QGraphicsOpacityEffect
+        self.fx = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.fx)
+        lay = vbox(self, 8)
         self.seg = Segmented([tr("Log in"), tr("Create account")], 0)
         self.seg.changed.connect(self._mode)
         lay.addWidget(self.seg)
@@ -14794,15 +14910,16 @@ class AccountPanel(QWidget):
         self.hide()
 
     def place(self) -> None:
-        w, h = S(320), S(206)
-        top = self.w.height() / 2 + S(self.w.CH) / 2 + S(GLOW) + S(4)
+        w, h = S(300), S(178)
+        top = self.w.card_top() + S(self.w.CH) * 0.52
         self.setGeometry(int(self.w.width() / 2 - w / 2), int(top), w, h)
+        out = self.w.out_level()
+        self.fx.setOpacity(max(0.0, min(1.0, (out - 0.5) / 0.5)))       # the card opens first, then the form
+        self.setVisible(out > 0.51 and self.w.phase == "card")
 
     def sync(self) -> None:
-        show = not self.online.logged_in() and self.w.phase == "card"
-        self.setVisible(show)
-        if show:
-            self.raise_()
+        self.place()
+        if not self.online.logged_in() and self.w.phase == "card":
             self.user.setFocus()
 
     def _say(self, text: str, colour: str = TEXT_DIM) -> None:
@@ -14879,14 +14996,6 @@ class AccountPanel(QWidget):
     def mousePressEvent(self, e) -> None:
         e.accept()
 
-    def paintEvent(self, _e) -> None:
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha(ui.accent, 0.35), 1.2))
-        p.setBrush(QColor(12, 15, 16, 248))
-        p.drawRoundedRect(r, S(14), S(14))
-
 
 class Welcome(QWidget):
     """The start-up screen: a welcome card with one Launch button. Launch folds the card into a round R,
@@ -14917,26 +15026,37 @@ class Welcome(QWidget):
         self._clock.setTimerType(Qt.TimerType.PreciseTimer)
         self._clock.setInterval(16)
         self._clock.timeout.connect(self.update)
-        # Hidden: holding Launch for 5 s shows a code bar under the card.
-        self._hold = QTimer(self)
-        self._hold.setSingleShot(True)
-        self._hold.timeout.connect(self._reveal)
-        self._held = False
         self._logout_x, self._logout_w = 0.0, 0.0
-        self.code = ""
-        self.code_in = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
-        self.shake = Tween(self, 0.0, self.update)
-        self._good = False
+        # The card is a little taller with a name under Launch, and taller still while it holds the login form.
+        self.tall = Tween(self, 0.0, self._relayout, QEasingCurve.Type.InOutCubic)
         self.panel = AccountPanel(self)
         self.ctx.online.changed.connect(self._account_changed)
 
-    SECRET = "01092008"
+    IN, OUT = 26, 92                           # extra card height: logged in (name line) / logged out (form)
 
     def logged_in(self) -> bool:
         return self.ctx.online.logged_in()
 
+    def _extra(self) -> float:
+        return float(S(self.IN) if self.logged_in() else S(self.OUT))
+
+    def out_level(self) -> float:
+        """0 = the Launch view, 1 = the login form (in between while the card changes size)."""
+        return max(0.0, min(1.0, (self.tall.level - S(self.IN)) / max(1.0, float(S(self.OUT) - S(self.IN)))))
+
+    def card_h(self) -> float:
+        return S(self.CH) + self.tall.level
+
+    def card_top(self) -> float:
+        return self.height() / 2 - self.card_h() / 2
+
+    def _relayout(self) -> None:
+        self.panel.place()
+        self.update()
+
     def _account_changed(self) -> None:
         if self.phase == "card":
+            self.tall.to(self._extra(), 420)
             self.panel.sync()
             self.update()
 
@@ -14950,16 +15070,17 @@ class Welcome(QWidget):
         self.activateWindow()
 
     def _link_rect(self) -> QRectF:
-        """The small "Log out" line under the card."""
-        top = self.height() / 2 + S(self.CH) / 2 + S(GLOW) + S(4)
-        return QRectF(self.width() / 2 - S(150), top, S(300), S(26))
+        """The small "Name · Log out" line under the Launch button, inside the card."""
+        top = self.card_top() + S(self.CH) * 0.74 + S(44) + S(9)
+        return QRectF(self.width() / 2 - S(150), top, S(300), S(20))
 
     def start(self) -> None:
         ball = self.ctx.window.ball
         wa = work_area(ball.center)
         m = S(GLOW) + S(14)
-        w, h = S(self.CW) + 2 * m, S(self.CH) + 2 * m + 2 * (S(236) + S(GLOW))    # room under the card for the account panel
+        w, h = S(self.CW) + 2 * m, S(self.CH) + S(self.OUT) + 2 * m + S(16)
         self.setGeometry(wa.center().x() - w // 2, wa.center().y() - h // 2, w, h)
+        self.tall.jump(self._extra())
         self.panel.place()
         if not self.logged_in():
             self._take_keyboard()
@@ -14971,7 +15092,7 @@ class Welcome(QWidget):
     # -- geometry
     def _button(self) -> QRectF:
         bw, bh = S(176), S(44)
-        return QRectF(self.width() / 2 - bw / 2, self.height() / 2 + S(self.CH) * 0.24, bw, bh)
+        return QRectF(self.width() / 2 - bw / 2, self.card_top() + S(self.CH) * 0.74, bw, bh)
 
     def _circle_d(self) -> float:
         f = self.fly.level if self.phase in ("fly", "done") else 0.0
@@ -14982,8 +15103,6 @@ class Welcome(QWidget):
         if self.phase != "card" or not (force or self.logged_in()):
             return
         self.panel.hide()
-        self._hold.stop()
-        self.code_in.to(0.0, 160)
         self.phase = "fold"
         sfx.play("on")
         self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -15043,7 +15162,7 @@ class Welcome(QWidget):
 
     def mousePressEvent(self, e) -> None:
         if self.phase == "card" and self.logged_in() and e.button() == Qt.MouseButton.LeftButton \
-                and self._logout_rect().contains(e.position()) and self.code_in.target < 0.5:
+                and self._logout_rect().contains(e.position()):
             sfx.play("pick")
             self.ctx.online.log_out()
             self._take_keyboard()
@@ -15052,96 +15171,14 @@ class Welcome(QWidget):
         if (self.phase == "card" and self.logged_in() and e.button() == Qt.MouseButton.LeftButton
                 and self._button().contains(e.position())):
             self._down = True
-            self._held = False
-            self._hold.start(5000)
             self.press.to(1.0, 80)
 
     def mouseReleaseEvent(self, e) -> None:
         if self._down:
             self._down = False
-            self._hold.stop()
             self.press.to(0.0, 160)
-            if self._held:                         # the long press opened the code bar: no launch
-                self._held = False
-                return
             if self._button().contains(e.position()):
                 self.launch()
-
-    # -- the code bar
-    def _code_rect(self) -> QRectF:
-        w, h = S(232), S(42)
-        k = 0.94 + 0.06 * max(0.0, min(1.0, self.appear.level))
-        top = self.height() / 2 + S(self.CH) * k / 2 + S(GLOW) + S(38)
-        dx = S(10) * math.sin(self.shake.level * math.pi * 6) * (1.0 - self.shake.level)
-        return QRectF(self.width() / 2 - w / 2 + dx, top, w, h)
-
-    def _reveal(self) -> None:
-        if not self._down or self.phase != "card":
-            return
-        self._held = True
-        self.code = ""
-        sfx.play("pick")
-        self._take_keyboard()
-        self.setFocus()
-        self.code_in.to(1.0, 260)
-
-    def keyPressEvent(self, e) -> None:
-        if self.phase != "card" or self.code_in.target < 0.5:
-            return
-        key, text = e.key(), e.text()
-        if key == Qt.Key.Key_Escape:
-            self.code = ""
-            self.code_in.to(0.0, 180)
-        elif key == Qt.Key.Key_Backspace:
-            self.code = self.code[:-1]
-        elif text.isdigit() and len(text) == 1 and len(self.code) < 8:
-            self.code += text
-            if len(self.code) == 8:
-                self._check()
-        elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            self._check()
-        self.update()
-
-    def _check(self) -> None:
-        if self.code == self.SECRET:
-            self._good = True
-            self.ctx.wallet.admin = True            # test mode until Rubenium is closed: nothing is kept
-            sfx.play("on")
-            QTimer.singleShot(450, self.launch)
-        else:
-            sfx.play("off")
-            self.code = ""
-            self.shake.jump(0.0)
-            self.shake.to(1.0, 420)
-        self.update()
-
-    def _paint_code(self, p: QPainter) -> None:
-        t = max(0.0, min(1.0, self.code_in.level))
-        if t <= 0.0:
-            return
-        r = self._code_rect().translated(0, (1 - t) * S(8))
-        p.save()
-        p.setOpacity(t * max(0.0, min(1.0, self.appear.level)))
-        p.setPen(QPen(alpha(ui.accent, 0.9 if self._good else 0.45), 1.2))
-        p.setBrush(QColor(12, 15, 16, 245))
-        p.drawRoundedRect(r, S(12), S(12))
-        p.save()
-        p.translate(r.left() + S(20), r.center().y())
-        p.scale(S(13) / 20, S(13) / 20)
-        draw_icon(p, "lock", QColor(TEXT_DIM))
-        p.restore()
-        shown = "".join("X" if i < len(self.code) else "x" for i in range(8))
-        shown = shown[:4] + "-" + shown[4:]
-        f = font(17, QFont.Weight.Bold, 3.0)
-        p.setFont(f)
-        fm = p.fontMetrics()
-        x = r.center().x() - fm.horizontalAdvance(shown) / 2 + S(8)
-        for ch in shown:
-            typed = ch == "X"
-            p.setPen(QColor(TEXT) if typed else alpha(TEXT_DIM, 0.55))
-            p.drawText(QPointF(x, r.center().y() + fm.ascent() / 2 - S(2)), ch)
-            x += fm.horizontalAdvance(ch)
-        p.restore()
 
     def closeEvent(self, e) -> None:
         if self.phase != "done":
@@ -15160,7 +15197,8 @@ class Welcome(QWidget):
         if self.phase == "fly":
             d *= 1.0 + 0.14 * math.sin(math.pi * min(1.0, f / 0.4))        # a soft pop as it takes off
         k = 0.94 + 0.06 * a
-        w, h = lerp(S(self.CW) * k, d, m), lerp(S(self.CH) * k, d, m)
+        w, h = lerp(S(self.CW) * k, d, m), lerp(self.card_h() * k, d, m)
+        top = self.card_top()
         cx, cy = self.width() // 2, self.height() // 2
         shape = QRectF(cx - w / 2, cy - h / 2, w, h)
         radius = lerp(float(S(24)), d / 2, m)
@@ -15194,7 +15232,7 @@ class Welcome(QWidget):
 
             p.setPen(QColor(TEXT_DIM))
             p.setFont(font(14, QFont.Weight.DemiBold, 0.3))
-            p.drawText(QRectF(shape.left(), cy - S(self.CH) * 0.36, w, S(22)), int(Qt.AlignmentFlag.AlignCenter),
+            p.drawText(QRectF(shape.left(), top + S(self.CH) * 0.14, w, S(22)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("Welcome to"))
             p.setFont(font(42, QFont.Weight.ExtraBold, 0.5))
             fm = p.fontMetrics()
@@ -15202,7 +15240,7 @@ class Welcome(QWidget):
             full = fm.horizontalAdvance(word)
             x0 = cx - full / 2
             split = x0 + full - fm.horizontalAdvance("ium")
-            line = QRectF(x0, cy - S(self.CH) * 0.25, full + S(4), S(56))
+            line = QRectF(x0, top + S(self.CH) * 0.25, full + S(4), S(56))
             p.save()
             p.setClipRect(QRectF(0, 0, split, self.height()), Qt.ClipOperation.IntersectClip)
             p.setPen(QColor(TEXT))
@@ -15218,9 +15256,8 @@ class Welcome(QWidget):
             hv, pr = self.hover.level, self.press.level
             grow = S(2) * hv - S(1.5) * pr
             b = b.adjusted(-grow, -grow * 0.5, grow, grow * 0.5)
-            locked = not self.logged_in()                     # log in first: Launch waits
-            if locked:
-                p.setOpacity(a * show * 0.35)
+            shown_in = max(0.0, 1.0 - self.out_level() * 2)   # Launch and the name fade in once the form is gone
+            p.setOpacity(a * show * shown_in)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(ui.accent, 0.22 + 0.10 * hv))
             p.drawRoundedRect(b.adjusted(-S(3), -S(3), S(3), S(3)), S(16), S(16))
@@ -15229,6 +15266,24 @@ class Welcome(QWidget):
             p.setPen(QColor("#06110A" if ui.accent.lightnessF() > 0.6 else "#FFFFFF"))
             p.setFont(font(15, QFont.Weight.Bold, 0.3))
             p.drawText(b, int(Qt.AlignmentFlag.AlignCenter), tr("Launch"))
+            if self.logged_in():                               # "Name · Log out" under the button
+                r = self._link_rect()
+                p.setFont(font(11, QFont.Weight.DemiBold))
+                fm = p.fontMetrics()
+                name, sep, out = self.ctx.online.username(), "  ·  ", tr("Log out")
+                total = fm.horizontalAdvance(name + sep + out)
+                x0 = r.center().x() - total / 2
+                x1 = x0 + fm.horizontalAdvance(name + sep)
+                p.setPen(QColor(TEXT))
+                p.drawText(QRectF(x0, r.top(), total, r.height()), int(Qt.AlignmentFlag.AlignVCenter), name)
+                p.setPen(QColor(TEXT_DIM))
+                p.drawText(QRectF(x0 + fm.horizontalAdvance(name), r.top(), total, r.height()),
+                           int(Qt.AlignmentFlag.AlignVCenter), sep)
+                f2 = font(11, QFont.Weight.DemiBold)
+                f2.setUnderline(True)
+                p.setFont(f2)
+                p.drawText(QRectF(x1, r.top(), total, r.height()), int(Qt.AlignmentFlag.AlignVCenter), out)
+                self._logout_x, self._logout_w = x1 - r.center().x(), fm.horizontalAdvance(out)
             p.restore()
 
         face = max(0.0, min(1.0, (m - 0.5) / 0.5))         # the R arrives as the circle forms
@@ -15251,31 +15306,6 @@ class Welcome(QWidget):
                 p.drawArc(ring, 90 * 16, int(-360 * 16 * turn))
         p.setOpacity(a)
         paint_edge(p, self.ctx, shape, radius, level)
-        if self.phase == "card":
-            p.setOpacity(1.0)
-            self._paint_code(p)
-            if self.logged_in():                               # "Name · Log out" under the card
-                r = self._link_rect()
-                p.setOpacity(a)
-                p.setFont(font(11, QFont.Weight.DemiBold))
-                fm = p.fontMetrics()
-                name, sep, out = self.ctx.online.username(), "  ·  ", tr("Log out")
-                total = fm.horizontalAdvance(name + sep + out)
-                x0 = r.center().x() - total / 2
-                p.setPen(QPen(alpha("#FFFFFF", 0.10), 1))
-                p.setBrush(QColor(12, 15, 16, 245))
-                p.drawRoundedRect(QRectF(x0 - S(14), r.top(), total + S(28), r.height()), r.height() / 2, r.height() / 2)
-                p.setPen(QColor(TEXT))
-                p.drawText(QRectF(x0, r.top(), total, r.height()), int(Qt.AlignmentFlag.AlignVCenter), name)
-                p.setPen(QColor(TEXT_DIM))
-                x1 = x0 + fm.horizontalAdvance(name + sep)
-                p.drawText(QRectF(x0 + fm.horizontalAdvance(name), r.top(), total, r.height()),
-                           int(Qt.AlignmentFlag.AlignVCenter), sep)
-                f2 = font(11, QFont.Weight.DemiBold)
-                f2.setUnderline(True)
-                p.setFont(f2)
-                p.drawText(QRectF(x1, r.top(), total, r.height()), int(Qt.AlignmentFlag.AlignVCenter), out)
-                self._logout_x, self._logout_w = x1 - r.center().x(), fm.horizontalAdvance(out)
 
 
 class Body(QWidget):
@@ -17053,6 +17083,10 @@ class App(QObject):
         self.toast(tr("Your screen refused this setting"), "error")
 
     # ------------------------------------------------------------------ shutdown
+    def delete_account_dialog(self) -> None:
+        pass
+        self._delete_dialog = DeleteDialog(self)
+
     def quit(self) -> None:
         self.shutdown()
         self.qapp.quit()
