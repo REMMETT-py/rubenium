@@ -606,6 +606,11 @@ class PreviewDrawer(QWidget):
         self._slide.jump(0.0)
         self._slide.target = 1.0
         self.ctx.preview_theme(theme["id"])
+        shop = str(theme.get("id", "")).startswith("theme:")
+        self._buy.setVisible(shop)
+        if shop:
+            from .wallet import coins_text
+            self._buy.set_text(tr("Buy for {n} coins", n=coins_text(int(self.ctx.econ.info(theme["id"]).get("price") or 0))))
         self.show()
         self._slide.to(1.0, 260)
         self._frame.start()
@@ -622,9 +627,17 @@ class PreviewDrawer(QWidget):
             self._slide.jump(0.0)
 
     def _buy_theme(self) -> None:
-        page = self.owner.page()
-        if page is not None and hasattr(page, "buy"):
-            page.buy(f"theme:{self.theme['id']}")
+        """A shop theme: open its page in the shop, where it can be bought."""
+        tid = str(self.theme.get("id", ""))
+        if tid.startswith("theme:"):
+            from .bazaar import SHOP_KINDS
+            ctx = self.ctx
+            ctx.shop_tab, ctx.shop_kind, ctx.shop_design = 1, SHOP_KINDS.index("theme"), tid.split(":", 1)[1]
+            self.close_drawer()
+            if ctx.window.current == "themes":
+                ctx.reload_page()
+            else:
+                ctx.window.goto("themes")
 
     def _offset(self) -> float:
         return -self._side * self.width() * (1.0 - self._slide.level)
@@ -686,8 +699,10 @@ class PreviewDrawer(QWidget):
         p.drawText(QRectF(S(15), tile.bottom() + S(9), self.width() - S(30), S(22)),
                    int(Qt.AlignmentFlag.AlignVCenter), tr(th["name"]))
         from .shop import paint_price
+        shop = str(th.get("id", "")).startswith("theme:")
         paint_price(p, QRectF(S(15), tile.bottom() + S(34), self.width() - S(30), S(18)),
-                    self.ctx.wallet.hours_for(f"theme:{th['id']}"), 11.5, "#E8C26A", centre=False, hours=True)
+                    int(self.ctx.econ.info(th["id"]).get("price") or 0) if shop else
+                    self.ctx.wallet.hours_for(f"theme:{th['id']}"), 11.5, "#E8C26A", centre=False, hours=not shop)
 
 
 class DeleteDialog(QWidget):

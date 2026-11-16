@@ -117,7 +117,10 @@ def rarity_line(ctx, item: str) -> str:
 
 
 def value_of(ctx, item: str) -> int:
-    return int(ctx.econ.info(item).get("value") or 0)
+    """What an item is worth, as shown everywhere: its shop price when the shop sells it (so the inventory, trades and
+    the collection always show the same number), else its catalogue value."""
+    info = ctx.econ.info(item)
+    return int(info.get("price") or info.get("value") or 0)
 
 
 class ItemGrid(QWidget):
@@ -860,7 +863,7 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
     head.addWidget(Label(rarity_line(ctx, item), 10.5, RARITY_COLOURS.get(ec.rarity(item), TEXT_DIM), bold=True))
     lay.addLayout(head)
     locked = len(copies) - len(free)
-    note = tr("Worth about {v} coins", v=coins_text(value_of(ctx, item))) if value_of(ctx, item) else \
+    note = tr("Worth {v} coins", v=coins_text(value_of(ctx, item))) if value_of(ctx, item) else \
         tr("A gift for the first users of Rubenium. It cannot be sold or traded.")
     if locked:
         where = copies[0].get("locked") or next((c["locked"] for c in copies if c.get("locked")), "")
@@ -1096,7 +1099,6 @@ class ListingRow(QWidget):
 
 
 def build_market(page, lay) -> None:
-    from .games import GamePicker
     ctx, ec = page.ctx, page.ctx.econ
     if not ec.ready:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the market"), 12, TEXT_DIM))
@@ -1109,13 +1111,10 @@ def build_market(page, lay) -> None:
         ctx.reload_page()
     seg.changed.connect(switch)
     lay.addWidget(seg)
-    if not ec.can_trade():
-        lay.addWidget(Label(tr("The market opens after 5 hours with Rubenium. You have {h} so far.",
-                               h=f"{ec.minutes / 60:.1f} h"), 11, GOLD_TEXT, wrap_w=page.W))
     if tab == 2:
         return _offers(page, lay)
     fn, args = ("rb_market_mine", {}) if tab else \
-        ("rb_market_browse", {"kind": KINDS[int(getattr(ctx, "mk_kind", 0) or 0)],
+        ("rb_market_browse", {"kind": "",
                               "sort": "cheap" if getattr(ctx, "mk_sort", 0) else "new", "page": 0})
     key = (fn, str(args))
     rows = getattr(ctx, "mk_rows", None) if getattr(ctx, "mk_key", None) == key else None
@@ -1131,21 +1130,13 @@ def build_market(page, lay) -> None:
                 ctx.reload_page()
         ec.online.ask(fn, args, got)
     if not tab:
-        kinds = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Banners"),
-                            tr("Frames")],
-                           int(getattr(ctx, "mk_kind", 0) or 0))
+        cheap = bool(getattr(ctx, "mk_sort", 0))
+        sort = Button(tr("Sort: Cheapest first") if cheap else tr("Sort: Newest first"), "ghost", 30, icon="refresh")
 
-        def set_kind(i: int) -> None:
-            ctx.mk_kind, ctx.mk_at = i, 0
+        def flip_sort() -> None:
+            ctx.mk_sort, ctx.mk_at = 0 if cheap else 1, 0
             ctx.reload_page()
-        kinds.changed.connect(set_kind)
-        lay.addWidget(kinds)
-        sort = Segmented([tr("Newest"), tr("Cheapest")], int(getattr(ctx, "mk_sort", 0) or 0))
-
-        def set_sort(i: int) -> None:
-            ctx.mk_sort, ctx.mk_at = i, 0
-            ctx.reload_page()
-        sort.changed.connect(set_sort)
+        sort.clicked.connect(flip_sort)
         lay.addWidget(sort)
     if rows is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))

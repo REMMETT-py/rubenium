@@ -188,8 +188,10 @@ class ThemeCard(QAbstractButton):
             p.scale(S(11) / 20, S(11) / 20)
             draw_icon(p, "lock", QColor(TEXT_DIM))
             p.restore()
+            shop = th["id"].startswith("theme:")              # a shop theme: its price in coins
             paint_price(p, QRectF(foot.left() + S(18), foot.top(), foot.width() - S(18), foot.height()),
-                        ctx.wallet.hours_for(ident), 10.5, GOLD_TEXT if nxt else TEXT_DIM, centre=False, hours=True)
+                        int(ctx.econ.info(th["id"]).get("price") or 0) if shop else ctx.wallet.hours_for(ident), 10.5,
+                        GOLD_TEXT if nxt else TEXT_DIM, centre=False, hours=not shop)
 
 
 class UnlockTile(QAbstractButton):
@@ -616,7 +618,9 @@ class ShopPage(Page):
         grid = QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(S(2))
-        for i, th in enumerate(extras.THEMES):
+        from .cosmetics import THEME_LOOKS, shop_theme
+        every = list(extras.THEMES) + [shop_theme("theme:" + t[0]) for t in THEME_LOOKS]   # 3.0.0: shop themes too
+        for i, th in enumerate(t for t in every if t):
             card = ThemeCard(th, self)
             card.clicked.connect(lambda _=False, t=th: self._pick(t))
             grid.addWidget(card, i // 2, i % 2)
@@ -807,6 +811,8 @@ class ShopPage(Page):
         self._timers()
         if not cid:
             from .collection import case_kind
+            from .games import KeyCard
+            lay.addWidget(KeyCard(ctx))
             lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
                 for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts")), ("style", tr("Style cases"))):
@@ -820,7 +826,7 @@ class ShopPage(Page):
             else:
                 for case in ec.cases:
                     lay.addWidget(CaseCard(self, case))
-            lay.addWidget(Label(tr("Each case costs coins and 1 key. Keys: 1 per hour."), 10.5, TEXT_DIM, wrap_w=self.W))
+            lay.addWidget(Label(tr("Each case costs coins and 1 key."), 10.5, TEXT_DIM, wrap_w=self.W))
             return
         case = self.DAILY if cid == "daily" else next((c for c in ec.cases if c["id"] == cid), ec.cases[0])
         top = hbox(spacing=8)
@@ -871,8 +877,9 @@ class ShopPage(Page):
         gifted = not daily and int(ec.stock.get(case["id"], 0) or 0) > 0        # a gift: free, no coins and no key
         if gifted and ec.server_old and ec.keys < 1:
             return ctx.toast(tr("Gifts open for free once the server update is done. Until then they need 1 key."), "warn")
-        if not daily and not gifted and ec.keys < 1:
-            return ctx.toast(tr("You need a key: 1 key for every hour with Rubenium"), "warn")
+        gold = not daily and not gifted and ec.gold_keys > 0      # a gold key is used before a normal one
+        if not daily and not gifted and ec.keys < 1 and not gold:
+            return ctx.toast(tr("You need a key: 1 key every 15 minutes"), "warn")
         if not daily and not gifted and case["price"] > ec.coins:
             return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - ec.coins)), "warn")
         self._asking = True
@@ -887,6 +894,7 @@ class ShopPage(Page):
                 sfx.play("off")
                 return ctx.toast(tr(str(data)), "warn")
             self._pending = data                             # coins and item show when the strip stops
+            ec.fetch_gold_keys()
             if daily:
                 import time as _time
                 ctx.daily_ready_at = _time.monotonic() + 24 * 3600
@@ -897,7 +905,9 @@ class ShopPage(Page):
         if daily:
             ec.call("rb_daily_case", {}, got, hold=True)
         else:
-            ec.call("rb_open_case", {"which": case["id"]}, got, once=True, hold=True)
+            if gold:
+                ec.gold_keys -= 1
+            ec.call("rb_open_case_gold" if gold else "rb_open_case", {"which": case["id"]}, got, once=True, hold=True)
 
     def _opened(self) -> None:
         data, self._pending = getattr(self, "_pending", None), None
@@ -937,7 +947,7 @@ class ShopPage(Page):
             if case["price"] > ec.coins:
                 return dlg.say(tr("Not enough coins"))
             if ec.keys < 1 and "case_lucky_pct" in ec.cfg:
-                return dlg.say(tr("You need a key: 1 key for every hour with Rubenium"))
+                return dlg.say(tr("You need a key: 1 key every 15 minutes"))
 
             def done(ok: bool, data) -> None:
                 if not ok:

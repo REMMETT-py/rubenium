@@ -416,20 +416,26 @@ class Online(QObject):
 
     def ask(self, fn: str, args: dict, done, raw: bool = False) -> None:
         """Call a server function for the logged-in account; `done(ok, answer or message)` runs on the main thread."""
+        def emit(job) -> None:
+            try:
+                self._back.emit(job)
+            except RuntimeError:                    # Rubenium is closing: nobody is waiting for the answer
+                pass
+
         def work():
             try:
                 ans = self.rpc(fn, args)
                 if self.offline:
-                    self._back.emit(lambda: self._set_offline(False))
-                self._back.emit(lambda: done(True, ans))
+                    emit(lambda: self._set_offline(False))
+                emit(lambda: done(True, ans))
             except ApiError as err:
                 msg = err.key if (raw and err.key != "offline") else explain(err)
                 if err.key == "offline":
-                    self._back.emit(lambda: self._set_offline(True))
-                self._back.emit(lambda: done(False, msg))
+                    emit(lambda: self._set_offline(True))
+                emit(lambda: done(False, msg))
             except Exception:  # noqa: BLE001
                 log.exception("%s failed", fn)
-                self._back.emit(lambda: done(False, "Something went wrong: try again"))
+                emit(lambda: done(False, "Something went wrong: try again"))
         threading.Thread(target=work, daemon=True).start()
 
     def _in_use(self) -> bool:

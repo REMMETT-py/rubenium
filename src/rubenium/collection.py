@@ -86,7 +86,7 @@ def item_chances(ec, item: str) -> list:
     base = item.split(":")[1] if item.count(":") >= 2 else ""
     if tier == 5:
         share = (1 if base == "rubenium" else 2) / 11
-        per = {3: 0.9 / 2, 5: 0.095, 4: 0.005}.get(cls, 0) * share
+        per = {3: 0.96515 / 2, 5: 0.033, 4: 0.00185}.get(cls, 0) * share
     else:
         same = sum(1 for k, v in ec.catalog.items() if v.get("kind") == "badge" and v.get("rarity") == info.get("rarity")
                    and int(v.get("cls") or 0) == cls)
@@ -672,8 +672,9 @@ class OddsTable(QWidget):
             p.setPen(col)
             p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
-            pct = share / 100
-            text = f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
+            group = case.get("variants") if kind == "cls" else case.get("odds")
+            pct = share * 100 / max(1, sum(group or [1]))         # finishes are out of 100 000, drops out of 10 000
+            text = f"{pct:.3f}%" if pct < 0.1 else f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
             p.setPen(QColor(TEXT))
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        text.replace(".", ",") if lang() == "fr" else text)
@@ -734,7 +735,7 @@ class CaseReel(QWidget):
     def _filler(self, rnd) -> tuple:
         """A drop for the strip, picked with the case's real odds (so the strip looks like the case: rare things
         are as rare here as in the case itself)."""
-        roll, tier = rnd.randrange(10000), 0
+        roll, tier = rnd.randrange(max(1, sum(self.case["odds"]))), 0
         for i, share in enumerate(self.case["odds"]):
             if roll < share:
                 tier = i
@@ -750,9 +751,10 @@ class CaseReel(QWidget):
             return ("item", rnd.choice(pool)) if pool else ("coins", int(self.case.get("coin_min") or 100))
         base = rnd.choice(self._badges_of(tier))
         if tier == 5:
-            return ("item", badge_item(base, rnd.choice(["prime"] * 9 + ["white"])))
-        roll, cls = rnd.randrange(10000), 0
-        for i, share in enumerate(self.case.get("variants") or [10000]):
+            return ("item", badge_item(base, rnd.choice(["black", "white"])))
+        variants = list(self.case.get("variants") or [100000])
+        roll, cls = rnd.randrange(max(1, sum(variants))), 0
+        for i, share in enumerate(variants):
             if roll < share:
                 cls = i
                 break

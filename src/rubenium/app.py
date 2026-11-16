@@ -138,6 +138,9 @@ class App(QObject):
         super().__init__()
         self.qapp = qapp
         self.cfg = Config()
+        for _k in ("welcome", "splash"):                 # 3.0.0: always on (no longer a setting)
+            if not self.cfg[_k]:
+                self.cfg[_k] = True
         self._was_open = bool(self.cfg["card_open"])
         self.cfg["unlock_all"] = False
         if self.cfg["scale_before_games"]:           # the Games tab had made the menu bigger: back to your size
@@ -334,10 +337,7 @@ class App(QObject):
     def _sync_autostart(self) -> None:
         if not win.IS_WIN:
             return
-        if self.cfg["autostart"] is None:                 # first run: start with Windows by default
-            self.cfg["autostart"] = win.autostart_set(True)
-        elif self.cfg["autostart"]:
-            win.autostart_set(True)                       # keeps the path right if the app was moved
+        self.cfg["autostart"] = win.autostart_set(True)   # 3.0.0: always starts with Windows (keeps the path right too)
 
     def _retry_tray(self) -> None:
         if self.tray is None and not self._closing and "--selftest" not in sys.argv:
@@ -838,8 +838,21 @@ class App(QObject):
         """Giveaways, the admin tab, the lock: from the server's latest news."""
         from .pages2 import LIVE_TABS
         want = set()
-        if any(g.get("state") == "live" or g.get("joined") for g in self.econ.live.get("giveaways") or []):
-            want.add("giveaway")
+        ended = getattr(self, "_gw_ended", None)
+        if ended is None:
+            ended = self._gw_ended = {}
+        now = time.monotonic()
+        seen = self.__dict__.setdefault("_gw_seen_live", set())
+        for g in self.econ.live.get("giveaways") or []:
+            if g.get("state") == "live":
+                want.add("giveaway")
+                seen.add(g.get("id"))
+            elif g.get("id") in seen:                   # just ended: the tab stays a minute to show the winner
+                if g.get("id") not in ended:
+                    ended[g.get("id")] = now
+                    QTimer.singleShot(61000, self._live_changed)
+                if now - ended[g.get("id")] < 60:
+                    want.add("giveaway")
         if self.econ.admin:
             want.add("admin")
         if want != LIVE_TABS:
@@ -1079,6 +1092,24 @@ class App(QObject):
         if on != self.outdated:
             self.outdated = on
             self.window.sync_lock()
+
+    def og_event_check(self) -> None:
+        """The OG event (16/11/2026): asked once per start, after the login is complete and the welcome screen is gone.
+        The server decides (OG tag, the date, only once) and gives the rewards; then the cutscene plays."""
+        if getattr(self, "_og_asked", False) or not self.online.logged_in() or self.cfg["offline_mode"]:
+            return
+        if self.welcome is not None:
+            return QTimer.singleShot(1500, self.og_event_check)
+        self._og_asked = True
+
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, dict) and data.get("given"):
+                from .ogevent import OgCutscene
+                self.econ.gold_keys = int(data.get("gold_keys") or 0) + self.econ.gold_keys
+                self._og_scene = OgCutscene(self, data)
+                self._og_scene.show()
+                self._og_scene.raise_()
+        self.online.ask("rb_og_event", {}, got)
 
     def after_login(self) -> None:
         """Once logged in: a quiet online backup each day. The tour and the daily reward wait until the menu is

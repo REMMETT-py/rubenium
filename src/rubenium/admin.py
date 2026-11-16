@@ -974,13 +974,22 @@ class GiveawayCard(QWidget):
         self._t = QTimer(self)
         self._t.setInterval(40)
         self._t.timeout.connect(self.update)
+        self._ask = QTimer(self)                         # time is up: ask for the winner every second until drawn
+        self._ask.setInterval(1000)
+        self._ask.timeout.connect(self._check_end)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
+    def _check_end(self) -> None:
+        if self.g.get("state") == "live" and time.monotonic() >= self._until - 0.5:
+            self.ctx.econ.poll_live()
+
     def showEvent(self, _e) -> None:
+        self._ask.start()
         self._t.start()
 
     def hideEvent(self, _e) -> None:
         self._t.stop()
+        self._ask.stop()
 
     def paintEvent(self, _e) -> None:
         from .collection import CASE_NAMES, paint_case

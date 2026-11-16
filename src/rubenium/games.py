@@ -1714,8 +1714,13 @@ class KeyCard(QWidget):
         p.drawText(QRectF(r.left() + S(46), r.top() + S(10), r.width() / 2, S(24)), int(Qt.AlignmentFlag.AlignVCenter),
                    tr("Keys"))
         p.setFont(font(13, QFont.Weight.Bold))
-        p.drawText(QRectF(r.center().x(), r.top() + S(10), r.width() / 2 - S(12), S(24)),
-                   int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), str(w.keys()))
+        gold = int(getattr(self.ctx.econ, "gold_keys", 0) or 0)
+        right = QRectF(r.center().x(), r.top() + S(10), r.width() / 2 - S(12), S(24))
+        p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), str(w.keys()))
+        if gold:                                       # one-use gold keys from the OG event, used first
+            p.setPen(QColor("#E8C26A"))
+            p.drawText(right.adjusted(0, 0, -S(10) - p.fontMetrics().horizontalAdvance(str(w.keys())), 0),
+                       int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), tr("{n} gold", n=gold) + "  +")
         bar = QRectF(r.left() + S(46), r.top() + S(38), r.width() - S(58), S(5))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(alpha("#FFFFFF", 0.08))
@@ -1723,11 +1728,13 @@ class KeyCard(QWidget):
         p.setBrush(ui.accent)
         ec = self.ctx.econ
         every = max(1, int(ec.cfg.get("key_every_min", 60)))
+        cap = int(ec.cfg.get("key_cap", 0) or 0)
         p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * min(1.0, ec.key_min / every)), bar.height()),
                           bar.height() / 2, bar.height() / 2)
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
-        text = tr("1 key for every hour with Rubenium")
+        text = (tr("1 key every {m} min, up to {n}", m=every, n=cap) if cap and cap < 20 else
+                tr("1 key every {m} min", m=every))
         p.drawText(QRectF(bar.left(), bar.bottom() + S(2), bar.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter), text)
 
 
@@ -1947,7 +1954,7 @@ class GamesPage(Page):
             if getattr(ctx, "park_open", False):
                 return self._park(lay)
             sub = getattr(ctx, "games_sub", None)
-            if sub in ("memory", "duels", "duel_run", "scratch"):
+            if sub in ("memory", "duel_run", "scratch"):
                 from .hub import server_wait
                 if ctx.econ.server_old:
                     self._back_bar(lay, tr({"memory": "Memory", "scratch": "Scratch card"}.get(sub, "Duels")))
@@ -1958,7 +1965,10 @@ class GamesPage(Page):
             if sub == "memory":
                 return self._memory(lay)
             if sub == "duels":
-                return build_duels(self, lay)
+                from .golf import build_golf
+                if getattr(ctx, "duel_friends", None) is None:
+                    self.load_duels(quiet=True)          # the friends to challenge
+                return build_golf(self, lay)
             if sub == "duel_run":
                 return self._duel_run(lay)
             if sub == "scratch":
@@ -1972,7 +1982,6 @@ class GamesPage(Page):
         quests.clicked.connect(lambda: self._show_quests(True))
         lay.addWidget(quests)
         lay.addWidget(CoinBar(self.ctx))
-        lay.addWidget(KeyCard(self.ctx))
         from .hub import StreakRow
         if not self.ctx.econ.server_old:
             lay.addWidget(StreakRow(self))
@@ -1981,7 +1990,7 @@ class GamesPage(Page):
         line = hbox(spacing=6)
         earn = BigCard(tr("Earn coins"), tr("3 free mini games"), "spark",
                        ("#35E0A1", "#12806A"), lambda: self.open_sub("minigames"))
-        duel = BigCard(tr("Duels"), tr("1 vs 1 with friends"), "shield",
+        duel = BigCard(tr("Mini Golf"), tr("1v1 live with friends"), "shield",
                        ("#FF5C6C", "#8A1F7A"), lambda: self.open_sub("duels"))
         line.addWidget(earn, 1)
         line.addWidget(duel, 1)
@@ -2031,7 +2040,7 @@ class GamesPage(Page):
         self.beat_btn = Button(tr("Start"), "primary", 38)
         self.beat_btn.clicked.connect(lambda: (self.beat_btn.setEnabled(False), self.beat.start()))
         lay.addWidget(self.beat_btn)
-        lay.addWidget(Label(tr("12 to 50 coins a round. Up to 150 coins every 2 hours."), 10.5, TEXT_DIM,
+        lay.addWidget(Label(tr("15 to 65 coins a round. Up to 200 coins every 2 hours."), 10.5, TEXT_DIM,
                             wrap_w=self.W))
 
     # -- 2.4: sub-screens (Memory, duels, scratch card)
@@ -2065,7 +2074,7 @@ class GamesPage(Page):
         go = Button(tr("New game"), "primary", 36)
         go.clicked.connect(self.mem.start)
         lay.addWidget(go)
-        lay.addWidget(Label(tr("Find every pair. Fewer flips pay more. Up to 150 coins every 2 hours."),
+        lay.addWidget(Label(tr("Find every pair. Fewer flips pay more. Up to 200 coins every 2 hours."),
                             10.5, TEXT_DIM, wrap_w=self.W))
         QTimer.singleShot(50, self.mem.start)
 
@@ -2172,7 +2181,7 @@ class GamesPage(Page):
         line.addWidget(again, 1)
         line.addWidget(new, 1)
         lay.addLayout(line)
-        lay.addWidget(Label(tr("Move the cars to free the red car. Fewer moves pay more. Up to 150 coins every 2 hours."),
+        lay.addWidget(Label(tr("Move the cars to free the red car. Fewer moves pay more. Up to 200 coins every 2 hours."),
                             10.5, TEXT_DIM, wrap_w=self.W))
         QTimer.singleShot(50, self.park.new)
 

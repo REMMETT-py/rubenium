@@ -424,17 +424,8 @@ class LyricsView(QWidget):
         self._idx = -1
         self._scroll = Tween(self, 0.0, self.update)
         self._manual = 0.0
-        self._free_until = 0.0                       # scrolled by hand: follow the song again after 3 s
-        self._ms = 0.0
-        self._font = font(max(11, min(24, int(page.ctx.cfg["lyrics_size"]))), QFont.Weight.DemiBold)
+        self._font = font(15, QFont.Weight.DemiBold)
         self.setCursor(Qt.CursorShape.ArrowCursor)
-
-    def set_size(self, px: int) -> None:
-        self._font = font(px, QFont.Weight.DemiBold)
-        self._layout()
-        if self._idx >= 0 and self._tops:
-            self._scroll.jump(self._tops[self._idx] + self._heights[self._idx] / 2)
-        self.update()
 
     def set_content(self, kind: str, lines: list) -> None:
         self.kind, self.lines, self._idx, self._manual = kind, lines, -1, 0.0
@@ -464,35 +455,17 @@ class LyricsView(QWidget):
     def set_position(self, ms: float) -> None:
         if self.kind != "synced" or not self.lines:
             return
-        self._ms = ms
         i = bisect.bisect_right([ln[0] for ln in self.lines], ms + 150) - 1
-        follow = time.monotonic() > self._free_until
-        if i != self._idx or (follow and self._manual):
+        if i != self._idx:
             self._idx = i
-            if follow:
-                self._manual = 0.0
-                target = (self._tops[i] + self._heights[i] / 2) if i >= 0 else 0.0
-                self._scroll.to(target, 420)
-        self.update()
-
-    def _line_frac(self) -> float:
-        """How far the current line is (for the karaoke fill)."""
-        i = self._idx
-        if i < 0 or i >= len(self.lines):
-            return 0.0
-        start = self.lines[i][0]
-        end = self.lines[i + 1][0] if i + 1 < len(self.lines) else start + 4000
-        return max(0.0, min(1.0, (self._ms + 150 - start) / max(1.0, end - start)))
+            target = (self._tops[i] + self._heights[i] / 2) if i >= 0 else 0.0
+            self._scroll.to(target, 420)
 
     def wheelEvent(self, e) -> None:
         if self.kind == "plain":
             top = max(0.0, self._total - self.height() + S(20))
             self._manual = max(0.0, min(top, self._manual - e.angleDelta().y() / 120 * S(60)))
             self._scroll.to(self._manual, 260)
-        elif self.kind == "synced" and self._tops:
-            self._free_until = time.monotonic() + 3.0
-            self._manual = max(0.0, min(self._total, self._scroll.level - e.angleDelta().y() / 120 * S(60)))
-            self._scroll.to(self._manual, 200)
         e.accept()
 
     def mousePressEvent(self, e) -> None:
@@ -518,8 +491,6 @@ class LyricsView(QWidget):
                 break
             mid = y + self._heights[i] / 2
             edge = min(1.0, max(0.0, min(mid, h - mid) / S(46)))
-            rect = QRectF(S(4), y, w - S(8), self._heights[i])
-            flags = int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap)
             if self.kind == "synced":
                 d = abs(i - self._idx)
                 col = QColor(TEXT) if d == 0 else alpha(TEXT_DIM, max(0.25, 0.75 - 0.14 * d))
@@ -529,17 +500,8 @@ class LyricsView(QWidget):
                 col = alpha(TEXT, 0.86)
             col.setAlphaF(col.alphaF() * edge)
             p.setPen(col)
-            p.drawText(rect, flags, self._text(i))
-            if self.kind == "synced" and i == self._idx:          # karaoke: the line fills with colour as it is sung
-                frac = self._line_frac()
-                if frac > 0:
-                    p.save()
-                    p.setClipRect(QRectF(rect.left(), rect.top(), rect.width() * frac, rect.height()))
-                    acc = QColor(ui.accent)
-                    acc.setAlphaF(edge)
-                    p.setPen(acc)
-                    p.drawText(rect, flags, self._text(i))
-                    p.restore()
+            p.drawText(QRectF(S(4), y, w - S(8), self._heights[i]),
+                       int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap), self._text(i))
 
 
 class LyricsPage(Page):
@@ -563,94 +525,21 @@ class LyricsPage(Page):
         col.addWidget(self.retry, 0, Qt.AlignmentFlag.AlignHCenter)
         col.addStretch(1)
         self.retry.clicked.connect(lambda: self._request(force=True))
-        self.bar = QWidget(self)                     # size, timing nudge and copy
-        bl = hbox(self.bar, 4)
-        bl.setContentsMargins(S(4), 0, S(4), 0)
-        for text, tip, fn in (("A−", tr("Smaller text"), lambda: self._size(-1)), ("A+", tr("Bigger text"), lambda: self._size(1))):
-            b = Button(text, "quiet", 22)
-            b.setToolTip(tip)
-            b.clicked.connect(fn)
-            bl.addWidget(b)
-        bl.addStretch(1)
-        early = Button("−0.5 s", "quiet", 22)
-        early.setToolTip(tr("Lyrics come too late: show them earlier"))
-        early.clicked.connect(lambda: self._nudge(-500))
-        self.off_lbl = Label("", 10, TEXT_FAINT, align=Qt.AlignmentFlag.AlignCenter)
-        self.off_lbl.setFixedWidth(S(44))
-        late = Button("+0.5 s", "quiet", 22)
-        late.setToolTip(tr("Lyrics come too early: show them later"))
-        late.clicked.connect(lambda: self._nudge(500))
-        bl.addWidget(early)
-        bl.addWidget(self.off_lbl)
-        bl.addWidget(late)
-        bl.addStretch(1)
-        copy = IconButton("copy", 22, tip=tr("Copy the lyrics"))
-        copy.clicked.connect(self._copy)
-        bl.addWidget(copy)
-        self._offsets = self._load_offsets()
         ctx.lyrics.result.connect(self._on_result)
         self._timer = QTimer(self)
         self._timer.setInterval(120)
-        self._timer.setInterval(60)
-        self._timer.timeout.connect(lambda: self.view.set_position(self.ctx.position_ms() + self._offset()))
+        self._timer.timeout.connect(lambda: self.view.set_position(self.ctx.position_ms()))
         self.on_state(ctx.state)
 
     def resizeEvent(self, _e) -> None:
-        r = self.rect()
-        self.view.setGeometry(r.adjusted(0, 0, 0, -S(26)))
-        self.empty.setGeometry(r)
-        self.bar.setGeometry(0, r.height() - S(24), r.width(), S(24))
-
-    # 2.4: text size, timing nudge (kept per song) and copy
-    def _song(self) -> str:
-        st = self.ctx.state
-        return f"{st.title}\x1f{st.artist}".lower()
-
-    @staticmethod
-    def _load_offsets() -> dict:
-        try:
-            data = json.loads((DATA_DIR / "lyrics_offsets.json").read_text(encoding="utf-8"))
-            return {str(k): int(v) for k, v in data.items()} if isinstance(data, dict) else {}
-        except (OSError, ValueError, TypeError):
-            return {}
-
-    def _offset(self) -> int:
-        return int(self._offsets.get(self._song(), 0))
-
-    def _show_offset(self) -> None:
-        off = self._offset()
-        self.off_lbl.set_text(f"{off / 1000:+.1f} s" if off else tr("synced"))
-
-    def _nudge(self, ms: int) -> None:
-        key = self._song()
-        val = max(-10000, min(10000, self._offset() - ms))       # earlier = the song looks further on
-        if val:
-            self._offsets[key] = val
-        else:
-            self._offsets.pop(key, None)
-        try:
-            (DATA_DIR / "lyrics_offsets.json").write_text(json.dumps(dict(list(self._offsets.items())[-300:])), encoding="utf-8")
-        except OSError:
-            pass
-        self._show_offset()
-
-    def _size(self, d: int) -> None:
-        px = max(11, min(24, int(self.ctx.cfg["lyrics_size"]) + d))
-        self.ctx.cfg["lyrics_size"] = px
-        self.view.set_size(px)
-
-    def _copy(self) -> None:
-        from PyQt6.QtWidgets import QApplication
-        if self.view.lines:
-            QApplication.clipboard().setText("\n".join(self.view._text(i) for i in range(len(self.view.lines))))
-            self.ctx.toast(tr("Lyrics copied"))
+        self.view.setGeometry(self.rect())
+        self.empty.setGeometry(self.rect())
 
     def _show_empty(self, text: str, retry: bool = False) -> None:
         self.msg.set_text(text)
         self.retry.setVisible(retry)
         self.empty.show()
         self.view.hide()
-        self.bar.hide()
 
     def on_show(self) -> None:
         self._timer.start()
@@ -681,12 +570,9 @@ class LyricsPage(Page):
         if key != self._key:
             return
         if kind in ("synced", "plain") and payload:
-            self._show_offset()
             self.view.set_content(kind, payload)
             self.empty.hide()
             self.view.show()
-            self.bar.show()
-            self.bar.raise_()
             self.view.set_position(self.ctx.position_ms())
         elif kind == "offline":
             self._key = ""
@@ -1672,7 +1558,6 @@ class SettingsPage(Page):
             lay.addWidget(heading(tr("Games")))
             toggle(tr("Game mode"), "game_mouse")
             note(tr("In fullscreen games the mouse goes through Rubenium, so it never gets in the way."))
-            toggle(tr("Rubenium start screen"), "splash", after=lambda v: ctx.splash.sync())
             lay.addWidget(heading(tr("Language and size")))
             seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
             seg.setFixedWidth(S(170))
@@ -1682,18 +1567,6 @@ class SettingsPage(Page):
                              marks=list(range(70, 151, 10)))
             size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
             lay.addWidget(size)
-            if win.IS_WIN:
-                lay.addWidget(heading(tr("Windows")))
-                t = Toggle(win.autostart_get())
-
-                def auto(v, t=t):
-                    if win.autostart_set(v):
-                        cfg["autostart"] = v
-                    else:
-                        t.set_checked(not v)
-                t.toggled_by_user.connect(auto)
-                lay.addWidget(row(tr("Start with Windows"), t))
-                toggle(tr("Welcome screen"), "welcome")
 
         elif sec == 1:                                  # ---------------------------------------------- Look
             lay.addWidget(heading(tr("Ball")))

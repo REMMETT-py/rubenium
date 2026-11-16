@@ -80,11 +80,12 @@ class Econ(QObject):
         self.streak, self.streak_day = 0, None
         self.looks: dict = {}                    # username -> {tag, frame, banner} for everyone (2.6)
         self._looks_at = 0.0
+        self.gold_keys = 0                       # OG event keys (3.0.0)
         self.wear_data: dict = {}                   # your banners: item -> {minutes, level, steps} (3.0.0 gold banners)
         self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
         self._live_sig = ""
         self._live_timer = QTimer(self)
-        self._live_timer.setInterval(20000)
+        self._live_timer.setInterval(4000)                 # 3.0.0: trades, invites and gifts show within seconds
         self._live_timer.timeout.connect(self.poll_live)
         self.catalog: dict = {}                  # item id -> {kind, base, variant, rarity, price, value, tradeable}
         self.cases: list = []
@@ -317,11 +318,22 @@ class Econ(QObject):
         self.seen = set(data.get("seen") or [])
         self._index()
         self.absorb(data)
+        self.fetch_gold_keys()
         if first:
             self.loaded.emit()
             if hasattr(self.ctx, "after_login"):
                 QTimer.singleShot(1200, self.ctx.after_login)
+            if hasattr(self.ctx, "og_event_check"):
+                QTimer.singleShot(1500, self.ctx.og_event_check)
         self.changed.emit()
+
+    def fetch_gold_keys(self) -> None:
+        """Gold keys (OG event): one use each, spent before normal keys. Nothing on an older server."""
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, int) and data != self.gold_keys:
+                self.gold_keys = data
+                self.changed.emit()
+        self.online.ask("rb_gold_keys", {}, got)
 
     def poll_live(self) -> None:
         if not self.online.logged_in():

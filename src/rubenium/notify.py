@@ -256,6 +256,28 @@ class Notifier(QObject):
             self.push("message", tr("MESSAGE"), f"{data.get('from', '?')}: {data.get('text', '')}")
             if hasattr(self.ctx, "messages_changed"):
                 self.ctx.messages_changed(data.get("from"))
+        elif kind in ("golf", "golf_yes", "golf_no", "golf_end"):
+            who = data.get("from") or data.get("other", "?")
+            if kind == "golf":
+                bet = int(data.get("bet") or 0)
+                text = tr("{name} challenges you to Mini Golf", name=who) + (
+                    "  ·  " + tr("Bet {n} coins each", n=coins_text(bet)) if bet else "")
+            elif kind == "golf_yes":
+                text = tr("{name} accepted: the match starts now!", name=who)
+            elif kind == "golf_no":
+                text = tr("{name} declined your Mini Golf match", name=who)
+            elif data.get("draw"):
+                text = tr("Mini Golf with {name}: a draw", name=who)
+            else:
+                text = tr("You beat {name} at Mini Golf!", name=who) if data.get("won") else tr("{name} won the Mini Golf match", name=who)
+            self.ctx.golf_list = None
+            self.push("duel", tr("MINI GOLF"), text)
+            if kind in ("golf", "golf_yes") and self.ctx.window.current == "games" and \
+                    getattr(self.ctx, "games_sub", None) == "duels" and not getattr(self.ctx, "golf_id", None):
+                from .golf import load_golf
+                page = self.ctx.window.page()
+                if page is not None:
+                    load_golf(page)
         elif kind in ("duel", "duel_yes", "duel_no", "duel_end"):
             from .games2 import DUEL_GAMES
             game, who = tr(DUEL_GAMES.get(data.get("game"), "")), data.get("from") or data.get("other", "?")

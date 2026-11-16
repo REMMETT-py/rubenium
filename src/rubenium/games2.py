@@ -1127,7 +1127,7 @@ class BigCard(QWidget):
 def build_minigames(page, lay) -> None:
     """Earn coins: the free mini games, each with what it pays."""
     page._back_bar(lay, tr("Earn coins"))
-    lay.addWidget(Label(tr("Each game pays up to 150 coins every 2 hours."), 10.5, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Each game pays up to 200 coins every 2 hours."), 10.5, TEXT_DIM, wrap_w=page.W))
     games = [
         ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
          ("#FF5C8A", "#7A1FFF"), "12-50", lambda: page._show_mini(True)),

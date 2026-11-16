@@ -721,7 +721,7 @@ class FriendsPage(Page):
             else:
                 self.lay.addWidget(HistoryList(ctx, key, rows, self.W))
 
-    PERKS = [("users", "Chat", "Send messages"), ("shield", "Duels", "Play 1 against 1, with bets"),
+    PERKS = [("users", "Chat", "Send messages"), ("shield", "Mini Golf", "Play 1v1 live, with bets"),
              ("gift", "Gifts", "Send cases to each other"), ("perf", "Full profile", "Stats, history, last seen"),
              ("spark", "Online", "See when they are on"), ("chip", "Leaderboard", "Compare in the Friends top")]
 
@@ -732,7 +732,7 @@ class FriendsPage(Page):
         state = prof.get("state")
         if prof.get("friend"):
             self.lay.addWidget(Label("✓ " + tr("You are friends"), 12, "#3DDC84", bold=True))
-            acts = [(tr("Message"), "users"), (tr("Duel"), "shield"), (tr("Trade"), "chip"), (tr("Gift a Case"), "gift")]
+            acts = [(tr("Message"), "users"), (tr("Mini Golf"), "shield"), (tr("Trade"), "chip"), (tr("Gift a Case"), "gift")]
             grid = NavTiles(acts, -1, select=False)
 
             def act(i: int) -> None:
@@ -776,7 +776,6 @@ class FriendsPage(Page):
             cl.addWidget(b)
         self.lay.addWidget(card)
         trade = Button(tr("Trade Without Being Friends"), "ghost", 28)
-        trade.setToolTip(tr("Both users need 5 hours with Rubenium"))
         trade.clicked.connect(lambda: self.ask_trade(name))
         self.lay.addWidget(trade)
 
