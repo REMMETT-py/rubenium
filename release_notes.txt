@@ -1,14 +1,8 @@
-Rubenium 3.1
+Rubenium 3.1 - fixes
 
-- The 6 shop themes have their own scenes and keep their colours
-- Gold banners: choose the normal banner or any gold level you unlocked
-- AFK coins: 25 every 10 minutes, +5 for every day of your login streak
-- New quests: 2 hourly, 4 daily, 6 weekly
-- Golden Wheel: 5% of free spins and scratch cards unlock it, and it always pays well
-- Better daily login rewards
-- Timing: a new skill game in the casino, with a tutorial
-- 5 new cases and a clearer case list; real coin ranges in case chances
-- Titanium badges in the shop; much bigger set bonuses
-- Mini Golf is in the casino list; Earn coins is one long bar
-- Admin: bot pictures, random stats and history; Golden Wheel and timer reset for testing
+- Royal Case pays less; style cases no longer need a key
+- Profile pictures stay after restarting; My Stats in the Social tab
+- Market usual price never far below an item's worth
+- Timing: no more stopping by itself; Enter casino button removed
+- Auto login countdown is 3 seconds
 

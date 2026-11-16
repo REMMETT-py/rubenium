@@ -1483,7 +1483,7 @@ from PyQt6.QtGui import QColor, QFont
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "3.1"         # the version people see
-BUILD = "2026.11.17.11"       # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.17.12"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -4985,6 +4985,9 @@ FR = {
     "Premium": "Premium",
     "Titan": "Titane",
     "Vault": "Coffre",
+    "My Stats": "Mes stats",
+    "3. Press STOP when it is on the target.": "3. Appuie sur STOP quand elle est sur la cible.",
+    "Open for {n} coins": "Ouvrir pour {n} pièces",
 }
 
 
@@ -15034,9 +15037,11 @@ class ShopPage(Page):
         self.reel.done.connect(self._opened)
         lay.addWidget(self.reel)
         gifts = int(ec.stock.get(case["id"], 0) or 0) if cid != "daily" else 0
+        pass
         text = (tr("Open for free") if cid == "daily" else
                 tr("Open your gift for free ({n} left)", n=gifts) if gifts else
-                tr("Open for {n} coins + 1 key", n=coins_text(case["price"])))
+                (tr("Open for {n} coins", n=coins_text(case["price"])) if case_kind(case["id"]) == "style" and "timing_on" in ec.cfg
+                 else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))))
         self.open_btn = Button(text, "primary", 40)
         self.open_btn.clicked.connect(lambda: self._open(case))
         lay.addWidget(self.open_btn)
@@ -15072,8 +15077,10 @@ class ShopPage(Page):
         gifted = not daily and int(ec.stock.get(case["id"], 0) or 0) > 0        # a gift: free, no coins and no key
         if gifted and ec.server_old and ec.keys < 1:
             return ctx.toast(tr("Gifts open for free once the server update is done. Until then they need 1 key."), "warn")
-        gold = not daily and not gifted and ec.gold_keys > 0      # a gold key is used before a normal one
-        if not daily and not gifted and ec.keys < 1 and not gold:
+        pass
+        keyless = case_kind(case["id"]) == "style" and "timing_on" in ec.cfg      # 3.1: style cases need no key
+        gold = not daily and not gifted and not keyless and ec.gold_keys > 0      # a gold key is used before a normal one
+        if not daily and not gifted and not keyless and ec.keys < 1 and not gold:
             return ctx.toast(tr("You need a key: 1 key every 15 minutes"), "warn")
         if not daily and not gifted and case["price"] > ec.coins:
             return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - ec.coins)), "warn")
@@ -15121,12 +15128,14 @@ class ShopPage(Page):
             if case is not None and case.get("mode") != "jackpot" and won > int(case.get("coin_max") or 0) > 0:
                 sfx.play("on")
                 self.ctx.toast(tr("Lucky drop: ×3! +{n} coins", n=coins_text(won)))
+            pass
             left = int(ec.stock.get(cid, 0) or 0) if cid and cid != "daily" else 0
             case = next((c for c in ec.cases if c["id"] == cid), None)
             if case is not None:
                 try:
                     self.open_btn.set_text(tr("Open your gift for free ({n} left)", n=left) if left else
-                                           tr("Open for {n} coins + 1 key", n=coins_text(case["price"])))
+                                           (tr("Open for {n} coins", n=coins_text(case["price"])) if case_kind(case["id"]) == "style" and "timing_on" in ec.cfg
+                 else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))))
                 except RuntimeError:
                     pass
         QTimer.singleShot(900, lambda: self._lock(False))
@@ -21017,16 +21026,19 @@ class Timing(Game):
         self.seed = ans.get("seed") or {}
         self.t0 = time.monotonic()
         self.running = True
+        self.round_no = getattr(self, "round_no", 0) + 1
         self._frames.start()
-        QTimer.singleShot(8800, self._auto_stop)
+        QTimer.singleShot(8800, lambda n=self.round_no: self._auto_stop(n))
         self.page.sync()
 
-    def _auto_stop(self) -> None:
-        if self.running:
-            self.stop()
+    def _auto_stop(self, n: int) -> None:
+        if self.running and n == getattr(self, "round_no", 0):     # only the round that is still going
+            self.stop(force=True)
 
-    def stop(self) -> None:
+    def stop(self, force: bool = False) -> None:
         if not self.running or self.waiting:
+            return
+        if not force and time.monotonic() - self.t0 < 0.35:          # the Start click itself never stops it
             return
         ms = int((time.monotonic() - self.t0) * 1000)
         self.running = False
@@ -21052,10 +21064,6 @@ class Timing(Game):
             return [(tr("STOP"), "primary", self.stop, not self.waiting)]
         return [(tr("Start"), "primary", self.play, not self.busy)]
 
-    def mousePressEvent(self, e) -> None:
-        e.accept()
-        if self.running:                                # clicking the table stops it too
-            self.stop()
 
     def draw(self, p: QPainter, r: QRectF, now: float) -> None:
         if self.tutorial():
@@ -21066,7 +21074,7 @@ class Timing(Game):
             p.setFont(font(11, QFont.Weight.DemiBold))
             p.setPen(QColor(TEXT_DIM))
             lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, faster and faster."),
-                     tr("3. Press STOP (or click the table) when it is on the target."),
+                     tr("3. Press STOP when it is on the target."),
                      tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0"),
                      tr("The target moves every round. Practice makes the difference.")]
             y = r.top() + S(48)
@@ -21946,9 +21954,6 @@ class GamesPage(Page):
         for k, (i, name) in enumerate(tiles):              # Mini Golf sits right after Rocket
             gl.addWidget(GameTile(self, i, name), k // 2, k % 2)
         lay.addWidget(grid)
-        go = Button(tr("Enter casino"), "primary", 40)
-        go.clicked.connect(lambda: self.enter(None))
-        lay.addWidget(go)
 
     # -- quests: small goals for coins, counted by the server
     QUESTS = {"h_rounds": "Play {n} casino rounds", "h_mini": "Play a mini game", "h_bet": "Bet {n} coins in the casino",
@@ -24034,11 +24039,20 @@ class Faces:
 
     def get(self, name: str, version: int):
         key = (name or "").lower()
+        if key and key == self.ctx.online.username().lower():          # yours: the newest version known
+            version = max(int(version or 0), int(self.ctx.econ.avatar_v or 0))
         have = self.pix.get(key)
         if have is not None and have[0] == version:
             return have[1]
-        if not version:
-            self.pix[key] = (0, None)
+        if not version:                                  # version not known yet: the last picture saved on this PC
+            if have is not None and have[1] is not None:
+                return have[1]
+            saved = sorted(self.folder.glob(f"{key}_*.jpg")) if self.folder.is_dir() and key else []
+            if saved:
+                pm = QPixmap(str(saved[-1]))
+                if not pm.isNull():
+                    self.pix[key] = (-2, pm)
+                    return pm
             return None
         disk = self.folder / f"{key}_{version}.jpg"
         if disk.is_file():
@@ -24107,7 +24121,15 @@ class Faces:
 
         def back(ok: bool, data) -> None:
             if ok:
-                self.pix[me] = (int(data or 0), QPixmap.fromImage(img))
+                v = int(data or 0)
+                self.pix[me] = (v, QPixmap.fromImage(img))
+                try:                                     # kept on this PC too: it shows at once next time
+                    self.folder.mkdir(parents=True, exist_ok=True)
+                    for old in self.folder.glob(f"{me}_*.jpg"):
+                        old.unlink(missing_ok=True)
+                    (self.folder / f"{me}_{v}.jpg").write_bytes(bytes(buf))
+                except OSError:
+                    pass
             done(ok, data)
         self.ctx.econ.call("rb_avatar_set", {"picture": text}, back)
 
@@ -24461,8 +24483,13 @@ class FriendsPage(Page):
             ctx.reload_page()
         edit.clicked.connect(open_edit)
         line.addWidget(edit, 1)
-        line.addWidget(rename, 1)
         line.addWidget(songs, 1)
+        self.lay.addLayout(line)
+        line = hbox(spacing=6)
+        stats = Button(tr("My Stats"), "ghost", 28)
+        stats.clicked.connect(lambda: self.open_profile(ctx.online.username()))
+        line.addWidget(stats, 1)
+        line.addWidget(rename, 1)
         self.lay.addLayout(line)
         live = ctx.econ.live
         if live.get("open_trade") and not ctx.trade.trade_id:
@@ -28892,7 +28919,7 @@ class Welcome(QWidget):
         self.panel.place()
         self.update()
 
-    COUNT_MS = 5000
+    COUNT_MS = 3000
 
     def _countdown(self) -> None:
         """Start (logged in) or stop (logged out) the 5 second line around the card."""
@@ -29150,7 +29177,7 @@ class Welcome(QWidget):
                 p.drawArc(ring, 90 * 16, int(-360 * 16 * turn))
         p.setOpacity(a)
         paint_edge(p, self.ctx, shape, radius, level)
-        if self.phase == "card" and self.count.level > 0.0 and self.logged_in():      # the 5 second line
+        if self.phase == "card" and self.count.level > 0.0 and self.logged_in():      # the 3 second line
             rr = shape.adjusted(S(1.5), S(1.5), -S(1.5), -S(1.5))
             rad = max(1.0, radius - S(1.5))
             line = QPainterPath()

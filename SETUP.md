@@ -15,3 +15,4 @@
 12. Then run `016_live_golf.sql` once (3.0.0 final: live Mini Golf 1v1, OG event of 16/11/2026 with gold keys, rarer top drops, 1 key every 15 minutes up to 5, market open from the start, better mini game pay). Safe to run again. To move the OG event end, change `og_event_until` in the `rb_config` table (a Unix time).
 13. Then run `017_quick_fixes.sql` once (closes the OG tag and the OG event, worth = shop price everywhere, better quick sell for badges, 16 golf holes). Safe to run again.
 14. Then run `018_v31.sql` once (3.1: streak AFK bonus, new quests, Golden Wheel, Timing, 5 new cases, Titanium in the shop, gold banner choice, admin test tools). Safe to run again. Apps older than 3.1 must update.
+15. Then run `019_fixes31.sql` once (Royal Case nerf, style cases without a key, market usual price fixed). Safe to run again.
