@@ -108,3 +108,10 @@ bought, so the key is the real limit on cases; a gift now costs its price and 1 
 - Banners re-ranked by look, 10 new ones. Common 400: Dusk, Mint, Steel, Rose, Stripes, Dots, Carbon, Dunes. Rare 1 200: Waves, Peaks, Ember, Circuit, Sunset, Honeycomb, Comet, Deep Sea. Epic 3 500: Grid, Jungle, Sakura, Lava, Prism, City Nights, Neon, Fireflies. Legendary 9 000: Galaxy, Nebula, Matrix, Storm, Vortex. Snow and Aurora stay unsold for Christmas.
 - Gold banners: hours worn (counted with your time) for Gold I / II / III: Common 10/30/75, Rare 15/45/110, Epic 25/75/180, Legendary 40/120/300. Purely visual.
 - Offline mode earns nothing: the server only counts minutes it hears about.
+
+## 3.0.0 (final)
+- Keys: 1 every 15 minutes, earning stops at 5. Trading and the market need no hours any more.
+- Mini games: every payout x1.3; up to 200 coins every 2 hours per game.
+- Rarer top drops: Mythic tier is 0.6% in the Mythic Hunt (was 1%), 0.15% in the Legend Vault, 0.03% in All or Nothing and Titanium, 0.01% in Premium and Standard. Shiny x0.8, Titanium and Gold x0.6 in every badge case. Mythic finishes: Titanium 96.5%, Prismatic 3.3%, Gold 0.185%. Rarest item (Rubenium Gold): about 1 in 1 000 000; every other item is more common.
+- OG event (until 17/11/2026 00:00 Paris): OG tag owners get 10 000 coins, 10 gold keys (one use each, used before normal keys, never above the key cap) and 1 gifted open of every case.
+- Mini Golf 1v1: bet 0 or 10 up to 80% of the lower balance; the winner gets both bets minus 5%; a draw refunds. 3 holes, 6 strokes max per hole, 25 s per turn (missed turn = +1 stroke, 3 in a row = loss). Invitations expire after 5 minutes.
