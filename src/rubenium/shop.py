@@ -868,14 +868,16 @@ class ShopPage(Page):
         self.reel.done.connect(self._opened)
         lay.addWidget(self.reel)
         gifts = int(ec.stock.get(case["id"], 0) or 0) if cid != "daily" else 0
+        from .collection import case_kind
         text = (tr("Open for free") if cid == "daily" else
                 tr("Open your gift for free ({n} left)", n=gifts) if gifts else
-                tr("Open for {n} coins + 1 key", n=coins_text(case["price"])))
+                (tr("Open for {n} coins", n=coins_text(case["price"])) if case_kind(case["id"]) == "style" and "timing_on" in ec.cfg
+                 else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))))
         self.open_btn = Button(text, "primary", 40)
         self.open_btn.clicked.connect(lambda: self._open(case))
         lay.addWidget(self.open_btn)
         if cid != "daily":
-            from .collection import CASE_NOTES
+            from .collection import CASE_NOTES, case_kind
             if case["id"] in CASE_NOTES:
                 lay.addWidget(Label(tr(CASE_NOTES[case["id"]]), 11, TEXT_DIM, wrap_w=self.W))
             gift = Button(tr("Gift this case to a friend"), "ghost", 30)
@@ -906,8 +908,10 @@ class ShopPage(Page):
         gifted = not daily and int(ec.stock.get(case["id"], 0) or 0) > 0        # a gift: free, no coins and no key
         if gifted and ec.server_old and ec.keys < 1:
             return ctx.toast(tr("Gifts open for free once the server update is done. Until then they need 1 key."), "warn")
-        gold = not daily and not gifted and ec.gold_keys > 0      # a gold key is used before a normal one
-        if not daily and not gifted and ec.keys < 1 and not gold:
+        from .collection import case_kind
+        keyless = case_kind(case["id"]) == "style" and "timing_on" in ec.cfg      # 3.1: style cases need no key
+        gold = not daily and not gifted and not keyless and ec.gold_keys > 0      # a gold key is used before a normal one
+        if not daily and not gifted and not keyless and ec.keys < 1 and not gold:
             return ctx.toast(tr("You need a key: 1 key every 15 minutes"), "warn")
         if not daily and not gifted and case["price"] > ec.coins:
             return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - ec.coins)), "warn")
@@ -955,12 +959,14 @@ class ShopPage(Page):
             if case is not None and case.get("mode") != "jackpot" and won > int(case.get("coin_max") or 0) > 0:
                 sfx.play("on")
                 self.ctx.toast(tr("Lucky drop: ×3! +{n} coins", n=coins_text(won)))
+            from .collection import case_kind
             left = int(ec.stock.get(cid, 0) or 0) if cid and cid != "daily" else 0
             case = next((c for c in ec.cases if c["id"] == cid), None)
             if case is not None:
                 try:
                     self.open_btn.set_text(tr("Open your gift for free ({n} left)", n=left) if left else
-                                           tr("Open for {n} coins + 1 key", n=coins_text(case["price"])))
+                                           (tr("Open for {n} coins", n=coins_text(case["price"])) if case_kind(case["id"]) == "style" and "timing_on" in ec.cfg
+                 else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))))
                 except RuntimeError:
                     pass
         QTimer.singleShot(900, lambda: self._lock(False))

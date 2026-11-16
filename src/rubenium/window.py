@@ -1053,7 +1053,7 @@ class Welcome(QWidget):
         self.panel.place()
         self.update()
 
-    COUNT_MS = 5000
+    COUNT_MS = 3000
 
     def _countdown(self) -> None:
         """Start (logged in) or stop (logged out) the 5 second line around the card."""
@@ -1311,7 +1311,7 @@ class Welcome(QWidget):
                 p.drawArc(ring, 90 * 16, int(-360 * 16 * turn))
         p.setOpacity(a)
         paint_edge(p, self.ctx, shape, radius, level)
-        if self.phase == "card" and self.count.level > 0.0 and self.logged_in():      # the 5 second line
+        if self.phase == "card" and self.count.level > 0.0 and self.logged_in():      # the 3 second line
             rr = shape.adjusted(S(1.5), S(1.5), -S(1.5), -S(1.5))
             rad = max(1.0, radius - S(1.5))
             line = QPainterPath()

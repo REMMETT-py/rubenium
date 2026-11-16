@@ -60,11 +60,20 @@ class Faces:
 
     def get(self, name: str, version: int):
         key = (name or "").lower()
+        if key and key == self.ctx.online.username().lower():          # yours: the newest version known
+            version = max(int(version or 0), int(self.ctx.econ.avatar_v or 0))
         have = self.pix.get(key)
         if have is not None and have[0] == version:
             return have[1]
-        if not version:
-            self.pix[key] = (0, None)
+        if not version:                                  # version not known yet: the last picture saved on this PC
+            if have is not None and have[1] is not None:
+                return have[1]
+            saved = sorted(self.folder.glob(f"{key}_*.jpg")) if self.folder.is_dir() and key else []
+            if saved:
+                pm = QPixmap(str(saved[-1]))
+                if not pm.isNull():
+                    self.pix[key] = (-2, pm)
+                    return pm
             return None
         disk = self.folder / f"{key}_{version}.jpg"
         if disk.is_file():
@@ -133,7 +142,15 @@ class Faces:
 
         def back(ok: bool, data) -> None:
             if ok:
-                self.pix[me] = (int(data or 0), QPixmap.fromImage(img))
+                v = int(data or 0)
+                self.pix[me] = (v, QPixmap.fromImage(img))
+                try:                                     # kept on this PC too: it shows at once next time
+                    self.folder.mkdir(parents=True, exist_ok=True)
+                    for old in self.folder.glob(f"{me}_*.jpg"):
+                        old.unlink(missing_ok=True)
+                    (self.folder / f"{me}_{v}.jpg").write_bytes(bytes(buf))
+                except OSError:
+                    pass
             done(ok, data)
         self.ctx.econ.call("rb_avatar_set", {"picture": text}, back)
 
@@ -487,8 +504,13 @@ class FriendsPage(Page):
             ctx.reload_page()
         edit.clicked.connect(open_edit)
         line.addWidget(edit, 1)
-        line.addWidget(rename, 1)
         line.addWidget(songs, 1)
+        self.lay.addLayout(line)
+        line = hbox(spacing=6)
+        stats = Button(tr("My Stats"), "ghost", 28)
+        stats.clicked.connect(lambda: self.open_profile(ctx.online.username()))
+        line.addWidget(stats, 1)
+        line.addWidget(rename, 1)
         self.lay.addLayout(line)
         live = ctx.econ.live
         if live.get("open_trade") and not ctx.trade.trade_id:

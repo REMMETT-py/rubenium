@@ -1261,16 +1261,19 @@ class Timing(Game):
         self.seed = ans.get("seed") or {}
         self.t0 = time.monotonic()
         self.running = True
+        self.round_no = getattr(self, "round_no", 0) + 1
         self._frames.start()
-        QTimer.singleShot(8800, self._auto_stop)
+        QTimer.singleShot(8800, lambda n=self.round_no: self._auto_stop(n))
         self.page.sync()
 
-    def _auto_stop(self) -> None:
-        if self.running:
-            self.stop()
+    def _auto_stop(self, n: int) -> None:
+        if self.running and n == getattr(self, "round_no", 0):     # only the round that is still going
+            self.stop(force=True)
 
-    def stop(self) -> None:
+    def stop(self, force: bool = False) -> None:
         if not self.running or self.waiting:
+            return
+        if not force and time.monotonic() - self.t0 < 0.35:          # the Start click itself never stops it
             return
         ms = int((time.monotonic() - self.t0) * 1000)
         self.running = False
@@ -1296,10 +1299,6 @@ class Timing(Game):
             return [(tr("STOP"), "primary", self.stop, not self.waiting)]
         return [(tr("Start"), "primary", self.play, not self.busy)]
 
-    def mousePressEvent(self, e) -> None:
-        e.accept()
-        if self.running:                                # clicking the table stops it too
-            self.stop()
 
     def draw(self, p: QPainter, r: QRectF, now: float) -> None:
         if self.tutorial():
@@ -1310,7 +1309,7 @@ class Timing(Game):
             p.setFont(font(11, QFont.Weight.DemiBold))
             p.setPen(QColor(TEXT_DIM))
             lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, faster and faster."),
-                     tr("3. Press STOP (or click the table) when it is on the target."),
+                     tr("3. Press STOP when it is on the target."),
                      tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0"),
                      tr("The target moves every round. Practice makes the difference.")]
             y = r.top() + S(48)
@@ -2190,9 +2189,6 @@ class GamesPage(Page):
         for k, (i, name) in enumerate(tiles):              # Mini Golf sits right after Rocket
             gl.addWidget(GameTile(self, i, name), k // 2, k % 2)
         lay.addWidget(grid)
-        go = Button(tr("Enter casino"), "primary", 40)
-        go.clicked.connect(lambda: self.enter(None))
-        lay.addWidget(go)
 
     # -- quests: small goals for coins, counted by the server
     QUESTS = {"h_rounds": "Play {n} casino rounds", "h_mini": "Play a mini game", "h_bet": "Bet {n} coins in the casino",

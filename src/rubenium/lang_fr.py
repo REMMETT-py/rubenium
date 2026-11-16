@@ -1969,4 +1969,7 @@ FR = {
     "Premium": "Premium",
     "Titan": "Titane",
     "Vault": "Coffre",
+    "My Stats": "Mes stats",
+    "3. Press STOP when it is on the target.": "3. Appuie sur STOP quand elle est sur la cible.",
+    "Open for {n} coins": "Ouvrir pour {n} pièces",
 }
