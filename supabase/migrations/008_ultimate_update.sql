@@ -559,7 +559,7 @@ declare
     painted text[] := array['red', 'blue', 'yellow', 'green', 'orange', 'purple', 'pink', 'brown'];
     shiny text[] := array['hotpink', 'lime', 'sky', 'royal', 'lava'];
     colours text[] := array['blue','green','red','yellow','orange','brown','teal','lava','purple','sky','lime','pink','beam'];
-    prestige text[] := array['black', 'white', 'gold'];
+    prestige text[] := array['black', 'white'];               -- no gold: gold belongs to awards
     cosmetics text[][] := array[
         ['ball','orbit','0'],['ball','pixel','0'],['ball','split','0'],['ball','halo','1'],['ball','bubble','1'],
         ['ball','spiral','1'],['ball','bullseye','2'],['ball','hex','2'],['ball','ripple','3'],['ball','shard','3'],
@@ -626,7 +626,7 @@ begin
         end loop;
         foreach v in array prestige loop
             p := least(t + 1, 3);
-            i := (worth[p + 1] * (case v when 'gold' then 1.6 else 1.25 end))::int;
+            i := (worth[p + 1] * 1.25)::int;
             insert into public.rb_catalog (id, kind, base, variant, rarity, price, value, tradeable)
                 values (row[1] || ':' || row[2] || ':' || v, row[1], row[2], v, tiers[p + 1], i, i, true)
                 on conflict (id) do update set price = excluded.price, value = excluded.value, rarity = excluded.rarity;

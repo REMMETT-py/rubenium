@@ -1,9 +1,8 @@
-Rubenium 2.2 - The Ultimate Update
+Rubenium 2.3
 
-- Trading between players, a market with offers, and an Inventory
-- Shop: 10 balls, 10 lines, 5 fonts and 6 themes in every colour
-- Badges remade (Common, Rare, Epic, Legendary, secret Mythic) with Basic, Painted, Shiny, Titanium and Gold
-- 9 cases, case gifts, Beat Tap mini game, quests every hour, day and week
-- Rocket and Dice reworked, free spin every 2 hours, more coins with time
-- Social tab with stats and profile pictures, notifications, live giveaways
-- Use screen colours
+- New free mini game: Parking (get the red car out)
+- Quests across the top of the Games tab
+- Colour 2 removed: only shop themes have a second colour
+- Nothing in the shop looks like gold any more
+- More details on friend profiles
+- Admin panel: give and edit windows fixed

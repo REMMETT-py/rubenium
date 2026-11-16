@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.2 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 2.3 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1472,8 +1472,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.2"         # the version people see
-BUILD = "2026.11.16.1"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.3"         # the version people see
+BUILD = "2026.11.16.2"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -3743,6 +3743,42 @@ FR = {
     '{who} offers {n} coins (your price: {p})': '{who} propose {n} pièces (ton prix : {p})',
     '{who} offers {n} for {what}': '{who} propose {n} pour {what}',
     '{w} winner(s) · {e} joined': '{w} gagnant(s) · {e} participants',
+    # 2.3
+    'A free puzzle: slide the cars to get the red car out, for coins': 'Un casse-tête gratuit : fais glisser les voitures pour sortir la voiture rouge, contre des pièces',
+    'Admin panel: every give and edit window works': 'Panneau admin : toutes les fenêtres pour donner et modifier marchent',
+    'Best possible: {n}': 'Meilleur possible : {n}',
+    'Best win': 'Meilleur gain',
+    'Cases opened': 'Caisses ouvertes',
+    'Casino bets': 'Mises au casino',
+    'Casino result': 'Bilan casino',
+    'Collection worth': 'Valeur de la collection',
+    'Colour 2 is gone: only shop themes have a second colour': 'La couleur 2 disparaît : seuls les thèmes de la boutique ont une deuxième couleur',
+    'Drag the cars along their lane to make way, then drive the red car out on the right. Easy 10-20, Medium 15-30, Hard 25-40 coins: fewer moves pay more. 300 a day at most.': 'Fais glisser les voitures dans leur voie pour libérer le passage, puis sors la voiture rouge à droite. Facile 10-20, Moyen 15-30, Difficile 25-40 pièces : moins de coups rapporte plus. 300 par jour maximum.',
+    'Easy': 'Facile',
+    'Hard': 'Difficile',
+    'Medium': 'Moyen',
+    'Free spins': 'Tours gratuits',
+    'Friend profiles: last seen, collection worth, gold badges, games played and what they wear': 'Profils des amis : vu pour la dernière fois, valeur de la collection, badges Or, parties jouées et ce qu’ils portent',
+    'Gold badges': 'Badges Or',
+    'Moves: {n}': 'Coups : {n}',
+    'New free mini game: Parking. Slide the cars and get the red car out for coins': 'Nouveau mini-jeu gratuit : Parking. Fais glisser les voitures et sors la voiture rouge pour gagner des pièces',
+    'New puzzle': 'Nouveau puzzle',
+    'Nothing in the shop looks like gold any more: gold is only for real awards': 'Plus rien dans la boutique ne ressemble à l’or : l’or est réservé aux vraies récompenses',
+    'Parking': 'Parking',
+    'Quests now sit across the top of the Games tab': 'Les quêtes sont maintenant tout en haut de l’onglet Jeux',
+    'Start over': 'Recommencer',
+    'Themes from the shop bring their own second colour.': 'Les thèmes de la boutique apportent leur propre deuxième couleur.',
+    'Too fast to be real: no coins': 'Trop rapide pour être vrai : pas de pièces',
+    'Wearing': 'Porte',
+    'just now': 'à l’instant',
+    'seen {t}': 'vu {t}',
+    '{n} days ago': 'il y a {n} jours',
+    '{n} h ago': 'il y a {n} h',
+    '{n} min ago': 'il y a {n} min',
+    '{n} moves (best possible: {b})': '{n} coups (meilleur possible : {b})',
+    '{n} on show': '{n} en vitrine',
+    'Coral': 'Corail',
+    'Lemon': 'Citron',
 }
 
 
@@ -7185,6 +7221,12 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.3", ["New free mini game: Parking. Slide the cars and get the red car out for coins",
+             "Quests now sit across the top of the Games tab",
+             "Colour 2 is gone: only shop themes have a second colour",
+             "Nothing in the shop looks like gold any more: gold is only for real awards",
+             "Friend profiles: last seen, collection worth, gold badges, games played and what they wear",
+             "Admin panel: every give and edit window works"]),
     ("2.2", ["The Ultimate Update: a fresh start for everyone (500 coins, 3 keys). Hours and friends stay",
              "Trading: send a request from a profile, 8 items and coins each side, Ready then Confirm",
              "Market: sell to other players at your price, or accept their offers (5% fee)",
@@ -8717,7 +8759,7 @@ from PyQt6.QtGui import QColor, QPainter, QPen
 
 # Sixteen colours, white and black included. White is the free base colour.
 COLOURS = [("white", "White", "#FFFFFF"), ("black", "Black", "#3A3F46"), ("red", "Red", "#FF4B4B"),
-           ("orange", "Orange", "#FF8A3D"), ("amber", "Amber", "#FFB020"), ("yellow", "Yellow", "#FFE14D"),
+           ("orange", "Orange", "#FF8A3D"), ("amber", "Coral", "#FF6B5B"), ("yellow", "Lemon", "#F4F04A"),
            ("lime", "Lime", "#A6E22E"), ("green", "Green", "#2ECC71"), ("teal", "Teal", "#1ABC9C"),
            ("cyan", "Cyan", "#35D6E6"), ("sky", "Sky", "#2D9CFF"), ("blue", "Blue", "#4B6BFF"),
            ("purple", "Purple", "#9B5CFF"), ("magenta", "Magenta", "#D94BFF"), ("pink", "Pink", "#FF5CB8"),
@@ -8753,7 +8795,7 @@ SHINY_IDS = ["hotpink", "lime", "sky", "royal", "lava"]
 PAINTED_IDS = ["red", "blue", "yellow", "green", "orange", "purple", "pink", "brown"]
 # balls, lines and fonts of the shop come in these colours
 COLOUR_IDS = ["blue", "green", "red", "yellow", "orange", "brown", "teal", "lava", "purple", "sky", "lime", "pink", "beam"]
-PRESTIGE_IDS = ["black", "white", "gold"]
+PRESTIGE_IDS = ["black", "white"]
 VARIANT_NAME = {"grey": "Basic", "blue": "Blue", "green": "Green", "red": "Red", "yellow": "Yellow", "orange": "Orange",
                 "brown": "Brown", "teal": "Teal", "lava": "Lava Red", "purple": "Purple", "sky": "Sky Blue",
                 "lime": "Juicy Lime", "pink": "Pink", "beam": "Yellow Beam", "black": "Titanium Black",
@@ -8908,7 +8950,7 @@ VARIANTS = [("gold", "Gold", "super", "#E8C26A", "#FFF1C2"),
             ("lava", "Lava Red", "rare", "#FF3D1F", "#FFC0AE"),
             ("red", "Red", "basic", "#D84848", "#EE7A7A"),
             ("blue", "Blue", "basic", "#3F78D8", "#79A4EE"),
-            ("yellow", "Yellow", "basic", "#DDBB36", "#F0D875"),
+            ("yellow", "Yellow", "basic", "#D9D23A", "#EEEA7A"),
             ("green", "Green", "basic", "#3FAE5A", "#78D08D"),
             ("orange", "Orange", "basic", "#E5822E", "#F5AC6E"),
             ("purple", "Purple", "basic", "#8750D2", "#B08AE8"),
@@ -8916,7 +8958,7 @@ VARIANTS = [("gold", "Gold", "super", "#E8C26A", "#FFF1C2"),
             ("brown", "Brown", "basic", "#8A5E3E", "#B08868"),
             ("grey", "Basic", "basic", "#7A828A", "#A2A9B0"),
             ("teal", "Teal", "basic", "#3C8C8A", "#71B3B1"),
-            ("beam", "Yellow Beam", "rare", "#FFEE2E", "#FFFBC2")]
+            ("beam", "Yellow Beam", "rare", "#E8FF3A", "#F6FFC2")]
 VARIANT = {v[0]: v for v in VARIANTS}
 
 _unit_cache: dict = {}
@@ -9583,12 +9625,12 @@ from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
 
 
-SHOP_COLOURS = {"grey": "#9AA4AD", "blue": "#4B6BFF", "green": "#2ECC71", "red": "#FF4B4B", "yellow": "#FFE14D",
+SHOP_COLOURS = {"grey": "#9AA4AD", "blue": "#4B6BFF", "green": "#2ECC71", "red": "#FF4B4B", "yellow": "#F4F04A",
                 "orange": "#FF8A3D", "brown": "#A8744C", "teal": "#1ABC9C", "lava": "#FF3D1F", "purple": "#9B5CFF",
-                "sky": "#2EC5FF", "lime": "#8CFF2E", "pink": "#FF5CB8", "beam": "#FFEE2E", "black": "#2A3037",
+                "sky": "#2EC5FF", "lime": "#8CFF2E", "pink": "#FF5CB8", "beam": "#E8FF3A", "black": "#2A3037",
                 "white": "#FFFFFF", "gold": "#E8C26A"}
 COLOUR_ORDER = ["grey", "blue", "green", "red", "yellow", "orange", "brown", "teal", "lava", "purple", "sky", "lime",
-                "pink", "beam", "black", "white", "gold"]
+                "pink", "beam", "black", "white"]
 COLOUR_NAMES = {"grey": "Grey", "blue": "Blue", "green": "Green", "red": "Red", "yellow": "Yellow", "orange": "Orange",
                 "brown": "Brown", "teal": "Teal", "lava": "Lava Red", "purple": "Purple", "sky": "Sky Blue",
                 "lime": "Juicy Lime", "pink": "Pink", "beam": "Yellow Beam", "black": "Black", "white": "White",
@@ -12000,7 +12042,7 @@ class ShopPage(Page):
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
         self.reel = None
-        self.cards, self.unlocks, self.c1, self.c2 = [], [], None, None
+        self.cards, self.unlocks, self.c1 = [], [], None
         lay = vbox(self, 8)
         lay.addWidget(CoinBar(ctx, keys=True))
         tab = getattr(ctx, "shop_tab", 0)
@@ -12058,11 +12100,7 @@ class ShopPage(Page):
         lay.addWidget(Label(tr("Colour 1"), 12.5))
         self.c1 = ColourRow(self, "c1", "custom_accent")
         lay.addWidget(self.c1)
-        self.t_second = Toggle(bool(ctx.cfg["accent2_on"]))
-        self.t_second.toggled_by_user.connect(self._second_on)
-        lay.addWidget(row(tr("Colour 2"), self.t_second))
-        self.c2 = ColourRow(self, "c2", "accent2")
-        lay.addWidget(self.c2)
+        lay.addWidget(Label(tr("Themes from the shop bring their own second colour."), 10.5, TEXT_DIM, wrap_w=self.W))
 
         lay.addWidget(heading(tr("Progression")))
         lay.addWidget(UnlockBar(self))
@@ -12388,13 +12426,7 @@ class ShopPage(Page):
 
     # -- colours
     def set_colour(self, kind: str, col: str) -> None:
-        if kind == "c1":
-            self.ctx.cfg["custom_accent"] = col
-        else:
-            self.ctx.cfg["accent2"] = col
-            if not self.ctx.cfg["accent2_on"]:               # picking a second colour switches it on
-                self.ctx.cfg["accent2_on"] = True
-                self.t_second.set_checked(True)
+        self.ctx.cfg["custom_accent"] = col
         self.ctx.refresh_accent()
         self._rows()
 
@@ -12414,23 +12446,13 @@ class ShopPage(Page):
             self.t_music.set_checked(False)
         self._rows()
 
-    def _second_on(self, on: bool) -> None:
-        self.ctx.cfg["accent2_on"] = on
-        self.ctx.refresh_accent()
-        self._rows()
-
     def _rows(self) -> None:
-        """With the music's colours on, your own colours are greyed out. Second colours come after the first."""
+        """With the music's (or the screen's) colours on, your own colour is greyed out."""
         if self.c1 is None:
             return
         wallet = self.ctx.wallet
-        music = (bool(self.ctx.cfg["accent_from_art"]) and wallet.owns("music")) or bool(self.ctx.cfg["accent_from_screen"])
-        ready = wallet.all_colours("c1")
-        has_second = any(wallet.owns(f"c2:{ident}") for ident, _n, _h in COLOURS)
-        self.c1.set_state(music, False)
-        self.c2.set_state(music and ready, not ready)
-        self.t_second.setVisible(has_second)
-        self.t_second.setEnabled(not music)
+        auto = (bool(self.ctx.cfg["accent_from_art"]) and wallet.owns("music")) or bool(self.ctx.cfg["accent_from_screen"])
+        self.c1.set_state(auto, False)
 
     # -- ball styles and themes
     def _unlock_pick(self, tile) -> None:
@@ -12458,7 +12480,7 @@ class ShopPage(Page):
 
     def _refresh(self) -> None:
         self._rows()
-        for w in self.cards + self.unlocks + [x for x in (self.c1, self.c2) if x is not None]:
+        for w in self.cards + self.unlocks + [x for x in (self.c1,) if x is not None]:
             w.update()
 
     def on_show(self) -> None:
@@ -16092,6 +16114,237 @@ class BeatTap(QWidget):
                 p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
 
 
+class Parking(QWidget):
+    """The car park puzzle. The server picks the level and checks every move when the red car is out."""
+    COLOURS = ["#4B6BFF", "#2ECC71", "#FF8A3D", "#9B5CFF", "#1ABC9C", "#FF5CB8", "#A8744C", "#2EC5FF", "#8CFF2E",
+               "#B0B8C0", "#6A5ACD", "#00B3A4", "#E67E22", "#7F8C8D", "#16A085", "#D35400"]
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        side = min(page.W, S(330))
+        self.setFixedSize(page.W, side + S(22))
+        self.cell = (side - S(16)) / 6
+        self.ox = (page.W - self.cell * 6) / 2
+        self.oy = S(8)
+        self.layout_ = ""
+        self.grid: list = []
+        self.moves: list = []
+        self.best = 0
+        self.round = ""
+        self.state = "wait"                       # wait -> play -> out -> sent
+        self.drag = None                          # (car, start mouse, start offset, lo, hi)
+        self.offset = 0.0
+        self.result: dict = {}
+        self._exit = 0.0
+        self.setMouseTracking(True)
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self._tick)
+
+    # -- rounds
+    def new(self) -> None:
+        if self.state == "busy":
+            return
+        self.state = "busy"
+        tier = int(getattr(self.ctx, "park_tier", 0) or 0) + 1
+
+        def got(ok: bool, data) -> None:
+            if not ok or not isinstance(data, dict):
+                self.state = "wait"
+                self.update()
+                return self.ctx.toast(tr(str(data)), "warn")
+            self.round, self.layout_, self.best = data["round"], data["layout"], int(data.get("best") or 0)
+            self.restart()
+        self.ctx.econ.call("rb_park_start", {"tier": tier}, got)
+
+    def restart(self) -> None:
+        if not self.layout_:
+            return
+        if self.state in ("out", "sent"):
+            return self.new()
+        self.grid = list(self.layout_)
+        self.moves, self.result, self.state, self.drag = [], {}, "play", None
+        self.update()
+
+    # -- the board
+    def cars(self) -> dict:
+        out: dict = {}
+        for i, ch in enumerate(self.grid):
+            if ch != ".":
+                out.setdefault(ch, []).append(i)
+        return out
+
+    def _room(self, car: str, cells: list) -> tuple:
+        """How far the car can slide back (negative) and forward."""
+        horiz = cells[1] - cells[0] == 1
+        step = 1 if horiz else 6
+        lo = hi = 0
+        while True:
+            t = cells[0] - step * (lo + 1)
+            if t < 0 or (horiz and t // 6 != cells[0] // 6) or self.grid[t] != ".":
+                break
+            lo += 1
+        while True:
+            t = cells[-1] + step * (hi + 1)
+            if t > 35 or (horiz and t // 6 != cells[0] // 6) or self.grid[t] != ".":
+                break
+            hi += 1
+        return horiz, -lo, hi
+
+    def _cell_at(self, pos) -> int:
+        c = int((pos.x() - self.ox) // self.cell)
+        r = int((pos.y() - self.oy) // self.cell)
+        return r * 6 + c if 0 <= c < 6 and 0 <= r < 6 else -1
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        if self.state != "play" or e.button() != Qt.MouseButton.LeftButton:
+            return
+        i = self._cell_at(e.position())
+        if i < 0 or self.grid[i] == ".":
+            return
+        car = self.grid[i]
+        cells = self.cars()[car]
+        horiz, lo, hi = self._room(car, cells)
+        self.drag = (car, e.position(), horiz, lo, hi)
+        self.offset = 0.0
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+
+    def mouseMoveEvent(self, e) -> None:
+        if self.drag is None:
+            i = self._cell_at(e.position())
+            self.setCursor(Qt.CursorShape.OpenHandCursor if self.state == "play" and i >= 0 and self.grid[i] != "."
+                           else Qt.CursorShape.ArrowCursor)
+            return
+        car, start, horiz, lo, hi = self.drag
+        d = (e.position().x() - start.x()) if horiz else (e.position().y() - start.y())
+        self.offset = max(lo * self.cell, min(hi * self.cell, d))
+        self.update()
+
+    def mouseReleaseEvent(self, _e) -> None:
+        if self.drag is None:
+            return
+        car, _start, horiz, _lo, _hi = self.drag
+        d = int(round(self.offset / self.cell))
+        self.drag, self.offset = None, 0.0
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        if d:
+            cells = self.cars()[car]
+            step = 1 if horiz else 6
+            for c in cells:
+                self.grid[c] = "."
+            for c in cells:
+                self.grid[c + d * step] = car
+            if self.moves and self.moves[-1]["c"] == car:          # the same car again: still one move
+                self.moves[-1]["d"] += d
+                if self.moves[-1]["d"] == 0:
+                    self.moves.pop()
+            else:
+                self.moves.append({"c": car, "d": d})
+            sfx.play("pick")
+            if self.grid[16] == "A" and self.grid[17] == "A":
+                self._out()
+        self.update()
+
+    def _out(self) -> None:
+        self.state = "out"
+        self._exit = time.monotonic()
+        self._t.start()
+
+        def got(ok: bool, data) -> None:
+            self.state = "sent"
+            if not ok:
+                self.ctx.toast(tr(str(data)), "warn")
+                data = {}
+            self.result = data if isinstance(data, dict) else {}
+            if int(self.result.get("paid") or 0):
+                sfx.play("on")
+            self.update()
+        self.ctx.econ.call("rb_park_finish", {"round": self.round, "moves": self.moves}, got)
+
+    def _tick(self) -> None:
+        self.update()
+        if time.monotonic() - self._exit > 1.2:
+            self._t.stop()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        cs, ox, oy = self.cell, self.ox, self.oy
+        board = QRectF(ox, oy, cs * 6, cs * 6)
+        p.setPen(QPen(alpha("#FFFFFF", 0.10), 1.2))
+        p.setBrush(QColor("#0E1214"))
+        p.drawRoundedRect(board.adjusted(-S(5), -S(5), S(5), S(5)), S(12), S(12))
+        p.setPen(QPen(alpha("#FFFFFF", 0.05), 1))
+        for k in range(1, 6):
+            p.drawLine(QPointF(ox + k * cs, oy), QPointF(ox + k * cs, oy + 6 * cs))
+            p.drawLine(QPointF(ox, oy + k * cs), QPointF(ox + 6 * cs, oy + k * cs))
+        exit_r = QRectF(ox + 6 * cs, oy + 2 * cs + S(4), S(8), cs - S(8))           # the way out
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FF4B4B"))
+        p.drawRoundedRect(exit_r, S(3), S(3))
+        if not self.grid:
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(13, QFont.Weight.DemiBold))
+            p.drawText(board, int(Qt.AlignmentFlag.AlignCenter), tr("Loading…"))
+            return
+        now = time.monotonic()
+        for car, cells in sorted(self.cars().items()):
+            horiz = cells[1] - cells[0] == 1
+            r0, c0 = divmod(cells[0], 6)
+            w = (len(cells) if horiz else 1) * cs
+            h = (1 if horiz else len(cells)) * cs
+            x, y = ox + c0 * cs, oy + r0 * cs
+            if self.drag is not None and self.drag[0] == car:
+                if horiz:
+                    x += self.offset
+                else:
+                    y += self.offset
+            if car == "A" and self.state in ("out", "sent"):
+                x += min(1.0, (now - self._exit) / 1.0) ** 2 * cs * 3
+            body = QRectF(x, y, w, h).adjusted(S(4), S(4), -S(4), -S(4))
+            col = QColor("#FF3B3B") if car == "A" else QColor(self.COLOURS[(ord(car) - 66) % len(self.COLOURS)])
+            g = QLinearGradient(body.topLeft(), body.bottomLeft())
+            g.setColorAt(0, col.lighter(125))
+            g.setColorAt(1, col.darker(115))
+            p.setPen(QPen(col.darker(160), S(1.2)))
+            p.setBrush(g)
+            p.drawRoundedRect(body, S(9), S(9))
+            p.setPen(Qt.PenStyle.NoPen)                              # windows of the car
+            p.setBrush(QColor(0, 0, 0, 90))
+            if horiz:
+                p.drawRoundedRect(QRectF(body.right() - S(18), body.top() + S(6), S(9), body.height() - S(12)), S(3), S(3))
+                p.drawRoundedRect(QRectF(body.left() + S(9), body.top() + S(6), S(7), body.height() - S(12)), S(3), S(3))
+            else:
+                p.drawRoundedRect(QRectF(body.left() + S(6), body.top() + S(9), body.width() - S(12), S(7)), S(3), S(3))
+                p.drawRoundedRect(QRectF(body.left() + S(6), body.bottom() - S(18), body.width() - S(12), S(9)), S(3), S(3))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        info = tr("Moves: {n}", n=len(self.moves)) + "  ·  " + tr("Best possible: {n}", n=self.best)
+        p.drawText(QRectF(0, oy + 6 * cs + S(8), self.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), info)
+        if self.state == "sent":
+            res = self.result
+            box = board.adjusted(cs * 0.6, cs * 1.8, -cs * 0.6, -cs * 1.8)
+            p.setPen(QPen(alpha(GOLD_TEXT, 0.6), 1.2))
+            p.setBrush(QColor(8, 10, 12, 235))
+            p.drawRoundedRect(box, S(12), S(12))
+            paid = int(res.get("paid") or 0)
+            p.setPen(QColor(GOLD_TEXT if paid else TEXT_DIM))
+            p.setFont(font(20, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(box.left(), box.top() + S(10), box.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
+                       "+" + coins_text(paid) if paid else tr("No coins this time"))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            text = tr("{n} moves (best possible: {b})", n=res.get("moves", len(self.moves)), b=self.best)
+            if res.get("why") == "time":
+                text = tr("Too fast to be real: no coins")
+            p.drawText(QRectF(box.left(), box.top() + S(44), box.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), text)
+
+
 class GamePicker(QWidget):
     """Which game: two rows of small buttons (one is lit)."""
     changed = pyqtSignal(int)
@@ -16413,22 +16666,28 @@ class GamesPage(Page):
                 return self._quests(lay)
             if getattr(ctx, "mini_open", False):
                 return self._mini(lay)
+            if getattr(ctx, "park_open", False):
+                return self._park(lay)
             return self._lobby(lay)
         self._casino(lay)
 
     # -- the lobby
     def _lobby(self, lay) -> None:
+        quests = Button(tr("Quests"), "primary", 36, icon="spark")      # across the top
+        quests.clicked.connect(lambda: self._show_quests(True))
+        lay.addWidget(quests)
         lay.addWidget(CoinBar(self.ctx))
         lay.addWidget(KeyCard(self.ctx))
         lay.addWidget(DailyRow(self))
         line = hbox(spacing=6)
-        quests = Button(tr("Quests"), "ghost", 34, icon="spark")
-        quests.clicked.connect(lambda: self._show_quests(True))
         mini = Button(tr("Beat Tap"), "ghost", 34, icon="crosshair")
         mini.setToolTip(tr("A free mini game: tap the circles on the beat to earn coins"))
         mini.clicked.connect(lambda: self._show_mini(True))
-        line.addWidget(quests, 1)
+        park = Button(tr("Parking"), "ghost", 34, icon="grid")
+        park.setToolTip(tr("A free puzzle: slide the cars to get the red car out, for coins"))
+        park.clicked.connect(lambda: self._show_park(True))
         line.addWidget(mini, 1)
+        line.addWidget(park, 1)
         lay.addLayout(line)
         grid = QWidget()
         gl = QGridLayout(grid)
@@ -16468,6 +16727,38 @@ class GamesPage(Page):
         lay.addWidget(Label(tr("Click each circle when the shrinking ring touches it. About 30 seconds. 10 to 40 coins a "
                                "round; after 10 rounds a day it pays less (300 a day at most)."), 10.5, TEXT_DIM,
                             wrap_w=self.W))
+
+    def _show_park(self, on: bool) -> None:
+        sfx.play("pick")
+        self.ctx.park_open = on
+        self.ctx.reload_page()
+
+    def _park(self, lay) -> None:
+        top = hbox(spacing=8)
+        back = IconButton("back", 32, tip=tr("Back"))
+        top.addWidget(back)
+        top.addWidget(Label(tr("Parking"), 16, bold=True), 1)
+        lay.addLayout(top)
+        lay.addWidget(CoinBar(self.ctx))
+        tier = int(getattr(self.ctx, "park_tier", 0) or 0)
+        seg = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], tier)
+        lay.addWidget(seg)
+        self.park = Parking(self)
+        seg.changed.connect(lambda i: (setattr(self.ctx, "park_tier", i), self.park.new()))
+        back.clicked.connect(lambda: self._show_park(False))
+        lay.addWidget(self.park)
+        line = hbox(spacing=6)
+        again = Button(tr("Start over"), "ghost", 34)
+        again.clicked.connect(self.park.restart)
+        new = Button(tr("New puzzle"), "primary", 34)
+        new.clicked.connect(self.park.new)
+        line.addWidget(again, 1)
+        line.addWidget(new, 1)
+        lay.addLayout(line)
+        lay.addWidget(Label(tr("Drag the cars along their lane to make way, then drive the red car out on the right. "
+                               "Easy 10-20, Medium 15-30, Hard 25-40 coins: fewer moves pay more. 300 a day at most."),
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        QTimer.singleShot(50, self.park.new)
 
     def _show_quests(self, on: bool) -> None:
         sfx.play("pick")
@@ -16725,6 +17016,23 @@ def date_text(stamp) -> str:
     return day
 
 
+def ago_text(stamp) -> str:
+    """"5 min ago", "3 h ago", "2 days ago" from a server time."""
+    from datetime import datetime, timezone
+    try:
+        then = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        secs = (datetime.now(timezone.utc) - then).total_seconds()
+    except (ValueError, TypeError):
+        return ""
+    if secs < 120:
+        return tr("just now")
+    if secs < 3600:
+        return tr("{n} min ago", n=int(secs // 60))
+    if secs < 86400:
+        return tr("{n} h ago", n=int(secs // 3600))
+    return tr("{n} days ago", n=int(secs // 86400))
+
+
 # --------------------------------------------------------------------------- #
 # Profile pictures: small JPEGs, kept in memory and on disk, asked for again only when they change
 # --------------------------------------------------------------------------- #
@@ -16939,7 +17247,14 @@ class PlayerRow(QWidget):
         elif state == "asked":
             sub = tr("Request sent")
         elif friend and not info.get("me"):
-            sub += "  ·  " + (tr("Online") if info.get("online") else tr("Offline"))
+            if info.get("online"):
+                sub += "  ·  " + tr("Online")
+            else:
+                seen = ago_text(info.get("seen")) if info.get("seen") else ""
+                sub += "  ·  " + (tr("seen {t}", t=seen) if seen else tr("Offline"))
+            n = len([b for b in (info.get("badges") or []) if b])
+            if n:
+                sub += "  ·  " + tr("{n} on show", n=n)
         p.drawText(QRectF(x, r.top() + S(22), S(200), S(16)), int(Qt.AlignmentFlag.AlignVCenter), sub)
 
 
@@ -17287,6 +17602,7 @@ class FriendsPage(Page):
         if prof.get("stats") is None:
             self.lay.addWidget(Label(tr("Become friends to see their history."), 11.5, TEXT_DIM, wrap_w=self.W))
             return
+        self._details(prof)
         if hist is None:
             return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
         for key, title in (("trades", tr("Last 3 trades")), ("cases", tr("Last 3 cases")), ("spins", tr("Last 3 spins")),
@@ -17297,6 +17613,36 @@ class FriendsPage(Page):
                 self.lay.addWidget(Label(tr("Nothing yet"), 11, TEXT_FAINT))
             else:
                 self.lay.addWidget(HistoryList(ctx, key, rows, self.W))
+
+    def _details(self, prof: dict) -> None:
+        """A friend's numbers and what they are wearing."""
+        pass
+        pass
+        pass
+        st = prof.get("stats") or {}
+        bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
+        seen = tr("Online") if prof.get("online") else (ago_text(prof.get("seen")) or "—")
+        self.lay.addWidget(heading(tr("Stats")))
+        self.lay.addWidget(Numbers([
+            (played_text(int(prof.get("minutes") or 0)), tr("Played")), (seen, tr("Last seen")),
+            (int(st.get("friends") or 0), tr("Friends")),
+            (int(st.get("items") or 0), tr("Items")), (coins_text(int(st.get("worth") or 0)), tr("Collection worth")),
+            (int(st.get("badges") or 0), tr("Badges")),
+            (int(st.get("gold") or 0), tr("Gold badges"), "#E8C26A"), (int(st.get("cases") or 0), tr("Cases opened")),
+            (int(st.get("trades") or 0), tr("Trades")),
+            (int(st.get("rounds") or 0), tr("Casino bets")), (coins_text(int(st.get("best") or 0)), tr("Best win")),
+            (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino result"),
+             "#5BE08A" if won >= bet else "#FF7A7A"),
+            (int(st.get("mini") or 0), tr("Beat Tap")), (int(st.get("park") or 0), tr("Parking")),
+            (int(st.get("spins") or 0), tr("Free spins"))], self.W))
+        eq = prof.get("equip") or {}
+        wearing = [eq.get(k) for k in ("ball", "ring", "theme", "font")]
+        wearing = [w for w in wearing if w and w.split(":")[0] in ("ball", "line", "theme", "font")]
+        if wearing:
+            self.lay.addWidget(heading(tr("Wearing")))
+            grid = ItemGrid(self.ctx, [{"item": w, "text": ""} for w in wearing], self.W, 6, 58)
+            grid.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            self.lay.addWidget(grid)
 
     def _got_profile(self, ok: bool, data) -> None:
         name = getattr(self.ctx, "friends_profile", None)
@@ -17504,6 +17850,13 @@ class FormDialog(QWidget):
     def __init__(self, ctx, title: str, fields: list, button: str, on_send, note: str = "") -> None:
         super().__init__()
         pass
+        old = getattr(ctx, "_form", None)            # keep a reference, or the window vanishes at once
+        try:
+            if old is not None and old.isVisible():
+                old.close()
+        except RuntimeError:
+            pass
+        ctx._form = self
         self._on_send = on_send
         self.setWindowTitle("Rubenium")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
@@ -17959,7 +18312,12 @@ class AdminPage(Page):
         what = chosen[5:] if kind == "case" else chosen
 
         def send(v: dict, dlg) -> None:
-            k = v["k"].lower().strip()
+            k = {"pièces": "coins", "pieces": "coins", "coin": "coins", "clés": "keys", "cles": "keys", "key": "keys",
+                 "objet": "item", "caisse": "case"}.get(v["k"].lower().strip(), v["k"].lower().strip())
+            if k == "item" and v["w"].startswith("case:"):
+                k, v["w"] = "case", v["w"][5:]
+            if k == "case" and v["w"].startswith("case:"):
+                v["w"] = v["w"][5:]
             if k not in ("coins", "keys", "item", "case"):
                 return dlg.say(tr("Prize type: coins, keys, item or case"))
             dlg.close()
@@ -22167,8 +22525,8 @@ class App(QObject):
             target = self._screen_colour
         second = QColor(self.cfg["accent2"])
         # The second colour belongs to your own colours: it is not used while the music picks the colour.
-        use = self.cfg["accent2_on"] and self._colour_ok("c2", self.cfg["accent2"]) and not music and not screen
-        ui.accent2 = second if use else None
+        del second                                       # 2.2.1: a second colour only comes with a shop theme
+        ui.accent2 = None
         if tint and not music and not screen:
             target, ui.accent2 = QColor(tint[0]), QColor(tint[1])
         self._screen_timer.setInterval(2500)
