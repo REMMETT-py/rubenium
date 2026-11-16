@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.6 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 2.6.1 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.6"         # the version people see
-BUILD = "2026.11.17.4"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.6.1"         # the version people see
+BUILD = "2026.11.17.5"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -4467,6 +4467,25 @@ FR = {
     'Spikes': 'Pointes',
     'Rainbow': 'Arc-en-ciel',
     'OG': 'OG',
+    # 2.6.1
+    'Badges in the shop cost more, the rarer and luckier they are; the market can now go up to the shop price': 'Les badges de la boutique coûtent plus cher, selon leur rareté et la chance qu’il faut pour les avoir ; le marché peut maintenant monter jusqu’au prix de la boutique',
+    'Bigger coins and better badges.': 'Plus de pièces et de meilleurs badges.',
+    'COINS': 'PIÈCES',
+    'Cases rebalanced: coin cases now pay back a little more than they cost on average (you still lose about half the time)': 'Caisses rééquilibrées : les caisses à pièces rapportent maintenant un peu plus que leur prix en moyenne (tu perds quand même environ une fois sur deux)',
+    'Coin cases': 'Caisses à pièces',
+    'Coins only. Most of the time less than its price, sometimes double, and once in a while 10 to 30 times its price.': 'Que des pièces. La plupart du temps moins que son prix, parfois le double, et de temps en temps 10 à 30 fois son prix.',
+    'Every coin drop has a 6% chance to be a lucky ×3; the Jackpot can pay up to 32 times its price': 'Chaque gain de pièces a 6 % de chances d’être un ×3 chanceux ; le Jackpot peut rapporter jusqu’à 32 fois son prix',
+    'Gifting a case costs its price and 1 key': 'Offrir une caisse coûte son prix et 1 clé',
+    'Good coins, sometimes a Rare badge.': 'De bonnes pièces, parfois un badge Rare.',
+    'It costs {n} coins and 1 key. Your friend opens it for free. 3 gifts a day at most.': 'Ça coûte {n} pièces et 1 clé. Ton ami l’ouvre gratuitement. 3 cadeaux par jour maximum.',
+    'Lucky drop: ×3! +{n} coins': 'Coup de chance : ×3 ! +{n} pièces',
+    'RARE HUNT': 'CHASSE RARE',
+    'Rare hunts': 'Chasses aux raretés',
+    'Rare hunts (All or Nothing, Painter, Legend Vault, Mythic Hunt) are for rare badges: rarer badges are not easier to get': 'Les chasses aux raretés (Tout ou rien, Caisse du Peintre, Coffre Légende, Chasse Mythique) servent aux badges rares : les badges rares ne sont pas plus faciles à avoir',
+    'Small and safe: a good first case.': 'Petite et sûre : une bonne première caisse.',
+    'The biggest coin case, and the best chance of a Titanium badge. Big swings.': 'La plus grosse caisse à pièces, et la meilleure chance d’avoir un badge Titane. De gros écarts.',
+    'Coin case: on average it pays back a little more than it costs, but about half the time you get less. Every coin drop has a 6% chance to be a lucky ×3.': 'Caisse à pièces : en moyenne elle rapporte un peu plus que son prix, mais environ une fois sur deux tu gagnes moins. Chaque gain de pièces a 6 % de chances d’être un ×3 chanceux.',
+    'Rare hunt: the best chances at rare badges, but you lose coins on average (about half comes back).': 'Chasse aux raretés : les meilleures chances d’avoir des badges rares, mais tu perds des pièces en moyenne (environ la moitié revient).',
 }
 
 
@@ -7935,6 +7954,11 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.6.1", ['Cases rebalanced: coin cases now pay back a little more than they cost on average (you still lose about half the time)',
+               'Rare hunts (All or Nothing, Painter, Legend Vault, Mythic Hunt) are for rare badges: rarer badges are not easier to get',
+               'Every coin drop has a 6% chance to be a lucky ×3; the Jackpot can pay up to 32 times its price',
+               'Badges in the shop cost more, the rarer and luckier they are; the market can now go up to the shop price',
+               'Gifting a case costs its price and 1 key']),
     ("2.6", ['Fresh start: everyone begins again with 500 coins and 3 keys (items, spins and cases reset)',
              'Free OG tag for every user who joined before 17 November',
              'Profiles: banners, frames and a showcase of your 3 favourite badges, seen by everyone',
@@ -13839,9 +13863,21 @@ class ShopPage(Page):
         self._daily_timer.start()
         self._timers()
         if not cid:
+            pass
             lay.addWidget(CaseCard(self, self.DAILY))
-            for case in ec.cases:
-                lay.addWidget(CaseCard(self, case))
+            if case_kind("starter"):
+                for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts"))):
+                    lay.addWidget(heading(title))
+                    lay.addWidget(Label(tr(KIND_TEXT[kind]), 10.5, TEXT_DIM, wrap_w=self.W))
+                    for case in ec.cases:
+                        if case_kind(case["id"]) == kind:
+                            lay.addWidget(CaseCard(self, case))
+                for case in ec.cases:                         # a case the admin added later
+                    if not case_kind(case["id"]):
+                        lay.addWidget(CaseCard(self, case))
+            else:
+                for case in ec.cases:
+                    lay.addWidget(CaseCard(self, case))
             lay.addWidget(Label(tr("A case costs coins and 1 key. You earn 1 key for every hour with Rubenium."), 10.5,
                                 TEXT_DIM, wrap_w=self.W))
             return
@@ -13866,6 +13902,9 @@ class ShopPage(Page):
             pass
             if case["id"] in CASE_NOTES:
                 lay.addWidget(Label(tr(CASE_NOTES[case["id"]]), 11, TEXT_DIM, wrap_w=self.W))
+            if case_kind(case["id"]):
+                lay.addWidget(Label(tr(KIND_TEXT[case_kind(case["id"])]), 10.5,
+                                    "#3DDC84" if case_kind(case["id"]) == "coins" else "#FF5CC8", wrap_w=self.W))
             gift = Button(tr("Gift this case to a friend"), "ghost", 30)
             gift.clicked.connect(lambda: self._gift(case))
             lay.addWidget(gift)
@@ -13934,6 +13973,11 @@ class ShopPage(Page):
             ec.absorb(data)
             ec.changed.emit()
             cid = self.ctx.shop_case
+            case = next((c for c in ec.cases if c["id"] == cid), None)
+            won = int(data.get("won") or 0)
+            if case is not None and case.get("mode") != "jackpot" and won > int(case.get("coin_max") or 0) > 0:
+                sfx.play("on")
+                self.ctx.toast(tr("Lucky drop: ×3! +{n} coins", n=coins_text(won)))
             left = int(ec.stock.get(cid, 0) or 0) if cid and cid != "daily" else 0
             case = next((c for c in ec.cases if c["id"] == cid), None)
             if case is not None:
@@ -13954,6 +13998,8 @@ class ShopPage(Page):
         def send(name: str, dlg) -> None:
             if case["price"] > ec.coins:
                 return dlg.say(tr("Not enough coins"))
+            if ec.keys < 1 and "case_lucky_pct" in ec.cfg:
+                return dlg.say(tr("You need a key: 1 key for every hour with Rubenium"))
 
             def done(ok: bool, data) -> None:
                 if not ok:
@@ -13964,6 +14010,8 @@ class ShopPage(Page):
             ec.call("rb_case_gift", {"name": name, "which": case["id"]}, done, once=True)
         ctx._ask = AskDialog(ctx, tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), tr("Friend's username"),
                              tr("Gift for {n}", n=coins_text(case["price"])), send, 10,
+                             tr("It costs {n} coins and 1 key. Your friend opens it for free. 3 gifts a day at most.",
+                                n=coins_text(case["price"])) if "case_lucky_pct" in ec.cfg else
                              tr("Your friend opens it for free. 3 gifts a day at most."))
 
     def _lock(self, on: bool) -> None:
@@ -14130,9 +14178,26 @@ CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moo
               "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?")}
 CASE_NOTES = {"gamble": "Half the time: almost nothing. The other half: always Rare or better.",
               "painter": "Never a Basic badge: every badge comes in colour.",
-              "jackpot": "Coins only. Most of the time a little. Once in a while: 8 000 to 16 000.",
-              "titan": "The best chance of a Titanium badge.", "vault": "No Common badges inside.",
-              "mythic": "The best chance of a Mythic badge. Only Epic or better inside."}
+              "jackpot": "Coins only. Most of the time less than its price, sometimes double, and once in a while 10 to 30 times "
+                         "its price.",
+              "titan": "The biggest coin case, and the best chance of a Titanium badge. Big swings.",
+              "vault": "No Common badges inside.",
+              "mythic": "The best chance of a Mythic badge. Only Epic or better inside.",
+              "starter": "Small and safe: a good first case.", "standard": "Good coins, sometimes a Rare badge.",
+              "premium": "Bigger coins and better badges."}
+# 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
+COIN_CASES = ("starter", "standard", "premium", "jackpot", "titan")
+HUNT_CASES = ("gamble", "painter", "vault", "mythic")
+KIND_TEXT = {"coins": "Coin case: on average it pays back a little more than it costs, but about half the time you get "
+                      "less. Every coin drop has a 6% chance to be a lucky ×3.",
+             "hunt": "Rare hunt: the best chances at rare badges, but you lose coins on average (about half comes back)."}
+
+
+def case_kind(case_id: str) -> str:
+    """"coins", "hunt", or "" (before the 2.6.1 server update the old numbers are still live)."""
+    if ECON is None or "case_lucky_pct" not in (ECON.cfg or {}):
+        return ""
+    return "coins" if case_id in COIN_CASES else "hunt" if case_id in HUNT_CASES else ""
 ECON = None            # set by the app at start: lets this file know which Mythic badges are still secret
 
 
@@ -14621,6 +14686,18 @@ class CaseCard(QWidget):
                    tr(CASE_NAMES.get(cid, "Daily Case")))
         line = QRectF(x, r.top() + S(33), r.width() - S(90), S(18))
         have = int(self.ctx.econ.stock.get(cid, 0) or 0)
+        kind = case_kind(cid)
+        if kind:                                            # what this case is for, at a glance
+            text = tr("COINS") if kind == "coins" else tr("RARE HUNT")
+            kc = QColor("#3DDC84") if kind == "coins" else QColor("#FF5CC8")
+            p.setFont(font(9, QFont.Weight.Black, 0.6))
+            kw = p.fontMetrics().horizontalAdvance(text) + S(14)
+            ktag = QRectF(r.right() - kw - S(10), r.bottom() - S(27), kw, S(18))
+            p.setPen(QPen(alpha(kc, 0.6), 1))
+            p.setBrush(alpha(kc, 0.13))
+            p.drawRoundedRect(ktag, S(9), S(9))
+            p.setPen(kc)
+            p.drawText(ktag, int(Qt.AlignmentFlag.AlignCenter), text)
         if have:
             tag = QRectF(r.right() - S(86), r.top() + S(9), S(76), S(20))
             p.setPen(Qt.PenStyle.NoPen)
@@ -14678,7 +14755,7 @@ class OddsTable(QWidget):
                 col, name = QColor(CLASS_COLOURS[n]), tr(CLASS_NAMES[n])
             elif n:
                 col, name = QColor(RARITY_COLOURS[TIERS[n - 1]]), tr(RARITY_NAMES[TIERS[n - 1]])
-            elif case.get("mode") == "jackpot":
+            elif case.get("mode") == "jackpot" and not case_kind("jackpot"):
                 col, name = QColor(GOLD_TEXT), tr("{a} to {b} coins", a=100, b=coins_text(16000))
             else:
                 col, name = QColor(GOLD_TEXT), tr("{a} to {b} coins", a=coins_text(case["coin_min"]), b=coins_text(case["coin_max"]))
@@ -14740,7 +14817,8 @@ class CaseReel(QWidget):
             roll -= share
         if tier == 0:
             if self.case.get("mode") == "jackpot":
-                return ("coins", rnd.choice([150, 220, 300, 380, 1200, 1500, 4000, 12000]))
+                k = int(self.case.get("price") or 1000) / 1000
+                return ("coins", int(rnd.choice([150, 220, 300, 380, 1200, 1500, 4000, 12000]) * k))
             return ("coins", rnd.randint(self.case["coin_min"], max(self.case["coin_min"], self.case["coin_max"])))
         base = rnd.choice(self._badges_of(tier))
         if tier == 5:

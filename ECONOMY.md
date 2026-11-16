@@ -65,3 +65,26 @@ The Gold Rubenium R: about 1 in 220 000 Mythic Hunt openings.
 - OG tag: free for accounts made before 17 Nov 2026 (Paris), never sold or traded, kept by admin resets. Cut-off is `og_until` in rb_config.
 - Banners (16): Common 400, Rare 1 200, Epic 3 500, Legendary 9 000. Frames (12): 300, 1 000, 3 000, 8 000. In the shop, market, trades and daily deals.
 - Quick sell: 25% of the value (`quick_share`), and for shop items never more than half of what was paid (`quick_shop_share`). Checked: no case and no sale (even -90%) can be farmed with it.
+
+## 2.6.1: case balance
+
+Income: about 120 coins and 1 key per hour with Rubenium (plus mini games, daily login, scratch card). Keys cannot be
+bought, so the key is the real limit on cases; a gift now costs its price and 1 key too.
+
+| Case | Price | Pays back (items at quick sell) | Lose | Legendary+ |
+|---|---|---|---|---|
+| Starter (coins) | 200 | 110% | 50% | 0.05% |
+| Standard (coins) | 500 | 109% | 50% | 0.15% |
+| Premium (coins) | 1 200 | 106% | 51% | 0.4% |
+| Jackpot (coins) | 2 000 | 104% | 72% | - |
+| Titanium (coins) | 3 500 | 103% | 53% | 0.8% |
+| All or Nothing (hunt) | 600 | 54% | 95% | 2.5% |
+| Painter's (hunt) | 1 200 | 59% | 76% | 0.7% |
+| Legend Vault (hunt) | 4 000 | 55% | 77% | 8% |
+| Mythic Hunt (hunt) | 10 000 | 50% | 78% | 19% (Mythic 1%) |
+
+- Coin cases: +20 to +110 coins per key on average, about 1 hour of income at most. 6% of coin drops are a lucky x3.
+- Rare odds per open were never raised; rare hunts cost about twice as much as before, so rare badges cost more coins.
+- Shop badge price = 1.5 x the coins lost on average in the best case to get one of that rarity and finish, at least 8 x
+  its value: Common 1 200 / 1 900 / 80 000 (Basic / Painted / Shiny), Rare 3 600 / 5 750 / 210 000, Epic 9 600 / 15 500 /
+  585 000, Legendary 24 500 / 58 000 / 2 750 000. The market can go up to the shop price.
