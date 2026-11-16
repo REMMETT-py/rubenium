@@ -1,9 +1,14 @@
-Rubenium 3.0.0 - fixes
+Rubenium 3.1
 
-- The OG tag can no longer be earned (everyone who has it keeps it); the OG event is over (rewards are kept)
-- Item worth is the shop price everywhere: trades, inventory, collection worth, leaderboards and the market
-- Quick sell pays more for badges (5% of their worth, at least a quarter of their base value)
-- Mini Golf: 16 holes with sand, ice, boost pads and water, and each one can be played mirrored
-- Style > Themes: the shop themes show their shop picture again
-- Social: Edit Profile button (banner, frame, tag, picture and showcase)
+- The 6 shop themes have their own scenes and keep their colours
+- Gold banners: choose the normal banner or any gold level you unlocked
+- AFK coins: 25 every 10 minutes, +5 for every day of your login streak
+- New quests: 2 hourly, 4 daily, 6 weekly
+- Golden Wheel: 5% of free spins and scratch cards unlock it, and it always pays well
+- Better daily login rewards
+- Timing: a new skill game in the casino, with a tutorial
+- 5 new cases and a clearer case list; real coin ranges in case chances
+- Titanium badges in the shop; much bigger set bonuses
+- Mini Golf is in the casino list; Earn coins is one long bar
+- Admin: bot pictures, random stats and history; Golden Wheel and timer reset for testing
 

@@ -115,3 +115,14 @@ bought, so the key is the real limit on cases; a gift now costs its price and 1 
 - Rarer top drops: Mythic tier is 0.6% in the Mythic Hunt (was 1%), 0.15% in the Legend Vault, 0.03% in All or Nothing and Titanium, 0.01% in Premium and Standard. Shiny x0.8, Titanium and Gold x0.6 in every badge case. Mythic finishes: Titanium 96.5%, Prismatic 3.3%, Gold 0.185%. Rarest item (Rubenium Gold): about 1 in 1 000 000; every other item is more common.
 - OG event (until 17/11/2026 00:00 Paris): OG tag owners get 10 000 coins, 10 gold keys (one use each, used before normal keys, never above the key cap) and 1 gifted open of every case.
 - Mini Golf 1v1: bet 0 or 10 up to 80% of the lower balance; the winner gets both bets minus 5%; a draw refunds. 3 holes, 6 strokes max per hole, 25 s per turn (missed turn = +1 stroke, 3 in a row = loss). Invitations expire after 5 minutes.
+
+## 3.1
+- AFK: 25 coins every 10 minutes + 5 per login-streak day (counted up to 20 days, so up to +100). The daily AFK cap grows the same way (+72 x bonus).
+- Quests: 2 hourly (25-30 coins), 4 daily (100-150), 6 weekly (1 200-2 000).
+- Daily login: 100, 150, 1 key, 250, 2 keys, 500, then 1 000 coins + 1 key + a Premium case.
+- Golden Wheel: 5% of free spins and 5% of scratch cards. Prizes: 2 500 (30%), 5 000 (25%), 10 000 (15%), 25 000 (5%), or a free Premium (12%), Titanium (8%), Legend Vault (4%) or Mythic Hunt (1%) case with a key.
+- Timing: bet 10-1 000; perfect x4 (within 0.8% of the target), good x1.8 (2.5%), close x0.9 (5%), else nothing. Net winnings from Timing stop at 20 000 a day.
+- New cases (return at quick sell): Pocket 100 (109%), Elite 6 000 (109%), Royal 25 000 (107%), Shiny Hunt 8 000 (80%), Banner Case 2 000 (68%, more at shop prices).
+- Quick sell for badges: 3% of worth (at least 25% of base value).
+- Titanium badges are sold in the shop at their worth (50 x value). Gold and Mythic are never sold.
+- Sets: 5 Shiny 60 000 + 10 keys, 3 Titanium 250 000 + 20, a Gold 500 000 + 25, every Legendary 150 000 + 20, the 6 Mythics 5 000 000 + 100.
