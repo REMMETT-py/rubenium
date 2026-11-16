@@ -1,8 +1,10 @@
-Rubenium 2.3
+Rubenium 2.4
 
-- New free mini game: Parking (get the red car out)
-- Quests across the top of the Games tab
-- Colour 2 removed: only shop themes have a second colour
-- Nothing in the shop looks like gold any more
-- More details on friend profiles
-- Admin panel: give and edit windows fixed
+- New Beat Tap: four lanes, long notes, combos, faster and faster
+- New mini game: Memory, and duels with friends (with or without a bet)
+- Scratch card every 12 hours and a daily login reward
+- Messages, leaderboards, trade history, collection sets
+- Mini game limits every 2 hours, a little more pay
+- Badges cost their real worth; Titanium, Gold and Mythic only from cases
+- Visualiser, badge size and place, better lyrics, song history, Right Shift to show or hide
+- Backups, offline mode, password help, admin undo, a tour and nicer case openings

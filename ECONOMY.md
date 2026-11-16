@@ -35,3 +35,18 @@ Titanium x40, Gold x200. Mythic: Titanium 15 000, Prismatic 45 000, Gold 240 000
 Finishes for a badge (most cases): Basic about 74%, Painted 25%, Shiny 0.55%, Titanium 0.03-0.09% (Epic and
 Legendary only; the Titanium Case 0.36%), Gold 0.02-0.04%. A Mythic is Titanium 90%, Prismatic 9.5%, Gold 0.5%.
 The Gold Rubenium R: about 1 in 220 000 Mythic Hunt openings.
+
+
+## 2.4 changes
+
+| What | Value |
+|---|---|
+| Mini games (Beat Tap, Parking, Memory) | 150 coins per game every 2 hours; full pay for 6 rounds, then half, then a quarter |
+| Beat Tap | 12-50 coins (score worked out by the server) |
+| Parking | Easy 12-25, Medium 18-38, Hard 30-50 |
+| Memory | Easy 12-30, Medium 18-40, Hard 25-55 (fewer flips pay more) |
+| Scratch card | every 12 h: Common 60-120 coins (55%), Rare 150-300 (27%), Epic 1 key (12%), Legendary 2 keys (5%), Mythic 2 500 coins (1%) |
+| Daily login | 60, 90, 120, 1 key, 200, 300, 400 + Standard case; a missed day starts again |
+| Duels | bet 0 to 5 000 each, winner takes both minus 5% |
+| Badge shop | Basic/Painted cost value x4 (Common), x5 (Rare), x6 (Epic), x8 (Legendary); Shiny x1.5 more; Titanium, Gold, Mythic never sold |
+| Sets (once each) | Common row 3 000 + 2 keys, Rare 8 000 + 4, Epic 20 000 + 6, Legendary 50 000 + 10, Mythic 250 000 + 25, 8 Painted of one badge 4 000 + 2, 5 Shiny 15 000 + 5, 3 Titanium 40 000 + 8, a Gold 25 000 + 10 |

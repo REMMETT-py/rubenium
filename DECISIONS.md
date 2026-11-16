@@ -71,3 +71,15 @@ Choices made where the request left room, newest last.
   Six kinds, each can be switched off. Sound on, very quiet (20%) by default.
 - "Use screen colours": a 64 x 36 picture of the screen every 2.5 s. Only one of music / screen colours at once.
 - On start: old lyrics (30 days, 400 at most), old pictures and leftover temporary files are removed.
+
+
+## 2.3 and 2.4
+
+- Parking and Memory are checked move by move by the server; Memory never sends the board, only one card at a time.
+- Beat Tap 2: the server sends the chart and scores the presses itself; too-perfect timing pays the minimum.
+- Duels use the same level for both players; bets are held by the server and settled when both played or after 15 minutes.
+- Admin undo: every admin action stores what is needed to reverse it; trades and market sales can be undone (items go back
+  from wherever they are now, the victim is paid back in full).
+- Password help: requests carry the PC id; the admin sees if it came from the account's own PC. The new password is shown
+  only to the PC that asked, for one day, and every session of the account is logged out.
+- Update lock: the app sends its build number; the admin can make older builds unable to play online.
