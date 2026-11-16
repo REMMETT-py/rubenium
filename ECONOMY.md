@@ -101,3 +101,10 @@ bought, so the key is the real limit on cases; a gift now costs its price and 1 
   Profile 1 500 (banners, frames) 70% / 103%. Legendary about 1 in 100. Event items (Snow, Aurora, Frost) never drop and are not sold.
 - The case strip uses the real odds (no fake rare flashes) and never repeats an item close together.
 - Bots: their AFK coins and keys follow the same rates as users; they open coin cases and place small bets now and then.
+
+## 3.0.0
+- Duels: any bet from 10 coins up to 80% of the lower balance of the two players, in steps of 10 (checked by the server). No bet is still possible.
+- Balls re-ranked: Common = Pixel, Halo, Bullseye; Rare = Split, Shard, Hex; Epic = Bubble, Orbit; Legendary = Spiral, Ripple. Prices per rarity are unchanged (120 / 360 / 960 / 2 400 grey; colours ×1.25; black and white one rarity up).
+- Banners re-ranked by look, 10 new ones. Common 400: Dusk, Mint, Steel, Rose, Stripes, Dots, Carbon, Dunes. Rare 1 200: Waves, Peaks, Ember, Circuit, Sunset, Honeycomb, Comet, Deep Sea. Epic 3 500: Grid, Jungle, Sakura, Lava, Prism, City Nights, Neon, Fireflies. Legendary 9 000: Galaxy, Nebula, Matrix, Storm, Vortex. Snow and Aurora stay unsold for Christmas.
+- Gold banners: hours worn (counted with your time) for Gold I / II / III: Common 10/30/75, Rare 15/45/110, Epic 25/75/180, Legendary 40/120/300. Purely visual.
+- Offline mode earns nothing: the server only counts minutes it hears about.

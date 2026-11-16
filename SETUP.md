@@ -11,3 +11,4 @@
 8. Then run `012_case_balance.sql` once (2.6.1: the case balance and shop prices). Safe to run again.
 9. Then run `013_final.sql` once (2.7: AFK money, new banners and frames). Safe to run again.
 10. Then run `014_v3.sql` once (3.0: style cases, device rule, bots, admin swaps with the "swaps" storage bucket). Safe to run again. Apps older than 3.0 must update.
+11. Then run `015_final_300.sql` once (3.0.0: duel bet slider rule, balls and banners re-ranked, 10 new banners, gold banners, song history for friends). Safe to run again. Apps older than 3.0.0 must update.

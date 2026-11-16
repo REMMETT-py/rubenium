@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 3.0 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 3.0.0 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "3.0"         # the version people see
-BUILD = "2026.11.17.7"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "3.0.0"       # the version people see
+BUILD = "2026.11.17.8"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1553,6 +1553,11 @@ DANGER = "#E5484D"
 WARN = "#F5A524"
 FONT_DEFAULT = ["Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"]
 FONT_FAMILIES = list(FONT_DEFAULT)
+
+
+class Net:
+    """Offline mode (3.0.0): while `blocked` is True, Rubenium makes no internet request at all."""
+    blocked = False
 
 
 class _UI:
@@ -1743,6 +1748,8 @@ DEFAULTS: dict = {
     "scale_before_games": 0,
     "hold_open": True,
     "hold_ms": 400,
+    "offline_mode": False,
+    "share_songs": True,
     "unlock_all": False,
     "card_open": False,
     "seen_version": "",
@@ -1990,6 +1997,8 @@ class ApiError(Exception):
 
 def _request(path: str, body=None, token: str = "", method: str = "POST", timeout: float = 12.0):
     """One call to the server. Returns the decoded answer; raises ApiError('offline' | a server message)."""
+    if Net.blocked:                                   # offline mode: nothing leaves the PC
+        raise ApiError("offline")
     import ssl
     import urllib.error
     import urllib.request
@@ -2024,6 +2033,8 @@ def public_file(path: str) -> str:
 
 
 def download(url: str, timeout: float = 120.0) -> bytes:
+    if Net.blocked:
+        raise ApiError("offline")
     import ssl
     import urllib.request
     try:
@@ -2269,6 +2280,10 @@ class Online(QObject):
 
     def log_out(self) -> None:
         token = self.s.get("access_token", "")
+        if Net.blocked:                                # logging out leaves offline mode (the login needs the internet)
+            Net.blocked = False
+            self.ctx.cfg["offline_mode"] = False
+            token = ""
         self.s, self.minutes, self.elsewhere = {}, 0, False
         self._save()
         self.changed.emit()
@@ -2402,7 +2417,9 @@ class Online(QObject):
             self._retry = QTimer(self)
             self._retry.setInterval(20000)
             self._retry.timeout.connect(self.probe)
-        if off and not self._retry.isActive():
+        if off and Net.blocked:
+            self._retry.stop()                   # offline mode: no point asking
+        elif off and not self._retry.isActive():
             self._retry.start()                  # offline mode: try again every 20 seconds, quietly
         elif not off:
             self._retry.stop()
@@ -2446,7 +2463,7 @@ class Online(QObject):
 
     def probe(self) -> None:
         """Is the internet back? One small question to the server."""
-        if self.logged_in():
+        if self.logged_in() and not Net.blocked:
             self.ask("rb_timers", {}, lambda _ok, _d: None)
 
     def _beaten(self, ans: dict) -> None:
@@ -2543,6 +2560,7 @@ class Econ(QObject):
         self.streak, self.streak_day = 0, None
         self.looks: dict = {}                    # username -> {tag, frame, banner} for everyone (2.6)
         self._looks_at = 0.0
+        self.wear_data: dict = {}                   # your banners: item -> {minutes, level, steps} (3.0.0 gold banners)
         self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
         self._live_sig = ""
         self._live_timer = QTimer(self)
@@ -2632,14 +2650,32 @@ class Econ(QObject):
     def look_of(self, name: str) -> dict:
         """The tag, frame and banner someone shows. Yours comes from what you wear right now."""
         if name and self.ready and name.lower() == (self.online.username() or "").lower():
-            return {k: self.worn(k) for k in ("tag", "frame", "banner") if self.worn(k) and self.can_wear(self.worn(k))}
+            mine = {k: self.worn(k) for k in ("tag", "frame", "banner") if self.worn(k) and self.can_wear(self.worn(k))}
+            if mine.get("banner") and self.gold_of(mine["banner"]):
+                mine["gold"] = self.gold_of(mine["banner"])
+            return mine
         return self.looks.get(name) or {}
+
+    def gold_of(self, item: str) -> int:
+        """How gold one of your banners is (0-3), from the hours you wore it."""
+        try:
+            return max(0, min(3, int((self.wear_data.get(item) or {}).get("level") or 0)))
+        except (TypeError, ValueError):
+            return 0
+
+    def fetch_wear(self) -> None:
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, dict) and data != self.wear_data:
+                self.wear_data = data
+                self.looks_changed.emit()
+        self.online.ask("rb_wear_mine", {}, got)
 
     def fetch_looks(self, force: bool = False) -> None:
         import time
         if not self.online.logged_in() or (not force and time.monotonic() - self._looks_at < 40):
             return
         self._looks_at = time.monotonic()
+        self.fetch_wear()
 
         def got(ok: bool, data) -> None:
             if ok and isinstance(data, dict) and data != self.looks:
@@ -2708,7 +2744,7 @@ class Econ(QObject):
         elif not now_in and self._was_in:
             self.ready = False
             self._live_timer.stop()
-            self.live, self.admin, self.stock, self.looks = {}, False, {}, {}
+            self.live, self.admin, self.stock, self.looks, self.wear_data = {}, False, {}, {}, {}
             self.live_changed.emit()
             self.coins = self.keys = self.minutes = 0
             self.items, self.seen, self.equip, self._owned = [], set(), {}, {}
@@ -4651,6 +4687,103 @@ FR = {
     'Badge pages show every colour and finish with its rarity': 'Les pages des badges montrent chaque couleur et finition avec sa rareté',
     'Better glow and animations on banners and frames': 'Meilleures lueurs et animations sur les bannières et les cadres',
     'Stability fixes when switching tabs quickly': 'Corrections de stabilité en changeant vite d’onglet',
+    # 3.0.0
+    "{h} Played · Member Since {d}": "{h} de jeu · Membre depuis le {d}",
+    "Member Since": "Membre depuis",
+    "Last Seen": "Dernière connexion",
+    "Collection Worth": "Valeur de la collection",
+    "Gold Badges": "Badges Or",
+    "Cases Opened": "Caisses ouvertes",
+    "Casino Bets": "Mises au casino",
+    "Best Win": "Meilleur gain",
+    "Casino Result": "Bilan casino",
+    "Free Spins": "Tours gratuits",
+    "Last 3 Trades": "3 derniers échanges",
+    "Last 3 Cases": "3 dernières caisses",
+    "Last 3 Spins": "3 derniers tours",
+    "Last 30 Bets": "30 dernières mises",
+    "Change Name": "Changer de nom",
+    "Full Profile": "Profil complet",
+    "Open Trade": "Ouvrir l’échange",
+    "Gift a Case": "Offrir une caisse",
+    "Remove Friend": "Retirer l'ami",
+    "Accept Friend": "Accepter en ami",
+    "Add Friend": "Ajouter un ami",
+    "Back to Your Trade": "Retour à ton échange",
+    "Trade Without Being Friends": "Échanger sans être amis",
+    "10 new banners: Carbon, Dunes, Honeycomb, Comet, Deep Sea, City Nights, Neon, Fireflies, Storm and Vortex": "10 nouvelles bannières : Carbone, Dunes, Nid d’abeille, Comète, Abysses, Nuit en ville, Néon, Lucioles, Orage et Vortex",
+    "12 to 50 coins a round. Up to 150 coins every 2 hours.": "12 à 50 pièces par partie. Jusqu’à 150 pièces toutes les 2 heures.",
+    "A new version is available. Update to use online features.": "Une nouvelle version est disponible. Mets à jour pour utiliser les fonctions en ligne.",
+    "Any change resets both confirmations.": "Tout changement annule les deux confirmations.",
+    "Back online": "De retour en ligne",
+    "Balls and banners re-ranked: the animated designs are now the rarer ones": "Boules et bannières reclassées : les modèles animés sont désormais les plus rares",
+    "Balls, song lines and fonts.": "Boules, lignes de titre et polices.",
+    "Banners and frames.": "Bannières et cadres.",
+    "Best odds for Mythic badges. Epic or better only.": "Meilleures chances de badges Mythiques. Épique ou mieux uniquement.",
+    "Best odds for Titanium badges.": "Meilleures chances de badges Titane.",
+    "Cleaner, shorter texts across the app": "Des textes plus clairs et plus courts dans toute l’application",
+    "Coins only. Rare large payouts.": "Pièces uniquement. Gros gains rares.",
+    "Coins, with a chance of a Rare badge.": "Des pièces, avec une chance de badge Rare.",
+    "Complete a set for a one-time bonus.": "Complète une série pour un bonus unique.",
+    "Connection": "Connexion",
+    "Day 7 gives a free case. Missing a day resets the streak.": "Le jour 7 donne une caisse gratuite. Un jour manqué remet la série à zéro.",
+    "Disconnects Rubenium from the internet. Online features and time rewards are paused.": "Déconnecte Rubenium d’internet. Les fonctions en ligne et les gains de temps sont en pause.",
+    "Duels: choose any bet with a slider, from 10 coins up to 80% of the lower balance of the two players": "Duels : choisis ta mise avec un curseur, de 10 pièces jusqu’à 80 % du plus petit solde des deux joueurs",
+    "Each case costs coins and 1 key. Keys: 1 per hour.": "Chaque caisse coûte des pièces et 1 clé. Clés : 1 par heure.",
+    "Each game pays up to 150 coins every 2 hours.": "Chaque jeu rapporte jusqu’à 150 pièces toutes les 2 heures.",
+    "Entry-level case.": "Caisse d’entrée de gamme.",
+    "Every item can be worn, traded and sold.": "Chaque objet peut être porté, échangé et vendu.",
+    "Find every pair. Fewer flips pay more. Up to 150 coins every 2 hours.": "Trouve toutes les paires. Moins de coups rapportent plus. Jusqu’à 150 pièces toutes les 2 heures.",
+    "Finish what you are doing first": "Termine d’abord ce que tu fais",
+    "Fixed price set by the seller. 5% market fee.": "Prix fixé par le vendeur. 5 % de frais de marché.",
+    "Fixed: holding the ball over a game menu (Rocket League) could stop the menu from opening": "Corrigé : maintenir la boule au-dessus d’un menu de jeu (Rocket League) pouvait empêcher le menu de s’ouvrir",
+    "Go online": "Passer en ligne",
+    "Gold banners: a banner turns Gold I, II and III the longer you wear it (rarer banners need more hours)": "Bannières Or : une bannière passe Or I, II et III plus tu la portes (les plus rares demandent plus d’heures)",
+    "Hidden by this user": "Masqué par cet utilisateur",
+    "High risk. Rare or better when it hits.": "Risque élevé. Rare ou mieux quand ça passe.",
+    "Larger coin drops and better badges.": "Plus de pièces et de meilleurs badges.",
+    "Last {n} songs. Click one to copy it.": "{n} derniers titres. Clique sur un titre pour le copier.",
+    "Log in first": "Connecte-toi d’abord",
+    "Maximum {n} (80% of the lower balance).": "Maximum {n} (80 % du plus petit solde).",
+    "Move the cars to free the red car. Fewer moves pay more. Up to 150 coins every 2 hours.": "Déplace les voitures pour libérer la voiture rouge. Moins de coups rapportent plus. Jusqu’à 150 pièces toutes les 2 heures.",
+    "No Common badges.": "Aucun badge Commun.",
+    "No internet connection. Music, saved lyrics and tools still work. Rubenium reconnects automatically.": "Pas de connexion internet. La musique, les paroles enregistrées et les outils fonctionnent. Rubenium se reconnecte tout seul.",
+    "Not enough coins for a bet.": "Pas assez de pièces pour miser.",
+    "Nothing on sale. List an item from your Inventory.": "Rien en vente. Mets un objet en vente depuis ton Inventaire.",
+    "Offline mode": "Mode hors ligne",
+    "Offline mode in Settings: disconnects Rubenium from the internet until you go back online": "Mode hors ligne dans les Paramètres : déconnecte Rubenium d’internet jusqu’à ce que tu repasses en ligne",
+    "Offline mode on": "Mode hors ligne activé",
+    "Once a day: coins, a key or a badge.": "Une fois par jour : des pièces, une clé ou un badge.",
+    "One card every 12 hours. Common and Rare: coins. Epic: 1 key. Legendary: 2 keys. Mythic: 2 500 coins.": "Une carte toutes les 12 heures. Commun et Rare : des pièces. Épique : 1 clé. Légendaire : 2 clés. Mythique : 2 500 pièces.",
+    "One try. The result appears in Duels.": "Un seul essai. Le résultat s’affiche dans Duels.",
+    "Online features are paused. Music, saved lyrics and tools still work.": "Les fonctions en ligne sont en pause. La musique, les paroles enregistrées et les outils fonctionnent.",
+    "Online features are under maintenance. Your time still counts.": "Les fonctions en ligne sont en maintenance. Ton temps compte toujours.",
+    "Painted badges only.": "Badges Peints uniquement.",
+    "Recently Played": "Écoutés récemment",
+    "Same level for both players. Best score wins the pot (5% fee). A draw refunds both bets.": "Même niveau pour les deux joueurs. Le meilleur score remporte la cagnotte (5 % de frais). Une égalité rembourse les mises.",
+    "Saves your settings, theme, crosshair and layout to your account.": "Enregistre tes réglages, ton thème, ton viseur et ta disposition sur ton compte.",
+    "Select a friend to chat.": "Choisis un ami pour discuter.",
+    "Song History": "Historique des titres",
+    "Song History moved to the Social tab, and friends can now see what you played (you can turn this off)": "L’historique des titres passe dans l’onglet Social, et tes amis peuvent voir ce que tu as écouté (désactivable)",
+    "Temporarily locked": "Verrouillé temporairement",
+    "The Social tab refreshes by itself every 10 seconds": "L’onglet Social se met à jour tout seul toutes les 10 secondes",
+    "Themes, Rare or better.": "Thèmes, Rare ou mieux.",
+    "Turns gold after {a}, {b} and {c} h worn": "Devient Or après {a}, {b} et {c} h portée",
+    "Uneven trade: you give much more than you get.": "Échange déséquilibré : tu donnes bien plus que tu ne reçois.",
+    "Visible on your profile, in lists and in chat.": "Visible sur ton profil, dans les listes et dans le chat.",
+    "Visible to friends": "Visible par tes amis",
+    "Wait {s} s": "Attends {s} s",
+    "{gold} in {h} h": "{gold} dans {h} h",
+    "Carbon": "Carbone",
+    "Dunes": "Dunes",
+    "Honeycomb": "Nid d’abeille",
+    "Deep Sea": "Abysses",
+    "City Nights": "Nuit en ville",
+    "Fireflies": "Lucioles",
+    "Vortex": "Vortex",
+    "Gold I": "Or I",
+    "Gold II": "Or II",
+    "Gold III": "Or III",
 }
 
 
@@ -6683,6 +6816,8 @@ class LyricsService(QObject):
     def _get(self, endpoint: str, params: dict):
         if self._ssl is None:
             self._ssl = _ssl_context()
+        if Net.blocked:                                   # offline mode: only lyrics already saved
+            raise OSError("offline mode")
         url = API + endpoint + "?" + urllib.parse.urlencode(params)
         req = urllib.request.Request(url, headers={"User-Agent": f"{APP_NAME}/{VERSION}"})
         with urllib.request.urlopen(req, timeout=7, context=self._ssl) as resp:  # noqa: S310
@@ -8119,6 +8254,15 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("3.0.0", ['Duels: choose any bet with a slider, from 10 coins up to 80% of the lower balance of the two players',
+               'Song History moved to the Social tab, and friends can now see what you played (you can turn this off)',
+               'Offline mode in Settings: disconnects Rubenium from the internet until you go back online',
+               '10 new banners: Carbon, Dunes, Honeycomb, Comet, Deep Sea, City Nights, Neon, Fireflies, Storm and Vortex',
+               'Gold banners: a banner turns Gold I, II and III the longer you wear it (rarer banners need more hours)',
+               'Balls and banners re-ranked: the animated designs are now the rarer ones',
+               'The Social tab refreshes by itself every 10 seconds',
+               'Fixed: holding the ball over a game menu (Rocket League) could stop the menu from opening',
+               'Cleaner, shorter texts across the app']),
     ("3.0", ['Style cases: every ball, line, font, theme, banner and frame can now come from a case (Style, Theme and Profile cases)',
              'Rare drops feel rare: the case strip shows the real odds, never repeats an item, and only Epic or better get rays, flashes and fanfare',
              'One account can be CREATED per PC; you can log into your account from any PC',
@@ -9433,6 +9577,8 @@ class Updater(QObject):
             ctx = ssl.create_default_context(cafile=certifi.where())
         except Exception:  # noqa: BLE001
             ctx = ssl.create_default_context()
+        if Net.blocked:
+            raise OSError("offline mode")
         req = urllib.request.Request(url, headers={"User-Agent": "Rubenium-updater", "Accept": accept})
         with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:  # noqa: S310
             data = resp.read(limit + 1)
@@ -9490,6 +9636,8 @@ class Updater(QObject):
             ctx = ssl.create_default_context(cafile=certifi.where())
         except Exception:  # noqa: BLE001
             ctx = ssl.create_default_context()
+        if Net.blocked:
+            raise OSError("offline mode")
         req = urllib.request.Request(url, headers={"User-Agent": "Rubenium-updater"})
         with urllib.request.urlopen(req, timeout=30, context=ctx) as resp, open(dest, "wb") as out:  # noqa: S310
             total = int(resp.headers.get("Content-Length") or 0)
@@ -10871,16 +11019,21 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("storm", "Storm", "#8FA8FF", "#4B6BFF", dict(glow=3, stars=44, links=10, comets=6, aurora=True)),
                ("retro", "Retro", "#D94BFF", "#35D6E6", dict(glow=3, stars=52, links=14, sparkles=8, edge="shine"))]
 # profile looks (2.6): a banner behind your profile, a frame around your picture, a tag after your name
-BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("waves", "Waves"), ("grid", "Grid"),
-           ("stripes", "Stripes"), ("dots", "Dots"), ("aurora", "Aurora"), ("circuit", "Circuit"), ("sunset", "Sunset"),
-           ("peaks", "Peaks"), ("galaxy", "Galaxy"), ("lava", "Lava"), ("matrix", "Matrix"), ("prism", "Prism"),
-           ("snow", "Snow"), ("ember", "Ember"), ("nebula", "Nebula"), ("jungle", "Jungle"), ("sakura", "Sakura")]
+BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("stripes", "Stripes"), ("dots", "Dots"),
+           ("carbon", "Carbon"), ("dunes", "Dunes"),
+           ("waves", "Waves"), ("peaks", "Peaks"), ("ember", "Ember"), ("circuit", "Circuit"), ("sunset", "Sunset"),
+           ("honeycomb", "Honeycomb"), ("comet", "Comet"), ("deepsea", "Deep Sea"),
+           ("grid", "Grid"), ("jungle", "Jungle"), ("sakura", "Sakura"), ("lava", "Lava"), ("prism", "Prism"),
+           ("city", "City Nights"), ("neon", "Neon"), ("fireflies", "Fireflies"),
+           ("galaxy", "Galaxy"), ("nebula", "Nebula"), ("matrix", "Matrix"), ("storm", "Storm"), ("vortex", "Vortex"),
+           ("snow", "Snow"), ("aurora", "Aurora")]
 FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
           ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine")]
 TAGS = [("og", "OG")]
 MOVING = {"waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
-          "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine"}
+          "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine",
+          "honeycomb", "comet", "deepsea", "city", "fireflies", "storm", "vortex"}
 EVENT_LOOKS = {"banner:snow", "banner:aurora", "frame:frost"}      # kept for the Christmas event
 KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "banner": "Banner",
               "frame": "Frame", "tag": "Tag"}
@@ -11175,7 +11328,11 @@ _BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), 
                 "circuit": ("#04170F", "#2ECC71"), "sunset": ("#2B0F3D", "#FF8A3D"), "peaks": ("#0E1A2B", "#8FA8FF"),
                 "galaxy": ("#05040F", "#9B5CFF"), "lava": ("#1A0503", "#FF3D1F"), "matrix": ("#010A04", "#3DFF7A"),
                 "prism": ("#101018", "#FF5CC8"), "snow": ("#16304A", "#BFE6FF"), "ember": ("#1A0806", "#FF7A2E"),
-                "nebula": ("#07051A", "#4FE3FF"), "jungle": ("#06200F", "#2ECC71"), "sakura": ("#2A0E22", "#FF9CCB")}
+                "nebula": ("#07051A", "#4FE3FF"), "jungle": ("#06200F", "#2ECC71"), "sakura": ("#2A0E22", "#FF9CCB"),
+                "carbon": ("#15181C", "#2C3238"), "dunes": ("#F2A65A", "#FFD9A0"), "honeycomb": ("#1A1204", "#FFB627"),
+                "comet": ("#060B1E", "#4F8BFF"), "deepsea": ("#021226", "#1FB5D6"), "city": ("#0B0F2A", "#3A2A6B"),
+                "neon": ("#0A0412", "#2A0F3D"), "fireflies": ("#0C2416", "#1B3D22"), "storm": ("#0D1220", "#3A4A6B"),
+                "vortex": ("#08041A", "#4FE3FF")}
 
 
 def look_moves(item: str) -> bool:
@@ -11188,8 +11345,9 @@ def _rand(i: int, k: int = 0) -> float:
     return x - math.floor(x)
 
 
-def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius: float = 10.0, dim: float = 1.0) -> None:
-    """A profile banner filling `rect` (rounded corners)."""
+def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius: float = 10.0, dim: float = 1.0,
+                 gold: int = 0) -> None:
+    """A profile banner filling `rect` (rounded corners). `gold` 1-3: it turned gold with the hours it was worn."""
     base = parts(item)[1]
     c1, c2 = (QColor(c) for c in _BANNER_COLS.get(base, ("#1A2026", "#3A4650")))
     w, h = rect.width(), rect.height()
@@ -11436,12 +11594,246 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
             p.setBrush(alpha("#FFC1DE", 0.85))
             p.drawEllipse(QPointF(0, 0), 2.4, 1.3)
             p.restore()
+    elif base == "carbon":                                     # carbon fibre weave
+        cell = max(6.0, h * 0.09)
+        for gy in range(int(h / cell) + 2):
+            for gx in range(int(w / cell) + 2):
+                r_ = QRectF(L + gx * cell, T + gy * cell, cell, cell)
+                g2 = QLinearGradient(r_.topLeft(), r_.bottomRight() if (gx + gy) % 2 else r_.bottomLeft())
+                g2.setColorAt(0, alpha("#FFFFFF", 0.07))
+                g2.setColorAt(1, alpha("#000000", 0.25))
+                p.fillRect(r_.adjusted(0.5, 0.5, -0.5, -0.5), g2)
+    elif base == "dunes":                                      # warm dunes under a low sun
+        p.setBrush(alpha("#FFE2A8", 0.85))
+        p.drawEllipse(QPointF(L + w * 0.78, T + h * 0.32), h * 0.16, h * 0.16)
+        for k, (y0, col) in enumerate(((0.55, "#C98A4B"), (0.68, "#A86A35"), (0.82, "#7E4C24"))):
+            path = QPainterPath(QPointF(L, rect.bottom()))
+            for x in range(0, int(w) + 8, 8):
+                path.lineTo(L + x, T + h * y0 + math.sin(x / w * 5.0 + k * 1.9) * h * 0.06)
+            path.lineTo(rect.right(), rect.bottom())
+            p.setBrush(QColor(col))
+            p.drawPath(path)
+    elif base == "honeycomb":                                  # hexagons that light up one after another
+        rr = max(7.0, h * 0.13)
+        dx, dy = rr * 1.73, rr * 1.5
+        for gy in range(int(h / dy) + 2):
+            for gx in range(int(w / dx) + 2):
+                cx = L + gx * dx + (dx / 2 if gy % 2 else 0)
+                cy = T + gy * dy
+                glow = max(0.0, math.sin(now * 1.4 - gx * 0.45 + gy * 0.9)) ** 3
+                hexp = QPainterPath()
+                for n in range(7):
+                    a = math.radians(60 * n + 30)
+                    pt = QPointF(cx + rr * 0.92 * math.cos(a), cy + rr * 0.92 * math.sin(a))
+                    hexp.lineTo(pt) if n else hexp.moveTo(pt)
+                p.setPen(QPen(alpha(c2, 0.35 + 0.5 * glow), 1.1))
+                p.setBrush(alpha(c2, 0.05 + 0.3 * glow))
+                p.drawPath(hexp)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "comet":                                      # comets crossing a starry sky
+        for i in range(30):
+            p.setBrush(alpha("#FFFFFF", 0.25 + 0.5 * ((i * 37) % 10) / 10))
+            p.drawEllipse(QPointF(L + (i * 97 % 1000) / 1000 * w, T + (i * 61 % 1000) / 1000 * h), 0.9, 0.9)
+        for k in range(3):
+            t = (now * 0.22 + k / 3) % 1.0
+            head = QPointF(L - w * 0.2 + t * w * 1.4, T + h * (0.15 + 0.25 * k) + t * h * 0.35)
+            tail = QPointF(head.x() - w * 0.22, head.y() - h * 0.055 * 1)
+            g2 = QLinearGradient(tail, head)
+            g2.setColorAt(0, alpha(c2, 0.0))
+            g2.setColorAt(1, alpha("#FFFFFF", 0.9))
+            p.setPen(QPen(g2, 2.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(tail, head)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawEllipse(head, 2.2, 2.2)
+    elif base == "deepsea":                                    # light rays from above, bubbles rising
+        for k in range(5):
+            x0 = L + w * (0.1 + 0.2 * k) + math.sin(now * 0.4 + k) * w * 0.03
+            ray = QPainterPath(QPointF(x0 - w * 0.03, T))
+            ray.lineTo(x0 + w * 0.03, T)
+            ray.lineTo(x0 + w * 0.12, rect.bottom())
+            ray.lineTo(x0 - w * 0.02, rect.bottom())
+            g2 = QLinearGradient(QPointF(0, T), QPointF(0, rect.bottom()))
+            g2.setColorAt(0, alpha(c2, 0.28))
+            g2.setColorAt(1, alpha(c2, 0.0))
+            p.setBrush(g2)
+            p.drawPath(ray)
+        for i in range(16):
+            t = (now * (0.12 + (i % 4) * 0.03) + i * 0.137) % 1.0
+            x = L + (i * 131 % 1000) / 1000 * w + math.sin(now * 2 + i) * 3
+            p.setPen(QPen(alpha("#BFF4FF", 0.7 * (1 - t)), 1))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(QPointF(x, rect.bottom() - t * h), 1.5 + (i % 3), 1.5 + (i % 3))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "city":                                       # a skyline at night, windows switching on and off
+        p.setBrush(alpha("#FFE9A8", 0.9))
+        p.drawEllipse(QPointF(L + w * 0.85, T + h * 0.22), h * 0.09, h * 0.09)
+        x, i = L, 0
+        while x < rect.right():
+            bw = w * (0.05 + ((i * 53) % 7) / 100)
+            bh = h * (0.35 + ((i * 29) % 9) / 16)
+            top_ = rect.bottom() - bh
+            p.setBrush(QColor("#0A0D1A") if i % 2 else QColor("#121633"))
+            p.drawRect(QRectF(x, top_, bw, bh))
+            for wy in range(int(bh / 7)):
+                for wx in range(max(1, int(bw / 6))):
+                    lit = math.sin(i * 7.1 + wy * 3.3 + wx * 1.7 + math.floor(now * 0.5 + (i + wx) * 0.13)) > 0.35
+                    if lit:
+                        p.setBrush(alpha("#FFD36B", 0.85))
+                        p.drawRect(QRectF(x + 2 + wx * 6, top_ + 3 + wy * 7, 2.4, 3))
+            x += bw + 1
+            i += 1
+    elif base == "neon":                                       # glowing tubes that pulse
+        for k, (col, y0) in enumerate((("#FF2BD6", 0.3), ("#2EF2FF", 0.55), ("#B6FF2E", 0.8))):
+            pulse = 0.55 + 0.45 * math.sin(now * 2.2 + k * 2.1)
+            path = QPainterPath(QPointF(L - 4, T + h * y0))
+            for x in range(0, int(w) + 10, 10):
+                path.lineTo(L + x, T + h * y0 + (h * 0.08 if (x // 40) % 2 else -h * 0.08))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width, a in ((7, 0.12), (3.5, 0.35), (1.6, 1.0)):
+                p.setPen(QPen(alpha(col, a * pulse), width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                              Qt.PenJoinStyle.RoundJoin))
+                p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "fireflies":                                  # a dark forest with drifting lights
+        for k in range(9):
+            x = L + w * (k / 8)
+            p.setBrush(QColor("#06140C"))
+            tri = QPainterPath(QPointF(x, T + h * (0.25 + 0.1 * (k % 3))))
+            tri.lineTo(x - w * 0.07, rect.bottom())
+            tri.lineTo(x + w * 0.07, rect.bottom())
+            tri.closeSubpath()
+            p.drawPath(tri)
+        for i in range(22):
+            x = L + ((i * 89 % 1000) / 1000 + 0.03 * math.sin(now * 0.5 + i)) * w
+            y = T + ((i * 47 % 1000) / 1000 * 0.8 + 0.1 + 0.04 * math.cos(now * 0.7 + i * 2)) * h
+            a = max(0.0, math.sin(now * 1.7 + i * 1.3))
+            gl = QRadialGradient(QPointF(x, y), 6)
+            gl.setColorAt(0, alpha("#E8FF7A", 0.9 * a))
+            gl.setColorAt(1, alpha("#E8FF7A", 0.0))
+            p.setBrush(gl)
+            p.drawEllipse(QPointF(x, y), 6, 6)
+    elif base == "storm":                                      # heavy clouds, rain and lightning
+        flash = max(0.0, 1 - ((now * 0.45) % 1.0) * 9)        # a bright flash once every ~2 seconds
+        for k in range(7):
+            p.setBrush(alpha("#2A3550", 0.85))
+            p.drawEllipse(QPointF(L + w * (k / 6) + math.sin(now * 0.2 + k) * 6, T + h * 0.12), w * 0.13, h * 0.32)
+        p.setPen(QPen(alpha("#9FC3FF", 0.35), 1))
+        for i in range(40):
+            t = (now * 1.6 + i * 0.173) % 1.0
+            x = L + (i * 113 % 1000) / 1000 * w
+            p.drawLine(QPointF(x - t * 6, T + h * 0.3 + t * h * 0.7), QPointF(x - t * 6 - 3, T + h * 0.3 + t * h * 0.7 + 7))
+        if flash > 0:
+            bolt = QPainterPath(QPointF(L + w * 0.62, T + h * 0.25))
+            for dxf, dyf in ((-0.04, 0.2), (0.03, 0.18), (-0.05, 0.22), (0.02, 0.2)):
+                cur = bolt.currentPosition()
+                bolt.lineTo(cur.x() + w * dxf, cur.y() + h * dyf)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width, a in ((6, 0.25), (2, 1.0)):
+                p.setPen(QPen(alpha("#E6F0FF", a * flash), width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawPath(bolt)
+            p.fillRect(rect, alpha("#CFE0FF", 0.18 * flash))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "vortex":                                     # a slowly turning spiral of light
+        cen = QPointF(L + w * 0.5, T + h * 0.5)
+        for arm in range(4):
+            path = QPainterPath()
+            for n in range(60):
+                t = n / 59
+                ang = arm * math.pi / 2 + t * 5.5 + now * 0.6
+                rr = t * w * 0.55
+                pt = QPointF(cen.x() + rr * math.cos(ang), cen.y() + rr * 0.45 * math.sin(ang))
+                path.lineTo(pt) if n else path.moveTo(pt)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width, a in ((8, 0.10), (3, 0.35), (1.2, 0.9)):
+                p.setPen(QPen(alpha(c2 if arm % 2 else QColor("#FF5CC8"), a), width, Qt.PenStyle.SolidLine,
+                              Qt.PenCapStyle.RoundCap))
+                p.drawPath(path)
+        core = QRadialGradient(cen, h * 0.4)
+        core.setColorAt(0, alpha("#FFFFFF", 0.85))
+        core.setColorAt(1, alpha(c2, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(core)
+        p.drawEllipse(cen, h * 0.4, h * 0.4)
+    if gold > 0:
+        paint_gold(p, rect, gold, now)
     shade = QLinearGradient(rect.topLeft(), rect.bottomLeft())       # a soft shade at the bottom, for text on top
     shade.setColorAt(0.55, alpha("#000000", 0.0))
     shade.setColorAt(1.0, alpha("#000000", 0.35))
     p.fillRect(rect, shade)
     p.restore()
 
+
+
+GOLD_NAMES = {1: "Gold I", 2: "Gold II", 3: "Gold III"}
+
+
+def paint_gold(p: QPainter, rect: QRectF, level: int, now: float = 0.0) -> None:
+    """A banner worn for many hours turns gold: I a gold tint and edge, II a richer gold with a moving shine,
+    III solid gold with a bright sweep and sparkles."""
+    level = max(0, min(3, int(level)))
+    if not level:
+        return
+    p.save()
+    p.setPen(Qt.PenStyle.NoPen)
+    tint = QLinearGradient(rect.topLeft(), rect.bottomRight())
+    k = (0.45, 0.7, 0.95)[level - 1]
+    tint.setColorAt(0, alpha("#FFD978", k))
+    tint.setColorAt(0.5, alpha("#E0A93A", k))
+    tint.setColorAt(1, alpha("#8A5A14", k))
+    p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Overlay)
+    p.fillRect(rect, tint)
+    if level >= 2:                                         # the colours of the banner turn to gold
+        gray = QLinearGradient(rect.topLeft(), rect.bottomLeft())
+        gray.setColorAt(0, alpha("#FFE9A8", 0.5 if level == 2 else 0.95))
+        gray.setColorAt(1, alpha("#C98F2A", 0.5 if level == 2 else 0.95))
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Multiply)
+        p.fillRect(rect, gray)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Screen)
+        p.fillRect(rect, alpha("#6B4510", 0.35 if level == 2 else 0.7))
+    p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+    if level >= 2:                                         # a band of light sweeping across
+        t = (now * (0.25 if level == 2 else 0.4)) % 1.6 - 0.3
+        x = rect.left() + t * rect.width()
+        sweep = QLinearGradient(QPointF(x - rect.width() * 0.15, 0), QPointF(x + rect.width() * 0.15, 0))
+        sweep.setColorAt(0, alpha("#FFFFFF", 0.0))
+        sweep.setColorAt(0.5, alpha("#FFF6D8", 0.35 if level == 2 else 0.55))
+        sweep.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.fillRect(rect, sweep)
+    if level >= 3:                                         # sparkles
+        for i in range(10):
+            a = max(0.0, math.sin(now * 2.3 + i * 1.9))
+            if a < 0.2:
+                continue
+            c = QPointF(rect.left() + (i * 157 % 1000) / 1000 * rect.width(),
+                        rect.top() + (i * 83 % 1000) / 1000 * rect.height() * 0.8 + rect.height() * 0.05)
+            s = 2.5 + 2.5 * a
+            star = QPainterPath(QPointF(c.x(), c.y() - s))
+            for pt in ((c.x() + s * 0.25, c.y() - s * 0.25), (c.x() + s, c.y()), (c.x() + s * 0.25, c.y() + s * 0.25),
+                       (c.x(), c.y() + s), (c.x() - s * 0.25, c.y() + s * 0.25), (c.x() - s, c.y()),
+                       (c.x() - s * 0.25, c.y() - s * 0.25)):
+                star.lineTo(QPointF(*pt))
+            star.closeSubpath()
+            p.setBrush(alpha("#FFF6D8", 0.9 * a))
+            p.drawPath(star)
+    edge = QLinearGradient(rect.topLeft(), rect.bottomRight())
+    edge.setColorAt(0, QColor("#FFE7A0"))
+    edge.setColorAt(0.5, QColor("#E8C26A"))
+    edge.setColorAt(1, QColor("#9C6B1E"))
+    p.setPen(QPen(edge, (1.2, 2.0, 2.8)[level - 1]))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.drawRect(rect.adjusted(0.5, 0.5, -0.5, -0.5))      # clipped to the rounded banner
+    p.restore()
+
+
+def gold_steps_text(steps, minutes: int) -> str:
+    """'Gold I in 6 h' / 'Gold III' for the progress of one banner."""
+    hours = [int(h) for h in (steps or [])][:3]
+    level = sum(1 for h in hours if minutes >= h * 60)
+    if level >= len(hours) or not hours:
+        return tr(GOLD_NAMES.get(level, "")) if level else ""
+    left = max(1, math.ceil((hours[level] * 60 - minutes) / 60))
+    return tr("{gold} in {h} h", gold=tr(GOLD_NAMES[level + 1]), h=left)
 
 _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"), "ink": ("#0B0E10", "#FFFFFF"),
                "neon": ("#2EF2FF", "#2EF2FF"), "dashed": ("#FFFFFF", "#9AA4AD"), "twin": ("#FF5CB8", "#2EC5FF"),
@@ -13446,19 +13838,18 @@ class SettingsPage(Page):
                 line.addWidget(pw, 1)
                 line.addWidget(out, 1)
                 lay.addLayout(line)
-                lay.addWidget(heading(tr("Music")))
-                line = hbox(spacing=6)
-                hist = Button(tr("Song history"), "ghost", 30, icon="note")
+                lay.addWidget(heading(tr("Connection")))
+                off = Toggle(bool(cfg["offline_mode"]))
 
-                def open_hist() -> None:
-                    pass
-                    ctx._hist = HistoryWindow(ctx)
-                hist.clicked.connect(open_hist)
+                def set_off(v: bool) -> None:
+                    if not ctx.set_offline_mode(v):
+                        off.set_checked(not v)          # not allowed right now: the switch goes back
+                off.toggled_by_user.connect(set_off)
+                lay.addWidget(row(tr("Offline mode"), off))
+                lay.addWidget(Label(tr("Disconnects Rubenium from the internet. Online features and time rewards are paused."), 10, TEXT_DIM, wrap_w=self.W))
                 tour = Button(tr("Show the tour again"), "ghost", 30)
                 tour.clicked.connect(ctx.start_tutorial)
-                line.addWidget(hist, 1)
-                line.addWidget(tour, 1)
-                lay.addLayout(line)
+                lay.addWidget(tour)
                 lay.addSpacing(S(8))
                 gone = Button(tr("Delete account"), "quiet", 24)
                 gone.setFixedWidth(max(S(120), gone.sizeHint().width()))
@@ -14304,7 +14695,6 @@ class ShopPage(Page):
             if case_kind("starter"):
                 for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts")), ("style", tr("Style cases"))):
                     lay.addWidget(heading(title))
-                    lay.addWidget(Label(tr(KIND_TEXT[kind]), 10.5, TEXT_DIM, wrap_w=self.W))
                     for case in ec.cases:
                         if case_kind(case["id"]) == kind:
                             lay.addWidget(CaseCard(self, case))
@@ -14314,8 +14704,7 @@ class ShopPage(Page):
             else:
                 for case in ec.cases:
                     lay.addWidget(CaseCard(self, case))
-            lay.addWidget(Label(tr("A case costs coins and 1 key. You earn 1 key for every hour with Rubenium."), 10.5,
-                                TEXT_DIM, wrap_w=self.W))
+            lay.addWidget(Label(tr("Each case costs coins and 1 key. Keys: 1 per hour."), 10.5, TEXT_DIM, wrap_w=self.W))
             return
         case = self.DAILY if cid == "daily" else next((c for c in ec.cases if c["id"] == cid), ec.cases[0])
         top = hbox(spacing=8)
@@ -14338,10 +14727,6 @@ class ShopPage(Page):
             pass
             if case["id"] in CASE_NOTES:
                 lay.addWidget(Label(tr(CASE_NOTES[case["id"]]), 11, TEXT_DIM, wrap_w=self.W))
-            if case_kind(case["id"]):
-                lay.addWidget(Label(tr(KIND_TEXT[case_kind(case["id"])]), 10.5,
-                                    {"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF"}[case_kind(case["id"])],
-                                    wrap_w=self.W))
             gift = Button(tr("Gift this case to a friend"), "ghost", 30)
             gift.clicked.connect(lambda: self._gift(case))
             lay.addWidget(gift)
@@ -14349,7 +14734,7 @@ class ShopPage(Page):
             lay.addWidget(heading(tr("Chances")))
             lay.addWidget(OddsTable(case, self.W))
         else:
-            lay.addWidget(Label(tr("Once a day: coins, a key or a badge (Common, sometimes Rare, rarely Epic)."),
+            lay.addWidget(Label(tr("Once a day: coins, a key or a badge."),
                                 10.5, TEXT_DIM, wrap_w=self.W))
 
     def open_case(self, cid) -> None:
@@ -14616,26 +15001,20 @@ CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moo
               "premium": ("sword", "bolt", "flame"), "jackpot": ("$", "$", "$"), "titan": ("shield", "rook", "anchor"),
               "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?"),
               "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame")}
-CASE_NOTES = {"gamble": "Half the time: almost nothing. The other half: always Rare or better.",
-              "painter": "Never a Basic badge: every badge comes in colour.",
-              "jackpot": "Coins only. Most of the time less than its price, sometimes double, and once in a while 10 to 30 times "
-                         "its price.",
-              "titan": "The biggest coin case, and the best chance of a Titanium badge. Big swings.",
-              "vault": "No Common badges inside.",
-              "mythic": "The best chance of a Mythic badge. Only Epic or better inside.",
-              "starter": "Small and safe: a good first case.", "standard": "Good coins, sometimes a Rare badge.",
-              "premium": "Bigger coins and better badges.",
-              "style": "Balls, song lines and fonts from the shop.", "themes": "Only themes: Rare or better.",
-              "profile": "Banners and frames for your profile."}
+CASE_NOTES = {"gamble": "High risk. Rare or better when it hits.",
+              "painter": "Painted badges only.",
+              "jackpot": "Coins only. Rare large payouts.",
+              "titan": "Best odds for Titanium badges.",
+              "vault": "No Common badges.",
+              "mythic": "Best odds for Mythic badges. Epic or better only.",
+              "starter": "Entry-level case.", "standard": "Coins, with a chance of a Rare badge.",
+              "premium": "Larger coin drops and better badges.",
+              "style": "Balls, song lines and fonts.", "themes": "Themes, Rare or better.",
+              "profile": "Banners and frames."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
 COIN_CASES = ("starter", "standard", "premium", "jackpot", "titan")
 HUNT_CASES = ("gamble", "painter", "vault", "mythic")
 STYLE_CASES = ("style", "themes", "profile")
-KIND_TEXT = {"coins": "Coin case: on average it pays back a little more than it costs, but about half the time you get "
-                      "less. Every coin drop has a 6% chance to be a lucky ×3.",
-             "hunt": "Rare hunt: the best chances at rare badges, but you lose coins on average (about half comes back).",
-             "style": "Style case: every ball, line, font, theme, banner and frame of the shop can come out. Counted at "
-                      "shop prices you get a little more than you paid; Legendary ones stay about 1 in 100."}
 
 
 def case_kind(case_id: str) -> str:
@@ -16098,7 +16477,7 @@ def build_cosmetics(page, lay) -> None:
             if not any(k.startswith(kind + ":") for k in ec.catalog):         # the server has not had 2.6 yet
                 pass
                 return lay.addWidget(WaitCard(page.W))
-            lay.addWidget(Label(tr("Everyone sees your banner and frame on your profile, in lists and in the chat."),
+            lay.addWidget(Label(tr("Visible on your profile, in lists and in chat."),
                                 10.5, TEXT_DIM, wrap_w=page.W))
         entries = []
         for base, name in _designs(kind):
@@ -16123,7 +16502,7 @@ def build_cosmetics(page, lay) -> None:
             ctx.reload_page()
         grid.picked.connect(pick)
         lay.addWidget(grid)
-        lay.addWidget(Label(tr("Everything here can be worn, traded and sold. Prices start at the one shown."), 10.5,
+        lay.addWidget(Label(tr("Every item can be worn, traded and sold."), 10.5,
                             TEXT_DIM, wrap_w=page.W))
         return
     # one design: preview, colours, buy or wear
@@ -16205,6 +16584,9 @@ def _cid(kind: str, design: str, colour: str) -> str:
     return f"{kind}:{design}" if kind in ("theme", "banner", "frame") else f"{kind}:{design}:{colour}"
 
 
+GOLD_STEPS = {"standard": (10, 30, 75), "rare": (15, 45, 110), "special": (25, 75, 180), "epic": (40, 120, 300)}
+
+
 class LookPreview(QWidget):
     """How a banner or a frame looks on your own profile."""
 
@@ -16239,7 +16621,7 @@ class LookPreview(QWidget):
         banner = self.item if kind == "banner" else ec.look_of(name).get("banner", "")
         top = QRectF(r.left(), r.top(), r.width(), S(74))
         if banner:
-            paint_banner(p, top, banner, now, S(12))
+            paint_banner(p, top, banner, now, S(12), 1.0, ec.gold_of(banner))
         else:
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha("#FFFFFF", 0.05))
@@ -16259,7 +16641,18 @@ class LookPreview(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.drawText(QRectF(x, top.bottom() + S(6), r.width() - x - S(10), S(30)), int(Qt.AlignmentFlag.AlignVCenter),
-                   self.note or tr("Preview on your profile"))
+                   self.note or self._gold_note(kind) or tr("Preview on your profile"))
+
+    def _gold_note(self, kind: str) -> str:
+        """For a banner you own: how far it is from its next gold level."""
+        pass
+        if kind != "banner":
+            return ""
+        w = self.ctx.econ.wear_data.get(self.item)
+        if w:
+            return gold_steps_text(w.get("steps"), int(w.get("minutes") or 0))
+        steps = GOLD_STEPS.get(self.ctx.econ.rarity(self.item))
+        return tr("Turns gold after {a}, {b} and {c} h worn", a=steps[0], b=steps[1], c=steps[2]) if steps else ""
 
 
 # --------------------------------------------------------------------------- #
@@ -16776,7 +17169,7 @@ def build_market(page, lay) -> None:
     if rows is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     if not rows:
-        lay.addWidget(Label(tr("You have nothing on sale. Put an item on sale from your Inventory.") if tab else
+        lay.addWidget(Label(tr("Nothing on sale. List an item from your Inventory.") if tab else
                             tr("Nothing on sale right now. Be the first: put an item on sale from your Inventory."),
                             12, TEXT_DIM, wrap_w=page.W))
     for row in rows[:40]:
@@ -16786,7 +17179,7 @@ def build_market(page, lay) -> None:
         w.clicked.connect(lambda r=row: _market_click(page, r, bool(tab)))
         lay.addWidget(w)
     if not tab:
-        lay.addWidget(Label(tr("The price is fixed by the seller. The market keeps 5% of every sale."), 10.5, TEXT_DIM,
+        lay.addWidget(Label(tr("Fixed price set by the seller. 5% market fee."), 10.5, TEXT_DIM,
                             wrap_w=page.W))
 
 
@@ -17100,7 +17493,7 @@ def build_trade(page, lay) -> None:
     side(tr("You give"), mine, my_coins, give, my_ready, True)
     side(tr("You get"), theirs, their_coins, get, their_ready, False)
     if give > max(get * 2, get + 500):
-        lay.addWidget(Label(tr("Careful: you give much more than you get. Look again before you accept."), 11.5, "#FFB020",
+        lay.addWidget(Label(tr("Uneven trade: you give much more than you get."), 11.5, "#FFB020",
                             bold=True, wrap_w=page.W))
     if my_ready and their_ready:
         cd = Countdown(link)
@@ -17121,7 +17514,7 @@ def build_trade(page, lay) -> None:
     ready = Button(tr("Not ready") if my_ready else tr("Ready"), "ghost" if my_ready else "primary", 36)
     ready.clicked.connect(lambda: link.act("rb_trade_ready", {"ready": not my_ready, "seen_version": version}))
     lay.addWidget(ready)
-    lay.addWidget(Label(tr("Any change makes both users not ready again. Nothing moves until both confirm."), 10.5,
+    lay.addWidget(Label(tr("Any change resets both confirmations."), 10.5,
                         TEXT_DIM, wrap_w=page.W))
     offered = {r["id"] for r in mine}
     pool = [i for i in ec.items if not i.get("locked") and i["id"] not in offered
@@ -18036,7 +18429,29 @@ class ScratchRow(QWidget):
 
 # ================================================================ duels
 DUEL_GAMES = {"tap": "Beat Tap", "memory": "Memory", "park": "Parking"}
-DUEL_BETS = [0, 100, 250, 500, 1000, 2500, 5000]
+
+
+def duel_limit(ctx, name: str, page=None) -> int:
+    """Highest duel bet with this friend: 80% of the lower of the two balances, in tens. Asked to the server
+    once a minute per friend; until it answers (or on an older server) only your own balance counts."""
+    cache = getattr(ctx, "duel_limits", None)
+    if cache is None:
+        cache = ctx.duel_limits = {}
+    mine = int(int(ctx.econ.coins) * 0.8) // 10 * 10
+    got = cache.get(name)
+    if got is None or time.monotonic() - got[1] > 60:
+        cache[name] = (got[0] if got else None, time.monotonic())
+
+        def done(ok: bool, data) -> None:
+            if ok and isinstance(data, (int, float)):
+                old = cache.get(name, (None, 0))[0]
+                cache[name] = (int(data), time.monotonic())
+                if old != int(data) and ctx.window.current == "games" and getattr(ctx, "games_sub", None) == "duels":
+                    ctx.reload_page()
+        ctx.online.ask("rb_duel_limit", {"name": name}, done)
+    top = cache.get(name, (None, 0))[0]
+    return max(0, min(mine, top) if top is not None else mine)
+
 
 
 class DuelRow(QWidget):
@@ -18106,7 +18521,6 @@ def build_duels(page, lay) -> None:
     else:
         names = [f["name"] for f in friends][:6]
         pick = Segmented(names, min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1))
-        pick.changed.connect(lambda i: setattr(ctx, "duel_pick", i))
         lay.addWidget(pick)
         games = ["tap", "memory", "park"]
         g = Segmented([tr(DUEL_GAMES[k]) for k in games], int(getattr(ctx, "duel_game", 0) or 0))
@@ -18115,15 +18529,44 @@ def build_duels(page, lay) -> None:
         lv = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], int(getattr(ctx, "duel_tier", 1)))
         lv.changed.connect(lambda i: setattr(ctx, "duel_tier", i))
         lay.addWidget(lv)
-        bets = Segmented([tr("No bet") if b == 0 else coins_text(b) for b in DUEL_BETS], int(getattr(ctx, "duel_bet", 0) or 0))
-        bets.changed.connect(lambda i: setattr(ctx, "duel_bet", i))
-        lay.addWidget(bets)
+
+        def who() -> str:
+            return names[min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1)]
+        top_bet = duel_limit(ctx, who(), page)
+        mode = Segmented([tr("Bet"), tr("No bet")], 1 if getattr(ctx, "duel_nobet", False) or top_bet < 10 else 0)
+        lay.addWidget(mode)
+        amount = None
+        if top_bet >= 10:
+            start = max(10, min(top_bet, int(getattr(ctx, "duel_amount", 0) or 100)))
+            amount = SliderRow(tr("Bet"), 10, top_bet, start, 10, start, lambda v: coins_text(int(v)), label_w=60)
+            amount._val.setFixedWidth(S(78))
+            amount.changed.connect(lambda v: setattr(ctx, "duel_amount", int(v)))
+            amount.setVisible(mode.index() == 0)
+            lay.addWidget(amount)
+            lay.addWidget(Label(tr("Maximum {n} (80% of the lower balance).", n=coins_text(top_bet)),
+                                10, TEXT_DIM, wrap_w=page.W))
+        else:
+            lay.addWidget(Label(tr("Not enough coins for a bet."), 10, TEXT_DIM, wrap_w=page.W))
+
+        def on_mode(i: int) -> None:
+            if top_bet < 10:
+                return mode.set_index(1)
+            ctx.duel_nobet = i == 1
+            if amount is not None:
+                amount.setVisible(i == 0)
+
+        def on_pick(i: int) -> None:
+            ctx.duel_pick = i
+            ctx.reload_page()                       # the highest bet depends on the friend
+        mode.changed.connect(on_mode)
+        pick.changed.connect(on_pick)
         send = Button(tr("Send challenge"), "primary", 36, icon="shield")
 
         def ask() -> None:
-            name = names[min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1)]
+            name = who()
             game = games[int(getattr(ctx, "duel_game", 0) or 0)]
-            bet = DUEL_BETS[int(getattr(ctx, "duel_bet", 0) or 0)]
+            bet = 0 if amount is None or getattr(ctx, "duel_nobet", False) else int(amount.value())
+            bet = 0 if bet < 10 else bet - bet % 10
             if bet > ctx.econ.coins:
                 return ctx.toast(tr("Not enough coins"), "warn")
 
@@ -18136,8 +18579,7 @@ def build_duels(page, lay) -> None:
             ctx.econ.call("rb_duel_ask", {"name": name, "game": game, "tier": int(getattr(ctx, "duel_tier", 1)) + 1, "bet": bet}, done)
         send.clicked.connect(ask)
         lay.addWidget(send)
-        lay.addWidget(Label(tr("Both play the same level once. Best score wins both bets (5% fee); a draw gives them back. "
-                               "Beat Tap: more points wins. Memory and Parking: fewer flips or moves wins, then the faster."),
+        lay.addWidget(Label(tr("Same level for both players. Best score wins the pot (5% fee). A draw refunds both bets."),
                             10, TEXT_DIM, wrap_w=page.W))
     lay.addWidget(Label(tr("YOUR DUELS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
     duels = getattr(ctx, "duels_data", None)
@@ -18218,8 +18660,7 @@ class BigCard(QWidget):
 def build_minigames(page, lay) -> None:
     """Earn coins: the free mini games, each with what it pays."""
     page._back_bar(lay, tr("Earn coins"))
-    lay.addWidget(Label(tr("Free games that pay coins. Each one pays up to 150 coins every 2 hours; the better you "
-                           "play, the more you get."), 10.5, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Each game pays up to 150 coins every 2 hours."), 10.5, TEXT_DIM, wrap_w=page.W))
     games = [
         ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
          ("#FF5C8A", "#7A1FFF"), "12-50", lambda: page._show_mini(True)),
@@ -20259,8 +20700,7 @@ class GamesPage(Page):
         self.beat_btn = Button(tr("Start"), "primary", 38)
         self.beat_btn.clicked.connect(lambda: (self.beat_btn.setEnabled(False), self.beat.start()))
         lay.addWidget(self.beat_btn)
-        lay.addWidget(Label(tr("Four lanes, about 40 seconds, faster and faster. Hits in a row build a combo. 12 to 50 coins "
-                               "a round; after 6 rounds in 2 hours it pays less (150 every 2 hours at most)."), 10.5, TEXT_DIM,
+        lay.addWidget(Label(tr("12 to 50 coins a round. Up to 150 coins every 2 hours."), 10.5, TEXT_DIM,
                             wrap_w=self.W))
 
     # -- 2.4: sub-screens (Memory, duels, scratch card)
@@ -20294,8 +20734,7 @@ class GamesPage(Page):
         go = Button(tr("New game"), "primary", 36)
         go.clicked.connect(self.mem.start)
         lay.addWidget(go)
-        lay.addWidget(Label(tr("Turn two cards: same picture, they stay. Easy 16 cards 12-30, Medium 20 cards 18-40, "
-                               "Hard 24 cards 25-55 coins: fewer flips pay more. 150 every 2 hours at most."),
+        lay.addWidget(Label(tr("Find every pair. Fewer flips pay more. Up to 150 coins every 2 hours."),
                             10.5, TEXT_DIM, wrap_w=self.W))
         QTimer.singleShot(50, self.mem.start)
 
@@ -20303,9 +20742,7 @@ class GamesPage(Page):
         self._back_bar(lay, tr("Scratch card"))
         card = ScratchCard(self)
         lay.addWidget(card)
-        lay.addWidget(Label(tr("One card every 12 hours. Scratch it with the mouse: hard at first, then easier and easier. "
-                               "The colour shows how lucky you were: Common or Rare give coins, Epic 1 key, Legendary 2 keys, "
-                               "Mythic 2 500 coins."), 10.5, TEXT_DIM, wrap_w=self.W))
+        lay.addWidget(Label(tr("One card every 12 hours. Common and Rare: coins. Epic: 1 key. Legendary: 2 keys. Mythic: 2 500 coins."), 10.5, TEXT_DIM, wrap_w=self.W))
 
     def load_duels(self, quiet: bool = False) -> None:
         ctx = self.ctx
@@ -20373,7 +20810,7 @@ class GamesPage(Page):
             again.clicked.connect(w.restart)
             lay.addWidget(again)
             QTimer.singleShot(30, w.restart)
-        lay.addWidget(Label(tr("One try. Your score is sent when you finish; the winner is shown in Duels."), 10.5,
+        lay.addWidget(Label(tr("One try. The result appears in Duels."), 10.5,
                             TEXT_DIM, wrap_w=self.W))
 
     def _show_park(self, on: bool) -> None:
@@ -20404,8 +20841,7 @@ class GamesPage(Page):
         line.addWidget(again, 1)
         line.addWidget(new, 1)
         lay.addLayout(line)
-        lay.addWidget(Label(tr("Drag the cars along their lane to make way, then drive the red car out on the right. "
-                               "Easy 12-25, Medium 18-38, Hard 30-50 coins: fewer moves pay more. 150 every 2 hours at most."),
+        lay.addWidget(Label(tr("Move the cars to free the red car. Fewer moves pay more. Up to 150 coins every 2 hours."),
                             10.5, TEXT_DIM, wrap_w=self.W))
         QTimer.singleShot(50, self.park.new)
 
@@ -21063,7 +21499,7 @@ def build_messages(page, lay) -> None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     if not data:
         return lay.addWidget(Label(tr("Add friends to send them messages."), 11.5, TEXT_DIM, wrap_w=page.W))
-    lay.addWidget(Label(tr("Click a friend to chat. Mute stops pop-ups for that friend."), 10.5, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Select a friend to chat."), 10.5, TEXT_DIM, wrap_w=page.W))
     for t in data:
         lay.addWidget(ThreadRow(page, t))
 
@@ -21281,7 +21717,7 @@ def build_sets(page, lay) -> None:
     ctx = page.ctx
     if server_wait(ctx, lay, page.W):
         return
-    lay.addWidget(Label(tr("Complete a set to get a big bonus, once. You must still own the badges when you claim."),
+    lay.addWidget(Label(tr("Complete a set for a one-time bonus."),
                         10.5, TEXT_DIM, wrap_w=page.W))
     data = getattr(ctx, "sets_data", None)
 
@@ -21366,7 +21802,7 @@ class LoginWindow(FloatWindow):
         col.addWidget(Label(tr("Your flame grows a little every day in a row."), 10.5, TEXT_DIM, wrap_w=S(210)))
         head.addLayout(col, 1)
         lay.addLayout(head)
-        lay.addWidget(Label(tr("Come back every day: day 7 gives a free case. Miss a day and it starts again."),
+        lay.addWidget(Label(tr("Day 7 gives a free case. Missing a day resets the streak."),
                             11, TEXT_DIM, wrap_w=S(294)))
         rewards = list(state.get("rewards") or [])
         today = int(state.get("day") or 0)
@@ -21427,7 +21863,7 @@ def check_login_reward(ctx, force: bool = False) -> None:
 
 
 # ================================================================ settings backups
-BACKUP_SKIP = {"usage_s", "page", "seen_version", "scale_before_games", "autostart"}
+BACKUP_SKIP = {"usage_s", "page", "seen_version", "scale_before_games", "autostart", "offline_mode"}
 
 
 def backup_data(ctx) -> dict:
@@ -21501,8 +21937,7 @@ def restore_from_file(ctx) -> None:
 def backup_section(ctx, lay, width: int) -> None:
     """Settings tab: back up and restore."""
     lay.addWidget(Label(tr("BACKUP"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
-    lay.addWidget(Label(tr("Your coins, items and friends are always safe on the server. This saves your settings, "
-                           "theme, crosshair and layout too, so a new PC gets everything back."), 10.5, TEXT_DIM, wrap_w=width))
+    lay.addWidget(Label(tr("Saves your settings, theme, crosshair and layout to your account."), 10.5, TEXT_DIM, wrap_w=width))
     line = hbox(spacing=6)
     a = Button(tr("Back up now"), "primary", 30)
 
@@ -21560,6 +21995,30 @@ def history_add(title: str, artist: str, source: str = "") -> None:
         pass
 
 
+def song_time(at) -> str:
+    """When a song played: the time today, else the day and month. `at` is seconds or a server date."""
+    try:
+        if isinstance(at, str):
+            when = datetime.datetime.fromisoformat(at.replace("Z", "+00:00")).timestamp()
+        else:
+            when = float(at or 0)
+    except (TypeError, ValueError):
+        return ""
+    if not when:
+        return ""
+    lt = time.localtime(when)
+    return time.strftime("%H:%M" if lt[:3] == time.localtime()[:3] else "%d/%m", lt)
+
+
+def history_share(ctx, title: str, artist: str) -> None:
+    """Friends can see what you play (3.0.0): sent quietly, never in offline mode or when sharing is off."""
+    if not title or not ctx.cfg["share_songs"] or ctx.cfg["offline_mode"]:
+        return
+    if not ctx.online.logged_in() or ctx.online.offline:
+        return
+    ctx.online.ask("rb_song_add", {"title": title[:120], "artist": (artist or "")[:120]}, lambda ok, data: None)
+
+
 class HistoryRow(QWidget):
     def __init__(self, row: dict, width: int) -> None:
         super().__init__()
@@ -21595,7 +22054,7 @@ class HistoryRow(QWidget):
                    self.row.get("artist", ""))
         p.setPen(QColor("#3DDC84") if time.monotonic() - self.copied < 1.1 else QColor(TEXT_FAINT))
         p.setFont(font(9.5))
-        text = tr("Copied") if time.monotonic() - self.copied < 1.1 else time.strftime("%H:%M", time.localtime(int(self.row.get("at") or 0)))
+        text = tr("Copied") if time.monotonic() - self.copied < 1.1 else song_time(self.row.get("at"))
         p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
 
 
@@ -21605,16 +22064,28 @@ class HistoryWindow(FloatWindow):
         pass
         lay = vbox(self, 8, (16, 14, 16, 16))
         top = hbox(spacing=6)
-        top.addWidget(Label(tr("Song history"), 15, bold=True), 1)
+        top.addWidget(Label(tr("Song History"), 15, bold=True), 1)
         close = IconButton("close", 26, tip=tr("Close"))
         close.clicked.connect(self.close)
         top.addWidget(close)
         lay.addLayout(top)
         rows = history_load()
+        if ctx.online.logged_in():
+            share = Toggle(bool(ctx.cfg["share_songs"]))
+
+            def on_share(v: bool) -> None:
+                ctx.cfg["share_songs"] = v
+                if not ctx.cfg["offline_mode"]:
+                    ctx.online.ask("rb_song_share", {"share": v}, lambda ok, data: None)
+            share.toggled_by_user.connect(on_share)
+            line = hbox(spacing=6)
+            line.addWidget(Label(tr("Visible to friends"), 11.5), 1)
+            line.addWidget(share)
+            lay.addLayout(line)
         if not rows:
             lay.addWidget(Label(tr("Songs you play show up here."), 11, TEXT_DIM))
         else:
-            lay.addWidget(Label(tr("The last {n} songs. Click one to copy its name.", n=len(rows)), 10.5, TEXT_DIM, wrap_w=S(298)))
+            lay.addWidget(Label(tr("Last {n} songs. Click one to copy it.", n=len(rows)), 10.5, TEXT_DIM, wrap_w=S(298)))
             inner = QWidget()
             col = vbox(inner, 4)
             for r in rows:
@@ -22560,12 +23031,14 @@ class StatsCard(QWidget):
         p.drawRoundedRect(r, S(12), S(12))
         d, st = self.data, self.data.get("stats") or {}
         name = d.get("username") or self.ctx.online.username()
-        banner = self.ctx.econ.look_of(name).get("banner")
+        look = self.ctx.econ.look_of(name)
+        banner = look.get("banner")
         if banner:                                         # your banner behind the top of the card
             pass
             p.save()
             p.setOpacity(0.55)
-            paint_banner(p, QRectF(r.left(), r.top(), r.width(), S(66)), banner, time.monotonic(), S(12))
+            paint_banner(p, QRectF(r.left(), r.top(), r.width(), S(66)), banner, time.monotonic(), S(12), 1.0,
+                         int(look.get("gold") or 0))
             p.restore()
         paint_face(p, self._face(), self.ctx, name, int(d.get("avatar_v") or self.ctx.econ.avatar_v or 0))
         p.setPen(QColor(TEXT))
@@ -22576,7 +23049,7 @@ class StatsCard(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(S(76), S(38), r.width() - S(90), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("{h} played · member since {d}", h=played_text(int(d.get("minutes") or 0)), d=date_text(d.get("since"))))
+                   tr("{h} Played · Member Since {d}", h=played_text(int(d.get("minutes") or 0)), d=date_text(d.get("since"))))
         bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
         cells = [(coins_text(int(d.get("coins") or 0)), tr("Coins")), (str(int(d.get("keys") or 0)), tr("Keys")),
                  (str(int(st.get("items") or 0)), tr("Items")), (str(int(st.get("badges") or 0)), tr("Badges")),
@@ -22605,7 +23078,7 @@ class TradeAsk(QWidget):
         self.setFixedHeight(S(44))
         lay = hbox(self, 6, (12, 0, 6, 0))
         lay.addWidget(Label(tr("{name} wants to trade", name=ask.get("from", "?")), 12, TRADE_GOLD, bold=True), 1)
-        yes, no = Button(tr("Open trade"), "primary", 28), Button(tr("Decline"), "ghost", 28)
+        yes, no = Button(tr("Open Trade"), "primary", 28), Button(tr("Decline"), "ghost", 28)
         yes.clicked.connect(lambda: page.accept_trade(ask["id"]))
         no.clicked.connect(lambda: page.ctx.econ.call("rb_trade_cancel", {"trade": ask["id"]},
                                                       lambda _o, _d: page.ctx.econ.poll_live()))
@@ -22687,16 +23160,20 @@ class FriendsPage(Page):
         card.picture.connect(self._picture)
         self.lay.addWidget(card)
         line = hbox(spacing=6)
-        rename = Button(tr("Change name"), "ghost", 28)
+        rename = Button(tr("Change Name"), "ghost", 28)
         rename.clicked.connect(self._rename)
-        again = Button(tr("Refresh"), "ghost", 28, icon="refresh")
-        again.clicked.connect(self._refresh_all)
+        songs = Button(tr("Song History"), "ghost", 28, icon="note")
+
+        def open_songs() -> None:
+            pass
+            ctx._hist = HistoryWindow(ctx)
+        songs.clicked.connect(open_songs)
         line.addWidget(rename, 1)
-        line.addWidget(again, 1)
+        line.addWidget(songs, 1)
         self.lay.addLayout(line)
         live = ctx.econ.live
         if live.get("open_trade") and not ctx.trade.trade_id:
-            b = Button(tr("Back to your trade"), "primary", 32)
+            b = Button(tr("Back to Your Trade"), "primary", 32)
             b.clicked.connect(lambda: self.open_trade(live["open_trade"]))
             self.lay.addWidget(b)
         for ask in live.get("trades") or []:
@@ -22761,6 +23238,9 @@ class FriendsPage(Page):
         if not ctx.online.logged_in() or ctx.trade.trade_id:
             return
         if getattr(ctx, "friends_profile", None):
+            cur = getattr(ctx, "friends_data", None) or {}
+            if (cur.get("profile") or {}).get("stats") is not None:
+                self._ask_songs(ctx.friends_profile)
             return ctx.online.ask("rb_profile", {"name": ctx.friends_profile}, self._got_profile_again)
         ctx.online.ask("rb_social", {}, self._got_me)
         tab = int(getattr(ctx, "social_tab", 0) or 0)
@@ -22800,14 +23280,6 @@ class FriendsPage(Page):
             self.refresh()
             self.ctx.online.ask("rb_users", {"search": "", "page": 0}, self._got_users)
         self.ctx.econ.call(fn, {"name": name}, done)
-
-    def _refresh_all(self) -> None:
-        sfx.play("pick")
-        self.ctx.econ.refresh()
-        self.ctx.econ.poll_live()
-        self.ctx.online._tick()
-        self.refresh()
-        self.ctx.toast(tr("Refreshed"))
 
     def _picture(self) -> None:
         path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")
@@ -22855,7 +23327,7 @@ class FriendsPage(Page):
             dlg.close()
             self.ctx.window.confirm(tr("Change your name to {name}? You can only do it once every 24 hours. "
                                        "Log in with your new name from now on.", name=name), go, yes=tr("Change"))
-        self._dialog = AskDialog(self.ctx, tr("Change name"), tr("New username"), tr("Next"), send, 10,
+        self._dialog = AskDialog(self.ctx, tr("Change Name"), tr("New username"), tr("Next"), send, 10,
                                  tr("Once every 24 hours. Friends, items and hours stay the same."))
 
     # -- trades
@@ -22898,9 +23370,6 @@ class FriendsPage(Page):
         back.clicked.connect(lambda: self.open_profile(None))
         top.addWidget(back)
         top.addWidget(Label(name, 16, bold=True), 1)
-        again = IconButton("refresh", 30, tip=tr("Refresh"))
-        again.clicked.connect(lambda: (setattr(ctx, "friends_data", None), ctx.reload_page()))
-        top.addWidget(again)
         self.lay.addLayout(top)
         if data is None:
             self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -22922,10 +23391,19 @@ class FriendsPage(Page):
         if prof.get("stats") is None:
             return
         self._details(prof)
+        songs = data.get("songs")
+        if songs is not None and (songs.get("rows") or not songs.get("shared", True)):
+            self.lay.addWidget(heading(tr("Recently Played")))
+            if not songs.get("shared", True):
+                self.lay.addWidget(Label(tr("Hidden by this user"), 11, TEXT_FAINT))
+            else:
+                pass
+                for row in (songs.get("rows") or [])[:10]:
+                    self.lay.addWidget(HistoryRow(row, self.W))
         if hist is None:
             return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        for key, title in (("trades", tr("Last 3 trades")), ("cases", tr("Last 3 cases")), ("spins", tr("Last 3 spins")),
-                           ("bets", tr("Last 30 bets"))):
+        for key, title in (("trades", tr("Last 3 Trades")), ("cases", tr("Last 3 Cases")), ("spins", tr("Last 3 Spins")),
+                           ("bets", tr("Last 30 Bets"))):
             rows = hist.get(key) or []
             self.lay.addWidget(heading(title))
             if not rows:
@@ -22944,7 +23422,7 @@ class FriendsPage(Page):
         state = prof.get("state")
         if prof.get("friend"):
             self.lay.addWidget(Label("✓ " + tr("You are friends"), 12, "#3DDC84", bold=True))
-            acts = [(tr("Message"), "users"), (tr("Duel"), "shield"), (tr("Trade"), "chip"), (tr("Gift a case"), "gift")]
+            acts = [(tr("Message"), "users"), (tr("Duel"), "shield"), (tr("Trade"), "chip"), (tr("Gift a Case"), "gift")]
             grid = NavTiles(acts, -1, select=False)
 
             def act(i: int) -> None:
@@ -22961,7 +23439,7 @@ class FriendsPage(Page):
                     ctx.window.goto("themes")
             grid.changed.connect(act)
             self.lay.addWidget(grid)
-            rm = Button(tr("Remove friend"), "quiet", 24)
+            rm = Button(tr("Remove Friend"), "quiet", 24)
             rm.clicked.connect(lambda: ctx.window.confirm(tr("Remove {name} from your friends?", name=name),
                                lambda: self.act("rb_friend_remove", name, lambda _ok: self.open_profile(None)), yes=tr("Remove")))
             self.lay.addWidget(rm, 0, Qt.AlignmentFlag.AlignRight)
@@ -22977,17 +23455,17 @@ class FriendsPage(Page):
         for icon, head, text in self.PERKS:
             cl.addWidget(PerkRow(icon, tr(head), tr(text), self.W - S(24)))
         if state == "asks":
-            b = Button(tr("Accept friend"), "primary", 34)
+            b = Button(tr("Accept Friend"), "primary", 34)
             b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
             cl.addWidget(b)
         elif state == "asked":
             cl.addWidget(Label(tr("Waiting for them to accept."), 11, TEXT_DIM))
         else:
-            b = Button(tr("Add friend"), "primary", 34, icon="plus")
+            b = Button(tr("Add Friend"), "primary", 34, icon="plus")
             b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
             cl.addWidget(b)
         self.lay.addWidget(card)
-        trade = Button(tr("Trade without being friends"), "ghost", 28)
+        trade = Button(tr("Trade Without Being Friends"), "ghost", 28)
         trade.setToolTip(tr("Both users need 5 hours with Rubenium"))
         trade.clicked.connect(lambda: self.ask_trade(name))
         self.lay.addWidget(trade)
@@ -23002,17 +23480,17 @@ class FriendsPage(Page):
         seen = tr("Online") if prof.get("online") else (ago_text(prof.get("seen")) or "—")
         self.lay.addWidget(heading(tr("Stats")))
         self.lay.addWidget(Numbers([
-            (played_text(int(prof.get("minutes") or 0)), tr("Played")), (seen, tr("Last seen")),
+            (played_text(int(prof.get("minutes") or 0)), tr("Played")), (seen, tr("Last Seen")),
             (int(st.get("friends") or 0), tr("Friends")),
-            (int(st.get("items") or 0), tr("Items")), (coins_text(int(st.get("worth") or 0)), tr("Collection worth")),
+            (int(st.get("items") or 0), tr("Items")), (coins_text(int(st.get("worth") or 0)), tr("Collection Worth")),
             (int(st.get("badges") or 0), tr("Badges")),
-            (int(st.get("gold") or 0), tr("Gold badges"), "#E8C26A"), (int(st.get("cases") or 0), tr("Cases opened")),
+            (int(st.get("gold") or 0), tr("Gold Badges"), "#E8C26A"), (int(st.get("cases") or 0), tr("Cases Opened")),
             (int(st.get("trades") or 0), tr("Trades")),
-            (int(st.get("rounds") or 0), tr("Casino bets")), (coins_text(int(st.get("best") or 0)), tr("Best win")),
-            (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino result"),
+            (int(st.get("rounds") or 0), tr("Casino Bets")), (coins_text(int(st.get("best") or 0)), tr("Best Win")),
+            (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino Result"),
              "#5BE08A" if won >= bet else "#FF7A7A"),
             (int(st.get("mini") or 0), tr("Beat Tap")), (int(st.get("park") or 0), tr("Parking")),
-            (int(st.get("spins") or 0), tr("Free spins"))], self.W))
+            (int(st.get("spins") or 0), tr("Free Spins"))], self.W))
         eq = prof.get("equip") or {}
         wearing = [eq.get(k) for k in ("ball", "ring", "theme", "font")]
         wearing = [w for w in wearing if w and w.split(":")[0] in ("ball", "line", "theme", "font")]
@@ -23033,6 +23511,18 @@ class FriendsPage(Page):
         self._redo()
         if data.get("stats") is not None:
             self.ctx.online.ask("rb_history", {"name": name}, self._got_history)
+            self._ask_songs(name)
+
+    def _ask_songs(self, name: str) -> None:
+        """The songs a friend played lately (3.0.0 server; nothing is shown on an older one)."""
+        def got(ok: bool, data) -> None:
+            cur = getattr(self.ctx, "friends_data", None)
+            if cur is None or getattr(self.ctx, "friends_profile", None) != name or not ok or not isinstance(data, dict):
+                return
+            if data != cur.get("songs"):
+                cur["songs"] = data
+                self._redo()
+        self.ctx.online.ask("rb_songs", {"name": name}, got)
 
     def _got_profile_again(self, ok: bool, data) -> None:
         cur = getattr(self.ctx, "friends_data", None)
@@ -23092,7 +23582,9 @@ class ProfileCard(QWidget):
         p.drawRoundedRect(r, S(12), S(12))
         top = QRectF(r.left(), r.top(), r.width(), S(70))
         if eq.get("banner"):
-            paint_banner(p, top, eq["banner"], now, S(12))
+            look = self.ctx.econ.look_of(name)
+            gold = int(look.get("gold") or 0) if look.get("banner") == eq["banner"] else 0
+            paint_banner(p, top, eq["banner"], now, S(12), 1.0, gold)
         else:                                               # no banner: a soft band in their own colour
             hue = (sum(ord(c) for c in name.lower()) * 37 % 360) / 360
             g = QLinearGradient(top.topLeft(), top.bottomRight())
@@ -23119,7 +23611,7 @@ class ProfileCard(QWidget):
             pass
             paint_tag(p, nx, top.bottom() - S(17), eq["tag"], now, 9)
         cells = ((tr("Online") if prof.get("online") else (tr("Offline") if known else "—"), tr("Status")),
-                 (played_text(int(prof.get("minutes", 0))), tr("Played")), (date_text(prof.get("since")), tr("Member since")))
+                 (played_text(int(prof.get("minutes", 0))), tr("Played")), (date_text(prof.get("since")), tr("Member Since")))
         left = face.right() + S(6)
         w = (r.right() - left - S(6)) / 3
         for i, (big, small) in enumerate(cells):
@@ -23225,7 +23717,7 @@ class HistoryList(QWidget):
                 right = (f"−{coins_text(gave)} " if gave else "") + (f"+{coins_text(got)}" if got else "")
             elif self.kind == "cases":
                 game = str(row.get("game", ""))
-                name = tr(CASE_NAMES.get(game.split(":")[-1], "Case")) if game != "daily" else tr("Daily case")
+                name = tr(CASE_NAMES.get(game.split(":")[-1], "Case")) if game != "daily" else tr("Daily Case")
                 p.drawText(r.adjusted(S(8), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
                 if row.get("item"):
                     show_item(p, row["item"], QRectF(r.right() - S(30), r.top() + S(5), S(20), S(20)), 0, effects=False)
@@ -26845,7 +27337,7 @@ class LockCover(QWidget):
     def set_mode(self, mode: str, on_button=None) -> None:
         self.mode, self.on_button = mode, on_button
         self.button.setVisible(on_button is not None)
-        self.button.set_text(tr("Update now") if mode == "update" else tr("Try again"))
+        self.button.set_text(tr("Update now") if mode == "update" else tr("Go online") if mode == "offmode" else tr("Try again"))
         self.update()
 
     def resizeEvent(self, _e) -> None:
@@ -26886,15 +27378,14 @@ class LockCover(QWidget):
         p.save()
         p.translate(c)
         p.scale(S(64) / 20, S(64) / 20)
-        draw_icon(p, {"update": "refresh", "offline": "power"}.get(self.mode, "lock"), QColor("#FFFFFF"))
+        draw_icon(p, {"update": "refresh", "offline": "power", "offmode": "power"}.get(self.mode, "lock"), QColor("#FFFFFF"))
         p.restore()
         title, text = {
-            "update": (tr("Update needed"), tr("A new Rubenium is out. Update to keep playing games, opening cases, "
-                                              "trading and using the market. The music works as usual.")),
-            "offline": (tr("You are offline"), tr("No internet right now. The music, lyrics you already saw, the "
-                                                 "crosshair and the tools still work. Rubenium reconnects by itself.")),
-        }.get(self.mode, (tr("Locked for now"), tr("The admin is working on Rubenium. Games, cases, trades and the "
-                                                    "market come back soon. Your time still counts.")))
+            "update": (tr("Update needed"), tr("A new version is available. Update to use online features.")),
+            "offline": (tr("You are offline"), tr("No internet connection. Music, saved lyrics and tools still work. "
+                                                 "Rubenium reconnects automatically.")),
+            "offmode": (tr("Offline mode"), tr("Online features are paused. Music, saved lyrics and tools still work.")),
+        }.get(self.mode, (tr("Temporarily locked"), tr("Online features are under maintenance. Your time still counts.")))
         p.setPen(QColor(TEXT))
         p.setFont(font(15, QFont.Weight.Bold))
         p.drawText(QRectF(r.left(), c.y() + S(42), r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter), title)
@@ -27063,7 +27554,7 @@ class Body(QWidget):
             QTimer.singleShot(self.HOLD_MS, lambda at=self._press: self._arm(at))
 
     def _arm(self, at: QPoint) -> None:
-        if self._press is None or self._press is not at or win.mouse_captured():
+        if self._press is None or self._press is not at:
             return
         if not (QGuiApplication.mouseButtons() & Qt.MouseButton.LeftButton):
             self._press = None                  # the button was let go somewhere else
@@ -27374,6 +27865,9 @@ class MainWindow(QWidget):
         # mouse at all. Moving, aiming or clicking near it goes to the game. Right Shift still opens the menu.
         if not captured and self.ctx.cfg["game_mouse"] and not self.expanded:
             captured = win.fullscreen_in_front()
+        if captured and self.ball._press_pos is not None and self._press_held():
+            captured = False                    # the button is still held on the ball: a game seeing the same
+            #                                     click (Rocket League menus do) must not cancel the opening
         if captured:
             self.ball.cancel_press()            # a press that began just before the game took the mouse
         through = captured and self.ball._press_pos is None and self._drag_origin is None
@@ -27383,6 +27877,14 @@ class MainWindow(QWidget):
                 if hwnd:
                     win.set_click_through(hwnd, through)
         self._through = through
+
+    def _press_held(self) -> bool:
+        """The left button is still down and the pointer is still on the ball."""
+        down = win.key_down(0x01) if win.IS_WIN else bool(QGuiApplication.mouseButtons() & Qt.MouseButton.LeftButton)
+        if not down:
+            return False
+        m = S(14)
+        return self.ball.rect_global().adjusted(-m, -m, m, m).contains(QCursor.pos())
 
     def _unload_stats(self) -> None:
         """The Stats tab measures the PC while it is open; once you leave it, it is removed completely."""
@@ -27409,13 +27911,15 @@ class MainWindow(QWidget):
         pass
         cover = self.body.cover
         ctx = self.ctx
-        mode = ("locked" if ctx.econ.live.get("locked") else
+        mode = ("offmode" if ctx.cfg["offline_mode"] and ctx.online.logged_in() else
+                "locked" if ctx.econ.live.get("locked") else
                 "update" if getattr(ctx, "outdated", False) else
                 "offline" if ctx.online.logged_in() and ctx.online.offline else "")
         on = bool(mode) and self.expanded and self.current in LOCK_PAGES
         if on and mode != cover.mode:
             cover.set_mode(mode, ctx.install_update if mode == "update" and ctx.updater.latest else
-                           (ctx.online.probe if mode == "offline" else None))
+                           (ctx.online.probe if mode == "offline" else
+                            (lambda: ctx.set_offline_mode(False)) if mode == "offmode" else None))
         if on:
             cover.setGeometry(self.body.host.rect())
             cover.resizeEvent(None)
@@ -28270,6 +28774,12 @@ class App(QObject):
         self._safe("online swaps", lambda: extras.fetch_online_swaps(self))
         self._safe("splash", self.splash.start)
         self._safe("coins", self.wallet.start)
+        if self.cfg["offline_mode"]:               # offline mode survives a restart, but only when logged in
+            if self.online.logged_in():
+                Net.blocked = True
+                self.online.offline = True
+            else:
+                self.cfg["offline_mode"] = False
         if "--selftest" not in sys.argv:
             self._safe("account", self.online.start)
             self._safe("economy", self.econ.start)
@@ -28449,6 +28959,7 @@ class App(QObject):
             if st.has_track and st.title:
                 pass
                 history_add(st.title, st.artist, st.source_id or "")
+                history_share(self, st.title, st.artist)
             self.art_pixmap = None
             self.window.on_art(None)
             self.refresh_accent()
@@ -28980,6 +29491,56 @@ class App(QObject):
 
     # updates: found -> ask once (on the card), install -> verify -> restart
     # ------------------------------------------------------------------ 2.4
+    def _game_running(self) -> bool:
+        """A casino round or a mini game is being played on the open page."""
+        page = self.window.page() if self.window.expanded else None
+        if page is None:
+            return False
+        from PyQt6.QtWidgets import QWidget
+        return any(getattr(w, "busy", False) is True for w in page.findChildren(QWidget))
+
+    def set_offline_mode(self, on: bool) -> bool:
+        """Offline mode: Rubenium makes no internet request. It cannot be used to dodge anything: it can only be
+        switched on between games, cases and trades, at most once a minute, and the time spent offline earns
+        nothing (the server only counts minutes it hears about). Returns False when the switch was refused."""
+        on = bool(on)
+        if on == bool(self.cfg["offline_mode"]):
+            return True
+        now = time.monotonic()
+        if on:
+            if not self.online.logged_in():
+                self.toast(tr("Log in first"), "warn")
+                return False
+            busy = (self.econ.holding or bool(self.trade.trade_id)
+                    or getattr(self, "games_sub", None) == "duel_run" or self._game_running())
+            if busy:
+                self.toast(tr("Finish what you are doing first"), "warn")
+                return False
+            wait = 60 - (now - getattr(self, "_offline_switched", -1e9))
+            if wait > 0:
+                self.toast(tr("Wait {s} s", s=int(wait) + 1), "warn")
+                return False
+        self._offline_switched = now
+        self.cfg["offline_mode"] = on
+        Net.blocked = on
+        if on:
+            self.online._set_offline(True)
+            self.toast(tr("Offline mode on"))
+        else:
+            self.online.offline = False
+            self.online.changed.emit()
+            self.online.ask("rb_song_share", {"share": bool(self.cfg["share_songs"])}, lambda ok, d: None)
+            self.online._tick()
+            self.econ.refresh()
+            self.econ.poll_live()
+            self.econ.fetch_looks(force=True)
+            self.toast(tr("Back online"))
+        sfx.play("on" if not on else "off")
+        self.window.sync_lock()
+        if self.window.expanded:
+            self.reload_page()
+        return True
+
     def _tap_key(self) -> None:
         if self.window.expanded:
             self.window.collapse()

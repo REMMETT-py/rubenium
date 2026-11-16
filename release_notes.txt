@@ -1,3 +1,21 @@
+Rubenium 3.0.0 - final release
+
+NEW
+- Duels: choose your bet with a slider, from 10 coins up to 80% of the lower balance of the two players
+- Song History is now in the Social tab, and friends can see what you played (switch "Visible to friends" off to hide it)
+- Offline mode in Settings > Account: disconnects Rubenium from the internet until you go back online
+- 10 new banners: Carbon, Dunes, Honeycomb, Comet, Deep Sea, City Nights, Neon, Fireflies, Storm, Vortex
+- Gold banners: a banner turns Gold I, II and III the longer you wear it; rarer banners need more hours
+
+CHANGES
+- Balls and banners re-ranked: the animated designs are now the rarer ones
+- The Social tab refreshes by itself every 10 seconds (no more Refresh button)
+- Profiles use capitals: Played, Member Since, Last Seen...
+- Shorter, cleaner texts everywhere, including cases
+
+FIXES
+- Holding the ball over a game menu (Rocket League) could stop the menu from opening
+
 Rubenium 3.0 - the full release
 
 CASES
