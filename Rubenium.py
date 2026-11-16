@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.4 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 2.4.1 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1384,6 +1384,16 @@ def mouse_captured() -> bool:
         return False
 
 
+def fullscreen_in_front() -> bool:
+    """A fullscreen or borderless window (a game) is in front of everything (not Rubenium, not the desktop)."""
+    if not IS_WIN:
+        return False
+    try:
+        return _foreground_game() is not None
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def set_click_through(hwnd: int, on: bool) -> None:
     """Let mouse clicks go through a (layered) window to whatever is under it, or stop doing so."""
     if not IS_WIN or not hwnd:
@@ -1472,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.4"         # the version people see
-BUILD = "2026.11.17.1"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.4.1"         # the version people see
+BUILD = "2026.11.17.2"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1713,7 +1723,10 @@ DEFAULTS: dict = {
     "notify_sound": True,
     "notify_volume": 20,
     "font_item": "",
-    "visualiser": "bars",
+    "visualiser": "off",
+    "vis_style": "bars",
+    "vis_migrated": False,
+    "game_mouse": True,
     "badge_size": 100,
     "badge_pos": "above",
     "hotkey": "rshift",
@@ -2004,6 +2017,8 @@ def explain(err: ApiError) -> str:
     text = (err.key or "").lower()
     if text == "offline":
         return "No internet connection"
+    if "pgrst202" in text or "could not find the function" in text or ("function" in text and "does not exist" in text):
+        return "Coming very soon: the server is being updated"
     if "rb_no_such_user" in text:
         return "No player with this name"
     if "rb_thats_you" in text:
@@ -2418,7 +2433,15 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_not_friends": "Friends only", "rb_duel_gone": "This duel is over", "rb_already_played": "You already played this duel",
           "rb_too_many": "Too many at once: wait a little", "rb_slow_down": "Slow down a little",
           "rb_already_undone": "Already undone", "rb_cant_undo": "This cannot be undone",
-          "rb_weak_password": "8 characters at least", "rb_too_big": "Too big"}
+          "rb_weak_password": "8 characters at least", "rb_too_big": "Too big",
+          "rb_server_old": "Coming very soon: the server is being updated"}
+
+
+def server_missing(data) -> bool:
+    """The server does not have this yet (its update was not run): not a real error."""
+    text = str(data).lower()
+    return ("pgrst202" in text or "could not find the function" in text or "rb_server_old" in text
+            or "server is being updated" in text or ("function" in text and "does not exist" in text))
 
 
 class Econ(QObject):
@@ -2441,6 +2464,7 @@ class Econ(QObject):
         self.avatar_v = 0
         self.stock: dict = {}                    # case id -> gifted cases waiting
         self.scratch_in = 0                      # seconds until the next scratch card
+        self.server_old = False                  # the server has not had the 2.4 update yet
         self.streak, self.streak_day = 0, None
         self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
         self._live_sig = ""
@@ -2548,7 +2572,13 @@ class Econ(QObject):
 
             def hello(ok: bool, data) -> None:
                 if not ok:                                   # a server without 2.4: the old hello
+                    if server_missing(data):
+                        self.server_old = True
+                        self.changed.emit()
                     return self.online.ask("rb_hello", {"pc": pc_id()}, lambda _ok, _d: None)
+                if self.server_old:
+                    self.server_old = False
+                    self.changed.emit()
                 if isinstance(data, dict) and hasattr(self.ctx, "set_outdated"):
                     self.ctx.set_outdated(bool(data.get("update")))
             self.online.ask("rb_hello2", {"pc": pc_id(), "build": build_number()}, hello)
@@ -2683,6 +2713,9 @@ class Econ(QObject):
         def back(ok: bool, data) -> None:
             if ok and not hold:                 # hold: the game shows the result first, then the coins
                 self.absorb(data)
+            if not ok and server_missing(data):  # the app is newer than the server: say it once, calmly
+                self.server_old = True
+                data = "rb_server_old"
             if not ok:
                 data = ERRORS.get(next((k for k in ERRORS if k in str(data)), ""),
                                   "No internet connection" if data == "offline" else "Something went wrong: try again")
@@ -2919,7 +2952,7 @@ FR = {
     "Beams": "Faisceaux", "Aurora": "Aurore", "Prism": "Prisme", "Legend": "Légende",
     "Reset colours": "Réinitialiser les couleurs",
     # 1.6
-    "Mute": "Couper le son", "Unmute": "Remettre le son", "Music volume": "Volume de la musique",
+    "Mute": "Muet", "Unmute": "Réactiver", "Music volume": "Volume de la musique",
     "Quick start": "Modèles", "Style": "Style", "Circle size": "Taille du cercle", "Left / right": "Gauche / droite",
     "Up / down": "Haut / bas",
     "Slot {n} is empty": "L'emplacement {n} est vide", "Hide menu bar when idle": "Masquer la barre au repos",
@@ -4133,6 +4166,63 @@ FR = {
     'Badges cost what they are really worth; Titanium, Gold and Mythic only come from cases': 'Les badges coûtent leur vraie valeur ; Titane, Or et Mythique viennent seulement des caisses',
     'Visualiser, badge size and place, better lyrics, song history and Right Shift to show or hide': 'Visualiseur, taille et place des badges, meilleures paroles, historique des titres et Maj droite pour afficher ou cacher',
     'Backups, offline mode, password help from the admin, a tour and nicer case openings': "Sauvegardes, mode hors ligne, aide mot de passe par l'admin, une visite guidée et des ouvertures de caisses plus belles",
+    # 2.4.1
+    '1 day': '1 jour',
+    'Black & white': 'Noir et blanc',
+    'Buy this visualiser for {n} coins?': 'Acheter ce visualiseur pour {n} pièces ?',
+    'Claim!': 'Récupérer !',
+    'Coins for {name}': 'Pièces pour {name}',
+    'Coming very soon': 'Très bientôt',
+    'Coming very soon: the server is being updated': 'Très bientôt : le serveur est en cours de mise à jour',
+    'Cool': 'Froid',
+    'DAILY REWARD': 'RÉCOMPENSE DU JOUR',
+    'Done for today': "Fait pour aujourd'hui",
+    'Done: {n} coins': 'Fait : {n} pièces',
+    'Done: {n} keys': 'Fait : {n} clés',
+    'Drag to move it, scroll to zoom.': 'Fais glisser pour déplacer, molette pour zoomer.',
+    'Dream': 'Rêve',
+    'Everyone can see it. Keep it friendly.': 'Tout le monde la voit. Reste sympa.',
+    'Filter': 'Filtre',
+    'Fire': 'Feu',
+    'Free': 'Gratuit',
+    'Game mode: the mouse goes through Rubenium in fullscreen games': 'Mode jeu : la souris traverse Rubenium dans les jeux en plein écran',
+    'Gifts open for free once the server update is done. Until then they need 1 key.': "Les cadeaux s'ouvrent gratuitement une fois la mise à jour du serveur faite. En attendant, il faut 1 clé.",
+    'Give a case to {name}': 'Donner une caisse à {name}',
+    'Give case': 'Donner caisse',
+    'Give item': 'Donner objet',
+    'Given: it opens for free': "Donné : elle s'ouvre gratuitement",
+    'Keys for {name}': 'Clés pour {name}',
+    'More visualisers in Shop → Shop → Visualisers.': 'Plus de visualiseurs dans Boutique → Boutique → Visualiseurs.',
+    'Nothing to undo for {name}': 'Rien à annuler pour {name}',
+    'Open your gift for free ({n} left)': 'Ouvrir ton cadeau gratuitement ({n} restants)',
+    'Or type an amount (minus to take):': 'Ou tape un montant (moins pour retirer) :',
+    'Owned: click to use': 'Possédé : clique pour utiliser',
+    'Picture': 'Photo',
+    'Preview': 'Aperçu',
+    "Remove {name}'s picture?": 'Supprimer la photo de {name} ?',
+    'This part is new. It opens by itself as soon as the Rubenium server gets its update.': "Cette partie est nouvelle. Elle s'ouvre toute seule dès que le serveur Rubenium reçoit sa mise à jour.",
+    'Turn': 'Tourner',
+    'Undo last': 'Annuler dernier',
+    'Use this picture': 'Utiliser cette photo',
+    'Visualiser on the music tab': "Visualiseur sur l'onglet musique",
+    'Visualiser on: you see it on the music tab': "Visualiseur activé : tu le vois sur l'onglet musique",
+    'Visualisers': 'Visualiseurs',
+    'Visualisers move with your music on the music tab. The rarer, the cooler. Turn them on or off in Settings.': "Les visualiseurs bougent avec ta musique sur l'onglet musique. Plus c'est rare, plus c'est beau. Active-les ou coupe-les dans les Réglages.",
+    'Vivid': 'Vif',
+    'Warm': 'Chaud',
+    'Which case: ': 'Quelle caisse : ',
+    'Your daily reward is ready: open Rubenium to claim it': 'Ta récompense du jour est prête : ouvre Rubenium pour la récupérer',
+    'Your flame grows a little every day in a row.': "Ta flamme grandit un peu chaque jour d'affilée.",
+    'Your picture': 'Ta photo',
+    'Zoom': 'Zoom',
+    'Gifted cases open for free (after the server update)': "Les caisses offertes s'ouvrent gratuitement (après la mise à jour du serveur)",
+    'Everything opens inside the menu: no more extra windows over your games': "Tout s'ouvre dans le menu : plus de fenêtres en plus par-dessus tes jeux",
+    'Game mode: in fullscreen games the mouse goes through Rubenium; tap Right Shift to open it': "Mode jeu : dans les jeux en plein écran la souris traverse Rubenium ; Maj droite pour l'ouvrir",
+    'The daily reward has a flame that grows every day, and waits until you open the menu': 'La récompense du jour a une flamme qui grandit chaque jour, et attend que tu ouvres le menu',
+    'Visualisers are now shop items (the rarer, the cooler) and start turned off': "Les visualiseurs sont dans la boutique (plus c'est rare, plus c'est beau) et sont coupés au départ",
+    'Profile picture editor: move, zoom, turn, mirror and filters': 'Éditeur de photo de profil : déplacer, zoomer, tourner, miroir et filtres',
+    'Big clear buttons in the shop and the admin panel': 'De grands boutons clairs dans la boutique et le panneau admin',
+    'No more error messages while the server update is waiting': "Plus de messages d'erreur en attendant la mise à jour du serveur",
 }
 
 
@@ -5537,6 +5627,32 @@ class KeyChip(QWidget):
         p.setPen(QColor(TEXT))
         p.setFont(self._font)
         p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), self._text)
+
+
+def present(widget, ctx, keys: bool = False) -> bool:
+    """Show a small screen inside the open menu (never a separate window over a game). False when the menu is
+    closed (the start screen, say): the caller then shows it as a small window."""
+    win_ = getattr(ctx, "window", None)
+    if win_ is None or not getattr(win_, "expanded", False) or not hasattr(win_, "embed"):
+        return False
+    widget._embedded = True
+    widget.setWindowFlags(Qt.WindowType.Widget)
+    widget.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
+    win_.embed(widget, keys)
+    return True
+
+
+def close_embedded(widget) -> bool:
+    """close() of a small screen shown inside the menu. True when it was."""
+    if not getattr(widget, "_embedded", False):
+        return False
+    widget._embedded = False
+    end = getattr(widget, "on_closed", None)
+    if end:
+        end()
+    widget.ctx.window.unembed(widget)
+    widget.deleteLater()
+    return True
 
 
 # ==================================================================================================
@@ -7575,6 +7691,14 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.4.1", ['Gifted cases open for free (after the server update)',
+             'Everything opens inside the menu: no more extra windows over your games',
+             'Game mode: in fullscreen games the mouse goes through Rubenium; tap Right Shift to open it',
+             'The daily reward has a flame that grows every day, and waits until you open the menu',
+             'Visualisers are now shop items (the rarer, the cooler) and start turned off',
+             'Profile picture editor: move, zoom, turn, mirror and filters',
+             'Big clear buttons in the shop and the admin panel',
+             'No more error messages while the server update is waiting']),
     ("2.4", ['New Beat Tap: four lanes, long notes, combos and it gets faster',
              'New mini game: Memory. Duels with friends, with or without a bet',
              'Scratch card every 12 hours and a daily login reward (day 7: a free case)',
@@ -9124,8 +9248,16 @@ from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, 
 from PyQt6.QtWidgets import QWidget
 
 
-VIS_STYLES = [("bars", "Bars"), ("mirror", "Mirror"), ("wave", "Wave"), ("pulse", "Pulse"), ("dots", "Dots"),
-              ("spark", "Sparks"), ("off", "Off")]
+VIS_STYLES = [("bars", "Bars"), ("mirror", "Mirror"), ("dots", "Dots"), ("wave", "Wave"), ("pulse", "Pulse"),
+              ("spark", "Sparks"), ("aurora", "Aurora"), ("fire", "Fire"), ("galaxy", "Galaxy"), ("prism", "Prism")]
+# what each visualiser is in the shop: rarity and price (Bars is free). The cooler, the rarer.
+VIS_SHOP = {"bars": ("standard", 0), "mirror": ("standard", 600), "dots": ("standard", 900), "wave": ("rare", 2000),
+            "pulse": ("rare", 3000), "spark": ("special", 7500), "aurora": ("epic", 18000), "fire": ("epic", 25000),
+            "galaxy": ("exotic", 60000), "prism": ("exotic", 90000)}
+
+
+def vis_owned(ctx, style: str) -> bool:
+    return style == "bars" or ctx.econ.owns("vis:" + style)
 
 
 class Visualiser(QWidget):
@@ -9133,10 +9265,11 @@ class Visualiser(QWidget):
     with a little movement of its own so it always looks alive."""
     N = 32
 
-    def __init__(self, ctx) -> None:
+    def __init__(self, ctx, fixed: str = "", height: int = 34) -> None:
         super().__init__()
         self.ctx = ctx
-        self.setFixedHeight(S(34))
+        self.fixed = fixed                     # a shop preview: this style, moving by itself
+        self.setFixedHeight(S(height))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.levels = deque([0.0] * self.N, maxlen=self.N)
         self.bars = [0.0] * self.N
@@ -9146,7 +9279,10 @@ class Visualiser(QWidget):
         self._t.timeout.connect(self._step)
 
     def style(self) -> str:
-        return str(self.ctx.cfg["visualiser"])
+        if self.fixed:
+            return self.fixed
+        st = str(self.ctx.cfg["visualiser"])
+        return st if st == "off" or vis_owned(self.ctx, st) else "bars"
 
     def sync(self) -> None:
         on = self.style() != "off" and self.isVisible()
@@ -9165,6 +9301,9 @@ class Visualiser(QWidget):
 
     def _level(self) -> float:
         pass
+        if self.fixed:                                   # shop preview: a made-up beat
+            t = time.monotonic()
+            return 0.45 + 0.4 * abs(math.sin(t * 3.3)) * (0.6 + 0.4 * math.sin(t * 0.9))
         if self.ctx.state.status is not Status.PLAYING:
             return 0.0
         env = float(getattr(self.ctx, "_env", 0.0) or 0.0)
@@ -9181,7 +9320,7 @@ class Visualiser(QWidget):
             band = 0.55 + 0.45 * math.sin(i * 0.55 + t * 2.3) * math.cos(i * 0.21 - t * 1.7)
             target = lvl * (0.35 + 0.65 * band) * (1.15 - 0.5 * abs(i - self.N / 2) / (self.N / 2))
             self.bars[i] += (target - self.bars[i]) * (0.55 if target > self.bars[i] else 0.18)
-        if self.style() == "spark" and lvl > 0.45:
+        if self.style() in ("spark", "galaxy") and lvl > 0.3:
             import random
             self.sparks.append((random.uniform(0, 1), t, random.uniform(0.6, 1.0) * lvl))
         self.sparks = [s for s in self.sparks if t - s[1] < 0.9]
@@ -9194,70 +9333,146 @@ class Visualiser(QWidget):
         style = self.style()
         acc = QColor(ui.accent)
         acc2 = QColor(ui.accent2) if getattr(ui, "accent2", None) else mix(acc, QColor("#FFFFFF"), 0.35)
-        n = self.N
-        w = r.width() / n
         pass
-        if self.ctx.state.status is not Status.PLAYING:
+        if not self.fixed and self.ctx.state.status is not Status.PLAYING:
             p.setOpacity(0.35)                             # nothing playing: a quiet, still strip
-        if style in ("bars", "mirror"):
+        paint_vis(p, r, style, self.bars, list(self.levels), self.sparks, acc, acc2)
+
+
+
+def paint_vis(p, r, style: str, bars: list, levels: list, sparks: list, acc, acc2) -> None:
+    """Draw one frame of a visualiser style in `r` (the menu strip, a shop preview or an item picture)."""
+    n = len(bars)
+    w = r.width() / n
+    n = len(bars)
+    w = r.width() / n
+    if style in ("bars", "mirror"):
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, v in enumerate(bars):
+            h = max(S(2), v * r.height() * (0.5 if style == "mirror" else 1.0))
+            col = mix(acc, acc2, i / max(1, n - 1))
+            g = QLinearGradient(0, r.bottom(), 0, r.top())
+            g.setColorAt(0, alpha(col, 0.55))
+            g.setColorAt(1, col)
+            p.setBrush(g)
+            x = r.left() + i * w + w * 0.18
+            if style == "bars":
+                p.drawRoundedRect(QRectF(x, r.bottom() - h, w * 0.64, h), S(1.5), S(1.5))
+            else:
+                p.drawRoundedRect(QRectF(x, r.center().y() - h, w * 0.64, h * 2), S(1.5), S(1.5))
+    elif style == "wave":
+        path = QPainterPath()
+        vals = list(levels)
+        t = time.monotonic()
+        for i, v in enumerate(vals):
+            x = r.left() + r.width() * i / (len(vals) - 1)
+            y = r.center().y() - math.sin(i * 0.6 + t * 6) * v * r.height() * 0.45
+            path.moveTo(x, y) if i == 0 else path.lineTo(x, y)
+        for wdt, a in ((S(5), 0.18), (S(2), 1.0)):
+            pen = QPen(alpha(acc, a), wdt)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            p.setPen(pen)
+            p.drawPath(path)
+    elif style == "pulse":
+        v = levels[-1] if levels else 0.0
+        c = r.center()
+        for k in range(3):
+            rad = (S(8) + v * r.width() * 0.45) * (1 - k * 0.28)
+            g = QRadialGradient(c, max(1.0, rad))
+            g.setColorAt(0, alpha(acc, 0.45 - k * 0.12))
+            g.setColorAt(1, alpha(acc, 0.0))
             p.setPen(Qt.PenStyle.NoPen)
-            for i, v in enumerate(self.bars):
-                h = max(S(2), v * r.height() * (0.5 if style == "mirror" else 1.0))
-                col = mix(acc, acc2, i / max(1, n - 1))
-                g = QLinearGradient(0, r.bottom(), 0, r.top())
-                g.setColorAt(0, alpha(col, 0.55))
-                g.setColorAt(1, col)
-                p.setBrush(g)
-                x = r.left() + i * w + w * 0.18
-                if style == "bars":
-                    p.drawRoundedRect(QRectF(x, r.bottom() - h, w * 0.64, h), S(1.5), S(1.5))
-                else:
-                    p.drawRoundedRect(QRectF(x, r.center().y() - h, w * 0.64, h * 2), S(1.5), S(1.5))
-        elif style == "wave":
+            p.setBrush(g)
+            p.drawEllipse(c, rad, min(rad, r.height() / 2 + S(4)))
+        p.setPen(QPen(alpha(acc, 0.7), S(1.4)))
+        p.drawLine(QPointF(r.left(), c.y()), QPointF(c.x() - S(10) - v * S(60), c.y()))
+        p.drawLine(QPointF(c.x() + S(10) + v * S(60), c.y()), QPointF(r.right(), c.y()))
+    elif style == "dots":
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, v in enumerate(bars):
+            col = mix(acc, acc2, i / max(1, n - 1))
+            rows = int(1 + v * 5)
+            for k in range(rows):
+                p.setBrush(alpha(col, 0.35 + 0.65 * (k + 1) / rows))
+                p.drawEllipse(QPointF(r.left() + i * w + w / 2, r.bottom() - S(3) - k * S(6)), S(2), S(2))
+    elif style == "spark":
+        now = time.monotonic()
+        p.setPen(Qt.PenStyle.NoPen)
+        for x, born, v in sparks:
+            age = (now - born) / 0.9
+            p.setBrush(alpha(mix(acc, acc2, x), 1 - age))
+            p.drawEllipse(QPointF(r.left() + x * r.width(), r.bottom() - age * r.height() * (0.4 + v)), S(2.2), S(2.2))
+        p.setPen(QPen(alpha(acc, 0.25 + 0.5 * (levels[-1] if levels else 0)), S(1.2)))
+        p.drawLine(QPointF(r.left(), r.bottom()), QPointF(r.right(), r.bottom()))
+    elif style == "aurora":                                   # soft ribbons of colour that flow and swell
+        t = time.monotonic()
+        v = levels[-1] if levels else 0.0
+        for k in range(3):
             path = QPainterPath()
-            vals = list(self.levels)
-            t = time.monotonic()
-            for i, v in enumerate(vals):
-                x = r.left() + r.width() * i / (len(vals) - 1)
-                y = r.center().y() - math.sin(i * 0.6 + t * 6) * v * r.height() * 0.45
+            col = QColor.fromHsvF((acc.hueF() + 0.12 * k + 0.05 * math.sin(t * 0.3)) % 1.0 if acc.hueF() >= 0 else (0.45 + 0.1 * k),
+                                  0.55, 1.0)
+            for i in range(33):
+                x = r.left() + r.width() * i / 32
+                y = r.center().y() + math.sin(i * 0.35 + t * (1.4 + 0.3 * k) + k) * r.height() * (0.18 + 0.3 * v)
                 path.moveTo(x, y) if i == 0 else path.lineTo(x, y)
-            for wdt, a in ((S(5), 0.18), (S(2), 1.0)):
-                pen = QPen(alpha(acc, a), wdt)
-                pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-                pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-                p.setPen(pen)
-                p.drawPath(path)
-        elif style == "pulse":
-            v = self.levels[-1] if self.levels else 0.0
-            c = r.center()
-            for k in range(3):
-                rad = (S(8) + v * r.width() * 0.45) * (1 - k * 0.28)
-                g = QRadialGradient(c, max(1.0, rad))
-                g.setColorAt(0, alpha(acc, 0.45 - k * 0.12))
-                g.setColorAt(1, alpha(acc, 0.0))
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(g)
-                p.drawEllipse(c, rad, min(rad, r.height() / 2 + S(4)))
-            p.setPen(QPen(alpha(acc, 0.7), S(1.4)))
-            p.drawLine(QPointF(r.left(), c.y()), QPointF(c.x() - S(10) - v * S(60), c.y()))
-            p.drawLine(QPointF(c.x() + S(10) + v * S(60), c.y()), QPointF(r.right(), c.y()))
-        elif style == "dots":
-            p.setPen(Qt.PenStyle.NoPen)
-            for i, v in enumerate(self.bars):
-                col = mix(acc, acc2, i / max(1, n - 1))
-                rows = int(1 + v * 5)
-                for k in range(rows):
-                    p.setBrush(alpha(col, 0.35 + 0.65 * (k + 1) / rows))
-                    p.drawEllipse(QPointF(r.left() + i * w + w / 2, r.bottom() - S(3) - k * S(6)), S(2), S(2))
-        elif style == "spark":
-            now = time.monotonic()
-            p.setPen(Qt.PenStyle.NoPen)
-            for x, born, v in self.sparks:
-                age = (now - born) / 0.9
-                p.setBrush(alpha(mix(acc, acc2, x), 1 - age))
-                p.drawEllipse(QPointF(r.left() + x * r.width(), r.bottom() - age * r.height() * (0.4 + v)), S(2.2), S(2.2))
-            p.setPen(QPen(alpha(acc, 0.25 + 0.5 * (self.levels[-1] if self.levels else 0)), S(1.2)))
-            p.drawLine(QPointF(r.left(), r.bottom()), QPointF(r.right(), r.bottom()))
+            pen = QPen(alpha(col, 0.55 - 0.12 * k), S(6 - k * 1.5))
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            p.setPen(pen)
+            p.drawPath(path)
+    elif style == "fire":                                     # bars that burn: red at the base, yellow at the tips
+        t = time.monotonic()
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, v in enumerate(bars):
+            h = max(S(3), v * r.height() * (0.9 + 0.15 * math.sin(t * 9 + i)))
+            x = r.left() + i * w + w * 0.12
+            g = QLinearGradient(0, r.bottom(), 0, r.bottom() - h)
+            g.setColorAt(0, QColor("#FF2E2E"))
+            g.setColorAt(0.55, QColor("#FF8A1F"))
+            g.setColorAt(1, QColor("#FFE36B"))
+            p.setBrush(g)
+            tip = QPainterPath()
+            tip.moveTo(x, r.bottom())
+            tip.lineTo(x, r.bottom() - h * 0.7)
+            tip.quadTo(x + w * 0.38, r.bottom() - h * 1.08, x + w * 0.76, r.bottom() - h * 0.7)
+            tip.lineTo(x + w * 0.76, r.bottom())
+            tip.closeSubpath()
+            p.drawPath(tip)
+    elif style == "galaxy":                                   # stars turning around a bright core, faster with the beat
+        t = time.monotonic()
+        v = levels[-1] if levels else 0.0
+        c = r.center()
+        core = QRadialGradient(c, r.height() * 0.6)
+        core.setColorAt(0, alpha("#FFFFFF", 0.5 + 0.4 * v))
+        core.setColorAt(0.4, alpha(acc, 0.35))
+        core.setColorAt(1, alpha(acc, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(core)
+        p.drawEllipse(c, r.height() * 0.6, r.height() * 0.6)
+        for k in range(48):
+            a = k * 2.399 + t * (0.6 + v * 1.4) * (1 if k % 2 else 0.7)
+            d = (k / 48) ** 0.6 * r.width() * 0.48
+            x, y = c.x() + math.cos(a) * d, c.y() + math.sin(a) * d * 0.28
+            col = QColor.fromHsvF((0.6 + k * 0.013 + t * 0.02) % 1.0, 0.45, 1.0)
+            p.setBrush(alpha(col, 0.35 + 0.65 * (1 - k / 48)))
+            p.drawEllipse(QPointF(x, y), S(1.2) + v * S(1.3), S(1.2) + v * S(1.3))
+    elif style == "prism":                                    # rainbow bars, mirrored, with a light sweeping over them
+        t = time.monotonic()
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, v in enumerate(bars):
+            h = max(S(2), v * r.height() * 0.5)
+            col = QColor.fromHsvF((i / len(bars) + t * 0.15) % 1.0, 0.65, 1.0)
+            p.setBrush(col)
+            x = r.left() + i * w + w * 0.2
+            p.drawRoundedRect(QRectF(x, r.center().y() - h, w * 0.6, h * 2), S(1.5), S(1.5))
+        sweep = r.left() + (t * 0.5 % 1.4 - 0.2) * r.width()
+        sh = QLinearGradient(QPointF(sweep - S(30), 0), QPointF(sweep + S(30), 0))
+        sh.setColorAt(0, alpha("#FFFFFF", 0))
+        sh.setColorAt(0.5, alpha("#FFFFFF", 0.45))
+        sh.setColorAt(1, alpha("#FFFFFF", 0))
+        p.setBrush(sh)
+        p.drawRect(r)
+
 
 
 # ================================================================ the show / hide key
@@ -9324,11 +9539,12 @@ def badge_menu(ctx, on_change) -> None:
         a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("badge_pos", k), on_change()))
         m.addAction(a)
     m.addSection(tr("Visualiser"))
-    for k, name in VIS_STYLES:
+    for k, name in [("off", "Off")] + [(k, n) for k, n in VIS_STYLES if vis_owned(ctx, k)]:
         a = QAction(tr(name), m)
         a.setCheckable(True)
         a.setChecked(ctx.cfg["visualiser"] == k)
-        a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("visualiser", k), on_change()))
+        a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("visualiser", k),
+                                                   ctx.cfg.__setitem__("vis_style", k) if k != "off" else None, on_change()))
         m.addAction(a)
     m.exec(QCursor.pos())
 
@@ -10320,8 +10536,10 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("candy", "Candy", "#FF5CB8", "#9B5CFF", dict(glow=3, stars=18, sparkles=11)),
                ("storm", "Storm", "#8FA8FF", "#4B6BFF", dict(glow=3, stars=44, links=10, comets=6, aurora=True)),
                ("retro", "Retro", "#D94BFF", "#35D6E6", dict(glow=3, stars=52, links=14, sparkles=8, edge="shine"))]
-KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge"}
+KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "vis": "Visualiser"}
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
+          "vis": {"bars": "Bars", "mirror": "Mirror", "dots": "Dots", "wave": "Wave", "pulse": "Pulse", "spark": "Sparks",
+                  "aurora": "Aurora", "fire": "Fire", "galaxy": "Galaxy", "prism": "Prism"},
           "theme": {t[0]: t[1] for t in THEME_LOOKS}}
 _themes: dict = {}
 
@@ -10582,6 +10800,17 @@ def paint_cosmetic(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
         p.setFont(f)
         p.setPen(QColor("#AEB8C2") if var == "black" else colour_of(item))
         p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "Aa")
+    elif kind == "vis":                                   # a visualiser: a small moving picture of it
+        pass
+        import random as _r
+        rnd = _r.Random(base)
+        t = now if effects else 0.6
+        bars = [0.25 + 0.7 * abs(math.sin(t * 3 + i * 0.7 + rnd.random())) for i in range(10)]
+        tile = box.adjusted(d * 0.06, d * 0.2, -d * 0.06, -d * 0.2)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#0B0E10"))
+        p.drawRoundedRect(tile, d * 0.12, d * 0.12)
+        paint_vis(p, tile.adjusted(d * 0.04, d * 0.04, -d * 0.04, -d * 0.04), base, bars, bars, [], QColor("#4FC3FF"), QColor("#B36BFF"))
     elif kind == "theme":
         look = next((t for t in THEME_LOOKS if t[0] == base), THEME_LOOKS[0])
         g = QLinearGradient(box.topLeft(), box.bottomRight())
@@ -12283,16 +12512,31 @@ class SettingsPage(Page):
         hk.changed.connect(set_key)
         lay.addWidget(Label(tr("Show / hide key (tap it once)"), 11.5, TEXT))
         lay.addWidget(hk)
-        vis_keys = [k for k, _n in VIS_STYLES]
-        vs = Segmented([tr(n) for _k, n in VIS_STYLES], vis_keys.index(cfg["visualiser"]) if cfg["visualiser"] in vis_keys else 0)
+        pass
 
-        def set_vis(i: int) -> None:
-            cfg["visualiser"] = vis_keys[i]
+        def vis_on(v: bool) -> None:
+            style = cfg["vis_style"] if vis_owned(ctx, cfg["vis_style"]) else "bars"
+            cfg["visualiser"] = style if v else "off"
             ctx._sync_audio()
             ctx.window._drop_page("home")
-        vs.changed.connect(set_vis)
-        lay.addWidget(Label(tr("Visualiser"), 11.5, TEXT))
-        lay.addWidget(vs)
+            ctx.reload_page()
+        tv = Toggle(cfg["visualiser"] != "off")
+        tv.toggled_by_user.connect(vis_on)
+        lay.addWidget(row(tr("Visualiser on the music tab"), tv))
+        if cfg["visualiser"] != "off":
+            mine = [(k, n) for k, n in VIS_STYLES if vis_owned(ctx, k)]
+            keys_v = [k for k, _n in mine]
+            vs = Segmented([tr(n) for _k, n in mine], keys_v.index(cfg["visualiser"]) if cfg["visualiser"] in keys_v else 0)
+
+            def set_vis(i: int) -> None:
+                cfg["visualiser"] = cfg["vis_style"] = keys_v[i]
+                ctx.window._drop_page("home")
+            vs.changed.connect(set_vis)
+            lay.addWidget(vs)
+            lay.addWidget(Label(tr("More visualisers in Shop → Shop → Visualisers."), 10, TEXT_FAINT))
+        tg = Toggle(cfg["game_mouse"])
+        tg.toggled_by_user.connect(lambda v: cfg.__setitem__("game_mouse", v))
+        lay.addWidget(row(tr("Game mode: the mouse goes through Rubenium in fullscreen games"), tg))
         line = hbox(spacing=6)
         hist = Button(tr("Song history"), "ghost", 30, icon="note")
         def open_hist() -> None:
@@ -12889,6 +13133,11 @@ class ShopPage(Page):
     Inventory."""
     key = "themes"
     SECTIONS = ["Theme", "Shop", "Badges", "Cases", "Market", "Inventory", "Sets"]
+    ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "gem"]
+    NOTES = ["Your colours and the looks you unlock with time.", "Balls, lines, fonts and themes to buy.",
+             "Your collection: click a badge to see every colour.", "Open cases for coins and badges. Gifts are free.",
+             "Buy and sell with other players.", "Everything you own. Sell, show or trade it.",
+             "Collect full sets for a big bonus."]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -12899,9 +13148,12 @@ class ShopPage(Page):
         tab = getattr(ctx, "shop_tab", 0)
         pass
         pass
-        self.seg = GamePicker([tr(n) for n in self.SECTIONS], tab)
+        gifts = sum(int(v or 0) for v in ctx.econ.stock.values())
+        self.seg = NavTiles([(tr(n), self.ICONS[k]) for k, n in enumerate(self.SECTIONS)], tab, badges={3: gifts})
         self.seg.changed.connect(self._section)
         lay.addWidget(self.seg)
+        note = Label(tr(self.NOTES[tab]), 10.5, TEXT_DIM, wrap_w=self.W)
+        lay.addWidget(note)
         if tab == 1:
             build_cosmetics(self, lay)
         elif tab == 2:
@@ -13167,7 +13419,10 @@ class ShopPage(Page):
         self.reel = CaseReel(self, case)
         self.reel.done.connect(self._opened)
         lay.addWidget(self.reel)
-        text = tr("Open for free") if cid == "daily" else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))
+        gifts = int(ec.stock.get(case["id"], 0) or 0) if cid != "daily" else 0
+        text = (tr("Open for free") if cid == "daily" else
+                tr("Open your gift for free ({n} left)", n=gifts) if gifts else
+                tr("Open for {n} coins + 1 key", n=coins_text(case["price"])))
         self.open_btn = Button(text, "primary", 40)
         self.open_btn.clicked.connect(lambda: self._open(case))
         lay.addWidget(self.open_btn)
@@ -13200,9 +13455,12 @@ class ShopPage(Page):
         daily = case["id"] == "daily"
         if daily and self.daily_wait() != 0:
             return ctx.toast(tr("Not ready yet"), "warn")
-        if not daily and ec.keys < 1:
+        gifted = not daily and int(ec.stock.get(case["id"], 0) or 0) > 0        # a gift: free, no coins and no key
+        if gifted and ec.server_old and ec.keys < 1:
+            return ctx.toast(tr("Gifts open for free once the server update is done. Until then they need 1 key."), "warn")
+        if not daily and not gifted and ec.keys < 1:
             return ctx.toast(tr("You need a key: 1 key for every hour with Rubenium"), "warn")
-        if not daily and case["price"] > ec.coins:
+        if not daily and not gifted and case["price"] > ec.coins:
             return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - ec.coins)), "warn")
         self._asking = True
         self._lock(True)
@@ -13239,6 +13497,15 @@ class ShopPage(Page):
                 ec.stock[data.get("case") or self.ctx.shop_case] = int(data.get("stock") or 0)
             ec.absorb(data)
             ec.changed.emit()
+            cid = self.ctx.shop_case
+            left = int(ec.stock.get(cid, 0) or 0) if cid and cid != "daily" else 0
+            case = next((c for c in ec.cases if c["id"] == cid), None)
+            if case is not None:
+                try:
+                    self.open_btn.set_text(tr("Open your gift for free ({n} left)", n=left) if left else
+                                           tr("Open for {n} coins + 1 key", n=coins_text(case["price"])))
+                except RuntimeError:
+                    pass
         QTimer.singleShot(900, lambda: self._lock(False))
 
     def _gift(self, case: dict) -> None:
@@ -14364,6 +14631,7 @@ class AskDialog(QWidget):
         from PyQt6.QtWidgets import QLineEdit
         pass
         self._on_text = on_text
+        self.ctx = ctx
         self.setWindowTitle("Rubenium")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -14395,12 +14663,18 @@ class AskDialog(QWidget):
         line.addWidget(go, 1)
         lay.addLayout(line)
         self.adjustSize()
+        self.focus_me = self.edit.setFocus
+        if present(self, ctx, keys=True):
+            return
         area = work_area(ctx.window.card_global().center())
         self.move(area.center().x() - self.width() // 2, area.center().y() - self.height() // 2)
         self.show()
         self.raise_()
         self.activateWindow()
         self.edit.setFocus()
+
+    def close(self) -> bool:
+        return close_embedded(self) or super().close()
 
     def say(self, text: str) -> None:
         self.note.set_text(text)
@@ -14735,18 +15009,22 @@ def build_cosmetics(page, lay) -> None:
     if not ec.ready or not ec.catalog:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the shop"), 12, TEXT_DIM))
     kind_i = int(getattr(ctx, "shop_kind", 0) or 0)
-    kind = ("ball", "line", "font", "theme")[kind_i]
+    kind = ("ball", "line", "font", "theme", "vis")[kind_i]
     design = getattr(ctx, "shop_design", None)
-    if design is None:
+    if design is None or kind == "vis":
         for sale in (ec.live.get("sales") or [])[:2]:
             lay.addWidget(SaleBanner(page, sale))
-        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes")], kind_i)
+        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Visualisers")], kind_i)
 
         def switch(i: int) -> None:
             ctx.shop_kind = i
+            ctx.shop_design = None
             ctx.reload_page()
         seg.changed.connect(switch)
         lay.addWidget(seg)
+        if kind == "vis":
+            pass
+            return build_vis_shop(page, lay)
         entries = []
         for base, name in _designs(kind):
             item = f"theme:{base}" if kind == "theme" else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
@@ -16360,7 +16638,7 @@ class ScratchRow(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         left = int(getattr(self.ctx.econ, "scratch_in", 0) or 0)
-        ready = left <= 0
+        ready = left <= 0 and not self.ctx.econ.server_old
         g = QLinearGradient(r.topLeft(), r.topRight())
         g.setColorAt(0, QColor("#2A3038") if not ready else mix(QColor("#C9CFD6"), QColor("#1A1F26"), 0.55))
         g.setColorAt(1, QColor("#161A20"))
@@ -16377,7 +16655,7 @@ class ScratchRow(QWidget):
         p.setPen(QColor(GOLD_TEXT if ready else TEXT_DIM))
         p.setFont(font(11, QFont.Weight.DemiBold))
         p.drawText(r.adjusted(0, 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                   tr("Ready!") if ready else clock_text(left))
+                   tr("Ready!") if ready else (tr("Soon") if self.ctx.econ.server_old else clock_text(left)))
 
 
 # ================================================================ duels
@@ -18438,6 +18716,12 @@ class GamesPage(Page):
             if getattr(ctx, "park_open", False):
                 return self._park(lay)
             sub = getattr(ctx, "games_sub", None)
+            if sub in ("memory", "duels", "duel_run", "scratch"):
+                pass
+                if ctx.econ.server_old:
+                    self._back_bar(lay, tr({"memory": "Memory", "scratch": "Scratch card"}.get(sub, "Duels")))
+                    server_wait(ctx, lay, self.W)
+                    return
             if sub == "memory":
                 return self._memory(lay)
             if sub == "duels":
@@ -18456,6 +18740,9 @@ class GamesPage(Page):
         lay.addWidget(quests)
         lay.addWidget(CoinBar(self.ctx))
         lay.addWidget(KeyCard(self.ctx))
+        pass
+        if not self.ctx.econ.server_old:
+            lay.addWidget(StreakRow(self))
         lay.addWidget(DailyRow(self))
         lay.addWidget(ScratchRow(self))
         line = hbox(spacing=6)
@@ -18508,6 +18795,9 @@ class GamesPage(Page):
         top.addWidget(Label(tr("Beat Tap"), 16, bold=True), 1)
         lay.addLayout(top)
         lay.addWidget(CoinBar(self.ctx))
+        pass
+        if server_wait(self.ctx, lay, self.W):
+            return
         self.beat = BeatRush(self, lambda _r: (self.beat_btn.setEnabled(True), self.beat_btn.set_text(tr("Play again"))))
         back.clicked.connect(lambda: (self.beat.abort(), self._show_mini(False)))
         lay.addWidget(self.beat)
@@ -18893,10 +19183,11 @@ class GamesPage(Page):
 # ==================================================================================================
 # SECTION: hub
 # ==================================================================================================
+import datetime
 import json
 import time
 
-from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import QWidget
 
@@ -18916,14 +19207,23 @@ class FloatWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setFixedWidth(S(width))
 
+    wants_keys = False
+
     def centre(self) -> None:
         pass
+        pass
         self.adjustSize()
+        if present(self, self.ctx, keys=self.wants_keys):
+            return
         area = work_area(self.ctx.window.card_global().center())
         self.move(area.center().x() - self.width() // 2, area.center().y() - self.height() // 2)
         self.show()
         self.raise_()
         self.activateWindow()
+
+    def close(self) -> bool:
+        pass
+        return close_embedded(self) or super().close()
 
     def keyPressEvent(self, e) -> None:
         if e.key() == Qt.Key.Key_Escape:
@@ -18932,8 +19232,9 @@ class FloatWindow(QWidget):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.setPen(QPen(alpha(ui.accent, 0.45), 1.2))
-        p.setBrush(QColor(12, 15, 16, 252))
+        inside = getattr(self, "_embedded", False)
+        p.setPen(QPen(alpha(ui.accent, 0.25 if inside else 0.45), 1.2))
+        p.setBrush(alpha("#FFFFFF", 0.03) if inside else QColor(12, 15, 16, 252))
         p.drawRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), S(16), S(16))
 
 
@@ -18944,6 +19245,142 @@ def ago(at) -> str:
         return ago_text(at)
     except Exception:  # noqa: BLE001
         return ""
+
+
+# ================================================================ big, clear section buttons (shop, admin)
+class NavTiles(QWidget):
+    """Sections as tiles with an icon and a name, 4 per row. The one you are in is lit."""
+    changed = pyqtSignal(int)
+
+    def __init__(self, items: list, index: int = 0, per_row: int = 4, badges: dict = None, select: bool = True) -> None:
+        super().__init__()
+        self.items, self.index, self.per = items, index, per_row          # items: [(label, icon)]
+        self.select = select                                              # False: plain action buttons
+        self.badges = badges or {}                                        # index -> small number (new things)
+        rows = (len(items) + per_row - 1) // per_row
+        self.th = S(50)
+        self.setFixedHeight(rows * self.th + (rows - 1) * S(6))
+        self.setSizePolicy(self.sizePolicy().horizontalPolicy(), self.sizePolicy().verticalPolicy())
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.hover = -1
+
+    def _tile(self, i: int) -> QRectF:
+        gap = S(6)
+        w = (self.width() - gap * (self.per - 1)) / self.per
+        r, c = divmod(i, self.per)
+        return QRectF(c * (w + gap), r * (self.th + gap), w, self.th)
+
+    def _at(self, pos) -> int:
+        return next((i for i in range(len(self.items)) if self._tile(i).contains(pos)), -1)
+
+    def mouseMoveEvent(self, e) -> None:
+        h = self._at(e.position())
+        if h != self.hover:
+            self.hover = h
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def mouseReleaseEvent(self, e) -> None:
+        i = self._at(e.position())
+        if i >= 0 and (i != self.index or not self.select):
+            sfx.play("pick")
+            if self.select:
+                self.index = i
+            self.update()
+            self.changed.emit(i)
+
+    def set_index(self, i: int) -> None:
+        self.index = i
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        for i, (label, icon) in enumerate(self.items):
+            r = self._tile(i).adjusted(0.5, 0.5, -0.5, -0.5)
+            on, hov = i == self.index, i == self.hover
+            if on:
+                g = QLinearGradient(r.topLeft(), r.bottomLeft())
+                g.setColorAt(0, alpha(ui.accent, 0.30))
+                g.setColorAt(1, alpha(ui.accent, 0.12))
+                p.setPen(QPen(alpha(ui.accent, 0.85), S(1.4)))
+                p.setBrush(g)
+            else:
+                p.setPen(QPen(alpha("#FFFFFF", 0.10 if hov else 0.06), 1))
+                p.setBrush(alpha("#FFFFFF", 0.07 if hov else 0.035))
+            p.drawRoundedRect(r, S(10), S(10))
+            p.save()
+            p.translate(r.center().x(), r.top() + S(17))
+            p.scale(0.9, 0.9)
+            draw_icon(p, icon, QColor(TEXT) if on or hov else QColor(TEXT_DIM))
+            p.restore()
+            p.setPen(QColor(TEXT) if on else QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.Bold if on else QFont.Weight.DemiBold))
+            text = QFontMetrics(p.font()).elidedText(label, Qt.TextElideMode.ElideRight, int(r.width() - S(6)))
+            p.drawText(QRectF(r.left(), r.bottom() - S(20), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), text)
+            n = int(self.badges.get(i) or 0)
+            if n:
+                b = QRectF(r.right() - S(20), r.top() + S(4), S(16), S(14))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#FF5C6C"))
+                p.drawRoundedRect(b, S(7), S(7))
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(8.5, QFont.Weight.ExtraBold))
+                p.drawText(b, int(Qt.AlignmentFlag.AlignCenter), str(min(n, 9)))
+
+
+# ================================================================ before the server has the 2.4 update
+class WaitCard(QWidget):
+    """Shown instead of a new part while the server has not had its update yet: no error, just 'very soon'."""
+
+    def __init__(self, width: int) -> None:
+        super().__init__()
+        self.setFixedSize(width, S(150))
+        self._t = QTimer(self)
+        self._t.setInterval(40)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        import math
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha(ui.accent, 0.35), 1.2))
+        p.setBrush(alpha("#FFFFFF", 0.035))
+        p.drawRoundedRect(r, S(14), S(14))
+        c = QPointF(r.center().x(), r.top() + S(42))
+        t = time.monotonic()
+        for k in range(8):                                   # a soft turning ring of dots
+            a = t * 3 + k * math.tau / 8
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(ui.accent, 0.15 + 0.85 * ((k / 8 + t * 0.48) % 1.0)))
+            p.drawEllipse(QPointF(c.x() + math.cos(a) * S(14), c.y() + math.sin(a) * S(14)), S(2.6), S(2.6))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(14, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left(), r.top() + S(68), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), tr("Coming very soon"))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left() + S(16), r.top() + S(92), r.width() - S(32), S(50)),
+                   int(Qt.AlignmentFlag.AlignHCenter | Qt.TextFlag.TextWordWrap),
+                   tr("This part is new. It opens by itself as soon as the Rubenium server gets its update."))
+
+
+def server_wait(ctx, lay, width: int) -> bool:
+    """True (and a 'coming very soon' card) when the server does not have this part yet."""
+    if not getattr(ctx.econ, "server_old", False):
+        return False
+    lay.addWidget(WaitCard(width))
+    return True
 
 
 # ================================================================ messages
@@ -18996,7 +19433,8 @@ class Bubbles(QWidget):
 
 
 class ChatWindow(FloatWindow):
-    """A chat with one friend. Typing works here (it is its own window)."""
+    """A chat with one friend, inside the menu (the menu takes the keyboard only while it is open)."""
+    wants_keys = True
 
     def __init__(self, ctx, name: str) -> None:
         super().__init__(ctx, 330)
@@ -19015,6 +19453,7 @@ class ChatWindow(FloatWindow):
         top.addWidget(close)
         lay.addLayout(top)
         self.bubbles = Bubbles(S(298))
+        self.bubbles.setFixedHeight(S(240))
         lay.addWidget(self.bubbles)
         line = hbox(spacing=6)
         self.edit = QLineEdit()
@@ -19038,6 +19477,7 @@ class ChatWindow(FloatWindow):
         info = next((t for t in (getattr(ctx, "threads_data", None) or []) if t.get("name") == name), {})
         self._set_muted(bool(info.get("muted")))
         self.load()
+        self.focus_me = self.edit.setFocus
         self.centre()
         self.edit.setFocus()
 
@@ -19074,9 +19514,12 @@ class ChatWindow(FloatWindow):
                 self.ctx.threads_data = None
         self.ctx.online.ask("rb_msg_mute", {"name": self.name, "mute": want}, done)
 
-    def closeEvent(self, e) -> None:
+    def on_closed(self) -> None:
         self._poll.stop()
         self.ctx.threads_data = None
+
+    def closeEvent(self, e) -> None:
+        self.on_closed()
         super().closeEvent(e)
 
 
@@ -19147,6 +19590,8 @@ class ThreadRow(QWidget):
 
 def build_messages(page, lay) -> None:
     ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
     data = getattr(ctx, "threads_data", None)
 
     def got(ok: bool, rows) -> None:
@@ -19215,6 +19660,8 @@ class LeaderRow(QWidget):
 
 def build_leaders(page, lay) -> None:
     ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
     k = int(getattr(ctx, "board_kind", 0) or 0)
     friends = bool(getattr(ctx, "board_friends", False))
     seg = Segmented([tr("Everyone"), tr("Friends")], 1 if friends else 0)
@@ -19234,8 +19681,6 @@ def build_leaders(page, lay) -> None:
                 ctx.board_data = (key, rows)
                 if ctx.window.current == "friends" and int(getattr(ctx, "social_tab", 0) or 0) == 3:
                     ctx.reload_page()
-        elif not ok:
-            ctx.toast(tr(str(rows)), "warn")
     ctx.online.ask("rb_leaders", {"kind": kind, "friends": friends}, got)
     if not data or data[0] != key:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -19296,6 +19741,8 @@ class TradeCard(QWidget):
 
 def build_trade_history(page, lay) -> None:
     ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
     data = getattr(ctx, "trade_hist", None)
 
     def got(ok: bool, rows) -> None:
@@ -19368,6 +19815,8 @@ class SetRow(QWidget):
 
 def build_sets(page, lay) -> None:
     ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
     lay.addWidget(Label(tr("Complete a set to get a big bonus, once. You must still own the badges when you claim."),
                         10.5, TEXT_DIM, wrap_w=page.W))
     data = getattr(ctx, "sets_data", None)
@@ -19444,7 +19893,15 @@ class LoginWindow(FloatWindow):
         super().__init__(ctx, 330)
         lay = vbox(self, 10, (18, 16, 18, 18))
         streak = int(state.get("streak") or 0)
-        lay.addWidget(Label(tr("Daily reward"), 16, bold=True))
+        head = hbox(spacing=10)
+        nxt = streak if state.get("claimed") else streak + 1
+        self.flame = StreakFlame(nxt, 70)
+        head.addWidget(self.flame)
+        col = vbox(spacing=2)
+        col.addWidget(Label(tr("Daily reward"), 16, bold=True))
+        col.addWidget(Label(tr("Your flame grows a little every day in a row."), 10.5, TEXT_DIM, wrap_w=S(210)))
+        head.addLayout(col, 1)
+        lay.addLayout(head)
         lay.addWidget(Label(tr("Come back every day: day 7 gives a free case. Miss a day and it starts again."),
                             11, TEXT_DIM, wrap_w=S(294)))
         rewards = list(state.get("rewards") or [])
@@ -19480,19 +19937,27 @@ class LoginWindow(FloatWindow):
             if rw.get("case"):
                 parts.append(tr("+1 free case"))
             self.ctx.toast("  ".join(parts) + "  ·  " + tr("Day {n}", n=data.get("streak", 1)))
+            self.ctx.econ.streak, self.ctx.econ.streak_day = int(data.get("streak") or 1), datetime.date.today().isoformat()
             self.ctx.econ.refresh()
-            self.close()
+            self.flame.day = int(data.get("streak") or 1)
+            self.go.set_text(tr("Done for today"))
+            QTimer.singleShot(1400, self.close)
         self.ctx.econ.call("rb_login_claim", {}, done)
 
 
 def check_login_reward(ctx, force: bool = False) -> None:
-    if not ctx.online.logged_in():
+    if not ctx.online.logged_in() or getattr(ctx.econ, "server_old", False):
         return
 
     def got(ok: bool, state) -> None:
         if ok and isinstance(state, dict) and (force or not state.get("claimed")):
             if state.get("claimed"):
                 return ctx.toast(tr("Already claimed today"), "warn")
+            if not ctx.window.expanded:                  # never over a game: a small note, the reward waits
+                ctx.notifier.push("ready", tr("DAILY REWARD"), tr("Your daily reward is ready: open Rubenium to claim it"))
+                ctx.login_pending = True
+                return
+            ctx.login_pending = False
             ctx._login_win = LoginWindow(ctx, state)
     ctx.online.ask("rb_login_state", {}, got)
 
@@ -19697,6 +20162,574 @@ class HistoryWindow(FloatWindow):
         self.centre()
 
 
+# ================================================================ profile picture editor
+FILTERS = [("normal", "Normal"), ("vivid", "Vivid"), ("warm", "Warm"), ("cool", "Cool"), ("mono", "Black & white"),
+           ("dream", "Dream")]
+RINGS = [("none", "No ring"), ("accent", "My colour"), ("rainbow", "Rainbow")]
+
+
+def filtered(img, kind: str):
+    """A copy of the picture with a colour filter (small, so it is fast)."""
+    from PyQt6.QtGui import QImage
+    if kind == "normal":
+        return img
+    out = img.convertToFormat(QImage.Format.Format_ARGB32)
+    w, h = out.width(), out.height()
+    for y in range(h):
+        for x in range(w):
+            c = out.pixelColor(x, y)
+            r, g, b = c.red(), c.green(), c.blue()
+            if kind == "mono":
+                v = int(0.3 * r + 0.59 * g + 0.11 * b)
+                r = g = b = v
+            elif kind == "warm":
+                r, b = min(255, int(r * 1.12 + 10)), int(b * 0.85)
+            elif kind == "cool":
+                r, b = int(r * 0.85), min(255, int(b * 1.15 + 10))
+            elif kind == "vivid":
+                m = (r + g + b) / 3
+                r, g, b = (max(0, min(255, int(m + (v - m) * 1.45))) for v in (r, g, b))
+            elif kind == "dream":
+                r, g, b = (min(255, int(v * 0.8 + 60)) for v in (r, g, b))
+                b = min(255, b + 20)
+            out.setPixelColor(x, y, QColor(r, g, b, c.alpha()))
+    return out
+
+
+class Cropper(QWidget):
+    """The picture inside a round window: drag it to move, scroll (or the slider) to zoom."""
+
+    def __init__(self, img, size: int) -> None:
+        super().__init__()
+        self.src = img
+        self.view = img
+        self.setFixedSize(size, size)
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.zoom = 1.0
+        self.angle = 0
+        self.mirror = False
+        self.off = QPointF(0, 0)
+        self.ring = "accent"
+        self._drag = None
+        self.changed = None
+
+    def base_scale(self) -> float:
+        w, h = (self.src.height(), self.src.width()) if self.angle % 180 else (self.src.width(), self.src.height())
+        return self.width() / max(1, min(w, h))
+
+    def mousePressEvent(self, e) -> None:
+        self._drag = (e.position(), QPointF(self.off))
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+
+    def mouseMoveEvent(self, e) -> None:
+        if self._drag:
+            start, off = self._drag
+            self.off = off + (e.position() - start)
+            self._clamp()
+            self.update()
+            if self.changed:
+                self.changed()
+
+    def mouseReleaseEvent(self, _e) -> None:
+        self._drag = None
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+
+    def wheelEvent(self, e) -> None:
+        self.set_zoom(self.zoom * (1.1 if e.angleDelta().y() > 0 else 1 / 1.1))
+        e.accept()
+
+    def set_zoom(self, z: float) -> None:
+        self.zoom = max(1.0, min(5.0, z))
+        self._clamp()
+        self.update()
+        if self.changed:
+            self.changed()
+
+    def _clamp(self) -> None:
+        w, h = (self.src.height(), self.src.width()) if self.angle % 180 else (self.src.width(), self.src.height())
+        sc = self.base_scale() * self.zoom
+        mx, my = max(0.0, (w * sc - self.width()) / 2), max(0.0, (h * sc - self.height()) / 2)
+        self.off = QPointF(max(-mx, min(mx, self.off.x())), max(-my, min(my, self.off.y())))
+
+    def render_square(self, side: int):
+        """What is inside the circle, as a square picture `side` pixels wide."""
+        from PyQt6.QtGui import QImage
+        out = QImage(side, side, QImage.Format.Format_ARGB32_Premultiplied)
+        out.fill(QColor("#000000"))
+        p = QPainter(out)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        k = side / self.width()
+        self._draw_image(p, k)
+        p.end()
+        return out
+
+    def _draw_image(self, p: QPainter, k: float = 1.0) -> None:
+        sc = self.base_scale() * self.zoom * k
+        p.save()
+        p.translate(self.width() * k / 2 + self.off.x() * k, self.height() * k / 2 + self.off.y() * k)
+        p.rotate(self.angle)
+        p.scale(-sc if self.mirror else sc, sc)
+        p.drawImage(QPointF(-self.view.width() / 2, -self.view.height() / 2), self.view)
+        p.restore()
+
+    def paintEvent(self, _e) -> None:
+        from PyQt6.QtGui import QPainterPath
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        p.fillRect(self.rect(), QColor("#07090B"))
+        self._draw_image(p)
+        r = QRectF(self.rect()).adjusted(S(6), S(6), -S(6), -S(6))
+        outside = QPainterPath()
+        outside.addRect(QRectF(self.rect()))
+        hole = QPainterPath()
+        hole.addEllipse(r)
+        p.fillPath(outside.subtracted(hole), QColor(6, 8, 10, 175))
+        p.setPen(QPen(alpha("#FFFFFF", 0.6), S(1.2), Qt.PenStyle.DashLine))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(r)
+
+
+class AvatarEditor(FloatWindow):
+    """Choose exactly how your picture looks: move, zoom, turn, mirror, a filter, and see it at every size."""
+
+    def __init__(self, ctx, img, on_done) -> None:
+        super().__init__(ctx, 340)
+        pass
+        self.on_done = on_done
+        side = min(img.width(), img.height())
+        big = img if side <= 900 else img.scaled(900 * img.width() // side, 900 * img.height() // side,
+                                                 Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self.small = big.scaled(min(260, big.width()), min(260, big.height()), Qt.AspectRatioMode.KeepAspectRatio,
+                                Qt.TransformationMode.SmoothTransformation)
+        lay = vbox(self, 8, (16, 14, 16, 16))
+        top = hbox(spacing=6)
+        top.addWidget(Label(tr("Your picture"), 15, bold=True), 1)
+        close = IconButton("close", 26, tip=tr("Close"))
+        close.clicked.connect(self.close)
+        top.addWidget(close)
+        lay.addLayout(top)
+        lay.addWidget(Label(tr("Drag to move it, scroll to zoom."), 10.5, TEXT_DIM))
+        self.crop = Cropper(big, S(220))
+        self.crop.changed = self._previews
+        row = hbox(spacing=10)
+        row.addWidget(self.crop)
+        self.prev = AvatarPreviews(self)
+        row.addWidget(self.prev)
+        lay.addLayout(row)
+        zoom = Slider(100, 500, 100, 5)
+        zoom.changed.connect(lambda v: self.crop.set_zoom(v / 100))
+        line = hbox(spacing=6)
+        line.addWidget(Label(tr("Zoom"), 11, TEXT_DIM))
+        line.addWidget(zoom, 1)
+        lay.addLayout(line)
+        tools = hbox(spacing=6)
+        turn = Button(tr("Turn"), "ghost", 28, icon="refresh")
+        turn.clicked.connect(self._turn)
+        flip = Button(tr("Mirror"), "ghost", 28)
+        flip.clicked.connect(self._flip)
+        tools.addWidget(turn, 1)
+        tools.addWidget(flip, 1)
+        lay.addLayout(tools)
+        self.filt = Segmented([tr(n) for _k, n in FILTERS], 0)
+        self.filt.changed.connect(self._filter)
+        lay.addWidget(Label(tr("Filter"), 11, TEXT_DIM))
+        lay.addWidget(self.filt)
+        go = Button(tr("Use this picture"), "primary", 36)
+        go.clicked.connect(self._use)
+        lay.addWidget(go)
+        lay.addWidget(Label(tr("Everyone can see it. Keep it friendly."), 10, TEXT_FAINT))
+        self.centre()
+
+    def _turn(self) -> None:
+        self.crop.angle = (self.crop.angle + 90) % 360
+        self.crop._clamp()
+        self.crop.update()
+        self._previews()
+
+    def _flip(self) -> None:
+        self.crop.mirror = not self.crop.mirror
+        self.crop.update()
+        self._previews()
+
+    def _filter(self, i: int) -> None:
+        kind = FILTERS[i][0]
+        src = self.crop.src
+        if kind == "normal":
+            self.crop.view = src
+        else:                                                  # filter a smaller copy, then show it at full size
+            small = src.scaled(min(src.width(), 360), min(src.height(), 360), Qt.AspectRatioMode.KeepAspectRatio,
+                               Qt.TransformationMode.SmoothTransformation)
+            self.crop.view = filtered(small, kind).scaled(src.width(), src.height(), Qt.AspectRatioMode.IgnoreAspectRatio,
+                                                          Qt.TransformationMode.SmoothTransformation)
+        self.crop.update()
+        self._previews()
+
+    def _previews(self) -> None:
+        self.prev.update()
+
+    def _use(self) -> None:
+        sfx.play("pick")
+        out = self.crop.render_square(192)
+        self.close()
+        self.on_done(out)
+
+
+class AvatarPreviews(QWidget):
+    """How the picture will look in the profile, the friends list and next to messages."""
+
+    def __init__(self, editor) -> None:
+        super().__init__()
+        self.ed = editor
+        self.setFixedSize(S(70), S(220))
+
+    def paintEvent(self, _e) -> None:
+        from PyQt6.QtGui import QPainterPath, QPixmap
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        pm = QPixmap.fromImage(self.ed.crop.render_square(128))
+        y = S(4)
+        for d in (S(56), S(36), S(24)):
+            r = QRectF((self.width() - d) / 2, y, d, d)
+            clip = QPainterPath()
+            clip.addEllipse(r)
+            p.save()
+            p.setClipPath(clip)
+            p.drawPixmap(r.toRect(), pm)
+            p.restore()
+            p.setPen(QPen(alpha(ui.accent, 0.8), S(1.5)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(r)
+            y += d + S(18)
+        p.setPen(QColor(TEXT_FAINT))
+        p.setFont(font(9))
+        p.drawText(QRectF(0, self.height() - S(18), self.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter), tr("Preview"))
+
+
+# ================================================================ the login streak flame
+FLAME_STAGES = [  # (from day, outer, middle, core) — it gets hotter, bigger and fancier every day
+    (1, "#FF7A1A", "#FFB238", "#FFF1B0"), (3, "#FF4D1A", "#FF9A2E", "#FFE38A"), (5, "#FF2E4D", "#FF7A3D", "#FFD36B"),
+    (7, "#E8227A", "#FF5C8A", "#FFD0E0"), (10, "#9B3DFF", "#D16BFF", "#FFE0FF"), (14, "#2E7BFF", "#4FC3FF", "#E0F7FF"),
+    (21, "#00C2A8", "#2EE6D6", "#E8FFFB"), (30, "#FFC94D", "#FFF1A8", "#FFFFFF")]
+
+
+def flame_colours(day: int) -> tuple:
+    st = FLAME_STAGES[0]
+    for s in FLAME_STAGES:
+        if day >= s[0]:
+            st = s
+    return QColor(st[1]), QColor(st[2]), QColor(st[3])
+
+
+def paint_flame(p: QPainter, c: QPointF, size: float, day: int, t: float, sparks: bool = True) -> None:
+    """A living flame. Day 1 is a small orange flame; each day adds a little: height, tongues, colours, glow,
+    embers, a ring and at last a crown of light (day 30: a white-gold flame)."""
+    import math
+    from PyQt6.QtGui import QPainterPath, QRadialGradient
+    day = max(0, day)
+    if day == 0:
+        p.save()
+        p.setPen(QPen(alpha("#FFFFFF", 0.25), S(1.2), Qt.PenStyle.DashLine))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        path = QPainterPath()
+        path.moveTo(c.x(), c.y() - size * 0.55)
+        path.cubicTo(c.x() + size * 0.45, c.y() - size * 0.1, c.x() + size * 0.35, c.y() + size * 0.45, c.x(), c.y() + size * 0.45)
+        path.cubicTo(c.x() - size * 0.35, c.y() + size * 0.45, c.x() - size * 0.45, c.y() - size * 0.1, c.x(), c.y() - size * 0.55)
+        p.drawPath(path)
+        p.restore()
+        return
+    outer, mid, core = flame_colours(day)
+    grow = min(1.0, 0.55 + day * 0.03)                   # taller every day, full size at day 15
+    h = size * grow
+    p.save()
+    glow = QRadialGradient(QPointF(c.x(), c.y() + h * 0.1), size * (0.6 + min(0.5, day * 0.03)))
+    glow.setColorAt(0, alpha(outer, min(0.55, 0.18 + day * 0.02)))
+    glow.setColorAt(1, alpha(outer, 0.0))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(glow)
+    p.drawEllipse(QPointF(c.x(), c.y() + h * 0.1), size * 1.1, size * 1.1)
+    if day >= 12:                                         # a turning ring of light
+        p.setPen(QPen(alpha(mid, 0.35), S(1.2)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        ring = size * 0.62
+        p.drawArc(QRectF(c.x() - ring, c.y() + h * 0.28 - ring * 0.32, ring * 2, ring * 0.64), int(t * 400) % 5760, 3600)
+        p.setPen(Qt.PenStyle.NoPen)
+
+    def tongue(scale: float, colour: QColor, wob: float, phase: float, lean: float = 0.0) -> None:
+        w = h * 0.42 * scale
+        top = c.y() + h * 0.5 - h * scale
+        sway = math.sin(t * (5 + phase) + phase) * w * wob
+        tip = QPointF(c.x() + sway + lean * w, top)
+        base = c.y() + h * 0.5
+        path = QPainterPath()
+        path.moveTo(tip)
+        path.cubicTo(c.x() + w * 0.9 + sway * 0.5, top + h * scale * 0.45, c.x() + w, base - w * 0.4, c.x(), base)
+        path.cubicTo(c.x() - w, base - w * 0.4, c.x() - w * 0.9 + sway * 0.5, top + h * scale * 0.45, tip.x(), tip.y())
+        g = QLinearGradient(QPointF(0, top), QPointF(0, base))
+        g.setColorAt(0, alpha(colour, 0.0 if scale > 0.6 else 0.6))
+        g.setColorAt(0.35, colour)
+        g.setColorAt(1, mix(colour, QColor("#FFFFFF"), 0.15))
+        p.setBrush(g)
+        p.drawPath(path)
+
+    tongues = min(4, 1 + day // 4)                        # side tongues appear as the streak grows
+    for k in range(1, tongues):
+        side = -1 if k % 2 else 1
+        tongue(0.55 + 0.05 * k, alpha(outer, 0.75), 0.25, k * 1.7, side * (0.6 + 0.15 * k))
+    tongue(1.0, outer, 0.18, 0.0)
+    tongue(0.72, mid, 0.22, 1.3)
+    tongue(0.42, core, 0.28, 2.6)
+    if day >= 7:                                          # a bright heart
+        heart = QRadialGradient(QPointF(c.x(), c.y() + h * 0.32), h * 0.16)
+        heart.setColorAt(0, QColor("#FFFFFF"))
+        heart.setColorAt(1, alpha(core, 0.0))
+        p.setBrush(heart)
+        p.drawEllipse(QPointF(c.x(), c.y() + h * 0.32), h * 0.16, h * 0.16)
+    if sparks:                                            # embers: more and faster every day
+        n = min(16, 1 + day)
+        for k in range(n):
+            life = (t * (0.5 + (k % 5) * 0.12) + k * 0.37) % 1.0
+            x = c.x() + math.sin(k * 12.9 + t * 2) * size * 0.32 * (0.4 + life)
+            y = c.y() + h * 0.4 - life * size * (0.9 + min(0.6, day * 0.02))
+            col = mid if k % 3 else core
+            if day >= 20 and k % 4 == 0:
+                col = QColor.fromHsvF((t * 0.2 + k * 0.13) % 1.0, 0.55, 1.0)
+            p.setBrush(alpha(col, 1 - life))
+            p.drawEllipse(QPointF(x, y), S(1.6) * (1 - life * 0.5), S(1.6) * (1 - life * 0.5))
+    if day >= 30:                                         # the crown: a few rays over the flame
+        p.setPen(QPen(alpha("#FFF6C8", 0.55), S(1.3)))
+        for k in range(5):
+            a = -math.pi / 2 + (k - 2) * 0.35 + math.sin(t * 2 + k) * 0.05
+            r0, r1 = size * 0.7, size * (0.88 + 0.06 * math.sin(t * 4 + k))
+            p.drawLine(QPointF(c.x() + math.cos(a) * r0, c.y() + math.sin(a) * r0),
+                       QPointF(c.x() + math.cos(a) * r1, c.y() + math.sin(a) * r1))
+    p.restore()
+
+
+class StreakFlame(QWidget):
+    """The flame and the number of days, alive (it moves only while it is on screen)."""
+
+    def __init__(self, day: int, size: int = 64, label: bool = True) -> None:
+        super().__init__()
+        self.day, self.label = day, label
+        self.setFixedSize(S(size), S(size) + (S(18) if label else 0))
+        self._t = QTimer(self)
+        self._t.setInterval(33)
+        self._t.timeout.connect(self.update)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        side = self.width()
+        paint_flame(p, QPointF(side / 2, side * 0.52), side * 0.46, self.day, time.monotonic())
+        if self.label:
+            _o, mid, _c = flame_colours(max(1, self.day))
+            p.setPen(mid if self.day else QColor(TEXT_DIM))
+            p.setFont(font(11, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(0, side - S(2), side, S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("{n} days", n=self.day) if self.day != 1 else tr("1 day"))
+
+
+class StreakRow(QWidget):
+    """Games lobby: the flame, the streak and when the next reward is ready."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedHeight(S(44))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._t = QTimer(self)
+        self._t.setInterval(40)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def _state(self):
+        ec = self.ctx.econ
+        today = datetime.date.today().isoformat()
+        day = str(ec.streak_day or "")
+        yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        alive = day in (today, yesterday)
+        return (ec.streak if alive else 0), day == today
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.rect().contains(e.position().toPoint()):
+            sfx.play("pick")
+            check_login_reward(self.ctx, force=True)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        streak, claimed = self._state()
+        outer, mid, _core = flame_colours(max(1, streak))
+        g = QLinearGradient(r.topLeft(), r.topRight())
+        g.setColorAt(0, mix(outer, QColor("#14181D"), 0.78))
+        g.setColorAt(1, QColor("#14181D"))
+        p.setPen(QPen(alpha(mid, 0.45 if not claimed else 0.15), 1.2))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(10), S(10))
+        paint_flame(p, QPointF(r.left() + S(22), r.center().y()), S(17), streak, time.monotonic(), sparks=streak > 0)
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left() + S(44), r.top(), r.width(), r.height()), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("Daily reward") + (f"  ·  {tr('{n} days', n=streak)}" if streak > 1 else ""))
+        p.setPen(QColor(TEXT_DIM if claimed else mid.name()))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.drawText(r.adjusted(0, 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   tr("Done for today") if claimed else tr("Claim!"))
+
+
+
+class AmountWindow(FloatWindow):
+    """Give or take coins or keys: quick buttons for the usual amounts, or type any number."""
+    wants_keys = True
+
+    def __init__(self, ctx, title: str, presets: list, on_amount) -> None:
+        super().__init__(ctx, 320)
+        from PyQt6.QtWidgets import QLineEdit
+        self.on_amount = on_amount
+        lay = vbox(self, 8, (16, 14, 16, 16))
+        top = hbox(spacing=6)
+        top.addWidget(Label(title, 15, bold=True), 1)
+        close = IconButton("close", 26, tip=tr("Close"))
+        close.clicked.connect(self.close)
+        top.addWidget(close)
+        lay.addLayout(top)
+        for row in (presets[:4], presets[4:8]):
+            if not row:
+                continue
+            line = hbox(spacing=6)
+            for n in row:
+                b = Button(("+" if n > 0 else "−") + coins_text(abs(n)), "primary" if n > 0 else "danger", 30)
+                b.clicked.connect(lambda _c=False, n=n: self._go(n))
+                line.addWidget(b, 1)
+            lay.addLayout(line)
+        lay.addWidget(Label(tr("Or type an amount (minus to take):"), 10.5, TEXT_DIM))
+        line = hbox(spacing=6)
+        self.edit = QLineEdit()
+        self.edit.setPlaceholderText("500 / -500")
+        self.edit.setFixedHeight(S(32))
+        self.edit.setStyleSheet(
+            f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
+            f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}")
+        self.edit.returnPressed.connect(self._typed)
+        ok = Button(tr("Apply"), "primary", 32)
+        ok.clicked.connect(self._typed)
+        line.addWidget(self.edit, 1)
+        line.addWidget(ok)
+        lay.addLayout(line)
+        self.centre()
+
+    def _typed(self) -> None:
+        text = self.edit.text().replace(" ", "").replace("−", "-")
+        try:
+            n = int(text)
+        except ValueError:
+            return self.edit.setFocus()
+        if n:
+            self._go(n)
+
+    def _go(self, n: int) -> None:
+        self.close()
+        self.on_amount(n)
+
+
+
+# ================================================================ visualisers in the shop
+class VisShopRow(QWidget):
+    """One visualiser: a live preview, its rarity, its price, and Buy / Use / In use."""
+
+    def __init__(self, page, style: str, name: str) -> None:
+        super().__init__()
+        pass
+        pass
+        self.page, self.ctx, self.style = page, page.ctx, style
+        rarity, price = VIS_SHOP[style]
+        ec = self.ctx.econ
+        price = ec.shop_price("vis:" + style) if style != "bars" and ec.price("vis:" + style) is not None else price
+        self.owned = vis_owned(self.ctx, style)
+        self.using = self.ctx.cfg["visualiser"] == style
+        self.setFixedHeight(S(64))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        lay = hbox(self, 8)
+        lay.setContentsMargins(S(8), S(6), S(8), S(6))
+        prev = Visualiser(self.ctx, style, 50)
+        prev.setFixedWidth(int(page.W * 0.45))
+        prev.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        lay.addWidget(prev)
+        col = vbox(spacing=1)
+        col.addWidget(Label(tr(name), 12.5, TEXT, bold=True))
+        col.addWidget(Label(tr(RARITY_NAMES[rarity]).upper(), 9.5, RARITY_COLOURS[rarity], bold=True))
+        state = (tr("In use") if self.using else tr("Owned: click to use") if self.owned else
+                 (tr("Free") if not price else coins_text(int(price)) + " " + tr("coins")))
+        col.addWidget(Label(state, 10.5, GOLD_TEXT if not self.owned else TEXT_DIM))
+        lay.addLayout(col, 1)
+        self.colour = QColor(RARITY_COLOURS[rarity])
+        self.price = int(price or 0)
+
+    def mouseReleaseEvent(self, e) -> None:
+        if not self.rect().contains(e.position().toPoint()):
+            return
+        ctx, ec = self.ctx, self.ctx.econ
+        if self.owned:
+            return use_vis(ctx, self.style)
+        if self.price > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(self.price - ec.coins)), "warn")
+
+        def bought(ok: bool, data) -> None:
+            if not ok:
+                return ctx.toast(tr(str(data)), "warn")
+            sfx.play("on")
+            ec.refresh()
+            QTimer.singleShot(500, lambda: use_vis(ctx, self.style))
+        ctx.window.confirm(tr("Buy this visualiser for {n} coins?", n=coins_text(self.price)),
+                           lambda: ec.buy("vis:" + self.style, bought), yes=tr("Buy"))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha(ui.accent, 0.8) if self.using else alpha(self.colour, 0.35), S(1.4) if self.using else 1))
+        g = QLinearGradient(r.topLeft(), r.topRight())
+        g.setColorAt(0, QColor("#0A0D10"))
+        g.setColorAt(1, mix(self.colour, QColor("#0A0D10"), 0.85))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(10), S(10))
+
+
+def use_vis(ctx, style: str) -> None:
+    sfx.play("pick")
+    ctx.cfg["visualiser"] = style
+    ctx.cfg["vis_style"] = style
+    ctx.cfg.save()
+    ctx._sync_audio()
+    ctx.window._drop_page("home")
+    ctx.toast(tr("Visualiser on: you see it on the music tab"))
+    ctx.reload_page()
+
+
+def build_vis_shop(page, lay) -> None:
+    pass
+    lay.addWidget(Label(tr("Visualisers move with your music on the music tab. The rarer, the cooler. Turn them on or "
+                           "off in Settings."), 10.5, TEXT_DIM, wrap_w=page.W))
+    for style, name in VIS_STYLES:
+        lay.addWidget(VisShopRow(page, style, name))
+
+
 # ==================================================================================================
 # SECTION: friends
 # ==================================================================================================
@@ -19814,8 +20847,11 @@ class Faces:
         if img.isNull():
             return done(False, tr("This picture cannot be used"))
         side = min(img.width(), img.height())
-        img = img.copy((img.width() - side) // 2, (img.height() - side) // 2, side, side).scaled(
-            96, 96, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self.upload_image(img.copy((img.width() - side) // 2, (img.height() - side) // 2, side, side), done)
+
+    def upload_image(self, img: QImage, done) -> None:
+        """A square picture (already cropped in the editor) goes to the server, small."""
+        img = img.scaled(96, 96, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
         buf = QByteArray()
         dev = QBuffer(buf)
         dev.open(QIODevice.OpenModeFlag.WriteOnly)
@@ -20212,9 +21248,12 @@ class FriendsPage(Page):
         self.ctx.toast(tr("Refreshed"))
 
     def _picture(self) -> None:
-        path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg)")
+        path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")
         if not path:
             return
+        img = QImage(path)
+        if img.isNull():
+            return self.ctx.toast(tr("This picture cannot be used"), "warn")
 
         def done(ok: bool, data) -> None:
             if not ok:
@@ -20225,7 +21264,8 @@ class FriendsPage(Page):
                 self.ctx.social_me["avatar_v"] = int(data or 0)
             self.ctx.toast(tr("Picture changed: everyone can see it"))
             self._redo()
-        self.ctx.faces.upload(path, done)
+        pass
+        self.ctx._avatar = AvatarEditor(self.ctx, img, lambda out: self.ctx.faces.upload_image(out, done))
 
     def _rename(self) -> None:
         me = getattr(self.ctx, "social_me", None) or {}
@@ -20601,6 +21641,7 @@ class FormDialog(QWidget):
         except RuntimeError:
             pass
         ctx._form = self
+        self.ctx = ctx
         self._on_send = on_send
         self.setWindowTitle("Rubenium")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
@@ -20634,6 +21675,10 @@ class FormDialog(QWidget):
         line.addWidget(go, 1)
         lay.addLayout(line)
         self.adjustSize()
+        first = next(iter(self.edits.values()), None)
+        self.focus_me = first.setFocus if first is not None else None
+        if present(self, ctx, keys=True):
+            return
         area = work_area(ctx.window.card_global().center())
         self.move(area.center().x() - self.width() // 2, area.center().y() - self.height() // 2)
         self.show()
@@ -20641,6 +21686,9 @@ class FormDialog(QWidget):
         self.activateWindow()
         if self.edits:
             next(iter(self.edits.values())).setFocus()
+
+    def close(self) -> bool:
+        return close_embedded(self) or super().close()
 
     def say(self, text: str) -> None:
         self.note.set_text(text)
@@ -20734,6 +21782,7 @@ class Table(QWidget):
 class AdminPage(Page):
     key = "admin"
     SECTIONS = ["Overview", "Players", "Items", "Cases", "Live", "Settings", "Log", "Help"]
+    ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -20748,7 +21797,8 @@ class AdminPage(Page):
         if not ctx.econ.admin:
             return lay.addWidget(Label(tr("Admin only"), 12, TEXT_DIM))
         tab = int(getattr(ctx, "admin_tab", 0) or 0)
-        pick = GamePicker([tr(s) for s in self.SECTIONS], tab)
+        pass
+        pick = NavTiles([(tr(s), i) for s, i in zip(self.SECTIONS, self.ICONS)], tab)
         pick.changed.connect(self._section)
         lay.addWidget(pick)
         self._lock_row(lay)
@@ -20774,6 +21824,11 @@ class AdminPage(Page):
         if got is None or time.monotonic() - got[0] > 15:
             def back(ok: bool, data) -> None:
                 if not ok:
+                    pass
+                    if server_missing(data):                 # the server update was not run yet: show it once, quietly
+                        cache[key] = (time.monotonic() + 3600, {} if fn != "rb_admin_audit" and fn != "rb_admin_resets" else [])
+                        self.ctx.econ.server_old = True
+                        return
                     return self.ctx.toast(tr(str(data)), "warn")
                 old = cache.get(key)
                 cache[key] = (time.monotonic(), data)
@@ -20875,28 +21930,39 @@ class AdminPage(Page):
                                (st.get("cases", 0), tr("Cases")), (st.get("trades", 0), tr("Trades")),
                                (tr("Online") if d.get("online") else tr("Offline"), tr("Status")),
                                (tr("Blocked") if d.get("banned") else tr("OK"), tr("Account"))], self.W))
-        line = hbox(spacing=6)
-        give = Button(tr("Coins / keys"), "primary", 30)
-        give.clicked.connect(lambda: FormDialog(
-            self.ctx, tr("Give or take: {name}", name=name), [("c", tr("Coins (+ to give, - to take)"), "0"),
-                                                               ("k", tr("Keys (+ to give, - to take)"), "0")], tr("Apply"),
-            lambda v, dlg: (dlg.close(), self.do("rb_admin_grant", {"name": name, "add_coins": _int(v["c"], 0),
-                                                                   "add_keys": _int(v["k"], 0)}, tr("Done")))))
-        item = Button(tr("Give item or case"), "primary", 30)
-        item.clicked.connect(lambda: self._give_dialog(name))
-        line.addWidget(give, 1)
-        line.addWidget(item, 1)
-        lay.addLayout(line)
-        line2 = hbox(spacing=6)
-        ban = Button(tr("Unblock") if d.get("banned") else tr("Block"), "ghost", 28)
-        ban.clicked.connect(lambda: self.ctx.window.confirm(
-            tr("Unblock {name}?", name=name) if d.get("banned") else tr("Block {name}? They cannot use anything online.", name=name),
-            lambda: self.do("rb_admin_ban", {"name": name, "ban": not d.get("banned")}), yes=tr("Yes")))
-        pic = Button(tr("Remove picture"), "ghost", 28)
-        pic.clicked.connect(lambda: self.do("rb_admin_avatar_clear", {"name": name}, tr("Done")))
-        line2.addWidget(ban, 1)
-        line2.addWidget(pic, 1)
-        lay.addLayout(line2)
+        pass
+        acts = [(tr("Coins"), "gem"), (tr("Keys"), "key"), (tr("Give item"), "gift"), (tr("Give case"), "folder"),
+                (tr("Unblock") if d.get("banned") else tr("Block"), "lock"), (tr("Picture"), "trash"),
+                (tr("Undo last"), "refresh"), (tr("Refresh"), "refresh")]
+        grid = NavTiles(acts, -1, select=False)
+
+        def act(i: int) -> None:
+            ctx = self.ctx
+            if i == 0:
+                ctx._amount = AmountWindow(ctx, tr("Coins for {name}", name=name), [100, 1000, 10000, 100000, -100, -1000, -10000, -100000],
+                                           lambda n: self.do("rb_admin_grant", {"name": name, "add_coins": n, "add_keys": 0},
+                                                             tr("Done: {n} coins", n=("+" if n > 0 else "") + coins_text(n))))
+            elif i == 1:
+                ctx._amount = AmountWindow(ctx, tr("Keys for {name}", name=name), [1, 5, 10, 50, -1, -5, -10, -50],
+                                           lambda n: self.do("rb_admin_grant", {"name": name, "add_coins": 0, "add_keys": n},
+                                                             tr("Done: {n} keys", n=f"{n:+d}")))
+            elif i == 2:
+                self._give_dialog(name)
+            elif i == 3:
+                self._case_dialog(name)
+            elif i == 4:
+                ctx.window.confirm(
+                    tr("Unblock {name}?", name=name) if d.get("banned") else tr("Block {name}? They cannot use anything online.", name=name),
+                    lambda: self.do("rb_admin_ban", {"name": name, "ban": not d.get("banned")}), yes=tr("Yes"))
+            elif i == 5:
+                ctx.window.confirm(tr("Remove {name}'s picture?", name=name),
+                                   lambda: self.do("rb_admin_avatar_clear", {"name": name}, tr("Done")), yes=tr("Remove"))
+            elif i == 6:
+                self._undo_last(name)
+            else:
+                self._reload()
+        grid.changed.connect(act)
+        lay.addWidget(grid)
         stock = d.get("stock") or {}
         if stock:
             pass
@@ -20954,6 +22020,23 @@ class AdminPage(Page):
         lay.addWidget(Table([(l["reason"], str(l.get("ref") or "")[:18], ("+" if int(l["coins"]) >= 0 else "") + coins_text(int(l["coins"]))
                               + (f"  {int(l['keys']):+d}🔑" if int(l.get("keys") or 0) else ""),
                               "#5BE08A" if int(l["coins"]) >= 0 else "#FF7A7A") for l in (d.get("ledger") or [])[:60]], self.W))
+
+    def _case_dialog(self, name: str) -> None:
+        pass
+        cases = [c["id"] for c in self.ctx.econ.cases] or list(CASE_NAMES)
+        FormDialog(self.ctx, tr("Give a case to {name}", name=name),
+                   [("w", tr("Which case: ") + ", ".join(cases), cases[0] if cases else ""),
+                    ("n", tr("How many (1 to 100)"), "1")], tr("Give"),
+                   lambda v, dlg: (dlg.close(), self.do("rb_admin_give", {"name": name, "what": "case:" + v["w"].strip().replace("case:", ""),
+                                                                         "how_many": _int(v["n"], 1)}, tr("Given: it opens for free"))))
+
+    def _undo_last(self, name: str) -> None:
+        rows = self.fetch("rb_admin_audit", {}) or []
+        last = next((r for r in rows if (r.get("target") or "").lower() == name.lower() and r.get("can_undo")), None)
+        if last is None:
+            return self.ctx.toast(tr("Nothing to undo for {name}", name=name), "warn")
+        self.ctx.window.confirm(tr("Undo “{what}” on {target}?", what=last["action"], target=name),
+                                lambda: self.do("rb_admin_undo", {"entry": last["id"]}, tr("Undone")), yes=tr("Undo"))
 
     def _give_dialog(self, name: str) -> None:
         chosen = getattr(self.ctx, "admin_item", "") or ""
@@ -23424,7 +24507,8 @@ class Welcome(QWidget):
         super().__init__()
         self.ctx, self._on_done = ctx, on_done
         self.setWindowTitle("Rubenium")
-        self.setWindowFlags(WINDOW_FLAGS)
+        # the start screen is a normal window: it is not pinned over every app (the ball and the menu are)
+        self.setWindowFlags(WINDOW_FLAGS & ~Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
@@ -23833,6 +24917,47 @@ class LockCover(QWidget):
                    int(Qt.AlignmentFlag.AlignHCenter | Qt.TextFlag.TextWordWrap), text)
 
 
+class SheetPage(QWidget):
+    """A small screen shown inside the menu instead of a separate window (a text box, the daily reward, a chat…).
+    Everything stays in the main menu: nothing pops up over a game."""
+    key = "sheet"
+    fixed_height = 0
+
+    def __init__(self, ctx, widget) -> None:
+        super().__init__()
+        self.ctx, self.widget = ctx, widget
+        self.W = S(CARD_W - 2 * PAD)
+        lay = vbox(self, 6)
+        widget.setParent(self)
+        if widget.width() > self.W:
+            widget.setFixedWidth(self.W)
+        lay.addWidget(widget, 0, Qt.AlignmentFlag.AlignHCenter)
+        lay.addStretch(1)
+        widget.show()
+
+    def content_height(self) -> int:
+        lay = self.layout()
+        lay.activate()
+        return lay.sizeHint().height()
+
+    def on_show(self) -> None:
+        f = getattr(self.widget, "focus_me", None)
+        if f is not None:
+            QTimer.singleShot(60, f)
+
+    def on_hide(self) -> None: ...
+
+    def on_state(self, st) -> None: ...
+
+    def release(self) -> None:
+        """The page goes away, the small screen may come back: keep it."""
+        try:
+            self.widget.hide()
+            self.widget.setParent(None)
+        except RuntimeError:
+            pass
+
+
 class Body(QWidget):
     """Card chrome: wordmark, status dots, the R button (back to the ball), tab bar and the page host."""
 
@@ -24121,7 +25246,61 @@ class MainWindow(QWidget):
         return float(min(S(CHROME_TOP + CHROME_BOTTOM) + self.pages[key][2], self.card_max_h))
 
     # ------------------------------------------------------------------ pages
+    # ------------------------------------------------------------------ small screens inside the menu
+    def embed(self, widget, keys: bool = False) -> None:
+        """Show `widget` inside the menu, over the current tab, until it is closed. keys: it has a text box."""
+        old = getattr(self, "sheet", None)
+        if old is not None and old is not widget:
+            self._close_sheet(old)
+        self.sheet, self.sheet_tab, self.sheet_keys = widget, self.current, keys
+        if keys:
+            self.allow_keys(True)
+        self.reload_page()
+
+    def unembed(self, widget) -> None:
+        if getattr(self, "sheet", None) is widget:
+            self.sheet = None
+            if self.sheet_keys:
+                self.allow_keys(False)
+            self.reload_page()
+
+    def _close_sheet(self, widget=None) -> None:
+        w = widget or getattr(self, "sheet", None)
+        if w is None:
+            return
+        self.sheet = None
+        if getattr(self, "sheet_keys", False):
+            self.allow_keys(False)
+        try:
+            end = getattr(w, "on_closed", None)
+            if end:
+                end()
+            w.deleteLater()
+        except RuntimeError:
+            pass
+
+    def allow_keys(self, on: bool) -> None:
+        """Typing needs the keyboard. Only while a text box is open may the menu take it; then it gives it back."""
+        if bool(getattr(self, "_keys_on", False)) == on:
+            return
+        self._keys_on = on
+        vis = self.isVisible()
+        self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, not on)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, not on)
+        if vis:
+            self.show()
+            win.set_topmost(int(self.winId()))
+            if on:
+                self.raise_()
+                self.activateWindow()
+
     def _ensure_page(self, key: str):
+        if key not in self.pages and getattr(self, "sheet", None) is not None and key == self.sheet_tab:
+            page = SheetPage(self.ctx, self.sheet)
+            h = page.content_height()
+            sa = ScrollArea(page, h, self.body.host)
+            sa.hide()
+            self.pages[key] = (sa, page, h)
         if key not in self.pages:
             page = make_page(self.ctx, key)
             align_slider_rows(page)
@@ -24134,6 +25313,8 @@ class MainWindow(QWidget):
     def _drop_page(self, key: str) -> None:
         if key in self.pages:
             sa, page, _h = self.pages.pop(key)
+            if isinstance(page, SheetPage):
+                page.release()
             page.on_hide()
             sa.hide()
             sa.deleteLater()
@@ -24156,6 +25337,10 @@ class MainWindow(QWidget):
     def goto(self, key: str) -> None:
         if key not in self.tab_keys():
             return
+        if getattr(self, "sheet", None) is not None and key != self.sheet_tab:     # another tab: the small screen closes
+            tab = self.sheet_tab
+            self._close_sheet()
+            self._drop_page(tab)
         if not self.expanded:
             self.current = key
             self.ctx.cfg["page"] = key
@@ -24198,6 +25383,10 @@ class MainWindow(QWidget):
         """While a game hides or locks the mouse pointer, every Rubenium window lets clicks through to the
         game: aiming or clicking in a game can never open, drag or press anything in Rubenium."""
         captured = win.mouse_captured()
+        # Game mode: while a fullscreen game is in front and the menu is closed, the ball is not there for the
+        # mouse at all. Moving, aiming or clicking near it goes to the game. Right Shift still opens the menu.
+        if not captured and self.ctx.cfg["game_mouse"] and not self.expanded:
+            captured = win.fullscreen_in_front()
         if captured:
             self.ball.cancel_press()            # a press that began just before the game took the mouse
         through = captured and self.ball._press_pos is None and self._drag_origin is None
@@ -24376,6 +25565,10 @@ class MainWindow(QWidget):
     def collapse(self) -> None:
         if not self.expanded or self.morph.busy:
             return
+        if getattr(self, "sheet", None) is not None:          # folding the menu closes a small screen
+            tab = self.sheet_tab
+            self._close_sheet()
+            self._drop_page(tab)
         self._finish_slide()
         self.pageh.jump(self.pageh.target)
         self.fade.jump(1.0)
@@ -24432,6 +25625,8 @@ class MainWindow(QWidget):
                 self._in_since, self._out_since = 0.0, time.monotonic()
                 self._idle.start()
                 QTimer.singleShot(600, self.ctx.offer_update)
+                if hasattr(self.ctx, "on_opened"):
+                    QTimer.singleShot(450, self.ctx.on_opened)
             elif not self.expanded and t <= 0.001 and self.isVisible():
                 self._snap = None
                 self.ball.set_center(self.mapToGlobal(self._ball_l.center().toPoint()))
@@ -25093,6 +26288,8 @@ class App(QObject):
         if self.cfg["update_check"] and not selftest:
             self._safe("updates", self.updater.start)
         self._safe("show/hide key", lambda: self.tapkey.set_key(self.cfg["hotkey"]))
+        if not self.cfg["vis_migrated"]:                # 2.4.1: the visualiser starts off (turn it on in Settings)
+            self.cfg["visualiser"], self.cfg["vis_migrated"] = "off", True
         self._pin = QTimer(self)
         self._pin.setInterval(2000)
         self._pin.timeout.connect(lambda: self._safe("housekeeping", self._housekeeping))
@@ -25806,17 +27003,29 @@ class App(QObject):
             self.window.sync_lock()
 
     def after_login(self) -> None:
-        """Once logged in: the daily reward, the tour the first time, and a quiet online backup each day."""
+        """Once logged in: a quiet online backup each day. The tour and the daily reward wait until the menu is
+        opened (never on top of a game)."""
         pass
-        if not self.cfg["tutorial_done"]:
-            pass
-            if not self.window.expanded:
-                self.window.expand()
-            QTimer.singleShot(500, lambda: setattr(self, "_tour", Tutorial(self, lambda: check_login_reward(self))))
-        else:
-            check_login_reward(self)
+        self.tour_pending = not self.cfg["tutorial_done"]
+        self.login_pending = True
+        if self.window.expanded:
+            self.on_opened()
         if time.time() - int(self.cfg["backup_at"] or 0) > 86400:
             backup_to_cloud(self, quiet=True)
+
+    def on_opened(self) -> None:
+        """The menu just opened: first the tour (the first time), then the daily reward if it is waiting."""
+        pass
+        if not self.window.expanded or getattr(self.window, "sheet", None) is not None:
+            return
+        if getattr(self, "tour_pending", False):
+            pass
+            self.tour_pending = False
+            self._tour = Tutorial(self, lambda: QTimer.singleShot(300, self.on_opened))
+            return
+        if getattr(self, "login_pending", False) and self.online.logged_in():
+            self.login_pending = False
+            check_login_reward(self)
 
     def start_tutorial(self) -> None:
         pass
