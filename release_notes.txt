@@ -1,62 +1,9 @@
-Rubenium 3.0.0 - final release (update 2)
+Rubenium 3.0.0 - fixes
 
-- Mini Golf 1v1: play a friend live, turn by turn, with a bet slider (replaces duels)
-- OG event (16/11/2026): the MYTHIC CHEST BUNDLE for every OG: 1 free open of every case, 10 000 coins, 10 gold keys
-- Keys: 1 every 15 minutes, up to 5. Gold keys are used first and disappear once used
-- Trading and the market are open from the start
-- Rarest drops are rarer: the rarest item is about 1 in 1 000 000
-- Mini games pay about 30% more
-- Purchases, invitations, trades and notifications show within seconds
-- Shop themes can be previewed in Style > Themes; the Cases menu shows your keys
-- Market: one list with one sort button
-- Classic lyrics view is back; welcome screen, start screen and starting with Windows are always on
-- Fixed: finish chances in cases showed wrong percentages; prices are the same everywhere
-- Fixed: giveaway winners show right away and the tab goes away after it ends
+- The OG tag can no longer be earned (everyone who has it keeps it); the OG event is over (rewards are kept)
+- Item worth is the shop price everywhere: trades, inventory, collection worth, leaderboards and the market
+- Quick sell pays more for badges (5% of their worth, at least a quarter of their base value)
+- Mini Golf: 16 holes with sand, ice, boost pads and water, and each one can be played mirrored
+- Style > Themes: the shop themes show their shop picture again
+- Social: Edit Profile button (banner, frame, tag, picture and showcase)
 
-Rubenium 3.0.0 - final release
-
-NEW
-- Duels: choose your bet with a slider, from 10 coins up to 80% of the lower balance of the two players
-- Song History is now in the Social tab, and friends can see what you played (switch "Visible to friends" off to hide it)
-- Offline mode in Settings > Account: disconnects Rubenium from the internet until you go back online
-- 10 new banners: Carbon, Dunes, Honeycomb, Comet, Deep Sea, City Nights, Neon, Fireflies, Storm, Vortex
-- Gold banners: a banner turns Gold I, II and III the longer you wear it; rarer banners need more hours
-
-CHANGES
-- Balls and banners re-ranked: the animated designs are now the rarer ones
-- The Social tab refreshes by itself every 10 seconds (no more Refresh button)
-- Profiles use capitals: Played, Member Since, Last Seen...
-- Shorter, cleaner texts everywhere, including cases
-
-FIXES
-- Holding the ball over a game menu (Rocket League) could stop the menu from opening
-
-Rubenium 3.0 - the full release
-
-CASES
-- Style cases: every ball, line, font, theme, banner and frame can come from a case (Style, Theme and Profile cases)
-- Coin cases (Starter, Standard, Premium, Jackpot, Titanium) pay back a little more than they cost on average; you still lose about half the time
-- Rare hunts (All or Nothing, Painter, Legend Vault, Mythic Hunt) are for rare badges: rare badges are NOT easier to get
-- Rare drops feel rare: the strip shows the real odds and never repeats an item; only Epic or better get rays, flashes and fanfare
-- Every coin drop has a 6% chance to be a lucky x3; the Jackpot can pay up to 32 times its price
-- Every badge shows its exact chance in each case, for every colour and finish
-- Gifting a case costs its price and 1 key
-
-PROFILES
-- Banners, frames and a showcase of your 3 favourite badges, seen by everyone
-- New: Jungle, Sakura, Ember, Nebula banners; Vine, Star, Halo frames (winter looks are saved for the Christmas event)
-- Free OG tag for every user who joined before 17 November
-
-ECONOMY
-- Fresh start: everyone begins again with 500 coins and 3 keys
-- AFK money: 150 coins an hour (up to 1 800 a day) and 1 key an hour
-- Badges in the shop cost more, the rarer and luckier they are; the market can go up to the shop price
-- Quick sell: sell any item right away for a quarter of its value, or every extra copy at once
-
-ALSO
-- One account can be CREATED per PC; log into your account from any PC
-- The welcome and login screens are no longer pinned over your other windows
-- New swaps can arrive in the Rocket League tab without an app update
-- Inventory: the 2027 LIMITED Advent Calendar is coming soon
-- Fixed: after an update, the New tab could show on top of another tab
-- Fixed: switching sections quickly could cause a hidden error

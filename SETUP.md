@@ -13,3 +13,4 @@
 10. Then run `014_v3.sql` once (3.0: style cases, device rule, bots, admin swaps with the "swaps" storage bucket). Safe to run again. Apps older than 3.0 must update.
 11. Then run `015_final_300.sql` once (3.0.0: duel bet slider rule, balls and banners re-ranked, 10 new banners, gold banners, song history for friends). Safe to run again. Apps older than 3.0.0 must update.
 12. Then run `016_live_golf.sql` once (3.0.0 final: live Mini Golf 1v1, OG event of 16/11/2026 with gold keys, rarer top drops, 1 key every 15 minutes up to 5, market open from the start, better mini game pay). Safe to run again. To move the OG event end, change `og_event_until` in the `rb_config` table (a Unix time).
+13. Then run `017_quick_fixes.sql` once (closes the OG tag and the OG event, worth = shop price everywhere, better quick sell for badges, 16 golf holes). Safe to run again.

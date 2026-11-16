@@ -1483,7 +1483,7 @@ from PyQt6.QtGui import QColor, QFont
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "3.0.0"       # the version people see
-BUILD = "2026.11.17.9"       # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.17.10"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2694,12 +2694,31 @@ class Econ(QObject):
         """Quick sell needs the 2.6 server update."""
         return "quick_share" in self.cfg
 
+    def worth(self, item: str) -> int:
+        """What an item is worth, the same everywhere (and the same rule as the server): its shop price when the shop
+        sells it; Titanium and Gold badges 50 x their value; Mythic badges 400 x their value."""
+        info = self.info(item)
+        if not info:
+            return 0
+        if info.get("price"):
+            return int(info["price"])
+        v = int(info.get("value") or 0)
+        if info.get("kind") == "badge":
+            if info.get("rarity") == "exotic":
+                return v * 400
+            if int(info.get("cls") or 0) >= 3:
+                return v * 50
+        return v
+
     def quick_value(self, item: str) -> int:
         """About what quick sell pays for one (the server decides; shop items can pay less)."""
         info = self.info(item)
         if not info or not info.get("tradeable") or info.get("kind") in ("prog", "tag"):
             return 0
-        return max(1, int(int(info.get("value") or 0) * float(self.cfg.get("quick_share", 0.25))))
+        pay = int(info.get("value") or 0) * float(self.cfg.get("quick_share", 0.25))
+        if info.get("kind") == "badge":
+            pay = max(pay, self.worth(item) * float(self.cfg.get("quick_worth_share", 0) or 0))
+        return max(1, int(pay))
 
     def quick_quote(self, ids: list, done) -> None:
         self.online.ask("rb_quick_quote", {"ids": list(ids)}, lambda ok, d: done(ok, d))
@@ -2809,8 +2828,6 @@ class Econ(QObject):
             self.loaded.emit()
             if hasattr(self.ctx, "after_login"):
                 QTimer.singleShot(1200, self.ctx.after_login)
-            if hasattr(self.ctx, "og_event_check"):
-                QTimer.singleShot(1500, self.ctx.og_event_check)
         self.changed.emit()
 
     def fetch_gold_keys(self) -> None:
@@ -4873,6 +4890,16 @@ FR = {
     "The Island": "L’Île",
     "Tunnel": "Le Tunnel",
     "1 stroke": "1 coup",
+    "Edit Profile": "Modifier le profil",
+    "Sell it right now for about {n} coins": "Vends-le tout de suite pour environ {n} pièces",
+    "Bunker": "Bunker",
+    "Lake": "Le Lac",
+    "Ice Rink": "Patinoire",
+    "Launch Pad": "Rampe de lancement",
+    "Moat": "Les Douves",
+    "Sand Trap Alley": "Allée des bunkers",
+    "Bumper Lake": "Lac à rebonds",
+    "Express": "Express",
 }
 
 
@@ -14012,13 +14039,23 @@ class ThemeCard(QAbstractButton):
         p.save()
         p.setClipPath(path)
         p.setOpacity(1.0 if unlocked else (0.6 if nxt else 0.32) + 0.2 * h)
-        pm = extras.theme_pattern(th, int(r.width()), int(r.height()), ui.accent, self.devicePixelRatioF(),
-                                  ui.scale * 0.7, r.height() * 1.1)
-        if pm is not None:
-            p.drawPixmap(r.topLeft(), pm)
-        if self._sparks is None:
-            self._sparks = extras.theme_sparkles(th, r.width(), r.height(), r.height() * 0.6)
-        extras.paint_sparkles(p, self._sparks, r.left(), r.top(), ui.accent, 1.2, ui.scale * 0.8)
+        if th["id"].startswith("theme:"):                    # a shop theme: its own picture from the shop
+            pass
+            c1, c2 = th.get("tint") or ("#2E9BFF", "#1ABC9C")
+            bg = QLinearGradient(r.topLeft(), r.bottomRight())
+            bg.setColorAt(0, alpha(c1, 0.16))
+            bg.setColorAt(1, alpha(c2, 0.10))
+            p.fillRect(r, bg)
+            d = min(r.height() * 0.62, r.width() * 0.4)
+            show_item(p, th["id"], QRectF(r.right() - d - S(10), r.center().y() - d / 2 - S(4), d, d))
+        else:
+            pm = extras.theme_pattern(th, int(r.width()), int(r.height()), ui.accent, self.devicePixelRatioF(),
+                                      ui.scale * 0.7, r.height() * 1.1)
+            if pm is not None:
+                p.drawPixmap(r.topLeft(), pm)
+            if self._sparks is None:
+                self._sparks = extras.theme_sparkles(th, r.width(), r.height(), r.height() * 0.6)
+            extras.paint_sparkles(p, self._sparks, r.left(), r.top(), ui.accent, 1.2, ui.scale * 0.8)
         p.restore()
         p.setOpacity(1.0 if (unlocked or h > 0.5) else 0.6)
         extras.paint_theme_edge(p, th, r, rad, 0.9 if active else 0.25 + 0.3 * h, True, 0.0)
@@ -16117,10 +16154,8 @@ def rarity_line(ctx, item: str) -> str:
 
 
 def value_of(ctx, item: str) -> int:
-    """What an item is worth, as shown everywhere: its shop price when the shop sells it (so the inventory, trades and
-    the collection always show the same number), else its catalogue value."""
-    info = ctx.econ.info(item)
-    return int(info.get("price") or info.get("value") or 0)
+    """What an item is worth, as shown everywhere (inventory, trades, collection)."""
+    return ctx.econ.worth(item)
 
 
 class ItemGrid(QWidget):
@@ -16906,7 +16941,7 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
     line.addWidget(sell, 1)
     quick = Button(tr("Quick sell"), "ghost", 32, icon="gem")
     quick.setEnabled(sellable and ec.quick_value(item) > 0)
-    quick.setToolTip(tr("Sell it right now for about {n} coins (a quarter of what it is worth)",
+    quick.setToolTip(tr("Sell it right now for about {n} coins",
                         n=coins_text(ec.quick_value(item))))
     quick.clicked.connect(lambda: quick_sell(ctx, [free[-1]["id"]], item_name(item)))
     line.addWidget(quick, 1)
@@ -16963,7 +16998,7 @@ def build_profile_style(page, lay) -> None:
                                ("frame", tr("Frame"), tr("No frame yet: buy one in the Shop or on the Market.")),
                                ("tag", tr("Tag"), tr("No tag yet."))):
         mine = sorted({i["item"] for i in ec.items if i["item"].startswith(kind + ":")},
-                      key=lambda k: (-int(ec.info(k).get("value") or 0), k))
+                      key=lambda k: (-ec.worth(k), k))
         if kind == "tag" and not mine:
             continue
         head = hbox(spacing=8)
@@ -16986,7 +17021,11 @@ def build_profile_style(page, lay) -> None:
 
     def to_collection() -> None:
         ctx.shop_tab = 2
-        ctx.reload_page()
+        if ctx.window.current == "themes":
+            ctx.reload_page()
+        else:
+            ctx.window._drop_page("themes")
+            ctx.window.goto("themes")
     pick.clicked.connect(to_collection)
     head.addWidget(pick)
     lay.addLayout(head)
@@ -18681,14 +18720,52 @@ HOLES = {
             circles=[]),
     8: dict(name="Diamond", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[(0.45, 0.20, 0.55, 0.42)],
             circles=[(0.30, 0.31, 0.04), (0.70, 0.31, 0.04)]),
+    # sand slows the ball, ice keeps it rolling, boost pads push it, water sends it back where it was hit from
+    9: dict(name="Bunker", tee=(0.10, 0.31), cup=(0.88, 0.31), rects=[], circles=[], sand=[(0.40, 0.12, 0.62, 0.50)]),
+    10: dict(name="Lake", tee=(0.10, 0.50), cup=(0.88, 0.14), rects=[], circles=[], water=[(0.30, 0.0, 0.55, 0.40)]),
+    11: dict(name="Ice Rink", tee=(0.10, 0.31), cup=(0.86, 0.31), rects=[(0.50, 0.0, 0.54, 0.20), (0.50, 0.42, 0.54, 0.62)],
+             circles=[], ice=[(0.20, 0.0, 0.80, 0.62)]),
+    12: dict(name="Launch Pad", tee=(0.08, 0.52), cup=(0.90, 0.10), rects=[(0.0, 0.0, 0.40, 0.36)], circles=[],
+             boost=[(0.42, 0.40, 0.56, 0.62, 0.0, -1.6)]),
+    13: dict(name="Moat", tee=(0.10, 0.31), cup=(0.70, 0.31), rects=[], circles=[],
+             water=[(0.55, 0.12, 0.85, 0.18), (0.55, 0.44, 0.85, 0.50), (0.85, 0.12, 0.91, 0.50)]),
+    14: dict(name="Sand Trap Alley", tee=(0.08, 0.10), cup=(0.92, 0.52), rects=[(0.30, 0.0, 0.34, 0.40), (0.64, 0.22, 0.68, 0.62)],
+             circles=[], sand=[(0.36, 0.40, 0.62, 0.62)], boost=[(0.70, 0.02, 0.95, 0.16, 0.0, 1.4)]),
+    15: dict(name="Bumper Lake", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[],
+             circles=[(0.40, 0.31, 0.05), (0.62, 0.15, 0.04), (0.62, 0.47, 0.04)], water=[(0.45, 0.24, 0.58, 0.38)]),
+    16: dict(name="Express", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[(0.30, 0.0, 0.70, 0.22), (0.30, 0.40, 0.70, 0.62)],
+             circles=[], boost=[(0.32, 0.24, 0.42, 0.38, 1.8, 0.0)], ice=[(0.44, 0.22, 0.70, 0.40)],
+             sand=[(0.78, 0.18, 0.86, 0.44)]),
 }
+
+
+def get_hole(hid: int) -> dict:
+    """Hole 1-16; 101-116 is the same hole mirrored left to right."""
+    base = HOLES.get(hid % 100, HOLES[1])
+    if hid < 100:
+        return base
+
+    def fx(r):
+        return (1 - r[2], r[1], 1 - r[0], r[3])
+    out = dict(base, tee=(1 - base["tee"][0], base["tee"][1]), cup=(1 - base["cup"][0], base["cup"][1]),
+               rects=[fx(r) for r in base["rects"]], circles=[(1 - c[0], c[1], c[2]) for c in base["circles"]])
+    for key in ("sand", "ice", "water"):
+        out[key] = [fx(r) for r in base.get(key, [])]
+    out["boost"] = [(1 - b[2], b[1], 1 - b[0], b[3], -b[4], b[5]) for b in base.get("boost", [])]
+    return out
+
+
+def _inside(zones, x: float, y: float) -> bool:
+    return any(z[0] <= x <= z[2] and z[1] <= y <= z[3] for z in zones)
 
 
 def simulate(hole: dict, x: float, y: float, ang: float, pw: float):
     """Roll one shot. Returns (frames at 60 fps, final x, final y, holed). Same maths on every PC."""
     vx, vy = math.cos(ang) * pw * VMAX, math.sin(ang) * pw * VMAX
     dt = 1 / 240
+    x0, y0 = x, y
     frames = [(x, y)]
+    sand, ice, water, boost = hole.get("sand", []), hole.get("ice", []), hole.get("water", []), hole.get("boost", [])
     cx, cy = hole["cup"]
     r = BALL_R
     for step in range(240 * 14):
@@ -18728,6 +18805,14 @@ def simulate(hole: dict, x: float, y: float, ang: float, pw: float):
                 if vn < 0:
                     vx -= (1 + 0.95) * vn * nx                 # bumpers kick back harder
                     vy -= (1 + 0.95) * vn * ny
+        if water and _inside(water, x, y):                     # splash: back to where it was hit from
+            frames.append((x, y))
+            frames.append((x0, y0))
+            return frames, x0, y0, False
+        for (x1, y1, x2, y2, px_, py_) in boost:
+            if x1 <= x <= x2 and y1 <= y <= y2:
+                vx += px_ * dt * 4
+                vy += py_ * dt * 4
         speed = math.hypot(vx, vy)
         dc = math.hypot(x - cx, y - cy)
         if dc < CUP_R * 2.2 and speed < 0.7:                   # the cup pulls a slow ball in a little
@@ -18738,6 +18823,10 @@ def simulate(hole: dict, x: float, y: float, ang: float, pw: float):
             frames.append((cx, cy))
             return frames, cx, cy, True
         dec = (0.42 + speed * 0.55) * dt                        # grass: slows down, more when fast
+        if sand and _inside(sand, x, y):
+            dec *= 4.0
+        elif ice and _inside(ice, x, y):
+            dec *= 0.25
         if speed <= dec or speed < 0.004:
             break
         k = (speed - dec) / speed
@@ -18807,7 +18896,7 @@ class GolfView(QWidget):
         """The layout of hole n (1-3) of this match; the current hole by default."""
         hs = list(self.g.get("holes") or [1, 2, 3])
         n = max(1, min(3, int(n or self.g.get("hole") or 1)))
-        return HOLES.get(int(hs[n - 1]) if len(hs) >= n else 1, HOLES[1])
+        return get_hole(int(hs[n - 1]) if len(hs) >= n else 1)
 
     def set_state(self, g: dict) -> None:
         old = self.g
@@ -18965,6 +19054,32 @@ class GolfView(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         for k in range(0, 12, 2):                            # mowed stripes
             p.fillRect(QRectF(f.left() + k * u / 12, f.top(), u / 12, f.height()), alpha("#FFFFFF", 0.035))
+        for (x1, y1, x2, y2) in h.get("sand", []):
+            p.setBrush(QColor("#E3C88A"))
+            p.drawRoundedRect(QRectF(P(x1, y1), P(x2, y2)), S(10), S(10))
+        for (x1, y1, x2, y2) in h.get("ice", []):
+            p.setBrush(alpha("#CFF4FF", 0.55))
+            p.drawRoundedRect(QRectF(P(x1, y1), P(x2, y2)), S(6), S(6))
+        for (x1, y1, x2, y2) in h.get("water", []):
+            wr = QRectF(P(x1, y1), P(x2, y2))
+            wg = QLinearGradient(wr.topLeft(), wr.bottomRight())
+            wg.setColorAt(0, QColor("#2E7CF6"))
+            wg.setColorAt(1, QColor("#14489E"))
+            p.setBrush(wg)
+            p.drawRoundedRect(wr, S(8), S(8))
+        for (x1, y1, x2, y2, px_, py_) in h.get("boost", []):
+            br = QRectF(P(x1, y1), P(x2, y2))
+            p.setBrush(alpha("#FFB627", 0.35))
+            p.drawRoundedRect(br, S(6), S(6))
+            ang_ = math.atan2(py_, px_)
+            p.setPen(QPen(QColor("#FFD36B"), S(2.5), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            for k in range(3):
+                t_ = ((now * 1.5 + k / 3) % 1.0) - 0.5
+                m_ = min(br.width(), br.height()) * 0.8
+                c_ = br.center() + QPointF(math.cos(ang_) * t_ * m_, math.sin(ang_) * t_ * m_)
+                for sgn in (-1, 1):
+                    p.drawLine(c_, c_ - QPointF(math.cos(ang_ + sgn * 0.6) * S(7), math.sin(ang_ + sgn * 0.6) * S(7)))
+            p.setPen(Qt.PenStyle.NoPen)
         wood = QColor("#6B4423")
         for (x1, y1, x2, y2) in h["rects"]:
             r = QRectF(P(x1, y1), P(x2, y2))
@@ -23797,6 +23912,8 @@ class FriendsPage(Page):
             return self._profile(who)
         if not ctx.online.logged_in():
             return self.lay.addWidget(Label(tr("Log in to see other users"), 12, TEXT_DIM))
+        if getattr(ctx, "social_edit", False):            # quick profile editing: banner, frame, tag, showcase
+            return self._edit_profile()
         me = getattr(ctx, "social_me", None) or {}
         card = StatsCard(ctx, me, self.W)
         card.picture.connect(self._picture)
@@ -23810,6 +23927,13 @@ class FriendsPage(Page):
             pass
             ctx._hist = HistoryWindow(ctx)
         songs.clicked.connect(open_songs)
+        edit = Button(tr("Edit Profile"), "primary", 28)
+
+        def open_edit() -> None:
+            ctx.social_edit = True
+            ctx.reload_page()
+        edit.clicked.connect(open_edit)
+        line.addWidget(edit, 1)
         line.addWidget(rename, 1)
         line.addWidget(songs, 1)
         self.lay.addLayout(line)
@@ -23922,6 +24046,23 @@ class FriendsPage(Page):
             self.refresh()
             self.ctx.online.ask("rb_users", {"search": "", "page": 0}, self._got_users)
         self.ctx.econ.call(fn, {"name": name}, done)
+
+    def _edit_profile(self) -> None:
+        pass
+        top = hbox(spacing=8)
+        back = IconButton("back", 30, tip=tr("Back"))
+
+        def leave() -> None:
+            self.ctx.social_edit = False
+            self.ctx.reload_page()
+        back.clicked.connect(leave)
+        top.addWidget(back)
+        top.addWidget(Label(tr("Edit Profile"), 16, bold=True), 1)
+        self.lay.addLayout(top)
+        pic = Button(tr("Change your picture (PNG or JPG)"), "ghost", 30)
+        pic.clicked.connect(self._picture)
+        self.lay.addWidget(pic)
+        build_profile_style(self, self.lay)
 
     def _picture(self) -> None:
         path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")
