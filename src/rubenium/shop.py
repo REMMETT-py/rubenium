@@ -794,9 +794,21 @@ class ShopPage(Page):
         self._daily_timer.start()
         self._timers()
         if not cid:
+            from .collection import KIND_TEXT, case_kind
             lay.addWidget(CaseCard(self, self.DAILY))
-            for case in ec.cases:
-                lay.addWidget(CaseCard(self, case))
+            if case_kind("starter"):
+                for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts"))):
+                    lay.addWidget(heading(title))
+                    lay.addWidget(Label(tr(KIND_TEXT[kind]), 10.5, TEXT_DIM, wrap_w=self.W))
+                    for case in ec.cases:
+                        if case_kind(case["id"]) == kind:
+                            lay.addWidget(CaseCard(self, case))
+                for case in ec.cases:                         # a case the admin added later
+                    if not case_kind(case["id"]):
+                        lay.addWidget(CaseCard(self, case))
+            else:
+                for case in ec.cases:
+                    lay.addWidget(CaseCard(self, case))
             lay.addWidget(Label(tr("A case costs coins and 1 key. You earn 1 key for every hour with Rubenium."), 10.5,
                                 TEXT_DIM, wrap_w=self.W))
             return
@@ -818,9 +830,12 @@ class ShopPage(Page):
         self.open_btn.clicked.connect(lambda: self._open(case))
         lay.addWidget(self.open_btn)
         if cid != "daily":
-            from .collection import CASE_NOTES
+            from .collection import CASE_NOTES, KIND_TEXT, case_kind
             if case["id"] in CASE_NOTES:
                 lay.addWidget(Label(tr(CASE_NOTES[case["id"]]), 11, TEXT_DIM, wrap_w=self.W))
+            if case_kind(case["id"]):
+                lay.addWidget(Label(tr(KIND_TEXT[case_kind(case["id"])]), 10.5,
+                                    "#3DDC84" if case_kind(case["id"]) == "coins" else "#FF5CC8", wrap_w=self.W))
             gift = Button(tr("Gift this case to a friend"), "ghost", 30)
             gift.clicked.connect(lambda: self._gift(case))
             lay.addWidget(gift)
@@ -889,6 +904,11 @@ class ShopPage(Page):
             ec.absorb(data)
             ec.changed.emit()
             cid = self.ctx.shop_case
+            case = next((c for c in ec.cases if c["id"] == cid), None)
+            won = int(data.get("won") or 0)
+            if case is not None and case.get("mode") != "jackpot" and won > int(case.get("coin_max") or 0) > 0:
+                sfx.play("on")
+                self.ctx.toast(tr("Lucky drop: ×3! +{n} coins", n=coins_text(won)))
             left = int(ec.stock.get(cid, 0) or 0) if cid and cid != "daily" else 0
             case = next((c for c in ec.cases if c["id"] == cid), None)
             if case is not None:
@@ -909,6 +929,8 @@ class ShopPage(Page):
         def send(name: str, dlg) -> None:
             if case["price"] > ec.coins:
                 return dlg.say(tr("Not enough coins"))
+            if ec.keys < 1 and "case_lucky_pct" in ec.cfg:
+                return dlg.say(tr("You need a key: 1 key for every hour with Rubenium"))
 
             def done(ok: bool, data) -> None:
                 if not ok:
@@ -919,6 +941,8 @@ class ShopPage(Page):
             ec.call("rb_case_gift", {"name": name, "which": case["id"]}, done, once=True)
         ctx._ask = AskDialog(ctx, tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), tr("Friend's username"),
                              tr("Gift for {n}", n=coins_text(case["price"])), send, 10,
+                             tr("It costs {n} coins and 1 key. Your friend opens it for free. 3 gifts a day at most.",
+                                n=coins_text(case["price"])) if "case_lucky_pct" in ec.cfg else
                              tr("Your friend opens it for free. 3 gifts a day at most."))
 
     def _lock(self, on: bool) -> None:

@@ -808,6 +808,11 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.6.1", ['Cases rebalanced: coin cases now pay back a little more than they cost on average (you still lose about half the time)',
+               'Rare hunts (All or Nothing, Painter, Legend Vault, Mythic Hunt) are for rare badges: rarer badges are not easier to get',
+               'Every coin drop has a 6% chance to be a lucky ×3; the Jackpot can pay up to 32 times its price',
+               'Badges in the shop cost more, the rarer and luckier they are; the market can now go up to the shop price',
+               'Gifting a case costs its price and 1 key']),
     ("2.6", ['Fresh start: everyone begins again with 500 coins and 3 keys (items, spins and cases reset)',
              'Free OG tag for every user who joined before 17 November',
              'Profiles: banners, frames and a showcase of your 3 favourite badges, seen by everyone',

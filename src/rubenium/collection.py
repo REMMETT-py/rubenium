@@ -30,9 +30,26 @@ CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moo
               "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?")}
 CASE_NOTES = {"gamble": "Half the time: almost nothing. The other half: always Rare or better.",
               "painter": "Never a Basic badge: every badge comes in colour.",
-              "jackpot": "Coins only. Most of the time a little. Once in a while: 8 000 to 16 000.",
-              "titan": "The best chance of a Titanium badge.", "vault": "No Common badges inside.",
-              "mythic": "The best chance of a Mythic badge. Only Epic or better inside."}
+              "jackpot": "Coins only. Most of the time less than its price, sometimes double, and once in a while 10 to 30 times "
+                         "its price.",
+              "titan": "The biggest coin case, and the best chance of a Titanium badge. Big swings.",
+              "vault": "No Common badges inside.",
+              "mythic": "The best chance of a Mythic badge. Only Epic or better inside.",
+              "starter": "Small and safe: a good first case.", "standard": "Good coins, sometimes a Rare badge.",
+              "premium": "Bigger coins and better badges."}
+# 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
+COIN_CASES = ("starter", "standard", "premium", "jackpot", "titan")
+HUNT_CASES = ("gamble", "painter", "vault", "mythic")
+KIND_TEXT = {"coins": "Coin case: on average it pays back a little more than it costs, but about half the time you get "
+                      "less. Every coin drop has a 6% chance to be a lucky ×3.",
+             "hunt": "Rare hunt: the best chances at rare badges, but you lose coins on average (about half comes back)."}
+
+
+def case_kind(case_id: str) -> str:
+    """"coins", "hunt", or "" (before the 2.6.1 server update the old numbers are still live)."""
+    if ECON is None or "case_lucky_pct" not in (ECON.cfg or {}):
+        return ""
+    return "coins" if case_id in COIN_CASES else "hunt" if case_id in HUNT_CASES else ""
 ECON = None            # set by the app at start: lets this file know which Mythic badges are still secret
 
 
@@ -521,6 +538,18 @@ class CaseCard(QWidget):
                    tr(CASE_NAMES.get(cid, "Daily Case")))
         line = QRectF(x, r.top() + S(33), r.width() - S(90), S(18))
         have = int(self.ctx.econ.stock.get(cid, 0) or 0)
+        kind = case_kind(cid)
+        if kind:                                            # what this case is for, at a glance
+            text = tr("COINS") if kind == "coins" else tr("RARE HUNT")
+            kc = QColor("#3DDC84") if kind == "coins" else QColor("#FF5CC8")
+            p.setFont(font(9, QFont.Weight.Black, 0.6))
+            kw = p.fontMetrics().horizontalAdvance(text) + S(14)
+            ktag = QRectF(r.right() - kw - S(10), r.bottom() - S(27), kw, S(18))
+            p.setPen(QPen(alpha(kc, 0.6), 1))
+            p.setBrush(alpha(kc, 0.13))
+            p.drawRoundedRect(ktag, S(9), S(9))
+            p.setPen(kc)
+            p.drawText(ktag, int(Qt.AlignmentFlag.AlignCenter), text)
         if have:
             tag = QRectF(r.right() - S(86), r.top() + S(9), S(76), S(20))
             p.setPen(Qt.PenStyle.NoPen)
@@ -578,7 +607,7 @@ class OddsTable(QWidget):
                 col, name = QColor(CLASS_COLOURS[n]), tr(CLASS_NAMES[n])
             elif n:
                 col, name = QColor(RARITY_COLOURS[TIERS[n - 1]]), tr(RARITY_NAMES[TIERS[n - 1]])
-            elif case.get("mode") == "jackpot":
+            elif case.get("mode") == "jackpot" and not case_kind("jackpot"):
                 col, name = QColor(GOLD_TEXT), tr("{a} to {b} coins", a=100, b=coins_text(16000))
             else:
                 col, name = QColor(GOLD_TEXT), tr("{a} to {b} coins", a=coins_text(case["coin_min"]), b=coins_text(case["coin_max"]))
@@ -640,7 +669,8 @@ class CaseReel(QWidget):
             roll -= share
         if tier == 0:
             if self.case.get("mode") == "jackpot":
-                return ("coins", rnd.choice([150, 220, 300, 380, 1200, 1500, 4000, 12000]))
+                k = int(self.case.get("price") or 1000) / 1000
+                return ("coins", int(rnd.choice([150, 220, 300, 380, 1200, 1500, 4000, 12000]) * k))
             return ("coins", rnd.randint(self.case["coin_min"], max(self.case["coin_min"], self.case["coin_max"])))
         base = rnd.choice(self._badges_of(tier))
         if tier == 5:
