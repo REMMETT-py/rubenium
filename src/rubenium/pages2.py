@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import QAbstractButton, QFileDialog, QGridLayout, QWidget
 
 from . import extras, win
 from .core import WARN, ACCENT_DEFAULT, LOCKED_TABS, S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
+from .admin import AdminPage, GiveawayPage
 from .friends import FriendsPage
 from .games import GamesPage
 from .shop import ShopPage
@@ -746,12 +747,16 @@ class PcPage(Combined):
 
 
 PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": ScreenPage, "rl": RocketPage, "perf": PcPage,
-         "games": GamesPage, "friends": FriendsPage, "themes": ShopPage, "new": NewsPage, "settings": SettingsPage}
+         "games": GamesPage, "friends": FriendsPage, "themes": ShopPage, "new": NewsPage, "settings": SettingsPage,
+         "giveaway": GiveawayPage, "admin": AdminPage}
 # Fixed order: music first, then what you use in a game, then the PC, then fun and looks, settings last.
 TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", "display", "Screen"),
         ("rl", "rocket", "RL SWAP"), ("perf", "perf", "PC"),
-        ("games", "dice", "Games"), ("themes", "gem", "Shop"), ("friends", "users", "Friends"), ("new", "spark", "Updates"),
-        ("settings", "cog", "Settings")]
+        ("giveaway", "gift", "Giveaway"), ("games", "dice", "Games"), ("themes", "gem", "Shop"),
+        ("friends", "users", "Social"), ("new", "spark", "Updates"), ("settings", "cog", "Settings"),
+        ("admin", "shield", "Admin")]
+LIVE_TABS: set = set()      # Giveaway (while one is live) and Admin (the admin account only)
+LOCK_PAGES = {"games", "themes", "friends", "giveaway"}     # covered while the admin has locked the app
 
 
 TEMP_TABS: set = set()      # tabs shown only until the user leaves them
@@ -762,6 +767,8 @@ def visible_tabs(cfg) -> list:
     off = cfg["tabs_off"] if isinstance(cfg["tabs_off"], dict) else {}
 
     def shown(key: str) -> bool:
+        if key in ("giveaway", "admin"):
+            return key in LIVE_TABS
         if key in LOCKED_TABS or key in TEMP_TABS:
             return True
         if key == "new":                        # off by default; shows by itself after an update

@@ -59,7 +59,7 @@ class Flair(QWidget):
     def __init__(self, ctx, parent) -> None:
         super().__init__(parent)
         self.ctx = ctx
-        self.fade = 0.0
+        self.fade = 1.0
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._shine = QTimer(self)                  # rare colours shimmer: repaint only while they show
         self._shine.setInterval(40)
@@ -72,7 +72,7 @@ class Flair(QWidget):
 
     def fit(self) -> None:
         n = len(self._parts())
-        self.setFixedSize(max(1, int(n * S(20) - (S(4) if n else 0))), S(20))
+        self.setFixedSize(max(1, int(n * S(18))), S(16))
         self.setVisible(bool(n))
         from .badges import item_animated
         moving = self.isVisible() and self.fade > 0.01 and any(item_animated(i) for i in self._parts())
@@ -90,7 +90,7 @@ class Flair(QWidget):
         p.setOpacity(self.fade)
         now = time.monotonic()
         for k, item in enumerate(self._parts()):
-            paint_item(p, item, QRectF(k * S(20) + S(2), S(3), S(14), S(14)), now)
+            paint_item(p, item, QRectF(k * S(18) + S(1), S(1), S(14), S(14)), now)
 
 
 class HoldButton(QAbstractButton):
@@ -215,6 +215,8 @@ class HomePage(Page):
         controls.addWidget(self.vol)
         self.b_vol.hide()
         self.vol.hide()
+        self.flair = Flair(ctx, None)
+        info.addWidget(self.flair)
         info.addLayout(top)
         info.addWidget(self.artist)
         info.addStretch(1)
@@ -240,7 +242,6 @@ class HomePage(Page):
         self.b_repeat.clicked.connect(lambda: m.send(CMD_REPEAT))
         self.b_play.clicked.connect(self._toggle)
         self.chip.clicked.connect(self._cycle_source)
-        self.flair = Flair(ctx, self)
         self.progress.seek.connect(self._seek)
         self.vol.changed.connect(self._vol_set)
         self.b_vol.clicked.connect(self._vol_mute)
@@ -301,15 +302,10 @@ class HomePage(Page):
         self._place_flair()
 
     def _place_flair(self) -> None:
-        """Badge and title take the place of the music app's name as it fades."""
-        fl = self.flair
-        fl.fade = 1.0 - getattr(self.chip, "fade", 1.0)
-        if fl.isVisible() or fl.fade > 0:
-            fl.fit()
-            y = self.title.mapTo(self, QPoint(0, 0)).y() + (self.title.height() - fl.height()) // 2
-            fl.move(self.W - fl.width() - S(6), max(0, y))     # a little room from the edge
-            fl.raise_()
-            fl.update()
+        """The badges sit on their own line above the song title: they never cover it."""
+        self.flair.fade = 1.0
+        self.flair.fit()
+        self.flair.update()
 
     def on_hide(self) -> None:
         self._timer.stop()
@@ -1540,6 +1536,8 @@ class SettingsPage(Page):
         snd = Toggle(cfg["sounds"])
         snd.toggled_by_user.connect(sounds)
         lay.addWidget(row(tr("Interface sounds"), snd))
+        from .notify import settings_section
+        settings_section(ctx, lay)
 
         lay.addWidget(heading(tr("Ball")))
         self.preview = BallPreview(ctx)
@@ -1552,7 +1550,7 @@ class SettingsPage(Page):
         lay.addWidget(heading(tr("Menu bar")))
         from .pages2 import TABS
         for key, _icon, label in TABS:                 # Home, Lyrics and Settings always stay
-            if key in LOCKED_TABS:
+            if key in LOCKED_TABS or key in ("giveaway", "admin"):
                 continue
             t = Toggle(bool(cfg["news_tab"]) if key == "new" else not cfg["tabs_off"].get(key))
             t.toggled_by_user.connect(lambda v, k=key: ctx.set_tab(k, v))

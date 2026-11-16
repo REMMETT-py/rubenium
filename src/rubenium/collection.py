@@ -9,20 +9,47 @@ from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
-from .badges import item_animated, paint_item
+from .badges import item_animated, paint_item, paint_secret
 from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, lang, mix, tr, ui
-from .econ import RARITY_COLOURS, RARITY_NAMES, TIERS
+from .econ import CLASS_COLOURS, CLASS_NAMES, RARITY_COLOURS, RARITY_NAMES, TIERS
 from .shop import GOLD_TEXT, paint_price
-from .wallet import (BADGE_NAME, BADGES, COLOUR_IDS, EXOTICS, EXOTIC_IDS, PRESTIGE_IDS, VARIANT_NAME, badge_item,
-                     coins_text, paint_coin, variants_for)
+from .wallet import (BADGE_NAME, BADGE_ROWS, EXOTIC_IDS, GOLD_IDS, PAINTED_IDS, SHINY_IDS, TITANIUM_IDS, VARIANT_NAME,
+                     badge_item, coins_text, paint_coin, variants_for)
 from .widgets import Tween, draw_icon
 
 SHOWCASE = 3
 SLOTS = ("badge1", "badge2", "badge3")
-CASE_NAMES = {"starter": "Starter Case", "standard": "Standard Case", "premium": "Premium Case", "vault": "Exotic Vault"}
-CASE_COLOURS = {"starter": "#7FA3B8", "standard": "#4FA8FF", "premium": "#B36BFF", "vault": "#FFC94D"}
-CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "bolt"),
-              "premium": ("sword", "skull", "comet"), "vault": ("galaxy", "phoenix", "dragon")}
+CASE_NAMES = {"starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing",
+              "painter": "Painter's Case", "premium": "Premium Case", "jackpot": "Jackpot Case",
+              "titan": "Titanium Case", "vault": "Legend Vault", "mythic": "Mythic Hunt", "daily": "Daily Case"}
+CASE_COLOURS = {"starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
+                "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0"}
+CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"),
+              "gamble": ("dice", "skull", "dice"), "painter": ("feather", "quill", "drop"),
+              "premium": ("sword", "bolt", "flame"), "jackpot": ("$", "$", "$"), "titan": ("shield", "rook", "anchor"),
+              "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?")}
+CASE_NOTES = {"gamble": "Half the time: almost nothing. The other half: always Rare or better.",
+              "painter": "Never a Basic badge: every badge comes in colour.",
+              "jackpot": "Coins only. Most of the time a little. Once in a while: 8 000 to 16 000.",
+              "titan": "The best chance of a Titanium badge.", "vault": "No Common badges inside.",
+              "mythic": "The best chance of a Mythic badge. Only Epic or better inside."}
+ECON = None            # set by the app at start: lets this file know which Mythic badges are still secret
+
+
+def set_econ(econ) -> None:
+    global ECON
+    ECON = econ
+
+
+def is_secret(item: str) -> bool:
+    return ECON is not None and not ECON.admin and ECON.secret(item)
+
+
+def show_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: bool = True, dim: float = 1.0) -> None:
+    """Draw a badge, or a glowing "?" when it is a Mythic badge this account never had."""
+    if is_secret(item):
+        return paint_secret(p, rect, now, effects and dim >= 0.6)
+    paint_item(p, item, rect, now, effects, dim)
 
 
 def worn(ctx) -> list:
@@ -31,6 +58,8 @@ def worn(ctx) -> list:
 
 def badge_label(item: str) -> str:
     _k, base, var = (item.split(":") + ["", ""])[:3]
+    if is_secret(item):
+        return "???"
     return f"{tr(BADGE_NAME.get(base, base))} · {tr(VARIANT_NAME.get(var, var))}"
 
 
@@ -148,17 +177,25 @@ class Showcase(_Shiny):
 
 
 class BadgeGrid(_Shiny):
-    """Every badge. Each shows the best colour you have. One you no longer have is greyed out; an Exotic you
-    never had is a question mark."""
+    """Every badge, in five rows: Common, Rare, Epic, Legendary, Mythic. Each shows the best colour you have.
+    One you no longer have is greyed out; a Mythic you never had is a glowing question mark."""
     COLS = 6
 
     def __init__(self, page, idents=None) -> None:
         super().__init__()
         self.page, self.ctx = page, page.ctx
-        self.idents = idents or [b for b, _n in BADGES + EXOTICS]
-        self.cw, self.ch = page.W / self.COLS, S(62)
-        rows = (len(self.idents) + self.COLS - 1) // self.COLS
-        self.setFixedSize(page.W, int(rows * self.ch))
+        self.cw, self.ch, self.head = page.W / self.COLS, S(60), S(26)
+        self.cells: list = []                      # (base, rect)
+        self.heads: list = []                      # (rarity, y, bases)
+        y = 0.0
+        for rarity, bases in BADGE_ROWS:
+            self.heads.append((rarity, y, bases))
+            y += self.head
+            for i, base in enumerate(bases):
+                self.cells.append((base, QRectF((i % self.COLS) * self.cw, y + (i // self.COLS) * self.ch, self.cw, self.ch)))
+            y += ((len(bases) + self.COLS - 1) // self.COLS) * self.ch + S(6)
+        self.idents = [b for b, _r in self.cells]
+        self.setFixedSize(page.W, int(y))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMouseTracking(True)
         self._hover = -1
@@ -172,21 +209,19 @@ class BadgeGrid(_Shiny):
         return have, (have[0] if have else ""), before
 
     def shiny(self) -> bool:
-        return any(item_animated(badge_item(b, self.state(b)[1])) for b in self.idents if self.state(b)[1])
+        return True
 
     def _at(self, pos) -> int:
-        i = int(pos.y() // self.ch) * self.COLS + int(pos.x() // self.cw)
-        return i if 0 <= i < len(self.idents) and pos.x() < self.COLS * self.cw else -1
+        return next((i for i, (_b, r) in enumerate(self.cells) if r.contains(pos)), -1)
 
     def _secret(self, base: str) -> bool:
-        have, _b, before = self.state(base)
-        return base in EXOTIC_IDS and not have and not before
+        return self.ctx.econ.secret(badge_item(base, "prime"))
 
     def mouseMoveEvent(self, e) -> None:
         i = self._at(e.position())
         if i != self._hover:
             self._hover = i
-            self.setToolTip("" if i < 0 else ("?" if self._secret(self.idents[i]) else tr(BADGE_NAME[self.idents[i]])))
+            self.setToolTip("" if i < 0 else ("???" if self._secret(self.idents[i]) else tr(BADGE_NAME[self.idents[i]])))
             self.update()
 
     def leaveEvent(self, _e) -> None:
@@ -197,6 +232,9 @@ class BadgeGrid(_Shiny):
         e.accept()
         i = self._at(e.position())
         if i >= 0 and e.button() == Qt.MouseButton.LeftButton:
+            if self._secret(self.idents[i]):
+                sfx.play("off")
+                return self.ctx.toast(tr("A secret: find it in a case to reveal it"), "warn")
             sfx.play("pick")
             self.page.open_badge(self.idents[i])
 
@@ -205,32 +243,48 @@ class BadgeGrid(_Shiny):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         wearing = {i.split(":")[1] for i in worn(self.ctx) if i.count(":") == 2}
         now = time.monotonic()
-        for i, base in enumerate(self.idents):
-            cell = QRectF((i % self.COLS) * self.cw, (i // self.COLS) * self.ch, self.cw, self.ch)
+        for rarity, y, bases in self.heads:
+            col = QColor(RARITY_COLOURS[rarity])
+            got = sum(1 for b in bases if self.state(b)[1])
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.10))
+            p.drawRoundedRect(QRectF(0, y + S(2), self.width(), self.head - S(6)), S(7), S(7))
+            p.setBrush(col)
+            p.drawRoundedRect(QRectF(0, y + S(2), S(3), self.head - S(6)), S(1.5), S(1.5))
+            p.setPen(col)
+            p.setFont(font(11, QFont.Weight.ExtraBold, 0.6))
+            p.drawText(QRectF(S(11), y, self.width(), self.head - S(2)), int(Qt.AlignmentFlag.AlignVCenter),
+                       tr(RARITY_NAMES[rarity]).upper())
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(0, y, self.width() - S(9), self.head - S(2)),
+                       int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), f"{got} / {len(bases)}")
+        for i, (base, cell) in enumerate(self.cells):
             have, best, before = self.state(base)
             d = S(40)
-            c = QPointF(cell.center().x(), cell.top() + S(4) + d / 2)
+            c = QPointF(cell.center().x(), cell.top() + S(3) + d / 2)
             hov = i == self._hover
-            ring = rarity_colour(self.ctx, badge_item(base, best)) if best else QColor("#FFFFFF")
-            p.setPen(QPen(ui.accent if base in wearing else alpha(ring, (0.55 if best else 0.10) + (0.2 if hov else 0)),
-                          1.3))
-            p.setBrush(alpha(ring, 0.08) if best else QColor("#0A0D0E"))
-            p.drawEllipse(c, d / 2, d / 2)
-            g = S(20) if base in EXOTIC_IDS else S(21)
+            mythic = base in EXOTIC_IDS
+            ring = QColor(RARITY_COLOURS["exotic" if mythic else self.ctx.econ.rarity(badge_item(base, "grey"))])
+            g = S(20) if mythic else S(21)
             box = QRectF(c.x() - g / 2, c.y() - g / 2, g, g)
-            if best:
-                paint_item(p, badge_item(base, best), box, now)
-            elif self._secret(base):
-                p.setPen(alpha("#FFFFFF", 0.35 + (0.2 if hov else 0)))
-                p.setFont(font(15, QFont.Weight.ExtraBold))
-                p.drawText(QRectF(c.x() - d / 2, c.y() - d / 2, d, d), int(Qt.AlignmentFlag.AlignCenter), "?")
+            if self._secret(base):
+                paint_secret(p, QRectF(c.x() - d * 0.36, c.y() - d * 0.36, d * 0.72, d * 0.72), now, True)
             else:
-                paint_item(p, badge_item(base, before or ("prime" if base in EXOTIC_IDS else "grey")), box, 0,
-                           effects=False, dim=(0.42 if before else 0.26) + (0.15 if hov else 0.0))
+                p.setPen(QPen(ui.accent if base in wearing else alpha(ring, (0.55 if best else 0.12) + (0.2 if hov else 0)),
+                              1.3))
+                p.setBrush(alpha(ring, 0.08) if best else QColor("#0A0D0E"))
+                p.drawEllipse(c, d / 2, d / 2)
+                if best:
+                    paint_item(p, badge_item(base, best), box, now)
+                else:
+                    paint_item(p, badge_item(base, before or ("prime" if mythic else "grey")), box, 0,
+                               effects=False, dim=(0.42 if before else 0.26) + (0.15 if hov else 0.0))
             p.setFont(font(9, QFont.Weight.DemiBold))
             p.setPen(ring if best else QColor(TEXT_FAINT))
-            p.drawText(QRectF(cell.left(), cell.top() + S(4) + d + S(1), cell.width(), S(14)),
-                       int(Qt.AlignmentFlag.AlignCenter), f"{len(have)}/{len(variants_for(base))}")
+            p.drawText(QRectF(cell.left(), cell.top() + S(3) + d + S(1), cell.width(), S(14)),
+                       int(Qt.AlignmentFlag.AlignCenter),
+                       "?" if self._secret(base) else f"{len(have)}/{len(variants_for(base))}")
 
 
 class BigBadge(_Shiny):
@@ -284,13 +338,14 @@ class BigBadge(_Shiny):
             p.restore()
         pop = min(1.0, (now - self._born) / 0.25)
         size = S(66) * (0.85 + 0.15 * (1 - (1 - pop) ** 3))
-        paint_item(p, self.item, QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now, effects=owned,
-                   dim=1.0 if owned else 0.35)
+        show_item(p, self.item, QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now, effects=True,
+                  dim=1.0 if (owned or ec.can_wear(self.item)) else 0.8)
         count = len(ec.copies(self.item))
         p.setPen(QColor(TEXT))
         p.setFont(font(13, QFont.Weight.Bold))
         name = tr(VARIANT_NAME.get(self.item.split(":")[2], "")) + (f"  ×{count}" if count > 1 else "")
         p.drawText(QRectF(0, S(98), self.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), name)
+        owned = owned or ec.can_wear(self.item)
         tag = tr(RARITY_NAMES[rarity]) + ("" if owned else "  ·  " + (tr("No longer owned") if before else tr("Not owned")))
         p.setPen(col)
         p.setFont(font(10.5, QFont.Weight.Bold))
@@ -308,10 +363,10 @@ class VariantPicker(_Shiny):
         self.label_w = S(74)
         self.sq, self.gap = S(28), S(5)
         if base in EXOTIC_IDS:
-            self.rows = [("Exotic", PRESTIGE_IDS[::-1]), ("Epic", ["prime"])]
+            self.rows = [("Gold", GOLD_IDS), ("Prismatic", ["prime"]), ("Titanium", TITANIUM_IDS)]
         else:
-            self.rows = [("Cases only", PRESTIGE_IDS[::-1]), ("Colours", COLOUR_IDS[7:][::-1]), ("", COLOUR_IDS[:7][::-1]),
-                         ("Plain", ["grey"])]
+            self.rows = [("Gold", GOLD_IDS), ("Titanium", TITANIUM_IDS), ("Shiny", SHINY_IDS), ("Painted", PAINTED_IDS),
+                         ("Basic", ["grey"])]
         self.row_h = S(36)
         self.setFixedSize(page.W, int(self.row_h * len(self.rows)))
         self.setMouseTracking(True)
@@ -361,21 +416,21 @@ class VariantPicker(_Shiny):
         wearing = set(worn(self.ctx))
         now = time.monotonic()
         for row, (title, vs) in enumerate(self.rows):
-            p.setPen(QColor(TEXT_DIM))
+            p.setPen(QColor(CLASS_COLOURS[{"Gold": 4, "Prismatic": 5, "Titanium": 3, "Shiny": 2, "Painted": 1}.get(title, 0)]))
             p.setFont(font(10, QFont.Weight.Bold))
             p.drawText(QRectF(0, row * self.row_h, self.label_w - S(6), self.row_h), int(Qt.AlignmentFlag.AlignVCenter),
                        tr(title) if title else "")
             for k, v in enumerate(vs):
                 item = badge_item(self.base, v)
                 r = self._rect(row, k)
-                col = QColor(RARITY_COLOURS[ec.rarity(item)])
-                have, sel, hov = ec.owns(item), v == self.var, v == self._hover
+                col = QColor(CLASS_COLOURS[int(ec.info(item).get("cls") or 0)])
+                have, sel, hov = ec.can_wear(item), v == self.var, v == self._hover
                 p.setPen(QPen(QColor("#FFFFFF") if sel else alpha(col, 0.55 if have else (0.3 if hov else 0.12)),
                               S(1.6) if sel else 1.1))
                 p.setBrush(alpha(col, 0.10) if have else QColor("#0C1013"))
                 p.drawRoundedRect(r, S(7), S(7))
                 paint_item(p, item, r.adjusted(S(6.5), S(6.5), -S(6.5), -S(6.5)), now, effects=have,
-                           dim=1.0 if have else (0.5 if ec.had(item) else 0.3))
+                           dim=1.0 if have else (0.62 if ec.had(item) else 0.45))
                 if item in wearing:
                     p.setPen(Qt.PenStyle.NoPen)
                     p.setBrush(ui.accent)
@@ -406,8 +461,13 @@ def paint_case(p: QPainter, rect: QRectF, case_id: str, shake: float = 0.0) -> N
     bs = w * 0.2
     for k, base in enumerate(CASE_FRONT.get(case_id, ("heart", "star", "note"))):
         x = -bs * 1.3 + k * bs * 1.3
-        paint_item(p, badge_item(base, "prime" if base in EXOTIC_IDS else "white"),
-                   QRectF(x - bs / 2, body.top() + h * 0.56 - bs / 2, bs, bs), 0, effects=False)
+        spot = QRectF(x - bs / 2, body.top() + h * 0.56 - bs / 2, bs, bs)
+        if base == "?":
+            paint_secret(p, spot, time.monotonic(), True)
+        elif base == "$":
+            paint_coin(p, spot.center(), bs * 0.46)
+        else:
+            paint_item(p, badge_item(base, "white"), spot, 0, effects=False)
     p.restore()
 
 
@@ -457,6 +517,15 @@ class CaseCard(QWidget):
         p.drawText(QRectF(x, r.top() + S(9), r.width() - S(90), S(22)), int(Qt.AlignmentFlag.AlignVCenter),
                    tr(CASE_NAMES.get(cid, "Daily Case")))
         line = QRectF(x, r.top() + S(33), r.width() - S(90), S(18))
+        have = int(self.ctx.econ.stock.get(cid, 0) or 0)
+        if have:
+            tag = QRectF(r.right() - S(86), r.top() + S(9), S(76), S(20))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(GOLD_TEXT, 0.16))
+            p.drawRoundedRect(tag, S(10), S(10))
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(10, QFont.Weight.Bold))
+            p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), tr("{n} gifted", n=have))
         if cid == "daily":
             wait = self.page.daily_wait()
             p.setPen(QColor(GOLD_TEXT) if wait == 0 else QColor(TEXT_DIM))
@@ -477,46 +546,55 @@ class CaseCard(QWidget):
 
 
 class OddsTable(QWidget):
-    """The real chance of each kind of drop in this case, and what is certain after a number of openings."""
+    """The real chances of this case: what kind of drop, and for a badge, which finish."""
 
     def __init__(self, case: dict, width: int) -> None:
         super().__init__()
         self.case = case
-        self.rows = [(i, share) for i, share in enumerate(case["odds"]) if share > 0][::-1]
+        self.rows = [("tier", i, share) for i, share in enumerate(case["odds"]) if share > 0][::-1]
+        variants = list(case.get("variants") or [])
+        if any(t for _k, t, _s in self.rows) and variants:
+            self.rows.append(("head", 0, 0))
+            self.rows += [("cls", i, share) for i, share in enumerate(variants) if share > 0][::-1]
         self.row_h = S(24)
-        self.setFixedSize(width, int(self.row_h * len(self.rows) + S(22)))
+        self.setFixedSize(width, int(self.row_h * len(self.rows) + S(4)))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         case = self.case
-        for k, (tier, share) in enumerate(self.rows):
+        for k, (kind, n, share) in enumerate(self.rows):
             r = QRectF(0, k * self.row_h, self.width(), self.row_h)
-            col = QColor(RARITY_COLOURS[TIERS[tier - 1]]) if tier else QColor(GOLD_TEXT)
+            if kind == "head":
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10.5, QFont.Weight.Bold))
+                p.drawText(r, int(Qt.AlignmentFlag.AlignVCenter), tr("If it is a badge, its finish:"))
+                continue
+            if kind == "cls":
+                col, name = QColor(CLASS_COLOURS[n]), tr(CLASS_NAMES[n])
+            elif n:
+                col, name = QColor(RARITY_COLOURS[TIERS[n - 1]]), tr(RARITY_NAMES[TIERS[n - 1]])
+            elif case.get("mode") == "jackpot":
+                col, name = QColor(GOLD_TEXT), tr("{a} to {b} coins", a=100, b=coins_text(16000))
+            else:
+                col, name = QColor(GOLD_TEXT), tr("{a} to {b} coins", a=coins_text(case["coin_min"]), b=coins_text(case["coin_max"]))
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(col, 0.07))
             p.drawRoundedRect(r.adjusted(0, S(1.5), 0, -S(1.5)), S(6), S(6))
-            if tier:
+            if kind == "tier" and not n:
+                paint_coin(p, QPointF(r.left() + S(12), r.center().y()), S(5))
+            else:
                 p.setBrush(col)
                 p.drawEllipse(QPointF(r.left() + S(12), r.center().y()), S(4), S(4))
-            else:
-                paint_coin(p, QPointF(r.left() + S(12), r.center().y()), S(5))
             p.setPen(col)
             p.setFont(font(11, QFont.Weight.Bold))
-            name = tr(RARITY_NAMES[TIERS[tier - 1]]) if tier else \
-                tr("{a} to {b} coins", a=case["coin_min"], b=case["coin_max"])
             p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
             pct = share / 100
             text = f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
             p.setPen(QColor(TEXT))
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        text.replace(".", ",") if lang() == "fr" else text)
-        p.setPen(QColor(TEXT_DIM))
-        p.setFont(font(10, QFont.Weight.DemiBold))
-        p.drawText(QRectF(0, len(self.rows) * self.row_h + S(4), self.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("{rarity} or better is certain within {n} openings",
-                      rarity=tr(RARITY_NAMES[TIERS[case["pity_tier"] - 1]]), n=case["pity_after"]))
 
 
 class CaseReel(QWidget):
@@ -546,10 +624,7 @@ class CaseReel(QWidget):
 
     def _badges_of(self, tier: int) -> list:
         if tier not in self._pool:
-            want = TIERS[tier - 1]
-            self._pool[tier] = [k for k, v in self.ctx.econ.catalog.items() if v.get("kind") == "badge"
-                                and v.get("rarity") == want
-                                and (self.case.get("exotics") or v.get("base") not in EXOTIC_IDS)] or ["badge:star:grey"]
+            self._pool[tier] = [b for b in BADGE_ROWS[tier - 1][1]] or ["star"]
         return self._pool[tier]
 
     def _filler(self, rnd) -> tuple:
@@ -561,8 +636,22 @@ class CaseReel(QWidget):
                 break
             roll -= share
         if tier == 0:
-            return ("coins", rnd.randint(self.case["coin_min"], self.case["coin_max"]))
-        return ("item", rnd.choice(self._badges_of(tier)))
+            if self.case.get("mode") == "jackpot":
+                return ("coins", rnd.choice([150, 220, 300, 380, 1200, 1500, 4000, 12000]))
+            return ("coins", rnd.randint(self.case["coin_min"], max(self.case["coin_min"], self.case["coin_max"])))
+        base = rnd.choice(self._badges_of(tier))
+        if tier == 5:
+            return ("item", badge_item(base, rnd.choice(["prime"] * 9 + ["white"])))
+        roll, cls = rnd.randrange(10000), 0
+        for i, share in enumerate(self.case.get("variants") or [10000]):
+            if roll < share:
+                cls = i
+                break
+            roll -= share
+        if rnd.random() < 0.06:                              # a few rare ones flash past: that is the thrill
+            cls = rnd.choice([2, 3, 4])
+        var = rnd.choice([["grey"], PAINTED_IDS, SHINY_IDS, TITANIUM_IDS, GOLD_IDS][cls])
+        return ("item", badge_item(base, var))
 
     def _start(self) -> float:
         return 2 * (self.cw + self.gap) + self.cw / 2
@@ -619,7 +708,7 @@ class CaseReel(QWidget):
         sfx.play("on")
         if tier >= 4:
             QTimer.singleShot(180, lambda: sfx.play("on"))
-        n = [0, 0, 10, 18, 30, 60][tier]
+        n = [0, 0, 10, 18, 30, 60][tier] + [0, 0, 12, 30, 70][int(self.result.get("cls") or 0)]
         rnd = random.Random()
         self._sparks = [(rnd.uniform(0, math.tau), rnd.uniform(S(60), S(150)), rnd.uniform(0.6, 1.3)) for _ in range(n)]
         self.done.emit()
@@ -654,8 +743,8 @@ class CaseReel(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
         else:
             size = rect.width() * 0.5
-            paint_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
-                       now, effects=self.state != "spin")
+            show_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
+                      now, effects=self.state != "spin")
         if flash > 0:
             p.setBrush(QColor(255, 255, 255, int(150 * flash)))
             p.drawRoundedRect(rect, S(8), S(8))
@@ -751,6 +840,9 @@ class CaseReel(QWidget):
         if res.get("item"):
             paint_item(p, res["item"], QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now)
             title, tag = badge_label(res["item"]), tr(RARITY_NAMES[TIERS[tier - 1]]).upper()
+            cls = int(res.get("cls") or 0)
+            if cls:
+                tag += "  ·  " + tr(CLASS_NAMES[cls]).upper()
         else:
             paint_coin(p, c, size * 0.42)
             title, tag = "+" + coins_text(int(res.get("won", 0))), tr("Coins").upper()
@@ -762,4 +854,4 @@ class CaseReel(QWidget):
         p.setPen(col)
         p.setFont(font(10.5, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left(), r.top() + S(134), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
-                   tag + ("  ·  " + tr("GUARANTEED") if res.get("pity") else ""))
+                   tag)

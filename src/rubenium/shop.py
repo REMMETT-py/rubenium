@@ -506,9 +506,10 @@ class ColourRow(QWidget):
 
 
 class ShopPage(Page):
-    """Three parts: Look (colours, ball, themes), Badges (your collection) and Cases."""
+    """Six parts: Theme (colours, progression), Shop (balls, lines, fonts, themes), Badges, Cases, Market and
+    Inventory."""
     key = "themes"
-    SECTIONS = ["Look", "Badges", "Cases"]
+    SECTIONS = ["Theme", "Shop", "Badges", "Cases", "Market", "Inventory"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -517,23 +518,34 @@ class ShopPage(Page):
         lay = vbox(self, 8)
         lay.addWidget(CoinBar(ctx, keys=True))
         tab = getattr(ctx, "shop_tab", 0)
-        self.seg = Segmented([tr(n) for n in self.SECTIONS], tab)
+        from .bazaar import build_cosmetics, build_inventory, build_market
+        from .games import GamePicker
+        self.seg = GamePicker([tr(n) for n in self.SECTIONS], tab)
         self.seg.changed.connect(self._section)
         lay.addWidget(self.seg)
         if tab == 1:
-            self._badges(lay)
+            build_cosmetics(self, lay)
         elif tab == 2:
+            self._badges(lay)
+        elif tab == 3:
             self._cases(lay)
+        elif tab == 4:
+            build_market(self, lay)
+        elif tab == 5:
+            build_inventory(self, lay)
         else:
             self._look(lay)
         ctx.wallet.changed.connect(self._refresh)
 
     def _section(self, i: int) -> None:
         if self.reel is not None and self.reel.busy():
-            return self.seg.set_index(2)
+            return self.seg.set_index(3)
         self.ctx.shop_tab = i
         self.ctx.shop_badge = None
         self.ctx.shop_case = None
+        self.ctx.shop_design = None
+        self.ctx.inv_pick = ""
+        self.ctx.stop_preview()
         self.ctx.window.drawer.close_now()
         self.ctx.reload_page()
 
@@ -553,6 +565,9 @@ class ShopPage(Page):
         ml.addWidget(texts, 1)
         ml.addWidget(self.t_music, 0, Qt.AlignmentFlag.AlignVCenter)
         lay.addWidget(music)
+        self.t_screen = Toggle(bool(ctx.cfg["accent_from_screen"]) and not self.t_music.isChecked())
+        self.t_screen.toggled_by_user.connect(self._screen)
+        lay.addWidget(row(tr("Use screen colours"), self.t_screen))
         self._music_text()
         lay.addWidget(Label(tr("Colour 1"), 12.5))
         self.c1 = ColourRow(self, "c1", "custom_accent")
@@ -635,7 +650,7 @@ class ShopPage(Page):
         self.badge_btn = Button("", "primary", 38)
         self.badge_btn.clicked.connect(self._badge_action)
         lay.addWidget(self.badge_btn)
-        self.sell_btn = Button("", "ghost", 32)
+        self.sell_btn = Button(tr("Sell on the market"), "ghost", 32)
         self.sell_btn.clicked.connect(self._sell)
         lay.addWidget(self.sell_btn)
         self._variant(self.picker.var)
@@ -643,7 +658,7 @@ class ShopPage(Page):
     def open_badge(self, base) -> None:
         if self.reel is not None and self.reel.busy():
             return
-        self.ctx.shop_tab = 1
+        self.ctx.shop_tab = 2
         self.ctx.shop_badge = base
         self.ctx.reload_page()
 
@@ -669,9 +684,7 @@ class ShopPage(Page):
             self.badge_btn.set_text(tr("Only from cases"))
             self.badge_btn.set_kind("ghost")
         self.badge_btn.setEnabled(True)
-        sell = ec.vendor_price(item) if ec.owns(item) else 0
-        self.sell_btn.setVisible(bool(sell))
-        self.sell_btn.set_text(tr("Sell to the vendor for {n} coins", n=coins_text(sell)))
+        self.sell_btn.setVisible(any(not i.get("locked") for i in ec.items if i["item"] == item))
         self.badge_btn.update()
 
     def _answer(self, ok: bool, data) -> None:
@@ -719,24 +732,8 @@ class ShopPage(Page):
         self._answer(ok, data)
 
     def _sell(self) -> None:
-        from .collection import badge_label
-        ctx, ec = self.ctx, self.ctx.econ
-        item = self._item()
-        copies = ec.copies(item)
-        if not copies:
-            return
-        pay = ec.vendor_price(item)
-        rare = ec.rarity(item) in ("epic", "exotic")
-
-        def go() -> None:
-            ec.sell(copies[-1], lambda ok, data: (sfx.play("on") if ok else None, self._answer(ok, data)))
-
-        def ask_again() -> None:
-            ctx.window.confirm(tr("Really sell this {rarity} badge? This cannot be undone.",
-                                  rarity=tr(ec.rarity(item).capitalize())),
-                               go, yes=tr("Sell"))
-        ctx.window.confirm(tr("Sell {name} for {n} coins?", name=badge_label(item), n=coins_text(pay)),
-                           (lambda: QTimer.singleShot(250, ask_again)) if rare else go, yes=tr("Sell"))
+        from .bazaar import market_sell
+        market_sell(self.ctx, self._item())
 
     # -- Cases
     DAILY = {"id": "daily", "price": 0, "odds": [7500, 2000, 450, 50, 0, 0], "coin_min": 30, "coin_max": 120,
@@ -797,16 +794,23 @@ class ShopPage(Page):
         self.open_btn.clicked.connect(lambda: self._open(case))
         lay.addWidget(self.open_btn)
         if cid != "daily":
+            from .collection import CASE_NOTES
+            if case["id"] in CASE_NOTES:
+                lay.addWidget(Label(tr(CASE_NOTES[case["id"]]), 11, TEXT_DIM, wrap_w=self.W))
+            gift = Button(tr("Gift this case to a friend"), "ghost", 30)
+            gift.clicked.connect(lambda: self._gift(case))
+            lay.addWidget(gift)
+        if cid != "daily":
             lay.addWidget(heading(tr("Chances")))
             lay.addWidget(OddsTable(case, self.W))
         else:
-            lay.addWidget(Label(tr("Once a day: coins, a key or a badge (Standard, sometimes Rare, rarely Special)."),
+            lay.addWidget(Label(tr("Once a day: coins, a key or a badge (Common, sometimes Rare, rarely Epic)."),
                                 10.5, TEXT_DIM, wrap_w=self.W))
 
     def open_case(self, cid) -> None:
         if self.reel is not None and self.reel.busy():
             return
-        self.ctx.shop_tab = 2
+        self.ctx.shop_tab = 3
         self.ctx.shop_case = cid
         self.ctx.shop_badge = None
         self.ctx.reload_page()
@@ -824,15 +828,16 @@ class ShopPage(Page):
             return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - ec.coins)), "warn")
         self._asking = True
         self._lock(True)
+        ec.holding = True
 
         def got(ok: bool, data) -> None:
             self._asking = False
             if not ok:
+                ec.holding = False
                 self._lock(False)
                 sfx.play("off")
                 return ctx.toast(tr(str(data)), "warn")
-            if data.get("item") and data.get("id"):          # it is already yours: the strip only shows it
-                ec.gained(data["item"], data["id"], "case")
+            self._pending = data                             # coins and item show when the strip stops
             if daily:
                 import time as _time
                 ctx.daily_ready_at = _time.monotonic() + 24 * 3600
@@ -841,12 +846,44 @@ class ShopPage(Page):
             except RuntimeError:
                 pass
         if daily:
-            ec.call("rb_daily_case", {}, got)
+            ec.call("rb_daily_case", {}, got, hold=True)
         else:
-            ec.call("rb_open_case", {"which": case["id"]}, got, once=True)
+            ec.call("rb_open_case", {"which": case["id"]}, got, once=True, hold=True)
 
     def _opened(self) -> None:
+        data, self._pending = getattr(self, "_pending", None), None
+        self.ctx.econ.holding = False
+        if data:
+            ec = self.ctx.econ
+            if data.get("item") and data.get("id"):
+                ec.gained(data["item"], data["id"], "case")
+            if "stock" in data:
+                ec.stock[data.get("case") or self.ctx.shop_case] = int(data.get("stock") or 0)
+            ec.absorb(data)
+            ec.changed.emit()
         QTimer.singleShot(900, lambda: self._lock(False))
+
+    def _gift(self, case: dict) -> None:
+        from .bazaar import AskDialog
+        from .collection import CASE_NAMES
+        ctx, ec = self.ctx, self.ctx.econ
+        if not ec.can_trade():
+            return ctx.toast(tr("Gifts unlock after 5 hours with Rubenium"), "warn")
+
+        def send(name: str, dlg) -> None:
+            if case["price"] > ec.coins:
+                return dlg.say(tr("Not enough coins"))
+
+            def done(ok: bool, data) -> None:
+                if not ok:
+                    return dlg.say(tr(str(data)))
+                dlg.close()
+                sfx.play("on")
+                ctx.toast(tr("Gift sent to {name}!", name=name))
+            ec.call("rb_case_gift", {"name": name, "which": case["id"]}, done, once=True)
+        ctx._ask = AskDialog(ctx, tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), tr("Friend's username"),
+                             tr("Gift for {n}", n=coins_text(case["price"])), send, 10,
+                             tr("Your friend opens it with one of their keys. 3 gifts a day at most."))
 
     def _lock(self, on: bool) -> None:
         try:
@@ -879,8 +916,16 @@ class ShopPage(Page):
         if on and not self.ctx.wallet.owns("music"):
             self.t_music.set_checked(False)
             return self._music_text()
-        self.ctx.cfg["accent_from_art"] = on
-        self.ctx.refresh_accent()
+        self.ctx.set_colour_source("music" if on else "")
+        if on:
+            self.t_screen.set_checked(False)
+        self._rows()
+
+    def _screen(self, on: bool) -> None:
+        """Only one of the two at a time: no fighting colours."""
+        self.ctx.set_colour_source("screen" if on else "")
+        if on:
+            self.t_music.set_checked(False)
         self._rows()
 
     def _second_on(self, on: bool) -> None:
@@ -893,7 +938,7 @@ class ShopPage(Page):
         if self.c1 is None:
             return
         wallet = self.ctx.wallet
-        music = bool(self.ctx.cfg["accent_from_art"]) and wallet.owns("music")
+        music = (bool(self.ctx.cfg["accent_from_art"]) and wallet.owns("music")) or bool(self.ctx.cfg["accent_from_screen"])
         ready = wallet.all_colours("c1")
         has_second = any(wallet.owns(f"c2:{ident}") for ident, _n, _h in COLOURS)
         self.c1.set_state(music, False)
@@ -935,6 +980,7 @@ class ShopPage(Page):
 
     def on_hide(self) -> None:
         self.ctx.window.drawer.close_now()
+        self.ctx.stop_preview()
         if self.reel is not None:
             self.reel.skip()
 

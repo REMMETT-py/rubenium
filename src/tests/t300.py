@@ -1,0 +1,97 @@
+import os, sys, time, shutil, json, subprocess, traceback
+sys.path.insert(0,"/tmp"); import bridge; bridge.serve()
+os.environ["QT_QPA_PLATFORM"]="offscreen"; os.environ["RUBENIUM_API"]="http://127.0.0.1:8766"; os.environ["NO_PROXY"]="127.0.0.1"
+for k in ("HTTP_PROXY","http_proxy"): os.environ.pop(k,None)
+L=os.environ.get("L","en"); H="/tmp/h300"; shutil.rmtree(H,ignore_errors=True)
+for d in (H+"/.rubenium/Rubenium",H+"/Documents/Rubenium"):
+    os.makedirs(d); json.dump({"schema":3,"welcome":False,"seen_version":"x","lang":L,"casino_warned":True},open(d+"/settings.json","w"))
+os.environ["HOME"]=H
+def sql(q, who=""):
+    if who:
+        return bridge.sql(q, bridge.USERS[who])
+    r = subprocess.run(["psql","-h","/tmp","-p","5544","-U","postgres","-q","-t","-A","-v","ON_ERROR_STOP=1","-c",q],capture_output=True,text=True)
+    if r.returncode: raise RuntimeError(r.stderr)
+    return r.stdout.strip()
+subprocess.run(["bash","/tmp/rebuild.sh"],capture_output=True)
+sql("delete from auth.users; delete from rb_devices")
+for n,i in (("Ruben",1),("Max",3),("Leo",4)):
+    sql(f"""insert into auth.users (id,email,raw_user_meta_data) values ('00000000-0000-0000-0000-00000000000{i}','{n.lower()}@users.rubenium.app','{{"username":"{n}","device":"{str(i)*32}"}}')""")
+sql("update profiles set admin = lower(username)='ruben', minutes=400, coins=50000, keys=20, last_beat=now()")
+sql("select public.rb_give('00000000-0000-0000-0000-000000000001', x, 't') from unnest(array['badge:crown:gold','badge:galaxy:black','badge:star:lava','badge:heart:red','badge:moon:blue','ball:orbit:blue','line:laser:pink']) x")
+sql("insert into rb_seen select owner,item from rb_items on conflict do nothing")
+sql("insert into rb_friends (a,b,ok) values ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000003',true)")
+sys.path.insert(0,"/home/claude/release"); sys.argv=["x"]
+from PyQt6.QtWidgets import QApplication
+import Rubenium as A
+A.Online._load = lambda self: self.__dict__.update(s={"refresh_token":"R-ruben","username":"Ruben","access_token":"A-ruben","expires_at":9e12}, minutes=400)
+q=QApplication([]); q.setStyleSheet(A.APP_QSS); a=A.App(q); w=a.window; ec=a.econ; O="/tmp/shots300/"; shutil.rmtree(O,ignore_errors=True); os.makedirs(O)
+errors=[]
+sys.excepthook=lambda t,v,tb: errors.append("".join(traceback.format_exception(t,v,tb)))
+def pump(ms):
+    t=time.time()
+    while time.time()-t<ms/1000: q.processEvents(); time.sleep(0.003)
+def shot(n): w.grab().save(O+f"{n}_{L}.png")
+def section(i): a.shop_tab=i; a.reload_page(); pump(1200)
+pump(3000); ec.poll_live(); pump(800)
+print("ready", ec.ready, "admin", ec.admin, "coins", ec.coins, "tabs", w.tab_keys())
+w.expand(); pump(900); w.goto("themes"); pump(1300); shot("01_theme")
+section(1); shot("02_shop")
+a.shop_kind=0; a.shop_design="orbit"; a.reload_page(); pump(1200); shot("03_orbit")
+a.wear_shop_item("ball:orbit:blue"); pump(300); print("ball worn:", a.cfg["ball_style"], "server:", ec.worn("ball"))
+a.shop_kind=3; a.shop_design="ocean"; a.reload_page(); pump(1200); shot("04_ocean_preview")
+ec.buy("theme:ocean", lambda ok,d: print("buy ocean", ok, d if not ok else "")); pump(900)
+a.wear_shop_item("theme:ocean"); pump(400); print("theme:", a.cfg["theme"], a.theme()["id"])
+a.shop_design=None; a.stop_preview()
+section(2); shot("05_badges")
+w.page().open_badge("galaxy"); pump(1200); shot("06_galaxy")
+w.page().open_badge("dragon"); pump(800); print("dragon secret:", ec.secret("badge:dragon:prime"))
+w.page().open_badge(None); pump(600)
+section(3); shot("07_cases")
+w.page().open_case("mythic"); pump(1200); shot("08_mythic_case")
+cp=w.page(); c0=ec.coins; cp._open(cp.reel.case); pump(1200); print("balance during spin unchanged:", ec.coins==c0); shot("09_spin"); pump(7500)
+print("after strip: paid", c0-ec.coins, cp.reel.result.get("item"), cp.reel.result.get("won")); shot("10_result")
+section(5); shot("11_inventory")
+a.inv_pick="badge:star:lava"; a.reload_page(); pump(900); shot("12_inv_pick")
+it=[i for i in ec.items if i["item"]=="badge:star:lava"][0]
+ec.call("rb_market_list", {"item_id": it["id"], "price": 9000}, lambda ok,d: print("listed", ok, d)); pump(800); ec.refresh(); pump(600)
+section(4); pump(1500); shot("13_market")
+lid=json.loads(sql("select json_agg(id) from rb_listings"))[0]
+sql(f"select rb_market_offer('{lid}', 6000)", "max"); ec.poll_live(); pump(1000)
+a.mk_tab=2; section(4); pump(1500); shot("14_offers")
+w.goto("games"); pump(1200); shot("15_lobby")
+w.page()._show_mini(True); pump(1200); w.page().beat.start(); pump(2500); shot("16_beattap")
+w.page().beat.abort(); w.page()._show_mini(False); pump(500)
+w.page()._show_quests(True); pump(1800); shot("17_quests"); w.page()._show_quests(False); pump(500)
+a.enter_casino(5); pump(1500); g=w.page().game; g.set_option(2); w.page().sync(); pump(300); shot("18_rocket")
+g.start(); pump(2500); shot("19_rocket_fly"); pump(4000); print("rocket:", g.phase, g.history[:3]); a.leave_casino(); pump(900)
+a.enter_casino(4); pump(1200); g=w.page().game; g.play(); pump(2000); g.play(); pump(2000); shot("20_dice"); a.leave_casino(); pump(900)
+w.goto("friends"); pump(2500); shot("21_social")
+a.social_tab=1; a.reload_page(); pump(2000); shot("22_players")
+w.page().open_profile("Max"); pump(2500); shot("23_profile")
+w.page().ask_trade("Max"); pump(1500)
+tid=json.loads(sql("select json_agg(id) from rb_trades where state='asked'"))[0]
+sql(f"select rb_trade_accept('{tid}')","max"); pump(2500); shot("24_trade")
+mine=[i["id"] for i in ec.items if i["item"]=="badge:moon:blue"]
+a.trade.act("rb_trade_offer", {"items": mine, "coins": 500}); pump(2000)
+mx=sql("select public.rb_give('00000000-0000-0000-0000-000000000003','badge:sun:green','t')")
+v=json.loads(sql(f"select rb_trade_offer('{tid}', array['{mx}']::uuid[], 0)","max")); pump(2500)
+a.trade.act("rb_trade_ready", {"ready": True, "seen_version": v}); pump(1800)
+sql(f"select rb_trade_ready('{tid}', true, {v})","max"); pump(2500); shot("25_trade_ready"); pump(5200)
+a.trade.act("rb_trade_confirm", {"seen_version": v}); pump(1500); sql(f"select rb_trade_confirm('{tid}', {v})","max"); pump(3000)
+print("trade state:", a.trade.data.get("state"), "| got sun:", ec.owns("badge:sun:green")); shot("26_trade_done")
+a.trade.close(); a.friends_profile=None; a.reload_page(); pump(800)
+sql("select rb_admin_giveaway('Big drop','coins','',1000,1,5,0)","ruben"); ec.poll_live(); pump(1500)
+print("tabs now:", w.tab_keys()); w.goto("giveaway"); pump(1500); shot("27_giveaway")
+w.goto("admin"); pump(2000); shot("28_admin")
+for i in range(1,7):
+    a.admin_tab=i; a.reload_page(); pump(1800); shot(f"29_admin_{i}")
+a.admin_tab=1; a.admin_player="Max"; a.reload_page(); pump(2000); shot("30_admin_max")
+sql("select rb_admin_lock(true)","ruben"); a.econ.live["locked"]=True; w.goto("games"); pump(1500); w.sync_lock(); pump(300); shot("31_locked")
+a.econ.live["locked"]=False; w.sync_lock(); sql("select rb_admin_lock(false)","ruben")
+a.notifier.push("trade","TRADE REQUEST","Max wants to trade with you"); pump(1500)
+pops=[x for x in q.topLevelWidgets() if type(x).__name__=="Popup" and x.isVisible()]; print("popups:", len(pops))
+if pops: pops[0].grab().save(O+f"32_popup_{L}.png")
+w.goto("settings"); pump(1500); shot("33_settings")
+w.goto("home"); pump(1000); shot("34_home")
+print("ERRORS:", len(errors)); [print(e[-1500:]) for e in errors[:5]]
+a.shutdown()

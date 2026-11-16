@@ -76,6 +76,12 @@ def explain(err: ApiError) -> str:
         return "Friends only"
     if "rb_too_many" in text:
         return "Your friends list is full"
+    if "rb_device_used" in text:
+        return "This PC already has an account"
+    if "rb_update_needed" in text:
+        return "Update Rubenium first"
+    if "rb_banned" in text:
+        return "This account is blocked"
     if "rb_username_taken" in text or "already registered" in text or "user_already_exists" in text:
         return "This username is taken"
     if "invalid login" in text or "invalid_credentials" in text:
@@ -89,6 +95,21 @@ def explain(err: ApiError) -> str:
     if "not confirmed" in text or "email_address_invalid" in text or "signup" in text and "disabled" in text:
         return "Accounts are not open yet"
     return "Something went wrong: try again"
+
+
+def pc_id() -> str:
+    """One fixed id for this PC (a fingerprint of the Windows install: no personal data). The server allows
+    one account per PC."""
+    import hashlib
+    raw = ""
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography", 0,
+                            winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as key:
+            raw = str(winreg.QueryValueEx(key, "MachineGuid")[0])
+    except Exception:  # noqa: BLE001
+        raw = os.environ.get("RUBENIUM_PC", "") or str(uuid.getnode())
+    return hashlib.sha256(("rubenium-pc:" + raw).encode()).hexdigest()[:40]
 
 
 def password_strength(pw: str) -> int:
@@ -212,8 +233,15 @@ class Online(QObject):
         self.busy = True
 
         def job():
-            ans = _request("/auth/v1/token?grant_type=password",
-                           {"email": username.lower() + MAIL, "password": password})
+            login = username.lower()
+            try:                                             # after a name change the account keeps its first login name
+                first = _request("/rest/v1/rpc/rb_login_for", {"name": username}, timeout=8)
+                if isinstance(first, str) and first:
+                    login = first
+            except ApiError as err:
+                if err.key == "offline":
+                    raise
+            ans = _request("/auth/v1/token?grant_type=password", {"email": login + MAIL, "password": password})
             return lambda: self._adopt(ans)
         self._run("login", job)
 
@@ -223,8 +251,22 @@ class Online(QObject):
         self.busy = True
 
         def job():
-            ans = _request("/auth/v1/signup", {"email": username.lower() + MAIL, "password": password,
-                                               "data": {"username": username}})
+            pc = pc_id()
+            try:
+                free = _request("/rest/v1/rpc/rb_device_free", {"pc": pc}, timeout=8) or {}
+            except ApiError as err:
+                if err.key == "offline":
+                    raise
+                free = {}
+            if free.get("free") is False:
+                raise ApiError("rb_device_used")
+            try:
+                ans = _request("/auth/v1/signup", {"email": username.lower() + MAIL, "password": password,
+                                                   "data": {"username": username, "device": pc}})
+            except ApiError as err:
+                if "database error" in (err.key or "").lower():     # the server refused: almost always the PC rule
+                    raise ApiError("rb_device_used") from None
+                raise
             if not ans or not ans.get("access_token"):
                 raise ApiError("email not confirmed")           # the server is not set up for accounts yet
             return lambda: self._adopt(ans, username)

@@ -10,7 +10,7 @@ from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF
 from PyQt6.QtWidgets import QGridLayout, QWidget
 
-from .core import S, sfx, TEXT, TEXT_DIM, alpha, font, mix, tr, ui
+from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
 from .pages import Page
 from .shop import CoinBar, GOLD_TEXT, clock_text
 from .wallet import coins_text, paint_coin
@@ -954,7 +954,7 @@ class Slots(Game):
 # --------------------------------------------------------------------------- #
 class Daily(Game):
     # (coins, keys) on each slice
-    PRIZES = [(20, 0), (40, 0), (60, 0), (100, 0), (150, 0), (250, 0), (500, 0), (0, 1)]      # as the server numbers them
+    PRIZES = [(40, 0), (75, 0), (120, 0), (180, 0), (300, 0), (500, 0), (1200, 0), (0, 1)]      # as the server numbers them
 
     def __init__(self, page) -> None:
         super().__init__(page)
@@ -1093,11 +1093,12 @@ class Daily(Game):
 class Dice(Game):
     """Pick your chance to win. A number from 0 to 99 is rolled: below your chance wins. The lower the chance,
     the bigger the prize (3% for the house)."""
-    CHANCES = [10, 25, 50, 75, 90]
+    CHANCES = [5, 10, 25, 50, 75, 90, 95]
 
     def __init__(self, page) -> None:
         super().__init__(page)
-        self.choice = 2
+        self.choice = 3
+        self.history: list = []                      # last rolls: (number, won)
         self.roll = -1
         self.won = False
         self._t0 = 0.0
@@ -1126,6 +1127,8 @@ class Dice(Game):
         self._from = float(self.roll if self.roll >= 0 else 50)
         self.roll, self.won, self._paid = int(ans["roll"]), bool(ans["win"]), int(ans["paid"])
         self._t0 = time.monotonic()
+        QTimer.singleShot(1100, lambda r=self.roll, w=self.won: self.history.insert(0, (r, w)) or self.update())
+        del self.history[11:]
         self.animate(1.6)
         QTimer.singleShot(1150, lambda: self.finish(self._paid))
 
@@ -1157,8 +1160,21 @@ class Dice(Game):
                    f"×{self.mult():g}")
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(11, QFont.Weight.DemiBold))
-        p.drawText(QRectF(r.left(), r.top() + S(64), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("Win if the roll is under {n}", n=chance))
+        bet = self.stake if self.busy else self.page.bet()
+        p.drawText(QRectF(r.left(), r.top() + S(62), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Win if the roll is under {n}", n=chance) + "  ·  " +
+                   tr("{c}% chance", c=chance) + "  ·  " + tr("Win {n}", n=coins_text(int(bet * self.mult()))))
+        if self.history:                                      # the last rolls, newest first
+            x = r.left() + S(16)
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            for val, won in self.history[:10]:
+                chip = QRectF(x, r.bottom() - S(30), S(30), S(18))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha(WIN if won else LOSE, 0.22))
+                p.drawRoundedRect(chip, S(9), S(9))
+                p.setPen(QColor(WIN if won else LOSE))
+                p.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), str(val))
+                x += S(34)
         if self.roll >= 0:                                    # the marker slides to the number rolled
             t = ease_out((now - self._t0) / 1.0, 4) if self._t0 else 1.0
             value = self._from + (self.roll - self._from) * t
@@ -1186,7 +1202,8 @@ class Dice(Game):
 class Rocket(Game):
     """The multiplier climbs while the rocket flies. Cash out to win the bet times the multiplier; if it blows
     up first, the bet is lost. The moment it blows up is decided by the server when the round starts."""
-    RATE = 0.08                                          # the multiplier is e^(RATE x seconds), as on the server
+    RATE = 0.10                                          # the multiplier is e^(RATE x seconds), as on the server
+    TARGETS = [0, 1.5, 2, 3, 5, 10]                      # automatic cash-out (0 = by hand)
 
     def __init__(self, page) -> None:
         super().__init__(page)
@@ -1194,6 +1211,8 @@ class Rocket(Game):
         self._t0 = 0.0
         self.end_mult = 1.0
         self.crashed = False
+        self.target = 0
+        self.history: list = []
         self._poll = QTimer(self)
         self._poll.setInterval(700)
         self._poll.timeout.connect(self._look)
@@ -1206,12 +1225,27 @@ class Rocket(Game):
     def always_moving(self) -> bool:
         return self.phase == "fly"
 
+    def options(self):
+        return [tr("By hand") if t == 0 else f"×{t:g}" for t in self.TARGETS], self.target
+
+    def set_option(self, i: int) -> None:
+        if not self.busy:
+            self.target = i
+            self.update()
+
+    def aim(self):
+        t = self.TARGETS[self.target]
+        return t or None
+
     def start(self) -> None:
         if self.busy or self.waiting or not self.take():
             return
-        self.ask("rb_rocket", {"action": "start", "bet": self.stake}, self._started, refund=self.stake)
+        self.ask("rb_rocket", {"action": "start", "bet": self.stake, "target": self.aim()}, self._started,
+                 refund=self.stake)
 
     def _started(self, ans: dict) -> None:
+        if isinstance(ans.get("history"), list):
+            self.history = [float(x) for x in ans["history"]]
         self._t0 = time.monotonic() - float(ans.get("age") or 0)
         self.phase, self.crashed, self.end_mult = "fly", False, 1.0
         self._frames.start()
@@ -1219,18 +1253,23 @@ class Rocket(Game):
 
     def failed(self, message: str) -> None:
         if message == "Finish your round first":         # a flight from before: see how it ended
-            return self.ask("rb_rocket", {"action": "cash", "bet": None}, self._ended)
+            return self.ask("rb_rocket", {"action": "cash", "bet": None, "target": None}, self._ended)
+        if message == "Too early: wait for x1.20":
+            return self.ctx.toast(tr(message), "warn")
         if self.phase != "fly":
             self.busy = False
         self.ctx.toast(tr(message), "warn")
 
     def _look(self) -> None:
         if self.phase == "fly" and not self.waiting:
-            self.ask("rb_rocket", {"action": "look", "bet": None}, lambda ans: None if ans.get("open") else self._ended(ans))
+            self.ask("rb_rocket", {"action": "look", "bet": None, "target": None},
+                     lambda ans: None if ans.get("open") else self._ended(ans))
 
     def cash(self) -> None:
         if self.phase == "fly" and not self.waiting:
-            self.ask("rb_rocket", {"action": "cash", "bet": None}, self._ended)
+            if self.mult_now() < 1.2:
+                return self.ctx.toast(tr("Too early: wait for x1.20"), "warn")
+            self.ask("rb_rocket", {"action": "cash", "bet": None, "target": None}, self._ended)
 
     def _ended(self, ans: dict) -> None:
         if self.phase != "fly" and not self.busy:
@@ -1238,6 +1277,10 @@ class Rocket(Game):
         self._poll.stop()
         self.crashed = bool(ans.get("crashed", True))
         self.end_mult = float(ans.get("crash") or 1.0) if self.crashed else float(ans.get("mult") or 1.0)
+        if isinstance(ans.get("history"), list):
+            self.history = [float(x) for x in ans["history"]]
+        elif ans.get("crash"):
+            self.history.insert(0, float(ans["crash"]))
         self.phase = "idle"
         self.animate(1.8)
         self.finish(int(ans.get("paid") or 0))
@@ -1245,7 +1288,8 @@ class Rocket(Game):
     def buttons(self) -> list:
         if self.phase == "fly":
             pay = int(self.stake * self.mult_now())
-            return [(tr("Cash out") + f"  {coins_text(pay)}", "primary", self.cash, not self.waiting)]
+            return [(tr("Cash out") + f"  {coins_text(pay)}", "primary", self.cash,
+                     not self.waiting and self.mult_now() >= 1.2)]
         return [(tr("Launch"), "primary", self.start, not self.busy)]
 
     def hideEvent(self, e) -> None:
@@ -1256,6 +1300,20 @@ class Rocket(Game):
         super().showEvent(e)
         if self.phase == "fly":
             self._poll.start()
+        elif not self.history and not self.waiting:
+            self.econ.call("rb_rocket", {"action": "look", "bet": None, "target": None}, self._resume, hold=True)
+
+    def _resume(self, ok: bool, ans) -> None:
+        """Opening the game: the last flights, or a flight still in the air."""
+        if not ok or not isinstance(ans, dict):
+            return
+        if isinstance(ans.get("history"), list):
+            self.history = [float(x) for x in ans["history"]]
+        if ans.get("open"):
+            self.stake, self.busy = int(ans.get("bet") or 0), True
+            self._started(ans)
+            self.page.sync()
+        self.update()
 
     def draw(self, p: QPainter, r: QRectF, now: float) -> None:
         flying = self.phase == "fly"
@@ -1296,9 +1354,206 @@ class Rocket(Game):
             p.drawEllipse(head, S(9), S(9))
             p.setBrush(QColor("#FFFFFF"))
             p.drawEllipse(head, S(4.2), S(4.2))
+        aim = self.aim()
+        if aim:                                              # the automatic cash-out line
+            y = area.bottom() - area.height() * (aim - 1.0) / (top - 1.0)
+            if y > area.top():
+                p.setPen(QPen(alpha(GOLD_TEXT, 0.55), 1, Qt.PenStyle.DashLine))
+                p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
+                p.setPen(QColor(GOLD_TEXT))
+                p.setFont(font(9.5, QFont.Weight.Bold))
+                p.drawText(QRectF(area.right() - S(80), y - S(16), S(80), S(14)),
+                           int(Qt.AlignmentFlag.AlignRight), tr("auto ×{m}", m=f"{aim:g}"))
         p.setPen(QColor(LOSE) if (self.crashed and not flying) else QColor(TEXT))
         p.setFont(font(28, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left(), r.top() + S(10), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter), f"×{m:.2f}")
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        if not flying:
+            hint = tr("Chance to reach ×{m}: {c}%", m=f"{aim:g}", c=int(96 / aim)) if aim else \
+                tr("Cash out from ×1.20. The higher, the riskier.")
+            p.drawText(QRectF(r.left(), r.top() + S(46), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), hint)
+        x = r.left() + S(14)                                  # the last flights
+        p.setFont(font(9, QFont.Weight.Bold))
+        for c in self.history[:8]:
+            col2 = QColor(WIN) if c >= 2 else (QColor(GOLD_TEXT) if c >= 1.2 else QColor(LOSE))
+            chip = QRectF(x, r.bottom() - S(24), S(42), S(16))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col2, 0.2))
+            p.drawRoundedRect(chip, S(8), S(8))
+            p.setPen(col2)
+            p.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), f"×{c:.2f}")
+            x += S(46)
+
+
+class BeatTap(QWidget):
+    """The free mini game. The server sends 24 circles and when each one is due; you click them on time. Your
+    clicks go back to the server, which checks them against its own clock and pays."""
+    LEAD = 1.0                                       # seconds a circle shows before it is due
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedSize(page.W, S(250))
+        self.setCursor(Qt.CursorShape.CrossCursor)
+        self.state = "idle"                          # idle -> wait -> play -> send -> done
+        self.pattern: list = []
+        self.round = ""
+        self.hits: dict = {}                         # target -> ms
+        self.pops: list = []                         # (x, y, born, text, colour)
+        self.t0 = 0.0
+        self.result: dict = {}
+        self._frames = QTimer(self)
+        self._frames.setTimerType(Qt.TimerType.PreciseTimer)
+        self._frames.setInterval(16)
+        self._frames.timeout.connect(self._tick)
+
+    def start(self) -> None:
+        if self.state in ("wait", "play", "send"):
+            return
+        self.state, self.hits, self.pops, self.result = "wait", {}, [], {}
+        self.page.beat_btn.setEnabled(False)
+        sent = time.monotonic()
+
+        def got(ok: bool, data) -> None:
+            if not ok or not isinstance(data, dict):
+                self.state = "idle"
+                self.page.beat_btn.setEnabled(True)
+                return self.ctx.toast(tr(str(data)), "warn")
+            now = time.monotonic()
+            self.t0 = sent + (now - sent) / 2               # the server started the clock about half-way
+            self.round, self.pattern = data["round"], list(data.get("pattern") or [])
+            self.state = "play"
+            self._frames.start()
+        self.ctx.econ.call("rb_mini_start", {}, got)
+
+    def abort(self) -> None:
+        self._frames.stop()
+        self.state = "idle"
+
+    def hideEvent(self, _e) -> None:
+        self._frames.stop()
+
+    def _ms(self) -> float:
+        return (time.monotonic() - self.t0) * 1000
+
+    def _pos(self, i: int) -> QPointF:
+        t = self.pattern[i]
+        return QPointF(S(26) + (self.width() - S(52)) * float(t["x"]), S(26) + (self.height() - S(52)) * float(t["y"]))
+
+    def _tick(self) -> None:
+        if self.state == "play" and self.pattern and self._ms() > self.pattern[-1]["t"] + 900:
+            self._send()
+        self.update()
+        if self.state in ("idle", "done") and not self.pops:
+            self._frames.stop()
+
+    def _send(self) -> None:
+        self.state = "send"
+        hits = [{"i": i, "t": int(t)} for i, t in self.hits.items()]
+
+        def got(ok: bool, data) -> None:
+            self.state = "done"
+            self.page.beat_btn.setEnabled(True)
+            self.page.beat_btn.set_text(tr("Play again"))
+            if not ok:
+                return self.ctx.toast(tr(str(data)), "warn")
+            self.result = data
+            if int(data.get("paid") or 0):
+                sfx.play("on")
+            self._frames.start()
+        self.ctx.econ.call("rb_mini_finish", {"round": self.round, "hits": hits}, got)
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        if self.state != "play" or e.button() != Qt.MouseButton.LeftButton:
+            return
+        ms, pos = self._ms(), e.position()
+        best, gap = -1, 1e9
+        for i, t in enumerate(self.pattern):
+            if i in self.hits or abs(ms - t["t"]) > 600:
+                continue
+            c = self._pos(i)
+            if math.hypot(pos.x() - c.x(), pos.y() - c.y()) <= S(24) and abs(ms - t["t"]) < gap:
+                best, gap = i, abs(ms - t["t"])
+        if best < 0:
+            return
+        self.hits[best] = ms
+        text, col = ("PERFECT", "#5BE08A") if gap <= 120 else (("GOOD", "#4FC3FF") if gap <= 300 else ("OK", GOLD_TEXT))
+        sfx.play("pick")
+        self.pops.append((self._pos(best), time.monotonic(), tr(text), col))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(QColor("#090C0E"))
+        p.drawRoundedRect(r, S(12), S(12))
+        now = time.monotonic()
+        if self.state == "play":
+            ms = self._ms()
+            for i, t in enumerate(self.pattern):
+                due = t["t"]
+                if i in self.hits or ms < due - self.LEAD * 1000 or ms > due + 600:
+                    continue
+                c = self._pos(i)
+                k = (due - ms) / (self.LEAD * 1000)
+                col = QColor.fromHsvF((i * 0.13) % 1.0, 0.6, 1.0)
+                fade = 1.0 if k > 0 else max(0.0, 1 + k * 1.6)
+                p.setOpacity(fade)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha(col, 0.22))
+                p.drawEllipse(c, S(20), S(20))
+                p.setPen(QPen(col, S(2.4)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(c, S(20), S(20))
+                if k > 0:
+                    p.setPen(QPen(alpha("#FFFFFF", 0.8), S(1.6)))
+                    p.drawEllipse(c, S(20) + S(40) * k, S(20) + S(40) * k)
+                p.setPen(QColor(TEXT))
+                p.setFont(font(11, QFont.Weight.Bold))
+                p.drawText(QRectF(c.x() - S(20), c.y() - S(20), S(40), S(40)), int(Qt.AlignmentFlag.AlignCenter), str(i + 1))
+                p.setOpacity(1.0)
+            bar = QRectF(r.left() + S(12), r.bottom() - S(10), r.width() - S(24), S(4))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.08))
+            p.drawRoundedRect(bar, S(2), S(2))
+            end = self.pattern[-1]["t"] + 900 if self.pattern else 1
+            p.setBrush(ui.accent)
+            p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * min(1.0, ms / end), bar.height()), S(2), S(2))
+        keep = []
+        for c, born, text, col in self.pops:
+            age = now - born
+            if age < 0.7:
+                keep.append((c, born, text, col))
+                p.setOpacity(1 - age / 0.7)
+                p.setPen(QColor(col))
+                p.setFont(font(11, QFont.Weight.ExtraBold))
+                p.drawText(QRectF(c.x() - S(50), c.y() - S(40) - S(16) * age, S(100), S(16)), int(Qt.AlignmentFlag.AlignCenter), text)
+                p.setOpacity(1.0)
+        self.pops = keep
+        if self.state in ("idle", "wait", "send", "done"):
+            p.setPen(QColor(TEXT))
+            p.setFont(font(15, QFont.Weight.Bold))
+            if self.state == "done" and self.result:
+                res = self.result
+                p.drawText(QRectF(r.left(), r.center().y() - S(40), r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter),
+                           tr("{h} / 24 circles · {s} points", h=res.get("hits", 0), s=res.get("score", 0)))
+                paid = int(res.get("paid") or 0)
+                p.setPen(QColor(GOLD_TEXT if paid else TEXT_DIM))
+                p.setFont(font(22, QFont.Weight.ExtraBold))
+                p.drawText(QRectF(r.left(), r.center().y() - S(10), r.width(), S(34)), int(Qt.AlignmentFlag.AlignCenter),
+                           "+" + coins_text(paid) if paid else tr("No coins this time"))
+                day = res.get("day") or {}
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10.5, QFont.Weight.DemiBold))
+                p.drawText(QRectF(r.left(), r.center().y() + S(30), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                           tr("Today: {n} / {cap} coins", n=coins_text(int(day.get("paid") or 0)),
+                              cap=coins_text(int(day.get("cap") or 300))))
+            else:
+                text = {"wait": tr("Get ready…"), "send": tr("Counting…")}.get(self.state, tr("Press Start"))
+                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
 
 
 class GamePicker(QWidget):
@@ -1620,6 +1875,8 @@ class GamesPage(Page):
                 return self._warning(lay)
             if getattr(ctx, "quests_open", False):
                 return self._quests(lay)
+            if getattr(ctx, "mini_open", False):
+                return self._mini(lay)
             return self._lobby(lay)
         self._casino(lay)
 
@@ -1628,9 +1885,15 @@ class GamesPage(Page):
         lay.addWidget(CoinBar(self.ctx))
         lay.addWidget(KeyCard(self.ctx))
         lay.addWidget(DailyRow(self))
+        line = hbox(spacing=6)
         quests = Button(tr("Quests"), "ghost", 34, icon="spark")
         quests.clicked.connect(lambda: self._show_quests(True))
-        lay.addWidget(quests)
+        mini = Button(tr("Beat Tap"), "ghost", 34, icon="crosshair")
+        mini.setToolTip(tr("A free mini game: tap the circles on the beat to earn coins"))
+        mini.clicked.connect(lambda: self._show_mini(True))
+        line.addWidget(quests, 1)
+        line.addWidget(mini, 1)
+        lay.addLayout(line)
         grid = QWidget()
         gl = QGridLayout(grid)
         gl.setContentsMargins(0, 0, 0, 0)
@@ -1643,8 +1906,32 @@ class GamesPage(Page):
         lay.addWidget(go)
 
     # -- quests: small goals for coins, counted by the server
-    QUESTS = {"d_rounds": "Play {n} casino rounds", "d_case": "Open a case", "d_spin": "Collect a free spin",
+    QUESTS = {"h_rounds": "Play {n} casino rounds", "h_mini": "Play Beat Tap {n} times", "h_bet": "Bet {n} coins in the casino",
+              "h_win": "Win {n} coins in the casino", "d_rounds": "Play {n} casino rounds", "d_case": "Open a case",
+              "d_mini": "Play Beat Tap {n} times", "d_spin": "Collect a free spin",
               "w_rounds": "Play {n} casino rounds", "w_cases": "Open {n} cases", "w_won": "Win {n} coins in the casino"}
+
+    def _show_mini(self, on: bool) -> None:
+        sfx.play("pick")
+        self.ctx.mini_open = on
+        self.ctx.reload_page()
+
+    def _mini(self, lay) -> None:
+        top = hbox(spacing=8)
+        back = IconButton("back", 32, tip=tr("Back"))
+        top.addWidget(back)
+        top.addWidget(Label(tr("Beat Tap"), 16, bold=True), 1)
+        lay.addLayout(top)
+        lay.addWidget(CoinBar(self.ctx))
+        self.beat = BeatTap(self)
+        back.clicked.connect(lambda: (self.beat.abort(), self._show_mini(False)))
+        lay.addWidget(self.beat)
+        self.beat_btn = Button(tr("Start"), "primary", 38)
+        self.beat_btn.clicked.connect(self.beat.start)
+        lay.addWidget(self.beat_btn)
+        lay.addWidget(Label(tr("Click each circle when the shrinking ring touches it. About 30 seconds. 10 to 40 coins a "
+                               "round; after 10 rounds a day it pays less (300 a day at most)."), 10.5, TEXT_DIM,
+                            wrap_w=self.W))
 
     def _show_quests(self, on: bool) -> None:
         sfx.play("pick")
@@ -1664,9 +1951,16 @@ class GamesPage(Page):
         if data is None:
             lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
         else:
-            for daily, title in ((True, tr("Today")), (False, tr("This week"))):
-                lay.addWidget(Label(title.upper(), 10, TEXT_DIM, weight=QFont.Weight.Bold))
-                for q in [x for x in data if bool(x.get("daily")) == daily]:
+            for kind, title in (("hour", tr("This hour")), ("day", tr("Today")), ("week", tr("This week"))):
+                rows = [x for x in data if x.get("kind") == kind]
+                if not rows:
+                    continue
+                left = int(rows[0].get("left") or 0)
+                head = hbox(spacing=6)
+                head.addWidget(Label(title.upper(), 10, TEXT_DIM, weight=QFont.Weight.Bold), 1)
+                head.addWidget(Label(tr("New in {t}", t=clock_text(left)), 10, TEXT_FAINT))
+                lay.addLayout(head)
+                for q in rows:
                     lay.addWidget(QuestRow(self, q))
         ctx.econ.call("rb_quests", {}, self._got_quests)
 

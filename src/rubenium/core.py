@@ -19,8 +19,8 @@ from . import win
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.1"         # the version people see
-BUILD = "2026.11.15.10"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.2"         # the version people see
+BUILD = "2026.11.16.1"       # release tag (a date). It only ever goes up: this is what the updater compares
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -79,7 +79,8 @@ PLACEHOLDER = "#575757"
 TRACK = "#3A3A3A"
 DANGER = "#E5484D"
 WARN = "#F5A524"
-FONT_FAMILIES = ["Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"]
+FONT_DEFAULT = ["Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"]
+FONT_FAMILIES = list(FONT_DEFAULT)
 
 
 class _UI:
@@ -245,6 +246,11 @@ DEFAULTS: dict = {
     "ball_style": "classic",
     "ring_style": "line",
     "casino_warned": False,
+    "accent_from_screen": False,
+    "notify": {},
+    "notify_sound": True,
+    "notify_volume": 20,
+    "font_item": "",
     "news_tab": False,
     "welcome": True,
     "sounds": True,
@@ -429,7 +435,7 @@ class Config(QObject):
 
     def reset(self) -> None:
         keep = {k: self.d[k] for k in ("ball", "card", "lang", "autostart", "usage_s", "theme", "ball_style",
-                                       "ring_style", "custom_accent", "accent2", "accent2_on", "accent_from_art",
+                                       "ring_style", "custom_accent", "accent2", "accent2_on", "accent_from_art", "accent_from_screen", "font_item",
                                        "badges", "seen_version")}       # what you bought stays on
         self.d = copy.deepcopy(DEFAULTS)
         self.d.update(keep)

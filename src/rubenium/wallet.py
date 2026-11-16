@@ -15,38 +15,47 @@ COLOURS = [("white", "White", "#FFFFFF"), ("black", "Black", "#3A3F46"), ("red",
 COLOUR_HEX = {ident: hexa for ident, _name, hexa in COLOURS}
 
 # --------------------------------------------------------------------------- #
-# Badges: 50 designs from Heart (lowest) to Sunburst Star (highest), then the 5 Exotic ones
+# Badges: 12 Common, 12 Rare, 12 Epic, 12 Legendary (in this order), then the 6 Mythic ones
 # --------------------------------------------------------------------------- #
 BADGES = [("heart", "Heart"), ("drop", "Droplet"), ("clover", "Clover"), ("paw", "Paw Print"), ("cat", "Cat"),
           ("fish", "Fish"), ("cherry", "Cherries"), ("feather", "Feather"), ("note", "Music Note"), ("dice", "Dice"),
-          ("headset", "Headphones"), ("gamepad", "Game Controller"), ("mushroom", "Mushroom"), ("tree", "Tree"),
-          ("wave", "Wave"),
-          ("ghost", "Ghost"), ("spade", "Spade"), ("club", "Club"), ("diamond", "Diamond"), ("octagon", "Octagon"),
-          ("cube", "Cube"), ("eye", "Eye"), ("snowflake", "Snowflake"), ("mountain", "Mountain"), ("moon", "Moon"),
-          ("sun", "Sun"), ("star", "Star"), ("bolt", "Lightning Bolt"), ("flame", "Flame"), ("anchor", "Anchor"),
-          ("key", "Key"), ("pickaxe", "Pickaxe"), ("rook", "Rook"), ("shield", "Shield"), ("sword", "Sword"),
-          ("skull", "Skull"), ("trident", "Trident"), ("quill", "Quill"), ("hourglass", "Hourglass"),
-          ("target", "Target"), ("comet", "Comet"), ("saturn", "Saturn"),
+          ("headset", "Headphones"), ("gamepad", "Game Controller"),
+          ("mushroom", "Mushroom"), ("tree", "Tree"), ("wave", "Wave"), ("ghost", "Ghost"), ("spade", "Spade"),
+          ("club", "Club"), ("diamond", "Diamond"), ("eye", "Eye"), ("snowflake", "Snowflake"),
+          ("mountain", "Mountain"), ("moon", "Moon"), ("sun", "Sun"),
+          ("star", "Star"), ("bolt", "Lightning Bolt"), ("flame", "Flame"), ("anchor", "Anchor"), ("key", "Key"),
+          ("pickaxe", "Pickaxe"), ("rook", "Rook"), ("shield", "Shield"), ("sword", "Sword"), ("skull", "Skull"),
+          ("trident", "Trident"), ("quill", "Quill"),
+          ("hourglass", "Hourglass"), ("target", "Target"), ("comet", "Comet"), ("saturn", "Saturn"),
           ("alien", "Alien"), ("rocket", "Rocket ship"), ("shootingstar", "Shooting Star"), ("planet", "Planet"),
           ("crown", "Crown"), ("trophy", "Trophy"), ("goldenstar", "Golden Star"), ("sunburst", "Sunburst Star")]
 EXOTICS = [("galaxy", "Galaxy"), ("phoenix", "Phoenix"), ("glitch", "Glitch"), ("crystal", "Crystal Heart"),
-           ("dragon", "Dragon Eye")]
+           ("dragon", "Dragon Eye"), ("rubenium", "Rubenium")]
 BADGE_NAME = dict(BADGES + EXOTICS)
 EXOTIC_IDS = tuple(b for b, _n in EXOTICS)
-# colours of a badge, in three groups: plain grey, the 13 colours, and the three prestige finishes
+BADGE_ROWS = [("standard", [b for b, _n in BADGES[0:12]]), ("rare", [b for b, _n in BADGES[12:24]]),
+              ("special", [b for b, _n in BADGES[24:36]]), ("epic", [b for b, _n in BADGES[36:48]]),
+              ("exotic", list(EXOTIC_IDS))]
+# the colours of a badge, rarest first
+GOLD_IDS = ["gold"]
+TITANIUM_IDS = ["black", "white"]
+SHINY_IDS = ["hotpink", "lime", "sky", "royal", "lava"]
+PAINTED_IDS = ["red", "blue", "yellow", "green", "orange", "purple", "pink", "brown"]
+# balls, lines and fonts of the shop come in these colours
 COLOUR_IDS = ["blue", "green", "red", "yellow", "orange", "brown", "teal", "lava", "purple", "sky", "lime", "pink", "beam"]
 PRESTIGE_IDS = ["black", "white", "gold"]
-VARIANT_NAME = {"grey": "Grey", "blue": "Blue", "green": "Green", "red": "Red", "yellow": "Yellow", "orange": "Orange",
-                "brown": "Brown", "teal": "Teal", "lava": "Lava Red", "purple": "Rich Purple", "sky": "Sky Blue",
-                "lime": "Juicy Lime", "pink": "Hot Pink", "beam": "Yellow Beam", "black": "Black",
-                "white": "Titanium White", "gold": "Gold", "prime": "Prismatic"}
+VARIANT_NAME = {"grey": "Basic", "blue": "Blue", "green": "Green", "red": "Red", "yellow": "Yellow", "orange": "Orange",
+                "brown": "Brown", "teal": "Teal", "lava": "Lava Red", "purple": "Purple", "sky": "Sky Blue",
+                "lime": "Juicy Lime", "pink": "Pink", "beam": "Yellow Beam", "black": "Titanium Black",
+                "white": "Titanium White", "gold": "Gold", "prime": "Prismatic", "hotpink": "Hot Pink",
+                "royal": "Rich Purple"}
 
 
 def variants_for(base: str) -> list:
     """Every colour a badge exists in, best first."""
     if base in EXOTIC_IDS:
-        return ["gold", "white", "black", "prime"]
-    return ["gold", "white", "black"] + COLOUR_IDS[::-1] + ["grey"]
+        return ["gold", "prime", "white", "black"]
+    return GOLD_IDS + TITANIUM_IDS[::-1] + SHINY_IDS + PAINTED_IDS + ["grey"]
 
 
 def badge_item(base: str, var: str) -> str:
@@ -99,6 +108,9 @@ class Wallet(QObject):
         return next((float(st["hours"]) for st in styles if st["id"] == value), 1e9)
 
     def owns(self, ident: str) -> bool:
+        value = ident.partition(":")[2]
+        if value.split(":")[0] in ("ball", "line", "theme", "font"):       # bought in the shop, not unlocked by time
+            return self.econ.owns(value) or not self.econ.ready
         return self.minutes() >= self.hours_for(ident) * 60
 
     really_owns = owns
@@ -143,7 +155,7 @@ class Wallet(QObject):
 
     def spin_used(self) -> None:
         import time
-        self._spin_at = time.monotonic() + float(self.econ.cfg.get("spin_hours", 3)) * 3600
+        self._spin_at = time.monotonic() + float(self.econ.cfg.get("spin_hours", 2)) * 3600
 
     # -- the gambling warning (accepted once per PC)
     def warned(self) -> bool:

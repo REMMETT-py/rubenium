@@ -12,8 +12,11 @@ from .core import DATA_DIR
 
 log = logging.getLogger("rubenium.econ")
 
+MYTHICS = ("galaxy", "phoenix", "glitch", "crystal", "dragon", "rubenium")
 TIERS = ["standard", "rare", "special", "epic", "exotic"]
-RARITY_NAMES = {"standard": "Standard", "rare": "Rare", "special": "Special", "epic": "Epic", "exotic": "Exotic"}
+RARITY_NAMES = {"standard": "Common", "rare": "Rare", "special": "Epic", "epic": "Legendary", "exotic": "Mythic"}
+CLASS_NAMES = ["Basic", "Painted", "Shiny", "Titanium", "Gold", "Prismatic"]
+CLASS_COLOURS = ["#9AA4AD", "#6FB7FF", "#FF7AD9", "#E6EEF5", "#FFC94D", "#C38BFF"]
 RARITY_COLOURS = {"standard": "#9AA4AD", "rare": "#4FA8FF", "special": "#B36BFF", "epic": "#FF5CC8",
                   "exotic": "#FFC94D"}
 ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not for sale",
@@ -22,12 +25,27 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_too_soon": "Not ready yet", "rb_bad_bet": "Bet between 10 and 1 000",
           "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
           "rb_nothing_to_collect": "Nothing to collect", "rb_not_done": "Not finished yet",
-          "rb_already_claimed": "Already claimed"}
+          "rb_already_claimed": "Already claimed", "rb_trade_locked": "Unlocks after 5 hours with Rubenium",
+          "rb_they_cannot_trade": "This player needs 5 hours with Rubenium first",
+          "rb_bad_price": "This price is too low or too high", "rb_too_many_listings": "You have too many items on sale",
+          "rb_not_listed": "No longer on sale", "rb_sold": "Already sold", "rb_own_listing": "This is your own item",
+          "rb_trade_gone": "This trade is over", "rb_trade_changed": "The offer changed: look again",
+          "rb_not_ready": "Both players must be ready", "rb_wait": "Wait for the countdown",
+          "rb_too_many_trades": "Too many open trades", "rb_bad_offer": "This offer is not possible",
+          "rb_round_gone": "This round is over", "rb_too_early": "Too early: wait for x1.20",
+          "rb_gift_limit": "3 gifts a day at most", "rb_friends_only": "Friends only",
+          "rb_no_such_user": "No player with this name", "rb_thats_you": "That is you",
+          "rb_giveaway_over": "This giveaway is over", "rb_giveaway_hours": "You need more hours to join",
+          "rb_rename_wait": "One name change every 24 hours", "rb_username_taken": "This username is taken",
+          "rb_bad_username": "3 to 10 letters or numbers", "rb_same_name": "That is already your name",
+          "rb_bad_picture": "This picture cannot be used", "rb_not_admin": "Admin only",
+          "rb_banned": "This account is blocked", "rb_bad_choice": "This is not possible", "rb_no_case": "No such case"}
 
 
 class Econ(QObject):
     changed = pyqtSignal()          # coins, keys, items or what is worn changed
     loaded = pyqtSignal()           # the first full answer from the server arrived
+    live_changed = pyqtSignal()     # giveaways, sales or trade requests changed
 
     def __init__(self, ctx) -> None:
         super().__init__()
@@ -39,6 +57,15 @@ class Econ(QObject):
         self.seen: set = set()                   # every item ever owned
         self.equip: dict = {}
         self.imported = True
+        self.admin = False
+        self.holding = False
+        self.avatar_v = 0
+        self.stock: dict = {}                    # case id -> gifted cases waiting
+        self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
+        self._live_sig = ""
+        self._live_timer = QTimer(self)
+        self._live_timer.setInterval(20000)
+        self._live_timer.timeout.connect(self.poll_live)
         self.catalog: dict = {}                  # item id -> {kind, base, variant, rarity, price, value, tradeable}
         self.cases: list = []
         self.cfg: dict = {}
@@ -59,6 +86,32 @@ class Econ(QObject):
         """Owned once, not any more (shown greyed out)."""
         return item in self.seen and item not in self._owned
 
+    def secret(self, item: str) -> bool:
+        """A Mythic badge this account never had: it stays a "?" everywhere."""
+        parts = (item or "").split(":")
+        if len(parts) < 2 or parts[0] != "badge" or parts[1] not in MYTHICS:
+            return False
+        head = f"badge:{parts[1]}:"
+        return not any(s.startswith(head) for s in self.seen)
+
+    def sale(self, item: str) -> int:
+        """Percent off in the shop right now (0 = no sale)."""
+        best = 0
+        for s in self.live.get("sales") or []:
+            what = str(s.get("what", ""))
+            if item == what or item.startswith(what + ":"):
+                best = max(best, int(s.get("pct", 0)))
+        return best
+
+    def shop_price(self, item: str):
+        price = self.price(item)
+        if price is None:
+            return None
+        return max(1, -(-int(price) * (100 - self.sale(item)) // 100))
+
+    def can_trade(self) -> bool:
+        return self.minutes >= int(self.cfg.get("trade_min_minutes", 300))
+
     def info(self, item: str) -> dict:
         return self.catalog.get(item, {})
 
@@ -72,7 +125,7 @@ class Econ(QObject):
         info = self.info(item)
         if not info or not info.get("tradeable"):
             return 0
-        return max(1, int(int(info.get("value", 0)) * float(self.cfg.get("vendor_share", 0.45))))
+        return max(1, int(int(info.get("value", 0)) * float(self.cfg.get("vendor_share", 0.25))))
 
     def unlocked(self, prog: str) -> bool:
         """A progression item: unlocked by time played."""
@@ -80,7 +133,12 @@ class Econ(QObject):
         return bool(info) and info.get("kind") == "prog" and int(info.get("value", 0)) <= self.minutes
 
     def can_wear(self, item: str) -> bool:
-        return self.owns(item) or self.unlocked(item)
+        if self.owns(item) or self.unlocked(item):
+            return True
+        if item.startswith("badge:") and item.endswith(":grey"):     # Basic comes with any colour of the badge
+            head = item[:-4]
+            return any(k.startswith(head) for k in self._owned)
+        return False
 
     def worn(self, slot: str) -> str:
         return str(self.equip.get(slot, "") or "")
@@ -103,10 +161,17 @@ class Econ(QObject):
     def _account(self) -> None:
         now_in = self.online.logged_in()
         if now_in and not self._was_in:
+            from .online import pc_id
+            self.online.ask("rb_hello", {"pc": pc_id()}, lambda _ok, _d: None)
             self.refresh()
             self.fetch_catalog()
+            self._live_timer.start()
+            QTimer.singleShot(2500, self.poll_live)
         elif not now_in and self._was_in:
             self.ready = False
+            self._live_timer.stop()
+            self.live, self.admin, self.stock = {}, False, {}
+            self.live_changed.emit()
             self.coins = self.keys = self.minutes = 0
             self.items, self.seen, self.equip, self._owned = [], set(), {}, {}
             self.changed.emit()
@@ -124,6 +189,9 @@ class Econ(QObject):
         self.minutes = int(data.get("minutes", 0))
         self.day_coins = int(data.get("day_coins", 0))
         self.imported = bool(data.get("imported", True))
+        self.admin = bool(data.get("admin"))
+        self.avatar_v = int(data.get("avatar_v") or 0)
+        self.stock = dict(data.get("stock") or {})
         self.items = list(data.get("items") or [])
         self.seen = set(data.get("seen") or [])
         self._index()
@@ -131,6 +199,33 @@ class Econ(QObject):
         if first:
             self.loaded.emit()
         self.changed.emit()
+
+    def poll_live(self) -> None:
+        if not self.online.logged_in():
+            return
+
+        def got(ok: bool, data) -> None:
+            if not ok or not isinstance(data, dict):
+                return
+            notes = data.pop("notices", None) or []
+            before = (self.coins, self.keys)
+            self.absorb(data)
+            sig = json.dumps([data.get("giveaways"), data.get("sales"), data.get("trades"), data.get("asks"),
+                              data.get("open_trade")], sort_keys=True, default=str)
+            self.live = data
+            if notes:
+                self.refresh()
+                for n in notes:
+                    try:
+                        self.ctx.notice(n.get("kind", ""), n.get("data") or {})
+                    except Exception:  # noqa: BLE001
+                        log.exception("notice failed")
+            if sig != self._live_sig:
+                self._live_sig = sig
+                self.live_changed.emit()
+            if before != (self.coins, self.keys):
+                self.changed.emit()
+        self.online.ask("rb_live", {}, got, raw=True)
 
     def _index(self) -> None:
         self._owned = {}
@@ -142,6 +237,8 @@ class Econ(QObject):
         if not isinstance(ans, dict):
             return
         for key in ("coins", "keys", "coin_min", "key_min", "minutes"):
+            if self.holding and key in ("coins", "keys"):          # a case strip is still turning: no spoilers
+                continue
             if ans.get(key) is not None:
                 setattr(self, key, int(ans[key]))
         if isinstance(ans.get("equip"), dict):
@@ -235,7 +332,7 @@ class Econ(QObject):
                     offset += 1000
                 cases = _request("/rest/v1/rb_cases?select=*&order=pos", method="GET") or []
                 cfg = {r["key"]: r["value"] for r in (_request("/rest/v1/rb_config?select=*", method="GET") or [])}
-                catalog = {r["id"]: {k: r[k] for k in ("kind", "base", "variant", "rarity", "price", "value", "tradeable")}
+                catalog = {r["id"]: {k: r.get(k) for k in ("kind", "base", "variant", "rarity", "price", "value", "tradeable", "cls")}
                            for r in rows}
                 if catalog:
                     self.online._back.emit(lambda: self._got_catalog(catalog, cases, cfg))

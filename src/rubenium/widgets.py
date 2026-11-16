@@ -249,6 +249,16 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
     elif kind == "lock":
         p.drawRoundedRect(QRectF(-5, -1, 10, 8), 2, 2)
         p.drawArc(QRectF(-3.2, -7, 6.4, 9), 0, 180 * 16)
+    elif kind == "gift":
+        p.drawRoundedRect(QRectF(-6.5, -2, 13, 9), 1.5, 1.5)
+        p.drawRect(QRectF(-7.5, -5, 15, 3))
+        line(0, -5, 0, 7)
+        p.drawArc(QRectF(-5, -9, 5, 4.5), 0, 270 * 16)
+        p.drawArc(QRectF(0, -9, 5, 4.5), -90 * 16, 270 * 16)
+    elif kind == "shield":
+        p.drawPath(_poly((0, -7.5), (6.5, -5), (6, 1.5), (0, 7.5), (-6, 1.5), (-6.5, -5), (0, -7.5)))
+        line(-2.5, 0, -0.5, 2.5)
+        line(-0.5, 2.5, 3, -2)
     elif kind == "folder":
         p.drawPath(_poly((-7.5, 6), (-7.5, -5.5), (-2.5, -5.5), (-0.5, -3), (7.5, -3), (7.5, 6), (-7.5, 6)))
     elif kind == "copy":
@@ -1219,6 +1229,19 @@ class TabBar(QWidget):
                 p.setBrush(mix(alpha("#FFFFFF", 0.07 * h), alpha(ui.accent, 0.18), w))
                 p.drawRoundedRect(r.adjusted(0, S(1), 0, -S(1)), S(9), S(9))
             fg = mix(mix(QColor(TEXT_DIM), QColor(TEXT), h), ui.accent, w)
+            if key == "giveaway":                            # a live giveaway: the tab shines gold
+                import time as _t
+                pulse = 0.5 + 0.5 * math.sin(_t.monotonic() * 3)
+                gold = QColor("#E8C26A")
+                p.setPen(QPen(alpha(gold, 0.5 + 0.4 * pulse), S(1.2)))
+                p.setBrush(alpha(gold, 0.12 + 0.12 * pulse + 0.15 * w))
+                p.drawRoundedRect(r.adjusted(0, S(1), 0, -S(1)), S(9), S(9))
+                fg = mix(gold, QColor("#FFFFFF"), 0.25 * pulse)
+                if not hasattr(self, "_gold_t"):
+                    self._gold_t = QTimer(self)
+                    self._gold_t.setInterval(60)
+                    self._gold_t.timeout.connect(self.update)
+                    self._gold_t.start()
             p.save()
             p.translate(r.left() + slot / 2, r.center().y())
             k = S(15.5) / 20

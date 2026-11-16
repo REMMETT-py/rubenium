@@ -1,5 +1,5 @@
 import ast, sys, re
-ORDER=["win","core","online","econ","lang_fr","widgets","media","lyrics","engines","extras","wallet","badges","pages","shop","collection","games","friends","pages2","window","app"]
+ORDER=["win","core","online","econ","lang_fr","widgets","media","lyrics","engines","extras","wallet","badges","cosmetics","pages","shop","collection","bazaar","games","friends","admin","notify","pages2","window","app"]
 HEADER = '''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """

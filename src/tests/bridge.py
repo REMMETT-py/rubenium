@@ -12,6 +12,8 @@ def sql(q, sub=""):
     return r.stdout.strip()
 def lit(v):
     if v is None: return "null"
+    if isinstance(v, list) and any(isinstance(x, dict) for x in v) or isinstance(v, dict): return "'" + json.dumps(v).replace("'", "''") + "'"
+    if isinstance(v, list): return "'{" + ",".join('"' + str(x).replace('"', '') + '"' for x in v) + "}'"
     if isinstance(v, bool): return "true" if v else "false"
     if isinstance(v, (int, float)): return str(v)
     return "'" + str(v).replace("'", "''") + "'"

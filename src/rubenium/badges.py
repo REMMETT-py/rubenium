@@ -8,24 +8,27 @@ from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import (QColor, QLinearGradient, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF,
                          QRadialGradient, QTransform)
 
-# (id, name, rarity, main colour, light colour)
+# (id, name, finish, main colour, light colour). Finish: super = Gold, very = Titanium, rare = Shiny,
+# basic = Painted and the grey Basic one.
 VARIANTS = [("gold", "Gold", "super", "#E8C26A", "#FFF1C2"),
             ("titanium", "Titanium White", "very", "#EEF1F4", "#FFFFFF"),
-            ("black", "Black", "very", "#16191C", "#5A626B"),
-            ("lava", "Lava Red", "rare", "#FF3D1F", "#FFB199"),
-            ("purple", "Rich Purple", "rare", "#A43DFF", "#E2B8FF"),
-            ("sky", "Sky Blue", "rare", "#2EC5FF", "#B8EEFF"),
-            ("lime", "Juicy Lime", "rare", "#8CFF2E", "#DDFFB8"),
-            ("pink", "Hot Pink", "rare", "#FF2E9A", "#FFB8DD"),
-            ("beam", "Yellow Beam", "rare", "#FFEE2E", "#FFFBC2"),
-            ("blue", "Blue", "basic", "#4A6FB8", "#7F9DD6"),
-            ("green", "Green", "basic", "#4C8A5A", "#7DB389"),
-            ("red", "Red", "basic", "#A84444", "#CC7676"),
-            ("yellow", "Yellow", "basic", "#B89B42", "#D6BE76"),
-            ("orange", "Orange", "basic", "#B8703A", "#D69B6E"),
-            ("brown", "Brown", "basic", "#7A5A40", "#A0826A"),
-            ("grey", "Grey", "basic", "#7A828A", "#A2A9B0"),
-            ("teal", "Teal", "basic", "#3C8C8A", "#71B3B1")]
+            ("black", "Titanium Black", "very", "#16191C", "#5A626B"),
+            ("hotpink", "Hot Pink", "rare", "#FF2E9A", "#FFC2E2"),
+            ("lime", "Juicy Lime", "rare", "#8CFF2E", "#E4FFC4"),
+            ("sky", "Sky Blue", "rare", "#2EC5FF", "#C6F1FF"),
+            ("royal", "Rich Purple", "rare", "#A43DFF", "#E6C4FF"),
+            ("lava", "Lava Red", "rare", "#FF3D1F", "#FFC0AE"),
+            ("red", "Red", "basic", "#D84848", "#EE7A7A"),
+            ("blue", "Blue", "basic", "#3F78D8", "#79A4EE"),
+            ("yellow", "Yellow", "basic", "#DDBB36", "#F0D875"),
+            ("green", "Green", "basic", "#3FAE5A", "#78D08D"),
+            ("orange", "Orange", "basic", "#E5822E", "#F5AC6E"),
+            ("purple", "Purple", "basic", "#8750D2", "#B08AE8"),
+            ("pink", "Pink", "basic", "#E36AA8", "#F39CC8"),
+            ("brown", "Brown", "basic", "#8A5E3E", "#B08868"),
+            ("grey", "Basic", "basic", "#7A828A", "#A2A9B0"),
+            ("teal", "Teal", "basic", "#3C8C8A", "#71B3B1"),
+            ("beam", "Yellow Beam", "rare", "#FFEE2E", "#FFFBC2")]
 VARIANT = {v[0]: v for v in VARIANTS}
 
 _unit_cache: dict = {}
@@ -422,6 +425,13 @@ def _build(ident: str) -> QPainterPath:
         horns = _u(_p((-0.75, -0.42), (-0.5, -0.98), (-0.35, -0.5)), _p((0.75, -0.42), (0.5, -0.98), (0.35, -0.5)),
                    _p((-0.12, -0.6), (0, -0.98), (0.12, -0.6)))
         return _u(eye.subtracted(_c(0, 0.08, 0.42)), slit, horns)
+    if ident == "rubenium":                              # the R of Rubenium, with a spark
+        stem = _r(-0.62, -0.92, 0.36, 1.84, 0.06)
+        bowl = _u(_r(-0.62, -0.92, 0.74, 1.12, 0.06), _c(0.12, -0.36, 0.56))
+        hole = _u(_r(-0.26, -0.6, 0.38, 0.48), _c(0.12, -0.36, 0.24))
+        leg = _p((-0.1, 0.12), (0.26, 0.12), (0.82, 0.92), (0.44, 0.92))
+        spark = QTransform().translate(K * 0.74, -K * 0.8).map(_star(4, 0.24, 0.07))
+        return _u(stem, bowl.subtracted(hole), leg, spark)
     return _c(0, 0, 0.8)
 
 
@@ -466,9 +476,12 @@ def paint_badge(p: QPainter, ident: str, rect: QRectF, var: str = "grey", now: f
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     p.setOpacity(p.opacity() * dim)
     p.setPen(Qt.PenStyle.NoPen)
-    if effects and rarity in ("rare", "super") and dim >= 1.0:          # soft glow behind
-        halo = QColor(main)
-        for w, a in ((u * 0.42, 0.10), (u * 0.22, 0.18)):
+    if effects and rarity in ("very", "super") and dim >= 1.0:          # glow behind: a little for Titanium, a lot for Gold
+        halo = QColor(main if rarity == "super" else "#DCEBFF")
+        beat = 0.5 + 0.5 * math.sin(now * 2.4)
+        rings = ((u * 0.75, 0.07 + 0.05 * beat), (u * 0.46, 0.14 + 0.06 * beat), (u * 0.22, 0.24)) if rarity == "super" \
+            else ((u * 0.3, 0.08), (u * 0.14, 0.12))
+        for w, a in rings:
             halo.setAlphaF(a)
             pen = QPen(halo, w)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -518,9 +531,17 @@ def paint_badge(p: QPainter, ident: str, rect: QRectF, var: str = "grey", now: f
         p.setClipPath(path)
         p.fillRect(box.adjusted(-2, -2, 2, 2), band)
         p.restore()
+    if rarity == "rare" and dim >= 1.0:                       # Shiny: a bright highlight, no glow
+        p.save()
+        p.setClipPath(path)
+        gl = QLinearGradient(box.topLeft(), QPointF(box.left() + box.width() * 0.7, box.center().y()))
+        gl.setColorAt(0.0, QColor(255, 255, 255, 150))
+        gl.setColorAt(1.0, QColor(255, 255, 255, 0))
+        p.fillRect(QRectF(box.left(), box.top(), box.width(), box.height() * 0.55), gl)
+        p.restore()
     if effects and rarity == "super" and dim >= 1.0:          # twinkling stars around it
         seed = sum(ord(ch) for ch in ident)
-        for k in range(4):
+        for k in range(7):
             phase = (now * 0.9 + k * 0.27 + seed * 0.013) % 1.0
             tw = math.sin(phase * math.pi)
             ang = math.radians(seed * 37 + k * 97)
@@ -550,9 +571,41 @@ def paint_badge(p: QPainter, ident: str, rect: QRectF, var: str = "grey", now: f
 # --------------------------------------------------------------------------- #
 # Online items: "badge:<design>:<colour>" as the server names them
 # --------------------------------------------------------------------------- #
-EXOTIC = ("galaxy", "phoenix", "glitch", "crystal", "dragon")
+EXOTIC = ("galaxy", "phoenix", "glitch", "crystal", "dragon", "rubenium")
 SHAPE_OF = {"octagon": "gem", "saturn": "planet", "planet": "bigplanet"}      # server design -> drawing
 COLOUR_OF = {"white": "titanium"}                                              # server colour -> drawing
+
+
+def paint_secret(p: QPainter, rect: QRectF, now: float = 0.0, lit: bool = True) -> None:
+    """A Mythic badge nobody may see yet: a glowing "?" in a turning aura."""
+    from PyQt6.QtGui import QConicalGradient, QFont
+    from .core import font
+    u = min(rect.width(), rect.height()) / 2
+    c = rect.center()
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    hue = (now * 0.1) % 1.0
+    aura = QRadialGradient(c, u * 1.35)
+    glow = QColor.fromHsvF(hue, 0.65, 1.0)
+    glow.setAlphaF(0.34 + 0.12 * math.sin(now * 2.2) if lit else 0.14)
+    aura.setColorAt(0.0, glow)
+    aura.setColorAt(1.0, QColor(0, 0, 0, 0))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(aura)
+    p.drawEllipse(c, u * 1.35, u * 1.35)
+    g = QConicalGradient(c, (now * 60) % 360)
+    for i, col in enumerate(("#FF5CC8", "#FFC94D", "#4FE3FF", "#B36BFF", "#FF5CC8")):
+        g.setColorAt(i / 4, QColor(col))
+    p.setPen(QPen(g, max(1.0, u * 0.1)))
+    p.setBrush(QColor(8, 10, 14, 235))
+    p.setOpacity(p.opacity() * (1.0 if lit else 0.55))
+    p.drawEllipse(c, u * 0.92, u * 0.92)
+    f = font(12, QFont.Weight.ExtraBold)
+    f.setPixelSize(max(6, int(u * 1.15)))
+    p.setFont(f)
+    p.setPen(QColor.fromHsvF((hue + 0.5) % 1.0, 0.25, 1.0))
+    p.drawText(rect, int(Qt.AlignmentFlag.AlignCenter), "?")
+    p.restore()
 
 
 def badge_parts(item: str) -> tuple:

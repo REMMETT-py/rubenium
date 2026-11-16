@@ -74,6 +74,9 @@ def paint_r(p: QPainter, box: QRectF, d: float, style: str, accent: QColor, now:
     from PyQt6.QtCore import QPointF
     from PyQt6.QtGui import QFont, QFontMetricsF, QLinearGradient, QPainterPath
     from .core import TEXT, font
+    if style.startswith("ball:"):                        # a ball bought in the shop
+        from .cosmetics import paint_shop_ball
+        return paint_shop_ball(p, box, d, style, now)
     f = font(20, QFont.Weight.ExtraBold)
     f.setPixelSize(max(8, int(d * 0.46)))
     p.setFont(f)
@@ -163,6 +166,9 @@ def paint_ring(p: QPainter, ring: QRectF, style: str, frac: float, accent: QColo
     from PyQt6.QtCore import QPointF
     from PyQt6.QtGui import QConicalGradient
     frac = max(0.0, min(1.0, frac))
+    if style.startswith("line:"):                        # a line bought in the shop
+        from .cosmetics import paint_shop_ring
+        return paint_shop_ring(p, ring, style, frac, width, time.monotonic())
     p.setBrush(Qt.BrushStyle.NoBrush)
     simple = style if style in ("line", "dash", "dots") else "line"
     p.setPen(ring_pen(simple, alpha("#FFFFFF", 0.10), width))
@@ -249,6 +255,9 @@ _pattern_cache: dict = {}
 
 
 def theme_by_id(ident: str) -> dict:
+    if ident.startswith("theme:"):                       # a theme bought in the shop
+        from .cosmetics import shop_theme
+        return shop_theme(ident) or THEMES[0]
     return next((t for t in THEMES if t["id"] == ident), THEMES[0])
 
 
@@ -799,6 +808,19 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.2", ["The Ultimate Update: a fresh start for everyone (500 coins, 3 keys). Hours and friends stay",
+             "Trading: send a request from a profile, 8 items and coins each side, Ready then Confirm",
+             "Market: sell to other players at your price, or accept their offers (5% fee)",
+             "Inventory, and a Shop with 10 balls, 10 lines, 5 fonts and 6 themes in every colour",
+             "Badges remade: 12 Common, 12 Rare, 12 Epic, 12 Legendary and 6 secret Mythic",
+             "Finishes: Basic, Painted, Shiny, Titanium and Gold (Gold is extremely rare)",
+             "9 cases, gifts for friends, coins drops that usually beat the price",
+             "Beat Tap mini game, quests every hour, day and week",
+             "Rocket with automatic cash-out, Dice with more choices, free spin every 2 hours",
+             "Social tab: your stats, profile pictures, every player, name changes",
+             "Notifications with a quiet sound (choose them in Settings), live giveaways",
+             "More coins with time: 20 every 10 minutes",
+             "Use screen colours: the menu follows the colours of your screen"]),
     ("2.1", ["Quests: three daily and three weekly goals that pay coins",
              "Friends: a refresh button, and badges on profiles"]),
     ("2.0", ["The online update: coins, keys and items now live on your account",

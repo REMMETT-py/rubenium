@@ -1258,6 +1258,60 @@ class Welcome(QWidget):
             p.setOpacity(a)
 
 
+class LockCover(QWidget):
+    """A blur of the page with a big padlock: the admin has locked the online part of the app."""
+
+    def __init__(self, parent) -> None:
+        super().__init__(parent)
+        self.blur = None
+        self.setCursor(Qt.CursorShape.ForbiddenCursor)
+
+    def take(self, widget) -> None:
+        pm = widget.grab()
+        if pm.isNull():
+            self.blur = None
+            return
+        small = pm.scaled(max(1, pm.width() // 14), max(1, pm.height() // 14), Qt.AspectRatioMode.IgnoreAspectRatio,
+                          Qt.TransformationMode.SmoothTransformation)
+        self.blur = small.scaled(pm.size(), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def wheelEvent(self, e) -> None:
+        e.accept()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        r = QRectF(self.rect())
+        if self.blur is not None:
+            p.drawPixmap(self.rect(), self.blur)
+        p.fillRect(r, QColor(6, 8, 10, 170))
+        c = QPointF(r.center().x(), min(r.center().y(), r.top() + S(150)) - S(10))
+        glow = QRadialGradient(c, S(90))
+        glow.setColorAt(0, alpha(ui.accent, 0.30))
+        glow.setColorAt(1, alpha(ui.accent, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, S(90), S(90))
+        p.save()
+        p.translate(c)
+        p.scale(S(64) / 20, S(64) / 20)
+        draw_icon(p, "lock", QColor("#FFFFFF"))
+        p.restore()
+        p.setPen(QColor(TEXT))
+        p.setFont(font(15, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left(), c.y() + S(42), r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter), tr("Locked for now"))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left() + S(20), c.y() + S(68), r.width() - S(40), S(40)),
+                   int(Qt.AlignmentFlag.AlignHCenter | Qt.TextFlag.TextWordWrap),
+                   tr("The admin is working on Rubenium. Games, cases, trades and the market come back soon. "
+                      "Your time still counts."))
+
+
 class Body(QWidget):
     """Card chrome: wordmark, status dots, the R button (back to the ball), tab bar and the page host."""
 
@@ -1267,6 +1321,8 @@ class Body(QWidget):
         self.to_ball = IconButton("rball", 28, tip=tr("Close to the ball"), parent=self)
         self.tabbar = None
         self.host = QWidget(self)
+        self.cover = LockCover(self.host)
+        self.cover.hide()
         self.set_tabs()
         self.to_ball.clicked.connect(window.collapse)
         self._press = None
@@ -1295,6 +1351,8 @@ class Body(QWidget):
         self.tabbar.setGeometry(pad, S(HEADER_TOP + HEADER_H + 8), w - 2 * pad, max(1, int(round(S(TAB_H) * level))))
         self.host.setGeometry(pad, S(CHROME_TOP) - off, w - 2 * pad + S(ScrollArea.GUTTER),
                               max(0, self.height() - S(CHROME_TOP + CHROME_BOTTOM) + off))
+        if self.cover.isVisible():
+            self.cover.setGeometry(self.host.rect())
         self.tabbar.fade = max(0.0, min(1.0, (level - 0.2) / 0.8))     # squashes and fades together
         self.tabbar.setVisible(level > 0.04)                             # a hidden bar never catches a click
         self.tabbar.update()
@@ -1345,21 +1403,17 @@ class Body(QWidget):
             p.setFont(font(10.5, QFont.Weight.DemiBold))
             tw = p.fontMetrics().horizontalAdvance(name)
             h = S(20)
-            pill = QRectF(self.width() - S(PAD) - S(34) - tw - S(30), base.center().y() - h / 2, tw + S(30), h)
+            pill = QRectF(self.width() - S(PAD) - S(34) - tw - S(22), base.center().y() - h / 2, tw + S(22), h)
             if pill.left() > x + S(26):
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(alpha("#FFFFFF", 0.06))
                 p.drawRoundedRect(pill, h / 2, h / 2)
-                dot = QPointF(pill.left() + h / 2, pill.center().y())
-                p.setBrush(alpha(ui.accent, 0.9 if not self.win.ctx.online.offline else 0.3))
-                p.drawEllipse(dot, S(7), S(7))
-                p.setPen(QColor("#06110A" if ui.accent.lightnessF() > 0.6 else "#FFFFFF"))
-                p.setFont(font(9, QFont.Weight.ExtraBold))
-                p.drawText(QRectF(dot.x() - S(7), dot.y() - S(7), S(14), S(14)), int(Qt.AlignmentFlag.AlignCenter),
-                           name[0].upper())
+                dot = QPointF(pill.left() + S(9), pill.center().y())           # just a small online dot
+                p.setBrush(QColor("#3DDC84") if not self.win.ctx.online.offline else alpha("#FFFFFF", 0.3))
+                p.drawEllipse(dot, S(3), S(3))
                 p.setPen(QColor(TEXT_DIM))
                 p.setFont(font(10.5, QFont.Weight.DemiBold))
-                p.drawText(pill.adjusted(S(22), 0, -S(6), 0), int(Qt.AlignmentFlag.AlignVCenter), name)
+                p.drawText(pill.adjusted(S(16), 0, -S(6), 0), int(Qt.AlignmentFlag.AlignVCenter), name)
 
     # drag the card from anywhere that is not a control
     # Hold the card for a moment, then move it. A quick click or flick never moves it; if you press and move
@@ -1612,6 +1666,8 @@ class MainWindow(QWidget):
         self.pageh.to(new_h, 320)
         if self._dir and "perf" in self.pages and key != "perf":   # Stats is unloaded once it is left
             QTimer.singleShot(400, self._unload_stats)
+        self.body.cover.hide()
+        QTimer.singleShot(320, self.sync_lock)
         gone = [k for k in TEMP_TABS if k != key]          # a tab shown only while it was being read
         if gone:
             TEMP_TABS.difference_update(gone)
@@ -1651,6 +1707,21 @@ class MainWindow(QWidget):
             self._layout_body()
         self.update()
 
+    def sync_lock(self) -> None:
+        """While the admin has locked the app, the online tabs are covered by a blur and a big padlock."""
+        from .pages2 import LOCK_PAGES
+        cover = self.body.cover
+        on = bool(self.ctx.econ.live.get("locked")) and self.expanded and self.current in LOCK_PAGES
+        if on:
+            cover.setGeometry(self.body.host.rect())
+            entry = self.pages.get(self.current)
+            if entry is not None and not cover.isVisible():
+                cover.take(entry[0])
+            cover.show()
+            cover.raise_()
+        elif cover.isVisible():
+            cover.hide()
+
     def reload_page(self) -> None:
         """Rebuild the current page (its content changed) and glide to its new height."""
         if not self.expanded:
@@ -1667,6 +1738,7 @@ class MainWindow(QWidget):
         sa._pos.jump(sa._target)
         page.on_show()
         self.pageh.to(self._card_h(self.current), 300)
+        QTimer.singleShot(0, self.sync_lock)
 
     def rebuild(self) -> None:
         """Scale or language changed: rebuild every widget at an animation boundary."""

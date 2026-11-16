@@ -8,17 +8,18 @@ import math
 import os
 import sys
 from pathlib import Path
+import threading
 import time
 
 from PyQt6.QtCore import QLocale, QObject, QPointF, QTimer, Qt
 from PyQt6.QtGui import QColor, QFont, QGuiApplication, QIcon, QImage, QPainter, QPainterPath, QPixmap
-from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
 from . import win
 from .econ import Econ
 from .online import Online
 from .wallet import COLOURS, Wallet
-from .core import BUILD, APP_NAME, ACCENT_DEFAULT, Config, alpha, apply_look, set_lang, sfx, setup_logging, tr, ui
+from .core import BUILD, APP_NAME, ACCENT_DEFAULT, FONT_DEFAULT, FONT_FAMILIES, TEXT, Config, alpha, apply_look, set_lang, sfx, setup_logging, tr, ui
 from .engines import CrosshairOverlay, DisplayEngine, HudOverlay, PingTest, Sensors
 from .lyrics import LyricsService
 from .media import CMD_SEEK, MediaService, Status, TrackState, source_keywords
@@ -35,6 +36,34 @@ QMenu::item { padding:6px 24px 6px 12px; border-radius:5px; }
 QMenu::item:selected { background:#2A3031; }
 QMenu::separator { height:1px; background:#2C3233; margin:6px 4px; }
 """
+
+
+def cleanup_files() -> None:
+    """At start: remove what only takes room. Lyrics not opened for 30 days (at most 400 kept), leftover
+    temporary files, profile pictures not seen for 30 days, and old downloads of the updater."""
+    import tempfile
+    from .core import DATA_DIR, LYRICS_DIR
+    now = time.time()
+    try:
+        files = sorted((f for f in LYRICS_DIR.glob("*.json")), key=lambda f: f.stat().st_mtime, reverse=True)
+        for n, f in enumerate(files):
+            if n >= 400 or now - f.stat().st_mtime > 30 * 86400:
+                f.unlink(missing_ok=True)
+        for f in list(DATA_DIR.glob("*.tmp")) + list(DATA_DIR.glob("*/*.tmp")):
+            if now - f.stat().st_mtime > 600:
+                f.unlink(missing_ok=True)
+        faces = DATA_DIR / "faces"
+        if faces.is_dir():
+            for f in faces.glob("*.jpg"):
+                if now - f.stat().st_mtime > 30 * 86400:
+                    f.unlink(missing_ok=True)
+        tmp = Path(tempfile.gettempdir())
+        for pattern in ("Rubenium_update*", "rubenium_*.png", "rubenium_*.tmp"):
+            for f in tmp.glob(pattern):
+                if f.is_file() and now - f.stat().st_mtime > 86400:
+                    f.unlink(missing_ok=True)
+    except Exception:  # noqa: BLE001
+        log.exception("cleanup failed")
 
 
 def accent_from_image(pixmap: QPixmap):
@@ -121,9 +150,23 @@ class App(QObject):
         self.wallet = Wallet(self)
         self.econ.changed.connect(self.sync_look)
         self.econ.changed.connect(self._flair_changed)
+        self.econ.changed.connect(self._shop_items_check)
+        self._screen_colour = None
+        self._screen_timer = QTimer(self)
+        self._screen_timer.timeout.connect(self._watch_screen)
+        from .collection import set_econ
+        from .bazaar import TradeLink
+        from .friends import Faces
+        set_econ(self.econ)
+        self.faces = Faces(self)                     # profile pictures
+        self.trade = TradeLink(self)                 # the trade being made, kept in step with the server
+        self.trade.changed.connect(self._trade_changed)
+        self.econ.live_changed.connect(self._live_changed)
+        threading.Thread(target=cleanup_files, daemon=True).start()
         self.casino = False                          # inside the casino (Games tab, shown bigger)
         self.casino_ask = None                       # the gambling warning is being shown
         self._wear_only_owned()
+        self.apply_font()
         disp = self.cfg["display"]
         if disp.get("active") == "B":                # one Custom since 1.1: an old "Custom 2" becomes Custom
             disp["A"] = dict(disp["B"])
@@ -181,6 +224,8 @@ class App(QObject):
         self._usage.timeout.connect(self._count_usage)
         self._usage.start()
         self.window = MainWindow(self)
+        from .notify import Notifier
+        self.notifier = Notifier(self)              # pop-ups and a quiet beep for what happens online
 
         self.media.state_changed.connect(self._on_state)
         self.media.artwork_ready.connect(self._on_artwork)
@@ -513,8 +558,9 @@ class App(QObject):
         if not ec.ready or getattr(self, "_syncing_look", False):
             return
         for slot, key in (("theme", "theme"), ("ball", "ball_style"), ("ring", "ring_style")):
-            want = extras.PROG_IDS[key].get(self.cfg[key], "")
-            if want and ec.worn(slot) != want and ec.unlocked(want):
+            value = self.cfg[key]
+            want = value if ":" in value else extras.PROG_IDS[key].get(value, "")
+            if want and ec.worn(slot) != want and ec.can_wear(want):
                 self._syncing_look = True
                 ec.wear(slot, want, lambda _ok, _d: setattr(self, "_syncing_look", False))
                 return
@@ -614,6 +660,17 @@ class App(QObject):
         self._preview = ident
         self._theme_changed()
 
+    def start_preview(self, ident: str) -> None:
+        if self._preview != ident:
+            self.preview_theme(ident)
+            self.refresh_accent()
+
+    def stop_preview(self) -> None:
+        if self._preview:
+            self._preview = ""
+            self._theme_changed()
+            self.refresh_accent()
+
     def _theme_changed(self) -> None:
         self.window.theme_changed()
 
@@ -624,18 +681,187 @@ class App(QObject):
     def refresh_accent(self) -> None:
         target = None
         music = bool(self.cfg["accent_from_art"]) and self.wallet.owns("music")
+        screen = bool(self.cfg["accent_from_screen"]) and not music
+        tint = self.theme().get("tint")                  # a shop theme brings its own two colours
         if music and self.art_pixmap is not None:
             target = accent_from_image(self.art_pixmap)
+        elif screen:
+            target = self._screen_colour
         second = QColor(self.cfg["accent2"])
         # The second colour belongs to your own colours: it is not used while the music picks the colour.
-        use = self.cfg["accent2_on"] and self._colour_ok("c2", self.cfg["accent2"]) and not music
+        use = self.cfg["accent2_on"] and self._colour_ok("c2", self.cfg["accent2"]) and not music and not screen
         ui.accent2 = second if use else None
+        if tint and not music and not screen:
+            target, ui.accent2 = QColor(tint[0]), QColor(tint[1])
+        self._screen_timer.setInterval(2500)
+        if screen != self._screen_timer.isActive():
+            self._screen_timer.start() if screen else self._screen_timer.stop()
+            if screen:
+                QTimer.singleShot(50, self._watch_screen)
         self.window.update()
         self.window.ball.update()
         self.window.set_accent(target or self.base_accent())
         for overlay in (self.hud,):
             if overlay.isVisible():
                 overlay.update()
+
+    def _watch_screen(self) -> None:
+        """"Use screen colours": every 2.5 s take a tiny picture of the screen (64 x 36 points) and follow its
+        main colour. Very light: one small copy, no video capture."""
+        if not self.cfg["accent_from_screen"] or (self.cfg["accent_from_art"] and self.wallet.owns("music")):
+            return self._screen_timer.stop()
+        try:
+            scr = self.window.screen() or QGuiApplication.primaryScreen()
+            geo = scr.geometry()
+            shot = scr.grabWindow(0, 0, 0, geo.width(), geo.height())
+            if shot.isNull():
+                return
+            col = accent_from_image(shot.scaled(64, 36, Qt.AspectRatioMode.IgnoreAspectRatio,
+                                                Qt.TransformationMode.FastTransformation))
+        except Exception:  # noqa: BLE001
+            return
+        old = self._screen_colour
+        if col is not None and (old is None or abs(col.hsvHueF() - old.hsvHueF()) > 0.03
+                                or abs(col.hsvSaturationF() - old.hsvSaturationF()) > 0.08):
+            self._screen_colour = col
+            self.window.set_accent(col)
+            self.window.ball.update()
+
+    def set_colour_source(self, source: str) -> None:
+        """Only one of them at a time: "music", "screen" or "" (your own colours)."""
+        self.cfg["accent_from_art"] = source == "music"
+        self.cfg["accent_from_screen"] = source == "screen"
+        self.refresh_accent()
+
+    # ------------------------------------------------------------------ shop cosmetics (ball, line, theme, font)
+    def wear_shop_item(self, item: str) -> None:
+        """Put on a ball, line, theme or font from the shop ("" for a font = the normal font)."""
+        kind = item.split(":")[0]
+        key = {"ball": "ball_style", "line": "ring_style", "theme": "theme", "font": "font_item"}.get(kind)
+        if key is None:
+            return
+        if kind == "theme":
+            self.set_theme(item)
+        else:
+            self.cfg[key] = item
+        if kind == "font":
+            self.apply_font(rebuild=True)
+            self.econ.wear("font", item)
+        self.cfg.save()
+        self.refresh_accent()
+        self.window.ball.update()
+        self.sync_look()
+
+    def take_off_shop_item(self, kind: str) -> None:
+        if kind == "theme":
+            self.set_theme("clean")
+        elif kind == "font":
+            self.cfg["font_item"] = ""
+            self.apply_font(rebuild=True)
+            self.econ.wear("font", "prog:font:0")
+        else:
+            self.cfg["ball_style" if kind == "ball" else "ring_style"] = "classic" if kind == "ball" else "line"
+        self.cfg.save()
+        self.refresh_accent()
+        self.window.ball.update()
+        self.sync_look()
+
+    def shop_item_worn(self, item: str) -> bool:
+        return item in (self.cfg["ball_style"], self.cfg["ring_style"], self.cfg["theme"], self.cfg["font_item"])
+
+    def apply_font(self, rebuild: bool = False) -> None:
+        from .cosmetics import font_families
+        item = self.cfg["font_item"]
+        want = (font_families(item) if item and self.wallet.owns("font:" + item) else []) + list(FONT_DEFAULT)
+        if want != FONT_FAMILIES:
+            FONT_FAMILIES[:] = want
+            if rebuild:
+                self.rebuild_ui()
+
+    def title_colour(self) -> str:
+        """The colour of the song title: white, or the colour of the font you bought."""
+        from .cosmetics import SHOP_COLOURS
+        item = self.cfg["font_item"]
+        if item and self.wallet.owns("font:" + item):
+            var = item.split(":")[-1]
+            return "#C9D2DA" if var in ("black", "grey") else SHOP_COLOURS.get(var, TEXT)
+        return TEXT
+
+    def _shop_items_check(self) -> None:
+        """Something worn from the shop was sold or traded away: back to the normal look."""
+        if not self.econ.ready:
+            return
+        changed = False
+        for key, kind, plain in (("ball_style", "ball", "classic"), ("ring_style", "line", "line"),
+                                 ("theme", "theme", "clean"), ("font_item", "font", "")):
+            value = self.cfg[key]
+            if value.startswith(kind + ":") and not self.econ.owns(value):
+                self.cfg[key] = plain
+                changed = True
+                if kind == "font":
+                    self.apply_font(rebuild=True)
+        if changed:
+            self._theme_changed()
+            self.refresh_accent()
+            self.window.ball.update()
+
+    def faces_changed(self) -> None:
+        if self.window.current in ("friends", "admin") and self.window.expanded:
+            page = self.window.page()
+            if page is not None:
+                for w in [page] + page.findChildren(QWidget):
+                    w.update()
+
+    def _trade_changed(self) -> None:
+        if self.window.current == "friends" and self.window.expanded:
+            self.reload_page()
+
+    def _live_changed(self) -> None:
+        """Giveaways, the admin tab, the lock: from the server's latest news."""
+        from .pages2 import LIVE_TABS
+        want = set()
+        if any(g.get("state") == "live" or g.get("joined") for g in self.econ.live.get("giveaways") or []):
+            want.add("giveaway")
+        if self.econ.admin:
+            want.add("admin")
+        if want != LIVE_TABS:
+            LIVE_TABS.clear()
+            LIVE_TABS.update(want)
+            if self.window.current in ("giveaway", "admin") and self.window.current not in want:
+                self.window.goto("home")
+            self.window.tabs_changed()
+        self.window.sync_lock()
+        if self.window.current in ("giveaway", "themes") and self.window.expanded and not self.econ.holding:
+            cur = self.window.page()
+            if self.window.current == "giveaway" or getattr(self, "shop_tab", 0) in (1, 4):
+                if cur is None or not getattr(cur, "reel", None) or not cur.reel.busy():
+                    self.reload_page()
+
+    def notice(self, kind: str, data: dict) -> None:
+        """A small message from the server (a gift, a giveaway win, something from the admin)."""
+        if self.notifier.notice(kind, data):
+            return
+        from .collection import CASE_NAMES
+        from .cosmetics import item_name
+        from .wallet import coins_text
+        if kind == "gift":
+            text = tr("{name} gifted you a case: {case}", name=data.get("from", "?"), case=tr(CASE_NAMES.get(data.get("case"), "?")))
+        elif kind == "giveaway":
+            text = tr("You won the giveaway: {title}!", title=data.get("title", ""))
+        elif data.get("item"):
+            text = tr("You received: {what}", what=item_name(data["item"]))
+        elif data.get("case"):
+            text = tr("You received: {what}", what=tr(CASE_NAMES.get(data.get("case"), "?")))
+        else:
+            got = []
+            if int(data.get("coins") or 0):
+                got.append(tr("{n} coins", n=coins_text(data["coins"])))
+            if int(data.get("keys") or 0):
+                got.append(tr("{n} keys", n=data["keys"]))
+            text = tr("You received: {what}", what=", ".join(got) or "?")
+        sfx.play("on")
+        self.toast(text)
+        self.notifier.push("gift", tr("GIFT") if kind == "gift" else (tr("GIVEAWAY") if kind == "giveaway" else "RUBENIUM"), text)
 
     def refresh_look(self) -> None:
         self.window._retime()
