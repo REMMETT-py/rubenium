@@ -4,12 +4,12 @@ import base64
 import time
 
 from PyQt6.QtCore import QBuffer, QByteArray, QIODevice, QPointF, QRectF, QTimer, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QImage, QPainter, QPainterPath, QPen, QPixmap
+from PyQt6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap
 from PyQt6.QtWidgets import QWidget
 
 from .bazaar import AskDialog, build_trade
 from .hub import build_leaders, build_messages, build_trade_history, open_chat
-from .core import DATA_DIR, S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, lang, tr, ui
+from .core import DATA_DIR, S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, lang, mix, tr, ui
 from .pages import Page
 from .widgets import Button, IconButton, Label, Segmented, hbox, heading, vbox
 
@@ -138,8 +138,10 @@ class Faces:
         self.ctx.econ.call("rb_avatar_set", {"picture": text}, back)
 
 
-def paint_face(p: QPainter, rect: QRectF, ctx, name: str, version: int, online=None) -> None:
-    """A round profile picture (or the first letter), with a small online dot."""
+def paint_face(p: QPainter, rect: QRectF, ctx, name: str, version: int, online=None, frame=None, now: float = -1.0) -> None:
+    """A round profile picture (or the first letter), with their frame and a small online dot."""
+    if frame is None:
+        frame = ctx.econ.look_of(name).get("frame", "")
     pm = ctx.faces.get(name, version) if version else None
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -163,6 +165,9 @@ def paint_face(p: QPainter, rect: QRectF, ctx, name: str, version: int, online=N
     p.setPen(QPen(alpha("#FFFFFF", 0.14), 1))
     p.setBrush(Qt.BrushStyle.NoBrush)
     p.drawEllipse(rect)
+    if frame:
+        from .cosmetics import paint_frame
+        paint_frame(p, rect, frame, time.monotonic() if now < 0 else now)
     if online is not None:
         d = max(S(6), rect.width() * 0.26)
         dot = QPointF(rect.right() - d * 0.42, rect.bottom() - d * 0.42)
@@ -185,6 +190,27 @@ def paint_admin_tag(p: QPainter, x: float, cy: float) -> float:
     p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), "ADMIN")
     p.restore()
     return w
+
+
+def paint_name_tags(p: QPainter, x: float, cy: float, ctx, name: str, admin: bool = False, size: float = 8.5) -> float:
+    """ADMIN and the tag someone wears (OG...) after their name. Returns the width used."""
+    w = 0.0
+    if admin:
+        w += paint_admin_tag(p, x, cy) + S(5)
+    tag = ctx.econ.look_of(name).get("tag")
+    if tag:
+        from .cosmetics import paint_tag
+        w += paint_tag(p, x + w, cy, tag, time.monotonic(), size) + S(5)
+    return w
+
+
+class Ticker(QTimer):
+    """Redraws a widget a few times a second while it shows something that moves (a frame, a tag, a banner)."""
+
+    def __init__(self, widget, ms: int = 60) -> None:
+        super().__init__(widget)
+        self.setInterval(ms)
+        self.timeout.connect(widget.update)
 
 
 class PlayerRow(QWidget):
@@ -251,8 +277,7 @@ class PlayerRow(QWidget):
         name = info["username"] + ("  (" + tr("you") + ")" if info.get("me") else "")
         p.drawText(QRectF(x, r.top() + S(4), S(160), S(18)), int(Qt.AlignmentFlag.AlignVCenter), name)
         nx = x + p.fontMetrics().horizontalAdvance(name) + S(6)
-        if info.get("admin"):
-            nx += paint_admin_tag(p, nx, r.top() + S(13)) + S(6)
+        nx += paint_name_tags(p, nx, r.top() + S(13), self.ctx, info["username"], bool(info.get("admin")))
         badges = [b for b in (info.get("badges") or []) if b][:3]
         for k, item in enumerate(badges):
             show_item(p, item, QRectF(nx + k * S(16), r.top() + S(6), S(13), S(13)), 0, effects=False)
@@ -285,6 +310,13 @@ class StatsCard(QWidget):
         self.ctx, self.data = ctx, data
         self.setFixedSize(width, S(150))
         self.setMouseTracking(True)
+        self._tick = Ticker(self, 80)
+
+    def showEvent(self, _e) -> None:
+        self._tick.start()
+
+    def hideEvent(self, _e) -> None:
+        self._tick.stop()
 
     def _face(self) -> QRectF:
         return QRectF(S(12), S(12), S(52), S(52))
@@ -309,13 +341,19 @@ class StatsCard(QWidget):
         p.drawRoundedRect(r, S(12), S(12))
         d, st = self.data, self.data.get("stats") or {}
         name = d.get("username") or self.ctx.online.username()
+        banner = self.ctx.econ.look_of(name).get("banner")
+        if banner:                                         # your banner behind the top of the card
+            from .cosmetics import paint_banner
+            p.save()
+            p.setOpacity(0.55)
+            paint_banner(p, QRectF(r.left(), r.top(), r.width(), S(66)), banner, time.monotonic(), S(12))
+            p.restore()
         paint_face(p, self._face(), self.ctx, name, int(d.get("avatar_v") or self.ctx.econ.avatar_v or 0))
         p.setPen(QColor(TEXT))
         p.setFont(font(16, QFont.Weight.Bold))
         p.drawText(QRectF(S(76), S(14), S(200), S(24)), int(Qt.AlignmentFlag.AlignVCenter), name)
         nx = S(76) + p.fontMetrics().horizontalAdvance(name) + S(8)
-        if d.get("admin"):
-            paint_admin_tag(p, nx, S(26))
+        paint_name_tags(p, nx, S(26), self.ctx, name, bool(d.get("admin")))
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(S(76), S(38), r.width() - S(90), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
@@ -402,7 +440,15 @@ class FriendsPage(Page):
         self._poll = QTimer(self)
         self._poll.setInterval(10000)                 # live: hours, coins, online, trades
         self._poll.timeout.connect(self.refresh)
+        self._anim = QTimer(self)                     # frames and tags that move, in the lists
+        self._anim.setInterval(90)
+        self._anim.timeout.connect(self._redraw_rows)
+        ctx.econ.looks_changed.connect(self._redraw_rows)
         self._build()
+
+    def _redraw_rows(self) -> None:
+        for row in self.findChildren(PlayerRow):
+            row.update()
 
     def _redo(self) -> None:
         if self.ctx.window.current == "friends" and self.ctx.window.expanded:
@@ -641,14 +687,17 @@ class FriendsPage(Page):
             self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
             return ctx.online.ask("rb_profile", {"name": name}, self._got_profile)
         prof, hist = data.get("profile") or {}, data.get("history")
-        self.lay.addWidget(ProfileCard(ctx, prof))
+        self.lay.addWidget(ProfileCard(ctx, prof, self.W))
+        badges = list(prof.get("badges") or [])
+        owned = set(badges)
+        worn_now = [w for w in ((prof.get("equip") or {}).get(k) for k in ("badge1", "badge2", "badge3")) if w and
+                    (w in owned or (w.endswith(":grey") and any(b.startswith(w[:-4]) for b in owned)))]
+        self.lay.addWidget(Showcase3(ctx, worn_now, self.W, prof.get("me")))
         if not prof.get("me"):
             self._relation(prof, name)
-        badges = list(prof.get("badges") or [])
         self.lay.addWidget(heading(tr("Badges") + f"  ·  {len(badges)}"))
         if badges:
-            worn_now = [(prof.get("equip") or {}).get(k) for k in ("badge1", "badge2", "badge3")]
-            self.lay.addWidget(BadgeStrip(ctx, badges, [w for w in worn_now if w], self.W))
+            self.lay.addWidget(BadgeStrip(ctx, badges, worn_now, self.W))
         else:
             self.lay.addWidget(Label(tr("No badges yet"), 12, TEXT_DIM))
         if prof.get("stats") is None:
@@ -786,45 +835,134 @@ class FriendsPage(Page):
     def on_show(self) -> None:
         self.refresh()
         self._poll.start()
+        self._anim.start()
+        self.ctx.econ.fetch_looks(force=True)
 
     def on_hide(self) -> None:
         self._poll.stop()
+        self._anim.stop()
 
 
 class ProfileCard(QWidget):
-    """Picture, online or not, time played, member since."""
+    """The top of a profile: their banner, their picture in its frame, name and tags, online, time played, member since."""
 
-    def __init__(self, ctx, prof: dict) -> None:
+    def __init__(self, ctx, prof: dict, width: int) -> None:
         super().__init__()
         self.ctx, self.prof = ctx, prof
-        self.setFixedHeight(S(64))
+        self.setFixedSize(width, S(132))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._tick = Ticker(self, 60)
+
+    def showEvent(self, _e) -> None:
+        self._tick.start()
+
+    def hideEvent(self, _e) -> None:
+        self._tick.stop()
 
     def paintEvent(self, _e) -> None:
+        from .cosmetics import paint_banner
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        prof = self.prof
+        name = prof.get("username", "?")
+        eq = prof.get("equip") or {}
+        now = time.monotonic()
         p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
         p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(11), S(11))
-        prof = self.prof
+        p.drawRoundedRect(r, S(12), S(12))
+        top = QRectF(r.left(), r.top(), r.width(), S(70))
+        if eq.get("banner"):
+            paint_banner(p, top, eq["banner"], now, S(12))
+        else:                                               # no banner: a soft band in their own colour
+            hue = (sum(ord(c) for c in name.lower()) * 37 % 360) / 360
+            g = QLinearGradient(top.topLeft(), top.bottomRight())
+            g.setColorAt(0, QColor.fromHsvF(hue, 0.35, 0.22))
+            g.setColorAt(1, QColor.fromHsvF((hue + 0.12) % 1, 0.35, 0.12))
+            path = QPainterPath()
+            path.addRoundedRect(top, S(12), S(12))
+            p.fillPath(path, g)
         known = prof.get("friend") or prof.get("me")
-        paint_face(p, QRectF(r.left() + S(10), r.center().y() - S(21), S(42), S(42)), self.ctx,
-                   prof.get("username", "?"), int(prof.get("avatar_v") or 0), bool(prof.get("online")) if known else None)
+        face = QRectF(r.left() + S(16), top.bottom() - S(30), S(56), S(56))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#0B0E10"))
+        p.drawEllipse(face.adjusted(-S(3), -S(3), S(3), S(3)))
+        paint_face(p, face, self.ctx, name, int(prof.get("avatar_v") or 0), bool(prof.get("online")) if known else None,
+                   eq.get("frame", ""), now)
+        x = face.right() + S(14)
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(16, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(x, top.bottom() - S(30), S(220), S(26)), int(Qt.AlignmentFlag.AlignVCenter), name)
+        nx = x + p.fontMetrics().horizontalAdvance(name) + S(8)
         if prof.get("admin"):
-            paint_admin_tag(p, r.left() + S(10), r.bottom() - S(6))
+            nx += paint_admin_tag(p, nx, top.bottom() - S(17)) + S(5)
+        if eq.get("tag"):
+            from .cosmetics import paint_tag
+            paint_tag(p, nx, top.bottom() - S(17), eq["tag"], now, 9)
         cells = ((tr("Online") if prof.get("online") else (tr("Offline") if known else "—"), tr("Status")),
                  (played_text(int(prof.get("minutes", 0))), tr("Played")), (date_text(prof.get("since")), tr("Member since")))
-        left = r.left() + S(60)
-        w = (r.right() - left) / 3
+        left = face.right() + S(6)
+        w = (r.right() - left - S(6)) / 3
         for i, (big, small) in enumerate(cells):
-            box = QRectF(left + i * w, r.top(), w, r.height())
+            box = QRectF(left + i * w, top.bottom() + S(8), w, r.bottom() - top.bottom() - S(8))
             p.setPen(QColor("#3DDC84") if (i == 0 and prof.get("online")) else QColor(TEXT))
-            p.setFont(font(13, QFont.Weight.Bold))
-            p.drawText(QRectF(box.left(), box.top() + S(11), box.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), big)
+            p.setFont(font(12.5, QFont.Weight.Bold))
+            p.drawText(QRectF(box.left(), box.top() + S(4), box.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), big)
             p.setPen(QColor(TEXT_DIM))
-            p.setFont(font(10, QFont.Weight.DemiBold))
-            p.drawText(QRectF(box.left(), box.top() + S(34), box.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), small)
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(box.left(), box.top() + S(25), box.width(), S(15)), int(Qt.AlignmentFlag.AlignCenter), small)
+
+
+class Showcase3(QWidget):
+    """Their 3 favourite badges, big (the 3 badges they have on show)."""
+
+    def __init__(self, ctx, items: list, width: int, mine: bool = False) -> None:
+        super().__init__()
+        self.ctx, self.items, self.mine = ctx, (list(items) + ["", "", ""])[:3], mine
+        self.setFixedSize(width, S(96))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._tick = Ticker(self, 60)
+
+    def showEvent(self, _e) -> None:
+        self._tick.start()
+
+    def hideEvent(self, _e) -> None:
+        self._tick.stop()
+
+    def paintEvent(self, _e) -> None:
+        from .collection import badge_label, show_item
+        from .econ import RARITY_COLOURS
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        p.setPen(QColor(TEXT_FAINT))
+        p.setFont(font(9.5, QFont.Weight.Bold, 0.6))
+        p.drawText(QRectF(S(2), 0, self.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter), tr("SHOWCASE"))
+        w = self.width() / 3
+        for i, item in enumerate(self.items):
+            cell = QRectF(i * w + S(3), S(18), w - S(6), self.height() - S(20))
+            if not item:
+                p.setPen(QPen(alpha("#FFFFFF", 0.10), 1, Qt.PenStyle.DashLine))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(cell, S(10), S(10))
+                p.setPen(QColor(TEXT_FAINT))
+                p.setFont(font(9.5, QFont.Weight.DemiBold))
+                p.drawText(cell, int(Qt.AlignmentFlag.AlignCenter), tr("Empty"))
+                continue
+            col = QColor(RARITY_COLOURS.get(self.ctx.econ.rarity(item), "#9AA4AD"))
+            g = QLinearGradient(cell.topLeft(), cell.bottomLeft())
+            g.setColorAt(0, mix(QColor("#0E1316"), col, 0.25))
+            g.setColorAt(1, QColor("#0E1316"))
+            p.setPen(QPen(alpha(col, 0.7), 1.2))
+            p.setBrush(g)
+            p.drawRoundedRect(cell, S(10), S(10))
+            d = S(46)
+            show_item(p, item, QRectF(cell.center().x() - d / 2, cell.top() + S(6), d, d), now)
+            p.setPen(QColor(TEXT))
+            p.setFont(font(9, QFont.Weight.DemiBold))
+            p.drawText(QRectF(cell.left() + S(4), cell.bottom() - S(20), cell.width() - S(8), S(16)),
+                       int(Qt.AlignmentFlag.AlignCenter),
+                       p.fontMetrics().elidedText(badge_label(item), Qt.TextElideMode.ElideRight, int(cell.width() - S(8))))
 
 
 class HistoryList(QWidget):

@@ -808,6 +808,13 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.6", ['Fresh start: everyone begins again with 500 coins and 3 keys (items, spins and cases reset)',
+             'Free OG tag for every user who joined before 17 November',
+             'Profiles: banners, frames and a showcase of your 3 favourite badges, seen by everyone',
+             '16 banners and 12 frames in the Shop, on the Market and in Daily Deals',
+             'Quick sell: sell any item right away for a quarter of its value, or every extra copy at once',
+             'Style > Your profile: change your banner, frame, tag and showcase in one place',
+             'Frames and tags show in every list, the leaderboards and the chat']),
     ("2.5", ['Games tab: Earn coins (mini games) and Duels are now two big separate cards',
              'Beat Tap has 4 modes (Normal, Rush, Long notes, Chords); Memory has 3 card styles',
              'The Shop tab is now the Hub: Get items (Shop, Deals, Cases, Market) and Yours (Inventory, Collection, Sets, Style)',

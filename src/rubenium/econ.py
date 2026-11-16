@@ -59,6 +59,7 @@ class Econ(QObject):
     changed = pyqtSignal()          # coins, keys, items or what is worn changed
     loaded = pyqtSignal()           # the first full answer from the server arrived
     live_changed = pyqtSignal()     # giveaways, sales or trade requests changed
+    looks_changed = pyqtSignal()    # someone changed their banner, frame or tag
 
     def __init__(self, ctx) -> None:
         super().__init__()
@@ -77,6 +78,8 @@ class Econ(QObject):
         self.scratch_in = 0                      # seconds until the next scratch card
         self.server_old = False                  # the server has not had the 2.4 update yet
         self.streak, self.streak_day = 0, None
+        self.looks: dict = {}                    # username -> {tag, frame, banner} for everyone (2.6)
+        self._looks_at = 0.0
         self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
         self._live_sig = ""
         self._live_timer = QTimer(self)
@@ -163,6 +166,48 @@ class Econ(QObject):
         """What is on show. Something sold, traded or taken away is never shown, even before the server says so."""
         return [self.worn(s) for s in ("badge1", "badge2", "badge3") if self.worn(s) and (not self.ready or self.can_wear(self.worn(s)))]
 
+    def look_of(self, name: str) -> dict:
+        """The tag, frame and banner someone shows. Yours comes from what you wear right now."""
+        if name and self.ready and name.lower() == (self.online.username() or "").lower():
+            return {k: self.worn(k) for k in ("tag", "frame", "banner") if self.worn(k) and self.can_wear(self.worn(k))}
+        return self.looks.get(name) or {}
+
+    def fetch_looks(self, force: bool = False) -> None:
+        import time
+        if not self.online.logged_in() or (not force and time.monotonic() - self._looks_at < 40):
+            return
+        self._looks_at = time.monotonic()
+
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, dict) and data != self.looks:
+                self.looks = data
+                self.looks_changed.emit()
+        self.online.ask("rb_looks", {}, got)
+
+    def quick_ready(self) -> bool:
+        """Quick sell needs the 2.6 server update."""
+        return "quick_share" in self.cfg
+
+    def quick_value(self, item: str) -> int:
+        """About what quick sell pays for one (the server decides; shop items can pay less)."""
+        info = self.info(item)
+        if not info or not info.get("tradeable") or info.get("kind") in ("prog", "tag"):
+            return 0
+        return max(1, int(int(info.get("value") or 0) * float(self.cfg.get("quick_share", 0.25))))
+
+    def quick_quote(self, ids: list, done) -> None:
+        self.online.ask("rb_quick_quote", {"ids": list(ids)}, lambda ok, d: done(ok, d))
+
+    def quick_sell(self, ids: list, done=None) -> None:
+        def back(ok: bool, data) -> None:
+            if ok:
+                gone = set(ids)
+                self.items = [i for i in self.items if i["id"] not in gone]
+                self._index()
+            if done:
+                done(ok, data)
+        self.call("rb_quick_sell", {"ids": list(ids)}, back, once=True)
+
     def next_coin_s(self) -> int:
         every = int(self.cfg.get("coin_every_min", 15))
         return max(60, (every - self.coin_min) * 60)
@@ -200,7 +245,7 @@ class Econ(QObject):
         elif not now_in and self._was_in:
             self.ready = False
             self._live_timer.stop()
-            self.live, self.admin, self.stock = {}, False, {}
+            self.live, self.admin, self.stock, self.looks = {}, False, {}, {}
             self.live_changed.emit()
             self.coins = self.keys = self.minutes = 0
             self.items, self.seen, self.equip, self._owned = [], set(), {}, {}
@@ -285,6 +330,7 @@ class Econ(QObject):
             if before != (self.coins, self.keys):
                 self.changed.emit()
         self.online.ask("rb_live", {}, got, raw=True)
+        self.fetch_looks()
 
     def _index(self) -> None:
         self._owned = {}

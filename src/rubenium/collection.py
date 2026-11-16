@@ -46,7 +46,10 @@ def is_secret(item: str) -> bool:
 
 
 def show_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: bool = True, dim: float = 1.0) -> None:
-    """Draw a badge, or a glowing "?" when it is a Mythic badge this account never had."""
+    """Draw a badge, or a glowing "?" when it is a Mythic badge this account never had (other items: their picture)."""
+    if item and not item.startswith("badge:"):
+        from .cosmetics import paint_cosmetic
+        return paint_cosmetic(p, item, rect, now, effects, dim)
     if is_secret(item):
         return paint_secret(p, rect, now, effects and dim >= 0.6)
     paint_item(p, item, rect, now, effects, dim)

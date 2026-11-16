@@ -470,7 +470,13 @@ class LeaderRow(QWidget):
         p.drawText(QRectF(r.left() + S(4), r.top(), S(24), r.height()), int(Qt.AlignmentFlag.AlignCenter), str(rank))
         p.setPen(QColor(TEXT))
         p.setFont(font(11.5, QFont.Weight.DemiBold))
-        p.drawText(QRectF(r.left() + S(34), r.top(), r.width() - S(140), r.height()), int(Qt.AlignmentFlag.AlignVCenter), str(row.get("name", "")))
+        name = str(row.get("name", ""))
+        p.drawText(QRectF(r.left() + S(34), r.top(), r.width() - S(140), r.height()), int(Qt.AlignmentFlag.AlignVCenter), name)
+        from .collection import ECON
+        tag = ECON.look_of(name).get("tag") if ECON is not None else ""
+        if tag:
+            from .cosmetics import paint_tag
+            paint_tag(p, r.left() + S(40) + p.fontMetrics().horizontalAdvance(name), r.center().y(), tag, 0.0, 8)
         v = int(row.get("value") or 0)
         text = coins_text(v) if self.kind in ("coins", "worth") else (f"{v}%" if self.kind == "tap" else
                                                                        (tr("{n} days", n=v) if self.kind == "streak" else

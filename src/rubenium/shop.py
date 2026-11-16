@@ -513,7 +513,7 @@ class ShopPage(Page):
     ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "timer"]
     GET = [1, 7, 3, 4]                     # getting things: shop, today's deals, cases, market
     MINE = [5, 2, 6, 0]                    # what is yours: inventory, collection, sets, your style
-    NOTES = ["Your colours and the looks you unlock with time.", "Balls, lines, fonts and themes to buy.",
+    NOTES = ["Your profile, your colours and the looks you unlock with time.", "Balls, lines, fonts, themes, banners and frames to buy.",
              "Your collection: click a badge to see every colour.", "Open cases for coins and badges. Gifts are free.",
              "Buy and sell with other users.", "Everything you own. Sell, show or trade it.",
              "Collect full sets for a big bonus.", "4 items cheaper today. New deals every day at midnight."]
@@ -575,6 +575,8 @@ class ShopPage(Page):
     # -- Look
     def _look(self, lay) -> None:
         ctx, wallet = self.ctx, self.ctx.wallet
+        from .bazaar import build_profile_style
+        build_profile_style(self, lay)
         lay.addWidget(heading(tr("Colour")))
         self.t_music = Toggle(bool(ctx.cfg["accent_from_art"]) and wallet.owns("music"))
         self.t_music.toggled_by_user.connect(self._music)

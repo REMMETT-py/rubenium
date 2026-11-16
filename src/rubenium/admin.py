@@ -412,13 +412,13 @@ class AdminPage(Page):
                               "#5BE08A" if int(l["coins"]) >= 0 else "#FF7A7A") for l in (d.get("ledger") or [])[:60]], self.W))
 
     RESETS = [("inventory", "Reset inventory",
-               "Deletes EVERY item {name} owns: all badges, balls, lines, fonts and themes. Items on the market or in a "
-               "trade are taken back first. Coins, keys and cases stay."),
+               "Deletes EVERY item {name} owns: all badges, balls, lines, fonts, themes, banners and frames. Items on the "
+               "market or in a trade are taken back first. Coins, keys, cases and the OG tag stay."),
               ("money", "Reset coins and keys", "Sets {name}'s coins and keys to 0. Items and cases stay."),
               ("cases", "Reset gifted cases", "Deletes every gifted case {name} has not opened yet. Nothing else changes."),
               ("all", "FULL ACCOUNT RESET",
                "{name} starts again like a new account: every item deleted, coins and keys back to the start (500 coins, "
-               "3 keys), gifted cases deleted, login streak back to 0. Time played, friends and name stay.")]
+               "3 keys), gifted cases deleted, login streak back to 0. Time played, friends, name and the OG tag stay.")]
 
     def _danger(self, lay, name: str, d: dict) -> None:
         """Big red reset buttons. Each says exactly what it deletes, asks you to type the name, and can be undone
@@ -468,20 +468,22 @@ class AdminPage(Page):
         cat = self.ctx.econ.catalog
         kind = int(getattr(self.ctx, "admin_kind", 1) or 1)
         from .games import GamePicker
-        pick = GamePicker([tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Cases")], kind - 1)
+        pick = GamePicker([tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Banners"), tr("Frames"),
+                           tr("Tags"), tr("Cases")], kind - 1)
         pick.changed.connect(lambda i: (setattr(self.ctx, "admin_kind", i + 1), setattr(self.ctx, "admin_base", ""), self.ctx.reload_page()))
         lay.addWidget(pick)
         chosen = getattr(self.ctx, "admin_item", "") or ""
         lay.addWidget(Label(tr("Selected: {what}", what=chosen or "—"), 11.5, GOLD_TEXT, bold=True, wrap_w=self.W))
         lay.addWidget(Label(tr("Pick an item, then open a user and press Give item or case. Or use it for a giveaway or a sale."),
                             10.5, TEXT_DIM, wrap_w=self.W))
-        if kind == 6:
+        if kind == 9:
             from .collection import CASE_NAMES
             ids = [c["id"] for c in self.ctx.econ.cases]
             lay.addWidget(Table([(tr(CASE_NAMES.get(c, c)), "case:" + c, "") for c in ids], self.W,
                                 lambda i: (setattr(self.ctx, "admin_item", "case:" + ids[i]), self.ctx.reload_page())))
             return
-        want = KINDS[kind]
+        want = ["", "badge", "ball", "line", "font", "theme", "banner", "frame", "tag"][min(kind, 8)]
+        single = want in ("theme", "banner", "frame", "tag")          # one item per design, no colours
         base = getattr(self.ctx, "admin_base", "") or ""
         if not base:
             bases, seen = [], set()
@@ -489,11 +491,11 @@ class AdminPage(Page):
                 info = cat[k]
                 if info.get("kind") == want and info.get("base") not in seen:
                     seen.add(info.get("base"))
-                    bases.append(k if want == "theme" else f"{want}:{info['base']}:{'grey' if want != 'badge' or info['base'] not in ('galaxy','phoenix','glitch','crystal','dragon','rubenium') else 'prime'}")
+                    bases.append(k if single else f"{want}:{info['base']}:{'grey' if want != 'badge' or info['base'] not in ('galaxy','phoenix','glitch','crystal','dragon','rubenium') else 'prime'}")
             grid = ItemGrid(self.ctx, [{"item": b} for b in bases], self.W, 6, 54)
 
             def go(i: int) -> None:
-                if want == "theme":
+                if single:
                     self.ctx.admin_item = bases[i]
                 else:
                     self.ctx.admin_base = bases[i].split(":")[1]

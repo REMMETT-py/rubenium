@@ -10,19 +10,20 @@ from PyQt6.QtWidgets import QWidget
 
 from .collection import SLOTS, is_secret, worn
 from .core import DANGER, S, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, sfx, tr, ui
-from .cosmetics import (BALLS, COLOUR_NAMES, COLOUR_ORDER, FONTS, LINES, THEME_LOOKS, colour_of, item_name,
+from .cosmetics import (BALLS, BANNERS, COLOUR_NAMES, COLOUR_ORDER, FONTS, FRAMES, LINES, THEME_LOOKS, colour_of, item_name,
                         paint_cosmetic)
 from .econ import CLASS_NAMES, RARITY_COLOURS, RARITY_NAMES
 from .shop import GOLD_TEXT, clock_text, paint_price
 from .wallet import coins_text, paint_coin
 from .widgets import present, close_embedded, Button, IconButton, Label, Segmented, draw_icon, hbox, heading, vbox
 
-KINDS = ["", "badge", "ball", "line", "font", "theme"]
+KINDS = ["", "badge", "ball", "line", "font", "theme", "banner", "frame"]
+LOOKS = ("banner", "frame", "tag")             # profile looks: worn on the server, seen by everyone
 REASONS = {"time": "Time with Rubenium", "shop": "Shop", "vendor": "Sold to the vendor", "case": "Case opened",
            "case_coins": "Coins from a case", "daily_case": "Daily case", "spin": "Free spin", "bet": "Bet",
            "win": "Casino win", "quest": "Quest", "minigame": "Beat Tap", "market_buy": "Bought on the market",
            "market_sell": "Sold on the market", "trade": "Trade", "gift": "Case gifted", "giveaway": "Giveaway",
-           "admin": "From the admin", "import": "Old progress"}
+           "admin": "From the admin", "import": "Old progress", "quick_sell": "Quick sell", "reset": "Fresh start (2.6)"}
 
 
 class AskDialog(QWidget):
@@ -403,20 +404,44 @@ class Preview(QWidget):
 
 def _designs(kind: str) -> list:
     return {"ball": BALLS, "line": LINES, "font": [(f[0], f[1]) for f in FONTS],
-            "theme": [(t[0], t[1]) for t in THEME_LOOKS]}[kind]
+            "theme": [(t[0], t[1]) for t in THEME_LOOKS], "banner": BANNERS, "frame": FRAMES}[kind]
+
+
+SHOP_KINDS = ("ball", "line", "font", "theme", "banner", "frame")
+
+
+def look_worn(ctx, item: str) -> bool:
+    """A banner, frame or tag is worn on the server (everyone sees it)."""
+    return ctx.econ.worn(item.split(":")[0]) == item
+
+
+def wear_look(ctx, item: str, on: bool) -> None:
+    kind = item.split(":")[0]
+
+    def done(ok: bool, d) -> None:
+        if not ok:
+            ctx.toast(tr(str(d)), "warn")
+        else:
+            ctx.econ.looks_changed.emit()
+        ctx.reload_page()
+    sfx.play("pick")
+    ctx.econ.wear(kind, item if on else "", done)
 
 
 def build_cosmetics(page, lay) -> None:
     ctx, ec = page.ctx, page.ctx.econ
     if not ec.ready or not ec.catalog:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the shop"), 12, TEXT_DIM))
-    kind_i = int(getattr(ctx, "shop_kind", 0) or 0)
-    kind = ("ball", "line", "font", "theme")[min(kind_i, 3)]
+    from .games import GamePicker
+    kind_i = min(int(getattr(ctx, "shop_kind", 0) or 0), len(SHOP_KINDS) - 1)
+    kind = SHOP_KINDS[kind_i]
     design = getattr(ctx, "shop_design", None)
+    if design is not None and kind in ("banner", "frame") and f"{kind}:{design}" not in ec.catalog:
+        design = None
     if design is None:
         for sale in (ec.live.get("sales") or [])[:2]:
             lay.addWidget(SaleBanner(page, sale))
-        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes")], min(kind_i, 3))
+        seg = GamePicker([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Banners"), tr("Frames")], kind_i)
 
         def switch(i: int) -> None:
             ctx.shop_kind = i
@@ -424,19 +449,32 @@ def build_cosmetics(page, lay) -> None:
             ctx.reload_page()
         seg.changed.connect(switch)
         lay.addWidget(seg)
+        if kind in ("banner", "frame"):
+            if not any(k.startswith(kind + ":") for k in ec.catalog):         # the server has not had 2.6 yet
+                from .hub import WaitCard
+                return lay.addWidget(WaitCard(page.W))
+            lay.addWidget(Label(tr("Everyone sees your banner and frame on your profile, in lists and in the chat."),
+                                10.5, TEXT_DIM, wrap_w=page.W))
         entries = []
         for base, name in _designs(kind):
-            item = f"theme:{base}" if kind == "theme" else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
-            cheapest = f"theme:{base}" if kind == "theme" else f"{kind}:{base}:grey"
+            if kind in ("banner", "frame") and f"{kind}:{base}" not in ec.catalog:
+                continue
+            item = f"{kind}:{base}" if kind in ("theme", "banner", "frame") else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
+            cheapest = item if kind in ("theme", "banner", "frame") else f"{kind}:{base}:grey"
             owned = any(k.startswith(f"{kind}:{base}") for k in ec._owned)
             pct = max((ec.sale(k) for k in ec.catalog if k.startswith(f"{kind}:{base}")), default=0)
             entries.append({"item": item, "price": ec.shop_price(cheapest), "tag": tr(name),
                             "mark": "sale" if pct else ("worn" if owned else ""), "pct": pct})
-        grid = ItemGrid(ctx, entries, page.W, 3 if kind == "theme" else 5, 86 if kind != "theme" else 96)
+        designs = [d for d in _designs(kind) if kind not in ("banner", "frame") or f"{kind}:{d[0]}" in ec.catalog]
+        if kind in ("banner", "frame"):                    # cheapest first: Common to Legendary
+            order = sorted(range(len(entries)), key=lambda i: (entries[i]["price"] or 0, i))
+            entries, designs = [entries[i] for i in order], [designs[i] for i in order]
+        grid = ItemGrid(ctx, entries, page.W, 3 if kind in ("theme", "banner") else 4 if kind == "frame" else 5,
+                        96 if kind in ("theme", "banner") else 86)
 
         def pick(i: int) -> None:
             sfx.play("pick")
-            ctx.shop_design, ctx.shop_colour = _designs(kind)[i][0], ""
+            ctx.shop_design, ctx.shop_colour = designs[i][0], ""
             ctx.reload_page()
         grid.picked.connect(pick)
         lay.addWidget(grid)
@@ -445,7 +483,7 @@ def build_cosmetics(page, lay) -> None:
         return
     # one design: preview, colours, buy or wear
     names = dict(_designs(kind))
-    variants = [""] if kind == "theme" else [c for c in COLOUR_ORDER if f"{kind}:{design}:{c}" in ec.catalog]
+    variants = [""] if kind in ("theme", "banner", "frame") else [c for c in COLOUR_ORDER if f"{kind}:{design}:{c}" in ec.catalog]
     colour = getattr(ctx, "shop_colour", "") or ""
     if colour not in variants:
         colour = next((c for c in variants if ec.owns(_cid(kind, design, c))), variants[0] if variants else "")
@@ -462,7 +500,10 @@ def build_cosmetics(page, lay) -> None:
     top.addWidget(Label(tr(names.get(design, design)), 15, bold=True), 1)
     top.addWidget(Label(rarity_line(ctx, item), 11, RARITY_COLOURS.get(ec.rarity(item), TEXT_DIM), bold=True))
     lay.addLayout(top)
-    lay.addWidget(Preview(ctx, item))
+    if kind in ("banner", "frame"):
+        lay.addWidget(LookPreview(ctx, item, page.W))
+    else:
+        lay.addWidget(Preview(ctx, item))
     if kind == "theme":
         ctx.start_preview(item)
     if len(variants) > 1:
@@ -480,10 +521,12 @@ def build_cosmetics(page, lay) -> None:
         lay.addWidget(grid)
     price, full = ec.shop_price(item), ec.price(item)
     if ec.owns(item):
-        on = ctx.shop_item_worn(item)
+        on = look_worn(ctx, item) if kind in LOOKS else ctx.shop_item_worn(item)
         b = Button(tr("Take off") if on else tr("Wear"), "ghost" if on else "primary", 38)
 
         def toggle() -> None:
+            if kind in LOOKS:
+                return wear_look(ctx, item, not on)
             sfx.play("pick")
             ctx.take_off_shop_item(kind) if on else ctx.wear_shop_item(item)
             ctx.reload_page()
@@ -514,7 +557,64 @@ def build_cosmetics(page, lay) -> None:
 
 
 def _cid(kind: str, design: str, colour: str) -> str:
-    return f"theme:{design}" if kind == "theme" else f"{kind}:{design}:{colour}"
+    return f"{kind}:{design}" if kind in ("theme", "banner", "frame") else f"{kind}:{design}:{colour}"
+
+
+class LookPreview(QWidget):
+    """How a banner or a frame looks on your own profile."""
+
+    def __init__(self, ctx, item: str, width: int, note: str = "") -> None:
+        super().__init__()
+        self.ctx, self.item, self.note = ctx, item, note
+        self.setFixedSize(width, S(118))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._timer = QTimer(self)
+        self._timer.setInterval(50)
+        self._timer.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._timer.start()
+
+    def hideEvent(self, _e) -> None:
+        self._timer.stop()
+
+    def paintEvent(self, _e) -> None:
+        from .cosmetics import paint_banner
+        from .friends import paint_face, paint_name_tags
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        ec = self.ctx.econ
+        name = self.ctx.online.username() or "Rubenium"
+        kind = self.item.split(":")[0]
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(r, S(12), S(12))
+        banner = self.item if kind == "banner" else ec.look_of(name).get("banner", "")
+        top = QRectF(r.left(), r.top(), r.width(), S(74))
+        if banner:
+            paint_banner(p, top, banner, now, S(12))
+        else:
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.05))
+            p.drawRoundedRect(top, S(12), S(12))
+        face = QRectF(r.left() + S(16), top.bottom() - S(30), S(56), S(56))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#0B0E10"))
+        p.drawEllipse(face.adjusted(-S(3), -S(3), S(3), S(3)))
+        frame = self.item if kind == "frame" else ec.look_of(name).get("frame", "")
+        paint_face(p, face, self.ctx, name, int(ec.avatar_v or 0), None, frame, now)
+        x = face.right() + S(14)
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(15, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(x, top.bottom() - S(30), S(220), S(26)), int(Qt.AlignmentFlag.AlignVCenter), name)
+        paint_name_tags(p, x + p.fontMetrics().horizontalAdvance(name) + S(8), top.bottom() - S(17), self.ctx, name,
+                        bool(ec.admin))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        p.drawText(QRectF(x, top.bottom() + S(6), r.width() - x - S(10), S(30)), int(Qt.AlignmentFlag.AlignVCenter),
+                   self.note or tr("Preview on your profile"))
 
 
 # --------------------------------------------------------------------------- #
@@ -561,14 +661,15 @@ def build_inventory(page, lay) -> None:
     if not ec.ready:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see your items"), 12, TEXT_DIM))
     tab = int(getattr(ctx, "inv_tab", 0) or 0)
-    picker = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Coins")], tab)
+    picker = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Profile"),
+                         tr("Coins")], tab)
 
     def switch(i: int) -> None:
         ctx.inv_tab, ctx.inv_pick = i, ""
         ctx.reload_page()
     picker.changed.connect(switch)
     lay.addWidget(picker)
-    if tab == 6:
+    if tab == 7:
         rows = getattr(ctx, "ledger_rows", None)
         if rows is None or time.monotonic() - getattr(ctx, "ledger_at", 0) > 8:
             ctx.ledger_at = time.monotonic()
@@ -576,7 +677,7 @@ def build_inventory(page, lay) -> None:
             def got(ok: bool, data) -> None:
                 if ok and isinstance(data, list) and data != getattr(ctx, "ledger_rows", None):
                     ctx.ledger_rows = data
-                    if ctx.window.current == "themes" and getattr(ctx, "inv_tab", 0) == 6:
+                    if ctx.window.current == "themes" and getattr(ctx, "inv_tab", 0) == 7:
                         ctx.reload_page()
             ec.online.ask("rb_ledger_list", {}, got)
         lay.addWidget(heading(tr("Coin history")))
@@ -585,15 +686,23 @@ def build_inventory(page, lay) -> None:
         else:
             lay.addWidget(Label(tr("Loading…") if rows is None else tr("Nothing here yet"), 12, TEXT_DIM))
         return
-    want = KINDS[tab]
+    want = ["", "badge", "ball", "line", "font", "theme", "look"][tab]
     groups: dict = {}
     for it in ec.items:
-        if not want or it["item"].split(":")[0] == want:
+        k = it["item"].split(":")[0]
+        if not want or k == want or (want == "look" and k in LOOKS):
             groups.setdefault(it["item"], []).append(it)
     order = sorted(groups, key=lambda k: (-value_of(ctx, k), k))
     total = sum(value_of(ctx, k) * len(v) for k, v in groups.items())
     count = sum(len(v) for v in groups.values())
     lay.addWidget(Label(tr("{n} items · worth about {v} coins", n=count, v=coins_text(total)), 11, TEXT_DIM))
+    extras = [i["id"] for k in order for i in [c for c in groups[k] if not c.get("locked")][1:]
+              if ec.quick_value(k) > 0 and len(groups[k]) > 1]
+    if extras:
+        b = Button(tr("Quick sell every extra copy ({n})", n=len(extras)), "ghost", 30, icon="gem")
+        b.setToolTip(tr("Keeps one of each item and sells the rest right away"))
+        b.clicked.connect(lambda: quick_sell(ctx, extras, tr("{n} extra copies", n=len(extras))))
+        lay.addWidget(b)
     if not order:
         lay.addWidget(Label(tr("Nothing here yet. Open cases or visit the shop."), 12, TEXT_DIM, wrap_w=page.W))
         return
@@ -606,8 +715,10 @@ def build_inventory(page, lay) -> None:
     entries = []
     for k in order:
         free = [i for i in groups[k] if not i.get("locked")]
-        entries.append({"item": k, "text": coins_text(value_of(ctx, k)), "tag": f"×{len(groups[k])}" if len(groups[k]) > 1 else "",
-                        "mark": "lock" if not free else ("worn" if k in wearing or ctx.shop_item_worn(k) else "")})
+        on = k in wearing or ctx.shop_item_worn(k) or (k.split(":")[0] in LOOKS and look_worn(ctx, k))
+        entries.append({"item": k, "text": coins_text(value_of(ctx, k)) if value_of(ctx, k) else tr("Free"),
+                        "tag": f"×{len(groups[k])}" if len(groups[k]) > 1 else "",
+                        "mark": "lock" if not free else ("worn" if on else "")})
     grid = ItemGrid(ctx, entries, page.W, 5, 72, order.index(pick) if pick else -1)
 
     def choose(i: int) -> None:
@@ -627,7 +738,8 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
     head.addWidget(Label(rarity_line(ctx, item), 10.5, RARITY_COLOURS.get(ec.rarity(item), TEXT_DIM), bold=True))
     lay.addLayout(head)
     locked = len(copies) - len(free)
-    note = tr("Worth about {v} coins", v=coins_text(value_of(ctx, item)))
+    note = tr("Worth about {v} coins", v=coins_text(value_of(ctx, item))) if value_of(ctx, item) else \
+        tr("A gift for the first users of Rubenium. It cannot be sold or traded.")
     if locked:
         where = copies[0].get("locked") or next((c["locked"] for c in copies if c.get("locked")), "")
         note += "  ·  " + (tr("{n} on the market", n=locked) if str(where).startswith("market") else tr("{n} in a trade", n=locked))
@@ -647,6 +759,10 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
             sfx.play("pick")
             ec.wear(slot, item, done)
         b.clicked.connect(show)
+    elif kind in LOOKS:
+        on = look_worn(ctx, item)
+        b = Button(tr("Take off") if on else tr("Wear"), "ghost" if on else "primary", 32)
+        b.clicked.connect(lambda: wear_look(ctx, item, not on))
     else:
         on = ctx.shop_item_worn(item)
         b = Button(tr("Take off") if on else tr("Wear"), "ghost" if on else "primary", 32)
@@ -657,12 +773,100 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
             ctx.reload_page()
         b.clicked.connect(wear)
     line.addWidget(b, 1)
-    sell = Button(tr("Sell"), "ghost", 32)
-    sell.setEnabled(bool(free) and bool(ec.info(item).get("tradeable")))
+    sellable = bool(free) and bool(ec.info(item).get("tradeable"))
+    sell = Button(tr("Market"), "ghost", 32, icon="chip")
+    sell.setEnabled(sellable)
     sell.setToolTip(tr("Put it on the market: other users buy it or make you an offer"))
     sell.clicked.connect(lambda: market_sell(ctx, item))
     line.addWidget(sell, 1)
+    quick = Button(tr("Quick sell"), "ghost", 32, icon="gem")
+    quick.setEnabled(sellable and ec.quick_value(item) > 0)
+    quick.setToolTip(tr("Sell it right now for about {n} coins (a quarter of what it is worth)",
+                        n=coins_text(ec.quick_value(item))))
+    quick.clicked.connect(lambda: quick_sell(ctx, [free[-1]["id"]], item_name(item)))
+    line.addWidget(quick, 1)
     lay.addLayout(line)
+    if sellable and len(free) > 1 and ec.quick_value(item) > 0:
+        rest = [c["id"] for c in free[1:]]
+        more = Button(tr("Quick sell the extra copies ({n}), keep one", n=len(rest)), "quiet", 26)
+        more.clicked.connect(lambda: quick_sell(ctx, rest, tr("{n} × {name}", n=len(rest), name=item_name(item))))
+        lay.addWidget(more)
+
+
+def quick_sell(ctx, ids: list, what: str) -> None:
+    """Sell to Rubenium right away: low price (a quarter of the value), but instant. The server says the exact
+    amount first."""
+    ec = ctx.econ
+    if not ec.quick_ready():
+        return ctx.toast(tr("Coming very soon: the server is being updated"), "warn")
+
+    def quoted(ok: bool, q) -> None:
+        if not ok or not isinstance(q, dict):
+            from .econ import server_missing
+            return ctx.toast(tr("Coming very soon: the server is being updated") if server_missing(q)
+                             else tr("Something went wrong: try again"), "warn")
+        total, n = int(q.get("total") or 0), int(q.get("n") or 0)
+        if not n:
+            return ctx.toast(tr("This cannot be sold"), "warn")
+
+        def go() -> None:
+            def done(ok2: bool, d) -> None:
+                if not ok2:
+                    sfx.play("off")
+                    return ctx.toast(tr(str(d)), "warn")
+                sfx.play("on")
+                ctx.toast(tr("Sold for {n} coins", n=coins_text(int(d.get("paid") or total))))
+                ctx.inv_pick = ""
+                ctx.reload_page()
+            ec.quick_sell(ids, done)
+        ctx.window.confirm(tr("Quick sell {what} for {n} coins? Instant, but the market usually pays more.",
+                              what=what, n=coins_text(total)), go, yes=tr("Sell"))
+    ec.quick_quote(ids, quoted)
+
+
+def build_profile_style(page, lay) -> None:
+    """Style > Your profile: banner, frame, tag and the 3 badges of your showcase, as everyone sees them."""
+    from .friends import Showcase3
+    ctx, ec = page.ctx, page.ctx.econ
+    lay.addWidget(heading(tr("Your profile")))
+    if not ec.ready:
+        return lay.addWidget(Label(tr("Log in to change your profile"), 11, TEXT_DIM))
+    lay.addWidget(LookPreview(ctx, "", page.W, tr("This is what other users see")))
+    if not any(k.startswith("banner:") for k in ec.catalog):
+        return lay.addWidget(Label(tr("Banners and frames: coming very soon"), 11, TEXT_DIM))
+    for kind, title, empty in (("banner", tr("Banner"), tr("No banner yet: buy one in the Shop or on the Market.")),
+                               ("frame", tr("Frame"), tr("No frame yet: buy one in the Shop or on the Market.")),
+                               ("tag", tr("Tag"), tr("No tag yet."))):
+        mine = sorted({i["item"] for i in ec.items if i["item"].startswith(kind + ":")},
+                      key=lambda k: (-int(ec.info(k).get("value") or 0), k))
+        if kind == "tag" and not mine:
+            continue
+        head = hbox(spacing=8)
+        head.addWidget(Label(title, 12.5, bold=True), 1)
+        cur = ec.worn(kind)
+        head.addWidget(Label(item_name(cur) if cur and cur in mine else tr("None"), 10.5, TEXT_DIM))
+        lay.addLayout(head)
+        if not mine:
+            lay.addWidget(Label(empty, 10.5, TEXT_FAINT, wrap_w=page.W))
+            continue
+        entries = [{"item": k, "text": tr("Worn") if k == cur else tr("Wear")} for k in mine]
+        grid = ItemGrid(ctx, entries, page.W, 3 if kind == "banner" else 5, 80 if kind == "banner" else 70,
+                        mine.index(cur) if cur in mine else -1)
+        grid.picked.connect(lambda i, m=mine, c=cur: wear_look(ctx, m[i], m[i] != c))
+        lay.addWidget(grid)
+    lay.addWidget(Label(tr("Click the one you wear to take it off."), 10, TEXT_FAINT))
+    head = hbox(spacing=8)
+    head.addWidget(Label(tr("Showcase"), 12.5, bold=True), 1)
+    pick = Button(tr("Choose badges"), "ghost", 26)
+
+    def to_collection() -> None:
+        ctx.shop_tab = 2
+        ctx.reload_page()
+    pick.clicked.connect(to_collection)
+    head.addWidget(pick)
+    lay.addLayout(head)
+    lay.addWidget(Showcase3(ctx, ec.badges_worn(), page.W, True))
+    lay.addWidget(Label(tr("The 3 badges you show are the showcase on your profile."), 10, TEXT_FAINT, wrap_w=page.W))
 
 
 def market_sell(ctx, item: str) -> None:
@@ -805,7 +1009,8 @@ def build_market(page, lay) -> None:
                 ctx.reload_page()
         ec.online.ask(fn, args, got)
     if not tab:
-        kinds = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes")],
+        kinds = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Banners"),
+                            tr("Frames")],
                            int(getattr(ctx, "mk_kind", 0) or 0))
 
         def set_kind(i: int) -> None:

@@ -33,9 +33,20 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("candy", "Candy", "#FF5CB8", "#9B5CFF", dict(glow=3, stars=18, sparkles=11)),
                ("storm", "Storm", "#8FA8FF", "#4B6BFF", dict(glow=3, stars=44, links=10, comets=6, aurora=True)),
                ("retro", "Retro", "#D94BFF", "#35D6E6", dict(glow=3, stars=52, links=14, sparkles=8, edge="shine"))]
-KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge"}
+# profile looks (2.6): a banner behind your profile, a frame around your picture, a tag after your name
+BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("waves", "Waves"), ("grid", "Grid"),
+           ("stripes", "Stripes"), ("dots", "Dots"), ("aurora", "Aurora"), ("circuit", "Circuit"), ("sunset", "Sunset"),
+           ("peaks", "Peaks"), ("galaxy", "Galaxy"), ("lava", "Lava"), ("matrix", "Matrix"), ("prism", "Prism")]
+FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
+          ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
+          ("orbit", "Orbit"), ("rainbow", "Rainbow")]
+TAGS = [("og", "OG")]
+MOVING = {"waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
+          "rainbow", "neon", "og"}
+KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "banner": "Banner",
+              "frame": "Frame", "tag": "Tag"}
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
-          "theme": {t[0]: t[1] for t in THEME_LOOKS}}
+          "theme": {t[0]: t[1] for t in THEME_LOOKS}, "banner": dict(BANNERS), "frame": dict(FRAMES), "tag": dict(TAGS)}
 _themes: dict = {}
 
 
@@ -54,6 +65,8 @@ def item_name(item: str) -> str:
     if kind == "badge":
         from .collection import badge_label
         return badge_label(item)
+    if kind == "tag":
+        return tr("{name} tag", name=_NAMES["tag"].get(base, base.upper()))
     name = f"{tr(_NAMES.get(kind, {}).get(base, base.capitalize()))} ({tr(KIND_NAMES.get(kind, kind)).lower()})"
     return name + (f" · {tr(COLOUR_NAMES.get(var, var))}" if var else "")
 
@@ -274,6 +287,8 @@ def paint_cosmetic(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
     if kind == "badge":
         from .collection import show_item
         return show_item(p, item, rect, now, effects, dim)
+    if kind in ("banner", "frame", "tag"):
+        return paint_look_icon(p, item, rect, now if effects else 0.0, dim)
     d = min(rect.width(), rect.height())
     box = QRectF(rect.center().x() - d / 2, rect.center().y() - d / 2, d, d)
     p.save()
@@ -309,4 +324,409 @@ def paint_cosmetic(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
             p.setBrush(QColor(look[2 + k % 2]))
             tw = 0.7 + 0.3 * math.sin(now * 2 + k) if effects else 1.0
             p.drawEllipse(QPointF(box.left() + fx * d, box.top() + fy * d), s * d * tw, s * d * tw)
+    p.restore()
+
+
+# --------------------------------------------------------------------------- #
+# Profile looks: banners, frames and tags
+# --------------------------------------------------------------------------- #
+_BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), "steel": ("#2B3640", "#7D8C99"),
+                "rose": ("#5B1E3A", "#FF8FB1"), "waves": ("#0B2447", "#2E8BFF"), "grid": ("#1A0B2E", "#35D6E6"),
+                "stripes": ("#5A1A0A", "#FF8A3D"), "dots": ("#0D2E33", "#1ABC9C"), "aurora": ("#06121F", "#3DFFB0"),
+                "circuit": ("#04170F", "#2ECC71"), "sunset": ("#2B0F3D", "#FF8A3D"), "peaks": ("#0E1A2B", "#8FA8FF"),
+                "galaxy": ("#05040F", "#9B5CFF"), "lava": ("#1A0503", "#FF3D1F"), "matrix": ("#010A04", "#3DFF7A"),
+                "prism": ("#101018", "#FF5CC8")}
+
+
+def look_moves(item: str) -> bool:
+    return parts(item)[1] in MOVING
+
+
+def _rand(i: int, k: int = 0) -> float:
+    """A fixed pseudo random number in [0, 1) (so stars stay where they are between frames)."""
+    x = math.sin(i * 12.9898 + k * 78.233) * 43758.5453
+    return x - math.floor(x)
+
+
+def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius: float = 10.0, dim: float = 1.0) -> None:
+    """A profile banner filling `rect` (rounded corners)."""
+    base = parts(item)[1]
+    c1, c2 = (QColor(c) for c in _BANNER_COLS.get(base, ("#1A2026", "#3A4650")))
+    w, h = rect.width(), rect.height()
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setOpacity(p.opacity() * dim)
+    clip = QPainterPath()
+    clip.addRoundedRect(rect, radius, radius)
+    p.setClipPath(clip)
+    g = QLinearGradient(rect.topLeft(), rect.bottomRight())
+    g.setColorAt(0.0, c1)
+    g.setColorAt(1.0, c2 if base in ("dusk", "mint", "steel", "rose", "sunset") else mix(c1, c2, 0.35))
+    p.fillRect(rect, g)
+    p.setPen(Qt.PenStyle.NoPen)
+    L, T = rect.left(), rect.top()
+    if base == "waves":
+        for k in range(4):
+            path = QPainterPath(QPointF(L, rect.bottom()))
+            for x in range(0, int(w) + 8, 6):
+                y = T + h * (0.35 + k * 0.17) + math.sin(x / w * 6.3 * (1 + k * 0.3) + now * (0.8 + k * 0.3) + k) * h * 0.07
+                path.lineTo(L + x, y)
+            path.lineTo(rect.right(), rect.bottom())
+            p.setBrush(alpha(c2, 0.16 + k * 0.08))
+            p.drawPath(path)
+    elif base == "grid":
+        horizon = T + h * 0.45
+        p.setPen(QPen(alpha(c2, 0.55), 1))
+        for k in range(-10, 11):
+            p.drawLine(QPointF(L + w / 2 + k * w * 0.03, horizon), QPointF(L + w / 2 + k * w * 0.16, rect.bottom()))
+        off = (now * 0.4) % 1.0
+        for k in range(8):
+            f = ((k + off) / 8) ** 2
+            p.drawLine(QPointF(L, horizon + f * (rect.bottom() - horizon)), QPointF(rect.right(), horizon + f * (rect.bottom() - horizon)))
+        sun = QLinearGradient(QPointF(0, T + h * 0.05), QPointF(0, horizon))
+        sun.setColorAt(0, QColor("#FF5CB8"))
+        sun.setColorAt(1, QColor("#FFC94D"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(sun)
+        p.drawEllipse(QPointF(L + w / 2, horizon), h * 0.3, h * 0.3)
+        p.fillRect(QRectF(L, horizon, w, h), mix(c1, QColor("#000000"), 0.2))
+        p.setPen(QPen(alpha(c2, 0.55), 1))
+        for k in range(-10, 11):
+            p.drawLine(QPointF(L + w / 2 + k * w * 0.03, horizon), QPointF(L + w / 2 + k * w * 0.16, rect.bottom()))
+        for k in range(8):
+            f = ((k + off) / 8) ** 2
+            p.drawLine(QPointF(L, horizon + f * (rect.bottom() - horizon)), QPointF(rect.right(), horizon + f * (rect.bottom() - horizon)))
+    elif base == "stripes":
+        p.setBrush(alpha(c2, 0.45))
+        step = h * 0.5
+        off = (now * 20) % (step * 2)
+        x = L - h - step * 2 + off
+        while x < rect.right() + h:
+            path = QPainterPath(QPointF(x, rect.bottom()))
+            path.lineTo(x + h, T)
+            path.lineTo(x + h + step, T)
+            path.lineTo(x + step, rect.bottom())
+            p.drawPath(path)
+            x += step * 2
+    elif base == "dots":
+        n = 22
+        for i in range(n * 3):
+            cx, cy = L + _rand(i) * w, T + _rand(i, 1) * h
+            r = h * (0.03 + _rand(i, 2) * 0.09)
+            p.setBrush(alpha(c2, 0.15 + _rand(i, 3) * 0.4))
+            p.drawEllipse(QPointF(cx, cy), r, r)
+    elif base == "aurora":
+        for i in range(30):
+            p.setBrush(alpha("#FFFFFF", 0.3 + 0.5 * _rand(i, 4)))
+            p.drawEllipse(QPointF(L + _rand(i) * w, T + _rand(i, 1) * h * 0.6), 0.8, 0.8)
+        for k, col in enumerate(("#3DFFB0", "#9B5CFF", "#2EC5FF")):
+            path = QPainterPath(QPointF(L, T + h))
+            for x in range(0, int(w) + 8, 6):
+                y = T + h * (0.45 + 0.12 * k) + math.sin(x / w * 5 + now * 0.7 + k * 2) * h * 0.14 \
+                    + math.sin(x / w * 13 + now * 1.3) * h * 0.04
+                path.lineTo(L + x, y)
+            path.lineTo(rect.right(), T + h)
+            band = QLinearGradient(QPointF(0, T + h * 0.2), QPointF(0, T + h))
+            band.setColorAt(0, alpha(col, 0.0))
+            band.setColorAt(0.5, alpha(col, 0.35))
+            band.setColorAt(1, alpha(col, 0.0))
+            p.setBrush(band)
+            p.drawPath(path)
+    elif base == "circuit":
+        p.setPen(QPen(alpha(c2, 0.45), 1.3))
+        for i in range(14):
+            x0, y0 = L + _rand(i) * w, T + _rand(i, 1) * h
+            x1 = x0 + (_rand(i, 2) - 0.5) * w * 0.4
+            path = QPainterPath(QPointF(x0, y0))
+            path.lineTo(x1, y0)
+            path.lineTo(x1 + h * 0.15, y0 + h * 0.15 * (1 if _rand(i, 3) > 0.5 else -1))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+            glow = 0.4 + 0.6 * max(0.0, math.sin(now * 2 + i * 1.7))
+            p.setBrush(alpha(c2, glow))
+            p.drawEllipse(QPointF(x0, y0), 2.2, 2.2)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "sunset":
+        p.setBrush(alpha("#FFC94D", 0.95))
+        sun = QRectF(L + w * 0.62, T + h * 0.18, h * 0.62, h * 0.62)
+        p.drawEllipse(sun)
+        for k in range(5):
+            p.fillRect(QRectF(sun.left(), sun.top() + sun.height() * (0.52 + k * 0.1), sun.width(), sun.height() * 0.035 * (k + 1)),
+                       mix(QColor("#C0306E"), QColor("#FF8A3D"), 0.4))
+        p.fillRect(QRectF(L, T + h * 0.78, w, h * 0.22), QColor("#1A0828"))
+    elif base == "peaks":
+        for k, (col, hh) in enumerate((("#2A3A5C", 0.35), ("#1B2740", 0.55), ("#101828", 0.75))):
+            path = QPainterPath(QPointF(L, rect.bottom()))
+            for i in range(9):
+                x = L + i * w / 8
+                y = T + h * (hh + (0.18 if (i + k) % 2 else -0.05) * (0.6 + _rand(i, k) * 0.6))
+                path.lineTo(x, y)
+            path.lineTo(rect.right(), rect.bottom())
+            p.setBrush(QColor(col))
+            p.drawPath(path)
+        p.setBrush(alpha("#FFFFFF", 0.85))
+        p.drawEllipse(QPointF(L + w * 0.18, T + h * 0.22), h * 0.08, h * 0.08)
+    elif base == "galaxy":
+        neb = QLinearGradient(rect.topLeft(), rect.bottomRight())
+        neb.setColorAt(0.2, alpha("#9B5CFF", 0.0))
+        neb.setColorAt(0.5, alpha("#9B5CFF", 0.35))
+        neb.setColorAt(0.65, alpha("#FF5CB8", 0.22))
+        neb.setColorAt(0.9, alpha("#2EC5FF", 0.0))
+        p.fillRect(rect, neb)
+        for i in range(60):
+            tw = 0.35 + 0.65 * abs(math.sin(now * (0.8 + _rand(i, 5) * 2) + i))
+            p.setBrush(alpha("#FFFFFF", tw * (0.4 + 0.6 * _rand(i, 2))))
+            r = 0.6 + _rand(i, 3) * 1.4
+            p.drawEllipse(QPointF(L + _rand(i) * w, T + _rand(i, 1) * h), r, r)
+        sx = L + ((now * 0.25) % 1.6 - 0.3) * w
+        p.setPen(QPen(alpha("#FFFFFF", 0.7), 1.2))
+        p.drawLine(QPointF(sx, T + h * 0.2), QPointF(sx - w * 0.08, T + h * 0.32))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "lava":
+        for i in range(9):
+            cx = L + (_rand(i) + 0.05 * math.sin(now * 0.6 + i)) * w
+            cy = T + h * (0.5 + 0.45 * math.sin(now * (0.3 + _rand(i, 1) * 0.4) + i * 1.3))
+            r = h * (0.22 + _rand(i, 2) * 0.25)
+            blob = QLinearGradient(QPointF(cx, cy - r), QPointF(cx, cy + r))
+            blob.setColorAt(0, alpha("#FFC94D", 0.85))
+            blob.setColorAt(1, alpha("#FF3D1F", 0.6))
+            p.setBrush(blob)
+            p.drawEllipse(QPointF(cx, cy), r, r)
+    elif base == "matrix":
+        f = QFont("Consolas")
+        f.setPixelSize(max(6, int(h * 0.13)))
+        p.setFont(f)
+        cw = f.pixelSize() * 0.9
+        cols = int(w / cw) + 1
+        for c in range(cols):
+            speed = 0.6 + _rand(c) * 1.2
+            head = ((now * speed + _rand(c, 1) * 3) % 1.6) * h
+            for k in range(8):
+                y = head - k * f.pixelSize()
+                if T - f.pixelSize() < T + y < rect.bottom() + f.pixelSize():
+                    p.setPen(alpha("#C8FFD8" if k == 0 else "#3DFF7A", max(0.0, 1 - k / 8)))
+                    ch = chr(0x30A0 + int(_rand(c * 31 + k, int(now * 3) % 7) * 90))
+                    p.drawText(QPointF(L + c * cw, T + y), ch)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "prism":
+        sweep = QLinearGradient(QPointF(L - w + (now * 0.3 % 1) * w * 2, T), QPointF(L + (now * 0.3 % 1) * w * 2, rect.bottom()))
+        for k, col in enumerate(("#FF5CC8", "#FFC94D", "#3DFF7A", "#2EC5FF", "#9B5CFF", "#FF5CC8")):
+            sweep.setColorAt(k / 5, alpha(col, 0.55))
+        p.fillRect(rect, sweep)
+        p.setBrush(alpha("#FFFFFF", 0.18))
+        tri = QPainterPath(QPointF(L + w * 0.5, T + h * 0.15))
+        tri.lineTo(L + w * 0.62, T + h * 0.85)
+        tri.lineTo(L + w * 0.38, T + h * 0.85)
+        tri.closeSubpath()
+        p.drawPath(tri)
+    shade = QLinearGradient(rect.topLeft(), rect.bottomLeft())       # a soft shade at the bottom, for text on top
+    shade.setColorAt(0.55, alpha("#000000", 0.0))
+    shade.setColorAt(1.0, alpha("#000000", 0.35))
+    p.fillRect(rect, shade)
+    p.restore()
+
+
+_FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"), "ink": ("#0B0E10", "#FFFFFF"),
+               "neon": ("#2EF2FF", "#2EF2FF"), "dashed": ("#FFFFFF", "#9AA4AD"), "twin": ("#FF5CB8", "#2EC5FF"),
+               "laurel": ("#FFD36B", "#B8862B"), "crown": ("#FFD36B", "#B8862B"), "spikes": ("#E6EEF5", "#6E7C88"),
+               "flame": ("#FFC94D", "#FF3D1F"), "orbit": ("#B36BFF", "#4FE3FF"), "rainbow": ("#FF5CC8", "#2EC5FF")}
+
+
+def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: float = 1.0) -> None:
+    """A frame around a round profile picture `face` (drawn on top of it, slightly outside)."""
+    base = parts(item)[1]
+    if not base:
+        return
+    c1, c2 = (QColor(c) for c in _FRAME_COLS.get(base, ("#FFFFFF", "#9AA4AD")))
+    d = face.width()
+    wd = max(1.6, d * 0.085)
+    c = face.center()
+    r = d / 2 + wd * 0.35
+    ring = QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r)
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setOpacity(p.opacity() * dim)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    if base in ("silver", "bronze", "laurel", "crown", "spikes"):
+        g = QLinearGradient(ring.topLeft(), ring.bottomRight())
+        g.setColorAt(0.0, c1)
+        g.setColorAt(0.5, c2)
+        g.setColorAt(1.0, c1)
+        p.setPen(QPen(g, wd))
+        p.drawEllipse(ring)
+    elif base == "ink":
+        p.setPen(QPen(c1, wd * 1.3))
+        p.drawEllipse(ring)
+        p.setPen(QPen(c2, max(1.0, wd * 0.25)))
+        p.drawEllipse(ring.adjusted(wd * 0.75, wd * 0.75, -wd * 0.75, -wd * 0.75))
+    elif base == "neon":
+        pulse = 0.75 + 0.25 * math.sin(now * 3)
+        for k in (3.2, 2.2, 1.4):
+            p.setPen(QPen(alpha(c1, 0.12 * pulse * (4 - k)), wd * k))
+            p.drawEllipse(ring)
+        p.setPen(QPen(QColor("#E8FFFF"), wd * 0.6))
+        p.drawEllipse(ring)
+    elif base == "dashed":
+        pen = QPen(c1, wd * 0.8)
+        pen.setDashPattern([2.2, 1.6])
+        pen.setDashOffset(-now * 4)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(pen)
+        p.drawEllipse(ring)
+    elif base == "twin":
+        p.setPen(QPen(c1, wd * 0.5))
+        p.drawEllipse(ring.adjusted(-wd * 0.45, -wd * 0.45, wd * 0.45, wd * 0.45))
+        p.setPen(QPen(c2, wd * 0.5))
+        p.drawEllipse(ring.adjusted(wd * 0.25, wd * 0.25, -wd * 0.25, -wd * 0.25))
+    elif base == "flame":
+        p.setPen(Qt.PenStyle.NoPen)
+        n = 18
+        for i in range(n):
+            a = i / n * math.tau
+            flick = 0.55 + 0.45 * abs(math.sin(now * 5 + i * 1.9))
+            ln = wd * (1.4 + 1.6 * flick)
+            tip = QPointF(c.x() + math.cos(a) * (r + ln), c.y() + math.sin(a) * (r + ln))
+            left = QPointF(c.x() + math.cos(a - 0.17) * r, c.y() + math.sin(a - 0.17) * r)
+            right = QPointF(c.x() + math.cos(a + 0.17) * r, c.y() + math.sin(a + 0.17) * r)
+            g = QLinearGradient(QPointF(c.x() + math.cos(a) * r, c.y() + math.sin(a) * r), tip)
+            g.setColorAt(0, c2)
+            g.setColorAt(1, alpha(c1, 0.0))
+            path = QPainterPath(left)
+            path.quadTo(QPointF(c.x() + math.cos(a) * (r + ln * 0.6), c.y() + math.sin(a) * (r + ln * 0.6)), tip)
+            path.lineTo(right)
+            path.closeSubpath()
+            p.setBrush(g)
+            p.drawPath(path)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(c1, wd * 0.8))
+        p.drawEllipse(ring)
+    elif base == "orbit":
+        p.setPen(QPen(alpha(c1, 0.9), wd * 0.55))
+        p.drawEllipse(ring)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k in range(3):
+            a = now * (1.6 + k * 0.4) + k * 2.1
+            rr = r + wd * (0.9 + k * 0.5)
+            p.setBrush(c2 if k % 2 else c1)
+            p.drawEllipse(QPointF(c.x() + math.cos(a) * rr, c.y() + math.sin(a) * rr), wd * 0.55, wd * 0.55)
+    elif base == "rainbow":
+        from PyQt6.QtGui import QConicalGradient
+        g = QConicalGradient(c, (now * 90) % 360)
+        for k, col in enumerate(("#FF5CC8", "#FFC94D", "#3DFF7A", "#2EC5FF", "#9B5CFF", "#FF5CC8")):
+            g.setColorAt(k / 5, QColor(col))
+        p.setPen(QPen(g, wd))
+        p.drawEllipse(ring)
+    if base == "laurel":                                      # leaves up both sides
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#E8C26A"))
+        for side in (-1, 1):
+            for k in range(5):
+                a = math.pi / 2 + side * (0.45 + k * 0.38)
+                lc = QPointF(c.x() + math.cos(a) * (r + wd * 0.9), c.y() + math.sin(a) * (r + wd * 0.9))
+                p.save()
+                p.translate(lc)
+                p.rotate(math.degrees(a) + 90 + side * 30)
+                p.drawEllipse(QPointF(0, 0), wd * 0.55, wd * 1.15)
+                p.restore()
+    elif base == "crown":
+        p.setPen(Qt.PenStyle.NoPen)
+        cw, ch = d * 0.46, d * 0.26
+        top = c.y() - r - ch * 0.55
+        path = QPainterPath(QPointF(c.x() - cw / 2, top + ch))
+        for k, (fx, fy) in enumerate(((-0.5, 0.15), (-0.25, 0.55), (0.0, 0.0), (0.25, 0.55), (0.5, 0.15))):
+            path.lineTo(c.x() + fx * cw, top + fy * ch)
+        path.lineTo(c.x() + cw / 2, top + ch)
+        path.closeSubpath()
+        g = QLinearGradient(QPointF(0, top), QPointF(0, top + ch))
+        g.setColorAt(0, QColor("#FFE9A8"))
+        g.setColorAt(1, QColor("#C99A2E"))
+        p.setBrush(g)
+        p.drawPath(path)
+        p.setBrush(QColor("#FF4B6E"))
+        p.drawEllipse(QPointF(c.x(), top + ch * 0.62), ch * 0.12, ch * 0.12)
+    elif base == "spikes":
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(c1)
+        n = 12
+        for i in range(n):
+            a = i / n * math.tau + math.pi / n
+            path = QPainterPath(QPointF(c.x() + math.cos(a - 0.12) * r, c.y() + math.sin(a - 0.12) * r))
+            path.lineTo(c.x() + math.cos(a) * (r + wd * 2.0), c.y() + math.sin(a) * (r + wd * 2.0))
+            path.lineTo(c.x() + math.cos(a + 0.12) * r, c.y() + math.sin(a + 0.12) * r)
+            path.closeSubpath()
+            p.drawPath(path)
+    p.restore()
+
+
+def paint_tag(p: QPainter, x: float, cy: float, item: str, now: float = 0.0, size: float = 8.5,
+              centre: bool = False, px: float = 0.0) -> float:
+    """A tag after a name ("OG": gold, with a light running across). Returns its width. `px`: an exact pixel size."""
+    text = _NAMES["tag"].get(parts(item)[1], parts(item)[1].upper()) or "?"
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    f = font(size, QFont.Weight.Black, 0.8)
+    if px:
+        f.setPixelSize(max(6, int(px)))
+    p.setFont(f)
+    hgt = f.pixelSize() * 1.75
+    w = p.fontMetrics().horizontalAdvance(text) + hgt * 0.75
+    if centre:
+        x -= w / 2
+    box = QRectF(x, cy - hgt / 2, w, hgt)
+    g = QLinearGradient(box.topLeft(), box.bottomRight())
+    g.setColorAt(0.0, QColor("#FFE9A8"))
+    g.setColorAt(0.5, QColor("#E8B13A"))
+    g.setColorAt(1.0, QColor("#B87A16"))
+    p.setPen(QPen(QColor("#FFF4CF"), 0.8))
+    p.setBrush(g)
+    p.drawRoundedRect(box, hgt * 0.28, hgt * 0.28)
+    if now:                                                    # a light running across
+        clip = QPainterPath()
+        clip.addRoundedRect(box, hgt * 0.28, hgt * 0.28)
+        p.setClipPath(clip)
+        sx = box.left() + ((now * 0.5) % 1.6 - 0.3) * box.width() * 1.4
+        shine = QLinearGradient(QPointF(sx - hgt, 0), QPointF(sx + hgt, 0))
+        shine.setColorAt(0, alpha("#FFFFFF", 0.0))
+        shine.setColorAt(0.5, alpha("#FFFFFF", 0.65))
+        shine.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.fillRect(box, shine)
+        p.setClipping(False)
+    p.setPen(QColor("#3A2300"))
+    p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), text)
+    p.restore()
+    return w
+
+
+def paint_blank_face(p: QPainter, face: QRectF) -> None:
+    """A plain grey picture (for previews of frames)."""
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor("#2A3238"))
+    p.drawEllipse(face)
+    clip = QPainterPath()
+    clip.addEllipse(face)
+    p.setClipPath(clip)
+    p.setBrush(QColor("#55626C"))
+    d = face.width()
+    p.drawEllipse(QPointF(face.center().x(), face.top() + d * 0.4), d * 0.18, d * 0.18)
+    p.drawEllipse(QPointF(face.center().x(), face.top() + d * 0.95), d * 0.34, d * 0.3)
+    p.restore()
+
+
+def paint_look_icon(p: QPainter, item: str, rect: QRectF, now: float = 0.0, dim: float = 1.0) -> None:
+    """The small picture of a banner, frame or tag (shop, inventory, market, trades)."""
+    kind = parts(item)[0]
+    d = min(rect.width(), rect.height())
+    box = QRectF(rect.center().x() - d / 2, rect.center().y() - d / 2, d, d)
+    p.save()
+    p.setOpacity(p.opacity() * dim)
+    if kind == "banner":
+        paint_banner(p, QRectF(box.left(), box.top() + d * 0.2, d, d * 0.6), item, now, d * 0.1)
+    elif kind == "frame":
+        face = box.adjusted(d * 0.22, d * 0.22, -d * 0.22, -d * 0.22)
+        paint_blank_face(p, face)
+        paint_frame(p, face, item, now)
+    else:
+        paint_tag(p, box.center().x(), box.center().y(), item, now, centre=True, px=d * 0.24)
     p.restore()
