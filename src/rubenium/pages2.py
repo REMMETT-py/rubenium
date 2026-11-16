@@ -752,7 +752,7 @@ PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": ScreenPage, "rl": 
 # Fixed order: music first, then what you use in a game, then the PC, then fun and looks, settings last.
 TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", "display", "Screen"),
         ("rl", "rocket", "RL SWAP"), ("perf", "perf", "PC"),
-        ("giveaway", "gift", "Giveaway"), ("games", "dice", "Games"), ("themes", "gem", "Shop"),
+        ("giveaway", "gift", "Giveaway"), ("games", "dice", "Games"), ("themes", "gem", "Hub"),
         ("friends", "users", "Social"), ("new", "spark", "Updates"), ("settings", "cog", "Settings"),
         ("admin", "shield", "Admin")]
 LIVE_TABS: set = set()      # Giveaway (while one is live) and Admin (the admin account only)

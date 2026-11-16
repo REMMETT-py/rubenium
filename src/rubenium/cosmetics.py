@@ -33,10 +33,8 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("candy", "Candy", "#FF5CB8", "#9B5CFF", dict(glow=3, stars=18, sparkles=11)),
                ("storm", "Storm", "#8FA8FF", "#4B6BFF", dict(glow=3, stars=44, links=10, comets=6, aurora=True)),
                ("retro", "Retro", "#D94BFF", "#35D6E6", dict(glow=3, stars=52, links=14, sparkles=8, edge="shine"))]
-KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "vis": "Visualiser"}
+KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge"}
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
-          "vis": {"bars": "Bars", "mirror": "Mirror", "dots": "Dots", "wave": "Wave", "pulse": "Pulse", "spark": "Sparks",
-                  "aurora": "Aurora", "fire": "Fire", "galaxy": "Galaxy", "prism": "Prism"},
           "theme": {t[0]: t[1] for t in THEME_LOOKS}}
 _themes: dict = {}
 
@@ -297,17 +295,6 @@ def paint_cosmetic(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
         p.setFont(f)
         p.setPen(QColor("#AEB8C2") if var == "black" else colour_of(item))
         p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "Aa")
-    elif kind == "vis":                                   # a visualiser: a small moving picture of it
-        from .music2 import paint_vis
-        import random as _r
-        rnd = _r.Random(base)
-        t = now if effects else 0.6
-        bars = [0.25 + 0.7 * abs(math.sin(t * 3 + i * 0.7 + rnd.random())) for i in range(10)]
-        tile = box.adjusted(d * 0.06, d * 0.2, -d * 0.06, -d * 0.2)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor("#0B0E10"))
-        p.drawRoundedRect(tile, d * 0.12, d * 0.12)
-        paint_vis(p, tile.adjusted(d * 0.04, d * 0.04, -d * 0.04, -d * 0.04), base, bars, bars, [], QColor("#4FC3FF"), QColor("#B36BFF"))
     elif kind == "theme":
         look = next((t for t in THEME_LOOKS if t[0] == base), THEME_LOOKS[0])
         g = QLinearGradient(box.topLeft(), box.bottomRight())

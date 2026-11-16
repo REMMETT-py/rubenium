@@ -509,12 +509,14 @@ class ShopPage(Page):
     """Six parts: Theme (colours, progression), Shop (balls, lines, fonts, themes), Badges, Cases, Market and
     Inventory."""
     key = "themes"
-    SECTIONS = ["Theme", "Shop", "Badges", "Cases", "Market", "Inventory", "Sets"]
-    ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "gem"]
+    SECTIONS = ["Style", "Shop", "Collection", "Cases", "Market", "Inventory", "Sets", "Deals"]
+    ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "timer"]
+    GET = [1, 7, 3, 4]                     # getting things: shop, today's deals, cases, market
+    MINE = [5, 2, 6, 0]                    # what is yours: inventory, collection, sets, your style
     NOTES = ["Your colours and the looks you unlock with time.", "Balls, lines, fonts and themes to buy.",
              "Your collection: click a badge to see every colour.", "Open cases for coins and badges. Gifts are free.",
-             "Buy and sell with other players.", "Everything you own. Sell, show or trade it.",
-             "Collect full sets for a big bonus."]
+             "Buy and sell with other users.", "Everything you own. Sell, show or trade it.",
+             "Collect full sets for a big bonus.", "4 items cheaper today. New deals every day at midnight."]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -526,9 +528,16 @@ class ShopPage(Page):
         from .bazaar import build_cosmetics, build_inventory, build_market
         from .hub import NavTiles
         gifts = sum(int(v or 0) for v in ctx.econ.stock.values())
-        self.seg = NavTiles([(tr(n), self.ICONS[k]) for k, n in enumerate(self.SECTIONS)], tab, badges={3: gifts})
-        self.seg.changed.connect(self._section)
-        lay.addWidget(self.seg)
+        rows = []
+        for title, ids in ((tr("GET ITEMS"), self.GET), (tr("YOURS"), self.MINE)):
+            lay.addWidget(Label(title, 9.5, TEXT_FAINT, weight=QFont.Weight.Bold))
+            nav = NavTiles([(tr(self.SECTIONS[k]), self.ICONS[k]) for k in ids], ids.index(tab) if tab in ids else -1,
+                           badges={ids.index(3): gifts} if 3 in ids else {})
+            nav.changed.connect(lambda i, ids=ids: self._section(ids[i]))
+            lay.addWidget(nav)
+            rows.append(nav)
+        self.seg = rows[0]
+        self.navs = rows
         note = Label(tr(self.NOTES[tab]), 10.5, TEXT_DIM, wrap_w=self.W)
         lay.addWidget(note)
         if tab == 1:
@@ -544,13 +553,16 @@ class ShopPage(Page):
         elif tab == 6:
             from .hub import build_sets
             build_sets(self, lay)
+        elif tab == 7:
+            from .hub import build_deals
+            build_deals(self, lay)
         else:
             self._look(lay)
         ctx.wallet.changed.connect(self._refresh)
 
     def _section(self, i: int) -> None:
         if self.reel is not None and self.reel.busy():
-            return self.seg.set_index(3)
+            return None
         self.ctx.shop_tab = i
         self.ctx.shop_badge = None
         self.ctx.shop_case = None
@@ -905,11 +917,11 @@ class ShopPage(Page):
             ec.call("rb_case_gift", {"name": name, "which": case["id"]}, done, once=True)
         ctx._ask = AskDialog(ctx, tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), tr("Friend's username"),
                              tr("Gift for {n}", n=coins_text(case["price"])), send, 10,
-                             tr("Your friend opens it with one of their keys. 3 gifts a day at most."))
+                             tr("Your friend opens it for free. 3 gifts a day at most."))
 
     def _lock(self, on: bool) -> None:
         try:
-            for wdg in (self.open_btn, self.case_back, self.seg):
+            for wdg in (self.open_btn, self.case_back, *getattr(self, "navs", [])):
                 wdg.setEnabled(not on)
         except RuntimeError:
             pass

@@ -71,7 +71,7 @@ def explain(err: ApiError) -> str:
     if "pgrst202" in text or "could not find the function" in text or ("function" in text and "does not exist" in text):
         return "Coming very soon: the server is being updated"
     if "rb_no_such_user" in text:
-        return "No player with this name"
+        return "No user with this name"
     if "rb_thats_you" in text:
         return "That is you"
     if "rb_friends_only" in text:

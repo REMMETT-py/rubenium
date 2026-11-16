@@ -19,8 +19,8 @@ from . import win
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.4.1"         # the version people see
-BUILD = "2026.11.17.2"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.5"         # the version people see
+BUILD = "2026.11.17.3"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -260,9 +260,6 @@ DEFAULTS: dict = {
     "notify_sound": True,
     "notify_volume": 20,
     "font_item": "",
-    "visualiser": "off",
-    "vis_style": "bars",
-    "vis_migrated": False,
     "game_mouse": True,
     "badge_size": 100,
     "badge_pos": "above",

@@ -302,7 +302,7 @@ class Notifier(QObject):
             import random
             from .wallet import coins_text
             tips = [tr("New quests every hour: check the Games tab"),
-                    tr("Beat Tap pays up to 40 coins a round"),
+                    tr("Beat Tap pays up to 50 coins a round"),
                     tr("Gold badges are 1 in thousands: keep opening!"),
                     tr("You have {n} coins: maybe a case?", n=coins_text(ec.coins)),
                     tr("Put items you do not wear on the market")]

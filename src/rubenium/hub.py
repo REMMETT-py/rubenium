@@ -1470,82 +1470,109 @@ class AmountWindow(FloatWindow):
 
 
 
-# ================================================================ visualisers in the shop
-class VisShopRow(QWidget):
-    """One visualiser: a live preview, its rarity, its price, and Buy / Use / In use."""
+# ================================================================ daily deals
+class DealCard(QWidget):
+    """One deal: the item, its old and new price and how much is saved."""
 
-    def __init__(self, page, style: str, name: str) -> None:
+    def __init__(self, page, d: dict, width: int) -> None:
         super().__init__()
-        from .music2 import VIS_SHOP, Visualiser, vis_owned
-        from .econ import RARITY_COLOURS, RARITY_NAMES
-        self.page, self.ctx, self.style = page, page.ctx, style
-        rarity, price = VIS_SHOP[style]
-        ec = self.ctx.econ
-        price = ec.shop_price("vis:" + style) if style != "bars" and ec.price("vis:" + style) is not None else price
-        self.owned = vis_owned(self.ctx, style)
-        self.using = self.ctx.cfg["visualiser"] == style
-        self.setFixedHeight(S(64))
+        self.page, self.ctx, self.d = page, page.ctx, d
+        self.setFixedSize(width, S(150))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        lay = hbox(self, 8)
-        lay.setContentsMargins(S(8), S(6), S(8), S(6))
-        prev = Visualiser(self.ctx, style, 50)
-        prev.setFixedWidth(int(page.W * 0.45))
-        prev.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        lay.addWidget(prev)
-        col = vbox(spacing=1)
-        col.addWidget(Label(tr(name), 12.5, TEXT, bold=True))
-        col.addWidget(Label(tr(RARITY_NAMES[rarity]).upper(), 9.5, RARITY_COLOURS[rarity], bold=True))
-        state = (tr("In use") if self.using else tr("Owned: click to use") if self.owned else
-                 (tr("Free") if not price else coins_text(int(price)) + " " + tr("coins")))
-        col.addWidget(Label(state, 10.5, GOLD_TEXT if not self.owned else TEXT_DIM))
-        lay.addLayout(col, 1)
-        self.colour = QColor(RARITY_COLOURS[rarity])
-        self.price = int(price or 0)
+        self.owned = not d["item"].startswith("badge:") and self.ctx.econ.owns(d["item"])
+        self._t = QTimer(self)
+        self._t.setInterval(50)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
 
     def mouseReleaseEvent(self, e) -> None:
         if not self.rect().contains(e.position().toPoint()):
             return
-        ctx, ec = self.ctx, self.ctx.econ
+        ctx, ec, d = self.ctx, self.ctx.econ, self.d
         if self.owned:
-            return use_vis(ctx, self.style)
-        if self.price > ec.coins:
-            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(self.price - ec.coins)), "warn")
+            return ctx.toast(tr("You already have it"), "warn")
+        if d["now"] > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(d["now"] - ec.coins)), "warn")
+        from .cosmetics import item_name
 
         def bought(ok: bool, data) -> None:
             if not ok:
                 return ctx.toast(tr(str(data)), "warn")
             sfx.play("on")
-            ec.refresh()
-            QTimer.singleShot(500, lambda: use_vis(ctx, self.style))
-        ctx.window.confirm(tr("Buy this visualiser for {n} coins?", n=coins_text(self.price)),
-                           lambda: ec.buy("vis:" + self.style, bought), yes=tr("Buy"))
+            ctx.toast(tr("Bought: {what}", what=item_name(d["item"])))
+            ctx.reload_page()
+        ctx.window.confirm(tr("Buy {what} for {n} coins?", what=item_name(d["item"]), n=coins_text(d["now"])),
+                           lambda: ec.buy(d["item"], bought), yes=tr("Buy"))
 
     def paintEvent(self, _e) -> None:
+        from .cosmetics import item_name, paint_cosmetic
+        from .econ import RARITY_COLOURS
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha(ui.accent, 0.8) if self.using else alpha(self.colour, 0.35), S(1.4) if self.using else 1))
-        g = QLinearGradient(r.topLeft(), r.topRight())
-        g.setColorAt(0, QColor("#0A0D10"))
-        g.setColorAt(1, mix(self.colour, QColor("#0A0D10"), 0.85))
+        col = QColor(RARITY_COLOURS.get(self.ctx.econ.rarity(self.d["item"]), "#9AA4AD"))
+        g = QLinearGradient(r.topLeft(), r.bottomLeft())
+        g.setColorAt(0, mix(col, QColor("#0B0E10"), 0.75))
+        g.setColorAt(1, QColor("#0B0E10"))
+        p.setPen(QPen(alpha(col, 0.5), S(1.2)))
         p.setBrush(g)
-        p.drawRoundedRect(r, S(10), S(10))
+        p.drawRoundedRect(r, S(12), S(12))
+        paint_cosmetic(p, self.d["item"], QRectF(r.center().x() - S(26), r.top() + S(12), S(52), S(52)), time.monotonic())
+        tag = QRectF(r.right() - S(46), r.top() + S(8), S(38), S(18))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FF5C6C"))
+        p.drawRoundedRect(tag, S(9), S(9))
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(9.5, QFont.Weight.ExtraBold))
+        p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), f"-{self.d['pct']}%")
+        name = QFontMetrics(font(10.5, QFont.Weight.Bold)).elidedText(item_name(self.d["item"]), Qt.TextElideMode.ElideRight,
+                                                                       int(r.width() - S(12)))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left() + S(6), r.top() + S(70), r.width() - S(12), S(18)), int(Qt.AlignmentFlag.AlignCenter), name)
+        p.setPen(QColor(TEXT_FAINT))
+        p.setFont(font(10))
+        old = coins_text(int(self.d["price"]))
+        rect = QRectF(r.left(), r.top() + S(92), r.width(), S(16))
+        p.drawText(rect, int(Qt.AlignmentFlag.AlignCenter), old)
+        w = QFontMetrics(font(10)).horizontalAdvance(old)
+        p.setPen(QPen(alpha(TEXT_FAINT, 0.9), 1))
+        p.drawLine(QPointF(rect.center().x() - w / 2 - 2, rect.center().y()), QPointF(rect.center().x() + w / 2 + 2, rect.center().y()))
+        p.setPen(QColor(GOLD_TEXT if not self.owned else TEXT_DIM))
+        p.setFont(font(14, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left(), r.top() + S(110), r.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Owned") if self.owned else coins_text(int(self.d["now"])))
 
 
-def use_vis(ctx, style: str) -> None:
-    sfx.play("pick")
-    ctx.cfg["visualiser"] = style
-    ctx.cfg["vis_style"] = style
-    ctx.cfg.save()
-    ctx._sync_audio()
-    ctx.window._drop_page("home")
-    ctx.toast(tr("Visualiser on: you see it on the music tab"))
-    ctx.reload_page()
-
-
-def build_vis_shop(page, lay) -> None:
-    from .music2 import VIS_STYLES
-    lay.addWidget(Label(tr("Visualisers move with your music on the music tab. The rarer, the cooler. Turn them on or "
-                           "off in Settings."), 10.5, TEXT_DIM, wrap_w=page.W))
-    for style, name in VIS_STYLES:
-        lay.addWidget(VisShopRow(page, style, name))
+def build_deals(page, lay) -> None:
+    ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
+    data = getattr(ctx, "deals_data", None)
+    if data is None or time.monotonic() - data[0] > 60:
+        def got(ok: bool, ans) -> None:
+            if ok and isinstance(ans, dict):
+                ctx.deals_data = (time.monotonic(), ans)
+                if ctx.window.current == "themes" and int(getattr(ctx, "shop_tab", 0) or 0) == 7:
+                    ctx.reload_page()
+        ctx.online.ask("rb_deals", {}, got)
+    if data is None:
+        return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+    ans = data[1]
+    left = max(0, int(ans.get("ends_in") or 0) - int(time.monotonic() - data[0]))
+    from .shop import clock_text
+    lay.addWidget(Label(tr("New deals in {t}", t=clock_text(left)), 11, GOLD_TEXT, bold=True))
+    from PyQt6.QtWidgets import QGridLayout
+    holder = QWidget()
+    grid = QGridLayout(holder)
+    grid.setContentsMargins(0, 0, 0, 0)
+    grid.setSpacing(S(6))
+    w = (page.W - S(6)) // 2
+    for k, d in enumerate(ans.get("deals") or []):
+        grid.addWidget(DealCard(page, d, w), k // 2, k % 2)
+    lay.addWidget(holder)

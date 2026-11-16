@@ -366,6 +366,31 @@ class TradeAsk(QWidget):
 TRADE_GOLD = "#E8C26A"
 
 
+class PerkRow(QWidget):
+    """One thing friends can do together: an icon, a name and a few words."""
+
+    def __init__(self, icon: str, head: str, text: str, width: int) -> None:
+        super().__init__()
+        self.icon, self.head, self.text = icon, head, text
+        self.setFixedSize(width, S(26))
+
+    def paintEvent(self, _e) -> None:
+        from .widgets import draw_icon
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.save()
+        p.translate(S(11), self.height() / 2)
+        p.scale(0.8, 0.8)
+        draw_icon(p, self.icon, QColor(ui.accent))
+        p.restore()
+        p.setPen(QColor(TEXT))
+        p.setFont(font(11, QFont.Weight.Bold))
+        p.drawText(QRectF(S(28), 0, S(110), self.height()), int(Qt.AlignmentFlag.AlignVCenter), self.head)
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10.5))
+        p.drawText(QRectF(S(130), 0, self.width() - S(130), self.height()), int(Qt.AlignmentFlag.AlignVCenter), self.text)
+
+
 class FriendsPage(Page):
     """The Social tab."""
     key = "friends"
@@ -391,7 +416,7 @@ class FriendsPage(Page):
         if who:
             return self._profile(who)
         if not ctx.online.logged_in():
-            return self.lay.addWidget(Label(tr("Log in to see other players"), 12, TEXT_DIM))
+            return self.lay.addWidget(Label(tr("Log in to see other users"), 12, TEXT_DIM))
         me = getattr(ctx, "social_me", None) or {}
         card = StatsCard(ctx, me, self.W)
         card.picture.connect(self._picture)
@@ -413,7 +438,7 @@ class FriendsPage(Page):
             self.lay.addWidget(TradeAsk(self, ask))
         tab = int(getattr(ctx, "social_tab", 0) or 0)
         unread = int(getattr(ctx, "msg_unread", 0) or 0)
-        seg = Segmented([tr("Friends"), tr("Players"), tr("Chat") + (f" {unread}" if unread else ""), tr("Top"), tr("Trades")], tab)
+        seg = Segmented([tr("Friends"), tr("Users"), tr("Chat") + (f" {unread}" if unread else ""), tr("Top"), tr("Trades")], tab)
 
         def switch(i: int) -> None:
             ctx.social_tab = i
@@ -430,14 +455,14 @@ class FriendsPage(Page):
             rows = getattr(ctx, "users_cache", None)
             if rows is None:
                 return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-            self.lay.addWidget(Label(tr("{n} players. Click one to see their profile.", n=len(rows)), 10.5, TEXT_DIM))
+            self.lay.addWidget(Label(tr("{n} users. Click one to see their profile.", n=len(rows)), 10.5, TEXT_DIM))
             for info in rows:
                 self.lay.addWidget(PlayerRow(self, info))
             return
         if self.friends is None:
             return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
         if not self.friends:
-            return self.lay.addWidget(Label(tr("No friends yet. Open All players and add someone."), 12, TEXT_DIM,
+            return self.lay.addWidget(Label(tr("No friends yet. Open Users and add someone."), 12, TEXT_DIM,
                                             wrap_w=self.W))
         asks = [f for f in self.friends if f["state"] == "asks"]
         mine = [f for f in self.friends if f["state"] == "friend"]
@@ -617,37 +642,8 @@ class FriendsPage(Page):
             return ctx.online.ask("rb_profile", {"name": name}, self._got_profile)
         prof, hist = data.get("profile") or {}, data.get("history")
         self.lay.addWidget(ProfileCard(ctx, prof))
-        line = hbox(spacing=6)
         if not prof.get("me"):
-            state = prof.get("state")
-            if prof.get("friend"):
-                rm = Button(tr("Remove friend"), "ghost", 30)
-                rm.clicked.connect(lambda: ctx.window.confirm(tr("Remove {name} from your friends?", name=name),
-                                   lambda: self.act("rb_friend_remove", name, lambda _ok: self.open_profile(None)),
-                                   yes=tr("Remove")))
-                line.addWidget(rm, 1)
-            elif state == "asks":
-                b = Button(tr("Accept friend"), "primary", 30)
-                b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
-                line.addWidget(b, 1)
-            elif state != "asked":
-                b = Button(tr("Add friend"), "primary", 30)
-                b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
-                line.addWidget(b, 1)
-            trade = Button(tr("Trade"), "primary" if prof.get("can_trade") else "ghost", 30)
-            trade.setToolTip(tr("Both players need 5 hours with Rubenium"))
-            trade.clicked.connect(lambda: self.ask_trade(name))
-            line.addWidget(trade, 1)
-        self.lay.addLayout(line)
-        if not prof.get("me") and prof.get("friend"):
-            line = hbox(spacing=6)
-            chat = Button(tr("Message"), "ghost", 30, icon="users")
-            chat.clicked.connect(lambda: open_chat(ctx, name))
-            duel = Button(tr("Duel"), "ghost", 30, icon="shield")
-            duel.clicked.connect(lambda: self._duel(name))
-            line.addWidget(chat, 1)
-            line.addWidget(duel, 1)
-            self.lay.addLayout(line)
+            self._relation(prof, name)
         badges = list(prof.get("badges") or [])
         self.lay.addWidget(heading(tr("Badges") + f"  ·  {len(badges)}"))
         if badges:
@@ -656,7 +652,6 @@ class FriendsPage(Page):
         else:
             self.lay.addWidget(Label(tr("No badges yet"), 12, TEXT_DIM))
         if prof.get("stats") is None:
-            self.lay.addWidget(Label(tr("Become friends to see their history."), 11.5, TEXT_DIM, wrap_w=self.W))
             return
         self._details(prof)
         if hist is None:
@@ -669,6 +664,65 @@ class FriendsPage(Page):
                 self.lay.addWidget(Label(tr("Nothing yet"), 11, TEXT_FAINT))
             else:
                 self.lay.addWidget(HistoryList(ctx, key, rows, self.W))
+
+    PERKS = [("users", "Chat", "Send messages"), ("shield", "Duels", "Play 1 against 1, with bets"),
+             ("gift", "Gifts", "Send cases to each other"), ("perf", "Full profile", "Stats, history, last seen"),
+             ("spark", "Online", "See when they are on"), ("chip", "Leaderboard", "Compare in the Friends top")]
+
+    def _relation(self, prof: dict, name: str) -> None:
+        """Friends and not-friends see different things: friends get actions, others see why to add them."""
+        ctx = self.ctx
+        from .hub import NavTiles
+        state = prof.get("state")
+        if prof.get("friend"):
+            self.lay.addWidget(Label("✓ " + tr("You are friends"), 12, "#3DDC84", bold=True))
+            acts = [(tr("Message"), "users"), (tr("Duel"), "shield"), (tr("Trade"), "chip"), (tr("Gift a case"), "gift")]
+            grid = NavTiles(acts, -1, select=False)
+
+            def act(i: int) -> None:
+                if i == 0:
+                    open_chat(ctx, name)
+                elif i == 1:
+                    self._duel(name)
+                elif i == 2:
+                    self.ask_trade(name)
+                else:
+                    ctx.shop_tab, ctx.shop_case = 3, None
+                    ctx.toast(tr("Pick a case, then press “Gift this case to a friend”"))
+                    ctx.window._drop_page("themes")
+                    ctx.window.goto("themes")
+            grid.changed.connect(act)
+            self.lay.addWidget(grid)
+            rm = Button(tr("Remove friend"), "quiet", 24)
+            rm.clicked.connect(lambda: ctx.window.confirm(tr("Remove {name} from your friends?", name=name),
+                               lambda: self.act("rb_friend_remove", name, lambda _ok: self.open_profile(None)), yes=tr("Remove")))
+            self.lay.addWidget(rm, 0, Qt.AlignmentFlag.AlignRight)
+            return
+        # not friends (yet): what you get by adding them, and one clear button
+        card = QWidget()
+        card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        card.setStyleSheet(f"background: rgba(255,255,255,0.04); border-radius: {S(12)}px;")
+        cl = vbox(card, 6, (12, 10, 12, 12))
+        title = {"asks": tr("{name} wants to be your friend", name=name),
+                 "asked": tr("Friend request sent to {name}", name=name)}.get(state, tr("Add {name} as a friend to:", name=name))
+        cl.addWidget(Label(title, 12.5, TEXT, bold=True, wrap_w=self.W - S(24)))
+        for icon, head, text in self.PERKS:
+            cl.addWidget(PerkRow(icon, tr(head), tr(text), self.W - S(24)))
+        if state == "asks":
+            b = Button(tr("Accept friend"), "primary", 34)
+            b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
+            cl.addWidget(b)
+        elif state == "asked":
+            cl.addWidget(Label(tr("Waiting for them to accept."), 11, TEXT_DIM))
+        else:
+            b = Button(tr("Add friend"), "primary", 34, icon="plus")
+            b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
+            cl.addWidget(b)
+        self.lay.addWidget(card)
+        trade = Button(tr("Trade without being friends"), "ghost", 28)
+        trade.setToolTip(tr("Both users need 5 hours with Rubenium"))
+        trade.clicked.connect(lambda: self.ask_trade(name))
+        self.lay.addWidget(trade)
 
     def _details(self, prof: dict) -> None:
         """A friend's numbers and what they are wearing."""

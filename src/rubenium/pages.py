@@ -20,7 +20,7 @@ from . import engines, extras, win
 from .core import (sfx, DANGER, BALL, BALL_SIZES, BD, GLOW, LOCKED_TABS, WARN, APP_NAME, BACKUP_DIR, CARD_W, CROSSHAIR, CROSSHAIR_DIR, DATA_DIR, DISPLAY_PROFILE, ACCENT_DEFAULT,
                    LOG_PATH, PAD, S, TEXT, TEXT_DIM, TEXT_FAINT, VERSION_NAME, alpha, font, lang, mix, tr, ui)
 from .media import CMD_NEXT, CMD_PREV, CMD_REPEAT, CMD_SEEK, CMD_SHUFFLE, CMD_TOGGLE, Status, source_keywords
-from .music2 import Visualiser, badge_menu
+from .music2 import badge_menu
 from .widgets import (ArtWidget, Button, Slider, Gauge, Glyph, IconButton, Label, Panel, ProgressBar, Segmented,
                       SliderRow, Sparkline, Swatches, Toggle, Tween, heading, hbox, notice, row, vbox)
 
@@ -227,7 +227,7 @@ class HomePage(Page):
         info.addWidget(self.flair)
         info.addLayout(top)
         info.addWidget(self.artist)
-        self.b_look = IconButton("gem", 24, tip=tr("Badges and visualiser"))
+        self.b_look = IconButton("gem", 24, tip=tr("Badge size and place"))
         self.b_look.clicked.connect(lambda: badge_menu(ctx, self._look_changed))
         controls.addWidget(self.b_look)
         info.addStretch(1)
@@ -245,9 +245,6 @@ class HomePage(Page):
         prog.addWidget(self.t_dur)
         lay.addLayout(body)
         lay.addLayout(prog)
-        self.vis = Visualiser(ctx)
-        lay.addWidget(self.vis)
-        self.vis.setVisible(ctx.cfg["visualiser"] != "off")
 
         m = ctx.media
         self.b_prev.clicked.connect(lambda: m.send(CMD_PREV))
@@ -328,9 +325,6 @@ class HomePage(Page):
     def _look_changed(self) -> None:
         self.ctx.cfg.save()
         self._place_flair()
-        self.vis.setVisible(self.ctx.cfg["visualiser"] != "off")
-        self.vis.sync()
-        self.ctx._sync_audio()
         self.ctx.reload_page()
 
     def on_hide(self) -> None:
@@ -1234,7 +1228,7 @@ class PerfPage(Page):
         lay = vbox(self, 8)
         self.g_gpu = None
         gauges = hbox(spacing=0)
-        self.g_cpu, self.g_ram = PickGauge(tr("Processor")), PickGauge(tr("Memory"))
+        self.g_cpu, self.g_ram = PickGauge(tr("Processor")), PickGauge(tr("RAM"))
         gauges.addStretch(1)
         gauges.addWidget(self.g_cpu)
         gauges.addStretch(1)
@@ -1255,7 +1249,7 @@ class PerfPage(Page):
 
         lay.addWidget(heading(tr("Top apps")))          # click a gauge (or here) to switch
         self.top_kind = 0
-        self.top_seg = Segmented([tr("Processor"), tr("Memory")], 0)
+        self.top_seg = Segmented([tr("Processor"), tr("RAM")], 0)
         self.top_seg.changed.connect(self._top_pick)
         lay.addWidget(self.top_seg)
         self.top_list = TopList()
@@ -1277,7 +1271,7 @@ class PerfPage(Page):
         corner = Segmented([tr("Top left"), tr("Top right"), tr("Bottom left"), tr("Bottom right")], hud["corner"])
         corner.changed.connect(lambda i: self._hud("corner", i))
         lay.addWidget(corner)
-        items = [("cpu", tr("Processor")), ("ram", tr("Memory")), ("ping", tr("Ping")), ("net", tr("Internet")),
+        items = [("cpu", tr("Processor")), ("ram", tr("RAM")), ("ping", tr("Ping")), ("net", tr("Internet")),
                  ("clock", tr("Clock"))]
         if self.g_gpu is not None:
             items.insert(1, ("gpu", tr("Graphics")))
@@ -1301,7 +1295,7 @@ class PerfPage(Page):
         grid.setVerticalSpacing(S(4))
         self.sess = {}
         names = [("time", tr("Time")), ("cpu", tr("Processor, highest")), ("cpu_avg", tr("Processor, average")),
-                 ("ram", tr("Memory, highest")), ("ping", tr("Ping, average"))]
+                 ("ram", tr("RAM, highest")), ("ping", tr("Ping, average"))]
         if self.g_gpu is not None:
             names.append(("temp", tr("Graphics card, hottest")))
         for i, (key, label) in enumerate(names):
@@ -1566,7 +1560,7 @@ class ToolsPage(Page):
         lines = [win.windows_version(), win.cpu_name()]
         try:
             import psutil
-            lines.append(tr("Memory") + f": {psutil.virtual_memory().total / 2 ** 30:.0f} GB")
+            lines.append(tr("RAM") + f": {psutil.virtual_memory().total / 2 ** 30:.0f} GB")
         except Exception:  # noqa: BLE001
             pass
         lines += sorted({desc for _n, desc in win.display_devices()})
@@ -1638,166 +1632,164 @@ class SettingsPage(Page):
             lay.addWidget(row(label, t))
             return t
 
-        lay.addWidget(heading(tr("Opening")))
-        toggle(tr("Hold to open"), "hold_open", after=lambda v: ctx.reload_page())
-        if cfg["hold_open"]:                           # the time only matters while hold to open is on
-            hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
-                             marks=list(range(200, 1001, 100)))
+        from .hub import NavTiles
+        sec = int(getattr(ctx, "settings_tab", 0) or 0)
+        tiles = NavTiles([(tr("General"), "cog"), (tr("Look"), "spark"), (tr("Sounds"), "volume"),
+                          (tr("Account"), "users"), (tr("Backup"), "folder"), (tr("About"), "refresh")], sec, per_row=3)
 
-            def hold_set(v) -> None:
-                cfg["hold_ms"] = int(v)
-            hold.changed.connect(hold_set)
-            lay.addWidget(hold)
-
-        lay.addWidget(heading(tr("Appearance")))
-        toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
-        toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
-        toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
-        toggle(tr("Welcome screen"), "welcome")
-        seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
-        seg.setFixedWidth(S(170))
-        seg.changed.connect(lambda i: ctx.set_language("fr" if i else "en"))
-        lay.addWidget(row(tr("Language"), seg))
-        size = SliderRow(tr("Size"), 70, 150, cfg["scale"], 10, 100, lambda v: f"{int(v)}%",
-                         marks=list(range(70, 151, 10)))
-        size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
-        lay.addWidget(size)
-
-        lay.addWidget(heading(tr("Games")))
-        toggle(tr("Rubenium start screen"), "splash", after=lambda v: ctx.splash.sync())
-
-        lay.addWidget(heading(tr("Audio")))
-
-        def sounds(v: bool) -> None:
-            cfg["sounds"] = v
-            sfx.enabled = v
-            if v:
-                sfx.play("on")                      # a sample of how quiet they are
-        snd = Toggle(cfg["sounds"])
-        snd.toggled_by_user.connect(sounds)
-        lay.addWidget(row(tr("Interface sounds"), snd))
-        from .notify import settings_section
-        settings_section(ctx, lay)
-
-        lay.addWidget(heading(tr("Music")))
-        from .music2 import KEY_CHOICES, VIS_STYLES
-        keys = [k for k, _n, _v in KEY_CHOICES]
-        hk = Segmented([tr(n) if k in ("off",) else n.replace("Right ", "R ") for k, n, _v in KEY_CHOICES],
-                       keys.index(cfg["hotkey"]) if cfg["hotkey"] in keys else 0)
-
-        def set_key(i: int) -> None:
-            cfg["hotkey"] = keys[i]
-            ctx.tapkey.set_key(keys[i])
-        hk.changed.connect(set_key)
-        lay.addWidget(Label(tr("Show / hide key (tap it once)"), 11.5, TEXT))
-        lay.addWidget(hk)
-        from .music2 import vis_owned
-
-        def vis_on(v: bool) -> None:
-            style = cfg["vis_style"] if vis_owned(ctx, cfg["vis_style"]) else "bars"
-            cfg["visualiser"] = style if v else "off"
-            ctx._sync_audio()
-            ctx.window._drop_page("home")
+        def pick(i: int) -> None:
+            ctx.settings_tab = i
             ctx.reload_page()
-        tv = Toggle(cfg["visualiser"] != "off")
-        tv.toggled_by_user.connect(vis_on)
-        lay.addWidget(row(tr("Visualiser on the music tab"), tv))
-        if cfg["visualiser"] != "off":
-            mine = [(k, n) for k, n in VIS_STYLES if vis_owned(ctx, k)]
-            keys_v = [k for k, _n in mine]
-            vs = Segmented([tr(n) for _k, n in mine], keys_v.index(cfg["visualiser"]) if cfg["visualiser"] in keys_v else 0)
+        tiles.changed.connect(pick)
+        lay.addWidget(tiles)
 
-            def set_vis(i: int) -> None:
-                cfg["visualiser"] = cfg["vis_style"] = keys_v[i]
-                ctx.window._drop_page("home")
-            vs.changed.connect(set_vis)
-            lay.addWidget(vs)
-            lay.addWidget(Label(tr("More visualisers in Shop → Shop → Visualisers."), 10, TEXT_FAINT))
-        tg = Toggle(cfg["game_mouse"])
-        tg.toggled_by_user.connect(lambda v: cfg.__setitem__("game_mouse", v))
-        lay.addWidget(row(tr("Game mode: the mouse goes through Rubenium in fullscreen games"), tg))
-        line = hbox(spacing=6)
-        hist = Button(tr("Song history"), "ghost", 30, icon="note")
-        def open_hist() -> None:
-            from .hub import HistoryWindow
-            ctx._hist = HistoryWindow(ctx)
-        hist.clicked.connect(open_hist)
-        tour = Button(tr("Show the tour again"), "ghost", 30)
-        tour.clicked.connect(ctx.start_tutorial)
-        line.addWidget(hist, 1)
-        line.addWidget(tour, 1)
-        lay.addLayout(line)
+        def note(text: str) -> None:                    # a short explanation under a setting, never off the edge
+            lay.addWidget(Label(text, 10, TEXT_DIM, wrap_w=self.W))
 
-        from .hub import backup_section
-        backup_section(ctx, lay, self.W)
+        if sec == 0:                                    # ---------------------------------------------- General
+            lay.addWidget(heading(tr("Opening")))
+            toggle(tr("Hold to open"), "hold_open", after=lambda v: ctx.reload_page())
+            if cfg["hold_open"]:                       # the time only matters while hold to open is on
+                hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
+                                 marks=list(range(200, 1001, 100)))
 
-        lay.addWidget(heading(tr("Ball")))
-        self.preview = BallPreview(ctx)
-        lay.addWidget(self.preview)
-        ball = SliderRow(tr("Ball size"), min(BALL_SIZES), max(BALL_SIZES), cfg["ball_size"], 10, 100,
-                         lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
-        ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
-        lay.addWidget(ball)
+                def hold_set(v) -> None:
+                    cfg["hold_ms"] = int(v)
+                hold.changed.connect(hold_set)
+                lay.addWidget(hold)
+            from .music2 import KEY_CHOICES
+            keys = [k for k, _n, _v in KEY_CHOICES]
+            hk = Segmented([tr("No key") if k == "off" else n.replace("Right ", "R ") for k, n, _v in KEY_CHOICES],
+                           keys.index(cfg["hotkey"]) if cfg["hotkey"] in keys else 0)
 
-        lay.addWidget(heading(tr("Menu bar")))
-        from .pages2 import TABS
-        for key, _icon, label in TABS:                 # Home, Lyrics and Settings always stay
-            if key in LOCKED_TABS or key in ("giveaway", "admin"):
-                continue
-            t = Toggle(bool(cfg["news_tab"]) if key == "new" else not cfg["tabs_off"].get(key))
-            t.toggled_by_user.connect(lambda v, k=key: ctx.set_tab(k, v))
-            lay.addWidget(row(tr(label), t))
+            def set_key(i: int) -> None:
+                cfg["hotkey"] = keys[i]
+                ctx.tapkey.set_key(keys[i])
+            hk.changed.connect(set_key)
+            lay.addWidget(Label(tr("Show / hide key"), 11.5, TEXT))
+            lay.addWidget(hk)
+            note(tr("Tap it once to open or close Rubenium, even in a game."))
+            lay.addWidget(heading(tr("Games")))
+            toggle(tr("Game mode"), "game_mouse")
+            note(tr("In fullscreen games the mouse goes through Rubenium, so it never gets in the way."))
+            toggle(tr("Rubenium start screen"), "splash", after=lambda v: ctx.splash.sync())
+            lay.addWidget(heading(tr("Language and size")))
+            seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
+            seg.setFixedWidth(S(170))
+            seg.changed.connect(lambda i: ctx.set_language("fr" if i else "en"))
+            lay.addWidget(row(tr("Language"), seg))
+            size = SliderRow(tr("Size"), 70, 150, cfg["scale"], 10, 100, lambda v: f"{int(v)}%",
+                             marks=list(range(70, 151, 10)))
+            size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
+            lay.addWidget(size)
+            if win.IS_WIN:
+                lay.addWidget(heading(tr("Windows")))
+                t = Toggle(win.autostart_get())
 
-        if win.IS_WIN:
-            lay.addWidget(heading(tr("Windows")))
-            t = Toggle(win.autostart_get())
+                def auto(v, t=t):
+                    if win.autostart_set(v):
+                        cfg["autostart"] = v
+                    else:
+                        t.set_checked(not v)
+                t.toggled_by_user.connect(auto)
+                lay.addWidget(row(tr("Start with Windows"), t))
+                toggle(tr("Welcome screen"), "welcome")
 
-            def auto(v, t=t):
-                if win.autostart_set(v):
-                    cfg["autostart"] = v
-                else:
-                    t.set_checked(not v)
-            t.toggled_by_user.connect(auto)
-            lay.addWidget(row(tr("Start with Windows"), t))
+        elif sec == 1:                                  # ---------------------------------------------- Look
+            lay.addWidget(heading(tr("Ball")))
+            self.preview = BallPreview(ctx)
+            lay.addWidget(self.preview)
+            ball = SliderRow(tr("Ball size"), min(BALL_SIZES), max(BALL_SIZES), cfg["ball_size"], 10, 100,
+                             lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
+            ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
+            lay.addWidget(ball)
+            lay.addWidget(heading(tr("Effects")))
+            toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
+            toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
+            toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
+            lay.addWidget(heading(tr("Tabs in the menu bar")))
+            from .pages2 import TABS
+            for key, _icon, label in TABS:             # Home, Lyrics and Settings always stay
+                if key in LOCKED_TABS or key in ("giveaway", "admin"):
+                    continue
+                t = Toggle(bool(cfg["news_tab"]) if key == "new" else not cfg["tabs_off"].get(key))
+                t.toggled_by_user.connect(lambda v, k=key: ctx.set_tab(k, v))
+                lay.addWidget(row(tr(label), t))
 
-        if ctx.online.logged_in():
-            lay.addWidget(heading(tr("Account")))
-            out = Button(tr("Log out"), "ghost", 32)
-            out.setFixedWidth(max(S(150), out.sizeHint().width()))
-            out.clicked.connect(lambda: ctx.window.confirm(tr("Log out and close Rubenium?"), self._log_out,
-                                                           yes=tr("Log out")))
-            hours = ctx.online.hours()
-            played = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
-            lay.addWidget(row(f"{ctx.online.username()}  ·  {played} h", out))
-            pw = Button(tr("Change password"), "ghost", 28)
-            pw.setFixedWidth(max(S(150), pw.sizeHint().width()))
-            pw.clicked.connect(ctx.change_password_dialog)
-            lay.addWidget(pw, 0, Qt.AlignmentFlag.AlignRight)
-            gone = Button(tr("Delete account"), "quiet", 24)
-            gone.setFixedWidth(max(S(120), gone.sizeHint().width()))
-            gone.clicked.connect(ctx.delete_account_dialog)
-            lay.addWidget(gone, 0, Qt.AlignmentFlag.AlignRight)
+        elif sec == 2:                                  # ---------------------------------------------- Sounds
+            lay.addWidget(heading(tr("Sounds")))
 
-        lay.addWidget(heading(tr("Updates")))
-        latest = ctx.updater.latest
-        if latest:
-            up = Button(tr("Update to {v}", v=latest.get("label", latest["version"])), "primary", 32)
-            up.clicked.connect(ctx.install_update)
-        else:
-            up = Button(tr("Check for updates"), "ghost", 32, icon="refresh")
-            up.clicked.connect(lambda: ctx.updater.check(manual=True))
-        lay.addWidget(row(tr("Version {v}", v=VERSION_NAME), up))
-        up.setFixedWidth(max(S(150), up.sizeHint().width()))
-        t_up = Toggle(cfg["update_check"])
+            def sounds(v: bool) -> None:
+                cfg["sounds"] = v
+                sfx.enabled = v
+                if v:
+                    sfx.play("on")                  # a sample of how quiet they are
+            snd = Toggle(cfg["sounds"])
+            snd.toggled_by_user.connect(sounds)
+            lay.addWidget(row(tr("Interface sounds"), snd))
+            from .notify import settings_section
+            settings_section(ctx, lay)
 
-        def auto_up(v) -> None:
-            cfg["update_check"] = v
-            ctx.updater.start() if v else ctx.updater.stop()
-        t_up.toggled_by_user.connect(auto_up)
-        lay.addWidget(row(tr("Check automatically"), t_up))
+        elif sec == 3:                                  # ---------------------------------------------- Account
+            if not ctx.online.logged_in():
+                lay.addWidget(Label(tr("Log in to see your account."), 12, TEXT_DIM))
+            else:
+                hours = ctx.online.hours()
+                played = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
+                lay.addWidget(heading(tr("Account")))
+                lay.addWidget(Label(f"{ctx.online.username()}  ·  {played} h", 13, TEXT, bold=True))
+                line = hbox(spacing=6)
+                pw = Button(tr("Change password"), "ghost", 30)
+                pw.clicked.connect(ctx.change_password_dialog)
+                out = Button(tr("Log out"), "ghost", 30)
+                out.clicked.connect(lambda: ctx.window.confirm(tr("Log out and close Rubenium?"), self._log_out,
+                                                               yes=tr("Log out")))
+                line.addWidget(pw, 1)
+                line.addWidget(out, 1)
+                lay.addLayout(line)
+                lay.addWidget(heading(tr("Music")))
+                line = hbox(spacing=6)
+                hist = Button(tr("Song history"), "ghost", 30, icon="note")
 
-        lay.addSpacing(S(10))
-        leave = Button(tr("Quit Rubenium"), "quiet", 22)         # small and last: closing is rarely what you want
-        leave.setFixedWidth(max(S(120), leave.sizeHint().width()))
-        leave.clicked.connect(lambda: ctx.window.confirm(tr("Quit Rubenium?"), ctx.quit, yes=tr("Quit")))
-        lay.addWidget(leave, 0, Qt.AlignmentFlag.AlignHCenter)
+                def open_hist() -> None:
+                    from .hub import HistoryWindow
+                    ctx._hist = HistoryWindow(ctx)
+                hist.clicked.connect(open_hist)
+                tour = Button(tr("Show the tour again"), "ghost", 30)
+                tour.clicked.connect(ctx.start_tutorial)
+                line.addWidget(hist, 1)
+                line.addWidget(tour, 1)
+                lay.addLayout(line)
+                lay.addSpacing(S(8))
+                gone = Button(tr("Delete account"), "quiet", 24)
+                gone.setFixedWidth(max(S(120), gone.sizeHint().width()))
+                gone.clicked.connect(ctx.delete_account_dialog)
+                lay.addWidget(gone, 0, Qt.AlignmentFlag.AlignRight)
+
+        elif sec == 4:                                  # ---------------------------------------------- Backup
+            from .hub import backup_section
+            backup_section(ctx, lay, self.W)
+
+        else:                                           # ---------------------------------------------- About
+            lay.addWidget(heading(tr("Updates")))
+            latest = ctx.updater.latest
+            if latest:
+                up = Button(tr("Update to {v}", v=latest.get("label", latest["version"])), "primary", 32)
+                up.clicked.connect(ctx.install_update)
+            else:
+                up = Button(tr("Check for updates"), "ghost", 32, icon="refresh")
+                up.clicked.connect(lambda: ctx.updater.check(manual=True))
+            lay.addWidget(row(tr("Version {v}", v=VERSION_NAME), up))
+            up.setFixedWidth(max(S(150), up.sizeHint().width()))
+            t_up = Toggle(cfg["update_check"])
+
+            def auto_up(v) -> None:
+                cfg["update_check"] = v
+                ctx.updater.start() if v else ctx.updater.stop()
+            t_up.toggled_by_user.connect(auto_up)
+            lay.addWidget(row(tr("Check automatically"), t_up))
+            lay.addSpacing(S(10))
+            leave = Button(tr("Quit Rubenium"), "quiet", 22)
+            leave.setFixedWidth(max(S(120), leave.sizeHint().width()))
+            leave.clicked.connect(lambda: ctx.window.confirm(tr("Quit Rubenium?"), ctx.quit, yes=tr("Quit")))
+            lay.addWidget(leave, 0, Qt.AlignmentFlag.AlignHCenter)

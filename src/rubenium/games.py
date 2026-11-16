@@ -14,8 +14,9 @@ from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
 from .pages import Page
 from .shop import CoinBar, GOLD_TEXT, clock_text
 from .wallet import coins_text, paint_coin
-from .widgets import Button, IconButton, Label, Segmented, Tween, draw_icon, hbox, vbox
-from .games2 import BeatRush, MemoryGame, ScratchCard, ScratchRow, build_duels
+from .widgets import Button, IconButton, Label, Segmented, Tween, draw_icon, hbox, heading, vbox
+from .games2 import (BeatRush, BigCard, MemoryGame, MEM_THEMES, ScratchCard, ScratchRow, TAP_MODES, build_duels,
+                     build_minigames)
 
 RNG = random.SystemRandom()
 BETS = [10, 25, 50, 100, 250, 500, 1000]
@@ -1952,6 +1953,8 @@ class GamesPage(Page):
                     self._back_bar(lay, tr({"memory": "Memory", "scratch": "Scratch card"}.get(sub, "Duels")))
                     server_wait(ctx, lay, self.W)
                     return
+            if sub == "minigames":
+                return build_minigames(self, lay)
             if sub == "memory":
                 return self._memory(lay)
             if sub == "duels":
@@ -1976,25 +1979,14 @@ class GamesPage(Page):
         lay.addWidget(DailyRow(self))
         lay.addWidget(ScratchRow(self))
         line = hbox(spacing=6)
-        mini = Button(tr("Beat Tap"), "ghost", 34, icon="note")
-        mini.setToolTip(tr("A free mini game: hit the notes on the beat to earn coins"))
-        mini.clicked.connect(lambda: self._show_mini(True))
-        duel = Button(tr("Duel"), "ghost", 34, icon="shield")
-        duel.setToolTip(tr("Challenge a friend at Beat Tap, Memory or Parking, with or without a bet"))
-        duel.clicked.connect(lambda: self.open_sub("duels"))
-        line.addWidget(mini, 1)
+        earn = BigCard(tr("Earn coins"), tr("3 free mini games"), "spark",
+                       ("#35E0A1", "#12806A"), lambda: self.open_sub("minigames"))
+        duel = BigCard(tr("Duels"), tr("1 vs 1 with friends"), "shield",
+                       ("#FF5C6C", "#8A1F7A"), lambda: self.open_sub("duels"))
+        line.addWidget(earn, 1)
         line.addWidget(duel, 1)
         lay.addLayout(line)
-        line = hbox(spacing=6)
-        park = Button(tr("Parking"), "ghost", 34, icon="grid")
-        park.setToolTip(tr("A free puzzle: slide the cars to get the red car out, for coins"))
-        park.clicked.connect(lambda: self._show_park(True))
-        mem = Button(tr("Memory"), "ghost", 34, icon="gem")
-        mem.setToolTip(tr("A free game: find the pairs in as few flips as you can, for coins"))
-        mem.clicked.connect(lambda: self.open_sub("memory"))
-        line.addWidget(park, 1)
-        line.addWidget(mem, 1)
-        lay.addLayout(line)
+        lay.addWidget(heading(tr("Casino")))
         grid = QWidget()
         gl = QGridLayout(grid)
         gl.setContentsMargins(0, 0, 0, 0)
@@ -2015,7 +2007,7 @@ class GamesPage(Page):
     def _show_mini(self, on: bool) -> None:
         sfx.play("pick")
         self.ctx.mini_open = on
-        self.ctx.games_sub = None
+        self.ctx.games_sub = None if on else "minigames"
         self.ctx.reload_page()
 
     def _mini(self, lay) -> None:
@@ -2028,6 +2020,11 @@ class GamesPage(Page):
         from .hub import server_wait
         if server_wait(self.ctx, lay, self.W):
             return
+        mode = int(getattr(self.ctx, "tap_mode", 0) or 0)
+        modes = Segmented([tr(n) for _k, n, _d in TAP_MODES], mode)
+        modes.changed.connect(lambda i: (setattr(self.ctx, "tap_mode", i), self.ctx.reload_page()))
+        lay.addWidget(modes)
+        lay.addWidget(Label(tr(TAP_MODES[mode][2]), 10.5, TEXT_DIM))
         self.beat = BeatRush(self, lambda _r: (self.beat_btn.setEnabled(True), self.beat_btn.set_text(tr("Play again"))))
         back.clicked.connect(lambda: (self.beat.abort(), self._show_mini(False)))
         lay.addWidget(self.beat)
@@ -2056,11 +2053,14 @@ class GamesPage(Page):
         lay.addWidget(CoinBar(self.ctx))
 
     def _memory(self, lay) -> None:
-        self._back_bar(lay, tr("Memory"))
+        self._back_bar(lay, tr("Memory"), lambda: self.open_sub("minigames"))
         tier = int(getattr(self.ctx, "mem_tier", 0) or 0)
         seg = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], tier)
         lay.addWidget(seg)
+        style = Segmented([tr(n) for _k, n in MEM_THEMES], int(getattr(self.ctx, "mem_theme", 0) or 0))
+        lay.addWidget(style)
         self.mem = MemoryGame(self)
+        style.changed.connect(lambda i: (setattr(self.ctx, "mem_theme", i), self.mem.update()))
         seg.changed.connect(lambda i: (setattr(self.ctx, "mem_tier", i), self.mem.start()))
         lay.addWidget(self.mem)
         go = Button(tr("New game"), "primary", 36)
@@ -2151,7 +2151,7 @@ class GamesPage(Page):
     def _show_park(self, on: bool) -> None:
         sfx.play("pick")
         self.ctx.park_open = on
-        self.ctx.games_sub = None
+        self.ctx.games_sub = None if on else "minigames"
         self.ctx.reload_page()
 
     def _park(self, lay) -> None:

@@ -6,7 +6,7 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QGridLayout, QWidget
 
 from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
@@ -15,6 +15,9 @@ from .shop import CoinBar, GOLD_TEXT, clock_text
 from .wallet import coins_text, paint_coin
 from .widgets import Button, IconButton, Label, Segmented, draw_icon, hbox, vbox
 
+TAP_MODES = [("normal", "Normal", "The classic: faster and faster."), ("rush", "Rush", "Much faster, many more notes."),
+             ("holds", "Long notes", "Lots of notes to hold down."), ("chords", "Chords", "Two notes at once, very often.")]
+MEM_THEMES = [("shapes", "Shapes"), ("numbers", "Numbers"), ("colours", "Colours")]
 LANE_KEYS = [Qt.Key.Key_D, Qt.Key.Key_F, Qt.Key.Key_J, Qt.Key.Key_K]
 LANE_NAMES = ["D", "F", "J", "K"]
 LANE_COLOURS = ["#FF5C8A", "#4FC3FF", "#5BE08A", "#FFB547"]
@@ -71,7 +74,8 @@ class BeatRush(QWidget):
                 self.update()
                 return self.ctx.toast(tr(str(data)), "warn")
             self.begin(data, sent)
-        self.ctx.econ.call("rb_tap_start", {}, got)
+        mode = TAP_MODES[int(getattr(self.ctx, "tap_mode", 0) or 0)][0]
+        self.ctx.econ.call("rb_tap_start", {"mode": mode}, got)
 
     def begin(self, data: dict, sent: float, duel: bool = False) -> None:
         now = time.monotonic()
@@ -393,9 +397,28 @@ SYMBOLS = ["#FF5C8A", "#4FC3FF", "#5BE08A", "#FFB547", "#B36BFF", "#FF8A3D", "#2
            "#FF5CC8", "#8CFF2E", "#6A8CFF", "#E6EEF5"]
 
 
-def paint_symbol(p: QPainter, kind: int, c: QPointF, r: float) -> None:
-    """One of 12 shapes, each with its own colour."""
+def paint_symbol(p: QPainter, kind: int, c: QPointF, r: float, theme: str = "shapes") -> None:
+    """One of 12 pictures: shapes, numbers or colours (the Memory card style)."""
     col = QColor(SYMBOLS[kind % 12])
+    if theme == "numbers":
+        p.save()
+        p.setPen(col)
+        f = QFont(font(12, QFont.Weight.Black))
+        f.setPixelSize(max(6, int(r * 1.5)))
+        p.setFont(f)
+        p.drawText(QRectF(c.x() - r * 1.5, c.y() - r * 1.5, r * 3, r * 3), int(Qt.AlignmentFlag.AlignCenter), str(kind + 1))
+        p.restore()
+        return
+    if theme == "colours":
+        p.save()
+        p.setPen(QPen(QColor("#FFFFFF"), max(1.0, r * 0.08)))
+        g = QRadialGradient(QPointF(c.x() - r * 0.3, c.y() - r * 0.3), r * 1.4)
+        g.setColorAt(0, mix(col, QColor("#FFFFFF"), 0.35))
+        g.setColorAt(1, col)
+        p.setBrush(g)
+        p.drawEllipse(c, r, r)
+        p.restore()
+        return
     p.save()
     p.translate(c)
     p.setPen(Qt.PenStyle.NoPen)
@@ -601,7 +624,8 @@ class MemoryGame(QWidget):
                         p.save()
                         p.translate(rr.center())
                         p.scale(squeeze, 1)
-                        paint_symbol(p, sym, QPointF(0, 0), r.width() * 0.26)
+                        paint_symbol(p, sym, QPointF(0, 0), r.width() * 0.26,
+                                     MEM_THEMES[int(getattr(self.ctx, "mem_theme", 0) or 0)][0])
                         p.restore()
                 else:
                     g = QLinearGradient(rr.topLeft(), rr.bottomRight())
@@ -985,3 +1009,86 @@ def build_duels(page, lay) -> None:
         for d in duels[:10]:
             lay.addWidget(DuelRow(page, d))
     page.load_duels(quiet=True)
+
+
+
+# ================================================================ the lobby: two big cards, and the mini game list
+class BigCard(QWidget):
+    """A big clickable card: an icon, a title and one line saying what it is."""
+
+    def __init__(self, title: str, sub: str, icon: str, colours: tuple, on_click, height: int = 74) -> None:
+        super().__init__()
+        self.title, self.sub, self.icon, self.colours, self.on_click = title, sub, icon, colours, on_click
+        self.setFixedHeight(S(height))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.hover = 0.0
+        self.extra = ""                               # small text on the right (e.g. coins left)
+
+    def enterEvent(self, _e) -> None:
+        self.hover = 1.0
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = 0.0
+        self.update()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.rect().contains(e.position().toPoint()):
+            sfx.play("pick")
+            self.on_click()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        a, b = QColor(self.colours[0]), QColor(self.colours[1])
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, mix(a, QColor("#0B0E10"), 0.55 - 0.1 * self.hover))
+        g.setColorAt(1, mix(b, QColor("#0B0E10"), 0.8))
+        p.setPen(QPen(alpha(a, 0.55 + 0.3 * self.hover), S(1.3)))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+        glow = QRadialGradient(QPointF(r.left() + S(34), r.center().y()), S(40))
+        glow.setColorAt(0, alpha(a, 0.45))
+        glow.setColorAt(1, alpha(a, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(QPointF(r.left() + S(34), r.center().y()), S(40), S(40))
+        p.save()
+        p.translate(r.left() + S(34), r.center().y())
+        p.scale(1.5, 1.5)
+        draw_icon(p, self.icon, QColor("#FFFFFF"))
+        p.restore()
+        p.setPen(QColor(TEXT))
+        size = 15.0
+        while size > 10 and QFontMetrics(font(size, QFont.Weight.ExtraBold)).horizontalAdvance(self.title) > r.width() - S(76):
+            size -= 0.5                                   # long names (in French) get smaller, never cut
+        p.setFont(font(size, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left() + S(66), r.top() + S(10), r.width() - S(76), S(24)), int(Qt.AlignmentFlag.AlignVCenter), self.title)
+        p.setPen(alpha("#FFFFFF", 0.75))
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left() + S(66), r.top() + S(34), r.width() - S(80), r.height() - S(38)),
+                   int(Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), self.sub)
+        if self.extra:
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(10, QFont.Weight.Bold))
+            p.drawText(r.adjusted(0, S(8), -S(12), 0), int(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight), self.extra)
+
+
+def build_minigames(page, lay) -> None:
+    """Earn coins: the free mini games, each with what it pays."""
+    page._back_bar(lay, tr("Earn coins"))
+    lay.addWidget(Label(tr("Free games that pay coins. Each one pays up to 150 coins every 2 hours; the better you "
+                           "play, the more you get."), 10.5, TEXT_DIM, wrap_w=page.W))
+    games = [
+        ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
+         ("#FF5C8A", "#7A1FFF"), "12-50", lambda: page._show_mini(True)),
+        ("Parking", tr("Slide the cars and get the red one out. Easy, Medium or Hard."), "grid",
+         ("#FF8A3D", "#C2271F"), "12-50", lambda: page._show_park(True)),
+        ("Memory", tr("Find the pairs in as few flips as you can. 3 sizes, 3 card styles."), "gem",
+         ("#4FC3FF", "#2E5BFF"), "12-55", lambda: page.open_sub("memory")),
+    ]
+    for name, sub, icon, cols, pay, go in games:
+        card = BigCard(tr(name), sub, icon, cols, go, 78)
+        card.extra = tr("{n} coins", n=pay)
+        lay.addWidget(card)

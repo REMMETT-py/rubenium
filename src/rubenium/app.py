@@ -309,8 +309,6 @@ class App(QObject):
         if self.cfg["update_check"] and not selftest:
             self._safe("updates", self.updater.start)
         self._safe("show/hide key", lambda: self.tapkey.set_key(self.cfg["hotkey"]))
-        if not self.cfg["vis_migrated"]:                # 2.4.1: the visualiser starts off (turn it on in Settings)
-            self.cfg["visualiser"], self.cfg["vis_migrated"] = "off", True
         self._pin = QTimer(self)
         self._pin.setInterval(2000)
         self._pin.timeout.connect(lambda: self._safe("housekeeping", self._housekeeping))
@@ -522,7 +520,7 @@ class App(QObject):
 
     # ------------------------------------------------------------------ glow
     def _sync_audio(self) -> None:
-        want = ((self.cfg["halo"] or self.cfg["visualiser"] != "off") and self.state.status is Status.PLAYING
+        want = (self.cfg["halo"] and self.state.status is Status.PLAYING
                 and not self.meter.failed and self.window.game_state != 2)
         if want and not self._audio.isActive():
             self._audio.start()

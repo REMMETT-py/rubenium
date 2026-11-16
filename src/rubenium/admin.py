@@ -170,7 +170,7 @@ class Table(QWidget):
 
 class AdminPage(Page):
     key = "admin"
-    SECTIONS = ["Overview", "Players", "Items", "Cases", "Live", "Settings", "Log", "Help"]
+    SECTIONS = ["Overview", "Users", "Items", "Cases", "Live", "Settings", "Log", "Help"]
     ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key"]
 
     def __init__(self, ctx) -> None:
@@ -261,7 +261,7 @@ class AdminPage(Page):
         st = self.fetch("rb_admin_stats", {})
         if st is None:
             return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        lay.addWidget(Numbers([(st["players"], tr("Players")), (st["online"], tr("Online now")), (st["today"], tr("Today")),
+        lay.addWidget(Numbers([(st["players"], tr("Users")), (st["online"], tr("Online now")), (st["today"], tr("Today")),
                                (coins_text(st["coins"]), tr("Coins in total")), (st["keys"], tr("Keys in total")),
                                (st["items"], tr("Items")), (st["listings"], tr("On the market")),
                                (st["trades"], tr("Trades done")), ("", "")], self.W))
@@ -285,8 +285,8 @@ class AdminPage(Page):
         seg = Segmented([tr("Last seen"), tr("Coins"), tr("Hours")], sort)
         seg.changed.connect(lambda i: (setattr(self.ctx, "admin_sort", i), self.ctx.reload_page()))
         lay.addWidget(seg)
-        find = Button(tr("Find a player"), "ghost", 28)
-        find.clicked.connect(lambda: FormDialog(self.ctx, tr("Find a player"), [("n", tr("Username"), "")], tr("Open"),
+        find = Button(tr("Find a user"), "ghost", 28)
+        find.clicked.connect(lambda: FormDialog(self.ctx, tr("Find a user"), [("n", tr("Username"), "")], tr("Open"),
                                                 lambda v, d: (d.close(), self._open(v["n"]))))
         lay.addWidget(find)
         rows = self.fetch("rb_admin_players", {"search": "", "sort": ["", "coins", "hours"][sort], "page": 0})
@@ -352,6 +352,7 @@ class AdminPage(Page):
                 self._reload()
         grid.changed.connect(act)
         lay.addWidget(grid)
+        self._danger(lay, name, d)
         stock = d.get("stock") or {}
         if stock:
             from .collection import CASE_NAMES
@@ -410,6 +411,34 @@ class AdminPage(Page):
                               + (f"  {int(l['keys']):+d}🔑" if int(l.get("keys") or 0) else ""),
                               "#5BE08A" if int(l["coins"]) >= 0 else "#FF7A7A") for l in (d.get("ledger") or [])[:60]], self.W))
 
+    RESETS = [("inventory", "Reset inventory",
+               "Deletes EVERY item {name} owns: all badges, balls, lines, fonts and themes. Items on the market or in a "
+               "trade are taken back first. Coins, keys and cases stay."),
+              ("money", "Reset coins and keys", "Sets {name}'s coins and keys to 0. Items and cases stay."),
+              ("cases", "Reset gifted cases", "Deletes every gifted case {name} has not opened yet. Nothing else changes."),
+              ("all", "FULL ACCOUNT RESET",
+               "{name} starts again like a new account: every item deleted, coins and keys back to the start (500 coins, "
+               "3 keys), gifted cases deleted, login streak back to 0. Time played, friends and name stay.")]
+
+    def _danger(self, lay, name: str, d: dict) -> None:
+        """Big red reset buttons. Each says exactly what it deletes, asks you to type the name, and can be undone
+        from the Log."""
+        lay.addWidget(heading(tr("Danger zone")))
+        lay.addWidget(Label(tr("Every reset is saved in the Log: click it there to undo it."), 10.5, TEXT_DIM, wrap_w=self.W))
+        for what, title, text in self.RESETS:
+            b = Button(tr(title), "danger", 40 if what == "all" else 34, icon="trash")
+            b.clicked.connect(lambda _c=False, what=what, title=title, text=text: self._reset(name, what, title, text))
+            lay.addWidget(b)
+
+    def _reset(self, name: str, what: str, title: str, text: str) -> None:
+        def go(v, dlg) -> None:
+            if v["n"].strip().lower() != name.lower():
+                return dlg.say(tr("Type {name} exactly to confirm", name=name))
+            dlg.close()
+            self.do("rb_admin_reset", {"name": name, "what": what}, tr("Done. You can undo it in the Log."))
+        FormDialog(self.ctx, tr(title) + f" · {name}", [("n", tr("Type the username to confirm: {name}", name=name), "")],
+                   tr("Reset"), go, note=tr(text, name=name))
+
     def _case_dialog(self, name: str) -> None:
         from .collection import CASE_NAMES
         cases = [c["id"] for c in self.ctx.econ.cases] or list(CASE_NAMES)
@@ -444,7 +473,7 @@ class AdminPage(Page):
         lay.addWidget(pick)
         chosen = getattr(self.ctx, "admin_item", "") or ""
         lay.addWidget(Label(tr("Selected: {what}", what=chosen or "—"), 11.5, GOLD_TEXT, bold=True, wrap_w=self.W))
-        lay.addWidget(Label(tr("Pick an item, then open a player and press Give item or case. Or use it for a giveaway or a sale."),
+        lay.addWidget(Label(tr("Pick an item, then open a user and press Give item or case. Or use it for a giveaway or a sale."),
                             10.5, TEXT_DIM, wrap_w=self.W))
         if kind == 6:
             from .collection import CASE_NAMES
@@ -637,7 +666,7 @@ class AdminPage(Page):
 
     # -- forgotten passwords: is it really them?
     VERDICTS = {"real": ("Looks real: asked from the account's own PC", "#3DDC84"),
-                "fake": ("Looks fake: asked from another player's PC", "#FF5C6C"),
+                "fake": ("Looks fake: asked from another user's PC", "#FF5C6C"),
                 "unsure": ("Not sure: a PC we do not know", "#FFC94D"),
                 "no_account": ("No account with this name", "#9AA4AD")}
 
@@ -645,7 +674,7 @@ class AdminPage(Page):
         rows = self.fetch("rb_admin_resets", {})
         if rows is None:
             return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        lay.addWidget(Label(tr("Forgotten passwords. Check the details, then give a new password or refuse. The player "
+        lay.addWidget(Label(tr("Forgotten passwords. Check the details, then give a new password or refuse. The user "
                                "sees the new password on the PC that asked, and must change it after."), 10.5, TEXT_DIM, wrap_w=self.W))
         if not rows:
             return lay.addWidget(Label(tr("No requests."), 12, TEXT_DIM))

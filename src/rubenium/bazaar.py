@@ -411,12 +411,12 @@ def build_cosmetics(page, lay) -> None:
     if not ec.ready or not ec.catalog:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the shop"), 12, TEXT_DIM))
     kind_i = int(getattr(ctx, "shop_kind", 0) or 0)
-    kind = ("ball", "line", "font", "theme", "vis")[kind_i]
+    kind = ("ball", "line", "font", "theme")[min(kind_i, 3)]
     design = getattr(ctx, "shop_design", None)
-    if design is None or kind == "vis":
+    if design is None:
         for sale in (ec.live.get("sales") or [])[:2]:
             lay.addWidget(SaleBanner(page, sale))
-        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Visualisers")], kind_i)
+        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes")], min(kind_i, 3))
 
         def switch(i: int) -> None:
             ctx.shop_kind = i
@@ -424,9 +424,6 @@ def build_cosmetics(page, lay) -> None:
             ctx.reload_page()
         seg.changed.connect(switch)
         lay.addWidget(seg)
-        if kind == "vis":
-            from .hub import build_vis_shop
-            return build_vis_shop(page, lay)
         entries = []
         for base, name in _designs(kind):
             item = f"theme:{base}" if kind == "theme" else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
@@ -662,7 +659,7 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
     line.addWidget(b, 1)
     sell = Button(tr("Sell"), "ghost", 32)
     sell.setEnabled(bool(free) and bool(ec.info(item).get("tradeable")))
-    sell.setToolTip(tr("Put it on the market: other players buy it or make you an offer"))
+    sell.setToolTip(tr("Put it on the market: other users buy it or make you an offer"))
     sell.clicked.connect(lambda: market_sell(ctx, item))
     line.addWidget(sell, 1)
     lay.addLayout(line)
@@ -698,7 +695,7 @@ def market_sell(ctx, item: str) -> None:
                 QTimer.singleShot(600, ctx.reload_page)
             ec.call("rb_market_list", {"item_id": free[-1]["id"], "price": n}, done)
         ask_number(ctx, tr("Sell: {name}", name=item_name(item)), tr("Price in coins"), tr("Put on sale"), listed,
-                   tr("Usual price: about {v} coins. Choose between {a} and {b}. Players can buy it at your price or "
+                   tr("Usual price: about {v} coins. Choose between {a} and {b}. Users can buy it at your price or "
                       "make you an offer. The market keeps 5% when it sells.",
                       v=coins_text(int(info.get("estimate") or 0)), a=coins_text(lo), b=coins_text(hi)))
     ec.online.ask("rb_market_price", {"what": item}, priced)
@@ -1103,7 +1100,7 @@ def build_trade(page, lay) -> None:
         lay.addWidget(Label(tr("Trade done! The items are in your Inventory."), 13, "#5BE08A", bold=True, wrap_w=page.W))
         return
     if state == "cancelled":
-        why = {"expired": "The trade ended: a player left or took too long.", "failed": "The trade could not be done: nothing was exchanged."
+        why = {"expired": "The trade ended: a user left or took too long.", "failed": "The trade could not be done: nothing was exchanged."
                }.get(d.get("why"), "The trade was cancelled. Nothing was exchanged.")
         lay.addWidget(Label(tr(why), 12.5, "#FF9A9A", wrap_w=page.W))
         return
@@ -1171,7 +1168,7 @@ def build_trade(page, lay) -> None:
     ready = Button(tr("Not ready") if my_ready else tr("Ready"), "ghost" if my_ready else "primary", 36)
     ready.clicked.connect(lambda: link.act("rb_trade_ready", {"ready": not my_ready, "seen_version": version}))
     lay.addWidget(ready)
-    lay.addWidget(Label(tr("Any change makes both players not ready again. Nothing moves until both confirm."), 10.5,
+    lay.addWidget(Label(tr("Any change makes both users not ready again. Nothing moves until both confirm."), 10.5,
                         TEXT_DIM, wrap_w=page.W))
     offered = {r["id"] for r in mine}
     pool = [i for i in ec.items if not i.get("locked") and i["id"] not in offered
