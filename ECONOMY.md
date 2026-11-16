@@ -50,3 +50,11 @@ The Gold Rubenium R: about 1 in 220 000 Mythic Hunt openings.
 | Duels | bet 0 to 5 000 each, winner takes both minus 5% |
 | Badge shop | Basic/Painted cost value x4 (Common), x5 (Rare), x6 (Epic), x8 (Legendary); Shiny x1.5 more; Titanium, Gold, Mythic never sold |
 | Sets (once each) | Common row 3 000 + 2 keys, Rare 8 000 + 4, Epic 20 000 + 6, Legendary 50 000 + 10, Mythic 250 000 + 25, 8 Painted of one badge 4 000 + 2, 5 Shiny 15 000 + 5, 3 Titanium 40 000 + 8, a Gold 25 000 + 10 |
+
+## 2.5 changes
+
+- Gifted cases (from a friend or the admin) open completely free: no coins and no key.
+- Deals: every day 4 items (price 30 000 or less, never Titanium, Gold or Mythic) are 20-35% cheaper, the same for everyone.
+- Beat Tap modes: Normal, Rush (faster, more notes), Long notes, Chords. Same pay and limits.
+- Admin resets (inventory, coins and keys, gifted cases, full account): everything is saved in the Log and can be undone.
+- Visualisers removed (none are sold).

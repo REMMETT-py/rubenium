@@ -1,9 +1,11 @@
-Rubenium 2.4.1
+Rubenium 2.5
 
-- Gifted cases open for free (after the server update)
-- Everything opens inside the menu: no extra windows over games
-- Game mode: the mouse goes through Rubenium in fullscreen games (Right Shift opens it)
-- Daily reward flame that grows every day; shown only when you open the menu
-- Visualisers are shop items and start turned off (toggle in Settings)
-- Profile picture editor, clearer shop and admin buttons, "Muet" in French
-- No error messages while the server update is waiting
+- Games tab: Earn coins (mini games) and Duels as two big separate cards
+- Beat Tap: 4 modes (Normal, Rush, Long notes, Chords); Memory: 3 card styles
+- Shop tab is now the Hub: Get items (Shop, Deals, Cases, Market) and Yours (Inventory, Collection, Sets, Style)
+- New: Deals, 4 items cheaper every day
+- Friend profiles: real actions for friends, clear reasons to add others
+- Settings in 6 clear sections
+- Admin: big red reset buttons (inventory, coins and keys, gifted cases, full account), all undoable
+- Gifted cases fully free (server update)
+- Visualisers removed; translations fixed everywhere

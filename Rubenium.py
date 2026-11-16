@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.4.1 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 2.5 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.4.1"         # the version people see
-BUILD = "2026.11.17.2"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.5"         # the version people see
+BUILD = "2026.11.17.3"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1723,9 +1723,6 @@ DEFAULTS: dict = {
     "notify_sound": True,
     "notify_volume": 20,
     "font_item": "",
-    "visualiser": "off",
-    "vis_style": "bars",
-    "vis_migrated": False,
     "game_mouse": True,
     "badge_size": 100,
     "badge_pos": "above",
@@ -2020,7 +2017,7 @@ def explain(err: ApiError) -> str:
     if "pgrst202" in text or "could not find the function" in text or ("function" in text and "does not exist" in text):
         return "Coming very soon: the server is being updated"
     if "rb_no_such_user" in text:
-        return "No player with this name"
+        return "No user with this name"
     if "rb_thats_you" in text:
         return "That is you"
     if "rb_friends_only" in text:
@@ -2415,15 +2412,15 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
           "rb_nothing_to_collect": "Nothing to collect", "rb_not_done": "Not finished yet",
           "rb_already_claimed": "Already claimed", "rb_trade_locked": "Unlocks after 5 hours with Rubenium",
-          "rb_they_cannot_trade": "This player needs 5 hours with Rubenium first",
+          "rb_they_cannot_trade": "This user needs 5 hours with Rubenium first",
           "rb_bad_price": "This price is too low or too high", "rb_too_many_listings": "You have too many items on sale",
           "rb_not_listed": "No longer on sale", "rb_sold": "Already sold", "rb_own_listing": "This is your own item",
           "rb_trade_gone": "This trade is over", "rb_trade_changed": "The offer changed: look again",
-          "rb_not_ready": "Both players must be ready", "rb_wait": "Wait for the countdown",
+          "rb_not_ready": "Both users must be ready", "rb_wait": "Wait for the countdown",
           "rb_too_many_trades": "Too many open trades", "rb_bad_offer": "This offer is not possible",
           "rb_round_gone": "This round is over", "rb_too_early": "Too early: wait for x1.20",
           "rb_gift_limit": "3 gifts a day at most", "rb_friends_only": "Friends only",
-          "rb_no_such_user": "No player with this name", "rb_thats_you": "That is you",
+          "rb_no_such_user": "No user with this name", "rb_thats_you": "That is you",
           "rb_giveaway_over": "This giveaway is over", "rb_giveaway_hours": "You need more hours to join",
           "rb_rename_wait": "One name change every 24 hours", "rb_username_taken": "This username is taken",
           "rb_bad_username": "3 to 10 letters or numbers", "rb_same_name": "That is already your name",
@@ -2814,21 +2811,21 @@ FR = {
     # tray
     "Open / close": "Ouvrir / fermer", "Crosshair on / off": "Afficher / masquer le viseur",
     "Normal screen colours": "Couleurs d'écran normales",
-    "Put the ball back in the corner": "Remettre la bulle dans le coin", "Quit Rubenium": "Quitter Rubenium",
+    "Put the ball back in the corner": "Remettre la boule dans le coin", "Quit Rubenium": "Quitter Rubenium",
     # home
     "Could not find the music app window": "Fenêtre de l'appli de musique introuvable",
-    "Click to choose the music app": "Cliquez pour choisir l'appli de musique",
+    "Click to choose the music app": "Clique pour choisir l'appli de musique",
     "Open the music app": "Ouvrir l'appli de musique",
     "Shuffle": "Lecture aléatoire", "Previous": "Précédent", "Next": "Suivant", "Repeat": "Répéter",
     "Music app: {name}": "Appli de musique : {name}", "Music app: automatic": "Appli de musique : automatique",
     "Unknown artist": "Artiste inconnu", "Setup needed": "Installation à terminer",
     "Music app not responding": "L'appli de musique ne répond pas", "Trying again…": "Nouvel essai…",
     "Nothing is playing": "Aucune musique en cours",
-    "Press play in your music app": "Lancez un titre dans votre appli de musique",
+    "Press play in your music app": "Lance un titre dans ton appli de musique",
     "No music app is open": "Aucune appli de musique ouverte",
-    "Press play to open Spotify": "Appuyez sur lecture pour ouvrir Spotify", "Auto": "Auto",
+    "Press play to open Spotify": "Appuie sur lecture pour ouvrir Spotify", "Auto": "Auto",
     # lyrics
-    "Try again": "Réessayer", "Play a song to see its lyrics": "Lancez un titre pour voir les paroles",
+    "Try again": "Réessayer", "Play a song to see its lyrics": "Lance un titre pour voir les paroles",
     "Looking for lyrics…": "Recherche des paroles…", "No internet connection": "Pas de connexion Internet",
     "No lyrics for this song": "Pas de paroles pour ce titre",
     # crosshair
@@ -2842,7 +2839,7 @@ FR = {
     "Open the image folder": "Ouvrir le dossier des images", "Image size": "Taille de l'image",
     "Saved crosshairs": "Viseurs enregistrés", "Load": "Charger", "Save": "Enregistrer",
     "Use “borderless” or “windowed” mode in your game to see the crosshair.":
-        "Mettez votre jeu en mode « fenêtré » ou « sans bordure » pour voir le viseur.",
+        "Mets ton jeu en mode « fenêtré » ou « sans bordure » pour voir le viseur.",
     "Reset crosshair": "Réinitialiser le viseur", "Selected: {name}": "Image choisie : {name}",
     "No image yet": "Aucune image pour l'instant", "Add an image first": "Ajoutez d'abord une image",
     "Choose an image": "Choisir une image", "This file could not be added": "Impossible d'ajouter ce fichier",
@@ -2850,7 +2847,7 @@ FR = {
     "Slot {n} is empty": "L'emplacement {n} est vide", "Crosshair reset": "Viseur réinitialisé",
     # display
     "Change my screen colours": "Modifier les couleurs de l'écran",
-    "Goes back to normal when you turn it off": "Tout redevient normal quand vous désactivez",
+    "Goes back to normal when you turn it off": "Tout redevient normal quand tu désactives",
     "Look A": "Style A", "Look B": "Style B", "Light": "Lumière", "Brightness": "Luminosité",
     "Contrast": "Contraste", "Gamma": "Gamma", "Brighter shadows": "Ombres plus claires",
     "Colour strength": "Intensité des couleurs", "Tint": "Teinte", "NVIDIA vibrance": "Vibrance NVIDIA",
@@ -2858,7 +2855,7 @@ FR = {
     "Some settings are missing": "Certains réglages sont absents",
     "This PC or screen does not allow them.": "Ce PC ou cet écran ne les permet pas.",
     "Reset this look": "Réinitialiser ce style", "Look {p} reset": "Style {p} réinitialisé",
-    "Your screen refused this setting": "Votre écran a refusé ce réglage",
+    "Your screen refused this setting": "Ton écran a refusé ce réglage",
     # stats
     "Processor": "Processeur", "Memory": "Mémoire", "Graphics": "Carte graphique", "Ping": "Ping",
     "Internet": "Internet", "On-screen stats": "Stats à l'écran",
@@ -2867,21 +2864,21 @@ FR = {
     "Bottom right": "Bas droite",
     # tools
     "Gaming mode": "Mode jeu",
-    "Sets up Windows for games. Turn off to undo.": "Prépare Windows pour le jeu. Désactivez pour annuler.",
+    "Sets up Windows for games. Turn off to undo.": "Prépare Windows pour le jeu. Désactive pour annuler.",
     "Full power": "Puissance maximale", "Windows Game Mode on": "Mode Jeu de Windows activé",
     "Mouse acceleration off": "Accélération de la souris désactivée",
-    "Your screen can be smoother": "Votre écran peut être plus fluide",
+    "Your screen can be smoother": "Ton écran peut être plus fluide",
     "It runs at {a} Hz but can do {b} Hz.": "Il est à {a} Hz mais peut aller jusqu'à {b} Hz.",
     "Use {b} Hz": "Passer à {b} Hz",
     "Screen: {a} Hz, the best it can do": "Écran : {a} Hz, son maximum",
     "Free up space": "Libérer de l'espace", "Deletes old temporary files": "Supprime les anciens fichiers temporaires",
     "My PC": "Mon PC", "Copy": "Copier", "Gaming mode is on": "Mode jeu activé",
-    "Back to your normal settings": "Retour à vos réglages habituels", "Done": "C'est fait",
+    "Back to your normal settings": "Retour à tes réglages habituels", "Done": "C'est fait",
     "{mb} MB freed": "{mb} Mo libérés", "Screen": "Écran", "Copied": "Copié",
     # rocket league
     "Rocket League items": "Objets Rocket League",
     "Coming soon. Pick your files now: they are saved for later.":
-        "Bientôt disponible. Choisissez déjà vos fichiers : ils sont gardés pour plus tard.",
+        "Bientôt disponible. Choisis déjà tes fichiers : ils sont gardés pour plus tard.",
     "Fix missing files after an update": "Réparer les fichiers manquants après une mise à jour",
     "Checks automatically when Rocket League updates": "Vérification automatique à chaque mise à jour du jeu",
     "My items": "Mes objets", "No file": "Aucun fichier", "Remove": "Retirer", "Choose…": "Choisir…",
@@ -2891,14 +2888,14 @@ FR = {
     "Trail": "Traînée", "Topper": "Chapeau", "Car body": "Voiture",
     # settings
     "Look": "Apparence", "Glow": "Halo lumineux", "Glow moves with the music": "Le halo suit la musique",
-    "Song progress around the ball": "Avancement du titre autour de la bulle",
+    "Song progress around the ball": "Avancement du titre autour de la boule",
     "Colour from the album cover": "Couleur selon la pochette", "Language": "Langue", "Size": "Taille",
     "Windows": "Windows", "Start with Windows": "Lancer au démarrage de Windows",
     "Reset settings": "Réinitialiser les réglages",
-    "Press again to reset everything": "Appuyez encore une fois pour tout réinitialiser",
+    "Press again to reset everything": "Appuie encore une fois pour tout réinitialiser",
     "Settings reset": "Réglages réinitialisés",
     # window
-    "Close to the ball": "Réduire en bulle", "Leave your game first": "Quittez d'abord votre jeu",
+    "Close to the ball": "Réduire en boule", "Leave your game first": "Quitte d'abord votre jeu",
     # tools 1.2
     "Clock": "Heure", "Background recording off": "Enregistrement en arrière-plan désactivé",
     "Quick fixes": "Réparations rapides", "Free up memory": "Libérer de la mémoire",
@@ -2907,7 +2904,7 @@ FR = {
     "Clears saved internet addresses. Helps when a game cannot connect.":
         "Efface les adresses Internet gardées en mémoire. Utile quand un jeu ne se connecte pas.",
     "Connection test": "Test de connexion", "Test my connection": "Tester ma connexion", "Testing…": "Test en cours…",
-    "Press the button to check your ping.": "Appuyez sur le bouton pour mesurer votre ping.",
+    "Press the button to check your ping.": "Appuie sur le bouton pour mesurer ton ping.",
     "no answer": "pas de réponse", "lost": "perdu",
     "Great for online games": "Parfait pour jouer en ligne",
     "Good enough for most games": "Suffisant pour la plupart des jeux",
@@ -2931,10 +2928,10 @@ FR = {
     "{name} closed": "{name} fermé", "Could not close {name}": "Impossible de fermer {name}",
     "Opening {name}": "Ouverture de {name}", "Could not open {name}": "Impossible d'ouvrir {name}",
     "Rocket League found": "Rocket League détecté", "Rocket League not found": "Rocket League introuvable",
-    "Choose the game folder": "Choisissez le dossier du jeu",
+    "Choose the game folder": "Choisis le dossier du jeu",
     "That is not the Rocket League folder": "Ce n'est pas le dossier de Rocket League",
     "Mine": "Le mien", "Show as": "Afficher comme", "Soon": "Bientôt", "Off": "Désactivé", "Title": "Titre",
-    "Pick the title you want to show": "Choisissez le titre à afficher",
+    "Pick the title you want to show": "Choisis le titre à afficher",
     "Library": "Bibliothèque", "Copy code": "Copier le code", "Paste code": "Coller un code",
     "Code copied": "Code copié", "No crosshair code found": "Aucun code de viseur trouvé",
     "Classic": "Classique", "Small": "Petit", "Tight": "Serré", "Wide": "Large", "Big dot": "Gros point",
@@ -2960,15 +2957,15 @@ FR = {
     "Lines": "Lignes", "Radiance": "Éclat",
     # 2.0
     "My crosshairs": "Mes viseurs", "Slot {n}": "Slot {n}", "Clear slot": "Vider",
-    "Save to slot {n}": "Enregistrer dans le slot {n}", "Click a slot to save": "Cliquez sur un slot",
+    "Save to slot {n}": "Enregistrer dans le slot {n}", "Click a slot to save": "Clique sur un slot",
     "Saved in slot {n}": "Enregistré dans le slot {n}",
     "Goal explosions": "Explosions de but", "Car bodies": "Voitures", "Boosts": "Boosts", "Trails": "Traînées",
     "File missing": "Fichier manquant",
     "An update put back the original files": "Une mise à jour a remis les fichiers d'origine",
-    "Press Fix to swap them again": "Appuyez sur Réparer pour les remettre",
+    "Press Fix to swap them again": "Appuie sur Réparer pour les remettre",
     "Game files were changed": "Des fichiers du jeu ont été modifiés",
     "A game file is missing": "Un fichier du jeu est manquant",
-    "Repair the game in Epic or Steam": "Réparez le jeu dans Epic ou Steam",
+    "Repair the game in Epic or Steam": "Répare le jeu dans Epic ou Steam",
     "Rocket League is open": "Rocket League est ouvert",
     "Swaps apply when you reload the game": "Les swaps s'appliquent en relançant le jeu",
     "Pick one swap per category": "Un seul swap par catégorie", "Fix": "Réparer",
@@ -2977,14 +2974,14 @@ FR = {
     "Closing Rocket League…": "Fermeture de Rocket League…", "Applying…": "Application…",
     "Starting Rocket League…": "Lancement de Rocket League…",
     "Swaps applied again after a Rocket League update": "Swaps remis après la mise à jour de Rocket League",
-    "Close Rocket League first": "Fermez d'abord Rocket League",
+    "Close Rocket League first": "Ferme d'abord Rocket League",
     "A game file is missing. Repair the game in Epic or Steam.":
-        "Un fichier du jeu est manquant. Réparez le jeu dans Epic ou Steam.",
+        "Un fichier du jeu est manquant. Répare le jeu dans Epic ou Steam.",
     "The swap file is missing": "Le fichier du swap est manquant",
     "The original file is missing. Repair the game in Epic or Steam.":
         "Le fichier d'origine est manquant. Réparez le jeu dans Epic ou Steam.",
     "Windows blocked the change": "Windows a bloqué le changement",
-    "Something went wrong. Try again.": "Un problème est survenu. Réessayez.", "Run as admin": "Lancer en admin",
+    "Something went wrong. Try again.": "Un problème est survenu. Réessaie.", "Run as admin": "Lancer en admin",
     # 2.1
     "Rocket League detected": "Rocket League détecté", "Rocket League not detected": "Rocket League non détecté",
     "Supports Steam and Epic": "Compatible Steam et Epic", "Search": "Rechercher",
@@ -2999,15 +2996,15 @@ FR = {
     "Update {v} available": "Mise à jour {v} disponible", "Update": "Mettre à jour", "Later": "Plus tard",
     "Downloading update… {p}%": "Téléchargement… {p} %", "Restarting…": "Redémarrage…",
     "Rubenium is up to date": "Rubenium est à jour", "Could not check for updates": "Impossible de vérifier les mises à jour",
-    "Update installed. Restart Rubenium.": "Mise à jour installée. Redémarrez Rubenium.",
+    "Update installed. Restart Rubenium.": "Mise à jour installée. Redémarre Rubenium.",
     "Windows blocked the update. Download it from GitHub.":
-        "Windows a bloqué la mise à jour. Téléchargez-la sur GitHub.",
+        "Windows a bloqué la mise à jour. Télécharge-la sur GitHub.",
     "The update failed. Nothing was changed.": "La mise à jour a échoué. Rien n'a été modifié.",
     # 3.0
     "Welcome to": "Bienvenue sur", "Launch": "Lancer", "Welcome screen": "Écran de bienvenue",
     "New": "Nouveautés", "What's new": "Nouveautés", "Decals": "Stickers", "Coming soon": "Bientôt disponible",
     "Only one swap at a time for {name}": "Un seul swap à la fois pour {name}",
-    "Ball": "Bulle", "Ball size": "Taille de la bulle", "Menu bar": "Barre de menu",
+    "Ball": "Bulle", "Ball size": "Taille de la boule", "Menu bar": "Barre de menu",
     "Style": "Style", "Background": "Fond", "Corners": "Angles",
     "Soft": "Doux", "Normal": "Normal", "Strong": "Fort",
     "Dark": "Sombre", "Black": "Noir", "Night": "Nuit",
@@ -3015,7 +3012,7 @@ FR = {
     "Start-up": "Démarrage", "Fixes": "Corrections",
     "Welcome screen with a Launch button and a loading animation":
         "Écran de bienvenue avec un bouton Lancer et une animation de chargement",
-    "Rubenium comes back the way you left it": "Rubenium reprend là où vous l'aviez laissée",
+    "Rubenium comes back the way you left it": "Rubenium reprend là où tu l'avais laissé",
     "8 new swaps and a new Decals section": "8 nouveaux swaps et une nouvelle section Stickers",
     "Several swaps can be on at once (one per item)": "Plusieurs swaps actifs en même temps (un par objet)",
     "Every swap has a spot for a picture of the result": "Chaque swap a un emplacement pour une image du résultat",
@@ -3023,9 +3020,9 @@ FR = {
     "Stronger glow that follows the music better": "Halo plus fort, qui suit mieux la musique",
     "New theme options: glow, background and corners": "Nouvelles options de style : halo, fond et coins",
     "Themes unlock faster": "Les thèmes se débloquent plus vite",
-    "Choose which tabs show in the menu bar": "Choisissez les onglets affichés dans la barre de menu",
+    "Choose which tabs show in the menu bar": "Choisis les onglets affichés dans la barre de menu",
     "Change the size of the ball, with a real-size preview":
-        "Changez la taille de la bulle, avec un aperçu en taille réelle",
+        "Changez la taille de la boule, avec un aperçu en taille réelle",
     "Tabs are in a cleaner order": "Onglets rangés dans un ordre plus clair",
     "Time used now keeps counting when the music stops":
         "Le temps d'utilisation continue de compter quand la musique s'arrête",
@@ -3034,7 +3031,7 @@ FR = {
     # 1.0
     "RL SWAP": "RL SWAP", "RL Swap": "RL Swap", "Top apps": "Applis les plus gourmandes", "Earlier": "Avant",
     "Unlocks after {n} h of use": "Se débloque après {n} h d'utilisation",
-    "The update failed. Try again in a moment.": "La mise à jour a échoué. Réessayez dans un instant.",
+    "The update failed. Try again in a moment.": "La mise à jour a échoué. Réessaie dans un instant.",
     "Hive": "Ruche", "Sonar": "Sonar", "Circuit": "Circuit", "Comets": "Comètes", "Nebula": "Nébuleuse",
     "Classic": "Classique", "Outline": "Contour", "Neon": "Néon", "Gold": "Or", "Line": "Ligne", "Dashes": "Tirets",
     "Install and updates": "Installation et mises à jour",
@@ -3054,7 +3051,7 @@ FR = {
     "Audio": "Audio", "Interface sounds": "Sons de l'interface", "Sound": "Son",
     "Rubenium itself: {v}": "Rubenium elle-même : {v}",
     "Soft, very quiet sounds when you switch something on or off (Settings, Audio)":
-        "Des sons doux et très discrets quand vous activez ou désactivez quelque chose (Réglages, Audio)",
+        "Des sons doux et très discrets quand tu actives ou désactives quelque chose (Réglages, Audio)",
     "Top apps measured like Task Manager: accurate, smooth and light on your PC":
         "Applis mesurées comme dans le Gestionnaire des tâches : précis, fluide et léger pour le PC",
     "Bars use a fixed scale, so 2 % looks small and 50 % fills half":
@@ -3063,14 +3060,14 @@ FR = {
     # 1.1
     "Player banners": "Bannières", "Default": "Par défaut", "Custom": "Custom", "Reset Custom": "Réinitialiser Custom",
     "Custom reset": "Custom réinitialisé",
-    "Your own settings. They are saved.": "Vos propres réglages. Ils sont enregistrés.",
+    "Your own settings. They are saved.": "Tes propres réglages. Ils sont enregistrés.",
     "Your screen as Windows shows it. Move any slider to switch to Custom.":
-        "Votre écran tel que Windows l'affiche. Bougez un curseur pour passer en Custom.",
+        "Ton écran tel que Windows l'affiche. Bougez un curseur pour passer en Custom.",
     "Mythic": "Mythique", "Bloom": "Lueur", "Shine": "Éclat", "Comet": "Comète", "Aura": "Aura",
     "6 new swaps and a new Player banners section": "6 nouveaux swaps et une nouvelle section Bannières",
     "Swaps now also work for items the game has not downloaded yet":
         "Les swaps marchent aussi pour les objets que le jeu n'a pas encore téléchargés",
-    "The ball stays where you leave it": "La bulle reste là où vous la laissez",
+    "The ball stays where you leave it": "La boule reste là où tu la laisses",
     "Drop it close to a corner or the middle of an edge and it snaps there":
         "Lâchez-la près d'un coin ou du milieu d'un bord et elle s'y place",
     "While a game hides or locks the mouse, clicks go through Rubenium to the game":
@@ -3078,7 +3075,7 @@ FR = {
     "Just two choices: Default and Custom. Moving a slider switches to Custom":
         "Deux choix seulement : Par défaut et Custom. Bouger un curseur passe en Custom",
     "Finds every game installed with Steam or Epic": "Trouve tous les jeux installés avec Steam ou Epic",
-    "The Stats tab is fully unloaded when you leave it": "L'onglet Stats est complètement déchargé quand vous le quittez",
+    "The Stats tab is fully unloaded when you leave it": "L'onglet Stats est complètement déchargé quand tu le quittes",
     "Mythic replaces Prism": "Mythique remplace Prisme",
     "New R styles Bloom and Shine, and two new rings: Comet and Aura":
         "Nouveaux styles de R Lueur et Éclat, et deux nouveaux anneaux : Comète et Aura",
@@ -3087,8 +3084,8 @@ FR = {
     "Opening": "Ouverture", "Hold to open": "Maintenir pour ouvrir", "Hold time": "Durée du maintien",
     "This version": "Cette version", "Echo": "Écho", "Stripes": "Rayures",
     "Hold the ball to open Rubenium, so it never opens by accident in a game":
-        "Maintenez la bulle pour ouvrir Rubenium : elle ne s'ouvre plus par accident en jeu",
-    "Hold the menu for a moment to move it": "Maintenez le menu un instant pour le déplacer",
+        "Maintiens la boule pour ouvrir Rubenium : elle ne s'ouvre plus par accident en jeu",
+    "Hold the menu for a moment to move it": "Maintiens le menu un instant pour le déplacer",
     "9 new swaps, separate Fennec and Octane decals, and a Paint finishes section":
         "9 nouveaux swaps, stickers Fennec et Octane séparés, et une section Finitions de peinture",
     "Open apps move to the top of the Apps tab": "Les applis ouvertes remontent en haut de l'onglet Applis",
@@ -3096,7 +3093,7 @@ FR = {
     "The full update history is in this tab": "Tout l'historique des mises à jour est dans cet onglet",
     "New swaps and a Player banners section": "Nouveaux swaps et une section Bannières",
     "The ball stays where you leave it and snaps to corners and edges":
-        "La bulle reste là où vous la laissez et s'aimante aux coins et aux bords",
+        "La boule reste là où tu la laisses et s'aimante aux coins et aux bords",
     "Clicks go through Rubenium while a game hides or locks the mouse":
         "Les clics traversent Rubenium quand un jeu cache ou bloque la souris",
     "Display has just two choices: Default and Custom": "Écran n'a plus que deux choix : Par défaut et Custom",
@@ -3111,13 +3108,13 @@ FR = {
     "A more reliable Update button": "Un bouton Mettre à jour plus fiable",
     "Welcome screen with a Launch button": "Écran de bienvenue avec un bouton Lancer",
     "8 new swaps, and several swaps on at once": "8 nouveaux swaps, et plusieurs swaps actifs en même temps",
-    "Choose your tabs and the size of the ball": "Choisissez vos onglets et la taille de la bulle",
+    "Choose your tabs and the size of the ball": "Choisis tes onglets et la taille de la boule",
     "Stronger glow that follows the music": "Halo plus fort qui suit la musique",
     "Updates from inside the app": "Mises à jour depuis l'appli",
     "New swap: Big Splash to Adidas": "Nouveau swap : Big Splash vers Adidas",
     "Rocket League swaps for Steam and Epic, with backups of the original files":
         "Swaps Rocket League pour Steam et Epic, avec sauvegarde des fichiers d'origine",
-    "The menu bar hides when you are not using it": "La barre de menu se cache quand vous ne l'utilisez pas",
+    "The menu bar hides when you are not using it": "La barre de menu se cache quand tu ne l'utilises pas",
     "6 save slots for crosshairs": "6 emplacements pour les viseurs",
     "New tabs: Stats, Timer, Apps, Themes and Rocket League":
         "Nouveaux onglets : Stats, Chrono, Applis, Thèmes et Rocket League",
@@ -3137,7 +3134,7 @@ FR = {
     "Themes rebuilt: one night sky that fills with stars, then turns to gold":
         "Thèmes refaits : un ciel de nuit qui se remplit d'étoiles, puis devient doré",
     "Pick any colour on a colour line, and add a second colour after 24 h":
-        "Choisissez n'importe quelle couleur sur une ligne, et ajoutez-en une deuxième après 24 h",
+        "Choisis n'importe quelle couleur sur une ligne, et ajoutez-en une deuxième après 24 h",
     "New ball styles, with a gold ring": "Nouveaux styles de bulle, avec un anneau doré",
     "Rubenium start screen when Rocket League and Fortnite load":
         "Écran de démarrage Rubenium au lancement de Rocket League et Fortnite",
@@ -3148,9 +3145,9 @@ FR = {
     "Rubenium ignores the mouse while a game uses it to aim, even in borderless fullscreen":
         "Rubenium ignore la souris quand un jeu l'utilise pour viser, même en plein écran fenêtré",
     "Moving the menu: the spot you hold stays under the mouse, and it follows smoothly":
-        "Déplacer le menu : l'endroit que vous tenez reste sous la souris, et il suit en douceur",
+        "Déplacer le menu : l'endroit que tu tiens reste sous la souris, et il suit en douceur",
     "The ball never sits over the close buttons in the top-right corner":
-        "La bulle ne se place plus jamais sur les boutons de fermeture en haut à droite",
+        "La boule ne se place plus jamais sur les boutons de fermeture en haut à droite",
     "The welcome code only lasts until Rubenium is closed":
         "Le code de bienvenue ne dure que jusqu'à la fermeture de Rubenium",
     # 1.3: coins, shop, games
@@ -3159,8 +3156,8 @@ FR = {
     "Buy {name} for {n} coins?": "Acheter {name} pour {n} pièces ?",
     "Not enough coins: {n} more needed": "Pas assez de pièces : il en manque {n}",
     "Not enough coins": "Pas assez de pièces",
-    "Unlock {name} first": "Débloquez d'abord {name}",
-    "Unlock every Colour 1 first": "Débloquez d'abord toutes les Couleurs 1",
+    "Unlock {name} first": "Débloque d'abord {name}",
+    "Unlock every Colour 1 first": "Débloque d'abord toutes les Couleurs 1",
     "Music colours": "Couleurs de la musique",
     "White": "Blanc", "Black": "Noir", "Red": "Rouge", "Orange": "Orange", "Amber": "Ambre", "Yellow": "Jaune",
     "Lime": "Citron vert", "Green": "Vert", "Teal": "Sarcelle", "Cyan": "Cyan", "Sky": "Ciel", "Blue": "Bleu",
@@ -3171,7 +3168,7 @@ FR = {
     "Rookie": "Débutant", "Regular": "Habitué", "Night Owl": "Oiseau de nuit", "Grinder": "Acharné",
     "Sharpshooter": "Tireur d'élite", "Lucky": "Chanceux", "High Roller": "Flambeur", "Speedrunner": "Speedrunner",
     "Collector": "Collectionneur", "Champion": "Champion", "Supersonic": "Supersonique", "Rubenium OG": "Rubenium OG",
-    "Click again": "Cliquez encore", "Hold to reset": "Maintenez pour réinitialiser",
+    "Click again": "Clique encore", "Hold to reset": "Maintiens pour réinitialiser",
     "Blackjack": "Blackjack", "Chicken": "Poulet", "Wheel": "Roue", "Slots": "Machine", "Daily": "Cadeau",
     "Hit": "Carte", "Stand": "Rester", "Double": "Doubler", "Deal": "Distribuer", "Go": "Avancer",
     "Cash out": "Encaisser", "Bet": "Miser", "Spin": "Lancer", "Free spin": "Tour gratuit",
@@ -3208,7 +3205,7 @@ FR = {
     'keys': 'clés',
     'Keys': 'Clés',
     'Full: open a case in the Shop': 'Plein : ouvre une caisse dans la Boutique',
-    '1 key for every {n} coins played': '1 clé tous les {n} pièces jouées',
+    '1 key for every {n} coins played': '1 clé toutes les {n} pièces jouées',
     'Free daily spin': 'Tour gratuit du jour',
     'Ready': 'Prêt',
     'Enter casino': 'Entrer au casino',
@@ -3505,7 +3502,7 @@ FR = {
     'Beads': 'Perles',
     'Beat Tap': 'Beat Tap',
     'Beat Tap mini game, quests every hour, day and week': 'Mini-jeu Beat Tap, quêtes chaque heure, jour et semaine',
-    'Beat Tap pays up to 40 coins a round': 'Beat Tap rapporte jusqu’à 40 pièces par partie',
+    'Beat Tap pays up to 50 coins a round': 'Beat Tap rapporte jusqu’à 40 pièces par partie',
     'Become friends to see their history.': 'Devenez amis pour voir son historique.',
     'Bet {n} coins in the casino': 'Mise {n} pièces au casino',
     'Bets': 'Mises',
@@ -4223,6 +4220,147 @@ FR = {
     'Profile picture editor: move, zoom, turn, mirror and filters': 'Éditeur de photo de profil : déplacer, zoomer, tourner, miroir et filtres',
     'Big clear buttons in the shop and the admin panel': 'De grands boutons clairs dans la boutique et le panneau admin',
     'No more error messages while the server update is waiting': "Plus de messages d'erreur en attendant la mise à jour du serveur",
+    # 2.5 corrections
+    'Ball': 'Boule',
+    'Ball size': 'Taille de la boule',
+    'Put the ball back in the corner': 'Remettre la boule dans le coin',
+    'Close to the ball': 'Replier en boule',
+    'Custom': 'Perso',
+    'Custom reset': 'Perso réinitialisé',
+    'Reset Custom': 'Réinitialiser Perso',
+    'Check for updates': 'Chercher une mise à jour',
+    'Hit': 'Tirer',
+    'Last seen': 'Dernière connexion',
+    'Memory': 'Memory',
+    'RAM': 'Mémoire vive',
+    'RAM, highest': 'Mémoire vive, maximum',
+    'Memory, highest': 'Mémoire vive, maximum',
+    'Click a slot to save': 'Clique sur un emplacement',
+    'Slot {n}': 'Emplacement {n}',
+    'Save to slot {n}': "Enregistrer dans l'emplacement {n}",
+    'Saved in slot {n}': "Enregistré dans l'emplacement {n}",
+    'Clear slot': "Vider l'emplacement",
+    'No bet': 'Sans mise',
+    'Prize type: coins, keys, item or case': 'Type de prix : pièces, clés, objet ou caisse',
+    'Rubenium itself: {v}': 'Rubenium : {v}',
+    'Reset': 'Réinitialiser',
+    'Wearing': 'Porté',
+    'house {k}': 'casino {k}',
+    '{h} played · member since {d}': '{h} de jeu · membre depuis le {d}',
+    '{n} h played': '{n} h de jeu',
+    'Played': 'Temps de jeu',
+    'Done': 'Fait',
+    'Beat Tap pays up to 50 coins a round': "Beat Tap rapporte jusqu'à 50 pièces par partie",
+    'Your screen as Windows shows it. Move any slider to switch to Custom.': "Ton écran tel que Windows l'affiche. Bouge un curseur pour passer en Perso.",
+    'Sell it or put it on the market from your Inventory.': 'Vends-le ou mets-le au marché depuis ton Inventaire.',
+    'Both play the same level once. Best score wins both bets (5% fee); a draw gives them back. Beat Tap: more points wins. Memory and Parking: fewer flips or moves wins, then the faster.': 'Vous jouez le même niveau une fois chacun. Le meilleur score gagne les deux mises (5 % de frais) ; une égalité les rend. Beat Tap : le plus de points gagne. Memory et Parking : le moins de cartes ou de coups gagne, puis le plus rapide.',
+    'Users': 'Utilisateurs',
+    'Find a user': 'Trouver un utilisateur',
+    'No user with this name': 'Aucun utilisateur avec ce nom',
+    'Both users must be ready': 'Les deux doivent être prêts',
+    'Buy and sell with other users.': 'Achète et vends avec les autres utilisateurs.',
+    'Log in to see other users': 'Connecte-toi pour voir les autres utilisateurs',
+    "Looks fake: asked from another user's PC": "Semble faux : demandé depuis le PC d'un autre utilisateur",
+    'No friends yet. Open Users and add someone.': "Pas encore d'amis. Ouvre Utilisateurs et ajoute quelqu'un.",
+    'This user needs 5 hours with Rubenium first': "Cet utilisateur doit d'abord passer 5 heures sur Rubenium",
+    '{n} users. Click one to see their profile.': "{n} utilisateurs. Clique sur l'un d'eux pour voir son profil.",
+    'The trade ended: a user left or took too long.': "L'échange est terminé : quelqu'un est parti ou a mis trop de temps.",
+    'Both users need 5 hours with Rubenium': 'Les deux utilisateurs doivent avoir 5 heures sur Rubenium',
+    'Hub': 'Hub',
+    '1 against 1 with a friend, with or without a bet': '1 contre 1 avec un ami, avec ou sans mise',
+    '4 items cheaper today. New deals every day at midnight.': "4 objets moins chers aujourd'hui. Nouvelles offres chaque jour à minuit.",
+    'About': 'À propos',
+    'Add {name} as a friend to:': 'Ajoute {name} en ami pour :',
+    'Any change makes both users not ready again. Nothing moves until both confirm.': "Chaque changement remet les deux en « pas prêt ». Rien ne bouge tant que les deux n'ont pas confirmé.",
+    'Backup': 'Sauvegarde',
+    'Badge size and place': 'Taille et place des badges',
+    'Balls, lines, fonts and themes to buy.': 'Boules, lignes, polices et thèmes à acheter.',
+    'Buy {what} for {n} coins?': 'Acheter {what} pour {n} pièces ?',
+    'Chords': 'Accords',
+    'Collect full sets for a big bonus.': 'Complète des collections pour un gros bonus.',
+    'Compare in the Friends top': 'Compare-toi dans le top Amis',
+    'Danger zone': 'Zone dangereuse',
+    'Deals': 'Bons plans',
+    'Deletes EVERY item {name} owns: all badges, balls, lines, fonts and themes. Items on the market or in a trade are taken back first. Coins, keys and cases stay.': "Supprime TOUS les objets de {name} : badges, boules, lignes, polices et thèmes. Les objets au marché ou dans un échange sont d'abord repris. Les pièces, clés et caisses restent.",
+    'Deletes every gifted case {name} has not opened yet. Nothing else changes.': "Supprime toutes les caisses offertes que {name} n'a pas encore ouvertes. Rien d'autre ne change.",
+    'Done. You can undo it in the Log.': "Fait. Tu peux l'annuler dans le Journal.",
+    'Earn coins': 'Gagner des pièces',
+    'Effects': 'Effets',
+    'Every reset is saved in the Log: click it there to undo it.': "Chaque réinitialisation est gardée dans le Journal : clique dessus pour l'annuler.",
+    'Everything you own. Sell, show or trade it.': 'Tout ce que tu possèdes. Vends-le, montre-le ou échange-le.',
+    'FULL ACCOUNT RESET': 'RÉINITIALISATION COMPLÈTE DU COMPTE',
+    'Find the pairs in as few flips as you can. 3 sizes, 3 card styles.': 'Trouve les paires en retournant le moins de cartes possible. 3 tailles, 3 styles de cartes.',
+    'Forgotten passwords. Check the details, then give a new password or refuse. The user sees the new password on the PC that asked, and must change it after.': "Mots de passe oubliés. Vérifie les détails, puis donne un nouveau mot de passe ou refuse. L'utilisateur voit le nouveau mot de passe sur le PC qui a demandé, et doit le changer ensuite.",
+    'Free games that pay coins. Each one pays up to 150 coins every 2 hours; the better you play, the more you get.': "Des jeux gratuits qui rapportent des pièces. Chacun rapporte jusqu'à 150 pièces toutes les 2 heures ; mieux tu joues, plus tu gagnes.",
+    'Free mini games: Beat Tap, Parking, Memory': 'Mini-jeux gratuits : Beat Tap, Parking, Memory',
+    'Friend request sent to {name}': "Demande d'ami envoyée à {name}",
+    'Full profile': 'Profil complet',
+    'GET ITEMS': 'OBTENIR DES OBJETS',
+    'Game mode': 'Mode jeu',
+    'General': 'Général',
+    'Gift a case': 'Offrir une caisse',
+    'Gifts': 'Cadeaux',
+    'Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords.': 'Frappe les notes en rythme. 4 modes : Normal, Rush, Notes longues, Accords.',
+    'In fullscreen games the mouse goes through Rubenium, so it never gets in the way.': 'Dans les jeux en plein écran, la souris traverse Rubenium : il ne gêne jamais.',
+    'Language and size': 'Langue et taille',
+    'Leaderboard': 'Classement',
+    'Log in to see your account.': 'Connecte-toi pour voir ton compte.',
+    'Long notes': 'Notes longues',
+    'Lots of notes to hold down.': 'Beaucoup de notes à maintenir.',
+    'Much faster, many more notes.': 'Bien plus rapide, beaucoup plus de notes.',
+    'New deals in {t}': 'Nouveaux bons plans dans {t}',
+    'Numbers': 'Chiffres',
+    'Open cases for coins and badges. Gifts are free.': 'Ouvre des caisses pour des pièces et des badges. Les cadeaux sont gratuits.',
+    'Owned': 'Possédé',
+    'Pick a case, then press “Gift this case to a friend”': 'Choisis une caisse, puis appuie sur « Offrir cette caisse à un ami »',
+    'Pick an item, then open a user and press Give item or case. Or use it for a giveaway or a sale.': 'Choisis un objet, puis ouvre un utilisateur et appuie sur Donner objet. Ou utilise-le pour un concours ou une promo.',
+    'Play 1 against 1, with bets': 'Jouer en 1 contre 1, avec mises',
+    'Put it on the market: other users buy it or make you an offer': "Mets-le au marché : les autres utilisateurs l'achètent ou te font une offre",
+    'Reset coins and keys': 'Réinitialiser pièces et clés',
+    'Reset gifted cases': 'Réinitialiser les caisses offertes',
+    'Reset inventory': "Réinitialiser l'inventaire",
+    'Rush': 'Rush',
+    'See when they are on': 'Voir quand ils sont connectés',
+    'Send cases to each other': "S'offrir des caisses",
+    'Send messages': 'Envoyer des messages',
+    "Sets {name}'s coins and keys to 0. Items and cases stay.": 'Met les pièces et clés de {name} à 0. Les objets et caisses restent.',
+    'Shapes': 'Formes',
+    'Show / hide key': 'Touche afficher / cacher',
+    'Slide the cars and get the red one out. Easy, Medium or Hard.': 'Fais glisser les voitures et sors la rouge. Facile, Moyen ou Difficile.',
+    'Sounds': 'Sons',
+    'Stats, history, last seen': 'Stats, historique, dernière connexion',
+    'Tabs in the menu bar': 'Onglets de la barre de menu',
+    'Tap it once to open or close Rubenium, even in a game.': 'Un appui pour ouvrir ou fermer Rubenium, même en jeu.',
+    'The classic: faster and faster.': 'Le classique : de plus en plus vite.',
+    'The first tab shows what is playing in Spotify, YouTube Music and others. The button with the gem picks the badge size and where badges go.': "Le premier onglet montre ce qui joue dans Spotify, YouTube Music et d'autres. Le bouton avec le diamant choisit la taille et la place des badges.",
+    'Trade without being friends': 'Échanger sans être amis',
+    'Two notes at once, very often.': 'Deux notes à la fois, très souvent.',
+    'Type the username to confirm: {name}': "Écris le nom d'utilisateur pour confirmer : {name}",
+    'Type {name} exactly to confirm': 'Écris exactement {name} pour confirmer',
+    'Usual price: about {v} coins. Choose between {a} and {b}. Users can buy it at your price or make you an offer. The market keeps 5% when it sells.': "Prix habituel : environ {v} pièces. Choisis entre {a} et {b}. Les utilisateurs peuvent l'acheter à ton prix ou te faire une offre. Le marché garde 5 % à la vente.",
+    'Waiting for them to accept.': 'En attente de sa réponse.',
+    'YOURS': 'À TOI',
+    'You are friends': 'Vous êtes amis',
+    'Your collection: click a badge to see every colour.': 'Ta collection : clique sur un badge pour voir toutes ses couleurs.',
+    'Your colours and the looks you unlock with time.': 'Tes couleurs et les styles qui se débloquent avec le temps.',
+    'Your friend opens it for free. 3 gifts a day at most.': "Ton ami l'ouvre gratuitement. 3 cadeaux par jour maximum.",
+    '{name} starts again like a new account: every item deleted, coins and keys back to the start (500 coins, 3 keys), gifted cases deleted, login streak back to 0. Time played, friends and name stay.': '{name} repart comme un nouveau compte : tous les objets supprimés, pièces et clés remises au départ (500 pièces, 3 clés), caisses offertes supprimées, série de connexion remise à 0. Le temps de jeu, les amis et le nom restent.',
+    '{name} wants to be your friend': '{name} veut être ton ami',
+    '3 free mini games': '3 mini-jeux gratuits',
+    '1 vs 1 with friends': '1 contre 1 entre amis',
+    'Games tab: Earn coins (mini games) and Duels are now two big separate cards': 'Onglet Jeux : Gagner des pièces (mini-jeux) et Duels sont deux grandes cartes séparées',
+    'Beat Tap has 4 modes (Normal, Rush, Long notes, Chords); Memory has 3 card styles': 'Beat Tap a 4 modes (Normal, Rush, Notes longues, Accords) ; Memory a 3 styles de cartes',
+    'The Shop tab is now the Hub: Get items (Shop, Deals, Cases, Market) and Yours (Inventory, Collection, Sets, Style)': "L'onglet Boutique devient le Hub : Obtenir des objets (Boutique, Bons plans, Caisses, Marché) et À toi (Inventaire, Collection, Collections, Style)",
+    'New: Deals, 4 items cheaper every day': 'Nouveau : Bons plans, 4 objets moins chers chaque jour',
+    'Friend profiles: friends get Message, Duel, Trade and Gift; others see what adding them unlocks': "Profils : les amis ont Message, Duel, Échange et Cadeau ; les autres voient ce que l'ajout débloque",
+    'Settings in 6 clear sections; Game mode text no longer goes off the screen': "Réglages en 6 sections claires ; le texte du Mode jeu ne dépasse plus de l'écran",
+    'Visualisers removed': 'Visualiseurs retirés',
+    'Translations fixed everywhere (users instead of players, one consistent French)': 'Traductions corrigées partout (utilisateurs au lieu de joueurs, un français cohérent)',
+    'Sets': 'Ensembles',
+    'Collect full sets for a big bonus.': 'Complète des ensembles pour un gros bonus.',
+    'Complete a set to get a big bonus, once. You must still own the badges when you claim.': 'Complète un ensemble pour un gros bonus, une seule fois. Tu dois encore avoir les badges quand tu récupères.',
+    'Set bonus: +{n} coins': "Bonus d'ensemble : +{n} pièces",
+    'No key': 'Aucune',
 }
 
 
@@ -7691,11 +7829,18 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.5", ['Games tab: Earn coins (mini games) and Duels are now two big separate cards',
+             'Beat Tap has 4 modes (Normal, Rush, Long notes, Chords); Memory has 3 card styles',
+             'The Shop tab is now the Hub: Get items (Shop, Deals, Cases, Market) and Yours (Inventory, Collection, Sets, Style)',
+             'New: Deals, 4 items cheaper every day',
+             'Friend profiles: friends get Message, Duel, Trade and Gift; others see what adding them unlocks',
+             'Settings in 6 clear sections; Game mode text no longer goes off the screen',
+             'Visualisers removed',
+             'Translations fixed everywhere (users instead of players, one consistent French)']),
     ("2.4.1", ['Gifted cases open for free (after the server update)',
              'Everything opens inside the menu: no more extra windows over your games',
              'Game mode: in fullscreen games the mouse goes through Rubenium; tap Right Shift to open it',
              'The daily reward has a flame that grows every day, and waits until you open the menu',
-             'Visualisers are now shop items (the rarer, the cooler) and start turned off',
              'Profile picture editor: move, zoom, turn, mirror and filters',
              'Big clear buttons in the shop and the admin panel',
              'No more error messages while the server update is waiting']),
@@ -7705,7 +7850,7 @@ NEWS = [        # every version, newest first: (version, [lines])
              'Messages with friends, leaderboards, trade history and collection sets with big bonuses',
              'Mini games pay a little more, with limits every 2 hours instead of every day',
              'Badges cost what they are really worth; Titanium, Gold and Mythic only come from cases',
-             'Visualiser, badge size and place, better lyrics, song history and Right Shift to show or hide',
+             'Badge size and place, better lyrics, song history and Right Shift to show or hide',
              'Backups, offline mode, password help from the admin, a tour and nicer case openings']),
     ("2.3", ["New free mini game: Parking. Slide the cars and get the red car out for coins",
              "Quests now sit across the top of the Games tab",
@@ -7715,14 +7860,14 @@ NEWS = [        # every version, newest first: (version, [lines])
              "Admin panel: every give and edit window works"]),
     ("2.2", ["The Ultimate Update: a fresh start for everyone (500 coins, 3 keys). Hours and friends stay",
              "Trading: send a request from a profile, 8 items and coins each side, Ready then Confirm",
-             "Market: sell to other players at your price, or accept their offers (5% fee)",
+             "Market: sell to other users at your price, or accept their offers (5% fee)",
              "Inventory, and a Shop with 10 balls, 10 lines, 5 fonts and 6 themes in every colour",
              "Badges remade: 12 Common, 12 Rare, 12 Epic, 12 Legendary and 6 secret Mythic",
              "Finishes: Basic, Painted, Shiny, Titanium and Gold (Gold is extremely rare)",
              "9 cases, gifts for friends, coins drops that usually beat the price",
              "Beat Tap mini game, quests every hour, day and week",
              "Rocket with automatic cash-out, Dice with more choices, free spin every 2 hours",
-             "Social tab: your stats, profile pictures, every player, name changes",
+             "Social tab: your stats, profile pictures, every user, name changes",
              "Notifications with a quiet sound (choose them in Settings), live giveaways",
              "More coins with time: 20 every 10 minutes",
              "Use screen colours: the menu follows the colours of your screen"]),
@@ -7738,7 +7883,7 @@ NEWS = [        # every version, newest first: (version, [lines])
              "Free spin every 3 hours: press Collect to take the prize",
              "Themes, ball and ring now unlock with hours played"]),
     ("1.10", ["Logged in? Rubenium starts by itself after 5 seconds (click the card to start at once)"]),
-    ("1.9", ["Friends: add players by username and see who is online",
+    ("1.9", ["Friends: add users by username and see who is online",
              "Profiles show time played and, soon, badges and play history"]),
     ("1.8", ["The login now sits inside the start screen",
              "You can delete your account in Settings (type your name, then hold)",
@@ -9248,233 +9393,6 @@ from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, 
 from PyQt6.QtWidgets import QWidget
 
 
-VIS_STYLES = [("bars", "Bars"), ("mirror", "Mirror"), ("dots", "Dots"), ("wave", "Wave"), ("pulse", "Pulse"),
-              ("spark", "Sparks"), ("aurora", "Aurora"), ("fire", "Fire"), ("galaxy", "Galaxy"), ("prism", "Prism")]
-# what each visualiser is in the shop: rarity and price (Bars is free). The cooler, the rarer.
-VIS_SHOP = {"bars": ("standard", 0), "mirror": ("standard", 600), "dots": ("standard", 900), "wave": ("rare", 2000),
-            "pulse": ("rare", 3000), "spark": ("special", 7500), "aurora": ("epic", 18000), "fire": ("epic", 25000),
-            "galaxy": ("exotic", 60000), "prism": ("exotic", 90000)}
-
-
-def vis_owned(ctx, style: str) -> bool:
-    return style == "bars" or ctx.econ.owns("vis:" + style)
-
-
-class Visualiser(QWidget):
-    """A strip that moves with the music. It follows how loud the music is right now (from the Windows mixer),
-    with a little movement of its own so it always looks alive."""
-    N = 32
-
-    def __init__(self, ctx, fixed: str = "", height: int = 34) -> None:
-        super().__init__()
-        self.ctx = ctx
-        self.fixed = fixed                     # a shop preview: this style, moving by itself
-        self.setFixedHeight(S(height))
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.levels = deque([0.0] * self.N, maxlen=self.N)
-        self.bars = [0.0] * self.N
-        self.sparks: list = []
-        self._t = QTimer(self)
-        self._t.setInterval(33)
-        self._t.timeout.connect(self._step)
-
-    def style(self) -> str:
-        if self.fixed:
-            return self.fixed
-        st = str(self.ctx.cfg["visualiser"])
-        return st if st == "off" or vis_owned(self.ctx, st) else "bars"
-
-    def sync(self) -> None:
-        on = self.style() != "off" and self.isVisible()
-        self.setVisible(self.style() != "off")
-        if on and not self._t.isActive():
-            self._t.start()
-        elif not on:
-            self._t.stop()
-
-    def showEvent(self, _e) -> None:
-        if self.style() != "off":
-            self._t.start()
-
-    def hideEvent(self, _e) -> None:
-        self._t.stop()
-
-    def _level(self) -> float:
-        pass
-        if self.fixed:                                   # shop preview: a made-up beat
-            t = time.monotonic()
-            return 0.45 + 0.4 * abs(math.sin(t * 3.3)) * (0.6 + 0.4 * math.sin(t * 0.9))
-        if self.ctx.state.status is not Status.PLAYING:
-            return 0.0
-        env = float(getattr(self.ctx, "_env", 0.0) or 0.0)
-        if env <= 0.001 and getattr(self.ctx.meter, "failed", False):        # no mixer: a gentle fake beat
-            t = time.monotonic()
-            env = 0.35 + 0.25 * abs(math.sin(t * 3.1)) * abs(math.sin(t * 1.3))
-        return min(1.0, env)
-
-    def _step(self) -> None:
-        lvl = self._level()
-        self.levels.append(lvl)
-        t = time.monotonic()
-        for i in range(self.N):                        # each bar: the loudness, shaped per band, plus a wobble
-            band = 0.55 + 0.45 * math.sin(i * 0.55 + t * 2.3) * math.cos(i * 0.21 - t * 1.7)
-            target = lvl * (0.35 + 0.65 * band) * (1.15 - 0.5 * abs(i - self.N / 2) / (self.N / 2))
-            self.bars[i] += (target - self.bars[i]) * (0.55 if target > self.bars[i] else 0.18)
-        if self.style() in ("spark", "galaxy") and lvl > 0.3:
-            import random
-            self.sparks.append((random.uniform(0, 1), t, random.uniform(0.6, 1.0) * lvl))
-        self.sparks = [s for s in self.sparks if t - s[1] < 0.9]
-        self.update()
-
-    def paintEvent(self, _e) -> None:
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(S(2), S(2), -S(2), -S(2))
-        style = self.style()
-        acc = QColor(ui.accent)
-        acc2 = QColor(ui.accent2) if getattr(ui, "accent2", None) else mix(acc, QColor("#FFFFFF"), 0.35)
-        pass
-        if not self.fixed and self.ctx.state.status is not Status.PLAYING:
-            p.setOpacity(0.35)                             # nothing playing: a quiet, still strip
-        paint_vis(p, r, style, self.bars, list(self.levels), self.sparks, acc, acc2)
-
-
-
-def paint_vis(p, r, style: str, bars: list, levels: list, sparks: list, acc, acc2) -> None:
-    """Draw one frame of a visualiser style in `r` (the menu strip, a shop preview or an item picture)."""
-    n = len(bars)
-    w = r.width() / n
-    n = len(bars)
-    w = r.width() / n
-    if style in ("bars", "mirror"):
-        p.setPen(Qt.PenStyle.NoPen)
-        for i, v in enumerate(bars):
-            h = max(S(2), v * r.height() * (0.5 if style == "mirror" else 1.0))
-            col = mix(acc, acc2, i / max(1, n - 1))
-            g = QLinearGradient(0, r.bottom(), 0, r.top())
-            g.setColorAt(0, alpha(col, 0.55))
-            g.setColorAt(1, col)
-            p.setBrush(g)
-            x = r.left() + i * w + w * 0.18
-            if style == "bars":
-                p.drawRoundedRect(QRectF(x, r.bottom() - h, w * 0.64, h), S(1.5), S(1.5))
-            else:
-                p.drawRoundedRect(QRectF(x, r.center().y() - h, w * 0.64, h * 2), S(1.5), S(1.5))
-    elif style == "wave":
-        path = QPainterPath()
-        vals = list(levels)
-        t = time.monotonic()
-        for i, v in enumerate(vals):
-            x = r.left() + r.width() * i / (len(vals) - 1)
-            y = r.center().y() - math.sin(i * 0.6 + t * 6) * v * r.height() * 0.45
-            path.moveTo(x, y) if i == 0 else path.lineTo(x, y)
-        for wdt, a in ((S(5), 0.18), (S(2), 1.0)):
-            pen = QPen(alpha(acc, a), wdt)
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            p.setPen(pen)
-            p.drawPath(path)
-    elif style == "pulse":
-        v = levels[-1] if levels else 0.0
-        c = r.center()
-        for k in range(3):
-            rad = (S(8) + v * r.width() * 0.45) * (1 - k * 0.28)
-            g = QRadialGradient(c, max(1.0, rad))
-            g.setColorAt(0, alpha(acc, 0.45 - k * 0.12))
-            g.setColorAt(1, alpha(acc, 0.0))
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(g)
-            p.drawEllipse(c, rad, min(rad, r.height() / 2 + S(4)))
-        p.setPen(QPen(alpha(acc, 0.7), S(1.4)))
-        p.drawLine(QPointF(r.left(), c.y()), QPointF(c.x() - S(10) - v * S(60), c.y()))
-        p.drawLine(QPointF(c.x() + S(10) + v * S(60), c.y()), QPointF(r.right(), c.y()))
-    elif style == "dots":
-        p.setPen(Qt.PenStyle.NoPen)
-        for i, v in enumerate(bars):
-            col = mix(acc, acc2, i / max(1, n - 1))
-            rows = int(1 + v * 5)
-            for k in range(rows):
-                p.setBrush(alpha(col, 0.35 + 0.65 * (k + 1) / rows))
-                p.drawEllipse(QPointF(r.left() + i * w + w / 2, r.bottom() - S(3) - k * S(6)), S(2), S(2))
-    elif style == "spark":
-        now = time.monotonic()
-        p.setPen(Qt.PenStyle.NoPen)
-        for x, born, v in sparks:
-            age = (now - born) / 0.9
-            p.setBrush(alpha(mix(acc, acc2, x), 1 - age))
-            p.drawEllipse(QPointF(r.left() + x * r.width(), r.bottom() - age * r.height() * (0.4 + v)), S(2.2), S(2.2))
-        p.setPen(QPen(alpha(acc, 0.25 + 0.5 * (levels[-1] if levels else 0)), S(1.2)))
-        p.drawLine(QPointF(r.left(), r.bottom()), QPointF(r.right(), r.bottom()))
-    elif style == "aurora":                                   # soft ribbons of colour that flow and swell
-        t = time.monotonic()
-        v = levels[-1] if levels else 0.0
-        for k in range(3):
-            path = QPainterPath()
-            col = QColor.fromHsvF((acc.hueF() + 0.12 * k + 0.05 * math.sin(t * 0.3)) % 1.0 if acc.hueF() >= 0 else (0.45 + 0.1 * k),
-                                  0.55, 1.0)
-            for i in range(33):
-                x = r.left() + r.width() * i / 32
-                y = r.center().y() + math.sin(i * 0.35 + t * (1.4 + 0.3 * k) + k) * r.height() * (0.18 + 0.3 * v)
-                path.moveTo(x, y) if i == 0 else path.lineTo(x, y)
-            pen = QPen(alpha(col, 0.55 - 0.12 * k), S(6 - k * 1.5))
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            p.setPen(pen)
-            p.drawPath(path)
-    elif style == "fire":                                     # bars that burn: red at the base, yellow at the tips
-        t = time.monotonic()
-        p.setPen(Qt.PenStyle.NoPen)
-        for i, v in enumerate(bars):
-            h = max(S(3), v * r.height() * (0.9 + 0.15 * math.sin(t * 9 + i)))
-            x = r.left() + i * w + w * 0.12
-            g = QLinearGradient(0, r.bottom(), 0, r.bottom() - h)
-            g.setColorAt(0, QColor("#FF2E2E"))
-            g.setColorAt(0.55, QColor("#FF8A1F"))
-            g.setColorAt(1, QColor("#FFE36B"))
-            p.setBrush(g)
-            tip = QPainterPath()
-            tip.moveTo(x, r.bottom())
-            tip.lineTo(x, r.bottom() - h * 0.7)
-            tip.quadTo(x + w * 0.38, r.bottom() - h * 1.08, x + w * 0.76, r.bottom() - h * 0.7)
-            tip.lineTo(x + w * 0.76, r.bottom())
-            tip.closeSubpath()
-            p.drawPath(tip)
-    elif style == "galaxy":                                   # stars turning around a bright core, faster with the beat
-        t = time.monotonic()
-        v = levels[-1] if levels else 0.0
-        c = r.center()
-        core = QRadialGradient(c, r.height() * 0.6)
-        core.setColorAt(0, alpha("#FFFFFF", 0.5 + 0.4 * v))
-        core.setColorAt(0.4, alpha(acc, 0.35))
-        core.setColorAt(1, alpha(acc, 0.0))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(core)
-        p.drawEllipse(c, r.height() * 0.6, r.height() * 0.6)
-        for k in range(48):
-            a = k * 2.399 + t * (0.6 + v * 1.4) * (1 if k % 2 else 0.7)
-            d = (k / 48) ** 0.6 * r.width() * 0.48
-            x, y = c.x() + math.cos(a) * d, c.y() + math.sin(a) * d * 0.28
-            col = QColor.fromHsvF((0.6 + k * 0.013 + t * 0.02) % 1.0, 0.45, 1.0)
-            p.setBrush(alpha(col, 0.35 + 0.65 * (1 - k / 48)))
-            p.drawEllipse(QPointF(x, y), S(1.2) + v * S(1.3), S(1.2) + v * S(1.3))
-    elif style == "prism":                                    # rainbow bars, mirrored, with a light sweeping over them
-        t = time.monotonic()
-        p.setPen(Qt.PenStyle.NoPen)
-        for i, v in enumerate(bars):
-            h = max(S(2), v * r.height() * 0.5)
-            col = QColor.fromHsvF((i / len(bars) + t * 0.15) % 1.0, 0.65, 1.0)
-            p.setBrush(col)
-            x = r.left() + i * w + w * 0.2
-            p.drawRoundedRect(QRectF(x, r.center().y() - h, w * 0.6, h * 2), S(1.5), S(1.5))
-        sweep = r.left() + (t * 0.5 % 1.4 - 0.2) * r.width()
-        sh = QLinearGradient(QPointF(sweep - S(30), 0), QPointF(sweep + S(30), 0))
-        sh.setColorAt(0, alpha("#FFFFFF", 0))
-        sh.setColorAt(0.5, alpha("#FFFFFF", 0.45))
-        sh.setColorAt(1, alpha("#FFFFFF", 0))
-        p.setBrush(sh)
-        p.drawRect(r)
-
-
-
 # ================================================================ the show / hide key
 KEY_CHOICES = [("rshift", "Right Shift", 0xA1), ("rctrl", "Right Ctrl", 0xA3), ("insert", "Insert", 0x2D),
                ("home", "Home", 0x24), ("f8", "F8", 0x77), ("off", "Off", 0)]
@@ -9538,14 +9456,6 @@ def badge_menu(ctx, on_change) -> None:
         a.setChecked(ctx.cfg["badge_pos"] == k)
         a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("badge_pos", k), on_change()))
         m.addAction(a)
-    m.addSection(tr("Visualiser"))
-    for k, name in [("off", "Off")] + [(k, n) for k, n in VIS_STYLES if vis_owned(ctx, k)]:
-        a = QAction(tr(name), m)
-        a.setCheckable(True)
-        a.setChecked(ctx.cfg["visualiser"] == k)
-        a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("visualiser", k),
-                                                   ctx.cfg.__setitem__("vis_style", k) if k != "off" else None, on_change()))
-        m.addAction(a)
     m.exec(QCursor.pos())
 
 
@@ -9555,7 +9465,7 @@ TUTORIAL = [
     ("The ball", "The round R on your screen is Rubenium. Click it to open this menu; click the R at the top to fold it back. "
                  "Tap Right Shift to show or hide it."),
     ("Music", "The first tab shows what is playing in Spotify, YouTube Music and others. The button with the gem picks "
-              "the badge size, where badges go and the visualiser style."),
+              "the badge size and where badges go."),
     ("Coins and keys", "You earn coins and keys just by having Rubenium open. Spend them on cases, the shop and the "
                        "market, or win more in the mini games and the casino."),
     ("Games", "Beat Tap, Parking and Memory pay coins. Duel your friends, scratch a card every 12 hours and come "
@@ -10536,10 +10446,8 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("candy", "Candy", "#FF5CB8", "#9B5CFF", dict(glow=3, stars=18, sparkles=11)),
                ("storm", "Storm", "#8FA8FF", "#4B6BFF", dict(glow=3, stars=44, links=10, comets=6, aurora=True)),
                ("retro", "Retro", "#D94BFF", "#35D6E6", dict(glow=3, stars=52, links=14, sparkles=8, edge="shine"))]
-KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "vis": "Visualiser"}
+KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge"}
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
-          "vis": {"bars": "Bars", "mirror": "Mirror", "dots": "Dots", "wave": "Wave", "pulse": "Pulse", "spark": "Sparks",
-                  "aurora": "Aurora", "fire": "Fire", "galaxy": "Galaxy", "prism": "Prism"},
           "theme": {t[0]: t[1] for t in THEME_LOOKS}}
 _themes: dict = {}
 
@@ -10800,17 +10708,6 @@ def paint_cosmetic(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
         p.setFont(f)
         p.setPen(QColor("#AEB8C2") if var == "black" else colour_of(item))
         p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "Aa")
-    elif kind == "vis":                                   # a visualiser: a small moving picture of it
-        pass
-        import random as _r
-        rnd = _r.Random(base)
-        t = now if effects else 0.6
-        bars = [0.25 + 0.7 * abs(math.sin(t * 3 + i * 0.7 + rnd.random())) for i in range(10)]
-        tile = box.adjusted(d * 0.06, d * 0.2, -d * 0.06, -d * 0.2)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor("#0B0E10"))
-        p.drawRoundedRect(tile, d * 0.12, d * 0.12)
-        paint_vis(p, tile.adjusted(d * 0.04, d * 0.04, -d * 0.04, -d * 0.04), base, bars, bars, [], QColor("#4FC3FF"), QColor("#B36BFF"))
     elif kind == "theme":
         look = next((t for t in THEME_LOOKS if t[0] == base), THEME_LOOKS[0])
         g = QLinearGradient(box.topLeft(), box.bottomRight())
@@ -11048,7 +10945,7 @@ class HomePage(Page):
         info.addWidget(self.flair)
         info.addLayout(top)
         info.addWidget(self.artist)
-        self.b_look = IconButton("gem", 24, tip=tr("Badges and visualiser"))
+        self.b_look = IconButton("gem", 24, tip=tr("Badge size and place"))
         self.b_look.clicked.connect(lambda: badge_menu(ctx, self._look_changed))
         controls.addWidget(self.b_look)
         info.addStretch(1)
@@ -11066,9 +10963,6 @@ class HomePage(Page):
         prog.addWidget(self.t_dur)
         lay.addLayout(body)
         lay.addLayout(prog)
-        self.vis = Visualiser(ctx)
-        lay.addWidget(self.vis)
-        self.vis.setVisible(ctx.cfg["visualiser"] != "off")
 
         m = ctx.media
         self.b_prev.clicked.connect(lambda: m.send(CMD_PREV))
@@ -11149,9 +11043,6 @@ class HomePage(Page):
     def _look_changed(self) -> None:
         self.ctx.cfg.save()
         self._place_flair()
-        self.vis.setVisible(self.ctx.cfg["visualiser"] != "off")
-        self.vis.sync()
-        self.ctx._sync_audio()
         self.ctx.reload_page()
 
     def on_hide(self) -> None:
@@ -12055,7 +11946,7 @@ class PerfPage(Page):
         lay = vbox(self, 8)
         self.g_gpu = None
         gauges = hbox(spacing=0)
-        self.g_cpu, self.g_ram = PickGauge(tr("Processor")), PickGauge(tr("Memory"))
+        self.g_cpu, self.g_ram = PickGauge(tr("Processor")), PickGauge(tr("RAM"))
         gauges.addStretch(1)
         gauges.addWidget(self.g_cpu)
         gauges.addStretch(1)
@@ -12076,7 +11967,7 @@ class PerfPage(Page):
 
         lay.addWidget(heading(tr("Top apps")))          # click a gauge (or here) to switch
         self.top_kind = 0
-        self.top_seg = Segmented([tr("Processor"), tr("Memory")], 0)
+        self.top_seg = Segmented([tr("Processor"), tr("RAM")], 0)
         self.top_seg.changed.connect(self._top_pick)
         lay.addWidget(self.top_seg)
         self.top_list = TopList()
@@ -12098,7 +11989,7 @@ class PerfPage(Page):
         corner = Segmented([tr("Top left"), tr("Top right"), tr("Bottom left"), tr("Bottom right")], hud["corner"])
         corner.changed.connect(lambda i: self._hud("corner", i))
         lay.addWidget(corner)
-        items = [("cpu", tr("Processor")), ("ram", tr("Memory")), ("ping", tr("Ping")), ("net", tr("Internet")),
+        items = [("cpu", tr("Processor")), ("ram", tr("RAM")), ("ping", tr("Ping")), ("net", tr("Internet")),
                  ("clock", tr("Clock"))]
         if self.g_gpu is not None:
             items.insert(1, ("gpu", tr("Graphics")))
@@ -12122,7 +12013,7 @@ class PerfPage(Page):
         grid.setVerticalSpacing(S(4))
         self.sess = {}
         names = [("time", tr("Time")), ("cpu", tr("Processor, highest")), ("cpu_avg", tr("Processor, average")),
-                 ("ram", tr("Memory, highest")), ("ping", tr("Ping, average"))]
+                 ("ram", tr("RAM, highest")), ("ping", tr("Ping, average"))]
         if self.g_gpu is not None:
             names.append(("temp", tr("Graphics card, hottest")))
         for i, (key, label) in enumerate(names):
@@ -12387,7 +12278,7 @@ class ToolsPage(Page):
         lines = [win.windows_version(), win.cpu_name()]
         try:
             import psutil
-            lines.append(tr("Memory") + f": {psutil.virtual_memory().total / 2 ** 30:.0f} GB")
+            lines.append(tr("RAM") + f": {psutil.virtual_memory().total / 2 ** 30:.0f} GB")
         except Exception:  # noqa: BLE001
             pass
         lines += sorted({desc for _n, desc in win.display_devices()})
@@ -12459,169 +12350,167 @@ class SettingsPage(Page):
             lay.addWidget(row(label, t))
             return t
 
-        lay.addWidget(heading(tr("Opening")))
-        toggle(tr("Hold to open"), "hold_open", after=lambda v: ctx.reload_page())
-        if cfg["hold_open"]:                           # the time only matters while hold to open is on
-            hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
-                             marks=list(range(200, 1001, 100)))
-
-            def hold_set(v) -> None:
-                cfg["hold_ms"] = int(v)
-            hold.changed.connect(hold_set)
-            lay.addWidget(hold)
-
-        lay.addWidget(heading(tr("Appearance")))
-        toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
-        toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
-        toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
-        toggle(tr("Welcome screen"), "welcome")
-        seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
-        seg.setFixedWidth(S(170))
-        seg.changed.connect(lambda i: ctx.set_language("fr" if i else "en"))
-        lay.addWidget(row(tr("Language"), seg))
-        size = SliderRow(tr("Size"), 70, 150, cfg["scale"], 10, 100, lambda v: f"{int(v)}%",
-                         marks=list(range(70, 151, 10)))
-        size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
-        lay.addWidget(size)
-
-        lay.addWidget(heading(tr("Games")))
-        toggle(tr("Rubenium start screen"), "splash", after=lambda v: ctx.splash.sync())
-
-        lay.addWidget(heading(tr("Audio")))
-
-        def sounds(v: bool) -> None:
-            cfg["sounds"] = v
-            sfx.enabled = v
-            if v:
-                sfx.play("on")                      # a sample of how quiet they are
-        snd = Toggle(cfg["sounds"])
-        snd.toggled_by_user.connect(sounds)
-        lay.addWidget(row(tr("Interface sounds"), snd))
         pass
-        settings_section(ctx, lay)
+        sec = int(getattr(ctx, "settings_tab", 0) or 0)
+        tiles = NavTiles([(tr("General"), "cog"), (tr("Look"), "spark"), (tr("Sounds"), "volume"),
+                          (tr("Account"), "users"), (tr("Backup"), "folder"), (tr("About"), "refresh")], sec, per_row=3)
 
-        lay.addWidget(heading(tr("Music")))
-        pass
-        keys = [k for k, _n, _v in KEY_CHOICES]
-        hk = Segmented([tr(n) if k in ("off",) else n.replace("Right ", "R ") for k, n, _v in KEY_CHOICES],
-                       keys.index(cfg["hotkey"]) if cfg["hotkey"] in keys else 0)
-
-        def set_key(i: int) -> None:
-            cfg["hotkey"] = keys[i]
-            ctx.tapkey.set_key(keys[i])
-        hk.changed.connect(set_key)
-        lay.addWidget(Label(tr("Show / hide key (tap it once)"), 11.5, TEXT))
-        lay.addWidget(hk)
-        pass
-
-        def vis_on(v: bool) -> None:
-            style = cfg["vis_style"] if vis_owned(ctx, cfg["vis_style"]) else "bars"
-            cfg["visualiser"] = style if v else "off"
-            ctx._sync_audio()
-            ctx.window._drop_page("home")
+        def pick(i: int) -> None:
+            ctx.settings_tab = i
             ctx.reload_page()
-        tv = Toggle(cfg["visualiser"] != "off")
-        tv.toggled_by_user.connect(vis_on)
-        lay.addWidget(row(tr("Visualiser on the music tab"), tv))
-        if cfg["visualiser"] != "off":
-            mine = [(k, n) for k, n in VIS_STYLES if vis_owned(ctx, k)]
-            keys_v = [k for k, _n in mine]
-            vs = Segmented([tr(n) for _k, n in mine], keys_v.index(cfg["visualiser"]) if cfg["visualiser"] in keys_v else 0)
+        tiles.changed.connect(pick)
+        lay.addWidget(tiles)
 
-            def set_vis(i: int) -> None:
-                cfg["visualiser"] = cfg["vis_style"] = keys_v[i]
-                ctx.window._drop_page("home")
-            vs.changed.connect(set_vis)
-            lay.addWidget(vs)
-            lay.addWidget(Label(tr("More visualisers in Shop → Shop → Visualisers."), 10, TEXT_FAINT))
-        tg = Toggle(cfg["game_mouse"])
-        tg.toggled_by_user.connect(lambda v: cfg.__setitem__("game_mouse", v))
-        lay.addWidget(row(tr("Game mode: the mouse goes through Rubenium in fullscreen games"), tg))
-        line = hbox(spacing=6)
-        hist = Button(tr("Song history"), "ghost", 30, icon="note")
-        def open_hist() -> None:
+        def note(text: str) -> None:                    # a short explanation under a setting, never off the edge
+            lay.addWidget(Label(text, 10, TEXT_DIM, wrap_w=self.W))
+
+        if sec == 0:                                    # ---------------------------------------------- General
+            lay.addWidget(heading(tr("Opening")))
+            toggle(tr("Hold to open"), "hold_open", after=lambda v: ctx.reload_page())
+            if cfg["hold_open"]:                       # the time only matters while hold to open is on
+                hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
+                                 marks=list(range(200, 1001, 100)))
+
+                def hold_set(v) -> None:
+                    cfg["hold_ms"] = int(v)
+                hold.changed.connect(hold_set)
+                lay.addWidget(hold)
             pass
-            ctx._hist = HistoryWindow(ctx)
-        hist.clicked.connect(open_hist)
-        tour = Button(tr("Show the tour again"), "ghost", 30)
-        tour.clicked.connect(ctx.start_tutorial)
-        line.addWidget(hist, 1)
-        line.addWidget(tour, 1)
-        lay.addLayout(line)
+            keys = [k for k, _n, _v in KEY_CHOICES]
+            hk = Segmented([tr("No key") if k == "off" else n.replace("Right ", "R ") for k, n, _v in KEY_CHOICES],
+                           keys.index(cfg["hotkey"]) if cfg["hotkey"] in keys else 0)
 
-        pass
-        backup_section(ctx, lay, self.W)
+            def set_key(i: int) -> None:
+                cfg["hotkey"] = keys[i]
+                ctx.tapkey.set_key(keys[i])
+            hk.changed.connect(set_key)
+            lay.addWidget(Label(tr("Show / hide key"), 11.5, TEXT))
+            lay.addWidget(hk)
+            note(tr("Tap it once to open or close Rubenium, even in a game."))
+            lay.addWidget(heading(tr("Games")))
+            toggle(tr("Game mode"), "game_mouse")
+            note(tr("In fullscreen games the mouse goes through Rubenium, so it never gets in the way."))
+            toggle(tr("Rubenium start screen"), "splash", after=lambda v: ctx.splash.sync())
+            lay.addWidget(heading(tr("Language and size")))
+            seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
+            seg.setFixedWidth(S(170))
+            seg.changed.connect(lambda i: ctx.set_language("fr" if i else "en"))
+            lay.addWidget(row(tr("Language"), seg))
+            size = SliderRow(tr("Size"), 70, 150, cfg["scale"], 10, 100, lambda v: f"{int(v)}%",
+                             marks=list(range(70, 151, 10)))
+            size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
+            lay.addWidget(size)
+            if win.IS_WIN:
+                lay.addWidget(heading(tr("Windows")))
+                t = Toggle(win.autostart_get())
 
-        lay.addWidget(heading(tr("Ball")))
-        self.preview = BallPreview(ctx)
-        lay.addWidget(self.preview)
-        ball = SliderRow(tr("Ball size"), min(BALL_SIZES), max(BALL_SIZES), cfg["ball_size"], 10, 100,
-                         lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
-        ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
-        lay.addWidget(ball)
+                def auto(v, t=t):
+                    if win.autostart_set(v):
+                        cfg["autostart"] = v
+                    else:
+                        t.set_checked(not v)
+                t.toggled_by_user.connect(auto)
+                lay.addWidget(row(tr("Start with Windows"), t))
+                toggle(tr("Welcome screen"), "welcome")
 
-        lay.addWidget(heading(tr("Menu bar")))
-        pass
-        for key, _icon, label in TABS:                 # Home, Lyrics and Settings always stay
-            if key in LOCKED_TABS or key in ("giveaway", "admin"):
-                continue
-            t = Toggle(bool(cfg["news_tab"]) if key == "new" else not cfg["tabs_off"].get(key))
-            t.toggled_by_user.connect(lambda v, k=key: ctx.set_tab(k, v))
-            lay.addWidget(row(tr(label), t))
+        elif sec == 1:                                  # ---------------------------------------------- Look
+            lay.addWidget(heading(tr("Ball")))
+            self.preview = BallPreview(ctx)
+            lay.addWidget(self.preview)
+            ball = SliderRow(tr("Ball size"), min(BALL_SIZES), max(BALL_SIZES), cfg["ball_size"], 10, 100,
+                             lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
+            ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
+            lay.addWidget(ball)
+            lay.addWidget(heading(tr("Effects")))
+            toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
+            toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
+            toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
+            lay.addWidget(heading(tr("Tabs in the menu bar")))
+            pass
+            for key, _icon, label in TABS:             # Home, Lyrics and Settings always stay
+                if key in LOCKED_TABS or key in ("giveaway", "admin"):
+                    continue
+                t = Toggle(bool(cfg["news_tab"]) if key == "new" else not cfg["tabs_off"].get(key))
+                t.toggled_by_user.connect(lambda v, k=key: ctx.set_tab(k, v))
+                lay.addWidget(row(tr(label), t))
 
-        if win.IS_WIN:
-            lay.addWidget(heading(tr("Windows")))
-            t = Toggle(win.autostart_get())
+        elif sec == 2:                                  # ---------------------------------------------- Sounds
+            lay.addWidget(heading(tr("Sounds")))
 
-            def auto(v, t=t):
-                if win.autostart_set(v):
-                    cfg["autostart"] = v
-                else:
-                    t.set_checked(not v)
-            t.toggled_by_user.connect(auto)
-            lay.addWidget(row(tr("Start with Windows"), t))
+            def sounds(v: bool) -> None:
+                cfg["sounds"] = v
+                sfx.enabled = v
+                if v:
+                    sfx.play("on")                  # a sample of how quiet they are
+            snd = Toggle(cfg["sounds"])
+            snd.toggled_by_user.connect(sounds)
+            lay.addWidget(row(tr("Interface sounds"), snd))
+            pass
+            settings_section(ctx, lay)
 
-        if ctx.online.logged_in():
-            lay.addWidget(heading(tr("Account")))
-            out = Button(tr("Log out"), "ghost", 32)
-            out.setFixedWidth(max(S(150), out.sizeHint().width()))
-            out.clicked.connect(lambda: ctx.window.confirm(tr("Log out and close Rubenium?"), self._log_out,
-                                                           yes=tr("Log out")))
-            hours = ctx.online.hours()
-            played = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
-            lay.addWidget(row(f"{ctx.online.username()}  ·  {played} h", out))
-            pw = Button(tr("Change password"), "ghost", 28)
-            pw.setFixedWidth(max(S(150), pw.sizeHint().width()))
-            pw.clicked.connect(ctx.change_password_dialog)
-            lay.addWidget(pw, 0, Qt.AlignmentFlag.AlignRight)
-            gone = Button(tr("Delete account"), "quiet", 24)
-            gone.setFixedWidth(max(S(120), gone.sizeHint().width()))
-            gone.clicked.connect(ctx.delete_account_dialog)
-            lay.addWidget(gone, 0, Qt.AlignmentFlag.AlignRight)
+        elif sec == 3:                                  # ---------------------------------------------- Account
+            if not ctx.online.logged_in():
+                lay.addWidget(Label(tr("Log in to see your account."), 12, TEXT_DIM))
+            else:
+                hours = ctx.online.hours()
+                played = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
+                lay.addWidget(heading(tr("Account")))
+                lay.addWidget(Label(f"{ctx.online.username()}  ·  {played} h", 13, TEXT, bold=True))
+                line = hbox(spacing=6)
+                pw = Button(tr("Change password"), "ghost", 30)
+                pw.clicked.connect(ctx.change_password_dialog)
+                out = Button(tr("Log out"), "ghost", 30)
+                out.clicked.connect(lambda: ctx.window.confirm(tr("Log out and close Rubenium?"), self._log_out,
+                                                               yes=tr("Log out")))
+                line.addWidget(pw, 1)
+                line.addWidget(out, 1)
+                lay.addLayout(line)
+                lay.addWidget(heading(tr("Music")))
+                line = hbox(spacing=6)
+                hist = Button(tr("Song history"), "ghost", 30, icon="note")
 
-        lay.addWidget(heading(tr("Updates")))
-        latest = ctx.updater.latest
-        if latest:
-            up = Button(tr("Update to {v}", v=latest.get("label", latest["version"])), "primary", 32)
-            up.clicked.connect(ctx.install_update)
-        else:
-            up = Button(tr("Check for updates"), "ghost", 32, icon="refresh")
-            up.clicked.connect(lambda: ctx.updater.check(manual=True))
-        lay.addWidget(row(tr("Version {v}", v=VERSION_NAME), up))
-        up.setFixedWidth(max(S(150), up.sizeHint().width()))
-        t_up = Toggle(cfg["update_check"])
+                def open_hist() -> None:
+                    pass
+                    ctx._hist = HistoryWindow(ctx)
+                hist.clicked.connect(open_hist)
+                tour = Button(tr("Show the tour again"), "ghost", 30)
+                tour.clicked.connect(ctx.start_tutorial)
+                line.addWidget(hist, 1)
+                line.addWidget(tour, 1)
+                lay.addLayout(line)
+                lay.addSpacing(S(8))
+                gone = Button(tr("Delete account"), "quiet", 24)
+                gone.setFixedWidth(max(S(120), gone.sizeHint().width()))
+                gone.clicked.connect(ctx.delete_account_dialog)
+                lay.addWidget(gone, 0, Qt.AlignmentFlag.AlignRight)
 
-        def auto_up(v) -> None:
-            cfg["update_check"] = v
-            ctx.updater.start() if v else ctx.updater.stop()
-        t_up.toggled_by_user.connect(auto_up)
-        lay.addWidget(row(tr("Check automatically"), t_up))
+        elif sec == 4:                                  # ---------------------------------------------- Backup
+            pass
+            backup_section(ctx, lay, self.W)
 
-        lay.addSpacing(S(10))
-        leave = Button(tr("Quit Rubenium"), "quiet", 22)         # small and last: closing is rarely what you want
-        leave.setFixedWidth(max(S(120), leave.sizeHint().width()))
-        leave.clicked.connect(lambda: ctx.window.confirm(tr("Quit Rubenium?"), ctx.quit, yes=tr("Quit")))
-        lay.addWidget(leave, 0, Qt.AlignmentFlag.AlignHCenter)
+        else:                                           # ---------------------------------------------- About
+            lay.addWidget(heading(tr("Updates")))
+            latest = ctx.updater.latest
+            if latest:
+                up = Button(tr("Update to {v}", v=latest.get("label", latest["version"])), "primary", 32)
+                up.clicked.connect(ctx.install_update)
+            else:
+                up = Button(tr("Check for updates"), "ghost", 32, icon="refresh")
+                up.clicked.connect(lambda: ctx.updater.check(manual=True))
+            lay.addWidget(row(tr("Version {v}", v=VERSION_NAME), up))
+            up.setFixedWidth(max(S(150), up.sizeHint().width()))
+            t_up = Toggle(cfg["update_check"])
+
+            def auto_up(v) -> None:
+                cfg["update_check"] = v
+                ctx.updater.start() if v else ctx.updater.stop()
+            t_up.toggled_by_user.connect(auto_up)
+            lay.addWidget(row(tr("Check automatically"), t_up))
+            lay.addSpacing(S(10))
+            leave = Button(tr("Quit Rubenium"), "quiet", 22)
+            leave.setFixedWidth(max(S(120), leave.sizeHint().width()))
+            leave.clicked.connect(lambda: ctx.window.confirm(tr("Quit Rubenium?"), ctx.quit, yes=tr("Quit")))
+            lay.addWidget(leave, 0, Qt.AlignmentFlag.AlignHCenter)
 
 
 # ==================================================================================================
@@ -13132,12 +13021,14 @@ class ShopPage(Page):
     """Six parts: Theme (colours, progression), Shop (balls, lines, fonts, themes), Badges, Cases, Market and
     Inventory."""
     key = "themes"
-    SECTIONS = ["Theme", "Shop", "Badges", "Cases", "Market", "Inventory", "Sets"]
-    ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "gem"]
+    SECTIONS = ["Style", "Shop", "Collection", "Cases", "Market", "Inventory", "Sets", "Deals"]
+    ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "timer"]
+    GET = [1, 7, 3, 4]                     # getting things: shop, today's deals, cases, market
+    MINE = [5, 2, 6, 0]                    # what is yours: inventory, collection, sets, your style
     NOTES = ["Your colours and the looks you unlock with time.", "Balls, lines, fonts and themes to buy.",
              "Your collection: click a badge to see every colour.", "Open cases for coins and badges. Gifts are free.",
-             "Buy and sell with other players.", "Everything you own. Sell, show or trade it.",
-             "Collect full sets for a big bonus."]
+             "Buy and sell with other users.", "Everything you own. Sell, show or trade it.",
+             "Collect full sets for a big bonus.", "4 items cheaper today. New deals every day at midnight."]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -13149,9 +13040,16 @@ class ShopPage(Page):
         pass
         pass
         gifts = sum(int(v or 0) for v in ctx.econ.stock.values())
-        self.seg = NavTiles([(tr(n), self.ICONS[k]) for k, n in enumerate(self.SECTIONS)], tab, badges={3: gifts})
-        self.seg.changed.connect(self._section)
-        lay.addWidget(self.seg)
+        rows = []
+        for title, ids in ((tr("GET ITEMS"), self.GET), (tr("YOURS"), self.MINE)):
+            lay.addWidget(Label(title, 9.5, TEXT_FAINT, weight=QFont.Weight.Bold))
+            nav = NavTiles([(tr(self.SECTIONS[k]), self.ICONS[k]) for k in ids], ids.index(tab) if tab in ids else -1,
+                           badges={ids.index(3): gifts} if 3 in ids else {})
+            nav.changed.connect(lambda i, ids=ids: self._section(ids[i]))
+            lay.addWidget(nav)
+            rows.append(nav)
+        self.seg = rows[0]
+        self.navs = rows
         note = Label(tr(self.NOTES[tab]), 10.5, TEXT_DIM, wrap_w=self.W)
         lay.addWidget(note)
         if tab == 1:
@@ -13167,13 +13065,16 @@ class ShopPage(Page):
         elif tab == 6:
             pass
             build_sets(self, lay)
+        elif tab == 7:
+            pass
+            build_deals(self, lay)
         else:
             self._look(lay)
         ctx.wallet.changed.connect(self._refresh)
 
     def _section(self, i: int) -> None:
         if self.reel is not None and self.reel.busy():
-            return self.seg.set_index(3)
+            return None
         self.ctx.shop_tab = i
         self.ctx.shop_badge = None
         self.ctx.shop_case = None
@@ -13528,11 +13429,11 @@ class ShopPage(Page):
             ec.call("rb_case_gift", {"name": name, "which": case["id"]}, done, once=True)
         ctx._ask = AskDialog(ctx, tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), tr("Friend's username"),
                              tr("Gift for {n}", n=coins_text(case["price"])), send, 10,
-                             tr("Your friend opens it with one of their keys. 3 gifts a day at most."))
+                             tr("Your friend opens it for free. 3 gifts a day at most."))
 
     def _lock(self, on: bool) -> None:
         try:
-            for wdg in (self.open_btn, self.case_back, self.seg):
+            for wdg in (self.open_btn, self.case_back, *getattr(self, "navs", [])):
                 wdg.setEnabled(not on)
         except RuntimeError:
             pass
@@ -15009,12 +14910,12 @@ def build_cosmetics(page, lay) -> None:
     if not ec.ready or not ec.catalog:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the shop"), 12, TEXT_DIM))
     kind_i = int(getattr(ctx, "shop_kind", 0) or 0)
-    kind = ("ball", "line", "font", "theme", "vis")[kind_i]
+    kind = ("ball", "line", "font", "theme")[min(kind_i, 3)]
     design = getattr(ctx, "shop_design", None)
-    if design is None or kind == "vis":
+    if design is None:
         for sale in (ec.live.get("sales") or [])[:2]:
             lay.addWidget(SaleBanner(page, sale))
-        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Visualisers")], kind_i)
+        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes")], min(kind_i, 3))
 
         def switch(i: int) -> None:
             ctx.shop_kind = i
@@ -15022,9 +14923,6 @@ def build_cosmetics(page, lay) -> None:
             ctx.reload_page()
         seg.changed.connect(switch)
         lay.addWidget(seg)
-        if kind == "vis":
-            pass
-            return build_vis_shop(page, lay)
         entries = []
         for base, name in _designs(kind):
             item = f"theme:{base}" if kind == "theme" else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
@@ -15260,7 +15158,7 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
     line.addWidget(b, 1)
     sell = Button(tr("Sell"), "ghost", 32)
     sell.setEnabled(bool(free) and bool(ec.info(item).get("tradeable")))
-    sell.setToolTip(tr("Put it on the market: other players buy it or make you an offer"))
+    sell.setToolTip(tr("Put it on the market: other users buy it or make you an offer"))
     sell.clicked.connect(lambda: market_sell(ctx, item))
     line.addWidget(sell, 1)
     lay.addLayout(line)
@@ -15296,7 +15194,7 @@ def market_sell(ctx, item: str) -> None:
                 QTimer.singleShot(600, ctx.reload_page)
             ec.call("rb_market_list", {"item_id": free[-1]["id"], "price": n}, done)
         ask_number(ctx, tr("Sell: {name}", name=item_name(item)), tr("Price in coins"), tr("Put on sale"), listed,
-                   tr("Usual price: about {v} coins. Choose between {a} and {b}. Players can buy it at your price or "
+                   tr("Usual price: about {v} coins. Choose between {a} and {b}. Users can buy it at your price or "
                       "make you an offer. The market keeps 5% when it sells.",
                       v=coins_text(int(info.get("estimate") or 0)), a=coins_text(lo), b=coins_text(hi)))
     ec.online.ask("rb_market_price", {"what": item}, priced)
@@ -15701,7 +15599,7 @@ def build_trade(page, lay) -> None:
         lay.addWidget(Label(tr("Trade done! The items are in your Inventory."), 13, "#5BE08A", bold=True, wrap_w=page.W))
         return
     if state == "cancelled":
-        why = {"expired": "The trade ended: a player left or took too long.", "failed": "The trade could not be done: nothing was exchanged."
+        why = {"expired": "The trade ended: a user left or took too long.", "failed": "The trade could not be done: nothing was exchanged."
                }.get(d.get("why"), "The trade was cancelled. Nothing was exchanged.")
         lay.addWidget(Label(tr(why), 12.5, "#FF9A9A", wrap_w=page.W))
         return
@@ -15769,7 +15667,7 @@ def build_trade(page, lay) -> None:
     ready = Button(tr("Not ready") if my_ready else tr("Ready"), "ghost" if my_ready else "primary", 36)
     ready.clicked.connect(lambda: link.act("rb_trade_ready", {"ready": not my_ready, "seen_version": version}))
     lay.addWidget(ready)
-    lay.addWidget(Label(tr("Any change makes both players not ready again. Nothing moves until both confirm."), 10.5,
+    lay.addWidget(Label(tr("Any change makes both users not ready again. Nothing moves until both confirm."), 10.5,
                         TEXT_DIM, wrap_w=page.W))
     offered = {r["id"] for r in mine}
     pool = [i for i in ec.items if not i.get("locked") and i["id"] not in offered
@@ -15799,10 +15697,13 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QGridLayout, QWidget
 
 
+TAP_MODES = [("normal", "Normal", "The classic: faster and faster."), ("rush", "Rush", "Much faster, many more notes."),
+             ("holds", "Long notes", "Lots of notes to hold down."), ("chords", "Chords", "Two notes at once, very often.")]
+MEM_THEMES = [("shapes", "Shapes"), ("numbers", "Numbers"), ("colours", "Colours")]
 LANE_KEYS = [Qt.Key.Key_D, Qt.Key.Key_F, Qt.Key.Key_J, Qt.Key.Key_K]
 LANE_NAMES = ["D", "F", "J", "K"]
 LANE_COLOURS = ["#FF5C8A", "#4FC3FF", "#5BE08A", "#FFB547"]
@@ -15859,7 +15760,8 @@ class BeatRush(QWidget):
                 self.update()
                 return self.ctx.toast(tr(str(data)), "warn")
             self.begin(data, sent)
-        self.ctx.econ.call("rb_tap_start", {}, got)
+        mode = TAP_MODES[int(getattr(self.ctx, "tap_mode", 0) or 0)][0]
+        self.ctx.econ.call("rb_tap_start", {"mode": mode}, got)
 
     def begin(self, data: dict, sent: float, duel: bool = False) -> None:
         now = time.monotonic()
@@ -16181,9 +16083,28 @@ SYMBOLS = ["#FF5C8A", "#4FC3FF", "#5BE08A", "#FFB547", "#B36BFF", "#FF8A3D", "#2
            "#FF5CC8", "#8CFF2E", "#6A8CFF", "#E6EEF5"]
 
 
-def paint_symbol(p: QPainter, kind: int, c: QPointF, r: float) -> None:
-    """One of 12 shapes, each with its own colour."""
+def paint_symbol(p: QPainter, kind: int, c: QPointF, r: float, theme: str = "shapes") -> None:
+    """One of 12 pictures: shapes, numbers or colours (the Memory card style)."""
     col = QColor(SYMBOLS[kind % 12])
+    if theme == "numbers":
+        p.save()
+        p.setPen(col)
+        f = QFont(font(12, QFont.Weight.Black))
+        f.setPixelSize(max(6, int(r * 1.5)))
+        p.setFont(f)
+        p.drawText(QRectF(c.x() - r * 1.5, c.y() - r * 1.5, r * 3, r * 3), int(Qt.AlignmentFlag.AlignCenter), str(kind + 1))
+        p.restore()
+        return
+    if theme == "colours":
+        p.save()
+        p.setPen(QPen(QColor("#FFFFFF"), max(1.0, r * 0.08)))
+        g = QRadialGradient(QPointF(c.x() - r * 0.3, c.y() - r * 0.3), r * 1.4)
+        g.setColorAt(0, mix(col, QColor("#FFFFFF"), 0.35))
+        g.setColorAt(1, col)
+        p.setBrush(g)
+        p.drawEllipse(c, r, r)
+        p.restore()
+        return
     p.save()
     p.translate(c)
     p.setPen(Qt.PenStyle.NoPen)
@@ -16389,7 +16310,8 @@ class MemoryGame(QWidget):
                         p.save()
                         p.translate(rr.center())
                         p.scale(squeeze, 1)
-                        paint_symbol(p, sym, QPointF(0, 0), r.width() * 0.26)
+                        paint_symbol(p, sym, QPointF(0, 0), r.width() * 0.26,
+                                     MEM_THEMES[int(getattr(self.ctx, "mem_theme", 0) or 0)][0])
                         p.restore()
                 else:
                     g = QLinearGradient(rr.topLeft(), rr.bottomRight())
@@ -16773,6 +16695,89 @@ def build_duels(page, lay) -> None:
         for d in duels[:10]:
             lay.addWidget(DuelRow(page, d))
     page.load_duels(quiet=True)
+
+
+
+# ================================================================ the lobby: two big cards, and the mini game list
+class BigCard(QWidget):
+    """A big clickable card: an icon, a title and one line saying what it is."""
+
+    def __init__(self, title: str, sub: str, icon: str, colours: tuple, on_click, height: int = 74) -> None:
+        super().__init__()
+        self.title, self.sub, self.icon, self.colours, self.on_click = title, sub, icon, colours, on_click
+        self.setFixedHeight(S(height))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.hover = 0.0
+        self.extra = ""                               # small text on the right (e.g. coins left)
+
+    def enterEvent(self, _e) -> None:
+        self.hover = 1.0
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = 0.0
+        self.update()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.rect().contains(e.position().toPoint()):
+            sfx.play("pick")
+            self.on_click()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        a, b = QColor(self.colours[0]), QColor(self.colours[1])
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, mix(a, QColor("#0B0E10"), 0.55 - 0.1 * self.hover))
+        g.setColorAt(1, mix(b, QColor("#0B0E10"), 0.8))
+        p.setPen(QPen(alpha(a, 0.55 + 0.3 * self.hover), S(1.3)))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+        glow = QRadialGradient(QPointF(r.left() + S(34), r.center().y()), S(40))
+        glow.setColorAt(0, alpha(a, 0.45))
+        glow.setColorAt(1, alpha(a, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(QPointF(r.left() + S(34), r.center().y()), S(40), S(40))
+        p.save()
+        p.translate(r.left() + S(34), r.center().y())
+        p.scale(1.5, 1.5)
+        draw_icon(p, self.icon, QColor("#FFFFFF"))
+        p.restore()
+        p.setPen(QColor(TEXT))
+        size = 15.0
+        while size > 10 and QFontMetrics(font(size, QFont.Weight.ExtraBold)).horizontalAdvance(self.title) > r.width() - S(76):
+            size -= 0.5                                   # long names (in French) get smaller, never cut
+        p.setFont(font(size, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left() + S(66), r.top() + S(10), r.width() - S(76), S(24)), int(Qt.AlignmentFlag.AlignVCenter), self.title)
+        p.setPen(alpha("#FFFFFF", 0.75))
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left() + S(66), r.top() + S(34), r.width() - S(80), r.height() - S(38)),
+                   int(Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), self.sub)
+        if self.extra:
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(10, QFont.Weight.Bold))
+            p.drawText(r.adjusted(0, S(8), -S(12), 0), int(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight), self.extra)
+
+
+def build_minigames(page, lay) -> None:
+    """Earn coins: the free mini games, each with what it pays."""
+    page._back_bar(lay, tr("Earn coins"))
+    lay.addWidget(Label(tr("Free games that pay coins. Each one pays up to 150 coins every 2 hours; the better you "
+                           "play, the more you get."), 10.5, TEXT_DIM, wrap_w=page.W))
+    games = [
+        ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
+         ("#FF5C8A", "#7A1FFF"), "12-50", lambda: page._show_mini(True)),
+        ("Parking", tr("Slide the cars and get the red one out. Easy, Medium or Hard."), "grid",
+         ("#FF8A3D", "#C2271F"), "12-50", lambda: page._show_park(True)),
+        ("Memory", tr("Find the pairs in as few flips as you can. 3 sizes, 3 card styles."), "gem",
+         ("#4FC3FF", "#2E5BFF"), "12-55", lambda: page.open_sub("memory")),
+    ]
+    for name, sub, icon, cols, pay, go in games:
+        card = BigCard(tr(name), sub, icon, cols, go, 78)
+        card.extra = tr("{n} coins", n=pay)
+        lay.addWidget(card)
 
 
 # ==================================================================================================
@@ -18722,6 +18727,8 @@ class GamesPage(Page):
                     self._back_bar(lay, tr({"memory": "Memory", "scratch": "Scratch card"}.get(sub, "Duels")))
                     server_wait(ctx, lay, self.W)
                     return
+            if sub == "minigames":
+                return build_minigames(self, lay)
             if sub == "memory":
                 return self._memory(lay)
             if sub == "duels":
@@ -18746,25 +18753,14 @@ class GamesPage(Page):
         lay.addWidget(DailyRow(self))
         lay.addWidget(ScratchRow(self))
         line = hbox(spacing=6)
-        mini = Button(tr("Beat Tap"), "ghost", 34, icon="note")
-        mini.setToolTip(tr("A free mini game: hit the notes on the beat to earn coins"))
-        mini.clicked.connect(lambda: self._show_mini(True))
-        duel = Button(tr("Duel"), "ghost", 34, icon="shield")
-        duel.setToolTip(tr("Challenge a friend at Beat Tap, Memory or Parking, with or without a bet"))
-        duel.clicked.connect(lambda: self.open_sub("duels"))
-        line.addWidget(mini, 1)
+        earn = BigCard(tr("Earn coins"), tr("3 free mini games"), "spark",
+                       ("#35E0A1", "#12806A"), lambda: self.open_sub("minigames"))
+        duel = BigCard(tr("Duels"), tr("1 vs 1 with friends"), "shield",
+                       ("#FF5C6C", "#8A1F7A"), lambda: self.open_sub("duels"))
+        line.addWidget(earn, 1)
         line.addWidget(duel, 1)
         lay.addLayout(line)
-        line = hbox(spacing=6)
-        park = Button(tr("Parking"), "ghost", 34, icon="grid")
-        park.setToolTip(tr("A free puzzle: slide the cars to get the red car out, for coins"))
-        park.clicked.connect(lambda: self._show_park(True))
-        mem = Button(tr("Memory"), "ghost", 34, icon="gem")
-        mem.setToolTip(tr("A free game: find the pairs in as few flips as you can, for coins"))
-        mem.clicked.connect(lambda: self.open_sub("memory"))
-        line.addWidget(park, 1)
-        line.addWidget(mem, 1)
-        lay.addLayout(line)
+        lay.addWidget(heading(tr("Casino")))
         grid = QWidget()
         gl = QGridLayout(grid)
         gl.setContentsMargins(0, 0, 0, 0)
@@ -18785,7 +18781,7 @@ class GamesPage(Page):
     def _show_mini(self, on: bool) -> None:
         sfx.play("pick")
         self.ctx.mini_open = on
-        self.ctx.games_sub = None
+        self.ctx.games_sub = None if on else "minigames"
         self.ctx.reload_page()
 
     def _mini(self, lay) -> None:
@@ -18798,6 +18794,11 @@ class GamesPage(Page):
         pass
         if server_wait(self.ctx, lay, self.W):
             return
+        mode = int(getattr(self.ctx, "tap_mode", 0) or 0)
+        modes = Segmented([tr(n) for _k, n, _d in TAP_MODES], mode)
+        modes.changed.connect(lambda i: (setattr(self.ctx, "tap_mode", i), self.ctx.reload_page()))
+        lay.addWidget(modes)
+        lay.addWidget(Label(tr(TAP_MODES[mode][2]), 10.5, TEXT_DIM))
         self.beat = BeatRush(self, lambda _r: (self.beat_btn.setEnabled(True), self.beat_btn.set_text(tr("Play again"))))
         back.clicked.connect(lambda: (self.beat.abort(), self._show_mini(False)))
         lay.addWidget(self.beat)
@@ -18826,11 +18827,14 @@ class GamesPage(Page):
         lay.addWidget(CoinBar(self.ctx))
 
     def _memory(self, lay) -> None:
-        self._back_bar(lay, tr("Memory"))
+        self._back_bar(lay, tr("Memory"), lambda: self.open_sub("minigames"))
         tier = int(getattr(self.ctx, "mem_tier", 0) or 0)
         seg = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], tier)
         lay.addWidget(seg)
+        style = Segmented([tr(n) for _k, n in MEM_THEMES], int(getattr(self.ctx, "mem_theme", 0) or 0))
+        lay.addWidget(style)
         self.mem = MemoryGame(self)
+        style.changed.connect(lambda i: (setattr(self.ctx, "mem_theme", i), self.mem.update()))
         seg.changed.connect(lambda i: (setattr(self.ctx, "mem_tier", i), self.mem.start()))
         lay.addWidget(self.mem)
         go = Button(tr("New game"), "primary", 36)
@@ -18921,7 +18925,7 @@ class GamesPage(Page):
     def _show_park(self, on: bool) -> None:
         sfx.play("pick")
         self.ctx.park_open = on
-        self.ctx.games_sub = None
+        self.ctx.games_sub = None if on else "minigames"
         self.ctx.reload_page()
 
     def _park(self, lay) -> None:
@@ -20649,85 +20653,112 @@ class AmountWindow(FloatWindow):
 
 
 
-# ================================================================ visualisers in the shop
-class VisShopRow(QWidget):
-    """One visualiser: a live preview, its rarity, its price, and Buy / Use / In use."""
+# ================================================================ daily deals
+class DealCard(QWidget):
+    """One deal: the item, its old and new price and how much is saved."""
 
-    def __init__(self, page, style: str, name: str) -> None:
+    def __init__(self, page, d: dict, width: int) -> None:
         super().__init__()
-        pass
-        pass
-        self.page, self.ctx, self.style = page, page.ctx, style
-        rarity, price = VIS_SHOP[style]
-        ec = self.ctx.econ
-        price = ec.shop_price("vis:" + style) if style != "bars" and ec.price("vis:" + style) is not None else price
-        self.owned = vis_owned(self.ctx, style)
-        self.using = self.ctx.cfg["visualiser"] == style
-        self.setFixedHeight(S(64))
+        self.page, self.ctx, self.d = page, page.ctx, d
+        self.setFixedSize(width, S(150))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        lay = hbox(self, 8)
-        lay.setContentsMargins(S(8), S(6), S(8), S(6))
-        prev = Visualiser(self.ctx, style, 50)
-        prev.setFixedWidth(int(page.W * 0.45))
-        prev.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        lay.addWidget(prev)
-        col = vbox(spacing=1)
-        col.addWidget(Label(tr(name), 12.5, TEXT, bold=True))
-        col.addWidget(Label(tr(RARITY_NAMES[rarity]).upper(), 9.5, RARITY_COLOURS[rarity], bold=True))
-        state = (tr("In use") if self.using else tr("Owned: click to use") if self.owned else
-                 (tr("Free") if not price else coins_text(int(price)) + " " + tr("coins")))
-        col.addWidget(Label(state, 10.5, GOLD_TEXT if not self.owned else TEXT_DIM))
-        lay.addLayout(col, 1)
-        self.colour = QColor(RARITY_COLOURS[rarity])
-        self.price = int(price or 0)
+        self.owned = not d["item"].startswith("badge:") and self.ctx.econ.owns(d["item"])
+        self._t = QTimer(self)
+        self._t.setInterval(50)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
 
     def mouseReleaseEvent(self, e) -> None:
         if not self.rect().contains(e.position().toPoint()):
             return
-        ctx, ec = self.ctx, self.ctx.econ
+        ctx, ec, d = self.ctx, self.ctx.econ, self.d
         if self.owned:
-            return use_vis(ctx, self.style)
-        if self.price > ec.coins:
-            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(self.price - ec.coins)), "warn")
+            return ctx.toast(tr("You already have it"), "warn")
+        if d["now"] > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(d["now"] - ec.coins)), "warn")
+        pass
 
         def bought(ok: bool, data) -> None:
             if not ok:
                 return ctx.toast(tr(str(data)), "warn")
             sfx.play("on")
-            ec.refresh()
-            QTimer.singleShot(500, lambda: use_vis(ctx, self.style))
-        ctx.window.confirm(tr("Buy this visualiser for {n} coins?", n=coins_text(self.price)),
-                           lambda: ec.buy("vis:" + self.style, bought), yes=tr("Buy"))
+            ctx.toast(tr("Bought: {what}", what=item_name(d["item"])))
+            ctx.reload_page()
+        ctx.window.confirm(tr("Buy {what} for {n} coins?", what=item_name(d["item"]), n=coins_text(d["now"])),
+                           lambda: ec.buy(d["item"], bought), yes=tr("Buy"))
 
     def paintEvent(self, _e) -> None:
+        pass
+        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha(ui.accent, 0.8) if self.using else alpha(self.colour, 0.35), S(1.4) if self.using else 1))
-        g = QLinearGradient(r.topLeft(), r.topRight())
-        g.setColorAt(0, QColor("#0A0D10"))
-        g.setColorAt(1, mix(self.colour, QColor("#0A0D10"), 0.85))
+        col = QColor(RARITY_COLOURS.get(self.ctx.econ.rarity(self.d["item"]), "#9AA4AD"))
+        g = QLinearGradient(r.topLeft(), r.bottomLeft())
+        g.setColorAt(0, mix(col, QColor("#0B0E10"), 0.75))
+        g.setColorAt(1, QColor("#0B0E10"))
+        p.setPen(QPen(alpha(col, 0.5), S(1.2)))
         p.setBrush(g)
-        p.drawRoundedRect(r, S(10), S(10))
+        p.drawRoundedRect(r, S(12), S(12))
+        paint_cosmetic(p, self.d["item"], QRectF(r.center().x() - S(26), r.top() + S(12), S(52), S(52)), time.monotonic())
+        tag = QRectF(r.right() - S(46), r.top() + S(8), S(38), S(18))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FF5C6C"))
+        p.drawRoundedRect(tag, S(9), S(9))
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(9.5, QFont.Weight.ExtraBold))
+        p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), f"-{self.d['pct']}%")
+        name = QFontMetrics(font(10.5, QFont.Weight.Bold)).elidedText(item_name(self.d["item"]), Qt.TextElideMode.ElideRight,
+                                                                       int(r.width() - S(12)))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left() + S(6), r.top() + S(70), r.width() - S(12), S(18)), int(Qt.AlignmentFlag.AlignCenter), name)
+        p.setPen(QColor(TEXT_FAINT))
+        p.setFont(font(10))
+        old = coins_text(int(self.d["price"]))
+        rect = QRectF(r.left(), r.top() + S(92), r.width(), S(16))
+        p.drawText(rect, int(Qt.AlignmentFlag.AlignCenter), old)
+        w = QFontMetrics(font(10)).horizontalAdvance(old)
+        p.setPen(QPen(alpha(TEXT_FAINT, 0.9), 1))
+        p.drawLine(QPointF(rect.center().x() - w / 2 - 2, rect.center().y()), QPointF(rect.center().x() + w / 2 + 2, rect.center().y()))
+        p.setPen(QColor(GOLD_TEXT if not self.owned else TEXT_DIM))
+        p.setFont(font(14, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left(), r.top() + S(110), r.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Owned") if self.owned else coins_text(int(self.d["now"])))
 
 
-def use_vis(ctx, style: str) -> None:
-    sfx.play("pick")
-    ctx.cfg["visualiser"] = style
-    ctx.cfg["vis_style"] = style
-    ctx.cfg.save()
-    ctx._sync_audio()
-    ctx.window._drop_page("home")
-    ctx.toast(tr("Visualiser on: you see it on the music tab"))
-    ctx.reload_page()
-
-
-def build_vis_shop(page, lay) -> None:
+def build_deals(page, lay) -> None:
+    ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
+    data = getattr(ctx, "deals_data", None)
+    if data is None or time.monotonic() - data[0] > 60:
+        def got(ok: bool, ans) -> None:
+            if ok and isinstance(ans, dict):
+                ctx.deals_data = (time.monotonic(), ans)
+                if ctx.window.current == "themes" and int(getattr(ctx, "shop_tab", 0) or 0) == 7:
+                    ctx.reload_page()
+        ctx.online.ask("rb_deals", {}, got)
+    if data is None:
+        return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+    ans = data[1]
+    left = max(0, int(ans.get("ends_in") or 0) - int(time.monotonic() - data[0]))
     pass
-    lay.addWidget(Label(tr("Visualisers move with your music on the music tab. The rarer, the cooler. Turn them on or "
-                           "off in Settings."), 10.5, TEXT_DIM, wrap_w=page.W))
-    for style, name in VIS_STYLES:
-        lay.addWidget(VisShopRow(page, style, name))
+    lay.addWidget(Label(tr("New deals in {t}", t=clock_text(left)), 11, GOLD_TEXT, bold=True))
+    from PyQt6.QtWidgets import QGridLayout
+    holder = QWidget()
+    grid = QGridLayout(holder)
+    grid.setContentsMargins(0, 0, 0, 0)
+    grid.setSpacing(S(6))
+    w = (page.W - S(6)) // 2
+    for k, d in enumerate(ans.get("deals") or []):
+        grid.addWidget(DealCard(page, d, w), k // 2, k % 2)
+    lay.addWidget(holder)
 
 
 # ==================================================================================================
@@ -21094,6 +21125,31 @@ class TradeAsk(QWidget):
 TRADE_GOLD = "#E8C26A"
 
 
+class PerkRow(QWidget):
+    """One thing friends can do together: an icon, a name and a few words."""
+
+    def __init__(self, icon: str, head: str, text: str, width: int) -> None:
+        super().__init__()
+        self.icon, self.head, self.text = icon, head, text
+        self.setFixedSize(width, S(26))
+
+    def paintEvent(self, _e) -> None:
+        pass
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.save()
+        p.translate(S(11), self.height() / 2)
+        p.scale(0.8, 0.8)
+        draw_icon(p, self.icon, QColor(ui.accent))
+        p.restore()
+        p.setPen(QColor(TEXT))
+        p.setFont(font(11, QFont.Weight.Bold))
+        p.drawText(QRectF(S(28), 0, S(110), self.height()), int(Qt.AlignmentFlag.AlignVCenter), self.head)
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10.5))
+        p.drawText(QRectF(S(130), 0, self.width() - S(130), self.height()), int(Qt.AlignmentFlag.AlignVCenter), self.text)
+
+
 class FriendsPage(Page):
     """The Social tab."""
     key = "friends"
@@ -21119,7 +21175,7 @@ class FriendsPage(Page):
         if who:
             return self._profile(who)
         if not ctx.online.logged_in():
-            return self.lay.addWidget(Label(tr("Log in to see other players"), 12, TEXT_DIM))
+            return self.lay.addWidget(Label(tr("Log in to see other users"), 12, TEXT_DIM))
         me = getattr(ctx, "social_me", None) or {}
         card = StatsCard(ctx, me, self.W)
         card.picture.connect(self._picture)
@@ -21141,7 +21197,7 @@ class FriendsPage(Page):
             self.lay.addWidget(TradeAsk(self, ask))
         tab = int(getattr(ctx, "social_tab", 0) or 0)
         unread = int(getattr(ctx, "msg_unread", 0) or 0)
-        seg = Segmented([tr("Friends"), tr("Players"), tr("Chat") + (f" {unread}" if unread else ""), tr("Top"), tr("Trades")], tab)
+        seg = Segmented([tr("Friends"), tr("Users"), tr("Chat") + (f" {unread}" if unread else ""), tr("Top"), tr("Trades")], tab)
 
         def switch(i: int) -> None:
             ctx.social_tab = i
@@ -21158,14 +21214,14 @@ class FriendsPage(Page):
             rows = getattr(ctx, "users_cache", None)
             if rows is None:
                 return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-            self.lay.addWidget(Label(tr("{n} players. Click one to see their profile.", n=len(rows)), 10.5, TEXT_DIM))
+            self.lay.addWidget(Label(tr("{n} users. Click one to see their profile.", n=len(rows)), 10.5, TEXT_DIM))
             for info in rows:
                 self.lay.addWidget(PlayerRow(self, info))
             return
         if self.friends is None:
             return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
         if not self.friends:
-            return self.lay.addWidget(Label(tr("No friends yet. Open All players and add someone."), 12, TEXT_DIM,
+            return self.lay.addWidget(Label(tr("No friends yet. Open Users and add someone."), 12, TEXT_DIM,
                                             wrap_w=self.W))
         asks = [f for f in self.friends if f["state"] == "asks"]
         mine = [f for f in self.friends if f["state"] == "friend"]
@@ -21345,37 +21401,8 @@ class FriendsPage(Page):
             return ctx.online.ask("rb_profile", {"name": name}, self._got_profile)
         prof, hist = data.get("profile") or {}, data.get("history")
         self.lay.addWidget(ProfileCard(ctx, prof))
-        line = hbox(spacing=6)
         if not prof.get("me"):
-            state = prof.get("state")
-            if prof.get("friend"):
-                rm = Button(tr("Remove friend"), "ghost", 30)
-                rm.clicked.connect(lambda: ctx.window.confirm(tr("Remove {name} from your friends?", name=name),
-                                   lambda: self.act("rb_friend_remove", name, lambda _ok: self.open_profile(None)),
-                                   yes=tr("Remove")))
-                line.addWidget(rm, 1)
-            elif state == "asks":
-                b = Button(tr("Accept friend"), "primary", 30)
-                b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
-                line.addWidget(b, 1)
-            elif state != "asked":
-                b = Button(tr("Add friend"), "primary", 30)
-                b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
-                line.addWidget(b, 1)
-            trade = Button(tr("Trade"), "primary" if prof.get("can_trade") else "ghost", 30)
-            trade.setToolTip(tr("Both players need 5 hours with Rubenium"))
-            trade.clicked.connect(lambda: self.ask_trade(name))
-            line.addWidget(trade, 1)
-        self.lay.addLayout(line)
-        if not prof.get("me") and prof.get("friend"):
-            line = hbox(spacing=6)
-            chat = Button(tr("Message"), "ghost", 30, icon="users")
-            chat.clicked.connect(lambda: open_chat(ctx, name))
-            duel = Button(tr("Duel"), "ghost", 30, icon="shield")
-            duel.clicked.connect(lambda: self._duel(name))
-            line.addWidget(chat, 1)
-            line.addWidget(duel, 1)
-            self.lay.addLayout(line)
+            self._relation(prof, name)
         badges = list(prof.get("badges") or [])
         self.lay.addWidget(heading(tr("Badges") + f"  ·  {len(badges)}"))
         if badges:
@@ -21384,7 +21411,6 @@ class FriendsPage(Page):
         else:
             self.lay.addWidget(Label(tr("No badges yet"), 12, TEXT_DIM))
         if prof.get("stats") is None:
-            self.lay.addWidget(Label(tr("Become friends to see their history."), 11.5, TEXT_DIM, wrap_w=self.W))
             return
         self._details(prof)
         if hist is None:
@@ -21397,6 +21423,65 @@ class FriendsPage(Page):
                 self.lay.addWidget(Label(tr("Nothing yet"), 11, TEXT_FAINT))
             else:
                 self.lay.addWidget(HistoryList(ctx, key, rows, self.W))
+
+    PERKS = [("users", "Chat", "Send messages"), ("shield", "Duels", "Play 1 against 1, with bets"),
+             ("gift", "Gifts", "Send cases to each other"), ("perf", "Full profile", "Stats, history, last seen"),
+             ("spark", "Online", "See when they are on"), ("chip", "Leaderboard", "Compare in the Friends top")]
+
+    def _relation(self, prof: dict, name: str) -> None:
+        """Friends and not-friends see different things: friends get actions, others see why to add them."""
+        ctx = self.ctx
+        pass
+        state = prof.get("state")
+        if prof.get("friend"):
+            self.lay.addWidget(Label("✓ " + tr("You are friends"), 12, "#3DDC84", bold=True))
+            acts = [(tr("Message"), "users"), (tr("Duel"), "shield"), (tr("Trade"), "chip"), (tr("Gift a case"), "gift")]
+            grid = NavTiles(acts, -1, select=False)
+
+            def act(i: int) -> None:
+                if i == 0:
+                    open_chat(ctx, name)
+                elif i == 1:
+                    self._duel(name)
+                elif i == 2:
+                    self.ask_trade(name)
+                else:
+                    ctx.shop_tab, ctx.shop_case = 3, None
+                    ctx.toast(tr("Pick a case, then press “Gift this case to a friend”"))
+                    ctx.window._drop_page("themes")
+                    ctx.window.goto("themes")
+            grid.changed.connect(act)
+            self.lay.addWidget(grid)
+            rm = Button(tr("Remove friend"), "quiet", 24)
+            rm.clicked.connect(lambda: ctx.window.confirm(tr("Remove {name} from your friends?", name=name),
+                               lambda: self.act("rb_friend_remove", name, lambda _ok: self.open_profile(None)), yes=tr("Remove")))
+            self.lay.addWidget(rm, 0, Qt.AlignmentFlag.AlignRight)
+            return
+        # not friends (yet): what you get by adding them, and one clear button
+        card = QWidget()
+        card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        card.setStyleSheet(f"background: rgba(255,255,255,0.04); border-radius: {S(12)}px;")
+        cl = vbox(card, 6, (12, 10, 12, 12))
+        title = {"asks": tr("{name} wants to be your friend", name=name),
+                 "asked": tr("Friend request sent to {name}", name=name)}.get(state, tr("Add {name} as a friend to:", name=name))
+        cl.addWidget(Label(title, 12.5, TEXT, bold=True, wrap_w=self.W - S(24)))
+        for icon, head, text in self.PERKS:
+            cl.addWidget(PerkRow(icon, tr(head), tr(text), self.W - S(24)))
+        if state == "asks":
+            b = Button(tr("Accept friend"), "primary", 34)
+            b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
+            cl.addWidget(b)
+        elif state == "asked":
+            cl.addWidget(Label(tr("Waiting for them to accept."), 11, TEXT_DIM))
+        else:
+            b = Button(tr("Add friend"), "primary", 34, icon="plus")
+            b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
+            cl.addWidget(b)
+        self.lay.addWidget(card)
+        trade = Button(tr("Trade without being friends"), "ghost", 28)
+        trade.setToolTip(tr("Both users need 5 hours with Rubenium"))
+        trade.clicked.connect(lambda: self.ask_trade(name))
+        self.lay.addWidget(trade)
 
     def _details(self, prof: dict) -> None:
         """A friend's numbers and what they are wearing."""
@@ -21781,7 +21866,7 @@ class Table(QWidget):
 
 class AdminPage(Page):
     key = "admin"
-    SECTIONS = ["Overview", "Players", "Items", "Cases", "Live", "Settings", "Log", "Help"]
+    SECTIONS = ["Overview", "Users", "Items", "Cases", "Live", "Settings", "Log", "Help"]
     ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key"]
 
     def __init__(self, ctx) -> None:
@@ -21872,7 +21957,7 @@ class AdminPage(Page):
         st = self.fetch("rb_admin_stats", {})
         if st is None:
             return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        lay.addWidget(Numbers([(st["players"], tr("Players")), (st["online"], tr("Online now")), (st["today"], tr("Today")),
+        lay.addWidget(Numbers([(st["players"], tr("Users")), (st["online"], tr("Online now")), (st["today"], tr("Today")),
                                (coins_text(st["coins"]), tr("Coins in total")), (st["keys"], tr("Keys in total")),
                                (st["items"], tr("Items")), (st["listings"], tr("On the market")),
                                (st["trades"], tr("Trades done")), ("", "")], self.W))
@@ -21896,8 +21981,8 @@ class AdminPage(Page):
         seg = Segmented([tr("Last seen"), tr("Coins"), tr("Hours")], sort)
         seg.changed.connect(lambda i: (setattr(self.ctx, "admin_sort", i), self.ctx.reload_page()))
         lay.addWidget(seg)
-        find = Button(tr("Find a player"), "ghost", 28)
-        find.clicked.connect(lambda: FormDialog(self.ctx, tr("Find a player"), [("n", tr("Username"), "")], tr("Open"),
+        find = Button(tr("Find a user"), "ghost", 28)
+        find.clicked.connect(lambda: FormDialog(self.ctx, tr("Find a user"), [("n", tr("Username"), "")], tr("Open"),
                                                 lambda v, d: (d.close(), self._open(v["n"]))))
         lay.addWidget(find)
         rows = self.fetch("rb_admin_players", {"search": "", "sort": ["", "coins", "hours"][sort], "page": 0})
@@ -21963,6 +22048,7 @@ class AdminPage(Page):
                 self._reload()
         grid.changed.connect(act)
         lay.addWidget(grid)
+        self._danger(lay, name, d)
         stock = d.get("stock") or {}
         if stock:
             pass
@@ -22021,6 +22107,34 @@ class AdminPage(Page):
                               + (f"  {int(l['keys']):+d}🔑" if int(l.get("keys") or 0) else ""),
                               "#5BE08A" if int(l["coins"]) >= 0 else "#FF7A7A") for l in (d.get("ledger") or [])[:60]], self.W))
 
+    RESETS = [("inventory", "Reset inventory",
+               "Deletes EVERY item {name} owns: all badges, balls, lines, fonts and themes. Items on the market or in a "
+               "trade are taken back first. Coins, keys and cases stay."),
+              ("money", "Reset coins and keys", "Sets {name}'s coins and keys to 0. Items and cases stay."),
+              ("cases", "Reset gifted cases", "Deletes every gifted case {name} has not opened yet. Nothing else changes."),
+              ("all", "FULL ACCOUNT RESET",
+               "{name} starts again like a new account: every item deleted, coins and keys back to the start (500 coins, "
+               "3 keys), gifted cases deleted, login streak back to 0. Time played, friends and name stay.")]
+
+    def _danger(self, lay, name: str, d: dict) -> None:
+        """Big red reset buttons. Each says exactly what it deletes, asks you to type the name, and can be undone
+        from the Log."""
+        lay.addWidget(heading(tr("Danger zone")))
+        lay.addWidget(Label(tr("Every reset is saved in the Log: click it there to undo it."), 10.5, TEXT_DIM, wrap_w=self.W))
+        for what, title, text in self.RESETS:
+            b = Button(tr(title), "danger", 40 if what == "all" else 34, icon="trash")
+            b.clicked.connect(lambda _c=False, what=what, title=title, text=text: self._reset(name, what, title, text))
+            lay.addWidget(b)
+
+    def _reset(self, name: str, what: str, title: str, text: str) -> None:
+        def go(v, dlg) -> None:
+            if v["n"].strip().lower() != name.lower():
+                return dlg.say(tr("Type {name} exactly to confirm", name=name))
+            dlg.close()
+            self.do("rb_admin_reset", {"name": name, "what": what}, tr("Done. You can undo it in the Log."))
+        FormDialog(self.ctx, tr(title) + f" · {name}", [("n", tr("Type the username to confirm: {name}", name=name), "")],
+                   tr("Reset"), go, note=tr(text, name=name))
+
     def _case_dialog(self, name: str) -> None:
         pass
         cases = [c["id"] for c in self.ctx.econ.cases] or list(CASE_NAMES)
@@ -22055,7 +22169,7 @@ class AdminPage(Page):
         lay.addWidget(pick)
         chosen = getattr(self.ctx, "admin_item", "") or ""
         lay.addWidget(Label(tr("Selected: {what}", what=chosen or "—"), 11.5, GOLD_TEXT, bold=True, wrap_w=self.W))
-        lay.addWidget(Label(tr("Pick an item, then open a player and press Give item or case. Or use it for a giveaway or a sale."),
+        lay.addWidget(Label(tr("Pick an item, then open a user and press Give item or case. Or use it for a giveaway or a sale."),
                             10.5, TEXT_DIM, wrap_w=self.W))
         if kind == 6:
             pass
@@ -22248,7 +22362,7 @@ class AdminPage(Page):
 
     # -- forgotten passwords: is it really them?
     VERDICTS = {"real": ("Looks real: asked from the account's own PC", "#3DDC84"),
-                "fake": ("Looks fake: asked from another player's PC", "#FF5C6C"),
+                "fake": ("Looks fake: asked from another user's PC", "#FF5C6C"),
                 "unsure": ("Not sure: a PC we do not know", "#FFC94D"),
                 "no_account": ("No account with this name", "#9AA4AD")}
 
@@ -22256,7 +22370,7 @@ class AdminPage(Page):
         rows = self.fetch("rb_admin_resets", {})
         if rows is None:
             return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        lay.addWidget(Label(tr("Forgotten passwords. Check the details, then give a new password or refuse. The player "
+        lay.addWidget(Label(tr("Forgotten passwords. Check the details, then give a new password or refuse. The user "
                                "sees the new password on the PC that asked, and must change it after."), 10.5, TEXT_DIM, wrap_w=self.W))
         if not rows:
             return lay.addWidget(Label(tr("No requests."), 12, TEXT_DIM))
@@ -22721,7 +22835,7 @@ class Notifier(QObject):
             import random
             pass
             tips = [tr("New quests every hour: check the Games tab"),
-                    tr("Beat Tap pays up to 40 coins a round"),
+                    tr("Beat Tap pays up to 50 coins a round"),
                     tr("Gold badges are 1 in thousands: keep opening!"),
                     tr("You have {n} coins: maybe a case?", n=coins_text(ec.coins)),
                     tr("Put items you do not wear on the market")]
@@ -23508,7 +23622,7 @@ PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": ScreenPage, "rl": 
 # Fixed order: music first, then what you use in a game, then the PC, then fun and looks, settings last.
 TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", "display", "Screen"),
         ("rl", "rocket", "RL SWAP"), ("perf", "perf", "PC"),
-        ("giveaway", "gift", "Giveaway"), ("games", "dice", "Games"), ("themes", "gem", "Shop"),
+        ("giveaway", "gift", "Giveaway"), ("games", "dice", "Games"), ("themes", "gem", "Hub"),
         ("friends", "users", "Social"), ("new", "spark", "Updates"), ("settings", "cog", "Settings"),
         ("admin", "shield", "Admin")]
 LIVE_TABS: set = set()      # Giveaway (while one is live) and Admin (the admin account only)
@@ -26288,8 +26402,6 @@ class App(QObject):
         if self.cfg["update_check"] and not selftest:
             self._safe("updates", self.updater.start)
         self._safe("show/hide key", lambda: self.tapkey.set_key(self.cfg["hotkey"]))
-        if not self.cfg["vis_migrated"]:                # 2.4.1: the visualiser starts off (turn it on in Settings)
-            self.cfg["visualiser"], self.cfg["vis_migrated"] = "off", True
         self._pin = QTimer(self)
         self._pin.setInterval(2000)
         self._pin.timeout.connect(lambda: self._safe("housekeeping", self._housekeeping))
@@ -26501,7 +26613,7 @@ class App(QObject):
 
     # ------------------------------------------------------------------ glow
     def _sync_audio(self) -> None:
-        want = ((self.cfg["halo"] or self.cfg["visualiser"] != "off") and self.state.status is Status.PLAYING
+        want = (self.cfg["halo"] and self.state.status is Status.PLAYING
                 and not self.meter.failed and self.window.game_state != 2)
         if want and not self._audio.isActive():
             self._audio.start()

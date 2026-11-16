@@ -105,6 +105,40 @@ begin
     return public.rb_remember(p.id, req, jsonb_build_object('id', new_id, 'item', what, 'coins', p.coins - cost));
 end $$;
 
+-- gifted cases (from a friend or the admin) open for free: no coins and no key
+create or replace function public.rb_open_case(which text, req text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p public.profiles%rowtype; c public.rb_cases%rowtype; res jsonb; d record; new_id uuid; have integer;
+        spent integer; gifted boolean := false;
+begin
+    p := public.rb_lock_me();
+    res := public.rb_done(p.id, req);
+    if res is not null then return res; end if;
+    select * into c from public.rb_cases where id = which;
+    if not found then raise exception 'rb_no_case'; end if;
+    select n into have from public.rb_case_stock where owner = p.id and case_id = c.id for update;
+    if coalesce(have, 0) > 0 then                               -- a gifted case: completely free (no coins, no key)
+        update public.rb_case_stock set n = n - 1 where owner = p.id and case_id = c.id;
+        spent := 0; have := have - 1; gifted := true;
+    else
+        spent := c.price; have := 0;
+    end if;
+    perform public.rb_pay(p.id, -spent, case when gifted then 0 else -1 end, 'case', c.id);
+    d := public.rb_case_drop(c);
+    if d.tier = 0 then
+        perform public.rb_pay(p.id, d.coins, 0, 'case_coins', c.id);
+    else
+        new_id := public.rb_give(p.id, d.item, 'case:' || c.id);
+    end if;
+    insert into public.rb_case_stats as st (owner, case_id, opens) values (p.id, c.id, 1)
+        on conflict (owner, case_id) do update set opens = st.opens + 1;
+    insert into public.rb_rounds (owner, game, bet, secret, open, paid) values (p.id, 'case:' || c.id, spent,
+        jsonb_build_object('item', d.item, 'tier', d.tier), false,
+        d.coins + coalesce((select value from public.rb_catalog where id = d.item), 0));
+    return public.rb_remember(p.id, req, jsonb_build_object('tier', d.tier, 'cls', d.klass, 'item', d.item, 'id', new_id,
+        'won', d.coins, 'coins', p.coins - spent + d.coins, 'keys', p.keys - case when gifted then 0 else 1 end, 'stock', have));
+end $$;
+
 -- ================================================================ mini games: limits per 2 hours
 create or replace function public.rb_game_window(who uuid, g text) returns json
 language sql stable security definer set search_path = '' as $$
@@ -195,17 +229,19 @@ begin
 end $$;
 
 -- ================================================================ Beat Tap 2: four lanes, holds, chords, speed-up
-create or replace function public.rb_tap_chart() returns jsonb
+create or replace function public.rb_tap_chart(mode text) returns jsonb
 language plpgsql volatile security definer set search_path = '' as $$
 declare pat jsonb := '[]'::jsonb; t integer := 1800; lane integer; last integer := -1; hold integer; gap integer;
+        fast boolean := mode = 'rush'; holds double precision := case when mode = 'holds' then 0.38 else 0.14 end;
+        chords double precision := case when mode = 'chords' then 0.38 else 0.16 end;
 begin
     while t < 40000 loop
-        gap := greatest(290, 700 - t / 90);                                   -- faster and faster
+        gap := case when fast then greatest(220, 520 - t / 110) else greatest(290, 700 - t / 90) end;                                   -- faster and faster
         lane := floor(public.rb_rand() * 4)::int;
         if lane = last and public.rb_rand() < 0.6 then lane := (lane + 1 + floor(public.rb_rand() * 3)::int) % 4; end if;
-        hold := case when t > 6000 and public.rb_rand() < 0.14 then 400 + floor(public.rb_rand() * 5)::int * 100 else 0 end;
+        hold := case when t > 6000 and public.rb_rand() < holds then 400 + floor(public.rb_rand() * 5)::int * 100 else 0 end;
         pat := pat || jsonb_build_object('t', t, 'l', lane, 'h', hold);
-        if t > 12000 and hold = 0 and public.rb_rand() < 0.16 then
+        if t > (case when mode = 'chords' then 4000 else 12000 end) and hold = 0 and public.rb_rand() < chords then
             pat := pat || jsonb_build_object('t', t, 'l', (lane + 2) % 4, 'h', 0);   -- two at once
         end if;
         last := lane;
@@ -214,21 +250,29 @@ begin
     return pat;
 end $$;
 
+create or replace function public.rb_tap_chart() returns jsonb
+language sql volatile security definer set search_path = '' as $$ select public.rb_tap_chart('normal') $$;
+
 create or replace function public.rb_tap_max(pat jsonb) returns integer
 language sql immutable as $$
     select (3 * jsonb_array_length(pat) + (select count(*) from jsonb_array_elements(pat) e where (e ->> 'h')::int > 0)
             + 2 * (jsonb_array_length(pat) / 10))::int $$;
 
-create or replace function public.rb_tap_start() returns json
+create or replace function public.rb_tap_start(mode text) returns json
 language plpgsql security definer set search_path = '' as $$
-declare p public.profiles%rowtype; pat jsonb := public.rb_tap_chart(); rid uuid;
+declare p public.profiles%rowtype; pat jsonb; rid uuid;
 begin
     p := public.rb_lock_me();
+    if mode is null or mode not in ('normal', 'rush', 'holds', 'chords') then raise exception 'rb_bad_choice'; end if;
+    pat := public.rb_tap_chart(mode);
     update public.rb_mini set open = false where owner = p.id and open;
     insert into public.rb_mini (owner, pattern, kind, max_score) values (p.id, pat, 'tap2', public.rb_tap_max(pat))
         returning id into rid;
     return json_build_object('round', rid, 'chart', pat, 'max', public.rb_tap_max(pat), 'day', public.rb_mini_day(p.id));
 end $$;
+
+create or replace function public.rb_tap_start() returns json
+language sql security definer set search_path = '' as $$ select public.rb_tap_start('normal') $$;
 
 -- hits: [{"i": note, "t": ms when pressed, "u": ms when released (holds)}]. Scored here, not in the app.
 create or replace function public.rb_tap_finish(round uuid, hits jsonb) returns jsonb
@@ -1010,7 +1054,7 @@ begin
     return (select coalesce(json_agg(json_build_object('id', a.id, 'action', a.action, 'target', a.target, 'detail', a.detail,
                                                        'at', a.at, 'undone', a.undone_at is not null,
                                                        'can_undo', a.undone_at is null and (
-                                                           (a.action in ('grant', 'take', 'revoke', 'ban') and a.detail ? 'uid')
+                                                           (a.action in ('grant', 'take', 'revoke', 'ban', 'reset') and a.detail ? 'uid')
                                                            or (a.action = 'give' and a.detail ? 'uid')
                                                            or (a.action in ('set', 'lock') and a.detail ? 'old')))
                                      order by a.id desc), '[]'::json)
@@ -1026,7 +1070,7 @@ begin
     if not found then raise exception 'rb_cant_undo'; end if;
     if a.undone_at is not null then raise exception 'rb_already_undone'; end if;
     d := coalesce(a.detail, '{}'::jsonb); uid := (d ->> 'uid')::uuid;
-    if a.action in ('grant', 'give', 'take', 'revoke', 'ban') and uid is null then raise exception 'rb_cant_undo'; end if;
+    if a.action in ('grant', 'give', 'take', 'revoke', 'ban', 'reset') and uid is null then raise exception 'rb_cant_undo'; end if;
     if a.action = 'grant' then
         select coins, keys into pc, pk from public.profiles where id = uid for update;
         dc := greatest(-(d ->> 'coins')::int, -pc)::int; dk := greatest(-(d ->> 'keys')::int, -pk);
@@ -1054,6 +1098,8 @@ begin
     elsif a.action = 'set' and d ? 'old' then
         update public.rb_config set value = (d ->> 'old')::numeric where key = a.target;
         note := format('%s = %s', a.target, d ->> 'old');
+    elsif a.action = 'reset' and uid is not null then
+        note := 'reset ' || public.rb_reset_undo(d);
     elsif a.action = 'lock' and d ? 'old' then
         update public.rb_config set value = (d ->> 'old')::numeric where key = 'app_locked';
     else
@@ -1147,6 +1193,86 @@ do $$ declare src text; begin
     end if;
 end $$;
 
+-- ================================================================ daily deals: 4 items cheaper today (same for everyone)
+create or replace function public.rb_deal_list() returns table (item text, pct integer)
+language sql stable security definer set search_path = '' as $$
+    select c.id, (20 + (abs(hashtext(c.id || public.rb_today()::text)) % 4) * 5)::int
+      from public.rb_catalog c
+     where c.price is not null and c.price <= 30000 and c.kind in ('badge', 'ball', 'line', 'font', 'theme')
+       and not (c.kind = 'badge' and (c.cls >= 3 or c.rarity = 'exotic'))
+     order by md5(c.id || public.rb_today()::text) limit 4 $$;
+
+create or replace function public.rb_deals() returns json
+language sql stable security definer set search_path = '' as $$
+    select json_build_object('deals', coalesce((select json_agg(json_build_object('item', d.item, 'pct', d.pct,
+                                 'price', c.price, 'now', greatest(1, ceil(c.price * (100 - d.pct) / 100.0))::int))
+                                 from public.rb_deal_list() d join public.rb_catalog c on c.id = d.item), '[]'::json),
+                             'ends_in', ceil(extract(epoch from ((public.rb_today() + 1)::timestamp at time zone 'Europe/Paris' - now())))::int) $$;
+
+create or replace function public.rb_sale_pct(item_id text) returns integer
+language sql stable security definer set search_path = '' as $$
+    select greatest(coalesce((select max(s.pct) from public.rb_sales s
+                               where s.ends_at > now() and (item_id = s.what or item_id like s.what || ':%')), 0),
+                    coalesce((select d.pct from public.rb_deal_list() d where d.item = item_id), 0))::int $$;
+
+-- ================================================================ admin: big resets (with everything saved, so they can be undone)
+create or replace function public.rb_admin_reset(name text, what text) returns json
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := public.rb_need_admin(); p public.profiles%rowtype; snap jsonb; x record; n integer := 0;
+begin
+    if what not in ('inventory', 'money', 'cases', 'all') then raise exception 'rb_bad_choice'; end if;
+    select * into p from public.profiles where lower(username) = lower(name) for update;
+    if not found then raise exception 'rb_no_such_user'; end if;
+    snap := jsonb_build_object('uid', p.id, 'what', what, 'coins', p.coins, 'keys', p.keys, 'equip', p.equip,
+        'items', coalesce((select jsonb_agg(it.item) from public.rb_items it where it.owner = p.id), '[]'::jsonb),
+        'stock', coalesce((select jsonb_object_agg(s.case_id, s.n) from public.rb_case_stock s where s.owner = p.id and s.n > 0), '{}'::jsonb),
+        'streak', p.streak, 'streak_day', p.streak_day);
+    if what in ('inventory', 'all') then
+        for x in select id from public.rb_items where owner = p.id loop perform public.rb_free_item(x.id); end loop;
+        delete from public.rb_items where owner = p.id;
+        get diagnostics n = row_count;
+        update public.profiles set equip = '{}'::jsonb where id = p.id;
+    end if;
+    if what in ('money', 'all') then
+        perform public.rb_pay(p.id, -p.coins::int, -p.keys, 'admin_reset', null);
+    end if;
+    if what in ('cases', 'all') then
+        delete from public.rb_case_stock where owner = p.id;
+    end if;
+    if what = 'all' then
+        update public.profiles set streak = 0, streak_day = null where id = p.id;
+        perform public.rb_pay(p.id, public.rb_cfg('start_coins')::int, public.rb_cfg('start_keys')::int, 'admin_reset', 'start');
+    end if;
+    perform public.rb_log('reset', p.username, snap);
+    perform public.rb_notice(p.id, 'admin', jsonb_build_object('reset', what));
+    return json_build_object('items', n, 'what', what);
+end $$;
+
+-- undo of a reset: everything comes back as it was
+create or replace function public.rb_reset_undo(d jsonb) returns text
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid := (d ->> 'uid')::uuid; w text := d ->> 'what'; it text; k text; v text; pc bigint; pk integer;
+begin
+    if w in ('inventory', 'all') then
+        for it in select jsonb_array_elements_text(d -> 'items') loop perform public.rb_give(uid, it, 'undo'); end loop;
+        update public.profiles set equip = coalesce(d -> 'equip', '{}'::jsonb) where id = uid;
+    end if;
+    if w in ('money', 'all') then
+        select coins, keys into pc, pk from public.profiles where id = uid for update;
+        perform public.rb_pay(uid, ((d ->> 'coins')::bigint - pc)::int, (d ->> 'keys')::int - pk, 'admin_undo', 'reset');
+    end if;
+    if w in ('cases', 'all') then
+        for k, v in select key, value from jsonb_each_text(coalesce(d -> 'stock', '{}'::jsonb)) loop
+            perform public.rb_stock_add(uid, k, v::int);
+        end loop;
+    end if;
+    if w = 'all' then
+        update public.profiles set streak = coalesce((d ->> 'streak')::int, 0), streak_day = (d ->> 'streak_day')::date where id = uid;
+    end if;
+    perform public.rb_fix_equip(uid);
+    return w;
+end $$;
+
 -- ================================================================ who may call what
 do $$ declare f text; begin
     for f in select p.oid::regprocedure::text from pg_catalog.pg_proc p
@@ -1175,7 +1301,7 @@ do $$ declare f text; begin
                 'rb_admin_ban', 'rb_admin_avatar_clear', 'rb_admin_set', 'rb_admin_case', 'rb_admin_giveaway',
                 'rb_admin_giveaway_end', 'rb_admin_sale', 'rb_admin_sale_end', 'rb_admin_audit',
                 'rb_admin_undo', 'rb_admin_deals', 'rb_admin_undo_trade', 'rb_admin_undo_sale', 'rb_admin_resets',
-                'rb_admin_reset_do', 'rb_admin_force_update']) loop
+                'rb_admin_reset_do', 'rb_admin_force_update', 'rb_admin_reset', 'rb_deals']) loop
         execute format('grant execute on function %s to authenticated', f);
     end loop;
     grant execute on function public.rb_username_free(text) to anon, authenticated;
