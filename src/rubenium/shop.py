@@ -510,6 +510,11 @@ class ShopPage(Page):
     Inventory."""
     key = "themes"
     SECTIONS = ["Theme", "Shop", "Badges", "Cases", "Market", "Inventory", "Sets"]
+    ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "gem"]
+    NOTES = ["Your colours and the looks you unlock with time.", "Balls, lines, fonts and themes to buy.",
+             "Your collection: click a badge to see every colour.", "Open cases for coins and badges. Gifts are free.",
+             "Buy and sell with other players.", "Everything you own. Sell, show or trade it.",
+             "Collect full sets for a big bonus."]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -519,10 +524,13 @@ class ShopPage(Page):
         lay.addWidget(CoinBar(ctx, keys=True))
         tab = getattr(ctx, "shop_tab", 0)
         from .bazaar import build_cosmetics, build_inventory, build_market
-        from .games import GamePicker
-        self.seg = GamePicker([tr(n) for n in self.SECTIONS], tab)
+        from .hub import NavTiles
+        gifts = sum(int(v or 0) for v in ctx.econ.stock.values())
+        self.seg = NavTiles([(tr(n), self.ICONS[k]) for k, n in enumerate(self.SECTIONS)], tab, badges={3: gifts})
         self.seg.changed.connect(self._section)
         lay.addWidget(self.seg)
+        note = Label(tr(self.NOTES[tab]), 10.5, TEXT_DIM, wrap_w=self.W)
+        lay.addWidget(note)
         if tab == 1:
             build_cosmetics(self, lay)
         elif tab == 2:
@@ -788,7 +796,10 @@ class ShopPage(Page):
         self.reel = CaseReel(self, case)
         self.reel.done.connect(self._opened)
         lay.addWidget(self.reel)
-        text = tr("Open for free") if cid == "daily" else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))
+        gifts = int(ec.stock.get(case["id"], 0) or 0) if cid != "daily" else 0
+        text = (tr("Open for free") if cid == "daily" else
+                tr("Open your gift for free ({n} left)", n=gifts) if gifts else
+                tr("Open for {n} coins + 1 key", n=coins_text(case["price"])))
         self.open_btn = Button(text, "primary", 40)
         self.open_btn.clicked.connect(lambda: self._open(case))
         lay.addWidget(self.open_btn)
@@ -821,9 +832,12 @@ class ShopPage(Page):
         daily = case["id"] == "daily"
         if daily and self.daily_wait() != 0:
             return ctx.toast(tr("Not ready yet"), "warn")
-        if not daily and ec.keys < 1:
+        gifted = not daily and int(ec.stock.get(case["id"], 0) or 0) > 0        # a gift: free, no coins and no key
+        if gifted and ec.server_old and ec.keys < 1:
+            return ctx.toast(tr("Gifts open for free once the server update is done. Until then they need 1 key."), "warn")
+        if not daily and not gifted and ec.keys < 1:
             return ctx.toast(tr("You need a key: 1 key for every hour with Rubenium"), "warn")
-        if not daily and case["price"] > ec.coins:
+        if not daily and not gifted and case["price"] > ec.coins:
             return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - ec.coins)), "warn")
         self._asking = True
         self._lock(True)
@@ -860,6 +874,15 @@ class ShopPage(Page):
                 ec.stock[data.get("case") or self.ctx.shop_case] = int(data.get("stock") or 0)
             ec.absorb(data)
             ec.changed.emit()
+            cid = self.ctx.shop_case
+            left = int(ec.stock.get(cid, 0) or 0) if cid and cid != "daily" else 0
+            case = next((c for c in ec.cases if c["id"] == cid), None)
+            if case is not None:
+                try:
+                    self.open_btn.set_text(tr("Open your gift for free ({n} left)", n=left) if left else
+                                           tr("Open for {n} coins + 1 key", n=coins_text(case["price"])))
+                except RuntimeError:
+                    pass
         QTimer.singleShot(900, lambda: self._lock(False))
 
     def _gift(self, case: dict) -> None:

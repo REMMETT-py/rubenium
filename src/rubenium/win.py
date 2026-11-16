@@ -1314,6 +1314,16 @@ def mouse_captured() -> bool:
         return False
 
 
+def fullscreen_in_front() -> bool:
+    """A fullscreen or borderless window (a game) is in front of everything (not Rubenium, not the desktop)."""
+    if not IS_WIN:
+        return False
+    try:
+        return _foreground_game() is not None
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def set_click_through(hwnd: int, on: bool) -> None:
     """Let mouse clicks go through a (layered) window to whatever is under it, or stop doing so."""
     if not IS_WIN or not hwnd:

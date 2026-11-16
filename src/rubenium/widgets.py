@@ -1403,3 +1403,29 @@ class KeyChip(QWidget):
         p.setPen(QColor(TEXT))
         p.setFont(self._font)
         p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), self._text)
+
+
+def present(widget, ctx, keys: bool = False) -> bool:
+    """Show a small screen inside the open menu (never a separate window over a game). False when the menu is
+    closed (the start screen, say): the caller then shows it as a small window."""
+    win_ = getattr(ctx, "window", None)
+    if win_ is None or not getattr(win_, "expanded", False) or not hasattr(win_, "embed"):
+        return False
+    widget._embedded = True
+    widget.setWindowFlags(Qt.WindowType.Widget)
+    widget.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
+    win_.embed(widget, keys)
+    return True
+
+
+def close_embedded(widget) -> bool:
+    """close() of a small screen shown inside the menu. True when it was."""
+    if not getattr(widget, "_embedded", False):
+        return False
+    widget._embedded = False
+    end = getattr(widget, "on_closed", None)
+    if end:
+        end()
+    widget.ctx.window.unembed(widget)
+    widget.deleteLater()
+    return True

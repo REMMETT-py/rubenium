@@ -808,6 +808,14 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.4.1", ['Gifted cases open for free (after the server update)',
+             'Everything opens inside the menu: no more extra windows over your games',
+             'Game mode: in fullscreen games the mouse goes through Rubenium; tap Right Shift to open it',
+             'The daily reward has a flame that grows every day, and waits until you open the menu',
+             'Visualisers are now shop items (the rarer, the cooler) and start turned off',
+             'Profile picture editor: move, zoom, turn, mirror and filters',
+             'Big clear buttons in the shop and the admin panel',
+             'No more error messages while the server update is waiting']),
     ("2.4", ['New Beat Tap: four lanes, long notes, combos and it gets faster',
              'New mini game: Memory. Duels with friends, with or without a bet',
              'Scratch card every 12 hours and a daily login reward (day 7: a free case)',

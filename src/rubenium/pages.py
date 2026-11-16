@@ -1691,16 +1691,31 @@ class SettingsPage(Page):
         hk.changed.connect(set_key)
         lay.addWidget(Label(tr("Show / hide key (tap it once)"), 11.5, TEXT))
         lay.addWidget(hk)
-        vis_keys = [k for k, _n in VIS_STYLES]
-        vs = Segmented([tr(n) for _k, n in VIS_STYLES], vis_keys.index(cfg["visualiser"]) if cfg["visualiser"] in vis_keys else 0)
+        from .music2 import vis_owned
 
-        def set_vis(i: int) -> None:
-            cfg["visualiser"] = vis_keys[i]
+        def vis_on(v: bool) -> None:
+            style = cfg["vis_style"] if vis_owned(ctx, cfg["vis_style"]) else "bars"
+            cfg["visualiser"] = style if v else "off"
             ctx._sync_audio()
             ctx.window._drop_page("home")
-        vs.changed.connect(set_vis)
-        lay.addWidget(Label(tr("Visualiser"), 11.5, TEXT))
-        lay.addWidget(vs)
+            ctx.reload_page()
+        tv = Toggle(cfg["visualiser"] != "off")
+        tv.toggled_by_user.connect(vis_on)
+        lay.addWidget(row(tr("Visualiser on the music tab"), tv))
+        if cfg["visualiser"] != "off":
+            mine = [(k, n) for k, n in VIS_STYLES if vis_owned(ctx, k)]
+            keys_v = [k for k, _n in mine]
+            vs = Segmented([tr(n) for _k, n in mine], keys_v.index(cfg["visualiser"]) if cfg["visualiser"] in keys_v else 0)
+
+            def set_vis(i: int) -> None:
+                cfg["visualiser"] = cfg["vis_style"] = keys_v[i]
+                ctx.window._drop_page("home")
+            vs.changed.connect(set_vis)
+            lay.addWidget(vs)
+            lay.addWidget(Label(tr("More visualisers in Shop → Shop → Visualisers."), 10, TEXT_FAINT))
+        tg = Toggle(cfg["game_mouse"])
+        tg.toggled_by_user.connect(lambda v: cfg.__setitem__("game_mouse", v))
+        lay.addWidget(row(tr("Game mode: the mouse goes through Rubenium in fullscreen games"), tg))
         line = hbox(spacing=6)
         hist = Button(tr("Song history"), "ghost", 30, icon="note")
         def open_hist() -> None:

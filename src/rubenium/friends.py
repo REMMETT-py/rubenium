@@ -119,8 +119,11 @@ class Faces:
         if img.isNull():
             return done(False, tr("This picture cannot be used"))
         side = min(img.width(), img.height())
-        img = img.copy((img.width() - side) // 2, (img.height() - side) // 2, side, side).scaled(
-            96, 96, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self.upload_image(img.copy((img.width() - side) // 2, (img.height() - side) // 2, side, side), done)
+
+    def upload_image(self, img: QImage, done) -> None:
+        """A square picture (already cropped in the editor) goes to the server, small."""
+        img = img.scaled(96, 96, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
         buf = QByteArray()
         dev = QBuffer(buf)
         dev.open(QIODevice.OpenModeFlag.WriteOnly)
@@ -517,9 +520,12 @@ class FriendsPage(Page):
         self.ctx.toast(tr("Refreshed"))
 
     def _picture(self) -> None:
-        path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg)")
+        path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")
         if not path:
             return
+        img = QImage(path)
+        if img.isNull():
+            return self.ctx.toast(tr("This picture cannot be used"), "warn")
 
         def done(ok: bool, data) -> None:
             if not ok:
@@ -530,7 +536,8 @@ class FriendsPage(Page):
                 self.ctx.social_me["avatar_v"] = int(data or 0)
             self.ctx.toast(tr("Picture changed: everyone can see it"))
             self._redo()
-        self.ctx.faces.upload(path, done)
+        from .hub import AvatarEditor
+        self.ctx._avatar = AvatarEditor(self.ctx, img, lambda out: self.ctx.faces.upload_image(out, done))
 
     def _rename(self) -> None:
         me = getattr(self.ctx, "social_me", None) or {}

@@ -987,7 +987,8 @@ class Welcome(QWidget):
         super().__init__()
         self.ctx, self._on_done = ctx, on_done
         self.setWindowTitle("Rubenium")
-        self.setWindowFlags(WINDOW_FLAGS)
+        # the start screen is a normal window: it is not pinned over every app (the ball and the menu are)
+        self.setWindowFlags(WINDOW_FLAGS & ~Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
@@ -1396,6 +1397,47 @@ class LockCover(QWidget):
                    int(Qt.AlignmentFlag.AlignHCenter | Qt.TextFlag.TextWordWrap), text)
 
 
+class SheetPage(QWidget):
+    """A small screen shown inside the menu instead of a separate window (a text box, the daily reward, a chat…).
+    Everything stays in the main menu: nothing pops up over a game."""
+    key = "sheet"
+    fixed_height = 0
+
+    def __init__(self, ctx, widget) -> None:
+        super().__init__()
+        self.ctx, self.widget = ctx, widget
+        self.W = S(CARD_W - 2 * PAD)
+        lay = vbox(self, 6)
+        widget.setParent(self)
+        if widget.width() > self.W:
+            widget.setFixedWidth(self.W)
+        lay.addWidget(widget, 0, Qt.AlignmentFlag.AlignHCenter)
+        lay.addStretch(1)
+        widget.show()
+
+    def content_height(self) -> int:
+        lay = self.layout()
+        lay.activate()
+        return lay.sizeHint().height()
+
+    def on_show(self) -> None:
+        f = getattr(self.widget, "focus_me", None)
+        if f is not None:
+            QTimer.singleShot(60, f)
+
+    def on_hide(self) -> None: ...
+
+    def on_state(self, st) -> None: ...
+
+    def release(self) -> None:
+        """The page goes away, the small screen may come back: keep it."""
+        try:
+            self.widget.hide()
+            self.widget.setParent(None)
+        except RuntimeError:
+            pass
+
+
 class Body(QWidget):
     """Card chrome: wordmark, status dots, the R button (back to the ball), tab bar and the page host."""
 
@@ -1684,7 +1726,61 @@ class MainWindow(QWidget):
         return float(min(S(CHROME_TOP + CHROME_BOTTOM) + self.pages[key][2], self.card_max_h))
 
     # ------------------------------------------------------------------ pages
+    # ------------------------------------------------------------------ small screens inside the menu
+    def embed(self, widget, keys: bool = False) -> None:
+        """Show `widget` inside the menu, over the current tab, until it is closed. keys: it has a text box."""
+        old = getattr(self, "sheet", None)
+        if old is not None and old is not widget:
+            self._close_sheet(old)
+        self.sheet, self.sheet_tab, self.sheet_keys = widget, self.current, keys
+        if keys:
+            self.allow_keys(True)
+        self.reload_page()
+
+    def unembed(self, widget) -> None:
+        if getattr(self, "sheet", None) is widget:
+            self.sheet = None
+            if self.sheet_keys:
+                self.allow_keys(False)
+            self.reload_page()
+
+    def _close_sheet(self, widget=None) -> None:
+        w = widget or getattr(self, "sheet", None)
+        if w is None:
+            return
+        self.sheet = None
+        if getattr(self, "sheet_keys", False):
+            self.allow_keys(False)
+        try:
+            end = getattr(w, "on_closed", None)
+            if end:
+                end()
+            w.deleteLater()
+        except RuntimeError:
+            pass
+
+    def allow_keys(self, on: bool) -> None:
+        """Typing needs the keyboard. Only while a text box is open may the menu take it; then it gives it back."""
+        if bool(getattr(self, "_keys_on", False)) == on:
+            return
+        self._keys_on = on
+        vis = self.isVisible()
+        self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, not on)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, not on)
+        if vis:
+            self.show()
+            win.set_topmost(int(self.winId()))
+            if on:
+                self.raise_()
+                self.activateWindow()
+
     def _ensure_page(self, key: str):
+        if key not in self.pages and getattr(self, "sheet", None) is not None and key == self.sheet_tab:
+            page = SheetPage(self.ctx, self.sheet)
+            h = page.content_height()
+            sa = ScrollArea(page, h, self.body.host)
+            sa.hide()
+            self.pages[key] = (sa, page, h)
         if key not in self.pages:
             page = make_page(self.ctx, key)
             align_slider_rows(page)
@@ -1697,6 +1793,8 @@ class MainWindow(QWidget):
     def _drop_page(self, key: str) -> None:
         if key in self.pages:
             sa, page, _h = self.pages.pop(key)
+            if isinstance(page, SheetPage):
+                page.release()
             page.on_hide()
             sa.hide()
             sa.deleteLater()
@@ -1719,6 +1817,10 @@ class MainWindow(QWidget):
     def goto(self, key: str) -> None:
         if key not in self.tab_keys():
             return
+        if getattr(self, "sheet", None) is not None and key != self.sheet_tab:     # another tab: the small screen closes
+            tab = self.sheet_tab
+            self._close_sheet()
+            self._drop_page(tab)
         if not self.expanded:
             self.current = key
             self.ctx.cfg["page"] = key
@@ -1761,6 +1863,10 @@ class MainWindow(QWidget):
         """While a game hides or locks the mouse pointer, every Rubenium window lets clicks through to the
         game: aiming or clicking in a game can never open, drag or press anything in Rubenium."""
         captured = win.mouse_captured()
+        # Game mode: while a fullscreen game is in front and the menu is closed, the ball is not there for the
+        # mouse at all. Moving, aiming or clicking near it goes to the game. Right Shift still opens the menu.
+        if not captured and self.ctx.cfg["game_mouse"] and not self.expanded:
+            captured = win.fullscreen_in_front()
         if captured:
             self.ball.cancel_press()            # a press that began just before the game took the mouse
         through = captured and self.ball._press_pos is None and self._drag_origin is None
@@ -1939,6 +2045,10 @@ class MainWindow(QWidget):
     def collapse(self) -> None:
         if not self.expanded or self.morph.busy:
             return
+        if getattr(self, "sheet", None) is not None:          # folding the menu closes a small screen
+            tab = self.sheet_tab
+            self._close_sheet()
+            self._drop_page(tab)
         self._finish_slide()
         self.pageh.jump(self.pageh.target)
         self.fade.jump(1.0)
@@ -1995,6 +2105,8 @@ class MainWindow(QWidget):
                 self._in_since, self._out_since = 0.0, time.monotonic()
                 self._idle.start()
                 QTimer.singleShot(600, self.ctx.offer_update)
+                if hasattr(self.ctx, "on_opened"):
+                    QTimer.singleShot(450, self.ctx.on_opened)
             elif not self.expanded and t <= 0.001 and self.isVisible():
                 self._snap = None
                 self.ball.set_center(self.mapToGlobal(self._ball_l.center().toPoint()))

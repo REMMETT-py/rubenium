@@ -1946,6 +1946,12 @@ class GamesPage(Page):
             if getattr(ctx, "park_open", False):
                 return self._park(lay)
             sub = getattr(ctx, "games_sub", None)
+            if sub in ("memory", "duels", "duel_run", "scratch"):
+                from .hub import server_wait
+                if ctx.econ.server_old:
+                    self._back_bar(lay, tr({"memory": "Memory", "scratch": "Scratch card"}.get(sub, "Duels")))
+                    server_wait(ctx, lay, self.W)
+                    return
             if sub == "memory":
                 return self._memory(lay)
             if sub == "duels":
@@ -1964,6 +1970,9 @@ class GamesPage(Page):
         lay.addWidget(quests)
         lay.addWidget(CoinBar(self.ctx))
         lay.addWidget(KeyCard(self.ctx))
+        from .hub import StreakRow
+        if not self.ctx.econ.server_old:
+            lay.addWidget(StreakRow(self))
         lay.addWidget(DailyRow(self))
         lay.addWidget(ScratchRow(self))
         line = hbox(spacing=6)
@@ -2016,6 +2025,9 @@ class GamesPage(Page):
         top.addWidget(Label(tr("Beat Tap"), 16, bold=True), 1)
         lay.addLayout(top)
         lay.addWidget(CoinBar(self.ctx))
+        from .hub import server_wait
+        if server_wait(self.ctx, lay, self.W):
+            return
         self.beat = BeatRush(self, lambda _r: (self.beat_btn.setEnabled(True), self.beat_btn.set_text(tr("Play again"))))
         back.clicked.connect(lambda: (self.beat.abort(), self._show_mini(False)))
         lay.addWidget(self.beat)

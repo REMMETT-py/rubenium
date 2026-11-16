@@ -15,7 +15,7 @@ from .cosmetics import (BALLS, COLOUR_NAMES, COLOUR_ORDER, FONTS, LINES, THEME_L
 from .econ import CLASS_NAMES, RARITY_COLOURS, RARITY_NAMES
 from .shop import GOLD_TEXT, clock_text, paint_price
 from .wallet import coins_text, paint_coin
-from .widgets import Button, IconButton, Label, Segmented, draw_icon, hbox, heading, vbox
+from .widgets import present, close_embedded, Button, IconButton, Label, Segmented, draw_icon, hbox, heading, vbox
 
 KINDS = ["", "badge", "ball", "line", "font", "theme"]
 REASONS = {"time": "Time with Rubenium", "shop": "Shop", "vendor": "Sold to the vendor", "case": "Case opened",
@@ -33,6 +33,7 @@ class AskDialog(QWidget):
         from PyQt6.QtWidgets import QLineEdit
         from .window import work_area
         self._on_text = on_text
+        self.ctx = ctx
         self.setWindowTitle("Rubenium")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -64,12 +65,18 @@ class AskDialog(QWidget):
         line.addWidget(go, 1)
         lay.addLayout(line)
         self.adjustSize()
+        self.focus_me = self.edit.setFocus
+        if present(self, ctx, keys=True):
+            return
         area = work_area(ctx.window.card_global().center())
         self.move(area.center().x() - self.width() // 2, area.center().y() - self.height() // 2)
         self.show()
         self.raise_()
         self.activateWindow()
         self.edit.setFocus()
+
+    def close(self) -> bool:
+        return close_embedded(self) or super().close()
 
     def say(self, text: str) -> None:
         self.note.set_text(text)
@@ -404,18 +411,22 @@ def build_cosmetics(page, lay) -> None:
     if not ec.ready or not ec.catalog:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the shop"), 12, TEXT_DIM))
     kind_i = int(getattr(ctx, "shop_kind", 0) or 0)
-    kind = ("ball", "line", "font", "theme")[kind_i]
+    kind = ("ball", "line", "font", "theme", "vis")[kind_i]
     design = getattr(ctx, "shop_design", None)
-    if design is None:
+    if design is None or kind == "vis":
         for sale in (ec.live.get("sales") or [])[:2]:
             lay.addWidget(SaleBanner(page, sale))
-        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes")], kind_i)
+        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Visualisers")], kind_i)
 
         def switch(i: int) -> None:
             ctx.shop_kind = i
+            ctx.shop_design = None
             ctx.reload_page()
         seg.changed.connect(switch)
         lay.addWidget(seg)
+        if kind == "vis":
+            from .hub import build_vis_shop
+            return build_vis_shop(page, lay)
         entries = []
         for base, name in _designs(kind):
             item = f"theme:{base}" if kind == "theme" else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"

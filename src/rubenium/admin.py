@@ -14,7 +14,7 @@ from .cosmetics import item_name, paint_cosmetic
 from .pages import Page
 from .shop import GOLD_TEXT, clock_text
 from .wallet import coins_text, paint_coin
-from .widgets import Button, IconButton, Label, Segmented, hbox, heading, vbox
+from .widgets import present, close_embedded, Button, IconButton, Label, Segmented, hbox, heading, vbox
 
 
 class FormDialog(QWidget):
@@ -30,6 +30,7 @@ class FormDialog(QWidget):
         except RuntimeError:
             pass
         ctx._form = self
+        self.ctx = ctx
         self._on_send = on_send
         self.setWindowTitle("Rubenium")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
@@ -63,6 +64,10 @@ class FormDialog(QWidget):
         line.addWidget(go, 1)
         lay.addLayout(line)
         self.adjustSize()
+        first = next(iter(self.edits.values()), None)
+        self.focus_me = first.setFocus if first is not None else None
+        if present(self, ctx, keys=True):
+            return
         area = work_area(ctx.window.card_global().center())
         self.move(area.center().x() - self.width() // 2, area.center().y() - self.height() // 2)
         self.show()
@@ -70,6 +75,9 @@ class FormDialog(QWidget):
         self.activateWindow()
         if self.edits:
             next(iter(self.edits.values())).setFocus()
+
+    def close(self) -> bool:
+        return close_embedded(self) or super().close()
 
     def say(self, text: str) -> None:
         self.note.set_text(text)
@@ -163,6 +171,7 @@ class Table(QWidget):
 class AdminPage(Page):
     key = "admin"
     SECTIONS = ["Overview", "Players", "Items", "Cases", "Live", "Settings", "Log", "Help"]
+    ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -177,7 +186,8 @@ class AdminPage(Page):
         if not ctx.econ.admin:
             return lay.addWidget(Label(tr("Admin only"), 12, TEXT_DIM))
         tab = int(getattr(ctx, "admin_tab", 0) or 0)
-        pick = GamePicker([tr(s) for s in self.SECTIONS], tab)
+        from .hub import NavTiles
+        pick = NavTiles([(tr(s), i) for s, i in zip(self.SECTIONS, self.ICONS)], tab)
         pick.changed.connect(self._section)
         lay.addWidget(pick)
         self._lock_row(lay)
@@ -203,6 +213,11 @@ class AdminPage(Page):
         if got is None or time.monotonic() - got[0] > 15:
             def back(ok: bool, data) -> None:
                 if not ok:
+                    from .econ import server_missing
+                    if server_missing(data):                 # the server update was not run yet: show it once, quietly
+                        cache[key] = (time.monotonic() + 3600, {} if fn != "rb_admin_audit" and fn != "rb_admin_resets" else [])
+                        self.ctx.econ.server_old = True
+                        return
                     return self.ctx.toast(tr(str(data)), "warn")
                 old = cache.get(key)
                 cache[key] = (time.monotonic(), data)
@@ -304,28 +319,39 @@ class AdminPage(Page):
                                (st.get("cases", 0), tr("Cases")), (st.get("trades", 0), tr("Trades")),
                                (tr("Online") if d.get("online") else tr("Offline"), tr("Status")),
                                (tr("Blocked") if d.get("banned") else tr("OK"), tr("Account"))], self.W))
-        line = hbox(spacing=6)
-        give = Button(tr("Coins / keys"), "primary", 30)
-        give.clicked.connect(lambda: FormDialog(
-            self.ctx, tr("Give or take: {name}", name=name), [("c", tr("Coins (+ to give, - to take)"), "0"),
-                                                               ("k", tr("Keys (+ to give, - to take)"), "0")], tr("Apply"),
-            lambda v, dlg: (dlg.close(), self.do("rb_admin_grant", {"name": name, "add_coins": _int(v["c"], 0),
-                                                                   "add_keys": _int(v["k"], 0)}, tr("Done")))))
-        item = Button(tr("Give item or case"), "primary", 30)
-        item.clicked.connect(lambda: self._give_dialog(name))
-        line.addWidget(give, 1)
-        line.addWidget(item, 1)
-        lay.addLayout(line)
-        line2 = hbox(spacing=6)
-        ban = Button(tr("Unblock") if d.get("banned") else tr("Block"), "ghost", 28)
-        ban.clicked.connect(lambda: self.ctx.window.confirm(
-            tr("Unblock {name}?", name=name) if d.get("banned") else tr("Block {name}? They cannot use anything online.", name=name),
-            lambda: self.do("rb_admin_ban", {"name": name, "ban": not d.get("banned")}), yes=tr("Yes")))
-        pic = Button(tr("Remove picture"), "ghost", 28)
-        pic.clicked.connect(lambda: self.do("rb_admin_avatar_clear", {"name": name}, tr("Done")))
-        line2.addWidget(ban, 1)
-        line2.addWidget(pic, 1)
-        lay.addLayout(line2)
+        from .hub import AmountWindow, NavTiles
+        acts = [(tr("Coins"), "gem"), (tr("Keys"), "key"), (tr("Give item"), "gift"), (tr("Give case"), "folder"),
+                (tr("Unblock") if d.get("banned") else tr("Block"), "lock"), (tr("Picture"), "trash"),
+                (tr("Undo last"), "refresh"), (tr("Refresh"), "refresh")]
+        grid = NavTiles(acts, -1, select=False)
+
+        def act(i: int) -> None:
+            ctx = self.ctx
+            if i == 0:
+                ctx._amount = AmountWindow(ctx, tr("Coins for {name}", name=name), [100, 1000, 10000, 100000, -100, -1000, -10000, -100000],
+                                           lambda n: self.do("rb_admin_grant", {"name": name, "add_coins": n, "add_keys": 0},
+                                                             tr("Done: {n} coins", n=("+" if n > 0 else "") + coins_text(n))))
+            elif i == 1:
+                ctx._amount = AmountWindow(ctx, tr("Keys for {name}", name=name), [1, 5, 10, 50, -1, -5, -10, -50],
+                                           lambda n: self.do("rb_admin_grant", {"name": name, "add_coins": 0, "add_keys": n},
+                                                             tr("Done: {n} keys", n=f"{n:+d}")))
+            elif i == 2:
+                self._give_dialog(name)
+            elif i == 3:
+                self._case_dialog(name)
+            elif i == 4:
+                ctx.window.confirm(
+                    tr("Unblock {name}?", name=name) if d.get("banned") else tr("Block {name}? They cannot use anything online.", name=name),
+                    lambda: self.do("rb_admin_ban", {"name": name, "ban": not d.get("banned")}), yes=tr("Yes"))
+            elif i == 5:
+                ctx.window.confirm(tr("Remove {name}'s picture?", name=name),
+                                   lambda: self.do("rb_admin_avatar_clear", {"name": name}, tr("Done")), yes=tr("Remove"))
+            elif i == 6:
+                self._undo_last(name)
+            else:
+                self._reload()
+        grid.changed.connect(act)
+        lay.addWidget(grid)
         stock = d.get("stock") or {}
         if stock:
             from .collection import CASE_NAMES
@@ -383,6 +409,23 @@ class AdminPage(Page):
         lay.addWidget(Table([(l["reason"], str(l.get("ref") or "")[:18], ("+" if int(l["coins"]) >= 0 else "") + coins_text(int(l["coins"]))
                               + (f"  {int(l['keys']):+d}🔑" if int(l.get("keys") or 0) else ""),
                               "#5BE08A" if int(l["coins"]) >= 0 else "#FF7A7A") for l in (d.get("ledger") or [])[:60]], self.W))
+
+    def _case_dialog(self, name: str) -> None:
+        from .collection import CASE_NAMES
+        cases = [c["id"] for c in self.ctx.econ.cases] or list(CASE_NAMES)
+        FormDialog(self.ctx, tr("Give a case to {name}", name=name),
+                   [("w", tr("Which case: ") + ", ".join(cases), cases[0] if cases else ""),
+                    ("n", tr("How many (1 to 100)"), "1")], tr("Give"),
+                   lambda v, dlg: (dlg.close(), self.do("rb_admin_give", {"name": name, "what": "case:" + v["w"].strip().replace("case:", ""),
+                                                                         "how_many": _int(v["n"], 1)}, tr("Given: it opens for free"))))
+
+    def _undo_last(self, name: str) -> None:
+        rows = self.fetch("rb_admin_audit", {}) or []
+        last = next((r for r in rows if (r.get("target") or "").lower() == name.lower() and r.get("can_undo")), None)
+        if last is None:
+            return self.ctx.toast(tr("Nothing to undo for {name}", name=name), "warn")
+        self.ctx.window.confirm(tr("Undo “{what}” on {target}?", what=last["action"], target=name),
+                                lambda: self.do("rb_admin_undo", {"entry": last["id"]}, tr("Undone")), yes=tr("Undo"))
 
     def _give_dialog(self, name: str) -> None:
         chosen = getattr(self.ctx, "admin_item", "") or ""

@@ -309,6 +309,8 @@ class App(QObject):
         if self.cfg["update_check"] and not selftest:
             self._safe("updates", self.updater.start)
         self._safe("show/hide key", lambda: self.tapkey.set_key(self.cfg["hotkey"]))
+        if not self.cfg["vis_migrated"]:                # 2.4.1: the visualiser starts off (turn it on in Settings)
+            self.cfg["visualiser"], self.cfg["vis_migrated"] = "off", True
         self._pin = QTimer(self)
         self._pin.setInterval(2000)
         self._pin.timeout.connect(lambda: self._safe("housekeeping", self._housekeeping))
@@ -1022,17 +1024,29 @@ class App(QObject):
             self.window.sync_lock()
 
     def after_login(self) -> None:
-        """Once logged in: the daily reward, the tour the first time, and a quiet online backup each day."""
-        from .hub import backup_to_cloud, check_login_reward
-        if not self.cfg["tutorial_done"]:
-            from .music2 import Tutorial
-            if not self.window.expanded:
-                self.window.expand()
-            QTimer.singleShot(500, lambda: setattr(self, "_tour", Tutorial(self, lambda: check_login_reward(self))))
-        else:
-            check_login_reward(self)
+        """Once logged in: a quiet online backup each day. The tour and the daily reward wait until the menu is
+        opened (never on top of a game)."""
+        from .hub import backup_to_cloud
+        self.tour_pending = not self.cfg["tutorial_done"]
+        self.login_pending = True
+        if self.window.expanded:
+            self.on_opened()
         if time.time() - int(self.cfg["backup_at"] or 0) > 86400:
             backup_to_cloud(self, quiet=True)
+
+    def on_opened(self) -> None:
+        """The menu just opened: first the tour (the first time), then the daily reward if it is waiting."""
+        from .hub import check_login_reward
+        if not self.window.expanded or getattr(self.window, "sheet", None) is not None:
+            return
+        if getattr(self, "tour_pending", False):
+            from .music2 import Tutorial
+            self.tour_pending = False
+            self._tour = Tutorial(self, lambda: QTimer.singleShot(300, self.on_opened))
+            return
+        if getattr(self, "login_pending", False) and self.online.logged_in():
+            self.login_pending = False
+            check_login_reward(self)
 
     def start_tutorial(self) -> None:
         from .music2 import Tutorial

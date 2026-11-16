@@ -44,7 +44,15 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_not_friends": "Friends only", "rb_duel_gone": "This duel is over", "rb_already_played": "You already played this duel",
           "rb_too_many": "Too many at once: wait a little", "rb_slow_down": "Slow down a little",
           "rb_already_undone": "Already undone", "rb_cant_undo": "This cannot be undone",
-          "rb_weak_password": "8 characters at least", "rb_too_big": "Too big"}
+          "rb_weak_password": "8 characters at least", "rb_too_big": "Too big",
+          "rb_server_old": "Coming very soon: the server is being updated"}
+
+
+def server_missing(data) -> bool:
+    """The server does not have this yet (its update was not run): not a real error."""
+    text = str(data).lower()
+    return ("pgrst202" in text or "could not find the function" in text or "rb_server_old" in text
+            or "server is being updated" in text or ("function" in text and "does not exist" in text))
 
 
 class Econ(QObject):
@@ -67,6 +75,7 @@ class Econ(QObject):
         self.avatar_v = 0
         self.stock: dict = {}                    # case id -> gifted cases waiting
         self.scratch_in = 0                      # seconds until the next scratch card
+        self.server_old = False                  # the server has not had the 2.4 update yet
         self.streak, self.streak_day = 0, None
         self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
         self._live_sig = ""
@@ -174,7 +183,13 @@ class Econ(QObject):
 
             def hello(ok: bool, data) -> None:
                 if not ok:                                   # a server without 2.4: the old hello
+                    if server_missing(data):
+                        self.server_old = True
+                        self.changed.emit()
                     return self.online.ask("rb_hello", {"pc": pc_id()}, lambda _ok, _d: None)
+                if self.server_old:
+                    self.server_old = False
+                    self.changed.emit()
                 if isinstance(data, dict) and hasattr(self.ctx, "set_outdated"):
                     self.ctx.set_outdated(bool(data.get("update")))
             self.online.ask("rb_hello2", {"pc": pc_id(), "build": build_number()}, hello)
@@ -309,6 +324,9 @@ class Econ(QObject):
         def back(ok: bool, data) -> None:
             if ok and not hold:                 # hold: the game shows the result first, then the coins
                 self.absorb(data)
+            if not ok and server_missing(data):  # the app is newer than the server: say it once, calmly
+                self.server_old = True
+                data = "rb_server_old"
             if not ok:
                 data = ERRORS.get(next((k for k in ERRORS if k in str(data)), ""),
                                   "No internet connection" if data == "offline" else "Something went wrong: try again")

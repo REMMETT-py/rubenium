@@ -1,9 +1,10 @@
 """2.4 screens: messages, leaderboards, trade history, collection sets, the daily login reward,
 settings backups and the song history."""
+import datetime
 import json
 import time
 
-from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import QWidget
 
@@ -27,14 +28,23 @@ class FloatWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setFixedWidth(S(width))
 
+    wants_keys = False
+
     def centre(self) -> None:
+        from .widgets import present
         from .window import work_area
         self.adjustSize()
+        if present(self, self.ctx, keys=self.wants_keys):
+            return
         area = work_area(self.ctx.window.card_global().center())
         self.move(area.center().x() - self.width() // 2, area.center().y() - self.height() // 2)
         self.show()
         self.raise_()
         self.activateWindow()
+
+    def close(self) -> bool:
+        from .widgets import close_embedded
+        return close_embedded(self) or super().close()
 
     def keyPressEvent(self, e) -> None:
         if e.key() == Qt.Key.Key_Escape:
@@ -43,8 +53,9 @@ class FloatWindow(QWidget):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.setPen(QPen(alpha(ui.accent, 0.45), 1.2))
-        p.setBrush(QColor(12, 15, 16, 252))
+        inside = getattr(self, "_embedded", False)
+        p.setPen(QPen(alpha(ui.accent, 0.25 if inside else 0.45), 1.2))
+        p.setBrush(alpha("#FFFFFF", 0.03) if inside else QColor(12, 15, 16, 252))
         p.drawRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), S(16), S(16))
 
 
@@ -55,6 +66,142 @@ def ago(at) -> str:
         return ago_text(at)
     except Exception:  # noqa: BLE001
         return ""
+
+
+# ================================================================ big, clear section buttons (shop, admin)
+class NavTiles(QWidget):
+    """Sections as tiles with an icon and a name, 4 per row. The one you are in is lit."""
+    changed = pyqtSignal(int)
+
+    def __init__(self, items: list, index: int = 0, per_row: int = 4, badges: dict = None, select: bool = True) -> None:
+        super().__init__()
+        self.items, self.index, self.per = items, index, per_row          # items: [(label, icon)]
+        self.select = select                                              # False: plain action buttons
+        self.badges = badges or {}                                        # index -> small number (new things)
+        rows = (len(items) + per_row - 1) // per_row
+        self.th = S(50)
+        self.setFixedHeight(rows * self.th + (rows - 1) * S(6))
+        self.setSizePolicy(self.sizePolicy().horizontalPolicy(), self.sizePolicy().verticalPolicy())
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.hover = -1
+
+    def _tile(self, i: int) -> QRectF:
+        gap = S(6)
+        w = (self.width() - gap * (self.per - 1)) / self.per
+        r, c = divmod(i, self.per)
+        return QRectF(c * (w + gap), r * (self.th + gap), w, self.th)
+
+    def _at(self, pos) -> int:
+        return next((i for i in range(len(self.items)) if self._tile(i).contains(pos)), -1)
+
+    def mouseMoveEvent(self, e) -> None:
+        h = self._at(e.position())
+        if h != self.hover:
+            self.hover = h
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def mouseReleaseEvent(self, e) -> None:
+        i = self._at(e.position())
+        if i >= 0 and (i != self.index or not self.select):
+            sfx.play("pick")
+            if self.select:
+                self.index = i
+            self.update()
+            self.changed.emit(i)
+
+    def set_index(self, i: int) -> None:
+        self.index = i
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        for i, (label, icon) in enumerate(self.items):
+            r = self._tile(i).adjusted(0.5, 0.5, -0.5, -0.5)
+            on, hov = i == self.index, i == self.hover
+            if on:
+                g = QLinearGradient(r.topLeft(), r.bottomLeft())
+                g.setColorAt(0, alpha(ui.accent, 0.30))
+                g.setColorAt(1, alpha(ui.accent, 0.12))
+                p.setPen(QPen(alpha(ui.accent, 0.85), S(1.4)))
+                p.setBrush(g)
+            else:
+                p.setPen(QPen(alpha("#FFFFFF", 0.10 if hov else 0.06), 1))
+                p.setBrush(alpha("#FFFFFF", 0.07 if hov else 0.035))
+            p.drawRoundedRect(r, S(10), S(10))
+            p.save()
+            p.translate(r.center().x(), r.top() + S(17))
+            p.scale(0.9, 0.9)
+            draw_icon(p, icon, QColor(TEXT) if on or hov else QColor(TEXT_DIM))
+            p.restore()
+            p.setPen(QColor(TEXT) if on else QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.Bold if on else QFont.Weight.DemiBold))
+            text = QFontMetrics(p.font()).elidedText(label, Qt.TextElideMode.ElideRight, int(r.width() - S(6)))
+            p.drawText(QRectF(r.left(), r.bottom() - S(20), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), text)
+            n = int(self.badges.get(i) or 0)
+            if n:
+                b = QRectF(r.right() - S(20), r.top() + S(4), S(16), S(14))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#FF5C6C"))
+                p.drawRoundedRect(b, S(7), S(7))
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(8.5, QFont.Weight.ExtraBold))
+                p.drawText(b, int(Qt.AlignmentFlag.AlignCenter), str(min(n, 9)))
+
+
+# ================================================================ before the server has the 2.4 update
+class WaitCard(QWidget):
+    """Shown instead of a new part while the server has not had its update yet: no error, just 'very soon'."""
+
+    def __init__(self, width: int) -> None:
+        super().__init__()
+        self.setFixedSize(width, S(150))
+        self._t = QTimer(self)
+        self._t.setInterval(40)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        import math
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha(ui.accent, 0.35), 1.2))
+        p.setBrush(alpha("#FFFFFF", 0.035))
+        p.drawRoundedRect(r, S(14), S(14))
+        c = QPointF(r.center().x(), r.top() + S(42))
+        t = time.monotonic()
+        for k in range(8):                                   # a soft turning ring of dots
+            a = t * 3 + k * math.tau / 8
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(ui.accent, 0.15 + 0.85 * ((k / 8 + t * 0.48) % 1.0)))
+            p.drawEllipse(QPointF(c.x() + math.cos(a) * S(14), c.y() + math.sin(a) * S(14)), S(2.6), S(2.6))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(14, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left(), r.top() + S(68), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), tr("Coming very soon"))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left() + S(16), r.top() + S(92), r.width() - S(32), S(50)),
+                   int(Qt.AlignmentFlag.AlignHCenter | Qt.TextFlag.TextWordWrap),
+                   tr("This part is new. It opens by itself as soon as the Rubenium server gets its update."))
+
+
+def server_wait(ctx, lay, width: int) -> bool:
+    """True (and a 'coming very soon' card) when the server does not have this part yet."""
+    if not getattr(ctx.econ, "server_old", False):
+        return False
+    lay.addWidget(WaitCard(width))
+    return True
 
 
 # ================================================================ messages
@@ -107,7 +254,8 @@ class Bubbles(QWidget):
 
 
 class ChatWindow(FloatWindow):
-    """A chat with one friend. Typing works here (it is its own window)."""
+    """A chat with one friend, inside the menu (the menu takes the keyboard only while it is open)."""
+    wants_keys = True
 
     def __init__(self, ctx, name: str) -> None:
         super().__init__(ctx, 330)
@@ -126,6 +274,7 @@ class ChatWindow(FloatWindow):
         top.addWidget(close)
         lay.addLayout(top)
         self.bubbles = Bubbles(S(298))
+        self.bubbles.setFixedHeight(S(240))
         lay.addWidget(self.bubbles)
         line = hbox(spacing=6)
         self.edit = QLineEdit()
@@ -149,6 +298,7 @@ class ChatWindow(FloatWindow):
         info = next((t for t in (getattr(ctx, "threads_data", None) or []) if t.get("name") == name), {})
         self._set_muted(bool(info.get("muted")))
         self.load()
+        self.focus_me = self.edit.setFocus
         self.centre()
         self.edit.setFocus()
 
@@ -185,9 +335,12 @@ class ChatWindow(FloatWindow):
                 self.ctx.threads_data = None
         self.ctx.online.ask("rb_msg_mute", {"name": self.name, "mute": want}, done)
 
-    def closeEvent(self, e) -> None:
+    def on_closed(self) -> None:
         self._poll.stop()
         self.ctx.threads_data = None
+
+    def closeEvent(self, e) -> None:
+        self.on_closed()
         super().closeEvent(e)
 
 
@@ -258,6 +411,8 @@ class ThreadRow(QWidget):
 
 def build_messages(page, lay) -> None:
     ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
     data = getattr(ctx, "threads_data", None)
 
     def got(ok: bool, rows) -> None:
@@ -326,6 +481,8 @@ class LeaderRow(QWidget):
 
 def build_leaders(page, lay) -> None:
     ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
     k = int(getattr(ctx, "board_kind", 0) or 0)
     friends = bool(getattr(ctx, "board_friends", False))
     seg = Segmented([tr("Everyone"), tr("Friends")], 1 if friends else 0)
@@ -345,8 +502,6 @@ def build_leaders(page, lay) -> None:
                 ctx.board_data = (key, rows)
                 if ctx.window.current == "friends" and int(getattr(ctx, "social_tab", 0) or 0) == 3:
                     ctx.reload_page()
-        elif not ok:
-            ctx.toast(tr(str(rows)), "warn")
     ctx.online.ask("rb_leaders", {"kind": kind, "friends": friends}, got)
     if not data or data[0] != key:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -407,6 +562,8 @@ class TradeCard(QWidget):
 
 def build_trade_history(page, lay) -> None:
     ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
     data = getattr(ctx, "trade_hist", None)
 
     def got(ok: bool, rows) -> None:
@@ -479,6 +636,8 @@ class SetRow(QWidget):
 
 def build_sets(page, lay) -> None:
     ctx = page.ctx
+    if server_wait(ctx, lay, page.W):
+        return
     lay.addWidget(Label(tr("Complete a set to get a big bonus, once. You must still own the badges when you claim."),
                         10.5, TEXT_DIM, wrap_w=page.W))
     data = getattr(ctx, "sets_data", None)
@@ -555,7 +714,15 @@ class LoginWindow(FloatWindow):
         super().__init__(ctx, 330)
         lay = vbox(self, 10, (18, 16, 18, 18))
         streak = int(state.get("streak") or 0)
-        lay.addWidget(Label(tr("Daily reward"), 16, bold=True))
+        head = hbox(spacing=10)
+        nxt = streak if state.get("claimed") else streak + 1
+        self.flame = StreakFlame(nxt, 70)
+        head.addWidget(self.flame)
+        col = vbox(spacing=2)
+        col.addWidget(Label(tr("Daily reward"), 16, bold=True))
+        col.addWidget(Label(tr("Your flame grows a little every day in a row."), 10.5, TEXT_DIM, wrap_w=S(210)))
+        head.addLayout(col, 1)
+        lay.addLayout(head)
         lay.addWidget(Label(tr("Come back every day: day 7 gives a free case. Miss a day and it starts again."),
                             11, TEXT_DIM, wrap_w=S(294)))
         rewards = list(state.get("rewards") or [])
@@ -591,19 +758,27 @@ class LoginWindow(FloatWindow):
             if rw.get("case"):
                 parts.append(tr("+1 free case"))
             self.ctx.toast("  ".join(parts) + "  ·  " + tr("Day {n}", n=data.get("streak", 1)))
+            self.ctx.econ.streak, self.ctx.econ.streak_day = int(data.get("streak") or 1), datetime.date.today().isoformat()
             self.ctx.econ.refresh()
-            self.close()
+            self.flame.day = int(data.get("streak") or 1)
+            self.go.set_text(tr("Done for today"))
+            QTimer.singleShot(1400, self.close)
         self.ctx.econ.call("rb_login_claim", {}, done)
 
 
 def check_login_reward(ctx, force: bool = False) -> None:
-    if not ctx.online.logged_in():
+    if not ctx.online.logged_in() or getattr(ctx.econ, "server_old", False):
         return
 
     def got(ok: bool, state) -> None:
         if ok and isinstance(state, dict) and (force or not state.get("claimed")):
             if state.get("claimed"):
                 return ctx.toast(tr("Already claimed today"), "warn")
+            if not ctx.window.expanded:                  # never over a game: a small note, the reward waits
+                ctx.notifier.push("ready", tr("DAILY REWARD"), tr("Your daily reward is ready: open Rubenium to claim it"))
+                ctx.login_pending = True
+                return
+            ctx.login_pending = False
             ctx._login_win = LoginWindow(ctx, state)
     ctx.online.ask("rb_login_state", {}, got)
 
@@ -806,3 +981,571 @@ class HistoryWindow(FloatWindow):
             area.setFixedSize(S(298), min(S(380), h))
             lay.addWidget(area)
         self.centre()
+
+
+# ================================================================ profile picture editor
+FILTERS = [("normal", "Normal"), ("vivid", "Vivid"), ("warm", "Warm"), ("cool", "Cool"), ("mono", "Black & white"),
+           ("dream", "Dream")]
+RINGS = [("none", "No ring"), ("accent", "My colour"), ("rainbow", "Rainbow")]
+
+
+def filtered(img, kind: str):
+    """A copy of the picture with a colour filter (small, so it is fast)."""
+    from PyQt6.QtGui import QImage
+    if kind == "normal":
+        return img
+    out = img.convertToFormat(QImage.Format.Format_ARGB32)
+    w, h = out.width(), out.height()
+    for y in range(h):
+        for x in range(w):
+            c = out.pixelColor(x, y)
+            r, g, b = c.red(), c.green(), c.blue()
+            if kind == "mono":
+                v = int(0.3 * r + 0.59 * g + 0.11 * b)
+                r = g = b = v
+            elif kind == "warm":
+                r, b = min(255, int(r * 1.12 + 10)), int(b * 0.85)
+            elif kind == "cool":
+                r, b = int(r * 0.85), min(255, int(b * 1.15 + 10))
+            elif kind == "vivid":
+                m = (r + g + b) / 3
+                r, g, b = (max(0, min(255, int(m + (v - m) * 1.45))) for v in (r, g, b))
+            elif kind == "dream":
+                r, g, b = (min(255, int(v * 0.8 + 60)) for v in (r, g, b))
+                b = min(255, b + 20)
+            out.setPixelColor(x, y, QColor(r, g, b, c.alpha()))
+    return out
+
+
+class Cropper(QWidget):
+    """The picture inside a round window: drag it to move, scroll (or the slider) to zoom."""
+
+    def __init__(self, img, size: int) -> None:
+        super().__init__()
+        self.src = img
+        self.view = img
+        self.setFixedSize(size, size)
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.zoom = 1.0
+        self.angle = 0
+        self.mirror = False
+        self.off = QPointF(0, 0)
+        self.ring = "accent"
+        self._drag = None
+        self.changed = None
+
+    def base_scale(self) -> float:
+        w, h = (self.src.height(), self.src.width()) if self.angle % 180 else (self.src.width(), self.src.height())
+        return self.width() / max(1, min(w, h))
+
+    def mousePressEvent(self, e) -> None:
+        self._drag = (e.position(), QPointF(self.off))
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+
+    def mouseMoveEvent(self, e) -> None:
+        if self._drag:
+            start, off = self._drag
+            self.off = off + (e.position() - start)
+            self._clamp()
+            self.update()
+            if self.changed:
+                self.changed()
+
+    def mouseReleaseEvent(self, _e) -> None:
+        self._drag = None
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+
+    def wheelEvent(self, e) -> None:
+        self.set_zoom(self.zoom * (1.1 if e.angleDelta().y() > 0 else 1 / 1.1))
+        e.accept()
+
+    def set_zoom(self, z: float) -> None:
+        self.zoom = max(1.0, min(5.0, z))
+        self._clamp()
+        self.update()
+        if self.changed:
+            self.changed()
+
+    def _clamp(self) -> None:
+        w, h = (self.src.height(), self.src.width()) if self.angle % 180 else (self.src.width(), self.src.height())
+        sc = self.base_scale() * self.zoom
+        mx, my = max(0.0, (w * sc - self.width()) / 2), max(0.0, (h * sc - self.height()) / 2)
+        self.off = QPointF(max(-mx, min(mx, self.off.x())), max(-my, min(my, self.off.y())))
+
+    def render_square(self, side: int):
+        """What is inside the circle, as a square picture `side` pixels wide."""
+        from PyQt6.QtGui import QImage
+        out = QImage(side, side, QImage.Format.Format_ARGB32_Premultiplied)
+        out.fill(QColor("#000000"))
+        p = QPainter(out)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        k = side / self.width()
+        self._draw_image(p, k)
+        p.end()
+        return out
+
+    def _draw_image(self, p: QPainter, k: float = 1.0) -> None:
+        sc = self.base_scale() * self.zoom * k
+        p.save()
+        p.translate(self.width() * k / 2 + self.off.x() * k, self.height() * k / 2 + self.off.y() * k)
+        p.rotate(self.angle)
+        p.scale(-sc if self.mirror else sc, sc)
+        p.drawImage(QPointF(-self.view.width() / 2, -self.view.height() / 2), self.view)
+        p.restore()
+
+    def paintEvent(self, _e) -> None:
+        from PyQt6.QtGui import QPainterPath
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        p.fillRect(self.rect(), QColor("#07090B"))
+        self._draw_image(p)
+        r = QRectF(self.rect()).adjusted(S(6), S(6), -S(6), -S(6))
+        outside = QPainterPath()
+        outside.addRect(QRectF(self.rect()))
+        hole = QPainterPath()
+        hole.addEllipse(r)
+        p.fillPath(outside.subtracted(hole), QColor(6, 8, 10, 175))
+        p.setPen(QPen(alpha("#FFFFFF", 0.6), S(1.2), Qt.PenStyle.DashLine))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(r)
+
+
+class AvatarEditor(FloatWindow):
+    """Choose exactly how your picture looks: move, zoom, turn, mirror, a filter, and see it at every size."""
+
+    def __init__(self, ctx, img, on_done) -> None:
+        super().__init__(ctx, 340)
+        from .widgets import Slider
+        self.on_done = on_done
+        side = min(img.width(), img.height())
+        big = img if side <= 900 else img.scaled(900 * img.width() // side, 900 * img.height() // side,
+                                                 Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self.small = big.scaled(min(260, big.width()), min(260, big.height()), Qt.AspectRatioMode.KeepAspectRatio,
+                                Qt.TransformationMode.SmoothTransformation)
+        lay = vbox(self, 8, (16, 14, 16, 16))
+        top = hbox(spacing=6)
+        top.addWidget(Label(tr("Your picture"), 15, bold=True), 1)
+        close = IconButton("close", 26, tip=tr("Close"))
+        close.clicked.connect(self.close)
+        top.addWidget(close)
+        lay.addLayout(top)
+        lay.addWidget(Label(tr("Drag to move it, scroll to zoom."), 10.5, TEXT_DIM))
+        self.crop = Cropper(big, S(220))
+        self.crop.changed = self._previews
+        row = hbox(spacing=10)
+        row.addWidget(self.crop)
+        self.prev = AvatarPreviews(self)
+        row.addWidget(self.prev)
+        lay.addLayout(row)
+        zoom = Slider(100, 500, 100, 5)
+        zoom.changed.connect(lambda v: self.crop.set_zoom(v / 100))
+        line = hbox(spacing=6)
+        line.addWidget(Label(tr("Zoom"), 11, TEXT_DIM))
+        line.addWidget(zoom, 1)
+        lay.addLayout(line)
+        tools = hbox(spacing=6)
+        turn = Button(tr("Turn"), "ghost", 28, icon="refresh")
+        turn.clicked.connect(self._turn)
+        flip = Button(tr("Mirror"), "ghost", 28)
+        flip.clicked.connect(self._flip)
+        tools.addWidget(turn, 1)
+        tools.addWidget(flip, 1)
+        lay.addLayout(tools)
+        self.filt = Segmented([tr(n) for _k, n in FILTERS], 0)
+        self.filt.changed.connect(self._filter)
+        lay.addWidget(Label(tr("Filter"), 11, TEXT_DIM))
+        lay.addWidget(self.filt)
+        go = Button(tr("Use this picture"), "primary", 36)
+        go.clicked.connect(self._use)
+        lay.addWidget(go)
+        lay.addWidget(Label(tr("Everyone can see it. Keep it friendly."), 10, TEXT_FAINT))
+        self.centre()
+
+    def _turn(self) -> None:
+        self.crop.angle = (self.crop.angle + 90) % 360
+        self.crop._clamp()
+        self.crop.update()
+        self._previews()
+
+    def _flip(self) -> None:
+        self.crop.mirror = not self.crop.mirror
+        self.crop.update()
+        self._previews()
+
+    def _filter(self, i: int) -> None:
+        kind = FILTERS[i][0]
+        src = self.crop.src
+        if kind == "normal":
+            self.crop.view = src
+        else:                                                  # filter a smaller copy, then show it at full size
+            small = src.scaled(min(src.width(), 360), min(src.height(), 360), Qt.AspectRatioMode.KeepAspectRatio,
+                               Qt.TransformationMode.SmoothTransformation)
+            self.crop.view = filtered(small, kind).scaled(src.width(), src.height(), Qt.AspectRatioMode.IgnoreAspectRatio,
+                                                          Qt.TransformationMode.SmoothTransformation)
+        self.crop.update()
+        self._previews()
+
+    def _previews(self) -> None:
+        self.prev.update()
+
+    def _use(self) -> None:
+        sfx.play("pick")
+        out = self.crop.render_square(192)
+        self.close()
+        self.on_done(out)
+
+
+class AvatarPreviews(QWidget):
+    """How the picture will look in the profile, the friends list and next to messages."""
+
+    def __init__(self, editor) -> None:
+        super().__init__()
+        self.ed = editor
+        self.setFixedSize(S(70), S(220))
+
+    def paintEvent(self, _e) -> None:
+        from PyQt6.QtGui import QPainterPath, QPixmap
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        pm = QPixmap.fromImage(self.ed.crop.render_square(128))
+        y = S(4)
+        for d in (S(56), S(36), S(24)):
+            r = QRectF((self.width() - d) / 2, y, d, d)
+            clip = QPainterPath()
+            clip.addEllipse(r)
+            p.save()
+            p.setClipPath(clip)
+            p.drawPixmap(r.toRect(), pm)
+            p.restore()
+            p.setPen(QPen(alpha(ui.accent, 0.8), S(1.5)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(r)
+            y += d + S(18)
+        p.setPen(QColor(TEXT_FAINT))
+        p.setFont(font(9))
+        p.drawText(QRectF(0, self.height() - S(18), self.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter), tr("Preview"))
+
+
+# ================================================================ the login streak flame
+FLAME_STAGES = [  # (from day, outer, middle, core) — it gets hotter, bigger and fancier every day
+    (1, "#FF7A1A", "#FFB238", "#FFF1B0"), (3, "#FF4D1A", "#FF9A2E", "#FFE38A"), (5, "#FF2E4D", "#FF7A3D", "#FFD36B"),
+    (7, "#E8227A", "#FF5C8A", "#FFD0E0"), (10, "#9B3DFF", "#D16BFF", "#FFE0FF"), (14, "#2E7BFF", "#4FC3FF", "#E0F7FF"),
+    (21, "#00C2A8", "#2EE6D6", "#E8FFFB"), (30, "#FFC94D", "#FFF1A8", "#FFFFFF")]
+
+
+def flame_colours(day: int) -> tuple:
+    st = FLAME_STAGES[0]
+    for s in FLAME_STAGES:
+        if day >= s[0]:
+            st = s
+    return QColor(st[1]), QColor(st[2]), QColor(st[3])
+
+
+def paint_flame(p: QPainter, c: QPointF, size: float, day: int, t: float, sparks: bool = True) -> None:
+    """A living flame. Day 1 is a small orange flame; each day adds a little: height, tongues, colours, glow,
+    embers, a ring and at last a crown of light (day 30: a white-gold flame)."""
+    import math
+    from PyQt6.QtGui import QPainterPath, QRadialGradient
+    day = max(0, day)
+    if day == 0:
+        p.save()
+        p.setPen(QPen(alpha("#FFFFFF", 0.25), S(1.2), Qt.PenStyle.DashLine))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        path = QPainterPath()
+        path.moveTo(c.x(), c.y() - size * 0.55)
+        path.cubicTo(c.x() + size * 0.45, c.y() - size * 0.1, c.x() + size * 0.35, c.y() + size * 0.45, c.x(), c.y() + size * 0.45)
+        path.cubicTo(c.x() - size * 0.35, c.y() + size * 0.45, c.x() - size * 0.45, c.y() - size * 0.1, c.x(), c.y() - size * 0.55)
+        p.drawPath(path)
+        p.restore()
+        return
+    outer, mid, core = flame_colours(day)
+    grow = min(1.0, 0.55 + day * 0.03)                   # taller every day, full size at day 15
+    h = size * grow
+    p.save()
+    glow = QRadialGradient(QPointF(c.x(), c.y() + h * 0.1), size * (0.6 + min(0.5, day * 0.03)))
+    glow.setColorAt(0, alpha(outer, min(0.55, 0.18 + day * 0.02)))
+    glow.setColorAt(1, alpha(outer, 0.0))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(glow)
+    p.drawEllipse(QPointF(c.x(), c.y() + h * 0.1), size * 1.1, size * 1.1)
+    if day >= 12:                                         # a turning ring of light
+        p.setPen(QPen(alpha(mid, 0.35), S(1.2)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        ring = size * 0.62
+        p.drawArc(QRectF(c.x() - ring, c.y() + h * 0.28 - ring * 0.32, ring * 2, ring * 0.64), int(t * 400) % 5760, 3600)
+        p.setPen(Qt.PenStyle.NoPen)
+
+    def tongue(scale: float, colour: QColor, wob: float, phase: float, lean: float = 0.0) -> None:
+        w = h * 0.42 * scale
+        top = c.y() + h * 0.5 - h * scale
+        sway = math.sin(t * (5 + phase) + phase) * w * wob
+        tip = QPointF(c.x() + sway + lean * w, top)
+        base = c.y() + h * 0.5
+        path = QPainterPath()
+        path.moveTo(tip)
+        path.cubicTo(c.x() + w * 0.9 + sway * 0.5, top + h * scale * 0.45, c.x() + w, base - w * 0.4, c.x(), base)
+        path.cubicTo(c.x() - w, base - w * 0.4, c.x() - w * 0.9 + sway * 0.5, top + h * scale * 0.45, tip.x(), tip.y())
+        g = QLinearGradient(QPointF(0, top), QPointF(0, base))
+        g.setColorAt(0, alpha(colour, 0.0 if scale > 0.6 else 0.6))
+        g.setColorAt(0.35, colour)
+        g.setColorAt(1, mix(colour, QColor("#FFFFFF"), 0.15))
+        p.setBrush(g)
+        p.drawPath(path)
+
+    tongues = min(4, 1 + day // 4)                        # side tongues appear as the streak grows
+    for k in range(1, tongues):
+        side = -1 if k % 2 else 1
+        tongue(0.55 + 0.05 * k, alpha(outer, 0.75), 0.25, k * 1.7, side * (0.6 + 0.15 * k))
+    tongue(1.0, outer, 0.18, 0.0)
+    tongue(0.72, mid, 0.22, 1.3)
+    tongue(0.42, core, 0.28, 2.6)
+    if day >= 7:                                          # a bright heart
+        heart = QRadialGradient(QPointF(c.x(), c.y() + h * 0.32), h * 0.16)
+        heart.setColorAt(0, QColor("#FFFFFF"))
+        heart.setColorAt(1, alpha(core, 0.0))
+        p.setBrush(heart)
+        p.drawEllipse(QPointF(c.x(), c.y() + h * 0.32), h * 0.16, h * 0.16)
+    if sparks:                                            # embers: more and faster every day
+        n = min(16, 1 + day)
+        for k in range(n):
+            life = (t * (0.5 + (k % 5) * 0.12) + k * 0.37) % 1.0
+            x = c.x() + math.sin(k * 12.9 + t * 2) * size * 0.32 * (0.4 + life)
+            y = c.y() + h * 0.4 - life * size * (0.9 + min(0.6, day * 0.02))
+            col = mid if k % 3 else core
+            if day >= 20 and k % 4 == 0:
+                col = QColor.fromHsvF((t * 0.2 + k * 0.13) % 1.0, 0.55, 1.0)
+            p.setBrush(alpha(col, 1 - life))
+            p.drawEllipse(QPointF(x, y), S(1.6) * (1 - life * 0.5), S(1.6) * (1 - life * 0.5))
+    if day >= 30:                                         # the crown: a few rays over the flame
+        p.setPen(QPen(alpha("#FFF6C8", 0.55), S(1.3)))
+        for k in range(5):
+            a = -math.pi / 2 + (k - 2) * 0.35 + math.sin(t * 2 + k) * 0.05
+            r0, r1 = size * 0.7, size * (0.88 + 0.06 * math.sin(t * 4 + k))
+            p.drawLine(QPointF(c.x() + math.cos(a) * r0, c.y() + math.sin(a) * r0),
+                       QPointF(c.x() + math.cos(a) * r1, c.y() + math.sin(a) * r1))
+    p.restore()
+
+
+class StreakFlame(QWidget):
+    """The flame and the number of days, alive (it moves only while it is on screen)."""
+
+    def __init__(self, day: int, size: int = 64, label: bool = True) -> None:
+        super().__init__()
+        self.day, self.label = day, label
+        self.setFixedSize(S(size), S(size) + (S(18) if label else 0))
+        self._t = QTimer(self)
+        self._t.setInterval(33)
+        self._t.timeout.connect(self.update)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        side = self.width()
+        paint_flame(p, QPointF(side / 2, side * 0.52), side * 0.46, self.day, time.monotonic())
+        if self.label:
+            _o, mid, _c = flame_colours(max(1, self.day))
+            p.setPen(mid if self.day else QColor(TEXT_DIM))
+            p.setFont(font(11, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(0, side - S(2), side, S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("{n} days", n=self.day) if self.day != 1 else tr("1 day"))
+
+
+class StreakRow(QWidget):
+    """Games lobby: the flame, the streak and when the next reward is ready."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedHeight(S(44))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._t = QTimer(self)
+        self._t.setInterval(40)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def _state(self):
+        ec = self.ctx.econ
+        today = datetime.date.today().isoformat()
+        day = str(ec.streak_day or "")
+        yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        alive = day in (today, yesterday)
+        return (ec.streak if alive else 0), day == today
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.rect().contains(e.position().toPoint()):
+            sfx.play("pick")
+            check_login_reward(self.ctx, force=True)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        streak, claimed = self._state()
+        outer, mid, _core = flame_colours(max(1, streak))
+        g = QLinearGradient(r.topLeft(), r.topRight())
+        g.setColorAt(0, mix(outer, QColor("#14181D"), 0.78))
+        g.setColorAt(1, QColor("#14181D"))
+        p.setPen(QPen(alpha(mid, 0.45 if not claimed else 0.15), 1.2))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(10), S(10))
+        paint_flame(p, QPointF(r.left() + S(22), r.center().y()), S(17), streak, time.monotonic(), sparks=streak > 0)
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left() + S(44), r.top(), r.width(), r.height()), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("Daily reward") + (f"  ·  {tr('{n} days', n=streak)}" if streak > 1 else ""))
+        p.setPen(QColor(TEXT_DIM if claimed else mid.name()))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.drawText(r.adjusted(0, 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   tr("Done for today") if claimed else tr("Claim!"))
+
+
+
+class AmountWindow(FloatWindow):
+    """Give or take coins or keys: quick buttons for the usual amounts, or type any number."""
+    wants_keys = True
+
+    def __init__(self, ctx, title: str, presets: list, on_amount) -> None:
+        super().__init__(ctx, 320)
+        from PyQt6.QtWidgets import QLineEdit
+        self.on_amount = on_amount
+        lay = vbox(self, 8, (16, 14, 16, 16))
+        top = hbox(spacing=6)
+        top.addWidget(Label(title, 15, bold=True), 1)
+        close = IconButton("close", 26, tip=tr("Close"))
+        close.clicked.connect(self.close)
+        top.addWidget(close)
+        lay.addLayout(top)
+        for row in (presets[:4], presets[4:8]):
+            if not row:
+                continue
+            line = hbox(spacing=6)
+            for n in row:
+                b = Button(("+" if n > 0 else "−") + coins_text(abs(n)), "primary" if n > 0 else "danger", 30)
+                b.clicked.connect(lambda _c=False, n=n: self._go(n))
+                line.addWidget(b, 1)
+            lay.addLayout(line)
+        lay.addWidget(Label(tr("Or type an amount (minus to take):"), 10.5, TEXT_DIM))
+        line = hbox(spacing=6)
+        self.edit = QLineEdit()
+        self.edit.setPlaceholderText("500 / -500")
+        self.edit.setFixedHeight(S(32))
+        self.edit.setStyleSheet(
+            f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
+            f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}")
+        self.edit.returnPressed.connect(self._typed)
+        ok = Button(tr("Apply"), "primary", 32)
+        ok.clicked.connect(self._typed)
+        line.addWidget(self.edit, 1)
+        line.addWidget(ok)
+        lay.addLayout(line)
+        self.centre()
+
+    def _typed(self) -> None:
+        text = self.edit.text().replace(" ", "").replace("−", "-")
+        try:
+            n = int(text)
+        except ValueError:
+            return self.edit.setFocus()
+        if n:
+            self._go(n)
+
+    def _go(self, n: int) -> None:
+        self.close()
+        self.on_amount(n)
+
+
+
+# ================================================================ visualisers in the shop
+class VisShopRow(QWidget):
+    """One visualiser: a live preview, its rarity, its price, and Buy / Use / In use."""
+
+    def __init__(self, page, style: str, name: str) -> None:
+        super().__init__()
+        from .music2 import VIS_SHOP, Visualiser, vis_owned
+        from .econ import RARITY_COLOURS, RARITY_NAMES
+        self.page, self.ctx, self.style = page, page.ctx, style
+        rarity, price = VIS_SHOP[style]
+        ec = self.ctx.econ
+        price = ec.shop_price("vis:" + style) if style != "bars" and ec.price("vis:" + style) is not None else price
+        self.owned = vis_owned(self.ctx, style)
+        self.using = self.ctx.cfg["visualiser"] == style
+        self.setFixedHeight(S(64))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        lay = hbox(self, 8)
+        lay.setContentsMargins(S(8), S(6), S(8), S(6))
+        prev = Visualiser(self.ctx, style, 50)
+        prev.setFixedWidth(int(page.W * 0.45))
+        prev.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        lay.addWidget(prev)
+        col = vbox(spacing=1)
+        col.addWidget(Label(tr(name), 12.5, TEXT, bold=True))
+        col.addWidget(Label(tr(RARITY_NAMES[rarity]).upper(), 9.5, RARITY_COLOURS[rarity], bold=True))
+        state = (tr("In use") if self.using else tr("Owned: click to use") if self.owned else
+                 (tr("Free") if not price else coins_text(int(price)) + " " + tr("coins")))
+        col.addWidget(Label(state, 10.5, GOLD_TEXT if not self.owned else TEXT_DIM))
+        lay.addLayout(col, 1)
+        self.colour = QColor(RARITY_COLOURS[rarity])
+        self.price = int(price or 0)
+
+    def mouseReleaseEvent(self, e) -> None:
+        if not self.rect().contains(e.position().toPoint()):
+            return
+        ctx, ec = self.ctx, self.ctx.econ
+        if self.owned:
+            return use_vis(ctx, self.style)
+        if self.price > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(self.price - ec.coins)), "warn")
+
+        def bought(ok: bool, data) -> None:
+            if not ok:
+                return ctx.toast(tr(str(data)), "warn")
+            sfx.play("on")
+            ec.refresh()
+            QTimer.singleShot(500, lambda: use_vis(ctx, self.style))
+        ctx.window.confirm(tr("Buy this visualiser for {n} coins?", n=coins_text(self.price)),
+                           lambda: ec.buy("vis:" + self.style, bought), yes=tr("Buy"))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha(ui.accent, 0.8) if self.using else alpha(self.colour, 0.35), S(1.4) if self.using else 1))
+        g = QLinearGradient(r.topLeft(), r.topRight())
+        g.setColorAt(0, QColor("#0A0D10"))
+        g.setColorAt(1, mix(self.colour, QColor("#0A0D10"), 0.85))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(10), S(10))
+
+
+def use_vis(ctx, style: str) -> None:
+    sfx.play("pick")
+    ctx.cfg["visualiser"] = style
+    ctx.cfg["vis_style"] = style
+    ctx.cfg.save()
+    ctx._sync_audio()
+    ctx.window._drop_page("home")
+    ctx.toast(tr("Visualiser on: you see it on the music tab"))
+    ctx.reload_page()
+
+
+def build_vis_shop(page, lay) -> None:
+    from .music2 import VIS_STYLES
+    lay.addWidget(Label(tr("Visualisers move with your music on the music tab. The rarer, the cooler. Turn them on or "
+                           "off in Settings."), 10.5, TEXT_DIM, wrap_w=page.W))
+    for style, name in VIS_STYLES:
+        lay.addWidget(VisShopRow(page, style, name))

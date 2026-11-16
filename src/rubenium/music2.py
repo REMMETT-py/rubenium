@@ -12,8 +12,16 @@ from . import win
 from .core import S, sfx, TEXT, TEXT_DIM, alpha, font, mix, tr, ui
 from .widgets import Button, Label, hbox, vbox
 
-VIS_STYLES = [("bars", "Bars"), ("mirror", "Mirror"), ("wave", "Wave"), ("pulse", "Pulse"), ("dots", "Dots"),
-              ("spark", "Sparks"), ("off", "Off")]
+VIS_STYLES = [("bars", "Bars"), ("mirror", "Mirror"), ("dots", "Dots"), ("wave", "Wave"), ("pulse", "Pulse"),
+              ("spark", "Sparks"), ("aurora", "Aurora"), ("fire", "Fire"), ("galaxy", "Galaxy"), ("prism", "Prism")]
+# what each visualiser is in the shop: rarity and price (Bars is free). The cooler, the rarer.
+VIS_SHOP = {"bars": ("standard", 0), "mirror": ("standard", 600), "dots": ("standard", 900), "wave": ("rare", 2000),
+            "pulse": ("rare", 3000), "spark": ("special", 7500), "aurora": ("epic", 18000), "fire": ("epic", 25000),
+            "galaxy": ("exotic", 60000), "prism": ("exotic", 90000)}
+
+
+def vis_owned(ctx, style: str) -> bool:
+    return style == "bars" or ctx.econ.owns("vis:" + style)
 
 
 class Visualiser(QWidget):
@@ -21,10 +29,11 @@ class Visualiser(QWidget):
     with a little movement of its own so it always looks alive."""
     N = 32
 
-    def __init__(self, ctx) -> None:
+    def __init__(self, ctx, fixed: str = "", height: int = 34) -> None:
         super().__init__()
         self.ctx = ctx
-        self.setFixedHeight(S(34))
+        self.fixed = fixed                     # a shop preview: this style, moving by itself
+        self.setFixedHeight(S(height))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.levels = deque([0.0] * self.N, maxlen=self.N)
         self.bars = [0.0] * self.N
@@ -34,7 +43,10 @@ class Visualiser(QWidget):
         self._t.timeout.connect(self._step)
 
     def style(self) -> str:
-        return str(self.ctx.cfg["visualiser"])
+        if self.fixed:
+            return self.fixed
+        st = str(self.ctx.cfg["visualiser"])
+        return st if st == "off" or vis_owned(self.ctx, st) else "bars"
 
     def sync(self) -> None:
         on = self.style() != "off" and self.isVisible()
@@ -53,6 +65,9 @@ class Visualiser(QWidget):
 
     def _level(self) -> float:
         from .media import Status
+        if self.fixed:                                   # shop preview: a made-up beat
+            t = time.monotonic()
+            return 0.45 + 0.4 * abs(math.sin(t * 3.3)) * (0.6 + 0.4 * math.sin(t * 0.9))
         if self.ctx.state.status is not Status.PLAYING:
             return 0.0
         env = float(getattr(self.ctx, "_env", 0.0) or 0.0)
@@ -69,7 +84,7 @@ class Visualiser(QWidget):
             band = 0.55 + 0.45 * math.sin(i * 0.55 + t * 2.3) * math.cos(i * 0.21 - t * 1.7)
             target = lvl * (0.35 + 0.65 * band) * (1.15 - 0.5 * abs(i - self.N / 2) / (self.N / 2))
             self.bars[i] += (target - self.bars[i]) * (0.55 if target > self.bars[i] else 0.18)
-        if self.style() == "spark" and lvl > 0.45:
+        if self.style() in ("spark", "galaxy") and lvl > 0.3:
             import random
             self.sparks.append((random.uniform(0, 1), t, random.uniform(0.6, 1.0) * lvl))
         self.sparks = [s for s in self.sparks if t - s[1] < 0.9]
@@ -82,70 +97,146 @@ class Visualiser(QWidget):
         style = self.style()
         acc = QColor(ui.accent)
         acc2 = QColor(ui.accent2) if getattr(ui, "accent2", None) else mix(acc, QColor("#FFFFFF"), 0.35)
-        n = self.N
-        w = r.width() / n
         from .media import Status
-        if self.ctx.state.status is not Status.PLAYING:
+        if not self.fixed and self.ctx.state.status is not Status.PLAYING:
             p.setOpacity(0.35)                             # nothing playing: a quiet, still strip
-        if style in ("bars", "mirror"):
+        paint_vis(p, r, style, self.bars, list(self.levels), self.sparks, acc, acc2)
+
+
+
+def paint_vis(p, r, style: str, bars: list, levels: list, sparks: list, acc, acc2) -> None:
+    """Draw one frame of a visualiser style in `r` (the menu strip, a shop preview or an item picture)."""
+    n = len(bars)
+    w = r.width() / n
+    n = len(bars)
+    w = r.width() / n
+    if style in ("bars", "mirror"):
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, v in enumerate(bars):
+            h = max(S(2), v * r.height() * (0.5 if style == "mirror" else 1.0))
+            col = mix(acc, acc2, i / max(1, n - 1))
+            g = QLinearGradient(0, r.bottom(), 0, r.top())
+            g.setColorAt(0, alpha(col, 0.55))
+            g.setColorAt(1, col)
+            p.setBrush(g)
+            x = r.left() + i * w + w * 0.18
+            if style == "bars":
+                p.drawRoundedRect(QRectF(x, r.bottom() - h, w * 0.64, h), S(1.5), S(1.5))
+            else:
+                p.drawRoundedRect(QRectF(x, r.center().y() - h, w * 0.64, h * 2), S(1.5), S(1.5))
+    elif style == "wave":
+        path = QPainterPath()
+        vals = list(levels)
+        t = time.monotonic()
+        for i, v in enumerate(vals):
+            x = r.left() + r.width() * i / (len(vals) - 1)
+            y = r.center().y() - math.sin(i * 0.6 + t * 6) * v * r.height() * 0.45
+            path.moveTo(x, y) if i == 0 else path.lineTo(x, y)
+        for wdt, a in ((S(5), 0.18), (S(2), 1.0)):
+            pen = QPen(alpha(acc, a), wdt)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            p.setPen(pen)
+            p.drawPath(path)
+    elif style == "pulse":
+        v = levels[-1] if levels else 0.0
+        c = r.center()
+        for k in range(3):
+            rad = (S(8) + v * r.width() * 0.45) * (1 - k * 0.28)
+            g = QRadialGradient(c, max(1.0, rad))
+            g.setColorAt(0, alpha(acc, 0.45 - k * 0.12))
+            g.setColorAt(1, alpha(acc, 0.0))
             p.setPen(Qt.PenStyle.NoPen)
-            for i, v in enumerate(self.bars):
-                h = max(S(2), v * r.height() * (0.5 if style == "mirror" else 1.0))
-                col = mix(acc, acc2, i / max(1, n - 1))
-                g = QLinearGradient(0, r.bottom(), 0, r.top())
-                g.setColorAt(0, alpha(col, 0.55))
-                g.setColorAt(1, col)
-                p.setBrush(g)
-                x = r.left() + i * w + w * 0.18
-                if style == "bars":
-                    p.drawRoundedRect(QRectF(x, r.bottom() - h, w * 0.64, h), S(1.5), S(1.5))
-                else:
-                    p.drawRoundedRect(QRectF(x, r.center().y() - h, w * 0.64, h * 2), S(1.5), S(1.5))
-        elif style == "wave":
+            p.setBrush(g)
+            p.drawEllipse(c, rad, min(rad, r.height() / 2 + S(4)))
+        p.setPen(QPen(alpha(acc, 0.7), S(1.4)))
+        p.drawLine(QPointF(r.left(), c.y()), QPointF(c.x() - S(10) - v * S(60), c.y()))
+        p.drawLine(QPointF(c.x() + S(10) + v * S(60), c.y()), QPointF(r.right(), c.y()))
+    elif style == "dots":
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, v in enumerate(bars):
+            col = mix(acc, acc2, i / max(1, n - 1))
+            rows = int(1 + v * 5)
+            for k in range(rows):
+                p.setBrush(alpha(col, 0.35 + 0.65 * (k + 1) / rows))
+                p.drawEllipse(QPointF(r.left() + i * w + w / 2, r.bottom() - S(3) - k * S(6)), S(2), S(2))
+    elif style == "spark":
+        now = time.monotonic()
+        p.setPen(Qt.PenStyle.NoPen)
+        for x, born, v in sparks:
+            age = (now - born) / 0.9
+            p.setBrush(alpha(mix(acc, acc2, x), 1 - age))
+            p.drawEllipse(QPointF(r.left() + x * r.width(), r.bottom() - age * r.height() * (0.4 + v)), S(2.2), S(2.2))
+        p.setPen(QPen(alpha(acc, 0.25 + 0.5 * (levels[-1] if levels else 0)), S(1.2)))
+        p.drawLine(QPointF(r.left(), r.bottom()), QPointF(r.right(), r.bottom()))
+    elif style == "aurora":                                   # soft ribbons of colour that flow and swell
+        t = time.monotonic()
+        v = levels[-1] if levels else 0.0
+        for k in range(3):
             path = QPainterPath()
-            vals = list(self.levels)
-            t = time.monotonic()
-            for i, v in enumerate(vals):
-                x = r.left() + r.width() * i / (len(vals) - 1)
-                y = r.center().y() - math.sin(i * 0.6 + t * 6) * v * r.height() * 0.45
+            col = QColor.fromHsvF((acc.hueF() + 0.12 * k + 0.05 * math.sin(t * 0.3)) % 1.0 if acc.hueF() >= 0 else (0.45 + 0.1 * k),
+                                  0.55, 1.0)
+            for i in range(33):
+                x = r.left() + r.width() * i / 32
+                y = r.center().y() + math.sin(i * 0.35 + t * (1.4 + 0.3 * k) + k) * r.height() * (0.18 + 0.3 * v)
                 path.moveTo(x, y) if i == 0 else path.lineTo(x, y)
-            for wdt, a in ((S(5), 0.18), (S(2), 1.0)):
-                pen = QPen(alpha(acc, a), wdt)
-                pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-                pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-                p.setPen(pen)
-                p.drawPath(path)
-        elif style == "pulse":
-            v = self.levels[-1] if self.levels else 0.0
-            c = r.center()
-            for k in range(3):
-                rad = (S(8) + v * r.width() * 0.45) * (1 - k * 0.28)
-                g = QRadialGradient(c, max(1.0, rad))
-                g.setColorAt(0, alpha(acc, 0.45 - k * 0.12))
-                g.setColorAt(1, alpha(acc, 0.0))
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(g)
-                p.drawEllipse(c, rad, min(rad, r.height() / 2 + S(4)))
-            p.setPen(QPen(alpha(acc, 0.7), S(1.4)))
-            p.drawLine(QPointF(r.left(), c.y()), QPointF(c.x() - S(10) - v * S(60), c.y()))
-            p.drawLine(QPointF(c.x() + S(10) + v * S(60), c.y()), QPointF(r.right(), c.y()))
-        elif style == "dots":
-            p.setPen(Qt.PenStyle.NoPen)
-            for i, v in enumerate(self.bars):
-                col = mix(acc, acc2, i / max(1, n - 1))
-                rows = int(1 + v * 5)
-                for k in range(rows):
-                    p.setBrush(alpha(col, 0.35 + 0.65 * (k + 1) / rows))
-                    p.drawEllipse(QPointF(r.left() + i * w + w / 2, r.bottom() - S(3) - k * S(6)), S(2), S(2))
-        elif style == "spark":
-            now = time.monotonic()
-            p.setPen(Qt.PenStyle.NoPen)
-            for x, born, v in self.sparks:
-                age = (now - born) / 0.9
-                p.setBrush(alpha(mix(acc, acc2, x), 1 - age))
-                p.drawEllipse(QPointF(r.left() + x * r.width(), r.bottom() - age * r.height() * (0.4 + v)), S(2.2), S(2.2))
-            p.setPen(QPen(alpha(acc, 0.25 + 0.5 * (self.levels[-1] if self.levels else 0)), S(1.2)))
-            p.drawLine(QPointF(r.left(), r.bottom()), QPointF(r.right(), r.bottom()))
+            pen = QPen(alpha(col, 0.55 - 0.12 * k), S(6 - k * 1.5))
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            p.setPen(pen)
+            p.drawPath(path)
+    elif style == "fire":                                     # bars that burn: red at the base, yellow at the tips
+        t = time.monotonic()
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, v in enumerate(bars):
+            h = max(S(3), v * r.height() * (0.9 + 0.15 * math.sin(t * 9 + i)))
+            x = r.left() + i * w + w * 0.12
+            g = QLinearGradient(0, r.bottom(), 0, r.bottom() - h)
+            g.setColorAt(0, QColor("#FF2E2E"))
+            g.setColorAt(0.55, QColor("#FF8A1F"))
+            g.setColorAt(1, QColor("#FFE36B"))
+            p.setBrush(g)
+            tip = QPainterPath()
+            tip.moveTo(x, r.bottom())
+            tip.lineTo(x, r.bottom() - h * 0.7)
+            tip.quadTo(x + w * 0.38, r.bottom() - h * 1.08, x + w * 0.76, r.bottom() - h * 0.7)
+            tip.lineTo(x + w * 0.76, r.bottom())
+            tip.closeSubpath()
+            p.drawPath(tip)
+    elif style == "galaxy":                                   # stars turning around a bright core, faster with the beat
+        t = time.monotonic()
+        v = levels[-1] if levels else 0.0
+        c = r.center()
+        core = QRadialGradient(c, r.height() * 0.6)
+        core.setColorAt(0, alpha("#FFFFFF", 0.5 + 0.4 * v))
+        core.setColorAt(0.4, alpha(acc, 0.35))
+        core.setColorAt(1, alpha(acc, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(core)
+        p.drawEllipse(c, r.height() * 0.6, r.height() * 0.6)
+        for k in range(48):
+            a = k * 2.399 + t * (0.6 + v * 1.4) * (1 if k % 2 else 0.7)
+            d = (k / 48) ** 0.6 * r.width() * 0.48
+            x, y = c.x() + math.cos(a) * d, c.y() + math.sin(a) * d * 0.28
+            col = QColor.fromHsvF((0.6 + k * 0.013 + t * 0.02) % 1.0, 0.45, 1.0)
+            p.setBrush(alpha(col, 0.35 + 0.65 * (1 - k / 48)))
+            p.drawEllipse(QPointF(x, y), S(1.2) + v * S(1.3), S(1.2) + v * S(1.3))
+    elif style == "prism":                                    # rainbow bars, mirrored, with a light sweeping over them
+        t = time.monotonic()
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, v in enumerate(bars):
+            h = max(S(2), v * r.height() * 0.5)
+            col = QColor.fromHsvF((i / len(bars) + t * 0.15) % 1.0, 0.65, 1.0)
+            p.setBrush(col)
+            x = r.left() + i * w + w * 0.2
+            p.drawRoundedRect(QRectF(x, r.center().y() - h, w * 0.6, h * 2), S(1.5), S(1.5))
+        sweep = r.left() + (t * 0.5 % 1.4 - 0.2) * r.width()
+        sh = QLinearGradient(QPointF(sweep - S(30), 0), QPointF(sweep + S(30), 0))
+        sh.setColorAt(0, alpha("#FFFFFF", 0))
+        sh.setColorAt(0.5, alpha("#FFFFFF", 0.45))
+        sh.setColorAt(1, alpha("#FFFFFF", 0))
+        p.setBrush(sh)
+        p.drawRect(r)
+
 
 
 # ================================================================ the show / hide key
@@ -212,11 +303,12 @@ def badge_menu(ctx, on_change) -> None:
         a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("badge_pos", k), on_change()))
         m.addAction(a)
     m.addSection(tr("Visualiser"))
-    for k, name in VIS_STYLES:
+    for k, name in [("off", "Off")] + [(k, n) for k, n in VIS_STYLES if vis_owned(ctx, k)]:
         a = QAction(tr(name), m)
         a.setCheckable(True)
         a.setChecked(ctx.cfg["visualiser"] == k)
-        a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("visualiser", k), on_change()))
+        a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("visualiser", k),
+                                                   ctx.cfg.__setitem__("vis_style", k) if k != "off" else None, on_change()))
         m.addAction(a)
     m.exec(QCursor.pos())
 

@@ -850,7 +850,7 @@ class ScratchRow(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         left = int(getattr(self.ctx.econ, "scratch_in", 0) or 0)
-        ready = left <= 0
+        ready = left <= 0 and not self.ctx.econ.server_old
         g = QLinearGradient(r.topLeft(), r.topRight())
         g.setColorAt(0, QColor("#2A3038") if not ready else mix(QColor("#C9CFD6"), QColor("#1A1F26"), 0.55))
         g.setColorAt(1, QColor("#161A20"))
@@ -867,7 +867,7 @@ class ScratchRow(QWidget):
         p.setPen(QColor(GOLD_TEXT if ready else TEXT_DIM))
         p.setFont(font(11, QFont.Weight.DemiBold))
         p.drawText(r.adjusted(0, 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                   tr("Ready!") if ready else clock_text(left))
+                   tr("Ready!") if ready else (tr("Soon") if self.ctx.econ.server_old else clock_text(left)))
 
 
 # ================================================================ duels
