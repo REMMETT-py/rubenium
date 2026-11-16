@@ -1,27 +1,29 @@
-Rubenium 2.7 - the full release
+Rubenium 3.0 - the full release
 
-FRESH START
-- Everyone begins again with 500 coins and 3 keys (items, spins and cases reset)
-- Free OG tag for every user who joined before 17 November
+CASES
+- Style cases: every ball, line, font, theme, banner and frame can come from a case (Style, Theme and Profile cases)
+- Coin cases (Starter, Standard, Premium, Jackpot, Titanium) pay back a little more than they cost on average; you still lose about half the time
+- Rare hunts (All or Nothing, Painter, Legend Vault, Mythic Hunt) are for rare badges: rare badges are NOT easier to get
+- Rare drops feel rare: the strip shows the real odds and never repeats an item; only Epic or better get rays, flashes and fanfare
+- Every coin drop has a 6% chance to be a lucky x3; the Jackpot can pay up to 32 times its price
+- Every badge shows its exact chance in each case, for every colour and finish
+- Gifting a case costs its price and 1 key
 
 PROFILES
 - Banners, frames and a showcase of your 3 favourite badges, seen by everyone
-- 19 banners and 15 frames in the Shop, on the Market, in trades and in Daily Deals (new: Snow, Ember, Nebula, Frost, Star, Halo)
-- Style > Your profile: change your banner, frame, tag and showcase in one place
-- Frames and tags show in every list, the leaderboards and the chat
+- New: Jungle, Sakura, Ember, Nebula banners; Vine, Star, Halo frames (winter looks are saved for the Christmas event)
+- Free OG tag for every user who joined before 17 November
 
-CASES AND ECONOMY
-- Coin cases (Starter, Standard, Premium, Jackpot, Titanium) pay back a little more than they cost on average; you still lose about half the time
-- Rare hunts (All or Nothing, Painter, Legend Vault, Mythic Hunt) are for rare badges: rare badges are NOT easier to get
-- Every coin drop has a 6% chance to be a lucky x3; the Jackpot can pay up to 32 times its price
-- Every badge shows its exact chance in each case, for every colour and finish
+ECONOMY
+- Fresh start: everyone begins again with 500 coins and 3 keys
+- AFK money: 150 coins an hour (up to 1 800 a day) and 1 key an hour
 - Badges in the shop cost more, the rarer and luckier they are; the market can go up to the shop price
 - Quick sell: sell any item right away for a quarter of its value, or every extra copy at once
-- AFK money is better: 150 coins an hour (up to 1 800 a day) and 1 key an hour
-- Gifting a case costs its price and 1 key
-- The casino was checked: every game pays back 96 to 99%
 
 ALSO
+- One account can be CREATED per PC; log into your account from any PC
+- The welcome and login screens are no longer pinned over your other windows
+- New swaps can arrive in the Rocket League tab without an app update
 - Inventory: the 2027 LIMITED Advent Calendar is coming soon
 - Fixed: after an update, the New tab could show on top of another tab
 - Fixed: switching sections quickly could cause a hidden error

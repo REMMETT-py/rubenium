@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.7 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 3.0 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.7"         # the version people see
-BUILD = "2026.11.17.6"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "3.0"         # the version people see
+BUILD = "2026.11.17.7"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2018,6 +2018,24 @@ def _request(path: str, body=None, token: str = "", method: str = "POST", timeou
         raise ApiError("offline") from exc
 
 
+def public_file(path: str) -> str:
+    """The download address of a public file in Supabase Storage."""
+    return API_URL + "/storage/v1/object/public/" + path
+
+
+def download(url: str, timeout: float = 120.0) -> bytes:
+    import ssl
+    import urllib.request
+    try:
+        import certifi
+        sc = ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # noqa: BLE001
+        sc = ssl.create_default_context()
+    req = urllib.request.Request(url, headers={"apikey": API_KEY, "User-Agent": "Rubenium"})
+    with urllib.request.urlopen(req, timeout=timeout, context=sc if url.startswith("https") else None) as r:  # noqa: S310
+        return r.read()
+
+
 def explain(err: ApiError) -> str:
     """A server or network error as a short sentence for the login screen (English key for tr())."""
     text = (err.key or "").lower()
@@ -2279,6 +2297,56 @@ class Online(QObject):
             self._back.emit(lambda: self._adopt(ans))
             return ans["access_token"]
         return self.s["access_token"]
+
+    def in_background(self, job, done) -> None:
+        """Run job() off the main thread; done(ok, answer or message) comes back on the main thread."""
+        def work():
+            try:
+                ans = job()
+                self._back.emit(lambda: done(True, ans))
+            except ApiError as err:
+                msg = explain(err) if err.key != "offline" else "No internet connection"
+                self._back.emit(lambda: done(False, msg))
+            except Exception as exc:  # noqa: BLE001
+                log.exception("background job failed")
+                text = str(exc) or "Something went wrong: try again"
+                self._back.emit(lambda: done(False, text))
+        threading.Thread(target=work, daemon=True).start()
+
+    def make_bot(self, name: str, password: str, ticket: str, done) -> None:
+        """Admin: create a bot account with the normal sign up (so it can be logged into), without leaving
+        the admin account."""
+        def job():
+            ans = _request("/auth/v1/signup", {"email": name.lower() + MAIL, "password": password,
+                                               "data": {"username": name, "device": "bot:" + ticket}})
+            if not ans or not ans.get("access_token"):
+                raise ApiError("email not confirmed")
+            return True
+        self.in_background(job, done)
+
+    def upload(self, path: str, data: bytes, kind: str, done) -> None:
+        """Admin: put a file in Supabase Storage (bucket path like "swaps/<id>/file")."""
+        def job():
+            import ssl
+            import urllib.error
+            import urllib.request
+            try:
+                import certifi
+                sc = ssl.create_default_context(cafile=certifi.where())
+            except Exception:  # noqa: BLE001
+                sc = ssl.create_default_context()
+            req = urllib.request.Request(API_URL + "/storage/v1/object/" + path, data=data, method="POST",
+                                         headers={"apikey": API_KEY, "Authorization": "Bearer " + self._token(),
+                                                  "Content-Type": kind, "x-upsert": "true", "User-Agent": "Rubenium"})
+            try:
+                with urllib.request.urlopen(req, timeout=120, context=sc if API_URL.startswith("https") else None) as r:  # noqa: S310
+                    r.read()
+            except urllib.error.HTTPError as exc:
+                raise ApiError(f"upload failed ({exc.code})", exc.code) from None
+            except Exception as exc:  # noqa: BLE001
+                raise ApiError("offline") from exc
+            return True
+        self.in_background(job, done)
 
     def rpc(self, name: str, args: dict):
         """Call a server function as the logged-in account. Off the main thread only."""
@@ -4511,6 +4579,78 @@ FR = {
     'Snow': 'Neige',
     'Ember': 'Braise',
     'Frost': 'Givre',
+    # 3.0
+    'Add a swap': 'Ajouter un swap',
+    "Add a swap for everyone: a 300×300 picture, the swap file and (best) the original game file. It shows in every user's Rocket League tab. Pause or lock a swap that is broken: it is blurred out and cannot be switched on.": 'Ajoute un swap pour tout le monde : une image 300×300, le fichier du swap et (idéalement) le fichier original du jeu. Il apparaît dans l’onglet Rocket League de chaque utilisateur. Mets en pause ou verrouille un swap cassé : il est flouté et ne peut plus être activé.',
+    'Add the swap': 'Ajouter le swap',
+    'Balls, song lines and fonts from the shop.': 'Boules, lignes et polices de la boutique.',
+    'Banners and frames for your profile.': 'Bannières et cadres pour ton profil.',
+    'Bot {name} created': 'Bot {name} créé',
+    'Bots': 'Bots',
+    'Bots are fake accounts that look and live like real users: they come online in their hours, play, earn coins and keys, open cases and keep a login streak. Nobody can see they are bots. You can log into one with its name and the password you chose.': 'Les bots sont de faux comptes qui ressemblent et vivent comme de vrais utilisateurs : ils se connectent à leurs heures, jouent, gagnent des pièces et des clés, ouvrent des caisses et gardent une série de connexion. Personne ne voit que ce sont des bots. Tu peux te connecter à un bot avec son nom et le mot de passe que tu as choisi.',
+    'Change {name}': 'Modifier {name}',
+    'Click a bot to change it.': 'Clique sur un bot pour le modifier.',
+    'Create': 'Créer',
+    'Create a bot': 'Créer un bot',
+    'Creating…': 'Création…',
+    'Delete': 'Supprimer',
+    'Delete the bot {name} for good?': 'Supprimer le bot {name} pour de bon ?',
+    'Deleted': 'Supprimé',
+    'Downloading…': 'Téléchargement…',
+    'Everything from 2.6 to 2.9 is included: fresh start, OG tag, profiles, case balance, quick sell, AFK money': 'Tout ce qui vient de 2.6 à 2.9 est inclus : nouveau départ, tag OG, profils, équilibre des caisses, vente rapide, argent AFK',
+    'Fill in both names': 'Remplis les deux noms',
+    'New looks: Jungle and Sakura banners, Vine frame (the winter looks are saved for the Christmas event)': 'Nouveaux styles : bannières Jungle et Sakura, cadre Liane (les styles d’hiver sont gardés pour l’événement de Noël)',
+    'New swaps can now arrive in the Rocket League tab without an app update': 'De nouveaux swaps peuvent maintenant arriver dans l’onglet Rocket League sans mise à jour de l’appli',
+    'No bots yet.': 'Pas encore de bots.',
+    'One account can be CREATED per PC; you can log into your account from any PC': 'Un seul compte peut être CRÉÉ par PC ; tu peux te connecter à ton compte depuis n’importe quel PC',
+    'Only themes: Rare or better.': 'Que des thèmes : Rare ou mieux.',
+    'Password (8 characters at least)': 'Mot de passe (8 caractères minimum)',
+    'Paused': 'En pause',
+    'Profile Case': 'Caisse Profil',
+    'Rare drops feel rare: the case strip shows the real odds, never repeats an item, and only Epic or better get rays, flashes and fanfare': 'Les objets rares sont vraiment rares : la bande des caisses montre les vraies chances, ne répète jamais un objet, et seuls les Épiques ou mieux ont des rayons, des éclairs et une fanfare',
+    'STYLE': 'STYLE',
+    'Style Case': 'Caisse Style',
+    'Style cases': 'Caisses de style',
+    'Style cases: every ball, line, font, theme, banner and frame can now come from a case (Style, Theme and Profile cases)': 'Caisses de style : chaque boule, ligne, police, thème, bannière et cadre peut maintenant sortir d’une caisse (caisses Style, Thème et Profil)',
+    'Swap added for everyone': 'Swap ajouté pour tout le monde',
+    'Swaps': 'Swaps',
+    'Swaps you added': 'Swaps que tu as ajoutés',
+    'The item you equip in the game (e.g. Octane)': 'L’objet que tu équipes dans le jeu (ex. Octane)',
+    'The original file must have the same name as the swap file': 'Le fichier original doit avoir le même nom que le fichier du swap',
+    'The swap file must be a .upk file with a simple name': 'Le fichier du swap doit être un fichier .upk avec un nom simple',
+    'The welcome and login screens are no longer pinned over your other windows': 'Les écrans d’accueil et de connexion ne restent plus au-dessus de tes autres fenêtres',
+    'Theme Case': 'Caisse Thème',
+    'This file cannot be read': 'Ce fichier ne peut pas être lu',
+    'This is not a Rocket League file': 'Ce n’est pas un fichier Rocket League',
+    'Upload': 'Envoyer',
+    'Upload failed: {why}': 'Échec de l’envoi : {why}',
+    'Uploading…': 'Envoi…',
+    'Username (3 to 10 letters or numbers)': 'Nom d’utilisateur (3 à 10 lettres ou chiffres)',
+    'What it becomes (the title)': 'Ce que ça devient (le titre)',
+    'click to turn it off': 'clique pour le désactiver',
+    '{h} h played · {c} coins · {k} keys · {s}-day streak · {n} badges · online {a}% from {f}:00 to {t}:00': '{h} h jouées · {c} pièces · {k} clés · série de {s} jours · {n} badges · en ligne {a} % de {f} h à {t} h',
+    '{what}: a number from {a} to {b}': '{what} : un nombre de {a} à {b}',
+    'Style case: every ball, line, font, theme, banner and frame of the shop can come out. Counted at shop prices you get a little more than you paid; Legendary ones stay about 1 in 100.': 'Caisse de style : chaque boule, ligne, police, thème, bannière et cadre de la boutique peut sortir. Compté au prix de la boutique, tu gagnes un peu plus que ce que tu as payé ; les Légendaires restent environ 1 sur 100.',
+    'Locked: being fixed': 'Verrouillé : en réparation',
+    'Hours played': 'Heures jouées',
+    'Account age in days': 'Âge du compte en jours',
+    'Login streak (days)': 'Série de connexion (jours)',
+    'Badges to own (0 to 60)': 'Badges possédés (0 à 60)',
+    'How often online, % (0 to 100)': 'Souvent en ligne, % (0 à 100)',
+    'Online from (hour, 0 to 23)': 'En ligne à partir de (heure, 0 à 23)',
+    'Online until (hour, 0 to 23)': 'En ligne jusqu’à (heure, 0 à 23)',
+    'Picture (PNG or JPG, made 300×300)': 'Image (PNG ou JPG, mise en 300×300)',
+    'Swap file (.upk)': 'Fichier du swap (.upk)',
+    'Original game file (.upk, optional)': 'Fichier original du jeu (.upk, facultatif)',
+    'Jungle': 'Jungle',
+    'Sakura': 'Sakura',
+    'Vine': 'Liane',
+    'Smoother case opening and faster Hub loading': 'Ouverture des caisses plus fluide et Hub plus rapide',
+    'Profile cards load faster in Users and the leaderboards': 'Les cartes de profil chargent plus vite dans Utilisateurs et les classements',
+    'Small fixes to French texts and to the Settings sections': 'Petites corrections des textes français et des sections des Paramètres',
+    'Badge pages show every colour and finish with its rarity': 'Les pages des badges montrent chaque couleur et finition avec sa rareté',
+    'Better glow and animations on banners and frames': 'Meilleures lueurs et animations sur les bannières et les cadres',
+    'Stability fixes when switching tabs quickly': 'Corrections de stabilité en changeant vite d’onglet',
 }
 
 
@@ -7979,6 +8119,19 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("3.0", ['Style cases: every ball, line, font, theme, banner and frame can now come from a case (Style, Theme and Profile cases)',
+             'Rare drops feel rare: the case strip shows the real odds, never repeats an item, and only Epic or better get rays, flashes and fanfare',
+             'One account can be CREATED per PC; you can log into your account from any PC',
+             'The welcome and login screens are no longer pinned over your other windows',
+             'New looks: Jungle and Sakura banners, Vine frame (the winter looks are saved for the Christmas event)',
+             'New swaps can now arrive in the Rocket League tab without an app update',
+             'Everything from 2.6 to 2.9 is included: fresh start, OG tag, profiles, case balance, quick sell, AFK money']),
+    ("2.9", ['Smoother case opening and faster Hub loading',
+             'Profile cards load faster in Users and the leaderboards',
+             'Small fixes to French texts and to the Settings sections']),
+    ("2.8", ['Badge pages show every colour and finish with its rarity',
+             'Better glow and animations on banners and frames',
+             'Stability fixes when switching tabs quickly']),
     ("2.7", ['AFK money is better: 25 coins every 10 minutes (150 an hour), up to 1 800 a day',
              'Every badge shows its exact chance in each case, for every colour and finish',
              'New looks: Snow, Ember and Nebula banners; Frost, Star and Halo frames',
@@ -8218,7 +8371,7 @@ def bundled_original(name: str):
     want = next((h for f, h in ORIGINALS.items() if f.lower() == name.lower()), None)
     if not want:
         return None
-    for root in _swap_roots():
+    for root in [_rl_store() / "swaps"] + _swap_roots():       # online originals are kept in the store
         f = root / "_originals" / name
         if f.is_file() and file_hash(f) == want:
             return f
@@ -8410,6 +8563,10 @@ def swap_source(item: dict):
     if item.get("soon"):
         return None                              # shown as "Coming soon": cannot be switched on yet
     store = _rl_store() / "swaps" / item["id"] / item["file"]
+    if item.get("online"):                       # added by the admin: ready once downloaded (and checked)
+        if store.is_file() and (not item.get("sha") or file_hash(store) == item["sha"]):
+            return store
+        return None
     for root in _swap_roots():
         src = root / item["id"] / item["file"]
         if src.is_file():
@@ -9549,6 +9706,105 @@ class TopApps(QObject):
             pass
 
 
+
+# --------------------------------------------------------------------------- #
+# Swaps the admin adds from the app (3.0): listed on the server, files in Supabase Storage
+# --------------------------------------------------------------------------- #
+ONLINE_STATES = {"paused": "Paused", "locked": "Locked: being fixed"}
+
+
+def set_online_swaps(rows: list) -> bool:
+    """Put the admin's swaps in the list (replacing the last ones). True when something changed."""
+    keep = [it for it in RL_ITEMS if not it.get("online")]
+    new = []
+    cats = {c for c, _n in RL_CATS}
+    for r in rows or []:
+        if not isinstance(r, dict) or r.get("cat") not in cats or r.get("id") in RL_BY_ID and not RL_BY_ID[r["id"]].get("online"):
+            continue
+        new.append(dict(id=str(r["id"]), cat=r["cat"], old=str(r.get("old", "")), new=str(r.get("new", "")),
+                        file=str(r.get("file", "")), online=True, state=str(r.get("state", "live")),
+                        sha=str(r.get("sha") or ""), orig_sha=str(r.get("orig_sha") or ""), img=bool(r.get("img")),
+                        orig=bool(r.get("orig")), preview=True if r.get("img") else False))
+    before = [(it["id"], it.get("state"), it.get("sha")) for it in RL_ITEMS if it.get("online")]
+    RL_ITEMS[:] = keep + new
+    RL_BY_ID.clear()
+    RL_BY_ID.update({it["id"]: it for it in RL_ITEMS})
+    for it in new:
+        if it["orig"] and it["orig_sha"] and it["file"] not in ORIGINALS:
+            ORIGINALS[it["file"]] = it["orig_sha"]
+    return before != [(it["id"], it.get("state"), it.get("sha")) for it in new]
+
+
+def load_online_swaps_cache() -> None:
+    """At start, before the Rocket League engine: the admin's swaps from last time (so a swap that is on is
+    always recognised, even offline)."""
+    try:
+        set_online_swaps(json.loads((_rl_store() / "online_swaps.json").read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        pass
+
+
+def fetch_online_swaps(ctx, then=None) -> None:
+    """Ask the server for the admin's swaps, download what is missing, then call then() on the main thread."""
+    import threading
+    pass
+
+    def work():
+        try:
+            rows = _request("/rest/v1/rpc/rb_swaps_list", {}, timeout=10) or []
+        except ApiError:
+            return
+        except Exception:  # noqa: BLE001
+            log.exception("swap list failed")
+            return
+
+        def listed():
+            try:
+                path = _rl_store() / "online_swaps.json"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(rows), encoding="utf-8")
+            except OSError:
+                pass
+            changed = set_online_swaps(rows)
+            threading.Thread(target=lambda: _download_all(ctx, then), daemon=True).start()
+            if changed and then:
+                then()
+        ctx.online._back.emit(listed)
+    threading.Thread(target=work, daemon=True).start()
+
+
+def _download_all(ctx, then) -> None:
+    pass
+    got = False
+    for it in [x for x in RL_ITEMS if x.get("online")]:
+        folder = _rl_store() / "swaps" / it["id"]
+        jobs = [(f"swaps/{it['id']}/{it['file']}", folder / it["file"], it.get("sha"))]
+        if it.get("img"):
+            jobs.append((f"swaps/{it['id']}/preview.png", folder / "preview.png", ""))
+        if it.get("orig"):
+            jobs.append((f"swaps/{it['id']}/original/{it['file']}", _rl_store() / "swaps" / "_originals" / it["file"],
+                         it.get("orig_sha")))
+        for remote, local, sha in jobs:
+            try:
+                if local.is_file() and (not sha or file_hash(local) == sha):
+                    continue
+                data = download(public_file(remote))
+                import hashlib
+                if sha and hashlib.sha256(data).hexdigest() != sha:
+                    log.warning("swap %s: the downloaded file does not match", remote)
+                    continue
+                local.parent.mkdir(parents=True, exist_ok=True)
+                tmp = local.with_name(local.name + ".part")
+                tmp.write_bytes(data)
+                os.replace(tmp, local)
+                _previews.pop(it["id"], None)
+                got = True
+            except Exception:  # noqa: BLE001
+                log.warning("swap download failed: %s", remote)
+    if got and then:
+        ctx.online._back.emit(then)
+
+
 # ==================================================================================================
 # SECTION: music2
 # ==================================================================================================
@@ -10618,13 +10874,14 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
 BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("waves", "Waves"), ("grid", "Grid"),
            ("stripes", "Stripes"), ("dots", "Dots"), ("aurora", "Aurora"), ("circuit", "Circuit"), ("sunset", "Sunset"),
            ("peaks", "Peaks"), ("galaxy", "Galaxy"), ("lava", "Lava"), ("matrix", "Matrix"), ("prism", "Prism"),
-           ("snow", "Snow"), ("ember", "Ember"), ("nebula", "Nebula")]
+           ("snow", "Snow"), ("ember", "Ember"), ("nebula", "Nebula"), ("jungle", "Jungle"), ("sakura", "Sakura")]
 FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
-          ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo")]
+          ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine")]
 TAGS = [("og", "OG")]
 MOVING = {"waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
-          "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo"}
+          "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine"}
+EVENT_LOOKS = {"banner:snow", "banner:aurora", "frame:frost"}      # kept for the Christmas event
 KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "banner": "Banner",
               "frame": "Frame", "tag": "Tag"}
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
@@ -10918,7 +11175,7 @@ _BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), 
                 "circuit": ("#04170F", "#2ECC71"), "sunset": ("#2B0F3D", "#FF8A3D"), "peaks": ("#0E1A2B", "#8FA8FF"),
                 "galaxy": ("#05040F", "#9B5CFF"), "lava": ("#1A0503", "#FF3D1F"), "matrix": ("#010A04", "#3DFF7A"),
                 "prism": ("#101018", "#FF5CC8"), "snow": ("#16304A", "#BFE6FF"), "ember": ("#1A0806", "#FF7A2E"),
-                "nebula": ("#07051A", "#4FE3FF")}
+                "nebula": ("#07051A", "#4FE3FF"), "jungle": ("#06200F", "#2ECC71"), "sakura": ("#2A0E22", "#FF9CCB")}
 
 
 def look_moves(item: str) -> bool:
@@ -11139,6 +11396,46 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
             tw = 0.3 + 0.7 * abs(math.sin(now * (1 + _rand(i, 5) * 2) + i))
             p.setBrush(alpha("#FFFFFF", tw))
             p.drawEllipse(QPointF(L + _rand(i) * w, T + _rand(i, 1) * h), 0.7 + _rand(i, 2), 0.7 + _rand(i, 2))
+    elif base == "jungle":                                     # layers of swaying leaves, light through them
+        for i in range(10):
+            p.setBrush(alpha("#FFF6B0", 0.05 + 0.04 * math.sin(now + i)))
+            x = L + _rand(i, 7) * w
+            beam = QPainterPath(QPointF(x, T))
+            beam.lineTo(x + w * 0.06, T)
+            beam.lineTo(x + w * 0.16, rect.bottom())
+            beam.lineTo(x + w * 0.1, rect.bottom())
+            p.drawPath(beam)
+        for k, col in enumerate(("#0F5B2A", "#1B8A3E", "#2ECC71")):
+            for i in range(9):
+                cx = L + (i + 0.5) / 9 * w + math.sin(now * 0.9 + i + k) * w * 0.012
+                cy = (T + h * (0.15 + 0.35 * k)) if i % 2 else (rect.bottom() - h * (0.1 + 0.2 * k))
+                p.save()
+                p.translate(cx, cy)
+                p.rotate(-35 + _rand(i, k) * 70 + math.sin(now * 1.2 + i) * 6)
+                p.setBrush(QColor(col))
+                p.drawEllipse(QPointF(0, 0), h * 0.09, h * 0.24)
+                p.restore()
+    elif base == "sakura":                                     # a branch and falling pink petals
+        p.setPen(QPen(QColor("#4A2230"), max(1.5, h * 0.04)))
+        path = QPainterPath(QPointF(L, T + h * 0.25))
+        path.cubicTo(QPointF(L + w * 0.3, T + h * 0.05), QPointF(L + w * 0.5, T + h * 0.4), QPointF(L + w * 0.85, T + h * 0.15))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(12):
+            t2 = (i + 0.5) / 12
+            pt = path.pointAtPercent(t2)
+            p.setBrush(QColor("#FFC1DE" if i % 2 else "#FF8FC2"))
+            p.drawEllipse(pt, h * 0.06, h * 0.06)
+        for i in range(30):
+            fall = (_rand(i, 1) + now * (0.05 + _rand(i, 2) * 0.06)) % 1.0
+            x = L + (_rand(i) + 0.08 * math.sin(now * 1.1 + i)) * w
+            p.save()
+            p.translate(x, T + fall * h)
+            p.rotate(now * 90 + i * 40)
+            p.setBrush(alpha("#FFC1DE", 0.85))
+            p.drawEllipse(QPointF(0, 0), 2.4, 1.3)
+            p.restore()
     shade = QLinearGradient(rect.topLeft(), rect.bottomLeft())       # a soft shade at the bottom, for text on top
     shade.setColorAt(0.55, alpha("#000000", 0.0))
     shade.setColorAt(1.0, alpha("#000000", 0.35))
@@ -11150,7 +11447,7 @@ _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"
                "neon": ("#2EF2FF", "#2EF2FF"), "dashed": ("#FFFFFF", "#9AA4AD"), "twin": ("#FF5CB8", "#2EC5FF"),
                "laurel": ("#FFD36B", "#B8862B"), "crown": ("#FFD36B", "#B8862B"), "spikes": ("#E6EEF5", "#6E7C88"),
                "flame": ("#FFC94D", "#FF3D1F"), "orbit": ("#B36BFF", "#4FE3FF"), "rainbow": ("#FF5CC8", "#2EC5FF"),
-               "frost": ("#E8F6FF", "#7FC8FF"), "star": ("#FFE9A8", "#FFC94D"), "halo": ("#FFFFFF", "#C9B6FF")}
+               "frost": ("#E8F6FF", "#7FC8FF"), "vine": ("#7BE07B", "#2E8B3E"), "star": ("#FFE9A8", "#FFC94D"), "halo": ("#FFFFFF", "#C9B6FF")}
 
 
 def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: float = 1.0) -> None:
@@ -11251,6 +11548,19 @@ def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: flo
                 b = a + k * math.pi / 3
                 p.drawLine(QPointF(cx - math.cos(b) * wd * 0.9, cy - math.sin(b) * wd * 0.9),
                            QPointF(cx + math.cos(b) * wd * 0.9, cy + math.sin(b) * wd * 0.9))
+    elif base == "vine":                                      # a vine wrapped around, with leaves that sway
+        p.setPen(QPen(c2, wd * 0.55))
+        p.drawEllipse(ring)
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(10):
+            a = i / 10 * math.tau
+            lc = QPointF(c.x() + math.cos(a) * r, c.y() + math.sin(a) * r)
+            p.save()
+            p.translate(lc)
+            p.rotate(math.degrees(a) + 45 + math.sin(now * 2 + i) * 12)
+            p.setBrush(c1 if i % 2 else c2)
+            p.drawEllipse(QPointF(wd * 0.6, 0), wd * 0.9, wd * 0.45)
+            p.restore()
     elif base == "star":                                      # gold ring with orbiting stars
         p.setPen(QPen(c2, wd * 0.7))
         p.drawEllipse(ring)
@@ -13992,7 +14302,7 @@ class ShopPage(Page):
             pass
             lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
-                for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts"))):
+                for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts")), ("style", tr("Style cases"))):
                     lay.addWidget(heading(title))
                     lay.addWidget(Label(tr(KIND_TEXT[kind]), 10.5, TEXT_DIM, wrap_w=self.W))
                     for case in ec.cases:
@@ -14030,7 +14340,8 @@ class ShopPage(Page):
                 lay.addWidget(Label(tr(CASE_NOTES[case["id"]]), 11, TEXT_DIM, wrap_w=self.W))
             if case_kind(case["id"]):
                 lay.addWidget(Label(tr(KIND_TEXT[case_kind(case["id"])]), 10.5,
-                                    "#3DDC84" if case_kind(case["id"]) == "coins" else "#FF5CC8", wrap_w=self.W))
+                                    {"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF"}[case_kind(case["id"])],
+                                    wrap_w=self.W))
             gift = Button(tr("Gift this case to a friend"), "ghost", 30)
             gift.clicked.connect(lambda: self._gift(case))
             lay.addWidget(gift)
@@ -14295,13 +14606,16 @@ SHOWCASE = 3
 SLOTS = ("badge1", "badge2", "badge3")
 CASE_NAMES = {"starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing",
               "painter": "Painter's Case", "premium": "Premium Case", "jackpot": "Jackpot Case",
-              "titan": "Titanium Case", "vault": "Legend Vault", "mythic": "Mythic Hunt", "daily": "Daily Case"}
+              "titan": "Titanium Case", "vault": "Legend Vault", "mythic": "Mythic Hunt", "daily": "Daily Case",
+              "style": "Style Case", "themes": "Theme Case", "profile": "Profile Case"}
 CASE_COLOURS = {"starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
-                "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0"}
+                "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0",
+                "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF"}
 CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"),
               "gamble": ("dice", "skull", "dice"), "painter": ("feather", "quill", "drop"),
               "premium": ("sword", "bolt", "flame"), "jackpot": ("$", "$", "$"), "titan": ("shield", "rook", "anchor"),
-              "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?")}
+              "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?"),
+              "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame")}
 CASE_NOTES = {"gamble": "Half the time: almost nothing. The other half: always Rare or better.",
               "painter": "Never a Basic badge: every badge comes in colour.",
               "jackpot": "Coins only. Most of the time less than its price, sometimes double, and once in a while 10 to 30 times "
@@ -14310,20 +14624,25 @@ CASE_NOTES = {"gamble": "Half the time: almost nothing. The other half: always R
               "vault": "No Common badges inside.",
               "mythic": "The best chance of a Mythic badge. Only Epic or better inside.",
               "starter": "Small and safe: a good first case.", "standard": "Good coins, sometimes a Rare badge.",
-              "premium": "Bigger coins and better badges."}
+              "premium": "Bigger coins and better badges.",
+              "style": "Balls, song lines and fonts from the shop.", "themes": "Only themes: Rare or better.",
+              "profile": "Banners and frames for your profile."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
 COIN_CASES = ("starter", "standard", "premium", "jackpot", "titan")
 HUNT_CASES = ("gamble", "painter", "vault", "mythic")
+STYLE_CASES = ("style", "themes", "profile")
 KIND_TEXT = {"coins": "Coin case: on average it pays back a little more than it costs, but about half the time you get "
                       "less. Every coin drop has a 6% chance to be a lucky ×3.",
-             "hunt": "Rare hunt: the best chances at rare badges, but you lose coins on average (about half comes back)."}
+             "hunt": "Rare hunt: the best chances at rare badges, but you lose coins on average (about half comes back).",
+             "style": "Style case: every ball, line, font, theme, banner and frame of the shop can come out. Counted at "
+                      "shop prices you get a little more than you paid; Legendary ones stay about 1 in 100."}
 
 
 def case_kind(case_id: str) -> str:
     """"coins", "hunt", or "" (before the 2.6.1 server update the old numbers are still live)."""
     if ECON is None or "case_lucky_pct" not in (ECON.cfg or {}):
         return ""
-    return "coins" if case_id in COIN_CASES else "hunt" if case_id in HUNT_CASES else ""
+    return "coins" if case_id in COIN_CASES else "hunt" if case_id in HUNT_CASES else "style" if case_id in STYLE_CASES else ""
 ECON = None            # set by the app at start: lets this file know which Mythic badges are still secret
 
 
@@ -14862,8 +15181,8 @@ class CaseCard(QWidget):
         have = int(self.ctx.econ.stock.get(cid, 0) or 0)
         kind = case_kind(cid)
         if kind:                                            # what this case is for, at a glance
-            text = tr("COINS") if kind == "coins" else tr("RARE HUNT")
-            kc = QColor("#3DDC84") if kind == "coins" else QColor("#FF5CC8")
+            text = {"coins": tr("COINS"), "hunt": tr("RARE HUNT"), "style": tr("STYLE")}[kind]
+            kc = QColor({"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF"}[kind])
             p.setFont(font(9, QFont.Weight.Black, 0.6))
             kw = p.fontMetrics().horizontalAdvance(text) + S(14)
             ktag = QRectF(r.right() - kw - S(10), r.bottom() - S(27), kw, S(18))
@@ -14907,7 +15226,7 @@ class OddsTable(QWidget):
         self.case = case
         self.rows = [("tier", i, share) for i, share in enumerate(case["odds"]) if share > 0][::-1]
         variants = list(case.get("variants") or [])
-        if any(t for _k, t, _s in self.rows) and variants:
+        if any(t for _k, t, _s in self.rows) and variants and not str(case.get("mode", "")).startswith("kinds:"):
             self.rows.append(("head", 0, 0))
             self.rows += [("cls", i, share) for i, share in enumerate(variants) if share > 0][::-1]
         self.row_h = S(24)
@@ -14966,7 +15285,7 @@ class CaseReel(QWidget):
         self.result = None
         self._pool = {}
         rnd = random.Random(sum(map(ord, case["id"])))
-        self.strip = [self._filler(rnd) for _ in range(self.ITEMS)]
+        self.strip = self._make_strip(rnd)
         self.offset = self._start()
         self._t0 = self._target = self._last_tick = self._stop_t = 0.0
         self._last_cell = 0
@@ -14981,8 +15300,31 @@ class CaseReel(QWidget):
             self._pool[tier] = [b for b in BADGE_ROWS[tier - 1][1]] or ["star"]
         return self._pool[tier]
 
+    def _make_strip(self, rnd) -> list:
+        """The strip, drawn with the real odds and never the same item twice close together."""
+        out = []
+        for _ in range(self.ITEMS):
+            drop = self._filler(rnd)
+            for _try in range(6):
+                if drop[0] == "coins" or drop not in out[-8:]:
+                    break
+                drop = self._filler(rnd)
+            out.append(drop)
+        return out
+
+    def _kinds_pool(self, tier: int) -> list:
+        key = ("kinds", tier)
+        if key not in self._pool:
+            kinds = set(str(self.case.get("mode", ""))[6:].split(","))
+            want = TIERS[tier - 1] if 0 < tier <= len(TIERS) else ""
+            cat = ECON.catalog if ECON is not None else {}
+            self._pool[key] = [k for k, v in cat.items() if v.get("kind") in kinds and v.get("rarity") == want
+                               and v.get("price") is not None]
+        return self._pool[key]
+
     def _filler(self, rnd) -> tuple:
-        """A drop for the strip, picked with the case's real odds (so the strip looks like the case)."""
+        """A drop for the strip, picked with the case's real odds (so the strip looks like the case: rare things
+        are as rare here as in the case itself)."""
         roll, tier = rnd.randrange(10000), 0
         for i, share in enumerate(self.case["odds"]):
             if roll < share:
@@ -14994,6 +15336,9 @@ class CaseReel(QWidget):
                 k = int(self.case.get("price") or 1000) / 1000
                 return ("coins", int(rnd.choice([150, 220, 300, 380, 1200, 1500, 4000, 12000]) * k))
             return ("coins", rnd.randint(self.case["coin_min"], max(self.case["coin_min"], self.case["coin_max"])))
+        if str(self.case.get("mode", "")).startswith("kinds:"):
+            pool = self._kinds_pool(tier)
+            return ("item", rnd.choice(pool)) if pool else ("coins", int(self.case.get("coin_min") or 100))
         base = rnd.choice(self._badges_of(tier))
         if tier == 5:
             return ("item", badge_item(base, rnd.choice(["prime"] * 9 + ["white"])))
@@ -15003,8 +15348,8 @@ class CaseReel(QWidget):
                 cls = i
                 break
             roll -= share
-        if rnd.random() < 0.06:                              # a few rare ones flash past: that is the thrill
-            cls = rnd.choice([2, 3, 4])
+        if cls == 3 and tier <= 2:
+            cls = 2
         var = rnd.choice([["grey"], PAINTED_IDS, SHINY_IDS, TITANIUM_IDS, GOLD_IDS][cls])
         return ("item", badge_item(base, var))
 
@@ -15018,7 +15363,7 @@ class CaseReel(QWidget):
 
     def spin(self, result: dict) -> None:
         rnd = random.Random()
-        self.strip = [self._filler(rnd) for _ in range(self.ITEMS)]
+        self.strip = self._make_strip(rnd)
         self.strip[self.WIN] = ("item", result["item"]) if result.get("item") else ("coins", int(result.get("won", 0)))
         self.result = result
         self.state = "intro"                              # 2.4: the case shakes and opens, then the strip runs
@@ -15071,8 +15416,9 @@ class CaseReel(QWidget):
         self._stop_t = time.monotonic()
         tier = self._tier()
         sfx.play("on")
-        if tier >= 4:
-            QTimer.singleShot(180, lambda: sfx.play("on"))
+        cls = int(self.result.get("cls") or 0)
+        for k in range((1 if tier >= 3 else 0) + (1 if tier >= 4 else 0) + (2 if tier >= 5 else 0) + (1 if cls >= 2 else 0)):
+            QTimer.singleShot(170 * (k + 1), lambda: sfx.play("on"))          # the rarer, the longer it rings
         n = [0, 0, 10, 18, 30, 60][tier] + [0, 0, 12, 30, 70][int(self.result.get("cls") or 0)]
         rnd = random.Random()
         self._sparks = [(rnd.uniform(0, math.tau), rnd.uniform(S(60), S(150)), rnd.uniform(0.6, 1.3)) for _ in range(n)]
@@ -15221,12 +15567,12 @@ class CaseReel(QWidget):
         age = now - self._stop_t
         c = QPointF(r.center().x(), r.top() + S(66))
         burst = QRadialGradient(c, S(150))
-        burst.setColorAt(0.0, alpha(col, 0.42 if tier >= 2 else 0.18))
+        burst.setColorAt(0.0, alpha(col, [0.12, 0.12, 0.24, 0.42, 0.55, 0.7][min(tier, 5)]))
         burst.setColorAt(1.0, alpha(col, 0.0))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(burst)
         p.drawEllipse(c, S(150), S(150))
-        if tier >= 2:
+        if tier >= 3:                                     # only Epic and better get rays
             rays = [0, 0, 8, 10, 14, 18][tier]
             p.save()
             p.translate(c)
@@ -15241,7 +15587,7 @@ class CaseReel(QWidget):
                 p.setBrush(alpha(col, 0.08 + 0.03 * (tier - 2)))
                 p.drawPath(ray)
             p.restore()
-        if age < 0.35 and tier >= 2:
+        if age < 0.35 and tier >= 3:
             p.setBrush(QColor(255, 255, 255, int((120 + 30 * tier) * (1 - age / 0.35))))
             p.drawRect(r)
         if age < 0.9:                                     # a shock ring rolls out
@@ -15275,8 +15621,13 @@ class CaseReel(QWidget):
         pop = min(1.0, age / 0.45)
         size = S(64) * (0.4 + 0.6 * (1 - (1 - pop) ** 3)) * (1 + 0.18 * math.sin(pop * math.pi) * (1 - pop))
         if res.get("item"):
-            paint_item(p, res["item"], QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now)
-            title, tag = badge_label(res["item"]), tr(RARITY_NAMES[TIERS[tier - 1]]).upper()
+            show_item(p, res["item"], QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now)
+            if str(res["item"]).startswith("badge:"):
+                title = badge_label(res["item"])
+            else:
+                pass
+                title = item_name(res["item"])
+            tag = tr(RARITY_NAMES[TIERS[tier - 1]]).upper()
             cls = int(res.get("cls") or 0)
             if cls:
                 tag += "  ·  " + tr(CLASS_NAMES[cls]).upper()
@@ -15325,7 +15676,7 @@ class AskDialog(QWidget):
         self._on_text = on_text
         self.ctx = ctx
         self.setWindowTitle("Rubenium")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setFixedWidth(S(300))
@@ -15699,6 +16050,11 @@ def _designs(kind: str) -> list:
 SHOP_KINDS = ("ball", "line", "font", "theme", "banner", "frame")
 
 
+def _on_sale(ec, item: str) -> bool:
+    """In the shop: sold right now (event items are not), or already yours."""
+    return item in ec.catalog and (ec.catalog[item].get("price") is not None or ec.owns(item))
+
+
 def look_worn(ctx, item: str) -> bool:
     """A banner, frame or tag is worn on the server (everyone sees it)."""
     return ctx.econ.worn(item.split(":")[0]) == item
@@ -15746,7 +16102,7 @@ def build_cosmetics(page, lay) -> None:
                                 10.5, TEXT_DIM, wrap_w=page.W))
         entries = []
         for base, name in _designs(kind):
-            if kind in ("banner", "frame") and f"{kind}:{base}" not in ec.catalog:
+            if kind in ("banner", "frame") and not _on_sale(ec, f"{kind}:{base}"):
                 continue
             item = f"{kind}:{base}" if kind in ("theme", "banner", "frame") else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
             cheapest = item if kind in ("theme", "banner", "frame") else f"{kind}:{base}:grey"
@@ -15754,7 +16110,7 @@ def build_cosmetics(page, lay) -> None:
             pct = max((ec.sale(k) for k in ec.catalog if k.startswith(f"{kind}:{base}")), default=0)
             entries.append({"item": item, "price": ec.shop_price(cheapest), "tag": tr(name),
                             "mark": "sale" if pct else ("worn" if owned else ""), "pct": pct})
-        designs = [d for d in _designs(kind) if kind not in ("banner", "frame") or f"{kind}:{d[0]}" in ec.catalog]
+        designs = [d for d in _designs(kind) if kind not in ("banner", "frame") or _on_sale(ec, f"{kind}:{d[0]}")]
         if kind in ("banner", "frame"):                    # cheapest first: Common to Legendary
             order = sorted(range(len(entries)), key=lambda i: (entries[i]["price"] or 0, i))
             entries, designs = [entries[i] for i in order], [designs[i] for i in order]
@@ -20304,7 +20660,7 @@ class FloatWindow(QWidget):
         super().__init__()
         self.ctx = ctx
         self.setWindowTitle("Rubenium")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setFixedWidth(S(width))
@@ -23108,8 +23464,8 @@ class Table(QWidget):
 
 class AdminPage(Page):
     key = "admin"
-    SECTIONS = ["Overview", "Users", "Items", "Cases", "Live", "Settings", "Log", "Help"]
-    ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key"]
+    SECTIONS = ["Overview", "Users", "Items", "Cases", "Live", "Settings", "Log", "Help", "Bots", "Swaps"]
+    ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key", "spark", "rocket"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -23125,11 +23481,12 @@ class AdminPage(Page):
             return lay.addWidget(Label(tr("Admin only"), 12, TEXT_DIM))
         tab = int(getattr(ctx, "admin_tab", 0) or 0)
         pass
-        pick = NavTiles([(tr(s), i) for s, i in zip(self.SECTIONS, self.ICONS)], tab)
+        pick = NavTiles([(tr(s), i) for s, i in zip(self.SECTIONS, self.ICONS)], tab, per_row=5)   # 2 full rows
         pick.changed.connect(self._section)
         lay.addWidget(pick)
         self._lock_row(lay)
-        [self._overview, self._players, self._items, self._cases, self._live, self._settings, self._log, self._help][tab](lay)
+        [self._overview, self._players, self._items, self._cases, self._live, self._settings, self._log, self._help,
+         self._bots, self._swaps][min(tab, 9)](lay)
 
     # -- helpers
     def _reload(self) -> None:
@@ -23609,6 +23966,256 @@ class AdminPage(Page):
                 "fake": ("Looks fake: asked from another user's PC", "#FF5C6C"),
                 "unsure": ("Not sure: a PC we do not know", "#FFC94D"),
                 "no_account": ("No account with this name", "#9AA4AD")}
+
+    # -- Bots: fake accounts that live on their own
+    BOT_FIELDS = [("hours", "Hours played", "40"), ("days", "Account age in days", "30"), ("coins", "Coins", "8000"),
+                  ("keys", "Keys", "6"), ("streak", "Login streak (days)", "5"), ("badges", "Badges to own (0 to 60)", "12"),
+                  ("active", "How often online, % (0 to 100)", "60"), ("from", "Online from (hour, 0 to 23)", "16"),
+                  ("to", "Online until (hour, 0 to 23)", "23")]
+
+    def _bot_cfg(self, v: dict, dlg) -> dict:
+        cfg = {}
+        limits = {"hours": (0, 20000), "days": (0, 3650), "coins": (0, 10000000), "keys": (0, 48), "streak": (0, 3650),
+                  "badges": (0, 60), "active": (0, 100), "from": (0, 23), "to": (0, 23)}
+        for key, (lo, hi) in limits.items():
+            n = _int(v.get(key, ""), None)
+            if n is None or not lo <= n <= hi:
+                dlg.say(tr("{what}: a number from {a} to {b}", what=tr(dict((k, t) for k, t, _d in self.BOT_FIELDS)[key]),
+                           a=lo, b=hi))
+                return {}
+            cfg[key] = n
+        return cfg
+
+    def _bots(self, lay) -> None:
+        lay.addWidget(Label(tr("Bots are fake accounts that look and live like real users: they come online in their "
+                               "hours, play, earn coins and keys, open cases and keep a login streak. Nobody can see "
+                               "they are bots. You can log into one with its name and the password you chose."),
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        make = Button(tr("Create a bot"), "primary", 34, icon="plus")
+        make.clicked.connect(self._bot_new)
+        lay.addWidget(make)
+        rows = self.fetch("rb_admin_bots", {})
+        if rows is None:
+            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+        if not isinstance(rows, list) or not rows:
+            return lay.addWidget(Label(tr("No bots yet."), 11, TEXT_FAINT))
+        pick = getattr(self.ctx, "admin_bot", "") or ""
+        lay.addWidget(heading(tr("Bots") + f"  ·  {len(rows)}"))
+        lay.addWidget(Table([(("● " if b.get("online") else "○ ") + b["username"],
+                              f"{int(b.get('minutes') or 0) // 60} h",
+                              coins_text(int(b.get("coins") or 0)), "#3DDC84" if b.get("online") else TEXT_DIM)
+                             for b in rows], self.W,
+                            lambda i: (setattr(self.ctx, "admin_bot", rows[i]["username"]), self.ctx.reload_page())))
+        b = next((r for r in rows if r["username"] == pick), None)
+        if b is None:
+            return lay.addWidget(Label(tr("Click a bot to change it."), 10.5, TEXT_FAINT))
+        cfg = b.get("cfg") or {}
+        paused = bool(cfg.get("paused"))
+        lay.addWidget(heading(b["username"] + ("  ·  " + tr("Paused") if paused else "")))
+        lay.addWidget(Label(tr("{h} h played · {c} coins · {k} keys · {s}-day streak · {n} badges · online {a}% from {f}:00 to {t}:00",
+                               h=int(b.get("minutes") or 0) // 60, c=coins_text(int(b.get("coins") or 0)),
+                               k=int(b.get("keys") or 0), s=int(b.get("streak") or 0), n=int(b.get("badges") or 0),
+                               a=int(cfg.get("active", 60)), f=int(cfg.get("from", 16)), t=int(cfg.get("to", 23))),
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        line = hbox(spacing=6)
+        edit = Button(tr("Change"), "primary", 30)
+        edit.clicked.connect(lambda: self._bot_edit(b))
+        stop = Button(tr("Resume") if paused else tr("Pause"), "ghost", 30)
+        stop.clicked.connect(lambda: self.do("rb_admin_bot_set", {"name": b["username"], "cfg": {"paused": not paused}},
+                                             tr("Saved")))
+        gone = Button(tr("Delete"), "danger", 30)
+        gone.clicked.connect(lambda: self.ctx.window.confirm(
+            tr("Delete the bot {name} for good?", name=b["username"]),
+            lambda: self.do("rb_admin_bot_delete", {"name": b["username"]}, tr("Deleted")), yes=tr("Delete")))
+        for w in (edit, stop, gone):
+            line.addWidget(w, 1)
+        lay.addLayout(line)
+
+    def _bot_new(self) -> None:
+        fields = [("name", tr("Username (3 to 10 letters or numbers)"), ""), ("pw", tr("Password (8 characters at least)"), "")]
+        fields += [(k, tr(t), d) for k, t, d in self.BOT_FIELDS]
+
+        def go(v: dict, dlg) -> None:
+            import re
+            name, pw = v["name"], v["pw"]
+            if not re.fullmatch(r"[A-Za-z0-9]{3,10}", name):
+                return dlg.say(tr("3 to 10 letters or numbers"))
+            if len(pw) < 8:
+                return dlg.say(tr("8 characters at least"))
+            cfg = self._bot_cfg(v, dlg)
+            if not cfg:
+                return
+            dlg.say(tr("Creating…"))
+
+            def ticket(ok: bool, tk) -> None:
+                if not ok:
+                    return dlg.say(tr(str(tk)))
+
+                def made(ok2: bool, d) -> None:
+                    if not ok2:
+                        return dlg.say(tr(str(d)) if "taken" not in str(d).lower() else tr("This username is taken"))
+
+                    def set_done(ok3: bool, d3) -> None:
+                        if not ok3:
+                            return dlg.say(tr(str(d3)))
+                        dlg.close()
+                        sfx.play("on")
+                        self.ctx.toast(tr("Bot {name} created", name=name))
+                        self.ctx.admin_bot = name
+                        self.ctx.admin_cache = {}
+                        QTimer.singleShot(300, self.ctx.reload_page)
+                    self.ctx.econ.call("rb_admin_bot_set", {"name": name, "cfg": cfg}, set_done)
+                self.ctx.online.make_bot(name, pw, str(tk), made)
+            self.ctx.econ.call("rb_admin_bot_ticket", {}, ticket)
+        FormDialog(self.ctx, tr("Create a bot"), fields, tr("Create"), go)
+
+    def _bot_edit(self, b: dict) -> None:
+        cfg = dict(b.get("cfg") or {})
+        now = {"hours": int(b.get("minutes") or 0) // 60, "coins": int(b.get("coins") or 0), "keys": int(b.get("keys") or 0),
+               "streak": int(b.get("streak") or 0), "badges": int(b.get("badges") or 0), "days": 30}
+        try:
+            from datetime import datetime, timezone
+            since = datetime.fromisoformat(str(b.get("since")).replace("Z", "+00:00"))
+            now["days"] = max(0, (datetime.now(timezone.utc) - since).days)
+        except (TypeError, ValueError):
+            pass
+        fields = [(k, tr(t), now.get(k, cfg.get(k, d))) for k, t, d in self.BOT_FIELDS]
+
+        def go(v: dict, dlg) -> None:
+            new = self._bot_cfg(v, dlg)
+            if new:
+                dlg.close()
+                self.do("rb_admin_bot_set", {"name": b["username"], "cfg": new}, tr("Saved"))
+        FormDialog(self.ctx, tr("Change {name}", name=b["username"]), fields, tr("Save"), go)
+
+    # -- Swaps: add Rocket League swaps for everyone
+    def _swaps(self, lay) -> None:
+        pass
+        lay.addWidget(Label(tr("Add a swap for everyone: a 300×300 picture, the swap file and (best) the original game "
+                               "file. It shows in every user's Rocket League tab. Pause or lock a swap that is broken: "
+                               "it is blurred out and cannot be switched on."), 10.5, TEXT_DIM, wrap_w=self.W))
+        rows = self.fetch("rb_swaps_list", {})
+        if isinstance(rows, list) and rows:
+            lay.addWidget(heading(tr("Swaps you added") + f"  ·  {len(rows)}"))
+            names = dict(RL_CATS)
+            lay.addWidget(Table([(r["new"], tr(names.get(r["cat"], r["cat"])),
+                                  tr(ONLINE_STATES.get(r["state"], "Live")),
+                                  {"live": "#3DDC84", "paused": "#FFC94D"}.get(r["state"], "#FF7A7A")) for r in rows], self.W,
+                                lambda i: (setattr(self.ctx, "admin_swap", rows[i]["id"]), self.ctx.reload_page())))
+            cur = next((r for r in rows if r["id"] == getattr(self.ctx, "admin_swap", "")), None)
+            if cur is not None:
+                lay.addWidget(Label(f"{cur['old']} → {cur['new']}  ·  {cur['file']}", 11, TEXT, bold=True, wrap_w=self.W))
+                line = hbox(spacing=6)
+                for st, text, kind in (("live", "Live", "primary"), ("paused", "Pause", "ghost"), ("locked", "Lock", "ghost"),
+                                       ("delete", "Delete", "danger")):
+                    b = Button(tr(text), kind, 30)
+                    b.setEnabled(st != cur["state"])
+                    b.clicked.connect(lambda _c=False, st=st: self.do("rb_admin_swap_state", {"sid": cur["id"], "st": st}, tr("Saved")))
+                    line.addWidget(b, 1)
+                lay.addLayout(line)
+        lay.addWidget(heading(tr("Add a swap")))
+        cats = [c for c, _n in RL_CATS]
+        ci = cats.index(getattr(self.ctx, "swap_cat", cats[0])) if getattr(self.ctx, "swap_cat", cats[0]) in cats else 0
+        from PyQt6.QtWidgets import QGridLayout
+        grid = QGridLayout()                                 # 3 per row: every category name fits
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(S(4))
+        for i, (_c, n) in enumerate(RL_CATS):
+            b = Button(tr(n), "primary" if i == ci else "ghost", 28)
+            b.clicked.connect(lambda _x=False, i=i: (setattr(self.ctx, "swap_cat", cats[i]), self.ctx.reload_page()))
+            grid.addWidget(b, i // 3, i % 3)
+        lay.addLayout(grid)
+        files = getattr(self.ctx, "swap_files", None) or {}
+        self.ctx.swap_files = files
+        import os
+        for key, text, filt in (("img", "Picture (PNG or JPG, made 300×300)", "Images (*.png *.jpg *.jpeg)"),
+                                ("swap", "Swap file (.upk)", "Rocket League files (*.upk)"),
+                                ("orig", "Original game file (.upk, optional)", "Rocket League files (*.upk)")):
+            chosen = files.get(key)
+            b = Button((tr(text) + ": " + os.path.basename(chosen)) if chosen else tr(text), "ghost", 30, icon="folder")
+
+            def choose(_c=False, key=key, text=text, filt=filt) -> None:
+                from PyQt6.QtWidgets import QFileDialog
+                path, _f = QFileDialog.getOpenFileName(None, tr(text), "", filt)
+                if path:
+                    self.ctx.swap_files[key] = path
+                    self.ctx.reload_page()
+            b.clicked.connect(choose)
+            lay.addWidget(b)
+        add = Button(tr("Add the swap"), "primary", 34, icon="plus")
+        add.setEnabled(bool(files.get("swap")))
+        add.clicked.connect(lambda: self._swap_form(cats[ci]))
+        lay.addWidget(add)
+
+    def _swap_form(self, cat: str) -> None:
+        import hashlib
+        import os
+        import re
+        files = dict(getattr(self.ctx, "swap_files", None) or {})
+        swap = files.get("swap", "")
+        fname = os.path.basename(swap)
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{3,80}", fname) or not fname.lower().endswith(".upk"):
+            return self.ctx.toast(tr("The swap file must be a .upk file with a simple name"), "warn")
+        if files.get("orig") and os.path.basename(files["orig"]).lower() != fname.lower():
+            return self.ctx.toast(tr("The original file must have the same name as the swap file"), "warn")
+
+        def go(v: dict, dlg) -> None:
+            old, new = v["old"].strip(), v["new"].strip()
+            if not old or not new:
+                return dlg.say(tr("Fill in both names"))
+            sid = "o_" + (re.sub(r"[^a-z0-9]+", "_", (old + "_" + new).lower()).strip("_"))[:36]
+            try:
+                data = open(swap, "rb").read()
+                orig = open(files["orig"], "rb").read() if files.get("orig") else b""
+            except OSError:
+                return dlg.say(tr("This file cannot be read"))
+            if not data.startswith(b"\xc1\x83\x2a\x9e"):
+                return dlg.say(tr("This is not a Rocket League file"))
+            png = b""
+            if files.get("img"):
+                from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
+                from PyQt6.QtGui import QImage
+                img = QImage(files["img"])
+                if img.isNull():
+                    return dlg.say(tr("This picture cannot be used"))
+                img = img.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
+                img = img.copy((img.width() - 300) // 2, (img.height() - 300) // 2, 300, 300)
+                ba = QByteArray()
+                buf = QBuffer(ba)
+                buf.open(QIODevice.OpenModeFlag.WriteOnly)
+                img.save(buf, "PNG")
+                png = bytes(ba)
+            dlg.say(tr("Uploading…"))
+            jobs = [(f"swaps/{sid}/{fname}", data, "application/octet-stream")]
+            if png:
+                jobs.append((f"swaps/{sid}/preview.png", png, "image/png"))
+            if orig:
+                jobs.append((f"swaps/{sid}/original/{fname}", orig, "application/octet-stream"))
+
+            def next_job(ok: bool = True, d=None) -> None:
+                if not ok:
+                    return dlg.say(tr("Upload failed: {why}", why=tr(str(d))))
+                if jobs:
+                    path, blob, kind = jobs.pop(0)
+                    return self.ctx.online.upload(path, blob, kind, next_job)
+
+                def saved(ok2: bool, d2) -> None:
+                    if not ok2:
+                        return dlg.say(tr(str(d2)))
+                    dlg.close()
+                    sfx.play("on")
+                    self.ctx.toast(tr("Swap added for everyone"))
+                    self.ctx.swap_files = {}
+                    self.ctx.admin_cache = {}
+                    self.ctx.swaps_at = -999
+                    QTimer.singleShot(300, self.ctx.reload_page)
+                self.ctx.econ.call("rb_admin_swap_save", {"sid": sid, "cat": cat, "old": old, "new": new, "file": fname,
+                                                          "sha": hashlib.sha256(data).hexdigest(),
+                                                          "orig_sha": hashlib.sha256(orig).hexdigest() if orig else "",
+                                                          "img": bool(png), "orig": bool(orig)}, saved)
+            next_job()
+        FormDialog(self.ctx, tr("Add a swap"), [("old", tr("The item you equip in the game (e.g. Octane)"), ""),
+                                               ("new", tr("What it becomes (the title)"), "")], tr("Upload"), go)
 
     def _help(self, lay) -> None:
         rows = self.fetch("rb_admin_resets", {})
@@ -24547,7 +25154,7 @@ class SwapTile(QAbstractButton):
         w = r.right() - S(34) - x
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
-        old = self.item["old"] if self.ready else tr("Coming soon")
+        old = self.item["old"] if self.ready else (tr("Downloading…") if self.item.get("online") else tr("Coming soon"))
         p.drawText(QRectF(x, r.top() + S(7), w, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
                    p.fontMetrics().elidedText(old, Qt.TextElideMode.ElideRight, int(w)))
         p.setPen(QColor(TEXT))
@@ -24567,6 +25174,19 @@ class SwapTile(QAbstractButton):
             path.lineTo(QPointF(cx + 3.4, cy - 2.4))
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawPath(path)
+        state = self.item.get("state", "live")
+        if state != "live":                                  # paused or locked by the admin: blurred out
+            p.setOpacity(1.0)
+            p.setPen(Qt.PenStyle.NoPen)
+            for k in range(4):                               # a soft frosted cover over the whole tile
+                p.setBrush(alpha("#0B0E10", 0.22))
+                p.drawRoundedRect(r.adjusted(-k * 0.5, -k * 0.5, k * 0.5, k * 0.5), rad, rad)
+            p.setPen(QColor("#FFC94D" if state == "paused" else "#FF7A7A"))
+            p.setFont(font(11.5, QFont.Weight.Bold))
+            text = tr(extras.ONLINE_STATES.get(state, state))
+            if self.on:
+                text += "  ·  " + tr("click to turn it off")
+            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
 
 
 class RocketPage(Page):
@@ -24632,7 +25252,8 @@ class RocketPage(Page):
                 on = shown.get(key) == it["id"]
                 tile = SwapTile(it, on, ready)
                 tile.pending = self._waiting(it, shown, base)
-                tile.setEnabled(bool(self.plat) and ready)
+                blocked = it.get("state", "live") != "live"
+                tile.setEnabled(bool(self.plat) and (ready or on) and (not blocked or on))
                 tile.clicked.connect(lambda _=False, i=it: self._toggle(i))
                 self.tiles.append(tile)
                 col.addWidget(tile)
@@ -24700,6 +25321,14 @@ class RocketPage(Page):
 
     def on_show(self) -> None:
         self._poll.start()
+        import time as _t
+        if _t.monotonic() - getattr(self.ctx, "swaps_at", -999) > 120:      # the admin's swaps, kept up to date
+            self.ctx.swaps_at = _t.monotonic()
+
+            def again() -> None:
+                if self.ctx.window.current == "rl" and self.pending is None:
+                    self.ctx.reload_page()
+            extras.fetch_online_swaps(self.ctx, again)
 
     def on_hide(self) -> None:
         self._poll.stop()
@@ -27540,6 +28169,7 @@ class App(QObject):
         self._audio = QTimer(self)
         self._audio.setInterval(33)
         self._audio.timeout.connect(self._sample_audio)
+        self._safe("online swaps cache", extras.load_online_swaps_cache)   # before the engine: swaps that are on
         self.rocket = extras.RocketSwaps(self.cfg)
         self.splash = extras.Splash(self.cfg, self.rocket)
         self.rocket.busy.connect(self._rocket_busy)
@@ -27637,6 +28267,7 @@ class App(QObject):
         self._safe("timer", self.apply_timer)
         self._safe("accent", self.refresh_accent)
         self._safe("rocket", self.rocket.start)
+        self._safe("online swaps", lambda: extras.fetch_online_swaps(self))
         self._safe("splash", self.splash.start)
         self._safe("coins", self.wallet.start)
         if "--selftest" not in sys.argv:
@@ -27780,7 +28411,7 @@ class App(QObject):
 
     def _housekeeping(self) -> None:
         for overlay in (self.window, self.window.ball, self.window.drawer, self.crosshair, self.hud,
-                        self.timer_overlay, self.welcome):
+                        self.timer_overlay):            # the welcome / login screen is never pinned over other apps
             if overlay is None:
                 continue
             if overlay is self.window and self.window.modal:

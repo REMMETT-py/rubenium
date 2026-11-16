@@ -94,3 +94,10 @@ bought, so the key is the real limit on cases; a gift now costs its price and 1 
 - AFK: 25 coins every 10 minutes (150 an hour), up to 1 800 a day; 1 key an hour (up to 48).
 - Casino return (checked by maths): Slots 96.9%, Plinko 95.9-96.9%, Dice 97%, Bombs 97%, Rocket 96%, Blackjack about 98-99%. Unchanged.
 - New looks: banners Snow (Rare 1 200), Ember (Epic 3 500), Nebula (Legendary 9 000); frames Frost (Rare 1 000), Star (Epic 3 000), Halo (Legendary 8 000).
+
+## 3.0
+
+- Style cases (items counted at quick sell / at shop price): Style 500 (balls, lines, fonts) 70% / 106%; Theme 800 70% / 114%;
+  Profile 1 500 (banners, frames) 70% / 103%. Legendary about 1 in 100. Event items (Snow, Aurora, Frost) never drop and are not sold.
+- The case strip uses the real odds (no fake rare flashes) and never repeats an item close together.
+- Bots: their AFK coins and keys follow the same rates as users; they open coin cases and place small bets now and then.
