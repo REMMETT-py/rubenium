@@ -1,8 +1,9 @@
-Rubenium 2.1
+Rubenium 2.2 - The Ultimate Update
 
-Already have Rubenium? Open it, go to Settings and press Check for updates.
-New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
-
-- Quests (Games tab): three goals every day and three every week that pay coins. Progress is counted by the server from what you really played.
-- Friends: a refresh button on the list and on profiles (it also refreshes your own coins and time played).
-- Profiles now show a friend's badges, with the three they have on show first.
+- Trading between players, a market with offers, and an Inventory
+- Shop: 10 balls, 10 lines, 5 fonts and 6 themes in every colour
+- Badges remade (Common, Rare, Epic, Legendary, secret Mythic) with Basic, Painted, Shiny, Titanium and Gold
+- 9 cases, case gifts, Beat Tap mini game, quests every hour, day and week
+- Rocket and Dice reworked, free spin every 2 hours, more coins with time
+- Social tab with stats and profile pictures, notifications, live giveaways
+- Use screen colours

@@ -40,3 +40,34 @@ Choices made where the request left room, newest last.
 - The casino shows the bet leaving at once and the prize when the animation ends; the server did both already.
 - A round left open (app closed mid-hand) is picked up again the next time that game is started.
 - Not in 2.0 yet: the 10 balls / 10 lines / 5 fonts / shop themes, quests, the minigame, trading, the market.
+
+## 2.2 (the Ultimate Update)
+- One more economy reset (inside 008, runs once): coins, keys, items, market, trades and history start again.
+  Accounts, hours played and friends stay.
+- Badges: 12 Common, 12 Rare, 12 Epic, 12 Legendary, 6 Mythic (the 6th is the Rubenium R, the rarest).
+  Finishes, from easiest: Basic (grey), Painted (8 colours), Shiny (5 bright colours, no glow), Titanium
+  (black / white, a little glow, Epic and Legendary only), Gold (a lot of glow). Mythic: Titanium, then the
+  multi-colour Prismatic, then Gold. A Basic badge can be worn as soon as any colour of it is owned.
+- Odds: Gold is about 1 badge in 5 000; the Gold Rubenium R is about 1 in 220 000 Mythic Hunt openings.
+  No guaranteed drops and no "Epic within 10" text: everything is luck. When a case gives coins, they beat
+  the price about 72% of the time (Jackpot Case is coins only, a real gamble).
+- Mythic badges are a glowing "?" everywhere (cases, profiles, market, collection) until the account has
+  owned one. The admin sees them.
+- The vendor (quick sell) is gone: selling = the market. Price between 0.25x and 10x the usual price; buyers
+  buy at the price or offer at least half; the coins only move when the seller accepts. 5% fee.
+- Trading and the market need 5 hours played on both sides. Items in a trade or on sale are locked by the
+  server. Any change un-readies both; 5 s countdown checked by the server; one atomic swap; a trade ends
+  by itself if a player is gone for a minute or after 15 minutes.
+- One account per PC: the app sends a fingerprint of the Windows install (hashed, nothing personal). A PC
+  that had an account which was deleted gets a new account with 0 coins and 0 keys.
+- Coins with time: 20 every 10 minutes (1 200 a day at most). Free spin every 2 hours, better prizes.
+- Quests: 1 every hour, 3 every day, 3 every week. Beat Tap: 10 to 40 coins a round, 300 a day at most.
+- Rocket: automatic cash-out (x1.5 to x10) or by hand from x1.20; the last flights are shown.
+- Admin (account "Ruben", checked by the server on every call, everything written to an audit log): stats,
+  every player (coins, keys, items, rounds, history), give / take anything, block, change cases and settings,
+  live giveaways (golden tab for everyone), special sales, and Lock the app (online tabs show a blur and a
+  padlock; time still counts).
+- Notifications: pop-ups from the menu's top or bottom, or from the side of the ball, never taking the mouse.
+  Six kinds, each can be switched off. Sound on, very quiet (20%) by default.
+- "Use screen colours": a 64 x 36 picture of the screen every 2.5 s. Only one of music / screen colours at once.
+- On start: old lyrics (30 days, 400 at most), old pictures and leftover temporary files are removed.
