@@ -7,3 +7,4 @@
 4. Updating from 2.1: run only `008_ultimate_update.sql` (it already contains 007). Do not run 006 again.
 5. Updating from 2.2: run only `009_parking_no_gold.sql`.
 6. Updating from 2.3: run only `010_big_update.sql` (once, before opening 2.4).
+7. Updating to 2.6: run `011_profiles_fresh_start.sql` once, after 010. It resets every account's coins, keys, items, spins and cases (saved first in the rb_bak26_* tables), gives the OG tag to every account made before 17 November, and makes apps older than 2.6 update before playing online. Running it again never resets a second time.

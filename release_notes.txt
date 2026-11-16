@@ -1,11 +1,9 @@
-Rubenium 2.5
+Rubenium 2.6
 
-- Games tab: Earn coins (mini games) and Duels as two big separate cards
-- Beat Tap: 4 modes (Normal, Rush, Long notes, Chords); Memory: 3 card styles
-- Shop tab is now the Hub: Get items (Shop, Deals, Cases, Market) and Yours (Inventory, Collection, Sets, Style)
-- New: Deals, 4 items cheaper every day
-- Friend profiles: real actions for friends, clear reasons to add others
-- Settings in 6 clear sections
-- Admin: big red reset buttons (inventory, coins and keys, gifted cases, full account), all undoable
-- Gifted cases fully free (server update)
-- Visualisers removed; translations fixed everywhere
+- Fresh start: everyone begins again with 500 coins and 3 keys (items, spins and cases reset)
+- Free OG tag for every user who joined before 17 November
+- Profiles: banners, frames and a showcase of your 3 favourite badges, seen by everyone
+- 16 banners and 12 frames in the Shop, on the Market and in Daily Deals
+- Quick sell: sell any item right away for a quarter of its value, or every extra copy at once
+- Style > Your profile: change your banner, frame, tag and showcase in one place
+- Frames and tags show in every list, the leaderboards and the chat

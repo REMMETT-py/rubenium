@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rubenium 2.5 - gamer command centre for Windows 10 / 11.  One file.
+Rubenium 2.6 - gamer command centre for Windows 10 / 11.  One file.
 
 HOW TO RUN
   1. Install Python 3.10 - 3.13 from python.org (tick "Add python.exe to PATH").
@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.5"         # the version people see
-BUILD = "2026.11.17.3"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.6"         # the version people see
+BUILD = "2026.11.17.4"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2445,6 +2445,7 @@ class Econ(QObject):
     changed = pyqtSignal()          # coins, keys, items or what is worn changed
     loaded = pyqtSignal()           # the first full answer from the server arrived
     live_changed = pyqtSignal()     # giveaways, sales or trade requests changed
+    looks_changed = pyqtSignal()    # someone changed their banner, frame or tag
 
     def __init__(self, ctx) -> None:
         super().__init__()
@@ -2463,6 +2464,8 @@ class Econ(QObject):
         self.scratch_in = 0                      # seconds until the next scratch card
         self.server_old = False                  # the server has not had the 2.4 update yet
         self.streak, self.streak_day = 0, None
+        self.looks: dict = {}                    # username -> {tag, frame, banner} for everyone (2.6)
+        self._looks_at = 0.0
         self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
         self._live_sig = ""
         self._live_timer = QTimer(self)
@@ -2549,6 +2552,48 @@ class Econ(QObject):
         """What is on show. Something sold, traded or taken away is never shown, even before the server says so."""
         return [self.worn(s) for s in ("badge1", "badge2", "badge3") if self.worn(s) and (not self.ready or self.can_wear(self.worn(s)))]
 
+    def look_of(self, name: str) -> dict:
+        """The tag, frame and banner someone shows. Yours comes from what you wear right now."""
+        if name and self.ready and name.lower() == (self.online.username() or "").lower():
+            return {k: self.worn(k) for k in ("tag", "frame", "banner") if self.worn(k) and self.can_wear(self.worn(k))}
+        return self.looks.get(name) or {}
+
+    def fetch_looks(self, force: bool = False) -> None:
+        import time
+        if not self.online.logged_in() or (not force and time.monotonic() - self._looks_at < 40):
+            return
+        self._looks_at = time.monotonic()
+
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, dict) and data != self.looks:
+                self.looks = data
+                self.looks_changed.emit()
+        self.online.ask("rb_looks", {}, got)
+
+    def quick_ready(self) -> bool:
+        """Quick sell needs the 2.6 server update."""
+        return "quick_share" in self.cfg
+
+    def quick_value(self, item: str) -> int:
+        """About what quick sell pays for one (the server decides; shop items can pay less)."""
+        info = self.info(item)
+        if not info or not info.get("tradeable") or info.get("kind") in ("prog", "tag"):
+            return 0
+        return max(1, int(int(info.get("value") or 0) * float(self.cfg.get("quick_share", 0.25))))
+
+    def quick_quote(self, ids: list, done) -> None:
+        self.online.ask("rb_quick_quote", {"ids": list(ids)}, lambda ok, d: done(ok, d))
+
+    def quick_sell(self, ids: list, done=None) -> None:
+        def back(ok: bool, data) -> None:
+            if ok:
+                gone = set(ids)
+                self.items = [i for i in self.items if i["id"] not in gone]
+                self._index()
+            if done:
+                done(ok, data)
+        self.call("rb_quick_sell", {"ids": list(ids)}, back, once=True)
+
     def next_coin_s(self) -> int:
         every = int(self.cfg.get("coin_every_min", 15))
         return max(60, (every - self.coin_min) * 60)
@@ -2586,7 +2631,7 @@ class Econ(QObject):
         elif not now_in and self._was_in:
             self.ready = False
             self._live_timer.stop()
-            self.live, self.admin, self.stock = {}, False, {}
+            self.live, self.admin, self.stock, self.looks = {}, False, {}, {}
             self.live_changed.emit()
             self.coins = self.keys = self.minutes = 0
             self.items, self.seen, self.equip, self._owned = [], set(), {}, {}
@@ -2671,6 +2716,7 @@ class Econ(QObject):
             if before != (self.coins, self.keys):
                 self.changed.emit()
         self.online.ask("rb_live", {}, got, raw=True)
+        self.fetch_looks()
 
     def _index(self) -> None:
         self._owned = {}
@@ -4361,6 +4407,66 @@ FR = {
     'Complete a set to get a big bonus, once. You must still own the badges when you claim.': 'Complète un ensemble pour un gros bonus, une seule fois. Tu dois encore avoir les badges quand tu récupères.',
     'Set bonus: +{n} coins': "Bonus d'ensemble : +{n} pièces",
     'No key': 'Aucune',
+    # 2.6
+    '16 banners and 12 frames in the Shop, on the Market and in Daily Deals': '16 bannières et 12 cadres dans la Boutique, sur le Marché et dans les Promos du jour',
+    'A gift for the first users of Rubenium. It cannot be sold or traded.': 'Un cadeau pour les premiers utilisateurs de Rubenium. Il ne peut pas être vendu ni échangé.',
+    'Balls, lines, fonts, themes, banners and frames to buy.': 'Boules, lignes, polices, thèmes, bannières et cadres à acheter.',
+    'Banner': 'Bannière',
+    'Banners': 'Bannières',
+    'Banners and frames: coming very soon': 'Bannières et cadres : très bientôt',
+    'Choose badges': 'Choisir les badges',
+    'Click the one you wear to take it off.': 'Clique sur celui que tu portes pour l’enlever.',
+    'Deletes EVERY item {name} owns: all badges, balls, lines, fonts, themes, banners and frames. Items on the market or in a trade are taken back first. Coins, keys, cases and the OG tag stay.': 'Supprime TOUS les objets de {name} : badges, boules, lignes, polices, thèmes, bannières et cadres. Les objets sur le marché ou dans un échange sont d’abord repris. Les pièces, les clés, les caisses et le tag OG restent.',
+    'Empty': 'Vide',
+    'Everyone sees your banner and frame on your profile, in lists and in the chat.': 'Tout le monde voit ta bannière et ton cadre sur ton profil, dans les listes et dans le chat.',
+    'Frame': 'Cadre',
+    'Frames': 'Cadres',
+    'Frames and tags show in every list, the leaderboards and the chat': 'Les cadres et les tags s’affichent dans toutes les listes, les classements et le chat',
+    'Free OG tag for every user who joined before 17 November': 'Tag OG offert à chaque utilisateur inscrit avant le 17 novembre',
+    'Fresh start (2.6)': 'Nouveau départ (2.6)',
+    'Fresh start: everyone begins again with 500 coins and 3 keys (items, spins and cases reset)': 'Nouveau départ : tout le monde recommence avec 500 pièces et 3 clés (objets, tours et caisses remis à zéro)',
+    'Keeps one of each item and sells the rest right away': 'Garde un exemplaire de chaque objet et vend le reste tout de suite',
+    'Log in to change your profile': 'Connecte-toi pour changer ton profil',
+    'No banner yet: buy one in the Shop or on the Market.': 'Pas encore de bannière : achètes-en une dans la Boutique ou sur le Marché.',
+    'No frame yet: buy one in the Shop or on the Market.': 'Pas encore de cadre : achètes-en un dans la Boutique ou sur le Marché.',
+    'No tag yet.': 'Pas encore de tag.',
+    'Preview on your profile': 'Aperçu sur ton profil',
+    'Profile': 'Profil',
+    'Profiles: banners, frames and a showcase of your 3 favourite badges, seen by everyone': 'Profils : bannières, cadres et une vitrine de tes 3 badges préférés, visibles par tous',
+    'Quick sell': 'Vente rapide',
+    'Quick sell every extra copy ({n})': 'Vente rapide de tous les doubles ({n})',
+    'Quick sell the extra copies ({n}), keep one': 'Vente rapide des doubles ({n}), en garder un',
+    'Quick sell {what} for {n} coins? Instant, but the market usually pays more.': 'Vente rapide : {what} pour {n} pièces ? C’est immédiat, mais le marché paie souvent plus.',
+    'Quick sell: sell any item right away for a quarter of its value, or every extra copy at once': 'Vente rapide : vends n’importe quel objet tout de suite pour un quart de sa valeur, ou tous tes doubles d’un coup',
+    'SHOWCASE': 'VITRINE',
+    'Sell it right now for about {n} coins (a quarter of what it is worth)': 'Le vendre tout de suite pour environ {n} pièces (un quart de sa valeur)',
+    'Sold for {n} coins': 'Vendu pour {n} pièces',
+    'Style > Your profile: change your banner, frame, tag and showcase in one place': 'Style > Ton profil : change ta bannière, ton cadre, ton tag et ta vitrine au même endroit',
+    'Tag': 'Tag',
+    'Tags': 'Tags',
+    'The 3 badges you show are the showcase on your profile.': 'Les 3 badges que tu montres forment la vitrine de ton profil.',
+    'This is what other users see': 'Voici ce que voient les autres utilisateurs',
+    'Worn': 'Porté',
+    'Your profile': 'Ton profil',
+    'Your profile, your colours and the looks you unlock with time.': 'Ton profil, tes couleurs et les styles que tu débloques avec le temps.',
+    '{name} starts again like a new account: every item deleted, coins and keys back to the start (500 coins, 3 keys), gifted cases deleted, login streak back to 0. Time played, friends, name and the OG tag stay.': '{name} recommence comme un nouveau compte : tous les objets supprimés, pièces et clés remises au départ (500 pièces, 3 clés), caisses offertes supprimées, série de connexion remise à 0. Le temps joué, les amis, le nom et le tag OG restent.',
+    '{name} tag': 'Tag {name}',
+    '{n} extra copies': '{n} doubles',
+    '{n} × {name}': '{n} × {name}',
+    'Dusk': 'Crépuscule',
+    'Mint': 'Menthe',
+    'Steel': 'Acier',
+    'Peaks': 'Sommets',
+    'Lava': 'Lave',
+    'Matrix': 'Matrice',
+    'Silver': 'Argent',
+    'Bronze': 'Bronze',
+    'Ink': 'Encre',
+    'Dashed': 'Pointillés',
+    'Laurel': 'Laurier',
+    'Spikes': 'Pointes',
+    'Rainbow': 'Arc-en-ciel',
+    'OG': 'OG',
 }
 
 
@@ -7829,6 +7935,13 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.6", ['Fresh start: everyone begins again with 500 coins and 3 keys (items, spins and cases reset)',
+             'Free OG tag for every user who joined before 17 November',
+             'Profiles: banners, frames and a showcase of your 3 favourite badges, seen by everyone',
+             '16 banners and 12 frames in the Shop, on the Market and in Daily Deals',
+             'Quick sell: sell any item right away for a quarter of its value, or every extra copy at once',
+             'Style > Your profile: change your banner, frame, tag and showcase in one place',
+             'Frames and tags show in every list, the leaderboards and the chat']),
     ("2.5", ['Games tab: Earn coins (mini games) and Duels are now two big separate cards',
              'Beat Tap has 4 modes (Normal, Rush, Long notes, Chords); Memory has 3 card styles',
              'The Shop tab is now the Hub: Get items (Shop, Deals, Cases, Market) and Yours (Inventory, Collection, Sets, Style)',
@@ -10446,9 +10559,20 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("candy", "Candy", "#FF5CB8", "#9B5CFF", dict(glow=3, stars=18, sparkles=11)),
                ("storm", "Storm", "#8FA8FF", "#4B6BFF", dict(glow=3, stars=44, links=10, comets=6, aurora=True)),
                ("retro", "Retro", "#D94BFF", "#35D6E6", dict(glow=3, stars=52, links=14, sparkles=8, edge="shine"))]
-KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge"}
+# profile looks (2.6): a banner behind your profile, a frame around your picture, a tag after your name
+BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("waves", "Waves"), ("grid", "Grid"),
+           ("stripes", "Stripes"), ("dots", "Dots"), ("aurora", "Aurora"), ("circuit", "Circuit"), ("sunset", "Sunset"),
+           ("peaks", "Peaks"), ("galaxy", "Galaxy"), ("lava", "Lava"), ("matrix", "Matrix"), ("prism", "Prism")]
+FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
+          ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
+          ("orbit", "Orbit"), ("rainbow", "Rainbow")]
+TAGS = [("og", "OG")]
+MOVING = {"waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
+          "rainbow", "neon", "og"}
+KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "banner": "Banner",
+              "frame": "Frame", "tag": "Tag"}
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
-          "theme": {t[0]: t[1] for t in THEME_LOOKS}}
+          "theme": {t[0]: t[1] for t in THEME_LOOKS}, "banner": dict(BANNERS), "frame": dict(FRAMES), "tag": dict(TAGS)}
 _themes: dict = {}
 
 
@@ -10467,6 +10591,8 @@ def item_name(item: str) -> str:
     if kind == "badge":
         pass
         return badge_label(item)
+    if kind == "tag":
+        return tr("{name} tag", name=_NAMES["tag"].get(base, base.upper()))
     name = f"{tr(_NAMES.get(kind, {}).get(base, base.capitalize()))} ({tr(KIND_NAMES.get(kind, kind)).lower()})"
     return name + (f" · {tr(COLOUR_NAMES.get(var, var))}" if var else "")
 
@@ -10687,6 +10813,8 @@ def paint_cosmetic(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
     if kind == "badge":
         pass
         return show_item(p, item, rect, now, effects, dim)
+    if kind in ("banner", "frame", "tag"):
+        return paint_look_icon(p, item, rect, now if effects else 0.0, dim)
     d = min(rect.width(), rect.height())
     box = QRectF(rect.center().x() - d / 2, rect.center().y() - d / 2, d, d)
     p.save()
@@ -10722,6 +10850,411 @@ def paint_cosmetic(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
             p.setBrush(QColor(look[2 + k % 2]))
             tw = 0.7 + 0.3 * math.sin(now * 2 + k) if effects else 1.0
             p.drawEllipse(QPointF(box.left() + fx * d, box.top() + fy * d), s * d * tw, s * d * tw)
+    p.restore()
+
+
+# --------------------------------------------------------------------------- #
+# Profile looks: banners, frames and tags
+# --------------------------------------------------------------------------- #
+_BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), "steel": ("#2B3640", "#7D8C99"),
+                "rose": ("#5B1E3A", "#FF8FB1"), "waves": ("#0B2447", "#2E8BFF"), "grid": ("#1A0B2E", "#35D6E6"),
+                "stripes": ("#5A1A0A", "#FF8A3D"), "dots": ("#0D2E33", "#1ABC9C"), "aurora": ("#06121F", "#3DFFB0"),
+                "circuit": ("#04170F", "#2ECC71"), "sunset": ("#2B0F3D", "#FF8A3D"), "peaks": ("#0E1A2B", "#8FA8FF"),
+                "galaxy": ("#05040F", "#9B5CFF"), "lava": ("#1A0503", "#FF3D1F"), "matrix": ("#010A04", "#3DFF7A"),
+                "prism": ("#101018", "#FF5CC8")}
+
+
+def look_moves(item: str) -> bool:
+    return parts(item)[1] in MOVING
+
+
+def _rand(i: int, k: int = 0) -> float:
+    """A fixed pseudo random number in [0, 1) (so stars stay where they are between frames)."""
+    x = math.sin(i * 12.9898 + k * 78.233) * 43758.5453
+    return x - math.floor(x)
+
+
+def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius: float = 10.0, dim: float = 1.0) -> None:
+    """A profile banner filling `rect` (rounded corners)."""
+    base = parts(item)[1]
+    c1, c2 = (QColor(c) for c in _BANNER_COLS.get(base, ("#1A2026", "#3A4650")))
+    w, h = rect.width(), rect.height()
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setOpacity(p.opacity() * dim)
+    clip = QPainterPath()
+    clip.addRoundedRect(rect, radius, radius)
+    p.setClipPath(clip)
+    g = QLinearGradient(rect.topLeft(), rect.bottomRight())
+    g.setColorAt(0.0, c1)
+    g.setColorAt(1.0, c2 if base in ("dusk", "mint", "steel", "rose", "sunset") else mix(c1, c2, 0.35))
+    p.fillRect(rect, g)
+    p.setPen(Qt.PenStyle.NoPen)
+    L, T = rect.left(), rect.top()
+    if base == "waves":
+        for k in range(4):
+            path = QPainterPath(QPointF(L, rect.bottom()))
+            for x in range(0, int(w) + 8, 6):
+                y = T + h * (0.35 + k * 0.17) + math.sin(x / w * 6.3 * (1 + k * 0.3) + now * (0.8 + k * 0.3) + k) * h * 0.07
+                path.lineTo(L + x, y)
+            path.lineTo(rect.right(), rect.bottom())
+            p.setBrush(alpha(c2, 0.16 + k * 0.08))
+            p.drawPath(path)
+    elif base == "grid":
+        horizon = T + h * 0.45
+        p.setPen(QPen(alpha(c2, 0.55), 1))
+        for k in range(-10, 11):
+            p.drawLine(QPointF(L + w / 2 + k * w * 0.03, horizon), QPointF(L + w / 2 + k * w * 0.16, rect.bottom()))
+        off = (now * 0.4) % 1.0
+        for k in range(8):
+            f = ((k + off) / 8) ** 2
+            p.drawLine(QPointF(L, horizon + f * (rect.bottom() - horizon)), QPointF(rect.right(), horizon + f * (rect.bottom() - horizon)))
+        sun = QLinearGradient(QPointF(0, T + h * 0.05), QPointF(0, horizon))
+        sun.setColorAt(0, QColor("#FF5CB8"))
+        sun.setColorAt(1, QColor("#FFC94D"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(sun)
+        p.drawEllipse(QPointF(L + w / 2, horizon), h * 0.3, h * 0.3)
+        p.fillRect(QRectF(L, horizon, w, h), mix(c1, QColor("#000000"), 0.2))
+        p.setPen(QPen(alpha(c2, 0.55), 1))
+        for k in range(-10, 11):
+            p.drawLine(QPointF(L + w / 2 + k * w * 0.03, horizon), QPointF(L + w / 2 + k * w * 0.16, rect.bottom()))
+        for k in range(8):
+            f = ((k + off) / 8) ** 2
+            p.drawLine(QPointF(L, horizon + f * (rect.bottom() - horizon)), QPointF(rect.right(), horizon + f * (rect.bottom() - horizon)))
+    elif base == "stripes":
+        p.setBrush(alpha(c2, 0.45))
+        step = h * 0.5
+        off = (now * 20) % (step * 2)
+        x = L - h - step * 2 + off
+        while x < rect.right() + h:
+            path = QPainterPath(QPointF(x, rect.bottom()))
+            path.lineTo(x + h, T)
+            path.lineTo(x + h + step, T)
+            path.lineTo(x + step, rect.bottom())
+            p.drawPath(path)
+            x += step * 2
+    elif base == "dots":
+        n = 22
+        for i in range(n * 3):
+            cx, cy = L + _rand(i) * w, T + _rand(i, 1) * h
+            r = h * (0.03 + _rand(i, 2) * 0.09)
+            p.setBrush(alpha(c2, 0.15 + _rand(i, 3) * 0.4))
+            p.drawEllipse(QPointF(cx, cy), r, r)
+    elif base == "aurora":
+        for i in range(30):
+            p.setBrush(alpha("#FFFFFF", 0.3 + 0.5 * _rand(i, 4)))
+            p.drawEllipse(QPointF(L + _rand(i) * w, T + _rand(i, 1) * h * 0.6), 0.8, 0.8)
+        for k, col in enumerate(("#3DFFB0", "#9B5CFF", "#2EC5FF")):
+            path = QPainterPath(QPointF(L, T + h))
+            for x in range(0, int(w) + 8, 6):
+                y = T + h * (0.45 + 0.12 * k) + math.sin(x / w * 5 + now * 0.7 + k * 2) * h * 0.14 \
+                    + math.sin(x / w * 13 + now * 1.3) * h * 0.04
+                path.lineTo(L + x, y)
+            path.lineTo(rect.right(), T + h)
+            band = QLinearGradient(QPointF(0, T + h * 0.2), QPointF(0, T + h))
+            band.setColorAt(0, alpha(col, 0.0))
+            band.setColorAt(0.5, alpha(col, 0.35))
+            band.setColorAt(1, alpha(col, 0.0))
+            p.setBrush(band)
+            p.drawPath(path)
+    elif base == "circuit":
+        p.setPen(QPen(alpha(c2, 0.45), 1.3))
+        for i in range(14):
+            x0, y0 = L + _rand(i) * w, T + _rand(i, 1) * h
+            x1 = x0 + (_rand(i, 2) - 0.5) * w * 0.4
+            path = QPainterPath(QPointF(x0, y0))
+            path.lineTo(x1, y0)
+            path.lineTo(x1 + h * 0.15, y0 + h * 0.15 * (1 if _rand(i, 3) > 0.5 else -1))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+            glow = 0.4 + 0.6 * max(0.0, math.sin(now * 2 + i * 1.7))
+            p.setBrush(alpha(c2, glow))
+            p.drawEllipse(QPointF(x0, y0), 2.2, 2.2)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "sunset":
+        p.setBrush(alpha("#FFC94D", 0.95))
+        sun = QRectF(L + w * 0.62, T + h * 0.18, h * 0.62, h * 0.62)
+        p.drawEllipse(sun)
+        for k in range(5):
+            p.fillRect(QRectF(sun.left(), sun.top() + sun.height() * (0.52 + k * 0.1), sun.width(), sun.height() * 0.035 * (k + 1)),
+                       mix(QColor("#C0306E"), QColor("#FF8A3D"), 0.4))
+        p.fillRect(QRectF(L, T + h * 0.78, w, h * 0.22), QColor("#1A0828"))
+    elif base == "peaks":
+        for k, (col, hh) in enumerate((("#2A3A5C", 0.35), ("#1B2740", 0.55), ("#101828", 0.75))):
+            path = QPainterPath(QPointF(L, rect.bottom()))
+            for i in range(9):
+                x = L + i * w / 8
+                y = T + h * (hh + (0.18 if (i + k) % 2 else -0.05) * (0.6 + _rand(i, k) * 0.6))
+                path.lineTo(x, y)
+            path.lineTo(rect.right(), rect.bottom())
+            p.setBrush(QColor(col))
+            p.drawPath(path)
+        p.setBrush(alpha("#FFFFFF", 0.85))
+        p.drawEllipse(QPointF(L + w * 0.18, T + h * 0.22), h * 0.08, h * 0.08)
+    elif base == "galaxy":
+        neb = QLinearGradient(rect.topLeft(), rect.bottomRight())
+        neb.setColorAt(0.2, alpha("#9B5CFF", 0.0))
+        neb.setColorAt(0.5, alpha("#9B5CFF", 0.35))
+        neb.setColorAt(0.65, alpha("#FF5CB8", 0.22))
+        neb.setColorAt(0.9, alpha("#2EC5FF", 0.0))
+        p.fillRect(rect, neb)
+        for i in range(60):
+            tw = 0.35 + 0.65 * abs(math.sin(now * (0.8 + _rand(i, 5) * 2) + i))
+            p.setBrush(alpha("#FFFFFF", tw * (0.4 + 0.6 * _rand(i, 2))))
+            r = 0.6 + _rand(i, 3) * 1.4
+            p.drawEllipse(QPointF(L + _rand(i) * w, T + _rand(i, 1) * h), r, r)
+        sx = L + ((now * 0.25) % 1.6 - 0.3) * w
+        p.setPen(QPen(alpha("#FFFFFF", 0.7), 1.2))
+        p.drawLine(QPointF(sx, T + h * 0.2), QPointF(sx - w * 0.08, T + h * 0.32))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "lava":
+        for i in range(9):
+            cx = L + (_rand(i) + 0.05 * math.sin(now * 0.6 + i)) * w
+            cy = T + h * (0.5 + 0.45 * math.sin(now * (0.3 + _rand(i, 1) * 0.4) + i * 1.3))
+            r = h * (0.22 + _rand(i, 2) * 0.25)
+            blob = QLinearGradient(QPointF(cx, cy - r), QPointF(cx, cy + r))
+            blob.setColorAt(0, alpha("#FFC94D", 0.85))
+            blob.setColorAt(1, alpha("#FF3D1F", 0.6))
+            p.setBrush(blob)
+            p.drawEllipse(QPointF(cx, cy), r, r)
+    elif base == "matrix":
+        f = QFont("Consolas")
+        f.setPixelSize(max(6, int(h * 0.13)))
+        p.setFont(f)
+        cw = f.pixelSize() * 0.9
+        cols = int(w / cw) + 1
+        for c in range(cols):
+            speed = 0.6 + _rand(c) * 1.2
+            head = ((now * speed + _rand(c, 1) * 3) % 1.6) * h
+            for k in range(8):
+                y = head - k * f.pixelSize()
+                if T - f.pixelSize() < T + y < rect.bottom() + f.pixelSize():
+                    p.setPen(alpha("#C8FFD8" if k == 0 else "#3DFF7A", max(0.0, 1 - k / 8)))
+                    ch = chr(0x30A0 + int(_rand(c * 31 + k, int(now * 3) % 7) * 90))
+                    p.drawText(QPointF(L + c * cw, T + y), ch)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "prism":
+        sweep = QLinearGradient(QPointF(L - w + (now * 0.3 % 1) * w * 2, T), QPointF(L + (now * 0.3 % 1) * w * 2, rect.bottom()))
+        for k, col in enumerate(("#FF5CC8", "#FFC94D", "#3DFF7A", "#2EC5FF", "#9B5CFF", "#FF5CC8")):
+            sweep.setColorAt(k / 5, alpha(col, 0.55))
+        p.fillRect(rect, sweep)
+        p.setBrush(alpha("#FFFFFF", 0.18))
+        tri = QPainterPath(QPointF(L + w * 0.5, T + h * 0.15))
+        tri.lineTo(L + w * 0.62, T + h * 0.85)
+        tri.lineTo(L + w * 0.38, T + h * 0.85)
+        tri.closeSubpath()
+        p.drawPath(tri)
+    shade = QLinearGradient(rect.topLeft(), rect.bottomLeft())       # a soft shade at the bottom, for text on top
+    shade.setColorAt(0.55, alpha("#000000", 0.0))
+    shade.setColorAt(1.0, alpha("#000000", 0.35))
+    p.fillRect(rect, shade)
+    p.restore()
+
+
+_FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"), "ink": ("#0B0E10", "#FFFFFF"),
+               "neon": ("#2EF2FF", "#2EF2FF"), "dashed": ("#FFFFFF", "#9AA4AD"), "twin": ("#FF5CB8", "#2EC5FF"),
+               "laurel": ("#FFD36B", "#B8862B"), "crown": ("#FFD36B", "#B8862B"), "spikes": ("#E6EEF5", "#6E7C88"),
+               "flame": ("#FFC94D", "#FF3D1F"), "orbit": ("#B36BFF", "#4FE3FF"), "rainbow": ("#FF5CC8", "#2EC5FF")}
+
+
+def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: float = 1.0) -> None:
+    """A frame around a round profile picture `face` (drawn on top of it, slightly outside)."""
+    base = parts(item)[1]
+    if not base:
+        return
+    c1, c2 = (QColor(c) for c in _FRAME_COLS.get(base, ("#FFFFFF", "#9AA4AD")))
+    d = face.width()
+    wd = max(1.6, d * 0.085)
+    c = face.center()
+    r = d / 2 + wd * 0.35
+    ring = QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r)
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setOpacity(p.opacity() * dim)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    if base in ("silver", "bronze", "laurel", "crown", "spikes"):
+        g = QLinearGradient(ring.topLeft(), ring.bottomRight())
+        g.setColorAt(0.0, c1)
+        g.setColorAt(0.5, c2)
+        g.setColorAt(1.0, c1)
+        p.setPen(QPen(g, wd))
+        p.drawEllipse(ring)
+    elif base == "ink":
+        p.setPen(QPen(c1, wd * 1.3))
+        p.drawEllipse(ring)
+        p.setPen(QPen(c2, max(1.0, wd * 0.25)))
+        p.drawEllipse(ring.adjusted(wd * 0.75, wd * 0.75, -wd * 0.75, -wd * 0.75))
+    elif base == "neon":
+        pulse = 0.75 + 0.25 * math.sin(now * 3)
+        for k in (3.2, 2.2, 1.4):
+            p.setPen(QPen(alpha(c1, 0.12 * pulse * (4 - k)), wd * k))
+            p.drawEllipse(ring)
+        p.setPen(QPen(QColor("#E8FFFF"), wd * 0.6))
+        p.drawEllipse(ring)
+    elif base == "dashed":
+        pen = QPen(c1, wd * 0.8)
+        pen.setDashPattern([2.2, 1.6])
+        pen.setDashOffset(-now * 4)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(pen)
+        p.drawEllipse(ring)
+    elif base == "twin":
+        p.setPen(QPen(c1, wd * 0.5))
+        p.drawEllipse(ring.adjusted(-wd * 0.45, -wd * 0.45, wd * 0.45, wd * 0.45))
+        p.setPen(QPen(c2, wd * 0.5))
+        p.drawEllipse(ring.adjusted(wd * 0.25, wd * 0.25, -wd * 0.25, -wd * 0.25))
+    elif base == "flame":
+        p.setPen(Qt.PenStyle.NoPen)
+        n = 18
+        for i in range(n):
+            a = i / n * math.tau
+            flick = 0.55 + 0.45 * abs(math.sin(now * 5 + i * 1.9))
+            ln = wd * (1.4 + 1.6 * flick)
+            tip = QPointF(c.x() + math.cos(a) * (r + ln), c.y() + math.sin(a) * (r + ln))
+            left = QPointF(c.x() + math.cos(a - 0.17) * r, c.y() + math.sin(a - 0.17) * r)
+            right = QPointF(c.x() + math.cos(a + 0.17) * r, c.y() + math.sin(a + 0.17) * r)
+            g = QLinearGradient(QPointF(c.x() + math.cos(a) * r, c.y() + math.sin(a) * r), tip)
+            g.setColorAt(0, c2)
+            g.setColorAt(1, alpha(c1, 0.0))
+            path = QPainterPath(left)
+            path.quadTo(QPointF(c.x() + math.cos(a) * (r + ln * 0.6), c.y() + math.sin(a) * (r + ln * 0.6)), tip)
+            path.lineTo(right)
+            path.closeSubpath()
+            p.setBrush(g)
+            p.drawPath(path)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(c1, wd * 0.8))
+        p.drawEllipse(ring)
+    elif base == "orbit":
+        p.setPen(QPen(alpha(c1, 0.9), wd * 0.55))
+        p.drawEllipse(ring)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k in range(3):
+            a = now * (1.6 + k * 0.4) + k * 2.1
+            rr = r + wd * (0.9 + k * 0.5)
+            p.setBrush(c2 if k % 2 else c1)
+            p.drawEllipse(QPointF(c.x() + math.cos(a) * rr, c.y() + math.sin(a) * rr), wd * 0.55, wd * 0.55)
+    elif base == "rainbow":
+        from PyQt6.QtGui import QConicalGradient
+        g = QConicalGradient(c, (now * 90) % 360)
+        for k, col in enumerate(("#FF5CC8", "#FFC94D", "#3DFF7A", "#2EC5FF", "#9B5CFF", "#FF5CC8")):
+            g.setColorAt(k / 5, QColor(col))
+        p.setPen(QPen(g, wd))
+        p.drawEllipse(ring)
+    if base == "laurel":                                      # leaves up both sides
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#E8C26A"))
+        for side in (-1, 1):
+            for k in range(5):
+                a = math.pi / 2 + side * (0.45 + k * 0.38)
+                lc = QPointF(c.x() + math.cos(a) * (r + wd * 0.9), c.y() + math.sin(a) * (r + wd * 0.9))
+                p.save()
+                p.translate(lc)
+                p.rotate(math.degrees(a) + 90 + side * 30)
+                p.drawEllipse(QPointF(0, 0), wd * 0.55, wd * 1.15)
+                p.restore()
+    elif base == "crown":
+        p.setPen(Qt.PenStyle.NoPen)
+        cw, ch = d * 0.46, d * 0.26
+        top = c.y() - r - ch * 0.55
+        path = QPainterPath(QPointF(c.x() - cw / 2, top + ch))
+        for k, (fx, fy) in enumerate(((-0.5, 0.15), (-0.25, 0.55), (0.0, 0.0), (0.25, 0.55), (0.5, 0.15))):
+            path.lineTo(c.x() + fx * cw, top + fy * ch)
+        path.lineTo(c.x() + cw / 2, top + ch)
+        path.closeSubpath()
+        g = QLinearGradient(QPointF(0, top), QPointF(0, top + ch))
+        g.setColorAt(0, QColor("#FFE9A8"))
+        g.setColorAt(1, QColor("#C99A2E"))
+        p.setBrush(g)
+        p.drawPath(path)
+        p.setBrush(QColor("#FF4B6E"))
+        p.drawEllipse(QPointF(c.x(), top + ch * 0.62), ch * 0.12, ch * 0.12)
+    elif base == "spikes":
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(c1)
+        n = 12
+        for i in range(n):
+            a = i / n * math.tau + math.pi / n
+            path = QPainterPath(QPointF(c.x() + math.cos(a - 0.12) * r, c.y() + math.sin(a - 0.12) * r))
+            path.lineTo(c.x() + math.cos(a) * (r + wd * 2.0), c.y() + math.sin(a) * (r + wd * 2.0))
+            path.lineTo(c.x() + math.cos(a + 0.12) * r, c.y() + math.sin(a + 0.12) * r)
+            path.closeSubpath()
+            p.drawPath(path)
+    p.restore()
+
+
+def paint_tag(p: QPainter, x: float, cy: float, item: str, now: float = 0.0, size: float = 8.5,
+              centre: bool = False, px: float = 0.0) -> float:
+    """A tag after a name ("OG": gold, with a light running across). Returns its width. `px`: an exact pixel size."""
+    text = _NAMES["tag"].get(parts(item)[1], parts(item)[1].upper()) or "?"
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    f = font(size, QFont.Weight.Black, 0.8)
+    if px:
+        f.setPixelSize(max(6, int(px)))
+    p.setFont(f)
+    hgt = f.pixelSize() * 1.75
+    w = p.fontMetrics().horizontalAdvance(text) + hgt * 0.75
+    if centre:
+        x -= w / 2
+    box = QRectF(x, cy - hgt / 2, w, hgt)
+    g = QLinearGradient(box.topLeft(), box.bottomRight())
+    g.setColorAt(0.0, QColor("#FFE9A8"))
+    g.setColorAt(0.5, QColor("#E8B13A"))
+    g.setColorAt(1.0, QColor("#B87A16"))
+    p.setPen(QPen(QColor("#FFF4CF"), 0.8))
+    p.setBrush(g)
+    p.drawRoundedRect(box, hgt * 0.28, hgt * 0.28)
+    if now:                                                    # a light running across
+        clip = QPainterPath()
+        clip.addRoundedRect(box, hgt * 0.28, hgt * 0.28)
+        p.setClipPath(clip)
+        sx = box.left() + ((now * 0.5) % 1.6 - 0.3) * box.width() * 1.4
+        shine = QLinearGradient(QPointF(sx - hgt, 0), QPointF(sx + hgt, 0))
+        shine.setColorAt(0, alpha("#FFFFFF", 0.0))
+        shine.setColorAt(0.5, alpha("#FFFFFF", 0.65))
+        shine.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.fillRect(box, shine)
+        p.setClipping(False)
+    p.setPen(QColor("#3A2300"))
+    p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), text)
+    p.restore()
+    return w
+
+
+def paint_blank_face(p: QPainter, face: QRectF) -> None:
+    """A plain grey picture (for previews of frames)."""
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor("#2A3238"))
+    p.drawEllipse(face)
+    clip = QPainterPath()
+    clip.addEllipse(face)
+    p.setClipPath(clip)
+    p.setBrush(QColor("#55626C"))
+    d = face.width()
+    p.drawEllipse(QPointF(face.center().x(), face.top() + d * 0.4), d * 0.18, d * 0.18)
+    p.drawEllipse(QPointF(face.center().x(), face.top() + d * 0.95), d * 0.34, d * 0.3)
+    p.restore()
+
+
+def paint_look_icon(p: QPainter, item: str, rect: QRectF, now: float = 0.0, dim: float = 1.0) -> None:
+    """The small picture of a banner, frame or tag (shop, inventory, market, trades)."""
+    kind = parts(item)[0]
+    d = min(rect.width(), rect.height())
+    box = QRectF(rect.center().x() - d / 2, rect.center().y() - d / 2, d, d)
+    p.save()
+    p.setOpacity(p.opacity() * dim)
+    if kind == "banner":
+        paint_banner(p, QRectF(box.left(), box.top() + d * 0.2, d, d * 0.6), item, now, d * 0.1)
+    elif kind == "frame":
+        face = box.adjusted(d * 0.22, d * 0.22, -d * 0.22, -d * 0.22)
+        paint_blank_face(p, face)
+        paint_frame(p, face, item, now)
+    else:
+        paint_tag(p, box.center().x(), box.center().y(), item, now, centre=True, px=d * 0.24)
     p.restore()
 
 
@@ -13025,7 +13558,7 @@ class ShopPage(Page):
     ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "timer"]
     GET = [1, 7, 3, 4]                     # getting things: shop, today's deals, cases, market
     MINE = [5, 2, 6, 0]                    # what is yours: inventory, collection, sets, your style
-    NOTES = ["Your colours and the looks you unlock with time.", "Balls, lines, fonts and themes to buy.",
+    NOTES = ["Your profile, your colours and the looks you unlock with time.", "Balls, lines, fonts, themes, banners and frames to buy.",
              "Your collection: click a badge to see every colour.", "Open cases for coins and badges. Gifts are free.",
              "Buy and sell with other users.", "Everything you own. Sell, show or trade it.",
              "Collect full sets for a big bonus.", "4 items cheaper today. New deals every day at midnight."]
@@ -13087,6 +13620,8 @@ class ShopPage(Page):
     # -- Look
     def _look(self, lay) -> None:
         ctx, wallet = self.ctx, self.ctx.wallet
+        pass
+        build_profile_style(self, lay)
         lay.addWidget(heading(tr("Colour")))
         self.t_music = Toggle(bool(ctx.cfg["accent_from_art"]) and wallet.owns("music"))
         self.t_music.toggled_by_user.connect(self._music)
@@ -13611,7 +14146,10 @@ def is_secret(item: str) -> bool:
 
 
 def show_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: bool = True, dim: float = 1.0) -> None:
-    """Draw a badge, or a glowing "?" when it is a Mythic badge this account never had."""
+    """Draw a badge, or a glowing "?" when it is a Mythic badge this account never had (other items: their picture)."""
+    if item and not item.startswith("badge:"):
+        pass
+        return paint_cosmetic(p, item, rect, now, effects, dim)
     if is_secret(item):
         return paint_secret(p, rect, now, effects and dim >= 0.6)
     paint_item(p, item, rect, now, effects, dim)
@@ -14516,12 +15054,13 @@ from PyQt6.QtGui import QFontMetrics, QColor, QFont, QLinearGradient, QPainter, 
 from PyQt6.QtWidgets import QWidget
 
 
-KINDS = ["", "badge", "ball", "line", "font", "theme"]
+KINDS = ["", "badge", "ball", "line", "font", "theme", "banner", "frame"]
+LOOKS = ("banner", "frame", "tag")             # profile looks: worn on the server, seen by everyone
 REASONS = {"time": "Time with Rubenium", "shop": "Shop", "vendor": "Sold to the vendor", "case": "Case opened",
            "case_coins": "Coins from a case", "daily_case": "Daily case", "spin": "Free spin", "bet": "Bet",
            "win": "Casino win", "quest": "Quest", "minigame": "Beat Tap", "market_buy": "Bought on the market",
            "market_sell": "Sold on the market", "trade": "Trade", "gift": "Case gifted", "giveaway": "Giveaway",
-           "admin": "From the admin", "import": "Old progress"}
+           "admin": "From the admin", "import": "Old progress", "quick_sell": "Quick sell", "reset": "Fresh start (2.6)"}
 
 
 class AskDialog(QWidget):
@@ -14902,20 +15441,44 @@ class Preview(QWidget):
 
 def _designs(kind: str) -> list:
     return {"ball": BALLS, "line": LINES, "font": [(f[0], f[1]) for f in FONTS],
-            "theme": [(t[0], t[1]) for t in THEME_LOOKS]}[kind]
+            "theme": [(t[0], t[1]) for t in THEME_LOOKS], "banner": BANNERS, "frame": FRAMES}[kind]
+
+
+SHOP_KINDS = ("ball", "line", "font", "theme", "banner", "frame")
+
+
+def look_worn(ctx, item: str) -> bool:
+    """A banner, frame or tag is worn on the server (everyone sees it)."""
+    return ctx.econ.worn(item.split(":")[0]) == item
+
+
+def wear_look(ctx, item: str, on: bool) -> None:
+    kind = item.split(":")[0]
+
+    def done(ok: bool, d) -> None:
+        if not ok:
+            ctx.toast(tr(str(d)), "warn")
+        else:
+            ctx.econ.looks_changed.emit()
+        ctx.reload_page()
+    sfx.play("pick")
+    ctx.econ.wear(kind, item if on else "", done)
 
 
 def build_cosmetics(page, lay) -> None:
     ctx, ec = page.ctx, page.ctx.econ
     if not ec.ready or not ec.catalog:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the shop"), 12, TEXT_DIM))
-    kind_i = int(getattr(ctx, "shop_kind", 0) or 0)
-    kind = ("ball", "line", "font", "theme")[min(kind_i, 3)]
+    pass
+    kind_i = min(int(getattr(ctx, "shop_kind", 0) or 0), len(SHOP_KINDS) - 1)
+    kind = SHOP_KINDS[kind_i]
     design = getattr(ctx, "shop_design", None)
+    if design is not None and kind in ("banner", "frame") and f"{kind}:{design}" not in ec.catalog:
+        design = None
     if design is None:
         for sale in (ec.live.get("sales") or [])[:2]:
             lay.addWidget(SaleBanner(page, sale))
-        seg = Segmented([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes")], min(kind_i, 3))
+        seg = GamePicker([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Banners"), tr("Frames")], kind_i)
 
         def switch(i: int) -> None:
             ctx.shop_kind = i
@@ -14923,19 +15486,32 @@ def build_cosmetics(page, lay) -> None:
             ctx.reload_page()
         seg.changed.connect(switch)
         lay.addWidget(seg)
+        if kind in ("banner", "frame"):
+            if not any(k.startswith(kind + ":") for k in ec.catalog):         # the server has not had 2.6 yet
+                pass
+                return lay.addWidget(WaitCard(page.W))
+            lay.addWidget(Label(tr("Everyone sees your banner and frame on your profile, in lists and in the chat."),
+                                10.5, TEXT_DIM, wrap_w=page.W))
         entries = []
         for base, name in _designs(kind):
-            item = f"theme:{base}" if kind == "theme" else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
-            cheapest = f"theme:{base}" if kind == "theme" else f"{kind}:{base}:grey"
+            if kind in ("banner", "frame") and f"{kind}:{base}" not in ec.catalog:
+                continue
+            item = f"{kind}:{base}" if kind in ("theme", "banner", "frame") else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
+            cheapest = item if kind in ("theme", "banner", "frame") else f"{kind}:{base}:grey"
             owned = any(k.startswith(f"{kind}:{base}") for k in ec._owned)
             pct = max((ec.sale(k) for k in ec.catalog if k.startswith(f"{kind}:{base}")), default=0)
             entries.append({"item": item, "price": ec.shop_price(cheapest), "tag": tr(name),
                             "mark": "sale" if pct else ("worn" if owned else ""), "pct": pct})
-        grid = ItemGrid(ctx, entries, page.W, 3 if kind == "theme" else 5, 86 if kind != "theme" else 96)
+        designs = [d for d in _designs(kind) if kind not in ("banner", "frame") or f"{kind}:{d[0]}" in ec.catalog]
+        if kind in ("banner", "frame"):                    # cheapest first: Common to Legendary
+            order = sorted(range(len(entries)), key=lambda i: (entries[i]["price"] or 0, i))
+            entries, designs = [entries[i] for i in order], [designs[i] for i in order]
+        grid = ItemGrid(ctx, entries, page.W, 3 if kind in ("theme", "banner") else 4 if kind == "frame" else 5,
+                        96 if kind in ("theme", "banner") else 86)
 
         def pick(i: int) -> None:
             sfx.play("pick")
-            ctx.shop_design, ctx.shop_colour = _designs(kind)[i][0], ""
+            ctx.shop_design, ctx.shop_colour = designs[i][0], ""
             ctx.reload_page()
         grid.picked.connect(pick)
         lay.addWidget(grid)
@@ -14944,7 +15520,7 @@ def build_cosmetics(page, lay) -> None:
         return
     # one design: preview, colours, buy or wear
     names = dict(_designs(kind))
-    variants = [""] if kind == "theme" else [c for c in COLOUR_ORDER if f"{kind}:{design}:{c}" in ec.catalog]
+    variants = [""] if kind in ("theme", "banner", "frame") else [c for c in COLOUR_ORDER if f"{kind}:{design}:{c}" in ec.catalog]
     colour = getattr(ctx, "shop_colour", "") or ""
     if colour not in variants:
         colour = next((c for c in variants if ec.owns(_cid(kind, design, c))), variants[0] if variants else "")
@@ -14961,7 +15537,10 @@ def build_cosmetics(page, lay) -> None:
     top.addWidget(Label(tr(names.get(design, design)), 15, bold=True), 1)
     top.addWidget(Label(rarity_line(ctx, item), 11, RARITY_COLOURS.get(ec.rarity(item), TEXT_DIM), bold=True))
     lay.addLayout(top)
-    lay.addWidget(Preview(ctx, item))
+    if kind in ("banner", "frame"):
+        lay.addWidget(LookPreview(ctx, item, page.W))
+    else:
+        lay.addWidget(Preview(ctx, item))
     if kind == "theme":
         ctx.start_preview(item)
     if len(variants) > 1:
@@ -14979,10 +15558,12 @@ def build_cosmetics(page, lay) -> None:
         lay.addWidget(grid)
     price, full = ec.shop_price(item), ec.price(item)
     if ec.owns(item):
-        on = ctx.shop_item_worn(item)
+        on = look_worn(ctx, item) if kind in LOOKS else ctx.shop_item_worn(item)
         b = Button(tr("Take off") if on else tr("Wear"), "ghost" if on else "primary", 38)
 
         def toggle() -> None:
+            if kind in LOOKS:
+                return wear_look(ctx, item, not on)
             sfx.play("pick")
             ctx.take_off_shop_item(kind) if on else ctx.wear_shop_item(item)
             ctx.reload_page()
@@ -15013,7 +15594,64 @@ def build_cosmetics(page, lay) -> None:
 
 
 def _cid(kind: str, design: str, colour: str) -> str:
-    return f"theme:{design}" if kind == "theme" else f"{kind}:{design}:{colour}"
+    return f"{kind}:{design}" if kind in ("theme", "banner", "frame") else f"{kind}:{design}:{colour}"
+
+
+class LookPreview(QWidget):
+    """How a banner or a frame looks on your own profile."""
+
+    def __init__(self, ctx, item: str, width: int, note: str = "") -> None:
+        super().__init__()
+        self.ctx, self.item, self.note = ctx, item, note
+        self.setFixedSize(width, S(118))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._timer = QTimer(self)
+        self._timer.setInterval(50)
+        self._timer.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._timer.start()
+
+    def hideEvent(self, _e) -> None:
+        self._timer.stop()
+
+    def paintEvent(self, _e) -> None:
+        pass
+        pass
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        ec = self.ctx.econ
+        name = self.ctx.online.username() or "Rubenium"
+        kind = self.item.split(":")[0]
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(r, S(12), S(12))
+        banner = self.item if kind == "banner" else ec.look_of(name).get("banner", "")
+        top = QRectF(r.left(), r.top(), r.width(), S(74))
+        if banner:
+            paint_banner(p, top, banner, now, S(12))
+        else:
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.05))
+            p.drawRoundedRect(top, S(12), S(12))
+        face = QRectF(r.left() + S(16), top.bottom() - S(30), S(56), S(56))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#0B0E10"))
+        p.drawEllipse(face.adjusted(-S(3), -S(3), S(3), S(3)))
+        frame = self.item if kind == "frame" else ec.look_of(name).get("frame", "")
+        paint_face(p, face, self.ctx, name, int(ec.avatar_v or 0), None, frame, now)
+        x = face.right() + S(14)
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(15, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(x, top.bottom() - S(30), S(220), S(26)), int(Qt.AlignmentFlag.AlignVCenter), name)
+        paint_name_tags(p, x + p.fontMetrics().horizontalAdvance(name) + S(8), top.bottom() - S(17), self.ctx, name,
+                        bool(ec.admin))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        p.drawText(QRectF(x, top.bottom() + S(6), r.width() - x - S(10), S(30)), int(Qt.AlignmentFlag.AlignVCenter),
+                   self.note or tr("Preview on your profile"))
 
 
 # --------------------------------------------------------------------------- #
@@ -15060,14 +15698,15 @@ def build_inventory(page, lay) -> None:
     if not ec.ready:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see your items"), 12, TEXT_DIM))
     tab = int(getattr(ctx, "inv_tab", 0) or 0)
-    picker = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Coins")], tab)
+    picker = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Profile"),
+                         tr("Coins")], tab)
 
     def switch(i: int) -> None:
         ctx.inv_tab, ctx.inv_pick = i, ""
         ctx.reload_page()
     picker.changed.connect(switch)
     lay.addWidget(picker)
-    if tab == 6:
+    if tab == 7:
         rows = getattr(ctx, "ledger_rows", None)
         if rows is None or time.monotonic() - getattr(ctx, "ledger_at", 0) > 8:
             ctx.ledger_at = time.monotonic()
@@ -15075,7 +15714,7 @@ def build_inventory(page, lay) -> None:
             def got(ok: bool, data) -> None:
                 if ok and isinstance(data, list) and data != getattr(ctx, "ledger_rows", None):
                     ctx.ledger_rows = data
-                    if ctx.window.current == "themes" and getattr(ctx, "inv_tab", 0) == 6:
+                    if ctx.window.current == "themes" and getattr(ctx, "inv_tab", 0) == 7:
                         ctx.reload_page()
             ec.online.ask("rb_ledger_list", {}, got)
         lay.addWidget(heading(tr("Coin history")))
@@ -15084,15 +15723,23 @@ def build_inventory(page, lay) -> None:
         else:
             lay.addWidget(Label(tr("Loading…") if rows is None else tr("Nothing here yet"), 12, TEXT_DIM))
         return
-    want = KINDS[tab]
+    want = ["", "badge", "ball", "line", "font", "theme", "look"][tab]
     groups: dict = {}
     for it in ec.items:
-        if not want or it["item"].split(":")[0] == want:
+        k = it["item"].split(":")[0]
+        if not want or k == want or (want == "look" and k in LOOKS):
             groups.setdefault(it["item"], []).append(it)
     order = sorted(groups, key=lambda k: (-value_of(ctx, k), k))
     total = sum(value_of(ctx, k) * len(v) for k, v in groups.items())
     count = sum(len(v) for v in groups.values())
     lay.addWidget(Label(tr("{n} items · worth about {v} coins", n=count, v=coins_text(total)), 11, TEXT_DIM))
+    extras = [i["id"] for k in order for i in [c for c in groups[k] if not c.get("locked")][1:]
+              if ec.quick_value(k) > 0 and len(groups[k]) > 1]
+    if extras:
+        b = Button(tr("Quick sell every extra copy ({n})", n=len(extras)), "ghost", 30, icon="gem")
+        b.setToolTip(tr("Keeps one of each item and sells the rest right away"))
+        b.clicked.connect(lambda: quick_sell(ctx, extras, tr("{n} extra copies", n=len(extras))))
+        lay.addWidget(b)
     if not order:
         lay.addWidget(Label(tr("Nothing here yet. Open cases or visit the shop."), 12, TEXT_DIM, wrap_w=page.W))
         return
@@ -15105,8 +15752,10 @@ def build_inventory(page, lay) -> None:
     entries = []
     for k in order:
         free = [i for i in groups[k] if not i.get("locked")]
-        entries.append({"item": k, "text": coins_text(value_of(ctx, k)), "tag": f"×{len(groups[k])}" if len(groups[k]) > 1 else "",
-                        "mark": "lock" if not free else ("worn" if k in wearing or ctx.shop_item_worn(k) else "")})
+        on = k in wearing or ctx.shop_item_worn(k) or (k.split(":")[0] in LOOKS and look_worn(ctx, k))
+        entries.append({"item": k, "text": coins_text(value_of(ctx, k)) if value_of(ctx, k) else tr("Free"),
+                        "tag": f"×{len(groups[k])}" if len(groups[k]) > 1 else "",
+                        "mark": "lock" if not free else ("worn" if on else "")})
     grid = ItemGrid(ctx, entries, page.W, 5, 72, order.index(pick) if pick else -1)
 
     def choose(i: int) -> None:
@@ -15126,7 +15775,8 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
     head.addWidget(Label(rarity_line(ctx, item), 10.5, RARITY_COLOURS.get(ec.rarity(item), TEXT_DIM), bold=True))
     lay.addLayout(head)
     locked = len(copies) - len(free)
-    note = tr("Worth about {v} coins", v=coins_text(value_of(ctx, item)))
+    note = tr("Worth about {v} coins", v=coins_text(value_of(ctx, item))) if value_of(ctx, item) else \
+        tr("A gift for the first users of Rubenium. It cannot be sold or traded.")
     if locked:
         where = copies[0].get("locked") or next((c["locked"] for c in copies if c.get("locked")), "")
         note += "  ·  " + (tr("{n} on the market", n=locked) if str(where).startswith("market") else tr("{n} in a trade", n=locked))
@@ -15146,6 +15796,10 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
             sfx.play("pick")
             ec.wear(slot, item, done)
         b.clicked.connect(show)
+    elif kind in LOOKS:
+        on = look_worn(ctx, item)
+        b = Button(tr("Take off") if on else tr("Wear"), "ghost" if on else "primary", 32)
+        b.clicked.connect(lambda: wear_look(ctx, item, not on))
     else:
         on = ctx.shop_item_worn(item)
         b = Button(tr("Take off") if on else tr("Wear"), "ghost" if on else "primary", 32)
@@ -15156,12 +15810,100 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
             ctx.reload_page()
         b.clicked.connect(wear)
     line.addWidget(b, 1)
-    sell = Button(tr("Sell"), "ghost", 32)
-    sell.setEnabled(bool(free) and bool(ec.info(item).get("tradeable")))
+    sellable = bool(free) and bool(ec.info(item).get("tradeable"))
+    sell = Button(tr("Market"), "ghost", 32, icon="chip")
+    sell.setEnabled(sellable)
     sell.setToolTip(tr("Put it on the market: other users buy it or make you an offer"))
     sell.clicked.connect(lambda: market_sell(ctx, item))
     line.addWidget(sell, 1)
+    quick = Button(tr("Quick sell"), "ghost", 32, icon="gem")
+    quick.setEnabled(sellable and ec.quick_value(item) > 0)
+    quick.setToolTip(tr("Sell it right now for about {n} coins (a quarter of what it is worth)",
+                        n=coins_text(ec.quick_value(item))))
+    quick.clicked.connect(lambda: quick_sell(ctx, [free[-1]["id"]], item_name(item)))
+    line.addWidget(quick, 1)
     lay.addLayout(line)
+    if sellable and len(free) > 1 and ec.quick_value(item) > 0:
+        rest = [c["id"] for c in free[1:]]
+        more = Button(tr("Quick sell the extra copies ({n}), keep one", n=len(rest)), "quiet", 26)
+        more.clicked.connect(lambda: quick_sell(ctx, rest, tr("{n} × {name}", n=len(rest), name=item_name(item))))
+        lay.addWidget(more)
+
+
+def quick_sell(ctx, ids: list, what: str) -> None:
+    """Sell to Rubenium right away: low price (a quarter of the value), but instant. The server says the exact
+    amount first."""
+    ec = ctx.econ
+    if not ec.quick_ready():
+        return ctx.toast(tr("Coming very soon: the server is being updated"), "warn")
+
+    def quoted(ok: bool, q) -> None:
+        if not ok or not isinstance(q, dict):
+            pass
+            return ctx.toast(tr("Coming very soon: the server is being updated") if server_missing(q)
+                             else tr("Something went wrong: try again"), "warn")
+        total, n = int(q.get("total") or 0), int(q.get("n") or 0)
+        if not n:
+            return ctx.toast(tr("This cannot be sold"), "warn")
+
+        def go() -> None:
+            def done(ok2: bool, d) -> None:
+                if not ok2:
+                    sfx.play("off")
+                    return ctx.toast(tr(str(d)), "warn")
+                sfx.play("on")
+                ctx.toast(tr("Sold for {n} coins", n=coins_text(int(d.get("paid") or total))))
+                ctx.inv_pick = ""
+                ctx.reload_page()
+            ec.quick_sell(ids, done)
+        ctx.window.confirm(tr("Quick sell {what} for {n} coins? Instant, but the market usually pays more.",
+                              what=what, n=coins_text(total)), go, yes=tr("Sell"))
+    ec.quick_quote(ids, quoted)
+
+
+def build_profile_style(page, lay) -> None:
+    """Style > Your profile: banner, frame, tag and the 3 badges of your showcase, as everyone sees them."""
+    pass
+    ctx, ec = page.ctx, page.ctx.econ
+    lay.addWidget(heading(tr("Your profile")))
+    if not ec.ready:
+        return lay.addWidget(Label(tr("Log in to change your profile"), 11, TEXT_DIM))
+    lay.addWidget(LookPreview(ctx, "", page.W, tr("This is what other users see")))
+    if not any(k.startswith("banner:") for k in ec.catalog):
+        return lay.addWidget(Label(tr("Banners and frames: coming very soon"), 11, TEXT_DIM))
+    for kind, title, empty in (("banner", tr("Banner"), tr("No banner yet: buy one in the Shop or on the Market.")),
+                               ("frame", tr("Frame"), tr("No frame yet: buy one in the Shop or on the Market.")),
+                               ("tag", tr("Tag"), tr("No tag yet."))):
+        mine = sorted({i["item"] for i in ec.items if i["item"].startswith(kind + ":")},
+                      key=lambda k: (-int(ec.info(k).get("value") or 0), k))
+        if kind == "tag" and not mine:
+            continue
+        head = hbox(spacing=8)
+        head.addWidget(Label(title, 12.5, bold=True), 1)
+        cur = ec.worn(kind)
+        head.addWidget(Label(item_name(cur) if cur and cur in mine else tr("None"), 10.5, TEXT_DIM))
+        lay.addLayout(head)
+        if not mine:
+            lay.addWidget(Label(empty, 10.5, TEXT_FAINT, wrap_w=page.W))
+            continue
+        entries = [{"item": k, "text": tr("Worn") if k == cur else tr("Wear")} for k in mine]
+        grid = ItemGrid(ctx, entries, page.W, 3 if kind == "banner" else 5, 80 if kind == "banner" else 70,
+                        mine.index(cur) if cur in mine else -1)
+        grid.picked.connect(lambda i, m=mine, c=cur: wear_look(ctx, m[i], m[i] != c))
+        lay.addWidget(grid)
+    lay.addWidget(Label(tr("Click the one you wear to take it off."), 10, TEXT_FAINT))
+    head = hbox(spacing=8)
+    head.addWidget(Label(tr("Showcase"), 12.5, bold=True), 1)
+    pick = Button(tr("Choose badges"), "ghost", 26)
+
+    def to_collection() -> None:
+        ctx.shop_tab = 2
+        ctx.reload_page()
+    pick.clicked.connect(to_collection)
+    head.addWidget(pick)
+    lay.addLayout(head)
+    lay.addWidget(Showcase3(ctx, ec.badges_worn(), page.W, True))
+    lay.addWidget(Label(tr("The 3 badges you show are the showcase on your profile."), 10, TEXT_FAINT, wrap_w=page.W))
 
 
 def market_sell(ctx, item: str) -> None:
@@ -15304,7 +16046,8 @@ def build_market(page, lay) -> None:
                 ctx.reload_page()
         ec.online.ask(fn, args, got)
     if not tab:
-        kinds = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes")],
+        kinds = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Banners"),
+                            tr("Frames")],
                            int(getattr(ctx, "mk_kind", 0) or 0))
 
         def set_kind(i: int) -> None:
@@ -19653,7 +20396,13 @@ class LeaderRow(QWidget):
         p.drawText(QRectF(r.left() + S(4), r.top(), S(24), r.height()), int(Qt.AlignmentFlag.AlignCenter), str(rank))
         p.setPen(QColor(TEXT))
         p.setFont(font(11.5, QFont.Weight.DemiBold))
-        p.drawText(QRectF(r.left() + S(34), r.top(), r.width() - S(140), r.height()), int(Qt.AlignmentFlag.AlignVCenter), str(row.get("name", "")))
+        name = str(row.get("name", ""))
+        p.drawText(QRectF(r.left() + S(34), r.top(), r.width() - S(140), r.height()), int(Qt.AlignmentFlag.AlignVCenter), name)
+        pass
+        tag = ECON.look_of(name).get("tag") if ECON is not None else ""
+        if tag:
+            pass
+            paint_tag(p, r.left() + S(40) + p.fontMetrics().horizontalAdvance(name), r.center().y(), tag, 0.0, 8)
         v = int(row.get("value") or 0)
         text = coins_text(v) if self.kind in ("coins", "worth") else (f"{v}%" if self.kind == "tap" else
                                                                        (tr("{n} days", n=v) if self.kind == "streak" else
@@ -20768,7 +21517,7 @@ import base64
 import time
 
 from PyQt6.QtCore import QBuffer, QByteArray, QIODevice, QPointF, QRectF, QTimer, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QImage, QPainter, QPainterPath, QPen, QPixmap
+from PyQt6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap
 from PyQt6.QtWidgets import QWidget
 
 
@@ -20897,8 +21646,10 @@ class Faces:
         self.ctx.econ.call("rb_avatar_set", {"picture": text}, back)
 
 
-def paint_face(p: QPainter, rect: QRectF, ctx, name: str, version: int, online=None) -> None:
-    """A round profile picture (or the first letter), with a small online dot."""
+def paint_face(p: QPainter, rect: QRectF, ctx, name: str, version: int, online=None, frame=None, now: float = -1.0) -> None:
+    """A round profile picture (or the first letter), with their frame and a small online dot."""
+    if frame is None:
+        frame = ctx.econ.look_of(name).get("frame", "")
     pm = ctx.faces.get(name, version) if version else None
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -20922,6 +21673,9 @@ def paint_face(p: QPainter, rect: QRectF, ctx, name: str, version: int, online=N
     p.setPen(QPen(alpha("#FFFFFF", 0.14), 1))
     p.setBrush(Qt.BrushStyle.NoBrush)
     p.drawEllipse(rect)
+    if frame:
+        pass
+        paint_frame(p, rect, frame, time.monotonic() if now < 0 else now)
     if online is not None:
         d = max(S(6), rect.width() * 0.26)
         dot = QPointF(rect.right() - d * 0.42, rect.bottom() - d * 0.42)
@@ -20944,6 +21698,27 @@ def paint_admin_tag(p: QPainter, x: float, cy: float) -> float:
     p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), "ADMIN")
     p.restore()
     return w
+
+
+def paint_name_tags(p: QPainter, x: float, cy: float, ctx, name: str, admin: bool = False, size: float = 8.5) -> float:
+    """ADMIN and the tag someone wears (OG...) after their name. Returns the width used."""
+    w = 0.0
+    if admin:
+        w += paint_admin_tag(p, x, cy) + S(5)
+    tag = ctx.econ.look_of(name).get("tag")
+    if tag:
+        pass
+        w += paint_tag(p, x + w, cy, tag, time.monotonic(), size) + S(5)
+    return w
+
+
+class Ticker(QTimer):
+    """Redraws a widget a few times a second while it shows something that moves (a frame, a tag, a banner)."""
+
+    def __init__(self, widget, ms: int = 60) -> None:
+        super().__init__(widget)
+        self.setInterval(ms)
+        self.timeout.connect(widget.update)
 
 
 class PlayerRow(QWidget):
@@ -21010,8 +21785,7 @@ class PlayerRow(QWidget):
         name = info["username"] + ("  (" + tr("you") + ")" if info.get("me") else "")
         p.drawText(QRectF(x, r.top() + S(4), S(160), S(18)), int(Qt.AlignmentFlag.AlignVCenter), name)
         nx = x + p.fontMetrics().horizontalAdvance(name) + S(6)
-        if info.get("admin"):
-            nx += paint_admin_tag(p, nx, r.top() + S(13)) + S(6)
+        nx += paint_name_tags(p, nx, r.top() + S(13), self.ctx, info["username"], bool(info.get("admin")))
         badges = [b for b in (info.get("badges") or []) if b][:3]
         for k, item in enumerate(badges):
             show_item(p, item, QRectF(nx + k * S(16), r.top() + S(6), S(13), S(13)), 0, effects=False)
@@ -21044,6 +21818,13 @@ class StatsCard(QWidget):
         self.ctx, self.data = ctx, data
         self.setFixedSize(width, S(150))
         self.setMouseTracking(True)
+        self._tick = Ticker(self, 80)
+
+    def showEvent(self, _e) -> None:
+        self._tick.start()
+
+    def hideEvent(self, _e) -> None:
+        self._tick.stop()
 
     def _face(self) -> QRectF:
         return QRectF(S(12), S(12), S(52), S(52))
@@ -21068,13 +21849,19 @@ class StatsCard(QWidget):
         p.drawRoundedRect(r, S(12), S(12))
         d, st = self.data, self.data.get("stats") or {}
         name = d.get("username") or self.ctx.online.username()
+        banner = self.ctx.econ.look_of(name).get("banner")
+        if banner:                                         # your banner behind the top of the card
+            pass
+            p.save()
+            p.setOpacity(0.55)
+            paint_banner(p, QRectF(r.left(), r.top(), r.width(), S(66)), banner, time.monotonic(), S(12))
+            p.restore()
         paint_face(p, self._face(), self.ctx, name, int(d.get("avatar_v") or self.ctx.econ.avatar_v or 0))
         p.setPen(QColor(TEXT))
         p.setFont(font(16, QFont.Weight.Bold))
         p.drawText(QRectF(S(76), S(14), S(200), S(24)), int(Qt.AlignmentFlag.AlignVCenter), name)
         nx = S(76) + p.fontMetrics().horizontalAdvance(name) + S(8)
-        if d.get("admin"):
-            paint_admin_tag(p, nx, S(26))
+        paint_name_tags(p, nx, S(26), self.ctx, name, bool(d.get("admin")))
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(S(76), S(38), r.width() - S(90), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
@@ -21161,7 +21948,15 @@ class FriendsPage(Page):
         self._poll = QTimer(self)
         self._poll.setInterval(10000)                 # live: hours, coins, online, trades
         self._poll.timeout.connect(self.refresh)
+        self._anim = QTimer(self)                     # frames and tags that move, in the lists
+        self._anim.setInterval(90)
+        self._anim.timeout.connect(self._redraw_rows)
+        ctx.econ.looks_changed.connect(self._redraw_rows)
         self._build()
+
+    def _redraw_rows(self) -> None:
+        for row in self.findChildren(PlayerRow):
+            row.update()
 
     def _redo(self) -> None:
         if self.ctx.window.current == "friends" and self.ctx.window.expanded:
@@ -21400,14 +22195,17 @@ class FriendsPage(Page):
             self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
             return ctx.online.ask("rb_profile", {"name": name}, self._got_profile)
         prof, hist = data.get("profile") or {}, data.get("history")
-        self.lay.addWidget(ProfileCard(ctx, prof))
+        self.lay.addWidget(ProfileCard(ctx, prof, self.W))
+        badges = list(prof.get("badges") or [])
+        owned = set(badges)
+        worn_now = [w for w in ((prof.get("equip") or {}).get(k) for k in ("badge1", "badge2", "badge3")) if w and
+                    (w in owned or (w.endswith(":grey") and any(b.startswith(w[:-4]) for b in owned)))]
+        self.lay.addWidget(Showcase3(ctx, worn_now, self.W, prof.get("me")))
         if not prof.get("me"):
             self._relation(prof, name)
-        badges = list(prof.get("badges") or [])
         self.lay.addWidget(heading(tr("Badges") + f"  ·  {len(badges)}"))
         if badges:
-            worn_now = [(prof.get("equip") or {}).get(k) for k in ("badge1", "badge2", "badge3")]
-            self.lay.addWidget(BadgeStrip(ctx, badges, [w for w in worn_now if w], self.W))
+            self.lay.addWidget(BadgeStrip(ctx, badges, worn_now, self.W))
         else:
             self.lay.addWidget(Label(tr("No badges yet"), 12, TEXT_DIM))
         if prof.get("stats") is None:
@@ -21545,45 +22343,134 @@ class FriendsPage(Page):
     def on_show(self) -> None:
         self.refresh()
         self._poll.start()
+        self._anim.start()
+        self.ctx.econ.fetch_looks(force=True)
 
     def on_hide(self) -> None:
         self._poll.stop()
+        self._anim.stop()
 
 
 class ProfileCard(QWidget):
-    """Picture, online or not, time played, member since."""
+    """The top of a profile: their banner, their picture in its frame, name and tags, online, time played, member since."""
 
-    def __init__(self, ctx, prof: dict) -> None:
+    def __init__(self, ctx, prof: dict, width: int) -> None:
         super().__init__()
         self.ctx, self.prof = ctx, prof
-        self.setFixedHeight(S(64))
+        self.setFixedSize(width, S(132))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._tick = Ticker(self, 60)
+
+    def showEvent(self, _e) -> None:
+        self._tick.start()
+
+    def hideEvent(self, _e) -> None:
+        self._tick.stop()
 
     def paintEvent(self, _e) -> None:
+        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        prof = self.prof
+        name = prof.get("username", "?")
+        eq = prof.get("equip") or {}
+        now = time.monotonic()
         p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
         p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(11), S(11))
-        prof = self.prof
+        p.drawRoundedRect(r, S(12), S(12))
+        top = QRectF(r.left(), r.top(), r.width(), S(70))
+        if eq.get("banner"):
+            paint_banner(p, top, eq["banner"], now, S(12))
+        else:                                               # no banner: a soft band in their own colour
+            hue = (sum(ord(c) for c in name.lower()) * 37 % 360) / 360
+            g = QLinearGradient(top.topLeft(), top.bottomRight())
+            g.setColorAt(0, QColor.fromHsvF(hue, 0.35, 0.22))
+            g.setColorAt(1, QColor.fromHsvF((hue + 0.12) % 1, 0.35, 0.12))
+            path = QPainterPath()
+            path.addRoundedRect(top, S(12), S(12))
+            p.fillPath(path, g)
         known = prof.get("friend") or prof.get("me")
-        paint_face(p, QRectF(r.left() + S(10), r.center().y() - S(21), S(42), S(42)), self.ctx,
-                   prof.get("username", "?"), int(prof.get("avatar_v") or 0), bool(prof.get("online")) if known else None)
+        face = QRectF(r.left() + S(16), top.bottom() - S(30), S(56), S(56))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#0B0E10"))
+        p.drawEllipse(face.adjusted(-S(3), -S(3), S(3), S(3)))
+        paint_face(p, face, self.ctx, name, int(prof.get("avatar_v") or 0), bool(prof.get("online")) if known else None,
+                   eq.get("frame", ""), now)
+        x = face.right() + S(14)
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(16, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(x, top.bottom() - S(30), S(220), S(26)), int(Qt.AlignmentFlag.AlignVCenter), name)
+        nx = x + p.fontMetrics().horizontalAdvance(name) + S(8)
         if prof.get("admin"):
-            paint_admin_tag(p, r.left() + S(10), r.bottom() - S(6))
+            nx += paint_admin_tag(p, nx, top.bottom() - S(17)) + S(5)
+        if eq.get("tag"):
+            pass
+            paint_tag(p, nx, top.bottom() - S(17), eq["tag"], now, 9)
         cells = ((tr("Online") if prof.get("online") else (tr("Offline") if known else "—"), tr("Status")),
                  (played_text(int(prof.get("minutes", 0))), tr("Played")), (date_text(prof.get("since")), tr("Member since")))
-        left = r.left() + S(60)
-        w = (r.right() - left) / 3
+        left = face.right() + S(6)
+        w = (r.right() - left - S(6)) / 3
         for i, (big, small) in enumerate(cells):
-            box = QRectF(left + i * w, r.top(), w, r.height())
+            box = QRectF(left + i * w, top.bottom() + S(8), w, r.bottom() - top.bottom() - S(8))
             p.setPen(QColor("#3DDC84") if (i == 0 and prof.get("online")) else QColor(TEXT))
-            p.setFont(font(13, QFont.Weight.Bold))
-            p.drawText(QRectF(box.left(), box.top() + S(11), box.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), big)
+            p.setFont(font(12.5, QFont.Weight.Bold))
+            p.drawText(QRectF(box.left(), box.top() + S(4), box.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), big)
             p.setPen(QColor(TEXT_DIM))
-            p.setFont(font(10, QFont.Weight.DemiBold))
-            p.drawText(QRectF(box.left(), box.top() + S(34), box.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), small)
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(box.left(), box.top() + S(25), box.width(), S(15)), int(Qt.AlignmentFlag.AlignCenter), small)
+
+
+class Showcase3(QWidget):
+    """Their 3 favourite badges, big (the 3 badges they have on show)."""
+
+    def __init__(self, ctx, items: list, width: int, mine: bool = False) -> None:
+        super().__init__()
+        self.ctx, self.items, self.mine = ctx, (list(items) + ["", "", ""])[:3], mine
+        self.setFixedSize(width, S(96))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._tick = Ticker(self, 60)
+
+    def showEvent(self, _e) -> None:
+        self._tick.start()
+
+    def hideEvent(self, _e) -> None:
+        self._tick.stop()
+
+    def paintEvent(self, _e) -> None:
+        pass
+        pass
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        p.setPen(QColor(TEXT_FAINT))
+        p.setFont(font(9.5, QFont.Weight.Bold, 0.6))
+        p.drawText(QRectF(S(2), 0, self.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter), tr("SHOWCASE"))
+        w = self.width() / 3
+        for i, item in enumerate(self.items):
+            cell = QRectF(i * w + S(3), S(18), w - S(6), self.height() - S(20))
+            if not item:
+                p.setPen(QPen(alpha("#FFFFFF", 0.10), 1, Qt.PenStyle.DashLine))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(cell, S(10), S(10))
+                p.setPen(QColor(TEXT_FAINT))
+                p.setFont(font(9.5, QFont.Weight.DemiBold))
+                p.drawText(cell, int(Qt.AlignmentFlag.AlignCenter), tr("Empty"))
+                continue
+            col = QColor(RARITY_COLOURS.get(self.ctx.econ.rarity(item), "#9AA4AD"))
+            g = QLinearGradient(cell.topLeft(), cell.bottomLeft())
+            g.setColorAt(0, mix(QColor("#0E1316"), col, 0.25))
+            g.setColorAt(1, QColor("#0E1316"))
+            p.setPen(QPen(alpha(col, 0.7), 1.2))
+            p.setBrush(g)
+            p.drawRoundedRect(cell, S(10), S(10))
+            d = S(46)
+            show_item(p, item, QRectF(cell.center().x() - d / 2, cell.top() + S(6), d, d), now)
+            p.setPen(QColor(TEXT))
+            p.setFont(font(9, QFont.Weight.DemiBold))
+            p.drawText(QRectF(cell.left() + S(4), cell.bottom() - S(20), cell.width() - S(8), S(16)),
+                       int(Qt.AlignmentFlag.AlignCenter),
+                       p.fontMetrics().elidedText(badge_label(item), Qt.TextElideMode.ElideRight, int(cell.width() - S(8))))
 
 
 class HistoryList(QWidget):
@@ -22108,13 +22995,13 @@ class AdminPage(Page):
                               "#5BE08A" if int(l["coins"]) >= 0 else "#FF7A7A") for l in (d.get("ledger") or [])[:60]], self.W))
 
     RESETS = [("inventory", "Reset inventory",
-               "Deletes EVERY item {name} owns: all badges, balls, lines, fonts and themes. Items on the market or in a "
-               "trade are taken back first. Coins, keys and cases stay."),
+               "Deletes EVERY item {name} owns: all badges, balls, lines, fonts, themes, banners and frames. Items on the "
+               "market or in a trade are taken back first. Coins, keys, cases and the OG tag stay."),
               ("money", "Reset coins and keys", "Sets {name}'s coins and keys to 0. Items and cases stay."),
               ("cases", "Reset gifted cases", "Deletes every gifted case {name} has not opened yet. Nothing else changes."),
               ("all", "FULL ACCOUNT RESET",
                "{name} starts again like a new account: every item deleted, coins and keys back to the start (500 coins, "
-               "3 keys), gifted cases deleted, login streak back to 0. Time played, friends and name stay.")]
+               "3 keys), gifted cases deleted, login streak back to 0. Time played, friends, name and the OG tag stay.")]
 
     def _danger(self, lay, name: str, d: dict) -> None:
         """Big red reset buttons. Each says exactly what it deletes, asks you to type the name, and can be undone
@@ -22164,20 +23051,22 @@ class AdminPage(Page):
         cat = self.ctx.econ.catalog
         kind = int(getattr(self.ctx, "admin_kind", 1) or 1)
         pass
-        pick = GamePicker([tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Cases")], kind - 1)
+        pick = GamePicker([tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Banners"), tr("Frames"),
+                           tr("Tags"), tr("Cases")], kind - 1)
         pick.changed.connect(lambda i: (setattr(self.ctx, "admin_kind", i + 1), setattr(self.ctx, "admin_base", ""), self.ctx.reload_page()))
         lay.addWidget(pick)
         chosen = getattr(self.ctx, "admin_item", "") or ""
         lay.addWidget(Label(tr("Selected: {what}", what=chosen or "—"), 11.5, GOLD_TEXT, bold=True, wrap_w=self.W))
         lay.addWidget(Label(tr("Pick an item, then open a user and press Give item or case. Or use it for a giveaway or a sale."),
                             10.5, TEXT_DIM, wrap_w=self.W))
-        if kind == 6:
+        if kind == 9:
             pass
             ids = [c["id"] for c in self.ctx.econ.cases]
             lay.addWidget(Table([(tr(CASE_NAMES.get(c, c)), "case:" + c, "") for c in ids], self.W,
                                 lambda i: (setattr(self.ctx, "admin_item", "case:" + ids[i]), self.ctx.reload_page())))
             return
-        want = KINDS[kind]
+        want = ["", "badge", "ball", "line", "font", "theme", "banner", "frame", "tag"][min(kind, 8)]
+        single = want in ("theme", "banner", "frame", "tag")          # one item per design, no colours
         base = getattr(self.ctx, "admin_base", "") or ""
         if not base:
             bases, seen = [], set()
@@ -22185,11 +23074,11 @@ class AdminPage(Page):
                 info = cat[k]
                 if info.get("kind") == want and info.get("base") not in seen:
                     seen.add(info.get("base"))
-                    bases.append(k if want == "theme" else f"{want}:{info['base']}:{'grey' if want != 'badge' or info['base'] not in ('galaxy','phoenix','glitch','crystal','dragon','rubenium') else 'prime'}")
+                    bases.append(k if single else f"{want}:{info['base']}:{'grey' if want != 'badge' or info['base'] not in ('galaxy','phoenix','glitch','crystal','dragon','rubenium') else 'prime'}")
             grid = ItemGrid(self.ctx, [{"item": b} for b in bases], self.W, 6, 54)
 
             def go(i: int) -> None:
-                if want == "theme":
+                if single:
                     self.ctx.admin_item = bases[i]
                 else:
                     self.ctx.admin_base = bases[i].split(":")[1]

@@ -58,3 +58,10 @@ The Gold Rubenium R: about 1 in 220 000 Mythic Hunt openings.
 - Beat Tap modes: Normal, Rush (faster, more notes), Long notes, Chords. Same pay and limits.
 - Admin resets (inventory, coins and keys, gifted cases, full account): everything is saved in the Log and can be undone.
 - Visualisers removed (none are sold).
+
+## 2.6
+
+- Fresh start: every account back to 500 coins and 3 keys; items, spins, cases, sets and collection history reset (backup tables rb_bak26_*). Time played, friends, streak kept.
+- OG tag: free for accounts made before 17 Nov 2026 (Paris), never sold or traded, kept by admin resets. Cut-off is `og_until` in rb_config.
+- Banners (16): Common 400, Rare 1 200, Epic 3 500, Legendary 9 000. Frames (12): 300, 1 000, 3 000, 8 000. In the shop, market, trades and daily deals.
+- Quick sell: 25% of the value (`quick_share`), and for shop items never more than half of what was paid (`quick_shop_share`). Checked: no case and no sale (even -90%) can be farmed with it.
