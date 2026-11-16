@@ -1,7 +1,27 @@
-Rubenium 2.6.1
+Rubenium 2.7 - the full release
 
-- Cases rebalanced: coin cases now pay back a little more than they cost on average (you still lose about half the time)
-- Rare hunts (All or Nothing, Painter, Legend Vault, Mythic Hunt) are for rare badges: rarer badges are not easier to get
+FRESH START
+- Everyone begins again with 500 coins and 3 keys (items, spins and cases reset)
+- Free OG tag for every user who joined before 17 November
+
+PROFILES
+- Banners, frames and a showcase of your 3 favourite badges, seen by everyone
+- 19 banners and 15 frames in the Shop, on the Market, in trades and in Daily Deals (new: Snow, Ember, Nebula, Frost, Star, Halo)
+- Style > Your profile: change your banner, frame, tag and showcase in one place
+- Frames and tags show in every list, the leaderboards and the chat
+
+CASES AND ECONOMY
+- Coin cases (Starter, Standard, Premium, Jackpot, Titanium) pay back a little more than they cost on average; you still lose about half the time
+- Rare hunts (All or Nothing, Painter, Legend Vault, Mythic Hunt) are for rare badges: rare badges are NOT easier to get
 - Every coin drop has a 6% chance to be a lucky x3; the Jackpot can pay up to 32 times its price
-- Badges in the shop cost more, the rarer and luckier they are; the market can now go up to the shop price
+- Every badge shows its exact chance in each case, for every colour and finish
+- Badges in the shop cost more, the rarer and luckier they are; the market can go up to the shop price
+- Quick sell: sell any item right away for a quarter of its value, or every extra copy at once
+- AFK money is better: 150 coins an hour (up to 1 800 a day) and 1 key an hour
 - Gifting a case costs its price and 1 key
+- The casino was checked: every game pays back 96 to 99%
+
+ALSO
+- Inventory: the 2027 LIMITED Advent Calendar is coming soon
+- Fixed: after an update, the New tab could show on top of another tab
+- Fixed: switching sections quickly could cause a hidden error

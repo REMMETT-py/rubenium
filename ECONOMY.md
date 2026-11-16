@@ -88,3 +88,9 @@ bought, so the key is the real limit on cases; a gift now costs its price and 1 
 - Shop badge price = 1.5 x the coins lost on average in the best case to get one of that rarity and finish, at least 8 x
   its value: Common 1 200 / 1 900 / 80 000 (Basic / Painted / Shiny), Rare 3 600 / 5 750 / 210 000, Epic 9 600 / 15 500 /
   585 000, Legendary 24 500 / 58 000 / 2 750 000. The market can go up to the shop price.
+
+## 2.7
+
+- AFK: 25 coins every 10 minutes (150 an hour), up to 1 800 a day; 1 key an hour (up to 48).
+- Casino return (checked by maths): Slots 96.9%, Plinko 95.9-96.9%, Dice 97%, Bombs 97%, Rocket 96%, Blackjack about 98-99%. Unchanged.
+- New looks: banners Snow (Rare 1 200), Ember (Epic 3 500), Nebula (Legendary 9 000); frames Frost (Rare 1 000), Star (Epic 3 000), Halo (Legendary 8 000).
