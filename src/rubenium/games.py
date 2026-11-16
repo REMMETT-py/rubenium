@@ -7,7 +7,7 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 from PyQt6.QtWidgets import QGridLayout, QWidget
 
 from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
@@ -958,6 +958,10 @@ class Daily(Game):
     # (coins, keys) on each slice
     PRIZES = [(40, 0), (75, 0), (120, 0), (180, 0), (300, 0), (500, 0), (1200, 0), (0, 1)]      # as the server numbers them
 
+    def prizes(self) -> list:
+        """3.1: a 9th slice, GOLD (the Golden Wheel), once the server has it."""
+        return self.PRIZES + [(0, -1)] if "gold_wheel_pct" in self.econ.cfg else self.PRIZES
+
     def __init__(self, page) -> None:
         super().__init__(page)
         self.angle = 0.0
@@ -978,8 +982,8 @@ class Daily(Game):
         waiting = self.wallet.spin_waiting
         if waiting and self.collect is None and not self.busy:      # a prize from before was never collected
             self.result = int(waiting.get("slot", 0))
-            self.collect = (int(waiting.get("won", 0)), int(waiting.get("won_keys", 0)))
-            self.angle = (self.result + 0.5) * 360.0 / len(self.PRIZES)
+            self.collect = (int(waiting.get("won", 0)), -1 if waiting.get("gold") else int(waiting.get("won_keys", 0)))
+            self.angle = (self.result + 0.5) * 360.0 / len(self.prizes())
         self.page.sync()
         self.update()
 
@@ -992,9 +996,9 @@ class Daily(Game):
 
     def _rolled(self, ans: dict) -> None:
         self.result = int(ans.get("slot", 0))
-        self._prize = (int(ans.get("won", 0)), int(ans.get("won_keys", 0)))
+        self._prize = (int(ans.get("won", 0)), -1 if ans.get("gold") else int(ans.get("won_keys", 0)))
         self.wallet.spin_used()
-        seg = 360.0 / len(self.PRIZES)
+        seg = 360.0 / len(self.prizes())
         self._from = self.angle % 360.0
         self._to = 360.0 * 5 + (self.result + 0.5 + RNG.uniform(-0.3, 0.3)) * seg
         self._t0 = time.monotonic()
@@ -1013,9 +1017,12 @@ class Daily(Game):
             return
         coins, keys = self.collect
 
-        def got(_ans: dict) -> None:
+        def got(ans: dict) -> None:
             self.collect = None
             self.wallet.spin_waiting = None
+            if keys < 0:                                   # GOLD: the Golden Wheel opens
+                from .goldwheel import open_gold_wheel
+                return open_gold_wheel(self.ctx)
             self.econ.adjust(coins, keys)
             self.flash("+" + (coins_text(coins) if coins else f"{keys} " + (tr("key") if keys == 1 else tr("keys"))), WIN)
             sfx.play("on")
@@ -1024,6 +1031,8 @@ class Daily(Game):
     def buttons(self) -> list:
         if self.collect is not None:
             coins, keys = self.collect
+            if keys < 0:
+                return [(tr("Spin the Golden Wheel"), "primary", self.take_prize, not self.waiting)]
             what = coins_text(coins) if coins else f"{keys} " + (tr("key") if keys == 1 else tr("keys"))
             return [(tr("Collect") + f"  +{what}", "primary", self.take_prize, not self.waiting)]
         wait = self.wallet.daily_wait()
@@ -1036,18 +1045,23 @@ class Daily(Game):
             self.angle = self._from + (self._to - self._from) * ease_out((now - self._t0) / 4.6, 4)
         radius = min(r.width(), r.height()) / 2 - S(16)
         c = QPointF(r.center().x(), r.center().y() + S(4))
-        n = len(self.PRIZES)
+        n = len(self.prizes())
         seg = 360.0 / n
         box = QRectF(c.x() - radius, c.y() - radius, radius * 2, radius * 2)
         wait = self.wallet.daily_wait()
         ready = wait == 0 or self.busy or self.collect is not None
         p.setOpacity(1.0 if ready else 0.35)
-        for i, (coins, keys) in enumerate(self.PRIZES):
+        for i, (coins, keys) in enumerate(self.prizes()):
             start = 90.0 - (i * seg - self.angle)
-            worth = coins if coins else keys * 400                 # a key is shown about as rich as 400 coins
+            worth = coins if coins else max(1, keys) * 400         # a key is shown about as rich as 400 coins
             col = mix(QColor("#182024"), QColor("#E8C26A"), 0.15 + 0.75 * (math.log(worth) - math.log(50)) / (math.log(1200) - math.log(50)))
-            if keys:
+            if keys > 0:
                 col = mix(QColor("#182024"), ui.accent, 0.55 + 0.15 * keys)
+            if keys < 0:                                    # GOLD
+                gg = QRadialGradient(c, radius)
+                gg.setColorAt(0, QColor("#FFF1B8"))
+                gg.setColorAt(1, QColor("#C9922A"))
+                col = gg
             p.setPen(QPen(QColor("#0A0D0E"), 1.4))
             p.setBrush(col)
             p.drawPie(box, int(start * 16), int(-seg * 16))
@@ -1055,7 +1069,11 @@ class Daily(Game):
             tp = QPointF(c.x() + radius * 0.72 * math.cos(mid), c.y() - radius * 0.72 * math.sin(mid))
             p.setPen(QColor("#FFFFFF"))
             p.setFont(font(9.5, QFont.Weight.Bold))
-            if keys:
+            if keys < 0:
+                p.setPen(QColor("#3A2606"))
+                p.setFont(font(9, QFont.Weight.Black))
+                p.drawText(QRectF(tp.x() - S(22), tp.y() - S(9), S(44), S(18)), int(Qt.AlignmentFlag.AlignCenter), "GOLD")
+            elif keys:
                 p.save()
                 p.translate(tp.x() - (S(6) if keys > 1 else 0), tp.y())
                 p.scale(S(13) / 20, S(13) / 20)
@@ -1196,6 +1214,157 @@ class Dice(Game):
             p.setFont(font(13, QFont.Weight.ExtraBold))
             p.drawText(QRectF(x - S(24), bar.top() - S(36), S(48), S(20)), int(Qt.AlignmentFlag.AlignCenter),
                        str(int(round(value))))
+
+
+# --------------------------------------------------------------------------- #
+# Timing (3.1): a skill game. Stop the needle on the target.
+# --------------------------------------------------------------------------- #
+def timing_pos(seed: dict, ms: float) -> float:
+    """Where the needle is (0..1) after `ms`: the same maths as the server."""
+    s = ms / 1000
+    x = float(seed.get("v", 2)) * s + float(seed.get("a", 0.4)) * s * s / 2 + float(seed.get("o", 0))
+    return abs(x - 2 * math.floor(x / 2) - 1)
+
+
+class Timing(Game):
+    """Start, then stop the needle as close to the target as you can. It speeds up the longer you wait, and the
+    target moves every round. Perfect x4, good x1.8, close x0.9 (most of the bet back)."""
+    ZONES = (("perfect", 0.008, 4.0, "#FFD36B"), ("good", 0.025, 1.8, "#3DDC84"), ("close", 0.05, 0.9, "#2E9BFF"))
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        self.seed = None
+        self.t0 = 0.0
+        self.running = False
+        self.result = None                        # (pos, grade, paid)
+        self.history: list = []
+
+    def always_moving(self) -> bool:
+        return self.running
+
+    def tutorial(self) -> bool:
+        return not self.ctx.cfg["timing_help"]
+
+    def _got_it(self) -> None:
+        self.ctx.cfg["timing_help"] = True
+        sfx.play("pick")
+        self.page.sync()
+        self.update()
+
+    def play(self) -> None:
+        if self.busy or self.waiting or not self.take():
+            return
+        self.result = None
+        self.ask("rb_timing", {"action": "start", "bet": self.stake, "ms": 0}, self._started, once=True, refund=self.stake)
+
+    def _started(self, ans: dict) -> None:
+        self.seed = ans.get("seed") or {}
+        self.t0 = time.monotonic()
+        self.running = True
+        self._frames.start()
+        QTimer.singleShot(8800, self._auto_stop)
+        self.page.sync()
+
+    def _auto_stop(self) -> None:
+        if self.running:
+            self.stop()
+
+    def stop(self) -> None:
+        if not self.running or self.waiting:
+            return
+        ms = int((time.monotonic() - self.t0) * 1000)
+        self.running = False
+        self._stopped_ms = ms
+        sfx.play("pick")
+        self.ask("rb_timing", {"action": "stop", "bet": 0, "ms": ms}, self._stopped, once=True)
+
+    def _stopped(self, ans: dict) -> None:
+        self.result = (float(ans.get("pos") or 0), str(ans.get("grade") or "miss"), int(ans.get("paid") or 0))
+        self.history.insert(0, self.result[1])
+        del self.history[10:]
+        self.animate(1.5)
+        self.finish(self.result[2])
+
+    def failed(self, message: str) -> None:
+        self.running = False
+        super().failed(message)
+
+    def buttons(self) -> list:
+        if self.tutorial():
+            return [(tr("Got it"), "primary", self._got_it, True)]
+        if self.running:
+            return [(tr("STOP"), "primary", self.stop, not self.waiting)]
+        return [(tr("Start"), "primary", self.play, not self.busy)]
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        if self.running:                                # clicking the table stops it too
+            self.stop()
+
+    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
+        if self.tutorial():
+            p.setPen(QColor(TEXT))
+            p.setFont(font(15, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left(), r.top() + S(14), r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("How to play Timing"))
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            p.setPen(QColor(TEXT_DIM))
+            lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, faster and faster."),
+                     tr("3. Press STOP (or click the table) when it is on the target."),
+                     tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0"),
+                     tr("The target moves every round. Practice makes the difference.")]
+            y = r.top() + S(48)
+            for text in lines:
+                box = p.fontMetrics().boundingRect(0, 0, int(r.width() - S(36)), 1000, int(Qt.TextFlag.TextWordWrap), text)
+                p.drawText(QRectF(r.left() + S(18), y, r.width() - S(36), box.height() + S(2)),
+                           int(Qt.AlignmentFlag.AlignVCenter | Qt.TextFlag.TextWordWrap), text)
+                y += box.height() + S(6)
+            return
+        bar = QRectF(r.left() + S(22), r.center().y() - S(10), r.width() - S(44), S(20))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#1A2125"))
+        p.drawRoundedRect(bar, S(10), S(10))
+        c = float((self.seed or {}).get("c", 0.5))
+        for _name, half, _m, col in reversed(self.ZONES):
+            zone = QRectF(bar.left() + bar.width() * (c - half), bar.top(), bar.width() * half * 2, bar.height())
+            p.setBrush(alpha(col, 0.55))
+            p.drawRoundedRect(zone, S(3), S(3))
+        if self.running and self.seed:
+            pos = timing_pos(self.seed, (now - self.t0) * 1000)
+        elif self.result is not None:
+            pos = self.result[0]
+        else:
+            pos = None
+        if pos is not None:
+            x = bar.left() + bar.width() * pos
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawRoundedRect(QRectF(x - S(2), bar.top() - S(12), S(4), bar.height() + S(24)), S(2), S(2))
+        p.setFont(font(24, QFont.Weight.ExtraBold))
+        if self.result is not None and not self.running:
+            grade = self.result[1]
+            col = {"perfect": "#FFD36B", "good": "#3DDC84", "close": "#2E9BFF"}.get(grade, LOSE)
+            p.setPen(QColor(col))
+            p.drawText(QRectF(r.left(), r.top() + S(18), r.width(), S(36)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr({"perfect": "PERFECT", "good": "GOOD", "close": "CLOSE", "late": "TOO LATE"}.get(grade, "MISS")))
+        else:
+            p.setPen(QColor(TEXT))
+            p.drawText(QRectF(r.left(), r.top() + S(18), r.width(), S(36)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("STOP!") if self.running else tr("Timing"))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left(), bar.bottom() + S(18), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Perfect ×4 · Good ×1.8 · Close ×0.9"))
+        x = r.left() + S(16)
+        p.setFont(font(9, QFont.Weight.Bold))
+        for grade in self.history[:8]:
+            col = {"perfect": "#FFD36B", "good": "#3DDC84", "close": "#2E9BFF"}.get(grade, LOSE)
+            chip = QRectF(x, r.bottom() - S(28), S(52), S(18))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.22))
+            p.drawRoundedRect(chip, S(9), S(9))
+            p.setPen(QColor(col))
+            p.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), tr(grade.capitalize()))
+            x += S(56)
 
 
 # --------------------------------------------------------------------------- #
@@ -1759,6 +1928,8 @@ class GameTile(QWidget):
 
     def mouseReleaseEvent(self, e) -> None:
         if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
+            if self.name == "Mini Golf":
+                return self.page.open_sub("duels")
             self.page.enter(self.index)
 
     def paintEvent(self, _e) -> None:
@@ -1771,7 +1942,7 @@ class GameTile(QWidget):
         p.drawRoundedRect(r, S(11), S(11))
         art = QPointF(r.left() + S(34), r.center().y())
         p.setPen(Qt.PenStyle.NoPen)
-        if self.index == 0:                                    # two cards
+        if self.name == "Blackjack":                                    # two cards
             for k, (dx, rot) in enumerate(((-S(6), -10), (S(6), 8))):
                 p.save()
                 p.translate(art.x() + dx, art.y())
@@ -1784,7 +1955,7 @@ class GameTile(QWidget):
                     p.setFont(font(10, QFont.Weight.Bold))
                     p.drawText(QRectF(-S(10), -S(14), S(20), S(28)), int(Qt.AlignmentFlag.AlignCenter), "A")
                 p.restore()
-        elif self.index == 1:                                  # pins and a ball
+        elif self.name == "Plinko":                                  # pins and a ball
             p.setBrush(alpha("#FFFFFF", 0.55))
             for i in range(4):
                 for j in range(i + 2):
@@ -1794,18 +1965,18 @@ class GameTile(QWidget):
             for k in range(5):
                 p.setBrush(QColor("#E8C26A") if k in (0, 4) else QColor("#2A3238"))
                 p.drawRoundedRect(QRectF(art.x() - S(22) + k * S(9), art.y() + S(15), S(8), S(5)), S(1.5), S(1.5))
-        elif self.index == 2:                                  # cards and a gem
+        elif self.name == "Bombs":                                  # cards and a gem
             for i in range(9):
                 cell = QRectF(art.x() - S(17) + (i % 3) * S(12), art.y() - S(17) + (i // 3) * S(12), S(10), S(10))
                 p.setBrush(alpha(ui.accent, 0.85) if i == 4 else QColor("#1A2125"))
                 p.drawRoundedRect(cell, S(2.5), S(2.5))
-        elif self.index == 4:                                  # a die
+        elif self.name == "Dice":                                  # a die
             p.setBrush(QColor("#F4F5F6"))
             p.drawRoundedRect(QRectF(art.x() - S(14), art.y() - S(14), S(28), S(28)), S(6), S(6))
             p.setBrush(QColor("#14181A"))
             for dx, dy in ((-7, -7), (7, 7), (0, 0), (7, -7), (-7, 7)):
                 p.drawEllipse(QPointF(art.x() + S(dx), art.y() + S(dy)), S(2.3), S(2.3))
-        elif self.index == 5:                                  # a climbing line
+        elif self.name == "Rocket":                                  # a climbing line
             line = QPainterPath()
             line.moveTo(art.x() - S(20), art.y() + S(14))
             line.cubicTo(art.x() - S(4), art.y() + S(12), art.x() + S(8), art.y() + S(2), art.x() + S(18), art.y() - S(15))
@@ -1815,6 +1986,26 @@ class GameTile(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor("#FFFFFF"))
             p.drawEllipse(QPointF(art.x() + S(18), art.y() - S(15)), S(3.4), S(3.4))
+        elif self.name == "Timing":                             # a bar, a target and the needle
+            p.setBrush(QColor("#1A2125"))
+            p.drawRoundedRect(QRectF(art.x() - S(22), art.y() - S(4), S(44), S(8)), S(4), S(4))
+            p.setBrush(QColor("#3DDC84"))
+            p.drawRoundedRect(QRectF(art.x() + S(2), art.y() - S(4), S(10), S(8)), S(3), S(3))
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawRoundedRect(QRectF(art.x() + S(5), art.y() - S(12), S(3), S(24)), S(1.5), S(1.5))
+        elif self.name == "Mini Golf":                          # green, a hole and a flag
+            p.setBrush(QColor("#2E9E4F"))
+            p.drawRoundedRect(QRectF(art.x() - S(20), art.y() - S(4), S(40), S(18)), S(9), S(9))
+            p.setBrush(QColor("#0B120D"))
+            p.drawEllipse(QPointF(art.x() + S(6), art.y() + S(5)), S(3.5), S(2.2))
+            p.setPen(QPen(QColor("#EDEDED"), S(1.4)))
+            p.drawLine(QPointF(art.x() + S(6), art.y() + S(5)), QPointF(art.x() + S(6), art.y() - S(16)))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#FF4B4B"))
+            p.drawPolygon(QPolygonF([QPointF(art.x() + S(6), art.y() - S(16)), QPointF(art.x() + S(17), art.y() - S(12)),
+                                     QPointF(art.x() + S(6), art.y() - S(8))]))
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawEllipse(QPointF(art.x() - S(10), art.y() + S(6)), S(3), S(3))
         else:                                                  # 777
             p.setPen(QColor("#FF4B5C"))
             p.setFont(font(16, QFont.Weight.ExtraBold))
@@ -1851,7 +2042,7 @@ class DailyRow(QWidget):
 
     def mouseReleaseEvent(self, e) -> None:
         if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
-            self.page.enter(6)
+            self.page.enter(GamesPage.NAMES.index("Free spin"))
 
     def paintEvent(self, _e) -> None:
         w = self.ctx.wallet
@@ -1937,7 +2128,7 @@ class QuestRow(QWidget):
 class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
-    NAMES = ["Blackjack", "Plinko", "Bombs", "Slots", "Dice", "Rocket", "Free spin"]
+    NAMES = ["Blackjack", "Plinko", "Bombs", "Slots", "Dice", "Timing", "Rocket", "Free spin"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -1987,31 +2178,28 @@ class GamesPage(Page):
             lay.addWidget(StreakRow(self))
         lay.addWidget(DailyRow(self))
         lay.addWidget(ScratchRow(self))
-        line = hbox(spacing=6)
         earn = BigCard(tr("Earn coins"), tr("3 free mini games"), "spark",
                        ("#35E0A1", "#12806A"), lambda: self.open_sub("minigames"))
-        duel = BigCard(tr("Mini Golf"), tr("1v1 live with friends"), "shield",
-                       ("#FF5C6C", "#8A1F7A"), lambda: self.open_sub("duels"))
-        line.addWidget(earn, 1)
-        line.addWidget(duel, 1)
-        lay.addLayout(line)
+        lay.addWidget(earn)                                  # 3.1: one long bar
         lay.addWidget(heading(tr("Casino")))
         grid = QWidget()
         gl = QGridLayout(grid)
         gl.setContentsMargins(0, 0, 0, 0)
         gl.setSpacing(S(6))
-        for i, name in enumerate(self.NAMES[:6]):
-            gl.addWidget(GameTile(self, i, name), i // 2, i % 2)
+        tiles = [(i, n) for i, n in enumerate(self.NAMES) if n != "Free spin"] + [(-1, "Mini Golf")]
+        for k, (i, name) in enumerate(tiles):              # Mini Golf sits right after Rocket
+            gl.addWidget(GameTile(self, i, name), k // 2, k % 2)
         lay.addWidget(grid)
         go = Button(tr("Enter casino"), "primary", 40)
         go.clicked.connect(lambda: self.enter(None))
         lay.addWidget(go)
 
     # -- quests: small goals for coins, counted by the server
-    QUESTS = {"h_rounds": "Play {n} casino rounds", "h_mini": "Play mini games {n} times", "h_bet": "Bet {n} coins in the casino",
-              "h_win": "Win {n} coins in the casino", "d_rounds": "Play {n} casino rounds", "d_case": "Open a case",
-              "d_mini": "Play mini games {n} times", "d_spin": "Collect a free spin",
-              "w_rounds": "Play {n} casino rounds", "w_cases": "Open {n} cases", "w_won": "Win {n} coins in the casino"}
+    QUESTS = {"h_rounds": "Play {n} casino rounds", "h_mini": "Play a mini game", "h_bet": "Bet {n} coins in the casino",
+              "h_win": "Win {n} coins in the casino", "h_case": "Open a case", "d_rounds": "Play {n} casino rounds",
+              "d_case": "Open {n} cases", "d_mini": "Play mini games {n} times", "d_spin": "Collect a free spin",
+              "w_rounds": "Play {n} casino rounds", "w_cases": "Open {n} cases", "w_won": "Win {n} coins in the casino",
+              "w_mini": "Play mini games {n} times", "w_golf": "Win {n} Mini Golf matches", "w_scratch": "Scratch {n} cards"}
 
     def _show_mini(self, on: bool) -> None:
         sfx.play("pick")
@@ -2274,7 +2462,7 @@ class GamesPage(Page):
         self.seg = GamePicker([tr(n) for n in self.NAMES], which)
         self.seg.changed.connect(self._choose)
         lay.addWidget(self.seg)
-        self.games = [Blackjack(self), Plinko(self), Bombs(self), Slots(self), Dice(self), Rocket(self), Daily(self)]
+        self.games = [Blackjack(self), Plinko(self), Bombs(self), Slots(self), Dice(self), Timing(self), Rocket(self), Daily(self)]
         for g in self.games:
             g.setVisible(False)
             lay.addWidget(g)

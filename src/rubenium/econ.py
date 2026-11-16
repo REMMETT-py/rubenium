@@ -177,10 +177,26 @@ class Econ(QObject):
             return mine
         return self.looks.get(name) or {}
 
+    def streak_bonus(self) -> int:
+        """3.1: every day of the login streak adds coins to the AFK pay (up to 20 days)."""
+        per = int(self.cfg.get("streak_coin", 0) or 0)
+        if not per or not self.streak or not self.streak_day:
+            return 0
+        import datetime
+        try:
+            day = datetime.date.fromisoformat(str(self.streak_day)[:10])
+        except ValueError:
+            return 0
+        if (datetime.date.today() - day).days > 1:
+            return 0
+        return per * min(int(self.streak), int(self.cfg.get("streak_coin_days", 20) or 20))
+
     def gold_of(self, item: str) -> int:
         """How gold one of your banners is (0-3), from the hours you wore it."""
         try:
-            return max(0, min(3, int((self.wear_data.get(item) or {}).get("level") or 0)))
+            level = int((self.wear_data.get(item) or {}).get("level") or 0)
+            pick = self.worn("banner_gold")
+            return max(0, min(3, level, int(pick) if str(pick).isdigit() else 3))
         except (TypeError, ValueError):
             return 0
 
@@ -339,6 +355,8 @@ class Econ(QObject):
         self.absorb(data)
         self.fetch_gold_keys()
         if first:
+            if hasattr(self.ctx, "check_gold_wheels"):
+                QTimer.singleShot(3000, self.ctx.check_gold_wheels)
             self.loaded.emit()
             if hasattr(self.ctx, "after_login"):
                 QTimer.singleShot(1200, self.ctx.after_login)

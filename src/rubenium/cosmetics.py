@@ -83,8 +83,10 @@ def shop_theme(ident: str):
     if not _themes:
         from .extras import _theme
         for tid, name, c1, c2, sky in THEME_LOOKS:
-            th = _theme("theme:" + tid, name, 0, **sky)
+            th = _theme("theme:" + tid, name, 0, glow=1, sparkles=sky.get("sparkles", 0) // 2,
+                        halo=1.0 + 0.1 * sky.get("glow", 2), edge=sky.get("edge", ""))
             th["tint"] = (c1, c2)
+            th["scene"] = tid                              # 3.1: its own picture instead of the night sky
             _themes["theme:" + tid] = th
     return _themes.get(ident)
 

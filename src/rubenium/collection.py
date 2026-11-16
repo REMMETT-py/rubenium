@@ -22,15 +22,20 @@ SLOTS = ("badge1", "badge2", "badge3")
 CASE_NAMES = {"starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing",
               "painter": "Painter's Case", "premium": "Premium Case", "jackpot": "Jackpot Case",
               "titan": "Titanium Case", "vault": "Legend Vault", "mythic": "Mythic Hunt", "daily": "Daily Case",
-              "style": "Style Case", "themes": "Theme Case", "profile": "Profile Case"}
+              "style": "Style Case", "themes": "Theme Case", "profile": "Profile Case",
+              "pocket": "Pocket Case", "elite": "Elite Case", "royal": "Royal Case", "shiny": "Shiny Hunt",
+              "banners": "Banner Case"}
 CASE_COLOURS = {"starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
                 "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0",
-                "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF"}
+                "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF",
+                "pocket": "#9AD27A", "elite": "#3DE0A0", "royal": "#E8C26A", "shiny": "#E6F2FF", "banners": "#FF6FA8"}
 CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"),
               "gamble": ("dice", "skull", "dice"), "painter": ("feather", "quill", "drop"),
               "premium": ("sword", "bolt", "flame"), "jackpot": ("$", "$", "$"), "titan": ("shield", "rook", "anchor"),
               "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?"),
-              "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame")}
+              "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame"),
+              "pocket": ("clover", "heart", "note"), "elite": ("bolt", "crown", "comet"), "royal": ("crown", "trophy", "crown"),
+              "shiny": ("drop", "comet", "drop"), "banners": ("flame", "crown", "feather")}
 CASE_NOTES = {"gamble": "High risk. Rare or better when it hits.",
               "painter": "Painted badges only.",
               "jackpot": "Coins only. Rare large payouts.",
@@ -40,11 +45,14 @@ CASE_NOTES = {"gamble": "High risk. Rare or better when it hits.",
               "starter": "Entry-level case.", "standard": "Coins, with a chance of a Rare badge.",
               "premium": "Larger coin drops and better badges.",
               "style": "Balls, song lines and fonts.", "themes": "Themes, Rare or better.",
-              "profile": "Banners and frames."}
+              "profile": "Banners and frames.", "pocket": "Cheap and quick: small coins, sometimes a badge.",
+              "elite": "Big coin drops and a real chance of Legendary badges.",
+              "royal": "For high rollers: the biggest coin drops in the game.",
+              "shiny": "No Basic badges: the best odds for Shiny finishes.", "banners": "Banners only, every rarity."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
-COIN_CASES = ("starter", "standard", "premium", "jackpot", "titan")
-HUNT_CASES = ("gamble", "painter", "vault", "mythic")
-STYLE_CASES = ("style", "themes", "profile")
+COIN_CASES = ("pocket", "starter", "standard", "premium", "jackpot", "titan", "elite", "royal")
+HUNT_CASES = ("gamble", "painter", "vault", "shiny", "mythic")
+STYLE_CASES = ("style", "themes", "banners", "profile")
 
 
 def case_kind(case_id: str) -> str:
@@ -590,7 +598,7 @@ class CaseCard(QWidget):
         have = int(self.ctx.econ.stock.get(cid, 0) or 0)
         kind = case_kind(cid)
         if kind:                                            # what this case is for, at a glance
-            text = {"coins": tr("COINS"), "hunt": tr("RARE HUNT"), "style": tr("STYLE")}[kind]
+            text = {"coins": tr("COINS + BADGES"), "hunt": tr("RARE BADGES"), "style": tr("COSMETICS")}[kind]
             kc = QColor({"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF"}[kind])
             p.setFont(font(9, QFont.Weight.Black, 0.6))
             kw = p.fontMetrics().horizontalAdvance(text) + S(14)
@@ -659,8 +667,13 @@ class OddsTable(QWidget):
                 col, name = QColor(RARITY_COLOURS[TIERS[n - 1]]), tr(RARITY_NAMES[TIERS[n - 1]])
             elif case.get("mode") == "jackpot" and not case_kind("jackpot"):
                 col, name = QColor(GOLD_TEXT), tr("{a} to {b} coins", a=100, b=coins_text(16000))
-            else:
-                col, name = QColor(GOLD_TEXT), tr("{a} to {b} coins", a=coins_text(case["coin_min"]), b=coins_text(case["coin_max"]))
+            else:                                           # the real top: lucky drops (x3), the Jackpot up to 32x
+                top = int(case["coin_max"])
+                if case.get("mode") == "jackpot":
+                    top = int(case["price"]) * 32
+                elif ECON is not None and ECON.cfg.get("case_lucky_x"):
+                    top = int(top * float(ECON.cfg.get("case_lucky_x") or 1))
+                col, name = QColor(GOLD_TEXT), tr("{a} to {b} coins", a=coins_text(case["coin_min"]), b=coins_text(top))
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(col, 0.07))
             p.drawRoundedRect(r.adjusted(0, S(1.5), 0, -S(1.5)), S(6), S(6))

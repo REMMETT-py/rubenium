@@ -323,7 +323,8 @@ class AdminPage(Page):
         from .hub import AmountWindow, NavTiles
         acts = [(tr("Coins"), "gem"), (tr("Keys"), "key"), (tr("Give item"), "gift"), (tr("Give case"), "folder"),
                 (tr("Unblock") if d.get("banned") else tr("Block"), "lock"), (tr("Picture"), "trash"),
-                (tr("Undo last"), "refresh"), (tr("Refresh"), "refresh")]
+                (tr("Undo last"), "refresh"), (tr("Refresh"), "refresh"), (tr("Golden Wheel"), "spark"),
+                (tr("Reset timers"), "timer")]
         grid = NavTiles(acts, -1, select=False)
 
         def act(i: int) -> None:
@@ -349,6 +350,11 @@ class AdminPage(Page):
                                    lambda: self.do("rb_admin_avatar_clear", {"name": name}, tr("Done")), yes=tr("Remove"))
             elif i == 6:
                 self._undo_last(name)
+            elif i == 8:                                # test: their next free spin or scratch card lands on GOLD
+                ctx.window.confirm(tr("Make the next free spin or scratch card of {name} land on the Golden Wheel?", name=name),
+                                   lambda: self.do("rb_admin_rig_gold", {"name": name, "rig": True}, tr("Done")), yes=tr("Yes"))
+            elif i == 9:                                # test: free spin and scratch card ready again
+                self.do("rb_admin_reset_timers", {"name": name}, tr("Free spin and scratch card are ready again"))
             else:
                 self._reload()
         grid.changed.connect(act)
@@ -736,10 +742,53 @@ class AdminPage(Page):
         for w in (edit, stop, gone):
             line.addWidget(w, 1)
         lay.addLayout(line)
+        line = hbox(spacing=6)
+        pic = Button(tr("Picture"), "ghost", 30)
+        pic.clicked.connect(lambda: self._bot_picture(b["username"]))
+        rnd = Button(tr("Random stats"), "ghost", 30)
+        rnd.clicked.connect(lambda: self.do("rb_admin_bot_set", {"name": b["username"], "cfg": self._bot_random()},
+                                            tr("Saved")))
+        past = Button(tr("Add history"), "ghost", 30)
+        past.clicked.connect(lambda: self.do("rb_admin_bot_history", {"name": b["username"], "n": 60},
+                                             tr("60 past cases, bets and spins added")))
+        for w in (pic, rnd, past):
+            line.addWidget(w, 1)
+        lay.addLayout(line)
+
+    @staticmethod
+    def _bot_random() -> dict:
+        """Believable random numbers for a bot."""
+        import random
+        hours = int(random.triangular(5, 600, 60))
+        start = random.choice([8, 12, 14, 16, 17, 18, 19, 20])
+        return {"hours": hours, "days": max(1, int(hours / random.uniform(1.5, 5))), "coins": int(random.triangular(200, 80000, 6000)),
+                "keys": random.randint(0, 5), "streak": random.choice([0, 1, 2, 3, 4, 5, 7, 9, 12, 15, 21, 30]),
+                "badges": random.randint(3, 30), "active": random.randint(35, 90), "from": start,
+                "to": min(23, start + random.randint(3, 7))}
+
+    def _bot_picture(self, name: str) -> None:
+        import base64
+        from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
+        from PyQt6.QtGui import QImage
+        path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")
+        if not path:
+            return
+        img = QImage(path)
+        if img.isNull():
+            return self.ctx.toast(tr("This picture cannot be used"), "warn")
+        side = min(img.width(), img.height())
+        img = img.copy((img.width() - side) // 2, (img.height() - side) // 2, side, side).scaled(
+            96, 96, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        buf = QByteArray()
+        dev = QBuffer(buf)
+        dev.open(QIODevice.OpenModeFlag.WriteOnly)
+        img.save(dev, "JPG", 82)
+        self.do("rb_admin_bot_avatar", {"name": name, "picture": base64.b64encode(bytes(buf)).decode()}, tr("Picture saved"))
 
     def _bot_new(self) -> None:
         fields = [("name", tr("Username (3 to 10 letters or numbers)"), ""), ("pw", tr("Password (8 characters at least)"), "")]
-        fields += [(k, tr(t), d) for k, t, d in self.BOT_FIELDS]
+        rand = self._bot_random()                      # random, believable numbers to start from
+        fields += [(k, tr(t), str(rand.get(k, d))) for k, t, d in self.BOT_FIELDS]
 
         def go(v: dict, dlg) -> None:
             import re

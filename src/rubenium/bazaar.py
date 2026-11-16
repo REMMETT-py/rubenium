@@ -977,6 +977,22 @@ def build_profile_style(page, lay) -> None:
                         mine.index(cur) if cur in mine else -1)
         grid.picked.connect(lambda i, m=mine, c=cur: wear_look(ctx, m[i], m[i] != c))
         lay.addWidget(grid)
+        level = int((ec.wear_data.get(cur) or {}).get("level") or 0) if kind == "banner" and cur else 0
+        if level:                                          # 3.1: keep the normal look or show its gold
+            from .cosmetics import GOLD_NAMES
+            pick = ec.worn("banner_gold")
+            pick = min(level, int(pick) if pick.isdigit() else 3)
+            seg = Segmented([tr("Normal")] + [tr(GOLD_NAMES[n]) for n in range(1, level + 1)], pick)
+
+            def choose(i: int) -> None:
+                def done(ok: bool, _d) -> None:
+                    if ok:
+                        ec.equip["banner_gold"] = i
+                        ec.looks_changed.emit()
+                        ctx.reload_page()
+                ec.call("rb_banner_gold", {"level": i}, done)
+            seg.changed.connect(choose)
+            lay.addWidget(seg)
     lay.addWidget(Label(tr("Click the one you wear to take it off."), 10, TEXT_FAINT))
     head = hbox(spacing=8)
     head.addWidget(Label(tr("Showcase"), 12.5, bold=True), 1)

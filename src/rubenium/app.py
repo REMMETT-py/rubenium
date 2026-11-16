@@ -19,7 +19,7 @@ from . import win
 from .econ import Econ
 from .online import Online
 from .wallet import COLOURS, Wallet
-from .core import BUILD, Net, APP_NAME, ACCENT_DEFAULT, FONT_DEFAULT, FONT_FAMILIES, TEXT, Config, alpha, apply_look, set_lang, sfx, setup_logging, tr, ui
+from .core import BUILD, Net, APP_NAME, ACCENT_DEFAULT, FONT_DEFAULT, FONT_FAMILIES, TEXT, Config, alpha, mix, apply_look, set_lang, sfx, setup_logging, tr, ui
 from .engines import CrosshairOverlay, DisplayEngine, HudOverlay, PingTest, Sensors
 from .lyrics import LyricsService
 from .media import CMD_SEEK, MediaService, Status, TrackState, source_keywords
@@ -709,8 +709,9 @@ class App(QObject):
         # The second colour belongs to your own colours: it is not used while the music picks the colour.
         del second                                       # 2.2.1: a second colour only comes with a shop theme
         ui.accent2 = None
-        if tint and not music and not screen:
-            target, ui.accent2 = QColor(tint[0]), QColor(tint[1])
+        if tint:                                         # a shop theme keeps its own colours (the music only tints them)
+            target = mix(QColor(tint[0]), target, 0.2) if target is not None else QColor(tint[0])
+            ui.accent2 = QColor(tint[1])
         self._screen_timer.setInterval(2500)
         if screen != self._screen_timer.isActive():
             self._screen_timer.start() if screen else self._screen_timer.stop()
@@ -1110,6 +1111,15 @@ class App(QObject):
                 self._og_scene.show()
                 self._og_scene.raise_()
         self.online.ask("rb_og_event", {}, got)
+
+    def check_gold_wheels(self) -> None:
+        """A Golden Wheel won earlier and never spun opens once the menu is ready."""
+        if not self.online.logged_in() or self.cfg["offline_mode"]:
+            return
+        if self.welcome is not None:
+            return QTimer.singleShot(2000, self.check_gold_wheels)
+        from .goldwheel import check_gold_wheels
+        check_gold_wheels(self)
 
     def after_login(self) -> None:
         """Once logged in: a quiet online backup each day. The tour and the daily reward wait until the menu is

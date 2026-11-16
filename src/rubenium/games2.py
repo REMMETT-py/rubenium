@@ -784,6 +784,10 @@ class ScratchCard(QWidget):
         self.ctx.econ.changed.emit()
         sfx.play("on")
         c, k = int(self.prize.get("coins_won") or 0), int(self.prize.get("keys_won") or 0)
+        if self.prize.get("gold_wheel"):                         # 3.1: the Golden Wheel opens
+            from .goldwheel import open_gold_wheel
+            QTimer.singleShot(900, lambda: open_gold_wheel(self.ctx))
+            return
         self.ctx.toast(("+" + coins_text(c)) if c else tr("+{n} key(s)", n=k))
 
     def reset(self) -> None:
@@ -806,7 +810,7 @@ class ScratchCard(QWidget):
                        tr("Next scratch card in {t}", t=clock_text(int(self.ctx.econ.scratch_in or 0))))
             return
         rar = self.prize.get("rarity", "standard")
-        col = QColor(RARITY_COLOURS.get(rar, "#9AA4AD")) if self.prize else QColor("#2A3038")
+        col = (QColor("#E8B23A") if rar == "golden" else QColor(RARITY_COLOURS.get(rar, "#9AA4AD"))) if self.prize else QColor("#2A3038")
         g = QLinearGradient(r.topLeft(), r.bottomRight())
         g.setColorAt(0, mix(col, QColor("#000000"), 0.15))
         g.setColorAt(1, mix(col, QColor("#000000"), 0.6))
@@ -826,10 +830,11 @@ class ScratchCard(QWidget):
             p.setPen(QColor("#FFFFFF"))
             p.setFont(font(11, QFont.Weight.ExtraBold))
             p.drawText(QRectF(r.left(), r.top() + S(18), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                       tr(RARITY_NAMES.get(rar, "Common")).upper())
+                       tr("GOLDEN") if rar == "golden" else tr(RARITY_NAMES.get(rar, "Common")).upper())
             c, k = int(self.prize.get("coins_won") or 0), int(self.prize.get("keys_won") or 0)
             p.setFont(font(26, QFont.Weight.Black))
             p.drawText(QRectF(r.left(), r.center().y() - S(20), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Golden Wheel!") if rar == "golden" else
                        coins_text(c) + " " + tr("coins") if c else tr("{n} key(s)", n=k))
         if self.cover is None:
             self._make_cover()

@@ -275,9 +275,196 @@ def _sky(theme: dict, w: float, h: float, unit: float) -> list:
     return [(x * w, y * h, r * unit, a) for x, y, r, a in stars[:theme.get("stars", 0)]]
 
 
+def _shop_scene(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QColor, unit: float) -> None:
+    """3.1: the shop themes each have their own picture, not the night sky. The dearer, the richer."""
+    import random
+    from PyQt6.QtCore import QPointF
+    from PyQt6.QtGui import QLinearGradient, QPainterPath, QRadialGradient
+    p.setPen(Qt.PenStyle.NoPen)
+    rnd = random.Random(hash(style) & 0xFFFF)
+    if style == "sunset":                                 # warm sky, a striped sun on the horizon, dark hills
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha("#5B1E5F", 0.55))
+        g.setColorAt(0.6, alpha(c2, 0.35))
+        g.setColorAt(1, alpha(c1, 0.30))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        sun = QPointF(w * 0.72, h * 0.62)
+        sg = QLinearGradient(0, sun.y() - h * 0.32, 0, sun.y())
+        sg.setColorAt(0, QColor("#FFD36B"))
+        sg.setColorAt(1, c2)
+        p.setBrush(sg)
+        p.drawEllipse(sun, h * 0.32, h * 0.32)
+        disc = QPainterPath()
+        disc.addEllipse(sun, h * 0.32, h * 0.32)
+        p.save()
+        p.setClipPath(disc)
+        for k in range(4):                                # stripes cut through the sun
+            p.fillRect(QRectF(sun.x() - h * 0.34, sun.y() - h * (0.05 + 0.065 * k), h * 0.68, h * 0.018 * (k + 1) * 0.6),
+                       alpha("#2B0F3D", 0.8))
+        p.restore()
+        for k, (y0, a) in enumerate(((0.66, 0.75), (0.76, 0.9))):
+            path = QPainterPath(QPointF(0, h))
+            for x in range(0, int(w) + 10, 10):
+                path.lineTo(x, h * y0 + math.sin(x / w * 7 + k * 2) * h * 0.05)
+            path.lineTo(w, h)
+            p.setBrush(alpha("#1A0A22", a))
+            p.drawPath(path)
+    elif style == "ocean":                                # light from above and layers of waves
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha(c1, 0.40))
+        g.setColorAt(1, alpha("#03203F", 0.55))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        for k in range(5):
+            x0 = w * (0.1 + 0.2 * k)
+            ray = QPainterPath(QPointF(x0 - w * 0.03, 0))
+            ray.lineTo(x0 + w * 0.03, 0)
+            ray.lineTo(x0 + w * 0.14, h)
+            ray.lineTo(x0 - w * 0.02, h)
+            rg = QLinearGradient(0, 0, 0, h)
+            rg.setColorAt(0, alpha("#BFF4FF", 0.16))
+            rg.setColorAt(1, alpha("#BFF4FF", 0.0))
+            p.setBrush(rg)
+            p.drawPath(ray)
+        for k in range(4):
+            path = QPainterPath(QPointF(0, h))
+            for x in range(0, int(w) + 8, 8):
+                path.lineTo(x, h * (0.45 + 0.13 * k) + math.sin(x / w * 9 * (1 + 0.2 * k) + k) * h * 0.04)
+            path.lineTo(w, h)
+            p.setBrush(alpha(mix(c1, c2, k / 3), 0.14 + 0.06 * k))
+            p.drawPath(path)
+    elif style == "forest":                               # rows of pines in the mist, fireflies
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha("#0B3D1E", 0.55))
+        g.setColorAt(1, alpha(c1, 0.20))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        for row, (base, scale, a) in enumerate(((0.75, 0.55, 0.55), (0.9, 0.75, 0.8), (1.05, 1.0, 1.0))):
+            col = mix(QColor("#041A0B"), c1, 0.45 - 0.15 * row)
+            x = -rnd.uniform(0, 30) * unit
+            while x < w + 20:
+                th = h * rnd.uniform(0.35, 0.55) * scale
+                tw = th * 0.42
+                tree = QPainterPath(QPointF(x, h * base - th))
+                tree.lineTo(x + tw / 2, h * base)
+                tree.lineTo(x - tw / 2, h * base)
+                tree.closeSubpath()
+                p.setBrush(alpha(col, a))
+                p.drawPath(tree)
+                x += tw * rnd.uniform(0.55, 0.9)
+            mist = QLinearGradient(0, h * (base - 0.25), 0, h * base)
+            mist.setColorAt(0, alpha("#CFFFE0", 0.0))
+            mist.setColorAt(1, alpha("#CFFFE0", 0.05))
+            p.fillRect(QRectF(0, 0, w, h), mist)
+        for _ in range(18):
+            fx, fy = rnd.uniform(0, w), rnd.uniform(h * 0.2, h * 0.85)
+            fg = QRadialGradient(QPointF(fx, fy), 5 * unit)
+            fg.setColorAt(0, alpha(c2, 0.9))
+            fg.setColorAt(1, alpha(c2, 0.0))
+            p.setBrush(fg)
+            p.drawEllipse(QPointF(fx, fy), 5 * unit, 5 * unit)
+    elif style == "candy":                                # bubbles, sprinkles and a lollipop swirl
+        g = QLinearGradient(0, 0, w, h)
+        g.setColorAt(0, alpha(c1, 0.35))
+        g.setColorAt(1, alpha(c2, 0.30))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        for _ in range(22):
+            bx, by, br = rnd.uniform(0, w), rnd.uniform(0, h), rnd.uniform(4, 16) * unit
+            p.setBrush(alpha("#FFFFFF", 0.08))
+            p.setPen(QPen(alpha("#FFFFFF", 0.25), max(1.0, unit)))
+            p.drawEllipse(QPointF(bx, by), br, br)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.35))
+            p.drawEllipse(QPointF(bx - br * 0.35, by - br * 0.35), br * 0.22, br * 0.22)
+        cols = ["#FF5CB8", "#FFD36B", "#5CE0FF", "#9B5CFF", "#7CFF8A"]
+        for _ in range(60):
+            sx, sy, a = rnd.uniform(0, w), rnd.uniform(0, h), rnd.uniform(0, math.pi)
+            pen = QPen(alpha(rnd.choice(cols), 0.75), 2.2 * unit, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+            p.setPen(pen)
+            p.drawLine(QPointF(sx, sy), QPointF(sx + math.cos(a) * 5 * unit, sy + math.sin(a) * 5 * unit))
+        c = QPointF(w * 0.84, h * 0.4)
+        for k in range(12, 0, -1):
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF" if k % 2 else c1, 0.5))
+            p.drawEllipse(c, k * 2.2 * unit, k * 2.2 * unit)
+    elif style == "storm":                                # heavy clouds, rain and a frozen lightning bolt
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha("#0B1020", 0.7))
+        g.setColorAt(1, alpha(c2, 0.18))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        flash = QRadialGradient(QPointF(w * 0.62, h * 0.2), w * 0.5)
+        flash.setColorAt(0, alpha(c1, 0.35))
+        flash.setColorAt(1, alpha(c1, 0.0))
+        p.setBrush(flash)
+        p.drawRect(QRectF(0, 0, w, h))
+        for k in range(10):
+            p.setBrush(alpha(mix(QColor("#2A3550"), c1, 0.15), 0.85))
+            p.drawEllipse(QPointF(w * k / 9 + rnd.uniform(-10, 10) * unit, h * rnd.uniform(0.02, 0.18)),
+                          w * 0.12, h * 0.2)
+        bolt = QPainterPath(QPointF(w * 0.62, h * 0.18))
+        for dx, dy in ((-0.04, 0.16), (0.03, 0.12), (-0.05, 0.18), (0.02, 0.16)):
+            cur = bolt.currentPosition()
+            bolt.lineTo(cur.x() + w * dx, cur.y() + h * dy)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for width, a in ((7, 0.15), (3, 0.45), (1.4, 1.0)):
+            p.setPen(QPen(alpha(mix(c1, QColor("#FFFFFF"), 0.6), a), width * unit, Qt.PenStyle.SolidLine,
+                          Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            p.drawPath(bolt)
+        p.setPen(QPen(alpha("#9FC3FF", 0.3), max(1.0, 0.9 * unit)))
+        for _ in range(70):
+            rx, ry = rnd.uniform(0, w), rnd.uniform(h * 0.2, h)
+            p.drawLine(QPointF(rx, ry), QPointF(rx - 3 * unit, ry + 9 * unit))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif style == "retro":                                # synthwave: striped sun, wire mountains, a moving-floor grid
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha("#1A0B2E", 0.65))
+        g.setColorAt(0.6, alpha(c1, 0.25))
+        g.setColorAt(1, alpha("#0A0418", 0.6))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        for _ in range(26):
+            p.setBrush(alpha("#FFFFFF", rnd.uniform(0.2, 0.7)))
+            r = rnd.uniform(0.5, 1.2) * unit
+            p.drawEllipse(QPointF(rnd.uniform(0, w), rnd.uniform(0, h * 0.45)), r, r)
+        horizon = h * 0.58
+        sun = QPointF(w * 0.5, horizon)
+        sg = QLinearGradient(0, horizon - h * 0.36, 0, horizon)
+        sg.setColorAt(0, QColor("#FFD36B"))
+        sg.setColorAt(1, QColor("#FF2BD6"))
+        p.setBrush(sg)
+        p.drawEllipse(sun, h * 0.36, h * 0.36)
+        disc = QPainterPath()
+        disc.addEllipse(sun, h * 0.36, h * 0.36)
+        p.save()
+        p.setClipPath(disc)
+        for k in range(5):
+            p.fillRect(QRectF(sun.x() - h * 0.4, horizon - h * (0.04 + 0.06 * k), h * 0.8, h * 0.012 * (k + 1)),
+                       alpha("#1A0B2E", 0.9))
+        p.restore()
+        p.setPen(QPen(alpha(c2, 0.8), max(1.0, 1.2 * unit)))
+        p.setBrush(alpha("#0A0418", 0.9))
+        mount = QPainterPath(QPointF(0, horizon))
+        for x, y in ((0.08, 0.42), (0.16, 0.5), (0.26, 0.36), (0.36, horizon / h)):
+            mount.lineTo(w * x, h * y)
+        mount.lineTo(0, horizon)
+        p.drawPath(mount)
+        mount2 = QPainterPath(QPointF(w, horizon))
+        for x, y in ((0.92, 0.4), (0.82, 0.48), (0.72, 0.38), (0.62, horizon / h)):
+            mount2.lineTo(w * x, h * y)
+        mount2.lineTo(w, horizon)
+        p.drawPath(mount2)
+        p.fillRect(QRectF(0, horizon, w, h - horizon), alpha("#0A0418", 0.85))
+        p.setPen(QPen(alpha(c1, 0.75), max(1.0, unit)))
+        for k in range(-12, 13):
+            p.drawLine(QPointF(w / 2 + k * w * 0.02, horizon), QPointF(w / 2 + k * w * 0.13, h))
+        for k in range(1, 8):
+            y = horizon + (h - horizon) * (k / 7) ** 1.8
+            p.drawLine(QPointF(0, y), QPointF(w, y))
+        p.setPen(Qt.PenStyle.NoPen)
+
+
 def _draw_theme(p: QPainter, theme: dict, w: float, h: float, accent: QColor, second, unit: float) -> None:
     from PyQt6.QtCore import QPointF
     from PyQt6.QtGui import QLinearGradient, QRadialGradient
+    if theme.get("scene") and theme.get("tint"):
+        return _shop_scene(p, theme["scene"], w, h, QColor(theme["tint"][0]), QColor(theme["tint"][1]), unit)
     col = theme_colour(theme, accent)
     gold = theme.get("gold", 0.0)
     white = QColor("#FFFFFF")
@@ -808,6 +995,18 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("3.1", ['The 6 shop themes have their own scenes: Sunset, Ocean, Forest, Candy, Storm and Retro keep their colours',
+             'Gold banners: choose to show the normal banner or any gold level you unlocked',
+             'AFK coins: 25 every 10 minutes, +5 for every day of your login streak (up to +100)',
+             'New quests: 2 hourly, 4 daily and 6 weekly with much bigger rewards',
+             'Golden Wheel: 5% of free spins and scratch cards unlock it. It always pays: up to 25 000 coins or a free case + key',
+             'Better daily login: up to 1 000 coins, keys and a Premium case on day 7',
+             'Timing: a new skill casino game with a tutorial. Stop the needle on the target',
+             '5 new cases: Pocket, Elite, Royal (high roller), Shiny Hunt and Banner Case. Cases are grouped more clearly',
+             'Titanium badges can now be bought in the shop',
+             'Collection sets pay far more: the 6 Mythics now give 5 000 000 coins and 100 keys',
+             'Case chances show the real coin range, lucky x3 and the Jackpot included',
+             'Mini Golf is in the casino list, after Rocket']),
     ("3.0.0", ['Mini Golf 1v1: play a friend live, turn by turn, with a bet from 10 coins up to 80% of the lower balance (it replaces duels)',
                'OG event (16/11/2026): every OG gets the MYTHIC CHEST BUNDLE: 1 free open of every case, 10 000 coins and 10 gold keys',
                'Keys: 1 every 15 minutes, up to 5. Gold keys are used first and disappear once used',

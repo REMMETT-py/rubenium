@@ -75,10 +75,26 @@ class CoinBar(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(11, QFont.Weight.DemiBold))
         ec = self.ctx.econ
-        text = f"+{int(ec.cfg.get('coin_amount', 10))}  ·  {clock_text(ec.next_coin_s())}"
+        bonus = ec.streak_bonus()
+        text = f"+{int(ec.cfg.get('coin_amount', 10)) + bonus}  ·  {clock_text(ec.next_coin_s())}"
         if not ec.ready:
             text = tr("Offline") if self.ctx.online.offline or not self.ctx.online.logged_in() else "…"
         p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
+        if ec.ready and bonus and not self.keys:            # the streak buff, visible
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            chip_t = tr("Streak +{n}", n=bonus)
+            cw = p.fontMetrics().horizontalAdvance(chip_t) + S(14)
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            x = right.right() - p.fontMetrics().horizontalAdvance(text) - S(8) - cw
+            chip = QRectF(x, r.center().y() - S(9), cw, S(18))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FF8A3D", 0.2))
+            p.drawRoundedRect(chip, S(9), S(9))
+            p.setPen(QColor("#FFB16B"))
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            p.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), chip_t)
+            self.setToolTip(tr("Every day of your login streak adds {n} coins to every 10 minutes (up to {m} days).",
+                               n=int(ec.cfg.get("streak_coin", 5)), m=int(ec.cfg.get("streak_coin_days", 20))))
         if self.keys:
             tw = p.fontMetrics().horizontalAdvance(text)
             n = str(min(self.ctx.wallet.keys(), 99))
@@ -825,11 +841,14 @@ class ShopPage(Page):
             lay.addWidget(KeyCard(ctx))
             lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
-                for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts")), ("style", tr("Style cases"))):
+                groups = (("coins", tr("Coin cases"), tr("Mostly coins, and badges of every rarity too.")),
+                          ("hunt", tr("Rare hunts"), tr("Fewer coins, much better odds for rare badges.")),
+                          ("style", tr("Style cases"), tr("Balls, lines, fonts, themes, banners and frames.")))
+                for kind, title, sub in groups:
                     lay.addWidget(heading(title))
-                    for case in ec.cases:
-                        if case_kind(case["id"]) == kind:
-                            lay.addWidget(CaseCard(self, case))
+                    lay.addWidget(Label(sub, 10.5, TEXT_DIM, wrap_w=self.W))
+                    for case in sorted((c for c in ec.cases if case_kind(c["id"]) == kind), key=lambda c: int(c["price"])):
+                        lay.addWidget(CaseCard(self, case))
                 for case in ec.cases:                         # a case the admin added later
                     if not case_kind(case["id"]):
                         lay.addWidget(CaseCard(self, case))
