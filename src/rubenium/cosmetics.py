@@ -5,7 +5,7 @@ An item is named like the server names it: "ball:orbit:blue", "line:dash:red", "
 import math
 
 from PyQt6.QtCore import QPointF, QRectF, Qt
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 
 from .core import TEXT, alpha, font, mix, tr
 
@@ -36,13 +36,14 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
 # profile looks (2.6): a banner behind your profile, a frame around your picture, a tag after your name
 BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("waves", "Waves"), ("grid", "Grid"),
            ("stripes", "Stripes"), ("dots", "Dots"), ("aurora", "Aurora"), ("circuit", "Circuit"), ("sunset", "Sunset"),
-           ("peaks", "Peaks"), ("galaxy", "Galaxy"), ("lava", "Lava"), ("matrix", "Matrix"), ("prism", "Prism")]
+           ("peaks", "Peaks"), ("galaxy", "Galaxy"), ("lava", "Lava"), ("matrix", "Matrix"), ("prism", "Prism"),
+           ("snow", "Snow"), ("ember", "Ember"), ("nebula", "Nebula")]
 FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
-          ("orbit", "Orbit"), ("rainbow", "Rainbow")]
+          ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo")]
 TAGS = [("og", "OG")]
 MOVING = {"waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
-          "rainbow", "neon", "og"}
+          "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo"}
 KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "banner": "Banner",
               "frame": "Frame", "tag": "Tag"}
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
@@ -335,7 +336,8 @@ _BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), 
                 "stripes": ("#5A1A0A", "#FF8A3D"), "dots": ("#0D2E33", "#1ABC9C"), "aurora": ("#06121F", "#3DFFB0"),
                 "circuit": ("#04170F", "#2ECC71"), "sunset": ("#2B0F3D", "#FF8A3D"), "peaks": ("#0E1A2B", "#8FA8FF"),
                 "galaxy": ("#05040F", "#9B5CFF"), "lava": ("#1A0503", "#FF3D1F"), "matrix": ("#010A04", "#3DFF7A"),
-                "prism": ("#101018", "#FF5CC8")}
+                "prism": ("#101018", "#FF5CC8"), "snow": ("#16304A", "#BFE6FF"), "ember": ("#1A0806", "#FF7A2E"),
+                "nebula": ("#07051A", "#4FE3FF")}
 
 
 def look_moves(item: str) -> bool:
@@ -519,6 +521,43 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
         tri.lineTo(L + w * 0.38, T + h * 0.85)
         tri.closeSubpath()
         p.drawPath(tri)
+    elif base == "snow":                                       # snowy hills and falling snow
+        for k, (col, hh) in enumerate((("#9CC7E8", 0.62), ("#DDEFFF", 0.74), ("#FFFFFF", 0.86))):
+            path = QPainterPath(QPointF(L, rect.bottom()))
+            for x in range(0, int(w) + 8, 8):
+                path.lineTo(L + x, T + h * hh + math.sin(x / w * 5 + k * 1.7) * h * 0.06)
+            path.lineTo(rect.right(), rect.bottom())
+            p.setBrush(QColor(col))
+            p.drawPath(path)
+        for i in range(46):
+            fall = (_rand(i, 1) + now * (0.06 + _rand(i, 2) * 0.08)) % 1.0
+            x = L + (_rand(i) + 0.04 * math.sin(now * 1.3 + i)) * w
+            r = 0.8 + _rand(i, 3) * 1.6
+            p.setBrush(alpha("#FFFFFF", 0.55 + 0.45 * _rand(i, 4)))
+            p.drawEllipse(QPointF(x, T + fall * h), r, r)
+    elif base == "ember":                                      # sparks rising from a glowing floor
+        floor = QLinearGradient(QPointF(0, T + h * 0.5), QPointF(0, rect.bottom()))
+        floor.setColorAt(0, alpha("#FF3D1F", 0.0))
+        floor.setColorAt(1, alpha("#FF7A2E", 0.65))
+        p.fillRect(rect, floor)
+        for i in range(36):
+            rise = (_rand(i, 1) + now * (0.12 + _rand(i, 2) * 0.2)) % 1.0
+            x = L + (_rand(i) + 0.05 * math.sin(now * 2 + i * 1.3)) * w
+            r = 0.8 + _rand(i, 3) * 1.8
+            p.setBrush(alpha("#FFC94D" if i % 3 else "#FF5C2E", (1 - rise) * 0.95))
+            p.drawEllipse(QPointF(x, rect.bottom() - rise * h), r, r)
+    elif base == "nebula":                                     # slowly turning clouds of colour, twinkling stars
+        for k, col in enumerate(("#4FE3FF", "#B36BFF", "#FF5CC8")):
+            a = now * 0.25 + k * 2.1
+            cx, cy = L + w * (0.5 + 0.25 * math.cos(a)), T + h * (0.5 + 0.3 * math.sin(a * 1.3))
+            g2 = QRadialGradient(QPointF(cx, cy), h * 0.9)
+            g2.setColorAt(0, alpha(col, 0.45))
+            g2.setColorAt(1, alpha(col, 0.0))
+            p.fillRect(rect, g2)
+        for i in range(50):
+            tw = 0.3 + 0.7 * abs(math.sin(now * (1 + _rand(i, 5) * 2) + i))
+            p.setBrush(alpha("#FFFFFF", tw))
+            p.drawEllipse(QPointF(L + _rand(i) * w, T + _rand(i, 1) * h), 0.7 + _rand(i, 2), 0.7 + _rand(i, 2))
     shade = QLinearGradient(rect.topLeft(), rect.bottomLeft())       # a soft shade at the bottom, for text on top
     shade.setColorAt(0.55, alpha("#000000", 0.0))
     shade.setColorAt(1.0, alpha("#000000", 0.35))
@@ -529,7 +568,8 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
 _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"), "ink": ("#0B0E10", "#FFFFFF"),
                "neon": ("#2EF2FF", "#2EF2FF"), "dashed": ("#FFFFFF", "#9AA4AD"), "twin": ("#FF5CB8", "#2EC5FF"),
                "laurel": ("#FFD36B", "#B8862B"), "crown": ("#FFD36B", "#B8862B"), "spikes": ("#E6EEF5", "#6E7C88"),
-               "flame": ("#FFC94D", "#FF3D1F"), "orbit": ("#B36BFF", "#4FE3FF"), "rainbow": ("#FF5CC8", "#2EC5FF")}
+               "flame": ("#FFC94D", "#FF3D1F"), "orbit": ("#B36BFF", "#4FE3FF"), "rainbow": ("#FF5CC8", "#2EC5FF"),
+               "frost": ("#E8F6FF", "#7FC8FF"), "star": ("#FFE9A8", "#FFC94D"), "halo": ("#FFFFFF", "#C9B6FF")}
 
 
 def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: float = 1.0) -> None:
@@ -616,6 +656,49 @@ def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: flo
             g.setColorAt(k / 5, QColor(col))
         p.setPen(QPen(g, wd))
         p.drawEllipse(ring)
+    elif base == "frost":                                     # icy ring with crystals
+        g = QLinearGradient(ring.topLeft(), ring.bottomRight())
+        g.setColorAt(0, c1)
+        g.setColorAt(1, c2)
+        p.setPen(QPen(g, wd * 0.8))
+        p.drawEllipse(ring)
+        p.setPen(QPen(alpha("#FFFFFF", 0.9), max(1.0, wd * 0.25)))
+        for i in range(6):
+            a = i / 6 * math.tau + now * 0.2
+            cx, cy = c.x() + math.cos(a) * r, c.y() + math.sin(a) * r
+            for k in range(3):
+                b = a + k * math.pi / 3
+                p.drawLine(QPointF(cx - math.cos(b) * wd * 0.9, cy - math.sin(b) * wd * 0.9),
+                           QPointF(cx + math.cos(b) * wd * 0.9, cy + math.sin(b) * wd * 0.9))
+    elif base == "star":                                      # gold ring with orbiting stars
+        p.setPen(QPen(c2, wd * 0.7))
+        p.drawEllipse(ring)
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(5):
+            a = i / 5 * math.tau + now * 0.6
+            sc = QPointF(c.x() + math.cos(a) * r, c.y() + math.sin(a) * r)
+            pts = []
+            for k in range(10):
+                rr = wd * (1.3 if k % 2 == 0 else 0.55)
+                b = k / 10 * math.tau - math.pi / 2 + now
+                pts.append(QPointF(sc.x() + math.cos(b) * rr, sc.y() + math.sin(b) * rr))
+            path = QPainterPath(pts[0])
+            for q in pts[1:]:
+                path.lineTo(q)
+            path.closeSubpath()
+            p.setBrush(c1)
+            p.drawPath(path)
+    elif base == "halo":                                      # a soft glowing halo that breathes, and a light above
+        breathe = 0.7 + 0.3 * math.sin(now * 2)
+        for k in (4.0, 2.6, 1.6):
+            p.setPen(QPen(alpha(c2, 0.10 * breathe * (5 - k)), wd * k))
+            p.drawEllipse(ring)
+        p.setPen(QPen(c1, wd * 0.5))
+        p.drawEllipse(ring)
+        top = QRectF(c.x() - r * 0.55, c.y() - r - wd * 2.6, r * 1.1, wd * 1.4)
+        p.setPen(QPen(alpha("#FFF6C8", 0.6 + 0.4 * breathe), wd * 0.55))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(top)
     if base == "laurel":                                      # leaves up both sides
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor("#E8C26A"))

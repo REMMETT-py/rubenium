@@ -808,6 +808,12 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.7", ['AFK money is better: 25 coins every 10 minutes (150 an hour), up to 1 800 a day',
+             'Every badge shows its exact chance in each case, for every colour and finish',
+             'New looks: Snow, Ember and Nebula banners; Frost, Star and Halo frames',
+             'Inventory: the 2027 LIMITED Advent Calendar is coming soon',
+             'Fixed: after an update, the New tab could show on top of another tab',
+             'The casino was checked: every game pays back 96 to 99% (fun, but you lose a little over time)']),
     ("2.6.1", ['Cases rebalanced: coin cases now pay back a little more than they cost on average (you still lose about half the time)',
                'Rare hunts (All or Nothing, Painter, Legend Vault, Mythic Hunt) are for rare badges: rarer badges are not easier to get',
                'Every coin drop has a 6% chance to be a lucky ×3; the Jackpot can pay up to 32 times its price',

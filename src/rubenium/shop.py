@@ -668,6 +668,8 @@ class ShopPage(Page):
         ctx.shop_var = ""
         self.picker.picked.connect(self._variant)
         lay.addWidget(self.picker)
+        self.luck = Label("", 10.5, TEXT_DIM, wrap_w=self.W)
+        lay.addWidget(self.luck)
         self.badge_btn = Button("", "primary", 38)
         self.badge_btn.clicked.connect(self._badge_action)
         lay.addWidget(self.badge_btn)
@@ -693,6 +695,16 @@ class ShopPage(Page):
         self.picker.var = var
         item = self._item()
         self.big.show_item(item)
+        from .collection import CASE_NAMES, chance_text, item_chances
+        from .econ import CLASS_NAMES, RARITY_NAMES
+        info = ec.info(item)
+        head = tr(RARITY_NAMES.get(info.get("rarity", "standard"), "Common")) + " · " + tr(CLASS_NAMES[int(info.get("cls") or 0)])
+        odds = item_chances(ec, item)
+        if odds:
+            best = "  ·  ".join(f"{tr(CASE_NAMES.get(cid, cid))}: {chance_text(pr)}" for cid, pr in odds[:3])
+            self.luck.set_text(head + "\n" + tr("Chance of this exact badge per open:") + " " + best)
+        else:
+            self.luck.set_text(head + "\n" + tr("Not in any case right now."))
         price = ec.price(item)
         if ec.owns(item):
             on = item in worn(self.ctx)

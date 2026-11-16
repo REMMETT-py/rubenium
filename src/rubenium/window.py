@@ -2028,6 +2028,9 @@ class MainWindow(QWidget):
         self._place(self.ball.rect_global(), self._pending_home)   # laid out while hidden: nothing can flash
         self._open_from, self._open_card = QPoint(self.ball.center), QPoint(self.card_pos)
         sa, _page, _ = self._ensure_page(self.current)
+        for key, (other, _p, _h) in list(self.pages.items()):   # only the page being opened shows (no overlap)
+            if other is not sa:
+                other.hide()
         self.pageh.jump(self._card_h(self.current))
         self._layout_body()
         sa.show()

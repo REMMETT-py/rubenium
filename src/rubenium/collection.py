@@ -72,6 +72,54 @@ def show_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: b
     paint_item(p, item, rect, now, effects, dim)
 
 
+def item_chances(ec, item: str) -> list:
+    """The exact chance of this one badge (this design, colour and finish) per open, in every case that can give it,
+    best first: [(case id, chance)]. Same maths as the server."""
+    info = ec.info(item) if ec is not None else {}
+    if not info or info.get("kind") != "badge":
+        return []
+    tiers = ["standard", "rare", "special", "epic", "exotic"]
+    tier = tiers.index(info.get("rarity", "standard")) + 1
+    cls = int(info.get("cls") or 0)
+    base = item.split(":")[1] if item.count(":") >= 2 else ""
+    if tier == 5:
+        share = (1 if base == "rubenium" else 2) / 11
+        per = {3: 0.9 / 2, 5: 0.095, 4: 0.005}.get(cls, 0) * share
+    else:
+        same = sum(1 for k, v in ec.catalog.items() if v.get("kind") == "badge" and v.get("rarity") == info.get("rarity")
+                   and int(v.get("cls") or 0) == cls)
+        per = 1 / max(1, same)
+    out = []
+    for c in list(ec.cases) + [{"id": "daily"}]:
+        if c["id"] == "daily":
+            if tier > 4 or cls > 2:
+                continue
+            p = 0.35 * [0, 7800, 1900, 270, 30][tier] / 10000 * [7600, 2350, 50][cls] / 10000 * per
+        else:
+            odds = list(c.get("odds") or [])
+            if len(odds) <= tier or not sum(odds):
+                continue
+            p = odds[tier] / sum(odds)
+            if tier <= 4:
+                var = list(c.get("variants") or [1])
+                vs = sum(var) or 1
+                v = var[cls] if cls < len(var) else 0
+                if cls == 2 and tier <= 2 and len(var) > 3:
+                    v += var[3]                     # no Titanium for Common and Rare: those turn Shiny
+                if cls == 3 and tier <= 2:
+                    v = 0
+                p *= v / vs
+            p *= per
+        if p > 0:
+            out.append((c["id"], p))
+    return sorted(out, key=lambda x: -x[1])
+
+
+def chance_text(p: float) -> str:
+    from .wallet import coins_text
+    return tr("1 in {n}", n=coins_text(max(1, round(1 / p))))
+
+
 def worn(ctx) -> list:
     return ctx.econ.badges_worn()
 

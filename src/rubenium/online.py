@@ -27,6 +27,15 @@ BEAT_S = 60                                  # the server counts time from these
 ACTIVE_S = 600                               # "in use" = music playing, or mouse/keyboard in the last 10 min
 
 
+
+def _run_back(fn) -> None:
+    """Run a server answer on the main thread. A screen that was closed before its answer arrived is not an error."""
+    try:
+        fn()
+    except RuntimeError as e:
+        if "has been deleted" not in str(e):
+            raise
+
 class ApiError(Exception):
     def __init__(self, key: str, status: int = 0) -> None:
         super().__init__(key)
@@ -152,7 +161,7 @@ class Online(QObject):
         self.elsewhere = False                # another PC of this account is counting time right now
         self.busy = False
         self.device = uuid.uuid4().hex        # this run of the app (only one earns time per account)
-        self._back.connect(lambda fn: fn())
+        self._back.connect(_run_back)
         self._beat = QTimer(self)
         self._beat.setInterval(BEAT_S * 1000)
         self._beat.timeout.connect(self._tick)
