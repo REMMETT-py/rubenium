@@ -72,6 +72,24 @@ def _request(path: str, body=None, token: str = "", method: str = "POST", timeou
         raise ApiError("offline") from exc
 
 
+def public_file(path: str) -> str:
+    """The download address of a public file in Supabase Storage."""
+    return API_URL + "/storage/v1/object/public/" + path
+
+
+def download(url: str, timeout: float = 120.0) -> bytes:
+    import ssl
+    import urllib.request
+    try:
+        import certifi
+        sc = ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # noqa: BLE001
+        sc = ssl.create_default_context()
+    req = urllib.request.Request(url, headers={"apikey": API_KEY, "User-Agent": "Rubenium"})
+    with urllib.request.urlopen(req, timeout=timeout, context=sc if url.startswith("https") else None) as r:  # noqa: S310
+        return r.read()
+
+
 def explain(err: ApiError) -> str:
     """A server or network error as a short sentence for the login screen (English key for tr())."""
     text = (err.key or "").lower()
@@ -333,6 +351,56 @@ class Online(QObject):
             self._back.emit(lambda: self._adopt(ans))
             return ans["access_token"]
         return self.s["access_token"]
+
+    def in_background(self, job, done) -> None:
+        """Run job() off the main thread; done(ok, answer or message) comes back on the main thread."""
+        def work():
+            try:
+                ans = job()
+                self._back.emit(lambda: done(True, ans))
+            except ApiError as err:
+                msg = explain(err) if err.key != "offline" else "No internet connection"
+                self._back.emit(lambda: done(False, msg))
+            except Exception as exc:  # noqa: BLE001
+                log.exception("background job failed")
+                text = str(exc) or "Something went wrong: try again"
+                self._back.emit(lambda: done(False, text))
+        threading.Thread(target=work, daemon=True).start()
+
+    def make_bot(self, name: str, password: str, ticket: str, done) -> None:
+        """Admin: create a bot account with the normal sign up (so it can be logged into), without leaving
+        the admin account."""
+        def job():
+            ans = _request("/auth/v1/signup", {"email": name.lower() + MAIL, "password": password,
+                                               "data": {"username": name, "device": "bot:" + ticket}})
+            if not ans or not ans.get("access_token"):
+                raise ApiError("email not confirmed")
+            return True
+        self.in_background(job, done)
+
+    def upload(self, path: str, data: bytes, kind: str, done) -> None:
+        """Admin: put a file in Supabase Storage (bucket path like "swaps/<id>/file")."""
+        def job():
+            import ssl
+            import urllib.error
+            import urllib.request
+            try:
+                import certifi
+                sc = ssl.create_default_context(cafile=certifi.where())
+            except Exception:  # noqa: BLE001
+                sc = ssl.create_default_context()
+            req = urllib.request.Request(API_URL + "/storage/v1/object/" + path, data=data, method="POST",
+                                         headers={"apikey": API_KEY, "Authorization": "Bearer " + self._token(),
+                                                  "Content-Type": kind, "x-upsert": "true", "User-Agent": "Rubenium"})
+            try:
+                with urllib.request.urlopen(req, timeout=120, context=sc if API_URL.startswith("https") else None) as r:  # noqa: S310
+                    r.read()
+            except urllib.error.HTTPError as exc:
+                raise ApiError(f"upload failed ({exc.code})", exc.code) from None
+            except Exception as exc:  # noqa: BLE001
+                raise ApiError("offline") from exc
+            return True
+        self.in_background(job, done)
 
     def rpc(self, name: str, args: dict):
         """Call a server function as the logged-in account. Off the main thread only."""

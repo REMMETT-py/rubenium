@@ -808,6 +808,19 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("3.0", ['Style cases: every ball, line, font, theme, banner and frame can now come from a case (Style, Theme and Profile cases)',
+             'Rare drops feel rare: the case strip shows the real odds, never repeats an item, and only Epic or better get rays, flashes and fanfare',
+             'One account can be CREATED per PC; you can log into your account from any PC',
+             'The welcome and login screens are no longer pinned over your other windows',
+             'New looks: Jungle and Sakura banners, Vine frame (the winter looks are saved for the Christmas event)',
+             'New swaps can now arrive in the Rocket League tab without an app update',
+             'Everything from 2.6 to 2.9 is included: fresh start, OG tag, profiles, case balance, quick sell, AFK money']),
+    ("2.9", ['Smoother case opening and faster Hub loading',
+             'Profile cards load faster in Users and the leaderboards',
+             'Small fixes to French texts and to the Settings sections']),
+    ("2.8", ['Badge pages show every colour and finish with its rarity',
+             'Better glow and animations on banners and frames',
+             'Stability fixes when switching tabs quickly']),
     ("2.7", ['AFK money is better: 25 coins every 10 minutes (150 an hour), up to 1 800 a day',
              'Every badge shows its exact chance in each case, for every colour and finish',
              'New looks: Snow, Ember and Nebula banners; Frost, Star and Halo frames',
@@ -1047,7 +1060,7 @@ def bundled_original(name: str):
     want = next((h for f, h in ORIGINALS.items() if f.lower() == name.lower()), None)
     if not want:
         return None
-    for root in _swap_roots():
+    for root in [_rl_store() / "swaps"] + _swap_roots():       # online originals are kept in the store
         f = root / "_originals" / name
         if f.is_file() and file_hash(f) == want:
             return f
@@ -1239,6 +1252,10 @@ def swap_source(item: dict):
     if item.get("soon"):
         return None                              # shown as "Coming soon": cannot be switched on yet
     store = _rl_store() / "swaps" / item["id"] / item["file"]
+    if item.get("online"):                       # added by the admin: ready once downloaded (and checked)
+        if store.is_file() and (not item.get("sha") or file_hash(store) == item["sha"]):
+            return store
+        return None
     for root in _swap_roots():
         src = root / item["id"] / item["file"]
         if src.is_file():
@@ -2376,3 +2393,102 @@ class TopApps(QObject):
             self.ready.emit(top_cpu, top_ram, me_cpu, me_ram)
         except RuntimeError:
             pass
+
+
+
+# --------------------------------------------------------------------------- #
+# Swaps the admin adds from the app (3.0): listed on the server, files in Supabase Storage
+# --------------------------------------------------------------------------- #
+ONLINE_STATES = {"paused": "Paused", "locked": "Locked: being fixed"}
+
+
+def set_online_swaps(rows: list) -> bool:
+    """Put the admin's swaps in the list (replacing the last ones). True when something changed."""
+    keep = [it for it in RL_ITEMS if not it.get("online")]
+    new = []
+    cats = {c for c, _n in RL_CATS}
+    for r in rows or []:
+        if not isinstance(r, dict) or r.get("cat") not in cats or r.get("id") in RL_BY_ID and not RL_BY_ID[r["id"]].get("online"):
+            continue
+        new.append(dict(id=str(r["id"]), cat=r["cat"], old=str(r.get("old", "")), new=str(r.get("new", "")),
+                        file=str(r.get("file", "")), online=True, state=str(r.get("state", "live")),
+                        sha=str(r.get("sha") or ""), orig_sha=str(r.get("orig_sha") or ""), img=bool(r.get("img")),
+                        orig=bool(r.get("orig")), preview=True if r.get("img") else False))
+    before = [(it["id"], it.get("state"), it.get("sha")) for it in RL_ITEMS if it.get("online")]
+    RL_ITEMS[:] = keep + new
+    RL_BY_ID.clear()
+    RL_BY_ID.update({it["id"]: it for it in RL_ITEMS})
+    for it in new:
+        if it["orig"] and it["orig_sha"] and it["file"] not in ORIGINALS:
+            ORIGINALS[it["file"]] = it["orig_sha"]
+    return before != [(it["id"], it.get("state"), it.get("sha")) for it in new]
+
+
+def load_online_swaps_cache() -> None:
+    """At start, before the Rocket League engine: the admin's swaps from last time (so a swap that is on is
+    always recognised, even offline)."""
+    try:
+        set_online_swaps(json.loads((_rl_store() / "online_swaps.json").read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        pass
+
+
+def fetch_online_swaps(ctx, then=None) -> None:
+    """Ask the server for the admin's swaps, download what is missing, then call then() on the main thread."""
+    import threading
+    from .online import ApiError, _request, download, public_file
+
+    def work():
+        try:
+            rows = _request("/rest/v1/rpc/rb_swaps_list", {}, timeout=10) or []
+        except ApiError:
+            return
+        except Exception:  # noqa: BLE001
+            log.exception("swap list failed")
+            return
+
+        def listed():
+            try:
+                path = _rl_store() / "online_swaps.json"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(rows), encoding="utf-8")
+            except OSError:
+                pass
+            changed = set_online_swaps(rows)
+            threading.Thread(target=lambda: _download_all(ctx, then), daemon=True).start()
+            if changed and then:
+                then()
+        ctx.online._back.emit(listed)
+    threading.Thread(target=work, daemon=True).start()
+
+
+def _download_all(ctx, then) -> None:
+    from .online import download, public_file
+    got = False
+    for it in [x for x in RL_ITEMS if x.get("online")]:
+        folder = _rl_store() / "swaps" / it["id"]
+        jobs = [(f"swaps/{it['id']}/{it['file']}", folder / it["file"], it.get("sha"))]
+        if it.get("img"):
+            jobs.append((f"swaps/{it['id']}/preview.png", folder / "preview.png", ""))
+        if it.get("orig"):
+            jobs.append((f"swaps/{it['id']}/original/{it['file']}", _rl_store() / "swaps" / "_originals" / it["file"],
+                         it.get("orig_sha")))
+        for remote, local, sha in jobs:
+            try:
+                if local.is_file() and (not sha or file_hash(local) == sha):
+                    continue
+                data = download(public_file(remote))
+                import hashlib
+                if sha and hashlib.sha256(data).hexdigest() != sha:
+                    log.warning("swap %s: the downloaded file does not match", remote)
+                    continue
+                local.parent.mkdir(parents=True, exist_ok=True)
+                tmp = local.with_name(local.name + ".part")
+                tmp.write_bytes(data)
+                os.replace(tmp, local)
+                _previews.pop(it["id"], None)
+                got = True
+            except Exception:  # noqa: BLE001
+                log.warning("swap download failed: %s", remote)
+    if got and then:
+        ctx.online._back.emit(then)

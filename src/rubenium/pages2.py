@@ -433,7 +433,7 @@ class SwapTile(QAbstractButton):
         w = r.right() - S(34) - x
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
-        old = self.item["old"] if self.ready else tr("Coming soon")
+        old = self.item["old"] if self.ready else (tr("Downloading…") if self.item.get("online") else tr("Coming soon"))
         p.drawText(QRectF(x, r.top() + S(7), w, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
                    p.fontMetrics().elidedText(old, Qt.TextElideMode.ElideRight, int(w)))
         p.setPen(QColor(TEXT))
@@ -453,6 +453,19 @@ class SwapTile(QAbstractButton):
             path.lineTo(QPointF(cx + 3.4, cy - 2.4))
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawPath(path)
+        state = self.item.get("state", "live")
+        if state != "live":                                  # paused or locked by the admin: blurred out
+            p.setOpacity(1.0)
+            p.setPen(Qt.PenStyle.NoPen)
+            for k in range(4):                               # a soft frosted cover over the whole tile
+                p.setBrush(alpha("#0B0E10", 0.22))
+                p.drawRoundedRect(r.adjusted(-k * 0.5, -k * 0.5, k * 0.5, k * 0.5), rad, rad)
+            p.setPen(QColor("#FFC94D" if state == "paused" else "#FF7A7A"))
+            p.setFont(font(11.5, QFont.Weight.Bold))
+            text = tr(extras.ONLINE_STATES.get(state, state))
+            if self.on:
+                text += "  ·  " + tr("click to turn it off")
+            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
 
 
 class RocketPage(Page):
@@ -518,7 +531,8 @@ class RocketPage(Page):
                 on = shown.get(key) == it["id"]
                 tile = SwapTile(it, on, ready)
                 tile.pending = self._waiting(it, shown, base)
-                tile.setEnabled(bool(self.plat) and ready)
+                blocked = it.get("state", "live") != "live"
+                tile.setEnabled(bool(self.plat) and (ready or on) and (not blocked or on))
                 tile.clicked.connect(lambda _=False, i=it: self._toggle(i))
                 self.tiles.append(tile)
                 col.addWidget(tile)
@@ -586,6 +600,14 @@ class RocketPage(Page):
 
     def on_show(self) -> None:
         self._poll.start()
+        import time as _t
+        if _t.monotonic() - getattr(self.ctx, "swaps_at", -999) > 120:      # the admin's swaps, kept up to date
+            self.ctx.swaps_at = _t.monotonic()
+
+            def again() -> None:
+                if self.ctx.window.current == "rl" and self.pending is None:
+                    self.ctx.reload_page()
+            extras.fetch_online_swaps(self.ctx, again)
 
     def on_hide(self) -> None:
         self._poll.stop()

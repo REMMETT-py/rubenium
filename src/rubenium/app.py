@@ -200,6 +200,7 @@ class App(QObject):
         self._audio = QTimer(self)
         self._audio.setInterval(33)
         self._audio.timeout.connect(self._sample_audio)
+        self._safe("online swaps cache", extras.load_online_swaps_cache)   # before the engine: swaps that are on
         self.rocket = extras.RocketSwaps(self.cfg)
         self.splash = extras.Splash(self.cfg, self.rocket)
         self.rocket.busy.connect(self._rocket_busy)
@@ -297,6 +298,7 @@ class App(QObject):
         self._safe("timer", self.apply_timer)
         self._safe("accent", self.refresh_accent)
         self._safe("rocket", self.rocket.start)
+        self._safe("online swaps", lambda: extras.fetch_online_swaps(self))
         self._safe("splash", self.splash.start)
         self._safe("coins", self.wallet.start)
         if "--selftest" not in sys.argv:
@@ -440,7 +442,7 @@ class App(QObject):
 
     def _housekeeping(self) -> None:
         for overlay in (self.window, self.window.ball, self.window.drawer, self.crosshair, self.hud,
-                        self.timer_overlay, self.welcome):
+                        self.timer_overlay):            # the welcome / login screen is never pinned over other apps
             if overlay is None:
                 continue
             if overlay is self.window and self.window.modal:

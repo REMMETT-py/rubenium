@@ -36,7 +36,7 @@ class AskDialog(QWidget):
         self._on_text = on_text
         self.ctx = ctx
         self.setWindowTitle("Rubenium")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setFixedWidth(S(300))
@@ -410,6 +410,11 @@ def _designs(kind: str) -> list:
 SHOP_KINDS = ("ball", "line", "font", "theme", "banner", "frame")
 
 
+def _on_sale(ec, item: str) -> bool:
+    """In the shop: sold right now (event items are not), or already yours."""
+    return item in ec.catalog and (ec.catalog[item].get("price") is not None or ec.owns(item))
+
+
 def look_worn(ctx, item: str) -> bool:
     """A banner, frame or tag is worn on the server (everyone sees it)."""
     return ctx.econ.worn(item.split(":")[0]) == item
@@ -457,7 +462,7 @@ def build_cosmetics(page, lay) -> None:
                                 10.5, TEXT_DIM, wrap_w=page.W))
         entries = []
         for base, name in _designs(kind):
-            if kind in ("banner", "frame") and f"{kind}:{base}" not in ec.catalog:
+            if kind in ("banner", "frame") and not _on_sale(ec, f"{kind}:{base}"):
                 continue
             item = f"{kind}:{base}" if kind in ("theme", "banner", "frame") else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
             cheapest = item if kind in ("theme", "banner", "frame") else f"{kind}:{base}:grey"
@@ -465,7 +470,7 @@ def build_cosmetics(page, lay) -> None:
             pct = max((ec.sale(k) for k in ec.catalog if k.startswith(f"{kind}:{base}")), default=0)
             entries.append({"item": item, "price": ec.shop_price(cheapest), "tag": tr(name),
                             "mark": "sale" if pct else ("worn" if owned else ""), "pct": pct})
-        designs = [d for d in _designs(kind) if kind not in ("banner", "frame") or f"{kind}:{d[0]}" in ec.catalog]
+        designs = [d for d in _designs(kind) if kind not in ("banner", "frame") or _on_sale(ec, f"{kind}:{d[0]}")]
         if kind in ("banner", "frame"):                    # cheapest first: Common to Legendary
             order = sorted(range(len(entries)), key=lambda i: (entries[i]["price"] or 0, i))
             entries, designs = [entries[i] for i in order], [designs[i] for i in order]

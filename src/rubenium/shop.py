@@ -809,7 +809,7 @@ class ShopPage(Page):
             from .collection import KIND_TEXT, case_kind
             lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
-                for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts"))):
+                for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts")), ("style", tr("Style cases"))):
                     lay.addWidget(heading(title))
                     lay.addWidget(Label(tr(KIND_TEXT[kind]), 10.5, TEXT_DIM, wrap_w=self.W))
                     for case in ec.cases:
@@ -847,7 +847,8 @@ class ShopPage(Page):
                 lay.addWidget(Label(tr(CASE_NOTES[case["id"]]), 11, TEXT_DIM, wrap_w=self.W))
             if case_kind(case["id"]):
                 lay.addWidget(Label(tr(KIND_TEXT[case_kind(case["id"])]), 10.5,
-                                    "#3DDC84" if case_kind(case["id"]) == "coins" else "#FF5CC8", wrap_w=self.W))
+                                    {"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF"}[case_kind(case["id"])],
+                                    wrap_w=self.W))
             gift = Button(tr("Gift this case to a friend"), "ghost", 30)
             gift.clicked.connect(lambda: self._gift(case))
             lay.addWidget(gift)

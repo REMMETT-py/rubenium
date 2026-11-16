@@ -21,13 +21,16 @@ SHOWCASE = 3
 SLOTS = ("badge1", "badge2", "badge3")
 CASE_NAMES = {"starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing",
               "painter": "Painter's Case", "premium": "Premium Case", "jackpot": "Jackpot Case",
-              "titan": "Titanium Case", "vault": "Legend Vault", "mythic": "Mythic Hunt", "daily": "Daily Case"}
+              "titan": "Titanium Case", "vault": "Legend Vault", "mythic": "Mythic Hunt", "daily": "Daily Case",
+              "style": "Style Case", "themes": "Theme Case", "profile": "Profile Case"}
 CASE_COLOURS = {"starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
-                "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0"}
+                "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0",
+                "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF"}
 CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"),
               "gamble": ("dice", "skull", "dice"), "painter": ("feather", "quill", "drop"),
               "premium": ("sword", "bolt", "flame"), "jackpot": ("$", "$", "$"), "titan": ("shield", "rook", "anchor"),
-              "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?")}
+              "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?"),
+              "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame")}
 CASE_NOTES = {"gamble": "Half the time: almost nothing. The other half: always Rare or better.",
               "painter": "Never a Basic badge: every badge comes in colour.",
               "jackpot": "Coins only. Most of the time less than its price, sometimes double, and once in a while 10 to 30 times "
@@ -36,20 +39,25 @@ CASE_NOTES = {"gamble": "Half the time: almost nothing. The other half: always R
               "vault": "No Common badges inside.",
               "mythic": "The best chance of a Mythic badge. Only Epic or better inside.",
               "starter": "Small and safe: a good first case.", "standard": "Good coins, sometimes a Rare badge.",
-              "premium": "Bigger coins and better badges."}
+              "premium": "Bigger coins and better badges.",
+              "style": "Balls, song lines and fonts from the shop.", "themes": "Only themes: Rare or better.",
+              "profile": "Banners and frames for your profile."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
 COIN_CASES = ("starter", "standard", "premium", "jackpot", "titan")
 HUNT_CASES = ("gamble", "painter", "vault", "mythic")
+STYLE_CASES = ("style", "themes", "profile")
 KIND_TEXT = {"coins": "Coin case: on average it pays back a little more than it costs, but about half the time you get "
                       "less. Every coin drop has a 6% chance to be a lucky ×3.",
-             "hunt": "Rare hunt: the best chances at rare badges, but you lose coins on average (about half comes back)."}
+             "hunt": "Rare hunt: the best chances at rare badges, but you lose coins on average (about half comes back).",
+             "style": "Style case: every ball, line, font, theme, banner and frame of the shop can come out. Counted at "
+                      "shop prices you get a little more than you paid; Legendary ones stay about 1 in 100."}
 
 
 def case_kind(case_id: str) -> str:
     """"coins", "hunt", or "" (before the 2.6.1 server update the old numbers are still live)."""
     if ECON is None or "case_lucky_pct" not in (ECON.cfg or {}):
         return ""
-    return "coins" if case_id in COIN_CASES else "hunt" if case_id in HUNT_CASES else ""
+    return "coins" if case_id in COIN_CASES else "hunt" if case_id in HUNT_CASES else "style" if case_id in STYLE_CASES else ""
 ECON = None            # set by the app at start: lets this file know which Mythic badges are still secret
 
 
@@ -588,8 +596,8 @@ class CaseCard(QWidget):
         have = int(self.ctx.econ.stock.get(cid, 0) or 0)
         kind = case_kind(cid)
         if kind:                                            # what this case is for, at a glance
-            text = tr("COINS") if kind == "coins" else tr("RARE HUNT")
-            kc = QColor("#3DDC84") if kind == "coins" else QColor("#FF5CC8")
+            text = {"coins": tr("COINS"), "hunt": tr("RARE HUNT"), "style": tr("STYLE")}[kind]
+            kc = QColor({"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF"}[kind])
             p.setFont(font(9, QFont.Weight.Black, 0.6))
             kw = p.fontMetrics().horizontalAdvance(text) + S(14)
             ktag = QRectF(r.right() - kw - S(10), r.bottom() - S(27), kw, S(18))
@@ -633,7 +641,7 @@ class OddsTable(QWidget):
         self.case = case
         self.rows = [("tier", i, share) for i, share in enumerate(case["odds"]) if share > 0][::-1]
         variants = list(case.get("variants") or [])
-        if any(t for _k, t, _s in self.rows) and variants:
+        if any(t for _k, t, _s in self.rows) and variants and not str(case.get("mode", "")).startswith("kinds:"):
             self.rows.append(("head", 0, 0))
             self.rows += [("cls", i, share) for i, share in enumerate(variants) if share > 0][::-1]
         self.row_h = S(24)
@@ -692,7 +700,7 @@ class CaseReel(QWidget):
         self.result = None
         self._pool = {}
         rnd = random.Random(sum(map(ord, case["id"])))
-        self.strip = [self._filler(rnd) for _ in range(self.ITEMS)]
+        self.strip = self._make_strip(rnd)
         self.offset = self._start()
         self._t0 = self._target = self._last_tick = self._stop_t = 0.0
         self._last_cell = 0
@@ -707,8 +715,31 @@ class CaseReel(QWidget):
             self._pool[tier] = [b for b in BADGE_ROWS[tier - 1][1]] or ["star"]
         return self._pool[tier]
 
+    def _make_strip(self, rnd) -> list:
+        """The strip, drawn with the real odds and never the same item twice close together."""
+        out = []
+        for _ in range(self.ITEMS):
+            drop = self._filler(rnd)
+            for _try in range(6):
+                if drop[0] == "coins" or drop not in out[-8:]:
+                    break
+                drop = self._filler(rnd)
+            out.append(drop)
+        return out
+
+    def _kinds_pool(self, tier: int) -> list:
+        key = ("kinds", tier)
+        if key not in self._pool:
+            kinds = set(str(self.case.get("mode", ""))[6:].split(","))
+            want = TIERS[tier - 1] if 0 < tier <= len(TIERS) else ""
+            cat = ECON.catalog if ECON is not None else {}
+            self._pool[key] = [k for k, v in cat.items() if v.get("kind") in kinds and v.get("rarity") == want
+                               and v.get("price") is not None]
+        return self._pool[key]
+
     def _filler(self, rnd) -> tuple:
-        """A drop for the strip, picked with the case's real odds (so the strip looks like the case)."""
+        """A drop for the strip, picked with the case's real odds (so the strip looks like the case: rare things
+        are as rare here as in the case itself)."""
         roll, tier = rnd.randrange(10000), 0
         for i, share in enumerate(self.case["odds"]):
             if roll < share:
@@ -720,6 +751,9 @@ class CaseReel(QWidget):
                 k = int(self.case.get("price") or 1000) / 1000
                 return ("coins", int(rnd.choice([150, 220, 300, 380, 1200, 1500, 4000, 12000]) * k))
             return ("coins", rnd.randint(self.case["coin_min"], max(self.case["coin_min"], self.case["coin_max"])))
+        if str(self.case.get("mode", "")).startswith("kinds:"):
+            pool = self._kinds_pool(tier)
+            return ("item", rnd.choice(pool)) if pool else ("coins", int(self.case.get("coin_min") or 100))
         base = rnd.choice(self._badges_of(tier))
         if tier == 5:
             return ("item", badge_item(base, rnd.choice(["prime"] * 9 + ["white"])))
@@ -729,8 +763,8 @@ class CaseReel(QWidget):
                 cls = i
                 break
             roll -= share
-        if rnd.random() < 0.06:                              # a few rare ones flash past: that is the thrill
-            cls = rnd.choice([2, 3, 4])
+        if cls == 3 and tier <= 2:
+            cls = 2
         var = rnd.choice([["grey"], PAINTED_IDS, SHINY_IDS, TITANIUM_IDS, GOLD_IDS][cls])
         return ("item", badge_item(base, var))
 
@@ -744,7 +778,7 @@ class CaseReel(QWidget):
 
     def spin(self, result: dict) -> None:
         rnd = random.Random()
-        self.strip = [self._filler(rnd) for _ in range(self.ITEMS)]
+        self.strip = self._make_strip(rnd)
         self.strip[self.WIN] = ("item", result["item"]) if result.get("item") else ("coins", int(result.get("won", 0)))
         self.result = result
         self.state = "intro"                              # 2.4: the case shakes and opens, then the strip runs
@@ -797,8 +831,9 @@ class CaseReel(QWidget):
         self._stop_t = time.monotonic()
         tier = self._tier()
         sfx.play("on")
-        if tier >= 4:
-            QTimer.singleShot(180, lambda: sfx.play("on"))
+        cls = int(self.result.get("cls") or 0)
+        for k in range((1 if tier >= 3 else 0) + (1 if tier >= 4 else 0) + (2 if tier >= 5 else 0) + (1 if cls >= 2 else 0)):
+            QTimer.singleShot(170 * (k + 1), lambda: sfx.play("on"))          # the rarer, the longer it rings
         n = [0, 0, 10, 18, 30, 60][tier] + [0, 0, 12, 30, 70][int(self.result.get("cls") or 0)]
         rnd = random.Random()
         self._sparks = [(rnd.uniform(0, math.tau), rnd.uniform(S(60), S(150)), rnd.uniform(0.6, 1.3)) for _ in range(n)]
@@ -947,12 +982,12 @@ class CaseReel(QWidget):
         age = now - self._stop_t
         c = QPointF(r.center().x(), r.top() + S(66))
         burst = QRadialGradient(c, S(150))
-        burst.setColorAt(0.0, alpha(col, 0.42 if tier >= 2 else 0.18))
+        burst.setColorAt(0.0, alpha(col, [0.12, 0.12, 0.24, 0.42, 0.55, 0.7][min(tier, 5)]))
         burst.setColorAt(1.0, alpha(col, 0.0))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(burst)
         p.drawEllipse(c, S(150), S(150))
-        if tier >= 2:
+        if tier >= 3:                                     # only Epic and better get rays
             rays = [0, 0, 8, 10, 14, 18][tier]
             p.save()
             p.translate(c)
@@ -967,7 +1002,7 @@ class CaseReel(QWidget):
                 p.setBrush(alpha(col, 0.08 + 0.03 * (tier - 2)))
                 p.drawPath(ray)
             p.restore()
-        if age < 0.35 and tier >= 2:
+        if age < 0.35 and tier >= 3:
             p.setBrush(QColor(255, 255, 255, int((120 + 30 * tier) * (1 - age / 0.35))))
             p.drawRect(r)
         if age < 0.9:                                     # a shock ring rolls out
@@ -1001,8 +1036,13 @@ class CaseReel(QWidget):
         pop = min(1.0, age / 0.45)
         size = S(64) * (0.4 + 0.6 * (1 - (1 - pop) ** 3)) * (1 + 0.18 * math.sin(pop * math.pi) * (1 - pop))
         if res.get("item"):
-            paint_item(p, res["item"], QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now)
-            title, tag = badge_label(res["item"]), tr(RARITY_NAMES[TIERS[tier - 1]]).upper()
+            show_item(p, res["item"], QRectF(c.x() - size / 2, c.y() - size / 2, size, size), now)
+            if str(res["item"]).startswith("badge:"):
+                title = badge_label(res["item"])
+            else:
+                from .cosmetics import item_name
+                title = item_name(res["item"])
+            tag = tr(RARITY_NAMES[TIERS[tier - 1]]).upper()
             cls = int(res.get("cls") or 0)
             if cls:
                 tag += "  ·  " + tr(CLASS_NAMES[cls]).upper()

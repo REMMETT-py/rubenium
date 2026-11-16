@@ -170,8 +170,8 @@ class Table(QWidget):
 
 class AdminPage(Page):
     key = "admin"
-    SECTIONS = ["Overview", "Users", "Items", "Cases", "Live", "Settings", "Log", "Help"]
-    ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key"]
+    SECTIONS = ["Overview", "Users", "Items", "Cases", "Live", "Settings", "Log", "Help", "Bots", "Swaps"]
+    ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key", "spark", "rocket"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -187,11 +187,12 @@ class AdminPage(Page):
             return lay.addWidget(Label(tr("Admin only"), 12, TEXT_DIM))
         tab = int(getattr(ctx, "admin_tab", 0) or 0)
         from .hub import NavTiles
-        pick = NavTiles([(tr(s), i) for s, i in zip(self.SECTIONS, self.ICONS)], tab)
+        pick = NavTiles([(tr(s), i) for s, i in zip(self.SECTIONS, self.ICONS)], tab, per_row=5)   # 2 full rows
         pick.changed.connect(self._section)
         lay.addWidget(pick)
         self._lock_row(lay)
-        [self._overview, self._players, self._items, self._cases, self._live, self._settings, self._log, self._help][tab](lay)
+        [self._overview, self._players, self._items, self._cases, self._live, self._settings, self._log, self._help,
+         self._bots, self._swaps][min(tab, 9)](lay)
 
     # -- helpers
     def _reload(self) -> None:
@@ -671,6 +672,256 @@ class AdminPage(Page):
                 "fake": ("Looks fake: asked from another user's PC", "#FF5C6C"),
                 "unsure": ("Not sure: a PC we do not know", "#FFC94D"),
                 "no_account": ("No account with this name", "#9AA4AD")}
+
+    # -- Bots: fake accounts that live on their own
+    BOT_FIELDS = [("hours", "Hours played", "40"), ("days", "Account age in days", "30"), ("coins", "Coins", "8000"),
+                  ("keys", "Keys", "6"), ("streak", "Login streak (days)", "5"), ("badges", "Badges to own (0 to 60)", "12"),
+                  ("active", "How often online, % (0 to 100)", "60"), ("from", "Online from (hour, 0 to 23)", "16"),
+                  ("to", "Online until (hour, 0 to 23)", "23")]
+
+    def _bot_cfg(self, v: dict, dlg) -> dict:
+        cfg = {}
+        limits = {"hours": (0, 20000), "days": (0, 3650), "coins": (0, 10000000), "keys": (0, 48), "streak": (0, 3650),
+                  "badges": (0, 60), "active": (0, 100), "from": (0, 23), "to": (0, 23)}
+        for key, (lo, hi) in limits.items():
+            n = _int(v.get(key, ""), None)
+            if n is None or not lo <= n <= hi:
+                dlg.say(tr("{what}: a number from {a} to {b}", what=tr(dict((k, t) for k, t, _d in self.BOT_FIELDS)[key]),
+                           a=lo, b=hi))
+                return {}
+            cfg[key] = n
+        return cfg
+
+    def _bots(self, lay) -> None:
+        lay.addWidget(Label(tr("Bots are fake accounts that look and live like real users: they come online in their "
+                               "hours, play, earn coins and keys, open cases and keep a login streak. Nobody can see "
+                               "they are bots. You can log into one with its name and the password you chose."),
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        make = Button(tr("Create a bot"), "primary", 34, icon="plus")
+        make.clicked.connect(self._bot_new)
+        lay.addWidget(make)
+        rows = self.fetch("rb_admin_bots", {})
+        if rows is None:
+            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+        if not isinstance(rows, list) or not rows:
+            return lay.addWidget(Label(tr("No bots yet."), 11, TEXT_FAINT))
+        pick = getattr(self.ctx, "admin_bot", "") or ""
+        lay.addWidget(heading(tr("Bots") + f"  ·  {len(rows)}"))
+        lay.addWidget(Table([(("● " if b.get("online") else "○ ") + b["username"],
+                              f"{int(b.get('minutes') or 0) // 60} h",
+                              coins_text(int(b.get("coins") or 0)), "#3DDC84" if b.get("online") else TEXT_DIM)
+                             for b in rows], self.W,
+                            lambda i: (setattr(self.ctx, "admin_bot", rows[i]["username"]), self.ctx.reload_page())))
+        b = next((r for r in rows if r["username"] == pick), None)
+        if b is None:
+            return lay.addWidget(Label(tr("Click a bot to change it."), 10.5, TEXT_FAINT))
+        cfg = b.get("cfg") or {}
+        paused = bool(cfg.get("paused"))
+        lay.addWidget(heading(b["username"] + ("  ·  " + tr("Paused") if paused else "")))
+        lay.addWidget(Label(tr("{h} h played · {c} coins · {k} keys · {s}-day streak · {n} badges · online {a}% from {f}:00 to {t}:00",
+                               h=int(b.get("minutes") or 0) // 60, c=coins_text(int(b.get("coins") or 0)),
+                               k=int(b.get("keys") or 0), s=int(b.get("streak") or 0), n=int(b.get("badges") or 0),
+                               a=int(cfg.get("active", 60)), f=int(cfg.get("from", 16)), t=int(cfg.get("to", 23))),
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        line = hbox(spacing=6)
+        edit = Button(tr("Change"), "primary", 30)
+        edit.clicked.connect(lambda: self._bot_edit(b))
+        stop = Button(tr("Resume") if paused else tr("Pause"), "ghost", 30)
+        stop.clicked.connect(lambda: self.do("rb_admin_bot_set", {"name": b["username"], "cfg": {"paused": not paused}},
+                                             tr("Saved")))
+        gone = Button(tr("Delete"), "danger", 30)
+        gone.clicked.connect(lambda: self.ctx.window.confirm(
+            tr("Delete the bot {name} for good?", name=b["username"]),
+            lambda: self.do("rb_admin_bot_delete", {"name": b["username"]}, tr("Deleted")), yes=tr("Delete")))
+        for w in (edit, stop, gone):
+            line.addWidget(w, 1)
+        lay.addLayout(line)
+
+    def _bot_new(self) -> None:
+        fields = [("name", tr("Username (3 to 10 letters or numbers)"), ""), ("pw", tr("Password (8 characters at least)"), "")]
+        fields += [(k, tr(t), d) for k, t, d in self.BOT_FIELDS]
+
+        def go(v: dict, dlg) -> None:
+            import re
+            name, pw = v["name"], v["pw"]
+            if not re.fullmatch(r"[A-Za-z0-9]{3,10}", name):
+                return dlg.say(tr("3 to 10 letters or numbers"))
+            if len(pw) < 8:
+                return dlg.say(tr("8 characters at least"))
+            cfg = self._bot_cfg(v, dlg)
+            if not cfg:
+                return
+            dlg.say(tr("Creating…"))
+
+            def ticket(ok: bool, tk) -> None:
+                if not ok:
+                    return dlg.say(tr(str(tk)))
+
+                def made(ok2: bool, d) -> None:
+                    if not ok2:
+                        return dlg.say(tr(str(d)) if "taken" not in str(d).lower() else tr("This username is taken"))
+
+                    def set_done(ok3: bool, d3) -> None:
+                        if not ok3:
+                            return dlg.say(tr(str(d3)))
+                        dlg.close()
+                        sfx.play("on")
+                        self.ctx.toast(tr("Bot {name} created", name=name))
+                        self.ctx.admin_bot = name
+                        self.ctx.admin_cache = {}
+                        QTimer.singleShot(300, self.ctx.reload_page)
+                    self.ctx.econ.call("rb_admin_bot_set", {"name": name, "cfg": cfg}, set_done)
+                self.ctx.online.make_bot(name, pw, str(tk), made)
+            self.ctx.econ.call("rb_admin_bot_ticket", {}, ticket)
+        FormDialog(self.ctx, tr("Create a bot"), fields, tr("Create"), go)
+
+    def _bot_edit(self, b: dict) -> None:
+        cfg = dict(b.get("cfg") or {})
+        now = {"hours": int(b.get("minutes") or 0) // 60, "coins": int(b.get("coins") or 0), "keys": int(b.get("keys") or 0),
+               "streak": int(b.get("streak") or 0), "badges": int(b.get("badges") or 0), "days": 30}
+        try:
+            from datetime import datetime, timezone
+            since = datetime.fromisoformat(str(b.get("since")).replace("Z", "+00:00"))
+            now["days"] = max(0, (datetime.now(timezone.utc) - since).days)
+        except (TypeError, ValueError):
+            pass
+        fields = [(k, tr(t), now.get(k, cfg.get(k, d))) for k, t, d in self.BOT_FIELDS]
+
+        def go(v: dict, dlg) -> None:
+            new = self._bot_cfg(v, dlg)
+            if new:
+                dlg.close()
+                self.do("rb_admin_bot_set", {"name": b["username"], "cfg": new}, tr("Saved"))
+        FormDialog(self.ctx, tr("Change {name}", name=b["username"]), fields, tr("Save"), go)
+
+    # -- Swaps: add Rocket League swaps for everyone
+    def _swaps(self, lay) -> None:
+        from .extras import ONLINE_STATES, RL_CATS
+        lay.addWidget(Label(tr("Add a swap for everyone: a 300×300 picture, the swap file and (best) the original game "
+                               "file. It shows in every user's Rocket League tab. Pause or lock a swap that is broken: "
+                               "it is blurred out and cannot be switched on."), 10.5, TEXT_DIM, wrap_w=self.W))
+        rows = self.fetch("rb_swaps_list", {})
+        if isinstance(rows, list) and rows:
+            lay.addWidget(heading(tr("Swaps you added") + f"  ·  {len(rows)}"))
+            names = dict(RL_CATS)
+            lay.addWidget(Table([(r["new"], tr(names.get(r["cat"], r["cat"])),
+                                  tr(ONLINE_STATES.get(r["state"], "Live")),
+                                  {"live": "#3DDC84", "paused": "#FFC94D"}.get(r["state"], "#FF7A7A")) for r in rows], self.W,
+                                lambda i: (setattr(self.ctx, "admin_swap", rows[i]["id"]), self.ctx.reload_page())))
+            cur = next((r for r in rows if r["id"] == getattr(self.ctx, "admin_swap", "")), None)
+            if cur is not None:
+                lay.addWidget(Label(f"{cur['old']} → {cur['new']}  ·  {cur['file']}", 11, TEXT, bold=True, wrap_w=self.W))
+                line = hbox(spacing=6)
+                for st, text, kind in (("live", "Live", "primary"), ("paused", "Pause", "ghost"), ("locked", "Lock", "ghost"),
+                                       ("delete", "Delete", "danger")):
+                    b = Button(tr(text), kind, 30)
+                    b.setEnabled(st != cur["state"])
+                    b.clicked.connect(lambda _c=False, st=st: self.do("rb_admin_swap_state", {"sid": cur["id"], "st": st}, tr("Saved")))
+                    line.addWidget(b, 1)
+                lay.addLayout(line)
+        lay.addWidget(heading(tr("Add a swap")))
+        cats = [c for c, _n in RL_CATS]
+        ci = cats.index(getattr(self.ctx, "swap_cat", cats[0])) if getattr(self.ctx, "swap_cat", cats[0]) in cats else 0
+        from PyQt6.QtWidgets import QGridLayout
+        grid = QGridLayout()                                 # 3 per row: every category name fits
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(S(4))
+        for i, (_c, n) in enumerate(RL_CATS):
+            b = Button(tr(n), "primary" if i == ci else "ghost", 28)
+            b.clicked.connect(lambda _x=False, i=i: (setattr(self.ctx, "swap_cat", cats[i]), self.ctx.reload_page()))
+            grid.addWidget(b, i // 3, i % 3)
+        lay.addLayout(grid)
+        files = getattr(self.ctx, "swap_files", None) or {}
+        self.ctx.swap_files = files
+        import os
+        for key, text, filt in (("img", "Picture (PNG or JPG, made 300×300)", "Images (*.png *.jpg *.jpeg)"),
+                                ("swap", "Swap file (.upk)", "Rocket League files (*.upk)"),
+                                ("orig", "Original game file (.upk, optional)", "Rocket League files (*.upk)")):
+            chosen = files.get(key)
+            b = Button((tr(text) + ": " + os.path.basename(chosen)) if chosen else tr(text), "ghost", 30, icon="folder")
+
+            def choose(_c=False, key=key, text=text, filt=filt) -> None:
+                from PyQt6.QtWidgets import QFileDialog
+                path, _f = QFileDialog.getOpenFileName(None, tr(text), "", filt)
+                if path:
+                    self.ctx.swap_files[key] = path
+                    self.ctx.reload_page()
+            b.clicked.connect(choose)
+            lay.addWidget(b)
+        add = Button(tr("Add the swap"), "primary", 34, icon="plus")
+        add.setEnabled(bool(files.get("swap")))
+        add.clicked.connect(lambda: self._swap_form(cats[ci]))
+        lay.addWidget(add)
+
+    def _swap_form(self, cat: str) -> None:
+        import hashlib
+        import os
+        import re
+        files = dict(getattr(self.ctx, "swap_files", None) or {})
+        swap = files.get("swap", "")
+        fname = os.path.basename(swap)
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{3,80}", fname) or not fname.lower().endswith(".upk"):
+            return self.ctx.toast(tr("The swap file must be a .upk file with a simple name"), "warn")
+        if files.get("orig") and os.path.basename(files["orig"]).lower() != fname.lower():
+            return self.ctx.toast(tr("The original file must have the same name as the swap file"), "warn")
+
+        def go(v: dict, dlg) -> None:
+            old, new = v["old"].strip(), v["new"].strip()
+            if not old or not new:
+                return dlg.say(tr("Fill in both names"))
+            sid = "o_" + (re.sub(r"[^a-z0-9]+", "_", (old + "_" + new).lower()).strip("_"))[:36]
+            try:
+                data = open(swap, "rb").read()
+                orig = open(files["orig"], "rb").read() if files.get("orig") else b""
+            except OSError:
+                return dlg.say(tr("This file cannot be read"))
+            if not data.startswith(b"\xc1\x83\x2a\x9e"):
+                return dlg.say(tr("This is not a Rocket League file"))
+            png = b""
+            if files.get("img"):
+                from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
+                from PyQt6.QtGui import QImage
+                img = QImage(files["img"])
+                if img.isNull():
+                    return dlg.say(tr("This picture cannot be used"))
+                img = img.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
+                img = img.copy((img.width() - 300) // 2, (img.height() - 300) // 2, 300, 300)
+                ba = QByteArray()
+                buf = QBuffer(ba)
+                buf.open(QIODevice.OpenModeFlag.WriteOnly)
+                img.save(buf, "PNG")
+                png = bytes(ba)
+            dlg.say(tr("Uploading…"))
+            jobs = [(f"swaps/{sid}/{fname}", data, "application/octet-stream")]
+            if png:
+                jobs.append((f"swaps/{sid}/preview.png", png, "image/png"))
+            if orig:
+                jobs.append((f"swaps/{sid}/original/{fname}", orig, "application/octet-stream"))
+
+            def next_job(ok: bool = True, d=None) -> None:
+                if not ok:
+                    return dlg.say(tr("Upload failed: {why}", why=tr(str(d))))
+                if jobs:
+                    path, blob, kind = jobs.pop(0)
+                    return self.ctx.online.upload(path, blob, kind, next_job)
+
+                def saved(ok2: bool, d2) -> None:
+                    if not ok2:
+                        return dlg.say(tr(str(d2)))
+                    dlg.close()
+                    sfx.play("on")
+                    self.ctx.toast(tr("Swap added for everyone"))
+                    self.ctx.swap_files = {}
+                    self.ctx.admin_cache = {}
+                    self.ctx.swaps_at = -999
+                    QTimer.singleShot(300, self.ctx.reload_page)
+                self.ctx.econ.call("rb_admin_swap_save", {"sid": sid, "cat": cat, "old": old, "new": new, "file": fname,
+                                                          "sha": hashlib.sha256(data).hexdigest(),
+                                                          "orig_sha": hashlib.sha256(orig).hexdigest() if orig else "",
+                                                          "img": bool(png), "orig": bool(orig)}, saved)
+            next_job()
+        FormDialog(self.ctx, tr("Add a swap"), [("old", tr("The item you equip in the game (e.g. Octane)"), ""),
+                                               ("new", tr("What it becomes (the title)"), "")], tr("Upload"), go)
 
     def _help(self, lay) -> None:
         rows = self.fetch("rb_admin_resets", {})

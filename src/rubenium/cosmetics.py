@@ -37,13 +37,14 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
 BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("waves", "Waves"), ("grid", "Grid"),
            ("stripes", "Stripes"), ("dots", "Dots"), ("aurora", "Aurora"), ("circuit", "Circuit"), ("sunset", "Sunset"),
            ("peaks", "Peaks"), ("galaxy", "Galaxy"), ("lava", "Lava"), ("matrix", "Matrix"), ("prism", "Prism"),
-           ("snow", "Snow"), ("ember", "Ember"), ("nebula", "Nebula")]
+           ("snow", "Snow"), ("ember", "Ember"), ("nebula", "Nebula"), ("jungle", "Jungle"), ("sakura", "Sakura")]
 FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
-          ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo")]
+          ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine")]
 TAGS = [("og", "OG")]
 MOVING = {"waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
-          "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo"}
+          "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine"}
+EVENT_LOOKS = {"banner:snow", "banner:aurora", "frame:frost"}      # kept for the Christmas event
 KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "banner": "Banner",
               "frame": "Frame", "tag": "Tag"}
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
@@ -337,7 +338,7 @@ _BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), 
                 "circuit": ("#04170F", "#2ECC71"), "sunset": ("#2B0F3D", "#FF8A3D"), "peaks": ("#0E1A2B", "#8FA8FF"),
                 "galaxy": ("#05040F", "#9B5CFF"), "lava": ("#1A0503", "#FF3D1F"), "matrix": ("#010A04", "#3DFF7A"),
                 "prism": ("#101018", "#FF5CC8"), "snow": ("#16304A", "#BFE6FF"), "ember": ("#1A0806", "#FF7A2E"),
-                "nebula": ("#07051A", "#4FE3FF")}
+                "nebula": ("#07051A", "#4FE3FF"), "jungle": ("#06200F", "#2ECC71"), "sakura": ("#2A0E22", "#FF9CCB")}
 
 
 def look_moves(item: str) -> bool:
@@ -558,6 +559,46 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
             tw = 0.3 + 0.7 * abs(math.sin(now * (1 + _rand(i, 5) * 2) + i))
             p.setBrush(alpha("#FFFFFF", tw))
             p.drawEllipse(QPointF(L + _rand(i) * w, T + _rand(i, 1) * h), 0.7 + _rand(i, 2), 0.7 + _rand(i, 2))
+    elif base == "jungle":                                     # layers of swaying leaves, light through them
+        for i in range(10):
+            p.setBrush(alpha("#FFF6B0", 0.05 + 0.04 * math.sin(now + i)))
+            x = L + _rand(i, 7) * w
+            beam = QPainterPath(QPointF(x, T))
+            beam.lineTo(x + w * 0.06, T)
+            beam.lineTo(x + w * 0.16, rect.bottom())
+            beam.lineTo(x + w * 0.1, rect.bottom())
+            p.drawPath(beam)
+        for k, col in enumerate(("#0F5B2A", "#1B8A3E", "#2ECC71")):
+            for i in range(9):
+                cx = L + (i + 0.5) / 9 * w + math.sin(now * 0.9 + i + k) * w * 0.012
+                cy = (T + h * (0.15 + 0.35 * k)) if i % 2 else (rect.bottom() - h * (0.1 + 0.2 * k))
+                p.save()
+                p.translate(cx, cy)
+                p.rotate(-35 + _rand(i, k) * 70 + math.sin(now * 1.2 + i) * 6)
+                p.setBrush(QColor(col))
+                p.drawEllipse(QPointF(0, 0), h * 0.09, h * 0.24)
+                p.restore()
+    elif base == "sakura":                                     # a branch and falling pink petals
+        p.setPen(QPen(QColor("#4A2230"), max(1.5, h * 0.04)))
+        path = QPainterPath(QPointF(L, T + h * 0.25))
+        path.cubicTo(QPointF(L + w * 0.3, T + h * 0.05), QPointF(L + w * 0.5, T + h * 0.4), QPointF(L + w * 0.85, T + h * 0.15))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(12):
+            t2 = (i + 0.5) / 12
+            pt = path.pointAtPercent(t2)
+            p.setBrush(QColor("#FFC1DE" if i % 2 else "#FF8FC2"))
+            p.drawEllipse(pt, h * 0.06, h * 0.06)
+        for i in range(30):
+            fall = (_rand(i, 1) + now * (0.05 + _rand(i, 2) * 0.06)) % 1.0
+            x = L + (_rand(i) + 0.08 * math.sin(now * 1.1 + i)) * w
+            p.save()
+            p.translate(x, T + fall * h)
+            p.rotate(now * 90 + i * 40)
+            p.setBrush(alpha("#FFC1DE", 0.85))
+            p.drawEllipse(QPointF(0, 0), 2.4, 1.3)
+            p.restore()
     shade = QLinearGradient(rect.topLeft(), rect.bottomLeft())       # a soft shade at the bottom, for text on top
     shade.setColorAt(0.55, alpha("#000000", 0.0))
     shade.setColorAt(1.0, alpha("#000000", 0.35))
@@ -569,7 +610,7 @@ _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"
                "neon": ("#2EF2FF", "#2EF2FF"), "dashed": ("#FFFFFF", "#9AA4AD"), "twin": ("#FF5CB8", "#2EC5FF"),
                "laurel": ("#FFD36B", "#B8862B"), "crown": ("#FFD36B", "#B8862B"), "spikes": ("#E6EEF5", "#6E7C88"),
                "flame": ("#FFC94D", "#FF3D1F"), "orbit": ("#B36BFF", "#4FE3FF"), "rainbow": ("#FF5CC8", "#2EC5FF"),
-               "frost": ("#E8F6FF", "#7FC8FF"), "star": ("#FFE9A8", "#FFC94D"), "halo": ("#FFFFFF", "#C9B6FF")}
+               "frost": ("#E8F6FF", "#7FC8FF"), "vine": ("#7BE07B", "#2E8B3E"), "star": ("#FFE9A8", "#FFC94D"), "halo": ("#FFFFFF", "#C9B6FF")}
 
 
 def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: float = 1.0) -> None:
@@ -670,6 +711,19 @@ def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: flo
                 b = a + k * math.pi / 3
                 p.drawLine(QPointF(cx - math.cos(b) * wd * 0.9, cy - math.sin(b) * wd * 0.9),
                            QPointF(cx + math.cos(b) * wd * 0.9, cy + math.sin(b) * wd * 0.9))
+    elif base == "vine":                                      # a vine wrapped around, with leaves that sway
+        p.setPen(QPen(c2, wd * 0.55))
+        p.drawEllipse(ring)
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(10):
+            a = i / 10 * math.tau
+            lc = QPointF(c.x() + math.cos(a) * r, c.y() + math.sin(a) * r)
+            p.save()
+            p.translate(lc)
+            p.rotate(math.degrees(a) + 45 + math.sin(now * 2 + i) * 12)
+            p.setBrush(c1 if i % 2 else c2)
+            p.drawEllipse(QPointF(wd * 0.6, 0), wd * 0.9, wd * 0.45)
+            p.restore()
     elif base == "star":                                      # gold ring with orbiting stars
         p.setPen(QPen(c2, wd * 0.7))
         p.drawEllipse(ring)
