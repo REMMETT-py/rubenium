@@ -159,13 +159,23 @@ class ThemeCard(QAbstractButton):
         p.save()
         p.setClipPath(path)
         p.setOpacity(1.0 if unlocked else (0.6 if nxt else 0.32) + 0.2 * h)
-        pm = extras.theme_pattern(th, int(r.width()), int(r.height()), ui.accent, self.devicePixelRatioF(),
-                                  ui.scale * 0.7, r.height() * 1.1)
-        if pm is not None:
-            p.drawPixmap(r.topLeft(), pm)
-        if self._sparks is None:
-            self._sparks = extras.theme_sparkles(th, r.width(), r.height(), r.height() * 0.6)
-        extras.paint_sparkles(p, self._sparks, r.left(), r.top(), ui.accent, 1.2, ui.scale * 0.8)
+        if th["id"].startswith("theme:"):                    # a shop theme: its own picture from the shop
+            from .collection import show_item
+            c1, c2 = th.get("tint") or ("#2E9BFF", "#1ABC9C")
+            bg = QLinearGradient(r.topLeft(), r.bottomRight())
+            bg.setColorAt(0, alpha(c1, 0.16))
+            bg.setColorAt(1, alpha(c2, 0.10))
+            p.fillRect(r, bg)
+            d = min(r.height() * 0.62, r.width() * 0.4)
+            show_item(p, th["id"], QRectF(r.right() - d - S(10), r.center().y() - d / 2 - S(4), d, d))
+        else:
+            pm = extras.theme_pattern(th, int(r.width()), int(r.height()), ui.accent, self.devicePixelRatioF(),
+                                      ui.scale * 0.7, r.height() * 1.1)
+            if pm is not None:
+                p.drawPixmap(r.topLeft(), pm)
+            if self._sparks is None:
+                self._sparks = extras.theme_sparkles(th, r.width(), r.height(), r.height() * 0.6)
+            extras.paint_sparkles(p, self._sparks, r.left(), r.top(), ui.accent, 1.2, ui.scale * 0.8)
         p.restore()
         p.setOpacity(1.0 if (unlocked or h > 0.5) else 0.6)
         extras.paint_theme_edge(p, th, r, rad, 0.9 if active else 0.25 + 0.3 * h, True, 0.0)

@@ -465,6 +465,8 @@ class FriendsPage(Page):
             return self._profile(who)
         if not ctx.online.logged_in():
             return self.lay.addWidget(Label(tr("Log in to see other users"), 12, TEXT_DIM))
+        if getattr(ctx, "social_edit", False):            # quick profile editing: banner, frame, tag, showcase
+            return self._edit_profile()
         me = getattr(ctx, "social_me", None) or {}
         card = StatsCard(ctx, me, self.W)
         card.picture.connect(self._picture)
@@ -478,6 +480,13 @@ class FriendsPage(Page):
             from .hub import HistoryWindow
             ctx._hist = HistoryWindow(ctx)
         songs.clicked.connect(open_songs)
+        edit = Button(tr("Edit Profile"), "primary", 28)
+
+        def open_edit() -> None:
+            ctx.social_edit = True
+            ctx.reload_page()
+        edit.clicked.connect(open_edit)
+        line.addWidget(edit, 1)
         line.addWidget(rename, 1)
         line.addWidget(songs, 1)
         self.lay.addLayout(line)
@@ -590,6 +599,23 @@ class FriendsPage(Page):
             self.refresh()
             self.ctx.online.ask("rb_users", {"search": "", "page": 0}, self._got_users)
         self.ctx.econ.call(fn, {"name": name}, done)
+
+    def _edit_profile(self) -> None:
+        from .bazaar import build_profile_style
+        top = hbox(spacing=8)
+        back = IconButton("back", 30, tip=tr("Back"))
+
+        def leave() -> None:
+            self.ctx.social_edit = False
+            self.ctx.reload_page()
+        back.clicked.connect(leave)
+        top.addWidget(back)
+        top.addWidget(Label(tr("Edit Profile"), 16, bold=True), 1)
+        self.lay.addLayout(top)
+        pic = Button(tr("Change your picture (PNG or JPG)"), "ghost", 30)
+        pic.clicked.connect(self._picture)
+        self.lay.addWidget(pic)
+        build_profile_style(self, self.lay)
 
     def _picture(self) -> None:
         path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")

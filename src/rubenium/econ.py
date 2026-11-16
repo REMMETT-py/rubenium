@@ -208,12 +208,31 @@ class Econ(QObject):
         """Quick sell needs the 2.6 server update."""
         return "quick_share" in self.cfg
 
+    def worth(self, item: str) -> int:
+        """What an item is worth, the same everywhere (and the same rule as the server): its shop price when the shop
+        sells it; Titanium and Gold badges 50 x their value; Mythic badges 400 x their value."""
+        info = self.info(item)
+        if not info:
+            return 0
+        if info.get("price"):
+            return int(info["price"])
+        v = int(info.get("value") or 0)
+        if info.get("kind") == "badge":
+            if info.get("rarity") == "exotic":
+                return v * 400
+            if int(info.get("cls") or 0) >= 3:
+                return v * 50
+        return v
+
     def quick_value(self, item: str) -> int:
         """About what quick sell pays for one (the server decides; shop items can pay less)."""
         info = self.info(item)
         if not info or not info.get("tradeable") or info.get("kind") in ("prog", "tag"):
             return 0
-        return max(1, int(int(info.get("value") or 0) * float(self.cfg.get("quick_share", 0.25))))
+        pay = int(info.get("value") or 0) * float(self.cfg.get("quick_share", 0.25))
+        if info.get("kind") == "badge":
+            pay = max(pay, self.worth(item) * float(self.cfg.get("quick_worth_share", 0) or 0))
+        return max(1, int(pay))
 
     def quick_quote(self, ids: list, done) -> None:
         self.online.ask("rb_quick_quote", {"ids": list(ids)}, lambda ok, d: done(ok, d))
@@ -323,8 +342,6 @@ class Econ(QObject):
             self.loaded.emit()
             if hasattr(self.ctx, "after_login"):
                 QTimer.singleShot(1200, self.ctx.after_login)
-            if hasattr(self.ctx, "og_event_check"):
-                QTimer.singleShot(1500, self.ctx.og_event_check)
         self.changed.emit()
 
     def fetch_gold_keys(self) -> None:

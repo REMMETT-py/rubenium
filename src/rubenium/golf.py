@@ -37,14 +37,52 @@ HOLES = {
             circles=[]),
     8: dict(name="Diamond", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[(0.45, 0.20, 0.55, 0.42)],
             circles=[(0.30, 0.31, 0.04), (0.70, 0.31, 0.04)]),
+    # sand slows the ball, ice keeps it rolling, boost pads push it, water sends it back where it was hit from
+    9: dict(name="Bunker", tee=(0.10, 0.31), cup=(0.88, 0.31), rects=[], circles=[], sand=[(0.40, 0.12, 0.62, 0.50)]),
+    10: dict(name="Lake", tee=(0.10, 0.50), cup=(0.88, 0.14), rects=[], circles=[], water=[(0.30, 0.0, 0.55, 0.40)]),
+    11: dict(name="Ice Rink", tee=(0.10, 0.31), cup=(0.86, 0.31), rects=[(0.50, 0.0, 0.54, 0.20), (0.50, 0.42, 0.54, 0.62)],
+             circles=[], ice=[(0.20, 0.0, 0.80, 0.62)]),
+    12: dict(name="Launch Pad", tee=(0.08, 0.52), cup=(0.90, 0.10), rects=[(0.0, 0.0, 0.40, 0.36)], circles=[],
+             boost=[(0.42, 0.40, 0.56, 0.62, 0.0, -1.6)]),
+    13: dict(name="Moat", tee=(0.10, 0.31), cup=(0.70, 0.31), rects=[], circles=[],
+             water=[(0.55, 0.12, 0.85, 0.18), (0.55, 0.44, 0.85, 0.50), (0.85, 0.12, 0.91, 0.50)]),
+    14: dict(name="Sand Trap Alley", tee=(0.08, 0.10), cup=(0.92, 0.52), rects=[(0.30, 0.0, 0.34, 0.40), (0.64, 0.22, 0.68, 0.62)],
+             circles=[], sand=[(0.36, 0.40, 0.62, 0.62)], boost=[(0.70, 0.02, 0.95, 0.16, 0.0, 1.4)]),
+    15: dict(name="Bumper Lake", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[],
+             circles=[(0.40, 0.31, 0.05), (0.62, 0.15, 0.04), (0.62, 0.47, 0.04)], water=[(0.45, 0.24, 0.58, 0.38)]),
+    16: dict(name="Express", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[(0.30, 0.0, 0.70, 0.22), (0.30, 0.40, 0.70, 0.62)],
+             circles=[], boost=[(0.32, 0.24, 0.42, 0.38, 1.8, 0.0)], ice=[(0.44, 0.22, 0.70, 0.40)],
+             sand=[(0.78, 0.18, 0.86, 0.44)]),
 }
+
+
+def get_hole(hid: int) -> dict:
+    """Hole 1-16; 101-116 is the same hole mirrored left to right."""
+    base = HOLES.get(hid % 100, HOLES[1])
+    if hid < 100:
+        return base
+
+    def fx(r):
+        return (1 - r[2], r[1], 1 - r[0], r[3])
+    out = dict(base, tee=(1 - base["tee"][0], base["tee"][1]), cup=(1 - base["cup"][0], base["cup"][1]),
+               rects=[fx(r) for r in base["rects"]], circles=[(1 - c[0], c[1], c[2]) for c in base["circles"]])
+    for key in ("sand", "ice", "water"):
+        out[key] = [fx(r) for r in base.get(key, [])]
+    out["boost"] = [(1 - b[2], b[1], 1 - b[0], b[3], -b[4], b[5]) for b in base.get("boost", [])]
+    return out
+
+
+def _inside(zones, x: float, y: float) -> bool:
+    return any(z[0] <= x <= z[2] and z[1] <= y <= z[3] for z in zones)
 
 
 def simulate(hole: dict, x: float, y: float, ang: float, pw: float):
     """Roll one shot. Returns (frames at 60 fps, final x, final y, holed). Same maths on every PC."""
     vx, vy = math.cos(ang) * pw * VMAX, math.sin(ang) * pw * VMAX
     dt = 1 / 240
+    x0, y0 = x, y
     frames = [(x, y)]
+    sand, ice, water, boost = hole.get("sand", []), hole.get("ice", []), hole.get("water", []), hole.get("boost", [])
     cx, cy = hole["cup"]
     r = BALL_R
     for step in range(240 * 14):
@@ -84,6 +122,14 @@ def simulate(hole: dict, x: float, y: float, ang: float, pw: float):
                 if vn < 0:
                     vx -= (1 + 0.95) * vn * nx                 # bumpers kick back harder
                     vy -= (1 + 0.95) * vn * ny
+        if water and _inside(water, x, y):                     # splash: back to where it was hit from
+            frames.append((x, y))
+            frames.append((x0, y0))
+            return frames, x0, y0, False
+        for (x1, y1, x2, y2, px_, py_) in boost:
+            if x1 <= x <= x2 and y1 <= y <= y2:
+                vx += px_ * dt * 4
+                vy += py_ * dt * 4
         speed = math.hypot(vx, vy)
         dc = math.hypot(x - cx, y - cy)
         if dc < CUP_R * 2.2 and speed < 0.7:                   # the cup pulls a slow ball in a little
@@ -94,6 +140,10 @@ def simulate(hole: dict, x: float, y: float, ang: float, pw: float):
             frames.append((cx, cy))
             return frames, cx, cy, True
         dec = (0.42 + speed * 0.55) * dt                        # grass: slows down, more when fast
+        if sand and _inside(sand, x, y):
+            dec *= 4.0
+        elif ice and _inside(ice, x, y):
+            dec *= 0.25
         if speed <= dec or speed < 0.004:
             break
         k = (speed - dec) / speed
@@ -163,7 +213,7 @@ class GolfView(QWidget):
         """The layout of hole n (1-3) of this match; the current hole by default."""
         hs = list(self.g.get("holes") or [1, 2, 3])
         n = max(1, min(3, int(n or self.g.get("hole") or 1)))
-        return HOLES.get(int(hs[n - 1]) if len(hs) >= n else 1, HOLES[1])
+        return get_hole(int(hs[n - 1]) if len(hs) >= n else 1)
 
     def set_state(self, g: dict) -> None:
         old = self.g
@@ -321,6 +371,32 @@ class GolfView(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         for k in range(0, 12, 2):                            # mowed stripes
             p.fillRect(QRectF(f.left() + k * u / 12, f.top(), u / 12, f.height()), alpha("#FFFFFF", 0.035))
+        for (x1, y1, x2, y2) in h.get("sand", []):
+            p.setBrush(QColor("#E3C88A"))
+            p.drawRoundedRect(QRectF(P(x1, y1), P(x2, y2)), S(10), S(10))
+        for (x1, y1, x2, y2) in h.get("ice", []):
+            p.setBrush(alpha("#CFF4FF", 0.55))
+            p.drawRoundedRect(QRectF(P(x1, y1), P(x2, y2)), S(6), S(6))
+        for (x1, y1, x2, y2) in h.get("water", []):
+            wr = QRectF(P(x1, y1), P(x2, y2))
+            wg = QLinearGradient(wr.topLeft(), wr.bottomRight())
+            wg.setColorAt(0, QColor("#2E7CF6"))
+            wg.setColorAt(1, QColor("#14489E"))
+            p.setBrush(wg)
+            p.drawRoundedRect(wr, S(8), S(8))
+        for (x1, y1, x2, y2, px_, py_) in h.get("boost", []):
+            br = QRectF(P(x1, y1), P(x2, y2))
+            p.setBrush(alpha("#FFB627", 0.35))
+            p.drawRoundedRect(br, S(6), S(6))
+            ang_ = math.atan2(py_, px_)
+            p.setPen(QPen(QColor("#FFD36B"), S(2.5), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            for k in range(3):
+                t_ = ((now * 1.5 + k / 3) % 1.0) - 0.5
+                m_ = min(br.width(), br.height()) * 0.8
+                c_ = br.center() + QPointF(math.cos(ang_) * t_ * m_, math.sin(ang_) * t_ * m_)
+                for sgn in (-1, 1):
+                    p.drawLine(c_, c_ - QPointF(math.cos(ang_ + sgn * 0.6) * S(7), math.sin(ang_ + sgn * 0.6) * S(7)))
+            p.setPen(Qt.PenStyle.NoPen)
         wood = QColor("#6B4423")
         for (x1, y1, x2, y2) in h["rects"]:
             r = QRectF(P(x1, y1), P(x2, y2))

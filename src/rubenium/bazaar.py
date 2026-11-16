@@ -117,10 +117,8 @@ def rarity_line(ctx, item: str) -> str:
 
 
 def value_of(ctx, item: str) -> int:
-    """What an item is worth, as shown everywhere: its shop price when the shop sells it (so the inventory, trades and
-    the collection always show the same number), else its catalogue value."""
-    info = ctx.econ.info(item)
-    return int(info.get("price") or info.get("value") or 0)
+    """What an item is worth, as shown everywhere (inventory, trades, collection)."""
+    return ctx.econ.worth(item)
 
 
 class ItemGrid(QWidget):
@@ -906,7 +904,7 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
     line.addWidget(sell, 1)
     quick = Button(tr("Quick sell"), "ghost", 32, icon="gem")
     quick.setEnabled(sellable and ec.quick_value(item) > 0)
-    quick.setToolTip(tr("Sell it right now for about {n} coins (a quarter of what it is worth)",
+    quick.setToolTip(tr("Sell it right now for about {n} coins",
                         n=coins_text(ec.quick_value(item))))
     quick.clicked.connect(lambda: quick_sell(ctx, [free[-1]["id"]], item_name(item)))
     line.addWidget(quick, 1)
@@ -963,7 +961,7 @@ def build_profile_style(page, lay) -> None:
                                ("frame", tr("Frame"), tr("No frame yet: buy one in the Shop or on the Market.")),
                                ("tag", tr("Tag"), tr("No tag yet."))):
         mine = sorted({i["item"] for i in ec.items if i["item"].startswith(kind + ":")},
-                      key=lambda k: (-int(ec.info(k).get("value") or 0), k))
+                      key=lambda k: (-ec.worth(k), k))
         if kind == "tag" and not mine:
             continue
         head = hbox(spacing=8)
@@ -986,7 +984,11 @@ def build_profile_style(page, lay) -> None:
 
     def to_collection() -> None:
         ctx.shop_tab = 2
-        ctx.reload_page()
+        if ctx.window.current == "themes":
+            ctx.reload_page()
+        else:
+            ctx.window._drop_page("themes")
+            ctx.window.goto("themes")
     pick.clicked.connect(to_collection)
     head.addWidget(pick)
     lay.addLayout(head)
