@@ -23,6 +23,13 @@ class FormDialog(QWidget):
     def __init__(self, ctx, title: str, fields: list, button: str, on_send, note: str = "") -> None:
         super().__init__()
         from .window import work_area
+        old = getattr(ctx, "_form", None)            # keep a reference, or the window vanishes at once
+        try:
+            if old is not None and old.isVisible():
+                old.close()
+        except RuntimeError:
+            pass
+        ctx._form = self
         self._on_send = on_send
         self.setWindowTitle("Rubenium")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
@@ -478,7 +485,12 @@ class AdminPage(Page):
         what = chosen[5:] if kind == "case" else chosen
 
         def send(v: dict, dlg) -> None:
-            k = v["k"].lower().strip()
+            k = {"pièces": "coins", "pieces": "coins", "coin": "coins", "clés": "keys", "cles": "keys", "key": "keys",
+                 "objet": "item", "caisse": "case"}.get(v["k"].lower().strip(), v["k"].lower().strip())
+            if k == "item" and v["w"].startswith("case:"):
+                k, v["w"] = "case", v["w"][5:]
+            if k == "case" and v["w"].startswith("case:"):
+                v["w"] = v["w"][5:]
             if k not in ("coins", "keys", "item", "case"):
                 return dlg.say(tr("Prize type: coins, keys, item or case"))
             dlg.close()

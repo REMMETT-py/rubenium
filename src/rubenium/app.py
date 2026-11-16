@@ -689,8 +689,8 @@ class App(QObject):
             target = self._screen_colour
         second = QColor(self.cfg["accent2"])
         # The second colour belongs to your own colours: it is not used while the music picks the colour.
-        use = self.cfg["accent2_on"] and self._colour_ok("c2", self.cfg["accent2"]) and not music and not screen
-        ui.accent2 = second if use else None
+        del second                                       # 2.2.1: a second colour only comes with a shop theme
+        ui.accent2 = None
         if tint and not music and not screen:
             target, ui.accent2 = QColor(tint[0]), QColor(tint[1])
         self._screen_timer.setInterval(2500)

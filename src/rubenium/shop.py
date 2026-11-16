@@ -514,7 +514,7 @@ class ShopPage(Page):
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
         self.reel = None
-        self.cards, self.unlocks, self.c1, self.c2 = [], [], None, None
+        self.cards, self.unlocks, self.c1 = [], [], None
         lay = vbox(self, 8)
         lay.addWidget(CoinBar(ctx, keys=True))
         tab = getattr(ctx, "shop_tab", 0)
@@ -572,11 +572,7 @@ class ShopPage(Page):
         lay.addWidget(Label(tr("Colour 1"), 12.5))
         self.c1 = ColourRow(self, "c1", "custom_accent")
         lay.addWidget(self.c1)
-        self.t_second = Toggle(bool(ctx.cfg["accent2_on"]))
-        self.t_second.toggled_by_user.connect(self._second_on)
-        lay.addWidget(row(tr("Colour 2"), self.t_second))
-        self.c2 = ColourRow(self, "c2", "accent2")
-        lay.addWidget(self.c2)
+        lay.addWidget(Label(tr("Themes from the shop bring their own second colour."), 10.5, TEXT_DIM, wrap_w=self.W))
 
         lay.addWidget(heading(tr("Progression")))
         lay.addWidget(UnlockBar(self))
@@ -902,13 +898,7 @@ class ShopPage(Page):
 
     # -- colours
     def set_colour(self, kind: str, col: str) -> None:
-        if kind == "c1":
-            self.ctx.cfg["custom_accent"] = col
-        else:
-            self.ctx.cfg["accent2"] = col
-            if not self.ctx.cfg["accent2_on"]:               # picking a second colour switches it on
-                self.ctx.cfg["accent2_on"] = True
-                self.t_second.set_checked(True)
+        self.ctx.cfg["custom_accent"] = col
         self.ctx.refresh_accent()
         self._rows()
 
@@ -928,23 +918,13 @@ class ShopPage(Page):
             self.t_music.set_checked(False)
         self._rows()
 
-    def _second_on(self, on: bool) -> None:
-        self.ctx.cfg["accent2_on"] = on
-        self.ctx.refresh_accent()
-        self._rows()
-
     def _rows(self) -> None:
-        """With the music's colours on, your own colours are greyed out. Second colours come after the first."""
+        """With the music's (or the screen's) colours on, your own colour is greyed out."""
         if self.c1 is None:
             return
         wallet = self.ctx.wallet
-        music = (bool(self.ctx.cfg["accent_from_art"]) and wallet.owns("music")) or bool(self.ctx.cfg["accent_from_screen"])
-        ready = wallet.all_colours("c1")
-        has_second = any(wallet.owns(f"c2:{ident}") for ident, _n, _h in COLOURS)
-        self.c1.set_state(music, False)
-        self.c2.set_state(music and ready, not ready)
-        self.t_second.setVisible(has_second)
-        self.t_second.setEnabled(not music)
+        auto = (bool(self.ctx.cfg["accent_from_art"]) and wallet.owns("music")) or bool(self.ctx.cfg["accent_from_screen"])
+        self.c1.set_state(auto, False)
 
     # -- ball styles and themes
     def _unlock_pick(self, tile) -> None:
@@ -972,7 +952,7 @@ class ShopPage(Page):
 
     def _refresh(self) -> None:
         self._rows()
-        for w in self.cards + self.unlocks + [x for x in (self.c1, self.c2) if x is not None]:
+        for w in self.cards + self.unlocks + [x for x in (self.c1,) if x is not None]:
             w.update()
 
     def on_show(self) -> None:

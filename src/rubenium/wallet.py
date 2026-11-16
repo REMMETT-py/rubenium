@@ -7,7 +7,7 @@ from . import extras
 
 # Sixteen colours, white and black included. White is the free base colour.
 COLOURS = [("white", "White", "#FFFFFF"), ("black", "Black", "#3A3F46"), ("red", "Red", "#FF4B4B"),
-           ("orange", "Orange", "#FF8A3D"), ("amber", "Amber", "#FFB020"), ("yellow", "Yellow", "#FFE14D"),
+           ("orange", "Orange", "#FF8A3D"), ("amber", "Coral", "#FF6B5B"), ("yellow", "Lemon", "#F4F04A"),
            ("lime", "Lime", "#A6E22E"), ("green", "Green", "#2ECC71"), ("teal", "Teal", "#1ABC9C"),
            ("cyan", "Cyan", "#35D6E6"), ("sky", "Sky", "#2D9CFF"), ("blue", "Blue", "#4B6BFF"),
            ("purple", "Purple", "#9B5CFF"), ("magenta", "Magenta", "#D94BFF"), ("pink", "Pink", "#FF5CB8"),
@@ -43,7 +43,7 @@ SHINY_IDS = ["hotpink", "lime", "sky", "royal", "lava"]
 PAINTED_IDS = ["red", "blue", "yellow", "green", "orange", "purple", "pink", "brown"]
 # balls, lines and fonts of the shop come in these colours
 COLOUR_IDS = ["blue", "green", "red", "yellow", "orange", "brown", "teal", "lava", "purple", "sky", "lime", "pink", "beam"]
-PRESTIGE_IDS = ["black", "white", "gold"]
+PRESTIGE_IDS = ["black", "white"]
 VARIANT_NAME = {"grey": "Basic", "blue": "Blue", "green": "Green", "red": "Red", "yellow": "Yellow", "orange": "Orange",
                 "brown": "Brown", "teal": "Teal", "lava": "Lava Red", "purple": "Purple", "sky": "Sky Blue",
                 "lime": "Juicy Lime", "pink": "Pink", "beam": "Yellow Beam", "black": "Titanium Black",

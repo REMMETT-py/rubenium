@@ -1556,6 +1556,237 @@ class BeatTap(QWidget):
                 p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
 
 
+class Parking(QWidget):
+    """The car park puzzle. The server picks the level and checks every move when the red car is out."""
+    COLOURS = ["#4B6BFF", "#2ECC71", "#FF8A3D", "#9B5CFF", "#1ABC9C", "#FF5CB8", "#A8744C", "#2EC5FF", "#8CFF2E",
+               "#B0B8C0", "#6A5ACD", "#00B3A4", "#E67E22", "#7F8C8D", "#16A085", "#D35400"]
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        side = min(page.W, S(330))
+        self.setFixedSize(page.W, side + S(22))
+        self.cell = (side - S(16)) / 6
+        self.ox = (page.W - self.cell * 6) / 2
+        self.oy = S(8)
+        self.layout_ = ""
+        self.grid: list = []
+        self.moves: list = []
+        self.best = 0
+        self.round = ""
+        self.state = "wait"                       # wait -> play -> out -> sent
+        self.drag = None                          # (car, start mouse, start offset, lo, hi)
+        self.offset = 0.0
+        self.result: dict = {}
+        self._exit = 0.0
+        self.setMouseTracking(True)
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self._tick)
+
+    # -- rounds
+    def new(self) -> None:
+        if self.state == "busy":
+            return
+        self.state = "busy"
+        tier = int(getattr(self.ctx, "park_tier", 0) or 0) + 1
+
+        def got(ok: bool, data) -> None:
+            if not ok or not isinstance(data, dict):
+                self.state = "wait"
+                self.update()
+                return self.ctx.toast(tr(str(data)), "warn")
+            self.round, self.layout_, self.best = data["round"], data["layout"], int(data.get("best") or 0)
+            self.restart()
+        self.ctx.econ.call("rb_park_start", {"tier": tier}, got)
+
+    def restart(self) -> None:
+        if not self.layout_:
+            return
+        if self.state in ("out", "sent"):
+            return self.new()
+        self.grid = list(self.layout_)
+        self.moves, self.result, self.state, self.drag = [], {}, "play", None
+        self.update()
+
+    # -- the board
+    def cars(self) -> dict:
+        out: dict = {}
+        for i, ch in enumerate(self.grid):
+            if ch != ".":
+                out.setdefault(ch, []).append(i)
+        return out
+
+    def _room(self, car: str, cells: list) -> tuple:
+        """How far the car can slide back (negative) and forward."""
+        horiz = cells[1] - cells[0] == 1
+        step = 1 if horiz else 6
+        lo = hi = 0
+        while True:
+            t = cells[0] - step * (lo + 1)
+            if t < 0 or (horiz and t // 6 != cells[0] // 6) or self.grid[t] != ".":
+                break
+            lo += 1
+        while True:
+            t = cells[-1] + step * (hi + 1)
+            if t > 35 or (horiz and t // 6 != cells[0] // 6) or self.grid[t] != ".":
+                break
+            hi += 1
+        return horiz, -lo, hi
+
+    def _cell_at(self, pos) -> int:
+        c = int((pos.x() - self.ox) // self.cell)
+        r = int((pos.y() - self.oy) // self.cell)
+        return r * 6 + c if 0 <= c < 6 and 0 <= r < 6 else -1
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        if self.state != "play" or e.button() != Qt.MouseButton.LeftButton:
+            return
+        i = self._cell_at(e.position())
+        if i < 0 or self.grid[i] == ".":
+            return
+        car = self.grid[i]
+        cells = self.cars()[car]
+        horiz, lo, hi = self._room(car, cells)
+        self.drag = (car, e.position(), horiz, lo, hi)
+        self.offset = 0.0
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+
+    def mouseMoveEvent(self, e) -> None:
+        if self.drag is None:
+            i = self._cell_at(e.position())
+            self.setCursor(Qt.CursorShape.OpenHandCursor if self.state == "play" and i >= 0 and self.grid[i] != "."
+                           else Qt.CursorShape.ArrowCursor)
+            return
+        car, start, horiz, lo, hi = self.drag
+        d = (e.position().x() - start.x()) if horiz else (e.position().y() - start.y())
+        self.offset = max(lo * self.cell, min(hi * self.cell, d))
+        self.update()
+
+    def mouseReleaseEvent(self, _e) -> None:
+        if self.drag is None:
+            return
+        car, _start, horiz, _lo, _hi = self.drag
+        d = int(round(self.offset / self.cell))
+        self.drag, self.offset = None, 0.0
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        if d:
+            cells = self.cars()[car]
+            step = 1 if horiz else 6
+            for c in cells:
+                self.grid[c] = "."
+            for c in cells:
+                self.grid[c + d * step] = car
+            if self.moves and self.moves[-1]["c"] == car:          # the same car again: still one move
+                self.moves[-1]["d"] += d
+                if self.moves[-1]["d"] == 0:
+                    self.moves.pop()
+            else:
+                self.moves.append({"c": car, "d": d})
+            sfx.play("pick")
+            if self.grid[16] == "A" and self.grid[17] == "A":
+                self._out()
+        self.update()
+
+    def _out(self) -> None:
+        self.state = "out"
+        self._exit = time.monotonic()
+        self._t.start()
+
+        def got(ok: bool, data) -> None:
+            self.state = "sent"
+            if not ok:
+                self.ctx.toast(tr(str(data)), "warn")
+                data = {}
+            self.result = data if isinstance(data, dict) else {}
+            if int(self.result.get("paid") or 0):
+                sfx.play("on")
+            self.update()
+        self.ctx.econ.call("rb_park_finish", {"round": self.round, "moves": self.moves}, got)
+
+    def _tick(self) -> None:
+        self.update()
+        if time.monotonic() - self._exit > 1.2:
+            self._t.stop()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        cs, ox, oy = self.cell, self.ox, self.oy
+        board = QRectF(ox, oy, cs * 6, cs * 6)
+        p.setPen(QPen(alpha("#FFFFFF", 0.10), 1.2))
+        p.setBrush(QColor("#0E1214"))
+        p.drawRoundedRect(board.adjusted(-S(5), -S(5), S(5), S(5)), S(12), S(12))
+        p.setPen(QPen(alpha("#FFFFFF", 0.05), 1))
+        for k in range(1, 6):
+            p.drawLine(QPointF(ox + k * cs, oy), QPointF(ox + k * cs, oy + 6 * cs))
+            p.drawLine(QPointF(ox, oy + k * cs), QPointF(ox + 6 * cs, oy + k * cs))
+        exit_r = QRectF(ox + 6 * cs, oy + 2 * cs + S(4), S(8), cs - S(8))           # the way out
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FF4B4B"))
+        p.drawRoundedRect(exit_r, S(3), S(3))
+        if not self.grid:
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(13, QFont.Weight.DemiBold))
+            p.drawText(board, int(Qt.AlignmentFlag.AlignCenter), tr("Loading…"))
+            return
+        now = time.monotonic()
+        for car, cells in sorted(self.cars().items()):
+            horiz = cells[1] - cells[0] == 1
+            r0, c0 = divmod(cells[0], 6)
+            w = (len(cells) if horiz else 1) * cs
+            h = (1 if horiz else len(cells)) * cs
+            x, y = ox + c0 * cs, oy + r0 * cs
+            if self.drag is not None and self.drag[0] == car:
+                if horiz:
+                    x += self.offset
+                else:
+                    y += self.offset
+            if car == "A" and self.state in ("out", "sent"):
+                x += min(1.0, (now - self._exit) / 1.0) ** 2 * cs * 3
+            body = QRectF(x, y, w, h).adjusted(S(4), S(4), -S(4), -S(4))
+            col = QColor("#FF3B3B") if car == "A" else QColor(self.COLOURS[(ord(car) - 66) % len(self.COLOURS)])
+            g = QLinearGradient(body.topLeft(), body.bottomLeft())
+            g.setColorAt(0, col.lighter(125))
+            g.setColorAt(1, col.darker(115))
+            p.setPen(QPen(col.darker(160), S(1.2)))
+            p.setBrush(g)
+            p.drawRoundedRect(body, S(9), S(9))
+            p.setPen(Qt.PenStyle.NoPen)                              # windows of the car
+            p.setBrush(QColor(0, 0, 0, 90))
+            if horiz:
+                p.drawRoundedRect(QRectF(body.right() - S(18), body.top() + S(6), S(9), body.height() - S(12)), S(3), S(3))
+                p.drawRoundedRect(QRectF(body.left() + S(9), body.top() + S(6), S(7), body.height() - S(12)), S(3), S(3))
+            else:
+                p.drawRoundedRect(QRectF(body.left() + S(6), body.top() + S(9), body.width() - S(12), S(7)), S(3), S(3))
+                p.drawRoundedRect(QRectF(body.left() + S(6), body.bottom() - S(18), body.width() - S(12), S(9)), S(3), S(3))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        info = tr("Moves: {n}", n=len(self.moves)) + "  ·  " + tr("Best possible: {n}", n=self.best)
+        p.drawText(QRectF(0, oy + 6 * cs + S(8), self.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), info)
+        if self.state == "sent":
+            res = self.result
+            box = board.adjusted(cs * 0.6, cs * 1.8, -cs * 0.6, -cs * 1.8)
+            p.setPen(QPen(alpha(GOLD_TEXT, 0.6), 1.2))
+            p.setBrush(QColor(8, 10, 12, 235))
+            p.drawRoundedRect(box, S(12), S(12))
+            paid = int(res.get("paid") or 0)
+            p.setPen(QColor(GOLD_TEXT if paid else TEXT_DIM))
+            p.setFont(font(20, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(box.left(), box.top() + S(10), box.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
+                       "+" + coins_text(paid) if paid else tr("No coins this time"))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            text = tr("{n} moves (best possible: {b})", n=res.get("moves", len(self.moves)), b=self.best)
+            if res.get("why") == "time":
+                text = tr("Too fast to be real: no coins")
+            p.drawText(QRectF(box.left(), box.top() + S(44), box.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), text)
+
+
 class GamePicker(QWidget):
     """Which game: two rows of small buttons (one is lit)."""
     changed = pyqtSignal(int)
@@ -1877,22 +2108,28 @@ class GamesPage(Page):
                 return self._quests(lay)
             if getattr(ctx, "mini_open", False):
                 return self._mini(lay)
+            if getattr(ctx, "park_open", False):
+                return self._park(lay)
             return self._lobby(lay)
         self._casino(lay)
 
     # -- the lobby
     def _lobby(self, lay) -> None:
+        quests = Button(tr("Quests"), "primary", 36, icon="spark")      # across the top
+        quests.clicked.connect(lambda: self._show_quests(True))
+        lay.addWidget(quests)
         lay.addWidget(CoinBar(self.ctx))
         lay.addWidget(KeyCard(self.ctx))
         lay.addWidget(DailyRow(self))
         line = hbox(spacing=6)
-        quests = Button(tr("Quests"), "ghost", 34, icon="spark")
-        quests.clicked.connect(lambda: self._show_quests(True))
         mini = Button(tr("Beat Tap"), "ghost", 34, icon="crosshair")
         mini.setToolTip(tr("A free mini game: tap the circles on the beat to earn coins"))
         mini.clicked.connect(lambda: self._show_mini(True))
-        line.addWidget(quests, 1)
+        park = Button(tr("Parking"), "ghost", 34, icon="grid")
+        park.setToolTip(tr("A free puzzle: slide the cars to get the red car out, for coins"))
+        park.clicked.connect(lambda: self._show_park(True))
         line.addWidget(mini, 1)
+        line.addWidget(park, 1)
         lay.addLayout(line)
         grid = QWidget()
         gl = QGridLayout(grid)
@@ -1932,6 +2169,38 @@ class GamesPage(Page):
         lay.addWidget(Label(tr("Click each circle when the shrinking ring touches it. About 30 seconds. 10 to 40 coins a "
                                "round; after 10 rounds a day it pays less (300 a day at most)."), 10.5, TEXT_DIM,
                             wrap_w=self.W))
+
+    def _show_park(self, on: bool) -> None:
+        sfx.play("pick")
+        self.ctx.park_open = on
+        self.ctx.reload_page()
+
+    def _park(self, lay) -> None:
+        top = hbox(spacing=8)
+        back = IconButton("back", 32, tip=tr("Back"))
+        top.addWidget(back)
+        top.addWidget(Label(tr("Parking"), 16, bold=True), 1)
+        lay.addLayout(top)
+        lay.addWidget(CoinBar(self.ctx))
+        tier = int(getattr(self.ctx, "park_tier", 0) or 0)
+        seg = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], tier)
+        lay.addWidget(seg)
+        self.park = Parking(self)
+        seg.changed.connect(lambda i: (setattr(self.ctx, "park_tier", i), self.park.new()))
+        back.clicked.connect(lambda: self._show_park(False))
+        lay.addWidget(self.park)
+        line = hbox(spacing=6)
+        again = Button(tr("Start over"), "ghost", 34)
+        again.clicked.connect(self.park.restart)
+        new = Button(tr("New puzzle"), "primary", 34)
+        new.clicked.connect(self.park.new)
+        line.addWidget(again, 1)
+        line.addWidget(new, 1)
+        lay.addLayout(line)
+        lay.addWidget(Label(tr("Drag the cars along their lane to make way, then drive the red car out on the right. "
+                               "Easy 10-20, Medium 15-30, Hard 25-40 coins: fewer moves pay more. 300 a day at most."),
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        QTimer.singleShot(50, self.park.new)
 
     def _show_quests(self, on: bool) -> None:
         sfx.play("pick")

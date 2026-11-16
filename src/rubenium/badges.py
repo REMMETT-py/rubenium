@@ -20,7 +20,7 @@ VARIANTS = [("gold", "Gold", "super", "#E8C26A", "#FFF1C2"),
             ("lava", "Lava Red", "rare", "#FF3D1F", "#FFC0AE"),
             ("red", "Red", "basic", "#D84848", "#EE7A7A"),
             ("blue", "Blue", "basic", "#3F78D8", "#79A4EE"),
-            ("yellow", "Yellow", "basic", "#DDBB36", "#F0D875"),
+            ("yellow", "Yellow", "basic", "#D9D23A", "#EEEA7A"),
             ("green", "Green", "basic", "#3FAE5A", "#78D08D"),
             ("orange", "Orange", "basic", "#E5822E", "#F5AC6E"),
             ("purple", "Purple", "basic", "#8750D2", "#B08AE8"),
@@ -28,7 +28,7 @@ VARIANTS = [("gold", "Gold", "super", "#E8C26A", "#FFF1C2"),
             ("brown", "Brown", "basic", "#8A5E3E", "#B08868"),
             ("grey", "Basic", "basic", "#7A828A", "#A2A9B0"),
             ("teal", "Teal", "basic", "#3C8C8A", "#71B3B1"),
-            ("beam", "Yellow Beam", "rare", "#FFEE2E", "#FFFBC2")]
+            ("beam", "Yellow Beam", "rare", "#E8FF3A", "#F6FFC2")]
 VARIANT = {v[0]: v for v in VARIANTS}
 
 _unit_cache: dict = {}

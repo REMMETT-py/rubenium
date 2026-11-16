@@ -808,6 +808,12 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.3", ["New free mini game: Parking. Slide the cars and get the red car out for coins",
+             "Quests now sit across the top of the Games tab",
+             "Colour 2 is gone: only shop themes have a second colour",
+             "Nothing in the shop looks like gold any more: gold is only for real awards",
+             "Friend profiles: last seen, collection worth, gold badges, games played and what they wear",
+             "Admin panel: every give and edit window works"]),
     ("2.2", ["The Ultimate Update: a fresh start for everyone (500 coins, 3 keys). Hours and friends stay",
              "Trading: send a request from a profile, 8 items and coins each side, Ready then Confirm",
              "Market: sell to other players at your price, or accept their offers (5% fee)",

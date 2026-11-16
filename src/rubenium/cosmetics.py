@@ -9,12 +9,12 @@ from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, 
 
 from .core import TEXT, alpha, font, mix, tr
 
-SHOP_COLOURS = {"grey": "#9AA4AD", "blue": "#4B6BFF", "green": "#2ECC71", "red": "#FF4B4B", "yellow": "#FFE14D",
+SHOP_COLOURS = {"grey": "#9AA4AD", "blue": "#4B6BFF", "green": "#2ECC71", "red": "#FF4B4B", "yellow": "#F4F04A",
                 "orange": "#FF8A3D", "brown": "#A8744C", "teal": "#1ABC9C", "lava": "#FF3D1F", "purple": "#9B5CFF",
-                "sky": "#2EC5FF", "lime": "#8CFF2E", "pink": "#FF5CB8", "beam": "#FFEE2E", "black": "#2A3037",
+                "sky": "#2EC5FF", "lime": "#8CFF2E", "pink": "#FF5CB8", "beam": "#E8FF3A", "black": "#2A3037",
                 "white": "#FFFFFF", "gold": "#E8C26A"}
 COLOUR_ORDER = ["grey", "blue", "green", "red", "yellow", "orange", "brown", "teal", "lava", "purple", "sky", "lime",
-                "pink", "beam", "black", "white", "gold"]
+                "pink", "beam", "black", "white"]
 COLOUR_NAMES = {"grey": "Grey", "blue": "Blue", "green": "Green", "red": "Red", "yellow": "Yellow", "orange": "Orange",
                 "brown": "Brown", "teal": "Teal", "lava": "Lava Red", "purple": "Purple", "sky": "Sky Blue",
                 "lime": "Juicy Lime", "pink": "Pink", "beam": "Yellow Beam", "black": "Black", "white": "White",

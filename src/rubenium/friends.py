@@ -29,6 +29,23 @@ def date_text(stamp) -> str:
     return day
 
 
+def ago_text(stamp) -> str:
+    """"5 min ago", "3 h ago", "2 days ago" from a server time."""
+    from datetime import datetime, timezone
+    try:
+        then = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        secs = (datetime.now(timezone.utc) - then).total_seconds()
+    except (ValueError, TypeError):
+        return ""
+    if secs < 120:
+        return tr("just now")
+    if secs < 3600:
+        return tr("{n} min ago", n=int(secs // 60))
+    if secs < 86400:
+        return tr("{n} h ago", n=int(secs // 3600))
+    return tr("{n} days ago", n=int(secs // 86400))
+
+
 # --------------------------------------------------------------------------- #
 # Profile pictures: small JPEGs, kept in memory and on disk, asked for again only when they change
 # --------------------------------------------------------------------------- #
@@ -243,7 +260,14 @@ class PlayerRow(QWidget):
         elif state == "asked":
             sub = tr("Request sent")
         elif friend and not info.get("me"):
-            sub += "  ·  " + (tr("Online") if info.get("online") else tr("Offline"))
+            if info.get("online"):
+                sub += "  ·  " + tr("Online")
+            else:
+                seen = ago_text(info.get("seen")) if info.get("seen") else ""
+                sub += "  ·  " + (tr("seen {t}", t=seen) if seen else tr("Offline"))
+            n = len([b for b in (info.get("badges") or []) if b])
+            if n:
+                sub += "  ·  " + tr("{n} on show", n=n)
         p.drawText(QRectF(x, r.top() + S(22), S(200), S(16)), int(Qt.AlignmentFlag.AlignVCenter), sub)
 
 
@@ -591,6 +615,7 @@ class FriendsPage(Page):
         if prof.get("stats") is None:
             self.lay.addWidget(Label(tr("Become friends to see their history."), 11.5, TEXT_DIM, wrap_w=self.W))
             return
+        self._details(prof)
         if hist is None:
             return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
         for key, title in (("trades", tr("Last 3 trades")), ("cases", tr("Last 3 cases")), ("spins", tr("Last 3 spins")),
@@ -601,6 +626,36 @@ class FriendsPage(Page):
                 self.lay.addWidget(Label(tr("Nothing yet"), 11, TEXT_FAINT))
             else:
                 self.lay.addWidget(HistoryList(ctx, key, rows, self.W))
+
+    def _details(self, prof: dict) -> None:
+        """A friend's numbers and what they are wearing."""
+        from .admin import Numbers
+        from .bazaar import ItemGrid
+        from .wallet import coins_text
+        st = prof.get("stats") or {}
+        bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
+        seen = tr("Online") if prof.get("online") else (ago_text(prof.get("seen")) or "—")
+        self.lay.addWidget(heading(tr("Stats")))
+        self.lay.addWidget(Numbers([
+            (played_text(int(prof.get("minutes") or 0)), tr("Played")), (seen, tr("Last seen")),
+            (int(st.get("friends") or 0), tr("Friends")),
+            (int(st.get("items") or 0), tr("Items")), (coins_text(int(st.get("worth") or 0)), tr("Collection worth")),
+            (int(st.get("badges") or 0), tr("Badges")),
+            (int(st.get("gold") or 0), tr("Gold badges"), "#E8C26A"), (int(st.get("cases") or 0), tr("Cases opened")),
+            (int(st.get("trades") or 0), tr("Trades")),
+            (int(st.get("rounds") or 0), tr("Casino bets")), (coins_text(int(st.get("best") or 0)), tr("Best win")),
+            (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino result"),
+             "#5BE08A" if won >= bet else "#FF7A7A"),
+            (int(st.get("mini") or 0), tr("Beat Tap")), (int(st.get("park") or 0), tr("Parking")),
+            (int(st.get("spins") or 0), tr("Free spins"))], self.W))
+        eq = prof.get("equip") or {}
+        wearing = [eq.get(k) for k in ("ball", "ring", "theme", "font")]
+        wearing = [w for w in wearing if w and w.split(":")[0] in ("ball", "line", "theme", "font")]
+        if wearing:
+            self.lay.addWidget(heading(tr("Wearing")))
+            grid = ItemGrid(self.ctx, [{"item": w, "text": ""} for w in wearing], self.W, 6, 58)
+            grid.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            self.lay.addWidget(grid)
 
     def _got_profile(self, ok: bool, data) -> None:
         name = getattr(self.ctx, "friends_profile", None)
