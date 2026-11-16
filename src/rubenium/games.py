@@ -15,6 +15,7 @@ from .pages import Page
 from .shop import CoinBar, GOLD_TEXT, clock_text
 from .wallet import coins_text, paint_coin
 from .widgets import Button, IconButton, Label, Segmented, Tween, draw_icon, hbox, vbox
+from .games2 import BeatRush, MemoryGame, ScratchCard, ScratchRow, build_duels
 
 RNG = random.SystemRandom()
 BETS = [10, 25, 50, 100, 250, 500, 1000]
@@ -1386,176 +1387,6 @@ class Rocket(Game):
             x += S(46)
 
 
-class BeatTap(QWidget):
-    """The free mini game. The server sends 24 circles and when each one is due; you click them on time. Your
-    clicks go back to the server, which checks them against its own clock and pays."""
-    LEAD = 1.0                                       # seconds a circle shows before it is due
-
-    def __init__(self, page) -> None:
-        super().__init__()
-        self.page, self.ctx = page, page.ctx
-        self.setFixedSize(page.W, S(250))
-        self.setCursor(Qt.CursorShape.CrossCursor)
-        self.state = "idle"                          # idle -> wait -> play -> send -> done
-        self.pattern: list = []
-        self.round = ""
-        self.hits: dict = {}                         # target -> ms
-        self.pops: list = []                         # (x, y, born, text, colour)
-        self.t0 = 0.0
-        self.result: dict = {}
-        self._frames = QTimer(self)
-        self._frames.setTimerType(Qt.TimerType.PreciseTimer)
-        self._frames.setInterval(16)
-        self._frames.timeout.connect(self._tick)
-
-    def start(self) -> None:
-        if self.state in ("wait", "play", "send"):
-            return
-        self.state, self.hits, self.pops, self.result = "wait", {}, [], {}
-        self.page.beat_btn.setEnabled(False)
-        sent = time.monotonic()
-
-        def got(ok: bool, data) -> None:
-            if not ok or not isinstance(data, dict):
-                self.state = "idle"
-                self.page.beat_btn.setEnabled(True)
-                return self.ctx.toast(tr(str(data)), "warn")
-            now = time.monotonic()
-            self.t0 = sent + (now - sent) / 2               # the server started the clock about half-way
-            self.round, self.pattern = data["round"], list(data.get("pattern") or [])
-            self.state = "play"
-            self._frames.start()
-        self.ctx.econ.call("rb_mini_start", {}, got)
-
-    def abort(self) -> None:
-        self._frames.stop()
-        self.state = "idle"
-
-    def hideEvent(self, _e) -> None:
-        self._frames.stop()
-
-    def _ms(self) -> float:
-        return (time.monotonic() - self.t0) * 1000
-
-    def _pos(self, i: int) -> QPointF:
-        t = self.pattern[i]
-        return QPointF(S(26) + (self.width() - S(52)) * float(t["x"]), S(26) + (self.height() - S(52)) * float(t["y"]))
-
-    def _tick(self) -> None:
-        if self.state == "play" and self.pattern and self._ms() > self.pattern[-1]["t"] + 900:
-            self._send()
-        self.update()
-        if self.state in ("idle", "done") and not self.pops:
-            self._frames.stop()
-
-    def _send(self) -> None:
-        self.state = "send"
-        hits = [{"i": i, "t": int(t)} for i, t in self.hits.items()]
-
-        def got(ok: bool, data) -> None:
-            self.state = "done"
-            self.page.beat_btn.setEnabled(True)
-            self.page.beat_btn.set_text(tr("Play again"))
-            if not ok:
-                return self.ctx.toast(tr(str(data)), "warn")
-            self.result = data
-            if int(data.get("paid") or 0):
-                sfx.play("on")
-            self._frames.start()
-        self.ctx.econ.call("rb_mini_finish", {"round": self.round, "hits": hits}, got)
-
-    def mousePressEvent(self, e) -> None:
-        e.accept()
-        if self.state != "play" or e.button() != Qt.MouseButton.LeftButton:
-            return
-        ms, pos = self._ms(), e.position()
-        best, gap = -1, 1e9
-        for i, t in enumerate(self.pattern):
-            if i in self.hits or abs(ms - t["t"]) > 600:
-                continue
-            c = self._pos(i)
-            if math.hypot(pos.x() - c.x(), pos.y() - c.y()) <= S(24) and abs(ms - t["t"]) < gap:
-                best, gap = i, abs(ms - t["t"])
-        if best < 0:
-            return
-        self.hits[best] = ms
-        text, col = ("PERFECT", "#5BE08A") if gap <= 120 else (("GOOD", "#4FC3FF") if gap <= 300 else ("OK", GOLD_TEXT))
-        sfx.play("pick")
-        self.pops.append((self._pos(best), time.monotonic(), tr(text), col))
-
-    def paintEvent(self, _e) -> None:
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
-        p.setBrush(QColor("#090C0E"))
-        p.drawRoundedRect(r, S(12), S(12))
-        now = time.monotonic()
-        if self.state == "play":
-            ms = self._ms()
-            for i, t in enumerate(self.pattern):
-                due = t["t"]
-                if i in self.hits or ms < due - self.LEAD * 1000 or ms > due + 600:
-                    continue
-                c = self._pos(i)
-                k = (due - ms) / (self.LEAD * 1000)
-                col = QColor.fromHsvF((i * 0.13) % 1.0, 0.6, 1.0)
-                fade = 1.0 if k > 0 else max(0.0, 1 + k * 1.6)
-                p.setOpacity(fade)
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(alpha(col, 0.22))
-                p.drawEllipse(c, S(20), S(20))
-                p.setPen(QPen(col, S(2.4)))
-                p.setBrush(Qt.BrushStyle.NoBrush)
-                p.drawEllipse(c, S(20), S(20))
-                if k > 0:
-                    p.setPen(QPen(alpha("#FFFFFF", 0.8), S(1.6)))
-                    p.drawEllipse(c, S(20) + S(40) * k, S(20) + S(40) * k)
-                p.setPen(QColor(TEXT))
-                p.setFont(font(11, QFont.Weight.Bold))
-                p.drawText(QRectF(c.x() - S(20), c.y() - S(20), S(40), S(40)), int(Qt.AlignmentFlag.AlignCenter), str(i + 1))
-                p.setOpacity(1.0)
-            bar = QRectF(r.left() + S(12), r.bottom() - S(10), r.width() - S(24), S(4))
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(alpha("#FFFFFF", 0.08))
-            p.drawRoundedRect(bar, S(2), S(2))
-            end = self.pattern[-1]["t"] + 900 if self.pattern else 1
-            p.setBrush(ui.accent)
-            p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * min(1.0, ms / end), bar.height()), S(2), S(2))
-        keep = []
-        for c, born, text, col in self.pops:
-            age = now - born
-            if age < 0.7:
-                keep.append((c, born, text, col))
-                p.setOpacity(1 - age / 0.7)
-                p.setPen(QColor(col))
-                p.setFont(font(11, QFont.Weight.ExtraBold))
-                p.drawText(QRectF(c.x() - S(50), c.y() - S(40) - S(16) * age, S(100), S(16)), int(Qt.AlignmentFlag.AlignCenter), text)
-                p.setOpacity(1.0)
-        self.pops = keep
-        if self.state in ("idle", "wait", "send", "done"):
-            p.setPen(QColor(TEXT))
-            p.setFont(font(15, QFont.Weight.Bold))
-            if self.state == "done" and self.result:
-                res = self.result
-                p.drawText(QRectF(r.left(), r.center().y() - S(40), r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter),
-                           tr("{h} / 24 circles · {s} points", h=res.get("hits", 0), s=res.get("score", 0)))
-                paid = int(res.get("paid") or 0)
-                p.setPen(QColor(GOLD_TEXT if paid else TEXT_DIM))
-                p.setFont(font(22, QFont.Weight.ExtraBold))
-                p.drawText(QRectF(r.left(), r.center().y() - S(10), r.width(), S(34)), int(Qt.AlignmentFlag.AlignCenter),
-                           "+" + coins_text(paid) if paid else tr("No coins this time"))
-                day = res.get("day") or {}
-                p.setPen(QColor(TEXT_DIM))
-                p.setFont(font(10.5, QFont.Weight.DemiBold))
-                p.drawText(QRectF(r.left(), r.center().y() + S(30), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                           tr("Today: {n} / {cap} coins", n=coins_text(int(day.get("paid") or 0)),
-                              cap=coins_text(int(day.get("cap") or 300))))
-            else:
-                text = {"wait": tr("Get ready…"), "send": tr("Counting…")}.get(self.state, tr("Press Start"))
-                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
-
-
 class Parking(QWidget):
     """The car park puzzle. The server picks the level and checks every move when the red car is out."""
     COLOURS = ["#4B6BFF", "#2ECC71", "#FF8A3D", "#9B5CFF", "#1ABC9C", "#FF5CB8", "#A8744C", "#2EC5FF", "#8CFF2E",
@@ -1578,6 +1409,7 @@ class Parking(QWidget):
         self.drag = None                          # (car, start mouse, start offset, lo, hi)
         self.offset = 0.0
         self.result: dict = {}
+        self.duel = False
         self._exit = 0.0
         self.setMouseTracking(True)
         self._t = QTimer(self)
@@ -1604,7 +1436,7 @@ class Parking(QWidget):
         if not self.layout_:
             return
         if self.state in ("out", "sent"):
-            return self.new()
+            return None if self.duel else self.new()
         self.grid = list(self.layout_)
         self.moves, self.result, self.state, self.drag = [], {}, "play", None
         self.update()
@@ -1702,6 +1534,9 @@ class Parking(QWidget):
             self.result = data if isinstance(data, dict) else {}
             if int(self.result.get("paid") or 0):
                 sfx.play("on")
+            if self.duel:
+                self.page.ctx.duels_data = None
+                self.page.load_duels(quiet=True)
             self.update()
         self.ctx.econ.call("rb_park_finish", {"round": self.round, "moves": self.moves}, got)
 
@@ -1778,7 +1613,7 @@ class Parking(QWidget):
             p.setPen(QColor(GOLD_TEXT if paid else TEXT_DIM))
             p.setFont(font(20, QFont.Weight.ExtraBold))
             p.drawText(QRectF(box.left(), box.top() + S(10), box.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
-                       "+" + coins_text(paid) if paid else tr("No coins this time"))
+                       tr("Duel score sent") if res.get("duel") else ("+" + coins_text(paid) if paid else tr("No coins this time")))
             p.setPen(QColor(TEXT))
             p.setFont(font(11, QFont.Weight.DemiBold))
             text = tr("{n} moves (best possible: {b})", n=res.get("moves", len(self.moves)), b=self.best)
@@ -2110,6 +1945,15 @@ class GamesPage(Page):
                 return self._mini(lay)
             if getattr(ctx, "park_open", False):
                 return self._park(lay)
+            sub = getattr(ctx, "games_sub", None)
+            if sub == "memory":
+                return self._memory(lay)
+            if sub == "duels":
+                return build_duels(self, lay)
+            if sub == "duel_run":
+                return self._duel_run(lay)
+            if sub == "scratch":
+                return self._scratch(lay)
             return self._lobby(lay)
         self._casino(lay)
 
@@ -2121,15 +1965,26 @@ class GamesPage(Page):
         lay.addWidget(CoinBar(self.ctx))
         lay.addWidget(KeyCard(self.ctx))
         lay.addWidget(DailyRow(self))
+        lay.addWidget(ScratchRow(self))
         line = hbox(spacing=6)
-        mini = Button(tr("Beat Tap"), "ghost", 34, icon="crosshair")
-        mini.setToolTip(tr("A free mini game: tap the circles on the beat to earn coins"))
+        mini = Button(tr("Beat Tap"), "ghost", 34, icon="note")
+        mini.setToolTip(tr("A free mini game: hit the notes on the beat to earn coins"))
         mini.clicked.connect(lambda: self._show_mini(True))
+        duel = Button(tr("Duel"), "ghost", 34, icon="shield")
+        duel.setToolTip(tr("Challenge a friend at Beat Tap, Memory or Parking, with or without a bet"))
+        duel.clicked.connect(lambda: self.open_sub("duels"))
+        line.addWidget(mini, 1)
+        line.addWidget(duel, 1)
+        lay.addLayout(line)
+        line = hbox(spacing=6)
         park = Button(tr("Parking"), "ghost", 34, icon="grid")
         park.setToolTip(tr("A free puzzle: slide the cars to get the red car out, for coins"))
         park.clicked.connect(lambda: self._show_park(True))
-        line.addWidget(mini, 1)
+        mem = Button(tr("Memory"), "ghost", 34, icon="gem")
+        mem.setToolTip(tr("A free game: find the pairs in as few flips as you can, for coins"))
+        mem.clicked.connect(lambda: self.open_sub("memory"))
         line.addWidget(park, 1)
+        line.addWidget(mem, 1)
         lay.addLayout(line)
         grid = QWidget()
         gl = QGridLayout(grid)
@@ -2143,14 +1998,15 @@ class GamesPage(Page):
         lay.addWidget(go)
 
     # -- quests: small goals for coins, counted by the server
-    QUESTS = {"h_rounds": "Play {n} casino rounds", "h_mini": "Play Beat Tap {n} times", "h_bet": "Bet {n} coins in the casino",
+    QUESTS = {"h_rounds": "Play {n} casino rounds", "h_mini": "Play mini games {n} times", "h_bet": "Bet {n} coins in the casino",
               "h_win": "Win {n} coins in the casino", "d_rounds": "Play {n} casino rounds", "d_case": "Open a case",
-              "d_mini": "Play Beat Tap {n} times", "d_spin": "Collect a free spin",
+              "d_mini": "Play mini games {n} times", "d_spin": "Collect a free spin",
               "w_rounds": "Play {n} casino rounds", "w_cases": "Open {n} cases", "w_won": "Win {n} coins in the casino"}
 
     def _show_mini(self, on: bool) -> None:
         sfx.play("pick")
         self.ctx.mini_open = on
+        self.ctx.games_sub = None
         self.ctx.reload_page()
 
     def _mini(self, lay) -> None:
@@ -2160,19 +2016,130 @@ class GamesPage(Page):
         top.addWidget(Label(tr("Beat Tap"), 16, bold=True), 1)
         lay.addLayout(top)
         lay.addWidget(CoinBar(self.ctx))
-        self.beat = BeatTap(self)
+        self.beat = BeatRush(self, lambda _r: (self.beat_btn.setEnabled(True), self.beat_btn.set_text(tr("Play again"))))
         back.clicked.connect(lambda: (self.beat.abort(), self._show_mini(False)))
         lay.addWidget(self.beat)
         self.beat_btn = Button(tr("Start"), "primary", 38)
-        self.beat_btn.clicked.connect(self.beat.start)
+        self.beat_btn.clicked.connect(lambda: (self.beat_btn.setEnabled(False), self.beat.start()))
         lay.addWidget(self.beat_btn)
-        lay.addWidget(Label(tr("Click each circle when the shrinking ring touches it. About 30 seconds. 10 to 40 coins a "
-                               "round; after 10 rounds a day it pays less (300 a day at most)."), 10.5, TEXT_DIM,
+        lay.addWidget(Label(tr("Four lanes, about 40 seconds, faster and faster. Hits in a row build a combo. 12 to 50 coins "
+                               "a round; after 6 rounds in 2 hours it pays less (150 every 2 hours at most)."), 10.5, TEXT_DIM,
                             wrap_w=self.W))
+
+    # -- 2.4: sub-screens (Memory, duels, scratch card)
+    def open_sub(self, name) -> None:
+        sfx.play("pick")
+        for flag in ("quests_open", "mini_open", "park_open"):
+            setattr(self.ctx, flag, False)
+        self.ctx.games_sub = name
+        self.ctx.reload_page()
+
+    def _back_bar(self, lay, title: str, on_back=None) -> None:
+        top = hbox(spacing=8)
+        back = IconButton("back", 32, tip=tr("Back"))
+        back.clicked.connect(on_back or (lambda: self.open_sub(None)))
+        top.addWidget(back)
+        top.addWidget(Label(title, 16, bold=True), 1)
+        lay.addLayout(top)
+        lay.addWidget(CoinBar(self.ctx))
+
+    def _memory(self, lay) -> None:
+        self._back_bar(lay, tr("Memory"))
+        tier = int(getattr(self.ctx, "mem_tier", 0) or 0)
+        seg = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], tier)
+        lay.addWidget(seg)
+        self.mem = MemoryGame(self)
+        seg.changed.connect(lambda i: (setattr(self.ctx, "mem_tier", i), self.mem.start()))
+        lay.addWidget(self.mem)
+        go = Button(tr("New game"), "primary", 36)
+        go.clicked.connect(self.mem.start)
+        lay.addWidget(go)
+        lay.addWidget(Label(tr("Turn two cards: same picture, they stay. Easy 16 cards 12-30, Medium 20 cards 18-40, "
+                               "Hard 24 cards 25-55 coins: fewer flips pay more. 150 every 2 hours at most."),
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        QTimer.singleShot(50, self.mem.start)
+
+    def _scratch(self, lay) -> None:
+        self._back_bar(lay, tr("Scratch card"))
+        card = ScratchCard(self)
+        lay.addWidget(card)
+        lay.addWidget(Label(tr("One card every 12 hours. Scratch it with the mouse: hard at first, then easier and easier. "
+                               "The colour shows how lucky you were: Common or Rare give coins, Epic 1 key, Legendary 2 keys, "
+                               "Mythic 2 500 coins."), 10.5, TEXT_DIM, wrap_w=self.W))
+
+    def load_duels(self, quiet: bool = False) -> None:
+        ctx = self.ctx
+
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, list) and data != getattr(ctx, "duels_data", None):
+                ctx.duels_data = data
+                ctx.econ.refresh()                      # a duel ended: the pot (or the bet back) is in the balance
+                if ctx.window.current == "games" and getattr(ctx, "games_sub", None) == "duels":
+                    ctx.reload_page()
+
+        def friends(ok: bool, data) -> None:
+            if ok and isinstance(data, list):
+                rows = [{"name": f.get("username") or f.get("name"), "online": f.get("online")} for f in data
+                        if f.get("state", "friend") == "friend" and (f.get("username") or f.get("name"))]
+                rows.sort(key=lambda f: (not f.get("online"), str(f["name"]).lower()))
+                if rows != getattr(ctx, "duel_friends", None):
+                    ctx.duel_friends = rows
+                    if ctx.window.current == "games" and getattr(ctx, "games_sub", None) == "duels":
+                        ctx.reload_page()
+        ctx.econ.call("rb_duels", {}, got)
+        if not quiet or getattr(ctx, "duel_friends", None) is None:
+            ctx.online.ask("rb_friends_list", {}, friends)
+
+    def duel_answer(self, did: str, yes: bool) -> None:
+        def done(ok: bool, data) -> None:
+            if not ok:
+                return self.ctx.toast(tr(str(data)), "warn")
+            sfx.play("on" if yes else "off")
+            self.load_duels()
+        self.ctx.econ.call("rb_duel_answer", {"duel": did, "yes": yes}, done)
+
+    def duel_play(self, d: dict) -> None:
+        sent = time.monotonic()
+
+        def done(ok: bool, data) -> None:
+            if not ok or not isinstance(data, dict):
+                return self.ctx.toast(tr(str(data)), "warn")
+            self.ctx.duel_run = dict(data, id=d["id"], other=d.get("other"), sent=sent)
+            self.open_sub("duel_run")
+        self.ctx.econ.call("rb_duel_play", {"duel": d["id"]}, done)
+
+    def _duel_run(self, lay) -> None:
+        run = getattr(self.ctx, "duel_run", None) or {}
+        game, data = run.get("game"), run.get("data") or {}
+        self._back_bar(lay, tr("Duel vs {name}", name=run.get("other", "?")), lambda: self.open_sub("duels"))
+
+        def ended(_res) -> None:
+            self.ctx.duels_data = None
+            self.load_duels(quiet=True)
+        if game == "tap":
+            w = BeatRush(self, ended)
+            lay.addWidget(w)
+            QTimer.singleShot(300, lambda: w.begin(data, run.get("sent", time.monotonic()), duel=True))
+        elif game == "memory":
+            w = MemoryGame(self, ended)
+            lay.addWidget(w)
+            w.begin(data, duel=True)
+        elif game == "park":
+            self.park = w = Parking(self)
+            w.round, w.layout_, w.best = data.get("round", ""), data.get("layout", ""), int(data.get("best") or 0)
+            w.duel = True
+            lay.addWidget(w)
+            again = Button(tr("Start over"), "ghost", 34)
+            again.clicked.connect(w.restart)
+            lay.addWidget(again)
+            QTimer.singleShot(30, w.restart)
+        lay.addWidget(Label(tr("One try. Your score is sent when you finish; the winner is shown in Duels."), 10.5,
+                            TEXT_DIM, wrap_w=self.W))
 
     def _show_park(self, on: bool) -> None:
         sfx.play("pick")
         self.ctx.park_open = on
+        self.ctx.games_sub = None
         self.ctx.reload_page()
 
     def _park(self, lay) -> None:
@@ -2198,13 +2165,14 @@ class GamesPage(Page):
         line.addWidget(new, 1)
         lay.addLayout(line)
         lay.addWidget(Label(tr("Drag the cars along their lane to make way, then drive the red car out on the right. "
-                               "Easy 10-20, Medium 15-30, Hard 25-40 coins: fewer moves pay more. 300 a day at most."),
+                               "Easy 12-25, Medium 18-38, Hard 30-50 coins: fewer moves pay more. 150 every 2 hours at most."),
                             10.5, TEXT_DIM, wrap_w=self.W))
         QTimer.singleShot(50, self.park.new)
 
     def _show_quests(self, on: bool) -> None:
         sfx.play("pick")
         self.ctx.quests_open = on
+        self.ctx.games_sub = None
         self.ctx.reload_page()
 
     def _quests(self, lay) -> None:

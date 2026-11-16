@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import bisect
 import copy
+import json
 import os
 import shutil
 import tempfile
@@ -19,6 +20,7 @@ from . import engines, extras, win
 from .core import (sfx, DANGER, BALL, BALL_SIZES, BD, GLOW, LOCKED_TABS, WARN, APP_NAME, BACKUP_DIR, CARD_W, CROSSHAIR, CROSSHAIR_DIR, DATA_DIR, DISPLAY_PROFILE, ACCENT_DEFAULT,
                    LOG_PATH, PAD, S, TEXT, TEXT_DIM, TEXT_FAINT, VERSION_NAME, alpha, font, lang, mix, tr, ui)
 from .media import CMD_NEXT, CMD_PREV, CMD_REPEAT, CMD_SEEK, CMD_SHUFFLE, CMD_TOGGLE, Status, source_keywords
+from .music2 import Visualiser, badge_menu
 from .widgets import (ArtWidget, Button, Slider, Gauge, Glyph, IconButton, Label, Panel, ProgressBar, Segmented,
                       SliderRow, Sparkline, Swatches, Toggle, Tween, heading, hbox, notice, row, vbox)
 
@@ -70,10 +72,14 @@ class Flair(QWidget):
         """The badges on show (server items, e.g. "badge:star:gold")."""
         return self.ctx.econ.badges_worn()[:3]
 
+    def _unit(self) -> float:
+        return S(16) * max(50, min(200, int(self.ctx.cfg["badge_size"]))) / 100
+
     def fit(self) -> None:
         n = len(self._parts())
-        self.setFixedSize(max(1, int(n * S(18))), S(16))
-        self.setVisible(bool(n))
+        u = self._unit()
+        self.setFixedSize(max(1, int(n * (u + S(3)))), int(u + S(2)))
+        self.setVisible(bool(n) and self.ctx.cfg["badge_pos"] != "hidden")
         from .badges import item_animated
         moving = self.isVisible() and self.fade > 0.01 and any(item_animated(i) for i in self._parts())
         if moving and not self._shine.isActive():
@@ -89,8 +95,9 @@ class Flair(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setOpacity(self.fade)
         now = time.monotonic()
+        u = self._unit()
         for k, item in enumerate(self._parts()):
-            paint_item(p, item, QRectF(k * S(18) + S(1), S(1), S(14), S(14)), now)
+            paint_item(p, item, QRectF(k * (u + S(3)) + S(1), S(1), u, u), now)
 
 
 class HoldButton(QAbstractButton):
@@ -216,9 +223,13 @@ class HomePage(Page):
         self.b_vol.hide()
         self.vol.hide()
         self.flair = Flair(ctx, None)
+        self.info = info
         info.addWidget(self.flair)
         info.addLayout(top)
         info.addWidget(self.artist)
+        self.b_look = IconButton("gem", 24, tip=tr("Badges and visualiser"))
+        self.b_look.clicked.connect(lambda: badge_menu(ctx, self._look_changed))
+        controls.addWidget(self.b_look)
         info.addStretch(1)
         info.addLayout(controls)
         body.addWidget(self.art, 0, Qt.AlignmentFlag.AlignTop)
@@ -234,6 +245,9 @@ class HomePage(Page):
         prog.addWidget(self.t_dur)
         lay.addLayout(body)
         lay.addLayout(prog)
+        self.vis = Visualiser(ctx)
+        lay.addWidget(self.vis)
+        self.vis.setVisible(ctx.cfg["visualiser"] != "off")
 
         m = ctx.media
         self.b_prev.clicked.connect(lambda: m.send(CMD_PREV))
@@ -302,10 +316,22 @@ class HomePage(Page):
         self._place_flair()
 
     def _place_flair(self) -> None:
-        """The badges sit on their own line above the song title: they never cover it."""
+        """The badges sit on their own line above the song title (or under the artist): they never cover it."""
+        want = 2 if self.ctx.cfg["badge_pos"] == "below" else 0
+        if self.info.indexOf(self.flair) != want:
+            self.info.removeWidget(self.flair)
+            self.info.insertWidget(want, self.flair)
         self.flair.fade = 1.0
         self.flair.fit()
         self.flair.update()
+
+    def _look_changed(self) -> None:
+        self.ctx.cfg.save()
+        self._place_flair()
+        self.vis.setVisible(self.ctx.cfg["visualiser"] != "off")
+        self.vis.sync()
+        self.ctx._sync_audio()
+        self.ctx.reload_page()
 
     def on_hide(self) -> None:
         self._timer.stop()
@@ -404,8 +430,17 @@ class LyricsView(QWidget):
         self._idx = -1
         self._scroll = Tween(self, 0.0, self.update)
         self._manual = 0.0
-        self._font = font(15, QFont.Weight.DemiBold)
+        self._free_until = 0.0                       # scrolled by hand: follow the song again after 3 s
+        self._ms = 0.0
+        self._font = font(max(11, min(24, int(page.ctx.cfg["lyrics_size"]))), QFont.Weight.DemiBold)
         self.setCursor(Qt.CursorShape.ArrowCursor)
+
+    def set_size(self, px: int) -> None:
+        self._font = font(px, QFont.Weight.DemiBold)
+        self._layout()
+        if self._idx >= 0 and self._tops:
+            self._scroll.jump(self._tops[self._idx] + self._heights[self._idx] / 2)
+        self.update()
 
     def set_content(self, kind: str, lines: list) -> None:
         self.kind, self.lines, self._idx, self._manual = kind, lines, -1, 0.0
@@ -435,17 +470,35 @@ class LyricsView(QWidget):
     def set_position(self, ms: float) -> None:
         if self.kind != "synced" or not self.lines:
             return
+        self._ms = ms
         i = bisect.bisect_right([ln[0] for ln in self.lines], ms + 150) - 1
-        if i != self._idx:
+        follow = time.monotonic() > self._free_until
+        if i != self._idx or (follow and self._manual):
             self._idx = i
-            target = (self._tops[i] + self._heights[i] / 2) if i >= 0 else 0.0
-            self._scroll.to(target, 420)
+            if follow:
+                self._manual = 0.0
+                target = (self._tops[i] + self._heights[i] / 2) if i >= 0 else 0.0
+                self._scroll.to(target, 420)
+        self.update()
+
+    def _line_frac(self) -> float:
+        """How far the current line is (for the karaoke fill)."""
+        i = self._idx
+        if i < 0 or i >= len(self.lines):
+            return 0.0
+        start = self.lines[i][0]
+        end = self.lines[i + 1][0] if i + 1 < len(self.lines) else start + 4000
+        return max(0.0, min(1.0, (self._ms + 150 - start) / max(1.0, end - start)))
 
     def wheelEvent(self, e) -> None:
         if self.kind == "plain":
             top = max(0.0, self._total - self.height() + S(20))
             self._manual = max(0.0, min(top, self._manual - e.angleDelta().y() / 120 * S(60)))
             self._scroll.to(self._manual, 260)
+        elif self.kind == "synced" and self._tops:
+            self._free_until = time.monotonic() + 3.0
+            self._manual = max(0.0, min(self._total, self._scroll.level - e.angleDelta().y() / 120 * S(60)))
+            self._scroll.to(self._manual, 200)
         e.accept()
 
     def mousePressEvent(self, e) -> None:
@@ -471,6 +524,8 @@ class LyricsView(QWidget):
                 break
             mid = y + self._heights[i] / 2
             edge = min(1.0, max(0.0, min(mid, h - mid) / S(46)))
+            rect = QRectF(S(4), y, w - S(8), self._heights[i])
+            flags = int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap)
             if self.kind == "synced":
                 d = abs(i - self._idx)
                 col = QColor(TEXT) if d == 0 else alpha(TEXT_DIM, max(0.25, 0.75 - 0.14 * d))
@@ -480,8 +535,17 @@ class LyricsView(QWidget):
                 col = alpha(TEXT, 0.86)
             col.setAlphaF(col.alphaF() * edge)
             p.setPen(col)
-            p.drawText(QRectF(S(4), y, w - S(8), self._heights[i]),
-                       int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap), self._text(i))
+            p.drawText(rect, flags, self._text(i))
+            if self.kind == "synced" and i == self._idx:          # karaoke: the line fills with colour as it is sung
+                frac = self._line_frac()
+                if frac > 0:
+                    p.save()
+                    p.setClipRect(QRectF(rect.left(), rect.top(), rect.width() * frac, rect.height()))
+                    acc = QColor(ui.accent)
+                    acc.setAlphaF(edge)
+                    p.setPen(acc)
+                    p.drawText(rect, flags, self._text(i))
+                    p.restore()
 
 
 class LyricsPage(Page):
@@ -505,21 +569,94 @@ class LyricsPage(Page):
         col.addWidget(self.retry, 0, Qt.AlignmentFlag.AlignHCenter)
         col.addStretch(1)
         self.retry.clicked.connect(lambda: self._request(force=True))
+        self.bar = QWidget(self)                     # size, timing nudge and copy
+        bl = hbox(self.bar, 4)
+        bl.setContentsMargins(S(4), 0, S(4), 0)
+        for text, tip, fn in (("A−", tr("Smaller text"), lambda: self._size(-1)), ("A+", tr("Bigger text"), lambda: self._size(1))):
+            b = Button(text, "quiet", 22)
+            b.setToolTip(tip)
+            b.clicked.connect(fn)
+            bl.addWidget(b)
+        bl.addStretch(1)
+        early = Button("−0.5 s", "quiet", 22)
+        early.setToolTip(tr("Lyrics come too late: show them earlier"))
+        early.clicked.connect(lambda: self._nudge(-500))
+        self.off_lbl = Label("", 10, TEXT_FAINT, align=Qt.AlignmentFlag.AlignCenter)
+        self.off_lbl.setFixedWidth(S(44))
+        late = Button("+0.5 s", "quiet", 22)
+        late.setToolTip(tr("Lyrics come too early: show them later"))
+        late.clicked.connect(lambda: self._nudge(500))
+        bl.addWidget(early)
+        bl.addWidget(self.off_lbl)
+        bl.addWidget(late)
+        bl.addStretch(1)
+        copy = IconButton("copy", 22, tip=tr("Copy the lyrics"))
+        copy.clicked.connect(self._copy)
+        bl.addWidget(copy)
+        self._offsets = self._load_offsets()
         ctx.lyrics.result.connect(self._on_result)
         self._timer = QTimer(self)
         self._timer.setInterval(120)
-        self._timer.timeout.connect(lambda: self.view.set_position(self.ctx.position_ms()))
+        self._timer.setInterval(60)
+        self._timer.timeout.connect(lambda: self.view.set_position(self.ctx.position_ms() + self._offset()))
         self.on_state(ctx.state)
 
     def resizeEvent(self, _e) -> None:
-        self.view.setGeometry(self.rect())
-        self.empty.setGeometry(self.rect())
+        r = self.rect()
+        self.view.setGeometry(r.adjusted(0, 0, 0, -S(26)))
+        self.empty.setGeometry(r)
+        self.bar.setGeometry(0, r.height() - S(24), r.width(), S(24))
+
+    # 2.4: text size, timing nudge (kept per song) and copy
+    def _song(self) -> str:
+        st = self.ctx.state
+        return f"{st.title}\x1f{st.artist}".lower()
+
+    @staticmethod
+    def _load_offsets() -> dict:
+        try:
+            data = json.loads((DATA_DIR / "lyrics_offsets.json").read_text(encoding="utf-8"))
+            return {str(k): int(v) for k, v in data.items()} if isinstance(data, dict) else {}
+        except (OSError, ValueError, TypeError):
+            return {}
+
+    def _offset(self) -> int:
+        return int(self._offsets.get(self._song(), 0))
+
+    def _show_offset(self) -> None:
+        off = self._offset()
+        self.off_lbl.set_text(f"{off / 1000:+.1f} s" if off else tr("synced"))
+
+    def _nudge(self, ms: int) -> None:
+        key = self._song()
+        val = max(-10000, min(10000, self._offset() - ms))       # earlier = the song looks further on
+        if val:
+            self._offsets[key] = val
+        else:
+            self._offsets.pop(key, None)
+        try:
+            (DATA_DIR / "lyrics_offsets.json").write_text(json.dumps(dict(list(self._offsets.items())[-300:])), encoding="utf-8")
+        except OSError:
+            pass
+        self._show_offset()
+
+    def _size(self, d: int) -> None:
+        px = max(11, min(24, int(self.ctx.cfg["lyrics_size"]) + d))
+        self.ctx.cfg["lyrics_size"] = px
+        self.view.set_size(px)
+
+    def _copy(self) -> None:
+        from PyQt6.QtWidgets import QApplication
+        if self.view.lines:
+            QApplication.clipboard().setText("\n".join(self.view._text(i) for i in range(len(self.view.lines))))
+            self.ctx.toast(tr("Lyrics copied"))
 
     def _show_empty(self, text: str, retry: bool = False) -> None:
         self.msg.set_text(text)
         self.retry.setVisible(retry)
         self.empty.show()
         self.view.hide()
+        self.bar.hide()
 
     def on_show(self) -> None:
         self._timer.start()
@@ -550,9 +687,12 @@ class LyricsPage(Page):
         if key != self._key:
             return
         if kind in ("synced", "plain") and payload:
+            self._show_offset()
             self.view.set_content(kind, payload)
             self.empty.hide()
             self.view.show()
+            self.bar.show()
+            self.bar.raise_()
             self.view.set_position(self.ctx.position_ms())
         elif kind == "offline":
             self._key = ""
@@ -1539,6 +1679,43 @@ class SettingsPage(Page):
         from .notify import settings_section
         settings_section(ctx, lay)
 
+        lay.addWidget(heading(tr("Music")))
+        from .music2 import KEY_CHOICES, VIS_STYLES
+        keys = [k for k, _n, _v in KEY_CHOICES]
+        hk = Segmented([tr(n) if k in ("off",) else n.replace("Right ", "R ") for k, n, _v in KEY_CHOICES],
+                       keys.index(cfg["hotkey"]) if cfg["hotkey"] in keys else 0)
+
+        def set_key(i: int) -> None:
+            cfg["hotkey"] = keys[i]
+            ctx.tapkey.set_key(keys[i])
+        hk.changed.connect(set_key)
+        lay.addWidget(Label(tr("Show / hide key (tap it once)"), 11.5, TEXT))
+        lay.addWidget(hk)
+        vis_keys = [k for k, _n in VIS_STYLES]
+        vs = Segmented([tr(n) for _k, n in VIS_STYLES], vis_keys.index(cfg["visualiser"]) if cfg["visualiser"] in vis_keys else 0)
+
+        def set_vis(i: int) -> None:
+            cfg["visualiser"] = vis_keys[i]
+            ctx._sync_audio()
+            ctx.window._drop_page("home")
+        vs.changed.connect(set_vis)
+        lay.addWidget(Label(tr("Visualiser"), 11.5, TEXT))
+        lay.addWidget(vs)
+        line = hbox(spacing=6)
+        hist = Button(tr("Song history"), "ghost", 30, icon="note")
+        def open_hist() -> None:
+            from .hub import HistoryWindow
+            ctx._hist = HistoryWindow(ctx)
+        hist.clicked.connect(open_hist)
+        tour = Button(tr("Show the tour again"), "ghost", 30)
+        tour.clicked.connect(ctx.start_tutorial)
+        line.addWidget(hist, 1)
+        line.addWidget(tour, 1)
+        lay.addLayout(line)
+
+        from .hub import backup_section
+        backup_section(ctx, lay, self.W)
+
         lay.addWidget(heading(tr("Ball")))
         self.preview = BallPreview(ctx)
         lay.addWidget(self.preview)
@@ -1577,6 +1754,10 @@ class SettingsPage(Page):
             hours = ctx.online.hours()
             played = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
             lay.addWidget(row(f"{ctx.online.username()}  ·  {played} h", out))
+            pw = Button(tr("Change password"), "ghost", 28)
+            pw.setFixedWidth(max(S(150), pw.sizeHint().width()))
+            pw.clicked.connect(ctx.change_password_dialog)
+            lay.addWidget(pw, 0, Qt.AlignmentFlag.AlignRight)
             gone = Button(tr("Delete account"), "quiet", 24)
             gone.setFixedWidth(max(S(120), gone.sizeHint().width()))
             gone.clicked.connect(ctx.delete_account_dialog)

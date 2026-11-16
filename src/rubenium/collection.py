@@ -656,15 +656,18 @@ class CaseReel(QWidget):
     def _start(self) -> float:
         return 2 * (self.cw + self.gap) + self.cw / 2
 
+    INTRO_S = 0.75
+
     def busy(self) -> bool:
-        return self.state in ("spin", "landed") or (self.state == "result" and time.monotonic() - self._stop_t < 0.9)
+        return self.state in ("intro", "spin", "landed") or (self.state == "result" and time.monotonic() - self._stop_t < 0.9)
 
     def spin(self, result: dict) -> None:
         rnd = random.Random()
         self.strip = [self._filler(rnd) for _ in range(self.ITEMS)]
         self.strip[self.WIN] = ("item", result["item"]) if result.get("item") else ("coins", int(result.get("won", 0)))
         self.result = result
-        self.state = "spin"
+        self.state = "intro"                              # 2.4: the case shakes and opens, then the strip runs
+        self._intro_t = time.monotonic()
         self.offset = self._start()
         self._target = self.WIN * (self.cw + self.gap) + self.cw / 2 + rnd.uniform(-0.38, 0.38) * self.cw
         self._t0 = time.monotonic()
@@ -674,12 +677,19 @@ class CaseReel(QWidget):
         self._frames.start()
 
     def skip(self) -> None:
+        if self.state == "intro":
+            self.state = "spin"
+            self._t0 = time.monotonic()
         if self.state == "spin":
             self._t0 = time.monotonic() - self.SPIN_S
             self._step()
 
     def _step(self) -> None:
         now = time.monotonic()
+        if self.state == "intro" and now - self._intro_t >= self.INTRO_S:
+            self.state = "spin"
+            self._t0 = now
+            sfx.play("on")
         if self.state == "spin":
             t = min(1.0, (now - self._t0) / self.SPIN_S)
             start = self._start()
@@ -761,6 +771,8 @@ class CaseReel(QWidget):
         p.setClipPath(clip)
         if self.state == "result":
             self._paint_result(p, r, now)
+        elif self.state == "intro":
+            self._paint_intro(p, r, now)
         else:
             self._paint_strip(p, r, now)
         p.restore()
@@ -768,17 +780,67 @@ class CaseReel(QWidget):
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawRoundedRect(r, S(12), S(12))
 
+    def _paint_intro(self, p: QPainter, r: QRectF, now: float) -> None:
+        """The case shakes, a light leaks out, the lid flies open."""
+        k = min(1.0, (now - self._intro_t) / self.INTRO_S)
+        c = r.center()
+        col = QColor(CASE_COLOURS.get(self.case["id"], GOLD_TEXT))
+        glow = QRadialGradient(c, S(120))
+        glow.setColorAt(0, alpha(col, 0.15 + 0.45 * k))
+        glow.setColorAt(1, alpha(col, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, S(120), S(120))
+        shake = math.sin(now * 70) * S(4) * (k if k < 0.7 else 0.0)
+        p.save()
+        p.translate(c.x() + shake, c.y() + S(8))
+        p.rotate(math.sin(now * 55) * 4 * (k if k < 0.7 else 0.0))
+        body = QRectF(-S(34), -S(16), S(68), S(42))
+        g = QLinearGradient(body.topLeft(), body.bottomLeft())
+        g.setColorAt(0, mix(col, QColor("#FFFFFF"), 0.25))
+        g.setColorAt(1, mix(col, QColor("#000000"), 0.45))
+        p.setBrush(g)
+        p.drawRoundedRect(body, S(6), S(6))
+        lift = max(0.0, (k - 0.7) / 0.3)
+        p.save()
+        p.translate(-S(36), -S(16))
+        p.rotate(-70 * lift)
+        p.setBrush(mix(col, QColor("#FFFFFF"), 0.4))
+        p.drawRoundedRect(QRectF(0, -S(12), S(72), S(14)), S(5), S(5))
+        p.restore()
+        p.setBrush(QColor(20, 22, 24, 200))
+        p.drawRoundedRect(QRectF(-S(5), -S(8), S(10), S(14)), S(3), S(3))
+        p.restore()
+        if lift > 0:
+            p.setBrush(QColor(255, 255, 255, int(200 * lift)))
+            p.drawRect(r)
+
     def _paint_strip(self, p: QPainter, r: QRectF, now: float) -> None:
         cx, ch = r.center().x(), S(88)
         top = r.center().y() - ch / 2
         step = self.cw + self.gap
         first = max(0, int((self.offset - cx) // step) - 1)
         speed = (1.0 - min(1.0, (now - self._t0) / self.SPIN_S)) ** 3.2 if self.state == "spin" else 0.0
+        if self.state == "landed":                        # a glow in the drop's colour, just before the reveal
+            tier = self._tier()
+            col = QColor(RARITY_COLOURS[TIERS[tier - 1]]) if tier else QColor(GOLD_TEXT)
+            a = min(1.0, (now - self._stop_t) / 0.5)
+            halo = QRadialGradient(QPointF(cx, r.center().y()), S(110))
+            halo.setColorAt(0, alpha(col, 0.55 * a))
+            halo.setColorAt(1, alpha(col, 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(halo)
+            p.drawEllipse(QPointF(cx, r.center().y()), S(110), S(110))
         for i in range(first, min(self.ITEMS, first + int(r.width() // step) + 4)):
             flash = 0.0
             if self.state == "landed" and i == self.WIN:
                 flash = max(0.0, 1.0 - (now - self._stop_t) / 0.6) * (0.5 + 0.5 * math.sin((now - self._stop_t) * 30))
-            self._card(p, QRectF(cx - self.offset + i * step, top, self.cw, ch), self.strip[i], now, flash)
+            rect = QRectF(cx - self.offset + i * step, top, self.cw, ch)
+            if speed > 0.25:                              # motion blur while it races
+                p.setOpacity(0.18 * speed)
+                self._card(p, rect.translated(S(10) * speed, 0), self.strip[i], now)
+                p.setOpacity(1.0)
+            self._card(p, rect, self.strip[i], now, flash)
         fade = QLinearGradient(r.topLeft(), r.topRight())
         for at, a in ((0.0, 250), (0.22, 0), (0.78, 0), (1.0, 250)):
             fade.setColorAt(at, QColor(9, 12, 13, a))
@@ -827,6 +889,26 @@ class CaseReel(QWidget):
         if age < 0.35 and tier >= 2:
             p.setBrush(QColor(255, 255, 255, int((120 + 30 * tier) * (1 - age / 0.35))))
             p.drawRect(r)
+        if age < 0.9:                                     # a shock ring rolls out
+            ring = S(30) + age / 0.9 * S(220)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(alpha(col, 0.7 * (1 - age / 0.9)), S(3)))
+            p.drawEllipse(c, ring, ring)
+            p.setPen(Qt.PenStyle.NoPen)
+        big = tier >= 4 or int(res.get("cls") or 0) >= 2
+        if big:                                           # confetti for the big ones
+            rnd = random.Random(int(self._stop_t * 1000))
+            for k in range(40):
+                x0 = rnd.uniform(r.left(), r.right())
+                fall = (age * rnd.uniform(S(60), S(130)) + rnd.uniform(-S(60), 0)) % (r.height() + S(20))
+                sway = math.sin(age * rnd.uniform(2, 5) + k) * S(8)
+                cc = QColor.fromHsvF(rnd.random(), 0.6, 1.0) if tier == 5 else mix(col, QColor("#FFFFFF"), rnd.uniform(0, 0.6))
+                p.setBrush(cc)
+                p.save()
+                p.translate(x0 + sway, r.top() + fall - S(10))
+                p.rotate(age * 200 + k * 37)
+                p.drawRect(QRectF(-S(2.5), -S(1.2), S(5), S(2.4)))
+                p.restore()
         for ang, dist, spd in self._sparks:
             k = min(1.0, age * spd / 1.4)
             if k < 1.0:

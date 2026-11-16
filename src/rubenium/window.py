@@ -815,7 +815,19 @@ class AccountPanel(QWidget):
         lay.addLayout(line)
         self.hint = Label("", 11, TEXT_DIM)
         self.hint.setFixedHeight(S(16))
-        lay.addWidget(self.hint)
+        hl = hbox(spacing=4)
+        hl.addWidget(self.hint, 1)
+        self.forgot = Button(tr("Forgot password?"), "quiet", 18)
+        self.forgot.setFixedWidth(max(S(110), self.forgot.sizeHint().width()))
+        self.forgot.clicked.connect(self._forgot)
+        hl.addWidget(self.forgot)
+        lay.addLayout(hl)
+        self._reset_poll = QTimer(self)
+        self._reset_poll.setInterval(30000)
+        self._reset_poll.timeout.connect(self._reset_check)
+        if welcome.ctx.cfg["reset_rid"]:
+            self._reset_poll.start()
+            QTimer.singleShot(1500, self._reset_check)
         self.go = Button(tr("Log in"), "primary", 38)
         self.go.clicked.connect(self._submit)
         lay.addWidget(self.go)
@@ -829,7 +841,7 @@ class AccountPanel(QWidget):
         self.hide()
 
     def place(self) -> None:
-        w, h = S(300), S(178)
+        w, h = S(300), S(184)
         top = self.w.card_top() + S(self.w.CH) * 0.52
         self.setGeometry(int(self.w.width() / 2 - w / 2), int(top), w, h)
         out = self.w.out_level()
@@ -848,7 +860,57 @@ class AccountPanel(QWidget):
     def _mode(self, i: int) -> None:
         self.mode = i
         self.go.set_text(tr("Create account") if i else tr("Log in"))
+        self.forgot.setVisible(not i)
         self._typed()
+
+    # forgot password: a request goes to the admin, who checks it is really you
+    def _forgot(self) -> None:
+        from .bazaar import AskDialog
+        ctx = self.w.ctx
+
+        def got_name(name: str, dlg) -> None:
+            dlg.close()
+
+            def got_msg(msg: str, dlg2) -> None:
+                def sent(ok: bool, rid) -> None:
+                    if not ok:
+                        return dlg2.say(tr(str(rid)))
+                    dlg2.close()
+                    ctx.cfg["reset_rid"], ctx.cfg["reset_name"] = str(rid), name
+                    ctx.cfg.save()
+                    self._reset_poll.start()
+                    self._say(tr("Sent to the admin. Keep Rubenium open: the answer shows here."), ui.accent.name())
+                self.online.ask_reset(name, msg, sent)
+            ctx._ask = AskDialog(ctx, tr("Help the admin check it is you"), tr("When you joined, your best item…"),
+                                 tr("Send"), got_msg, 200,
+                                 tr("Only the admin reads this. Say something only the real owner knows."))
+        ctx._ask = AskDialog(ctx, tr("Forgot password?"), tr("Your username"), tr("Next"), got_name, 10,
+                             tr("The admin gets your request with details to check it is really you, then gives you "
+                                "a new password. Use the PC you play on."))
+
+    def _reset_check(self) -> None:
+        ctx = self.w.ctx
+        rid = ctx.cfg["reset_rid"]
+        if not rid or self.online.logged_in():
+            return self._reset_poll.stop()
+
+        def got(ok: bool, ans) -> None:
+            if not ok or not isinstance(ans, dict):
+                return
+            if ans.get("state") == "done" and ans.get("password"):
+                self._reset_poll.stop()
+                self.seg.set_index(0) if hasattr(self.seg, "set_index") else None
+                self.user.setText(ctx.cfg["reset_name"])
+                self.pw.setText(ans["password"])
+                ctx.cfg["reset_rid"] = ""
+                ctx.cfg.save()
+                self._say(tr("The admin gave you a new password: it is filled in. Change it in Settings."), ui.accent.name())
+            elif ans.get("state") == "refused":
+                self._reset_poll.stop()
+                ctx.cfg["reset_rid"] = ""
+                ctx.cfg.save()
+                self._say(tr("The admin could not confirm it was you."), DANGER)
+        self.online.reset_status(rid, got)
 
     def _eye(self) -> None:
         from PyQt6.QtWidgets import QLineEdit
@@ -1264,7 +1326,24 @@ class LockCover(QWidget):
     def __init__(self, parent) -> None:
         super().__init__(parent)
         self.blur = None
+        self.mode = "locked"                      # locked (by the admin) / update / offline
         self.setCursor(Qt.CursorShape.ForbiddenCursor)
+        self.button = Button(tr("Update now"), "primary", 34, parent=self)
+        self.button.setFixedWidth(S(160))
+        self.button.hide()
+        self.on_button = None
+        self.button.clicked.connect(lambda: self.on_button() if self.on_button else None)
+
+    def set_mode(self, mode: str, on_button=None) -> None:
+        self.mode, self.on_button = mode, on_button
+        self.button.setVisible(on_button is not None)
+        self.button.set_text(tr("Update now") if mode == "update" else tr("Try again"))
+        self.update()
+
+    def resizeEvent(self, _e) -> None:
+        r = self.rect()
+        top = min(r.center().y(), r.top() + S(150)) + S(110)
+        self.button.move(r.center().x() - self.button.width() // 2, int(top))
 
     def take(self, widget) -> None:
         pm = widget.grab()
@@ -1299,17 +1378,22 @@ class LockCover(QWidget):
         p.save()
         p.translate(c)
         p.scale(S(64) / 20, S(64) / 20)
-        draw_icon(p, "lock", QColor("#FFFFFF"))
+        draw_icon(p, {"update": "refresh", "offline": "power"}.get(self.mode, "lock"), QColor("#FFFFFF"))
         p.restore()
+        title, text = {
+            "update": (tr("Update needed"), tr("A new Rubenium is out. Update to keep playing games, opening cases, "
+                                              "trading and using the market. The music works as usual.")),
+            "offline": (tr("You are offline"), tr("No internet right now. The music, lyrics you already saw, the "
+                                                 "crosshair and the tools still work. Rubenium reconnects by itself.")),
+        }.get(self.mode, (tr("Locked for now"), tr("The admin is working on Rubenium. Games, cases, trades and the "
+                                                    "market come back soon. Your time still counts.")))
         p.setPen(QColor(TEXT))
         p.setFont(font(15, QFont.Weight.Bold))
-        p.drawText(QRectF(r.left(), c.y() + S(42), r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter), tr("Locked for now"))
+        p.drawText(QRectF(r.left(), c.y() + S(42), r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter), title)
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(11, QFont.Weight.DemiBold))
-        p.drawText(QRectF(r.left() + S(20), c.y() + S(68), r.width() - S(40), S(40)),
-                   int(Qt.AlignmentFlag.AlignHCenter | Qt.TextFlag.TextWordWrap),
-                   tr("The admin is working on Rubenium. Games, cases, trades and the market come back soon. "
-                      "Your time still counts."))
+        p.drawText(QRectF(r.left() + S(20), c.y() + S(68), r.width() - S(40), S(56)),
+                   int(Qt.AlignmentFlag.AlignHCenter | Qt.TextFlag.TextWordWrap), text)
 
 
 class Body(QWidget):
@@ -1711,9 +1795,17 @@ class MainWindow(QWidget):
         """While the admin has locked the app, the online tabs are covered by a blur and a big padlock."""
         from .pages2 import LOCK_PAGES
         cover = self.body.cover
-        on = bool(self.ctx.econ.live.get("locked")) and self.expanded and self.current in LOCK_PAGES
+        ctx = self.ctx
+        mode = ("locked" if ctx.econ.live.get("locked") else
+                "update" if getattr(ctx, "outdated", False) else
+                "offline" if ctx.online.logged_in() and ctx.online.offline else "")
+        on = bool(mode) and self.expanded and self.current in LOCK_PAGES
+        if on and mode != cover.mode:
+            cover.set_mode(mode, ctx.install_update if mode == "update" and ctx.updater.latest else
+                           (ctx.online.probe if mode == "offline" else None))
         if on:
             cover.setGeometry(self.body.host.rect())
+            cover.resizeEvent(None)
             entry = self.pages.get(self.current)
             if entry is not None and not cover.isVisible():
                 cover.take(entry[0])

@@ -19,8 +19,17 @@ from . import win
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "2.3"         # the version people see
-BUILD = "2026.11.16.2"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "2.4"         # the version people see
+BUILD = "2026.11.17.1"       # release tag (a date). It only ever goes up: this is what the updater compares
+
+
+def build_number(build: str = "") -> int:
+    """2026.11.17.1 -> 2026111701 (what the server compares to know if this version is too old)."""
+    try:
+        y, m, d, n = (int(x) for x in (build or BUILD).split("."))
+        return y * 1000000 + m * 10000 + d * 100 + n
+    except ValueError:
+        return 0
 log = logging.getLogger("rubenium")
 
 # --------------------------------------------------------------------------- #
@@ -251,6 +260,15 @@ DEFAULTS: dict = {
     "notify_sound": True,
     "notify_volume": 20,
     "font_item": "",
+    "visualiser": "bars",
+    "badge_size": 100,
+    "badge_pos": "above",
+    "hotkey": "rshift",
+    "lyrics_size": 15,
+    "tutorial_done": False,
+    "backup_at": 0,
+    "reset_rid": "",
+    "reset_name": "",
     "news_tab": False,
     "welcome": True,
     "sounds": True,
@@ -291,7 +309,7 @@ DEFAULTS: dict = {
     "rl": {"auto_fix": True, "platform": "", "installs": {},
            "folder": "", "app": "", "active": {}, "orig": {}, "stamp": ""},      # last line: 2.0, migrated
 }
-FREE_DICTS = {"tabs_off", "saved", "slots", "crosshair_presets", "active", "orig", "installs"}   # dicts whose keys are user data
+FREE_DICTS = {"notify", "tabs_off", "saved", "slots", "crosshair_presets", "active", "orig", "installs"}   # dicts whose keys are user data
 
 
 def _merge(default, loaded, key=""):

@@ -39,7 +39,12 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_rename_wait": "One name change every 24 hours", "rb_username_taken": "This username is taken",
           "rb_bad_username": "3 to 10 letters or numbers", "rb_same_name": "That is already your name",
           "rb_bad_picture": "This picture cannot be used", "rb_not_admin": "Admin only",
-          "rb_banned": "This account is blocked", "rb_bad_choice": "This is not possible", "rb_no_case": "No such case"}
+          "rb_banned": "This account is blocked", "rb_bad_choice": "This is not possible", "rb_no_case": "No such case",
+          "rb_update_needed": "Update Rubenium to keep playing online", "rb_app_locked": "Rubenium is locked for now",
+          "rb_not_friends": "Friends only", "rb_duel_gone": "This duel is over", "rb_already_played": "You already played this duel",
+          "rb_too_many": "Too many at once: wait a little", "rb_slow_down": "Slow down a little",
+          "rb_already_undone": "Already undone", "rb_cant_undo": "This cannot be undone",
+          "rb_weak_password": "8 characters at least", "rb_too_big": "Too big"}
 
 
 class Econ(QObject):
@@ -61,6 +66,8 @@ class Econ(QObject):
         self.holding = False
         self.avatar_v = 0
         self.stock: dict = {}                    # case id -> gifted cases waiting
+        self.scratch_in = 0                      # seconds until the next scratch card
+        self.streak, self.streak_day = 0, None
         self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
         self._live_sig = ""
         self._live_timer = QTimer(self)
@@ -144,7 +151,8 @@ class Econ(QObject):
         return str(self.equip.get(slot, "") or "")
 
     def badges_worn(self) -> list:
-        return [self.worn(s) for s in ("badge1", "badge2", "badge3") if self.worn(s)]
+        """What is on show. Something sold, traded or taken away is never shown, even before the server says so."""
+        return [self.worn(s) for s in ("badge1", "badge2", "badge3") if self.worn(s) and (not self.ready or self.can_wear(self.worn(s)))]
 
     def next_coin_s(self) -> int:
         every = int(self.cfg.get("coin_every_min", 15))
@@ -162,7 +170,14 @@ class Econ(QObject):
         now_in = self.online.logged_in()
         if now_in and not self._was_in:
             from .online import pc_id
-            self.online.ask("rb_hello", {"pc": pc_id()}, lambda _ok, _d: None)
+            from .core import build_number
+
+            def hello(ok: bool, data) -> None:
+                if not ok:                                   # a server without 2.4: the old hello
+                    return self.online.ask("rb_hello", {"pc": pc_id()}, lambda _ok, _d: None)
+                if isinstance(data, dict) and hasattr(self.ctx, "set_outdated"):
+                    self.ctx.set_outdated(bool(data.get("update")))
+            self.online.ask("rb_hello2", {"pc": pc_id(), "build": build_number()}, hello)
             self.refresh()
             self.fetch_catalog()
             self._live_timer.start()
@@ -179,11 +194,35 @@ class Econ(QObject):
 
     def refresh(self) -> None:
         if self.online.logged_in():
+            if not self.ready:
+                self._load_cache()
             self.online.ask("rb_state", {}, self._state)
+
+    # offline mode: the last answer is kept on disk, so coins and items still show without internet
+    def _load_cache(self) -> None:
+        try:
+            data = json.loads((DATA_DIR / "state_cache.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        if isinstance(data, dict) and data.get("username") == self.online.username():
+            self.items = list(data.get("items") or [])
+            self.seen = set(data.get("seen") or [])
+            self._index()
+            self.absorb(data)
+            self.changed.emit()
+
+    def _save_cache(self, data: dict) -> None:
+        try:
+            tmp = DATA_DIR / "state_cache.json.tmp"
+            tmp.write_text(json.dumps(data), encoding="utf-8")
+            tmp.replace(DATA_DIR / "state_cache.json")
+        except OSError:
+            pass
 
     def _state(self, ok: bool, data) -> None:
         if not ok or not isinstance(data, dict):
             return QTimer.singleShot(15000, self.refresh) if not self.ready else None
+        self._save_cache(data)
         first = not self.ready
         self.ready = True
         self.minutes = int(data.get("minutes", 0))
@@ -192,12 +231,17 @@ class Econ(QObject):
         self.admin = bool(data.get("admin"))
         self.avatar_v = int(data.get("avatar_v") or 0)
         self.stock = dict(data.get("stock") or {})
+        self.scratch_in = int(data.get("scratch_in") or 0)
+        self.streak = int(data.get("streak") or 0)
+        self.streak_day = data.get("streak_day")
         self.items = list(data.get("items") or [])
         self.seen = set(data.get("seen") or [])
         self._index()
         self.absorb(data)
         if first:
             self.loaded.emit()
+            if hasattr(self.ctx, "after_login"):
+                QTimer.singleShot(1200, self.ctx.after_login)
         self.changed.emit()
 
     def poll_live(self) -> None:

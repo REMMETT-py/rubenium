@@ -808,6 +808,14 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("2.4", ['New Beat Tap: four lanes, long notes, combos and it gets faster',
+             'New mini game: Memory. Duels with friends, with or without a bet',
+             'Scratch card every 12 hours and a daily login reward (day 7: a free case)',
+             'Messages with friends, leaderboards, trade history and collection sets with big bonuses',
+             'Mini games pay a little more, with limits every 2 hours instead of every day',
+             'Badges cost what they are really worth; Titanium, Gold and Mythic only come from cases',
+             'Visualiser, badge size and place, better lyrics, song history and Right Shift to show or hide',
+             'Backups, offline mode, password help from the admin, a tour and nicer case openings']),
     ("2.3", ["New free mini game: Parking. Slide the cars and get the red car out for coins",
              "Quests now sit across the top of the Games tab",
              "Colour 2 is gone: only shop themes have a second colour",

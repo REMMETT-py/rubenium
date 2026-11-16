@@ -82,6 +82,8 @@ def explain(err: ApiError) -> str:
         return "Update Rubenium first"
     if "rb_banned" in text:
         return "This account is blocked"
+    if "rb_slow_down" in text:
+        return "Slow down a little"
     if "rb_username_taken" in text or "already registered" in text or "user_already_exists" in text:
         return "This username is taken"
     if "invalid login" in text or "invalid_credentials" in text:
@@ -330,9 +332,13 @@ class Online(QObject):
         def work():
             try:
                 ans = self.rpc(fn, args)
+                if self.offline:
+                    self._back.emit(lambda: self._set_offline(False))
                 self._back.emit(lambda: done(True, ans))
             except ApiError as err:
                 msg = err.key if (raw and err.key != "offline") else explain(err)
+                if err.key == "offline":
+                    self._back.emit(lambda: self._set_offline(True))
                 self._back.emit(lambda: done(False, msg))
             except Exception:  # noqa: BLE001
                 log.exception("%s failed", fn)
@@ -367,6 +373,56 @@ class Online(QObject):
         if off != self.offline:
             self.offline = off
             self.changed.emit()
+        if not hasattr(self, "_retry"):
+            self._retry = QTimer(self)
+            self._retry.setInterval(20000)
+            self._retry.timeout.connect(self.probe)
+        if off and not self._retry.isActive():
+            self._retry.start()                  # offline mode: try again every 20 seconds, quietly
+        elif not off:
+            self._retry.stop()
+
+    def change_password(self, new: str, done) -> None:
+        """The logged-in account gets a new password (after the admin gave a temporary one, say)."""
+        def work():
+            try:
+                _request("/auth/v1/user", {"password": new}, self._token(), method="PUT")
+                self._back.emit(lambda: done(True, ""))
+            except ApiError as err:
+                msg = explain(err)
+                self._back.emit(lambda: done(False, msg))
+            except Exception:  # noqa: BLE001
+                log.exception("password change failed")
+                self._back.emit(lambda: done(False, "Something went wrong: try again"))
+        threading.Thread(target=work, daemon=True).start()
+
+    def ask_reset(self, name: str, message: str, done) -> None:
+        """Forgot the password: a request for the admin (works without logging in)."""
+        def work():
+            try:
+                rid = _request("/rest/v1/rpc/rb_reset_ask", {"name": name, "pc": pc_id(), "msg": message})
+                self._back.emit(lambda: done(True, rid))
+            except ApiError as err:
+                msg = explain(err)
+                self._back.emit(lambda: done(False, msg))
+            except Exception:  # noqa: BLE001
+                log.exception("reset ask failed")
+                self._back.emit(lambda: done(False, "Something went wrong: try again"))
+        threading.Thread(target=work, daemon=True).start()
+
+    def reset_status(self, rid: str, done) -> None:
+        def work():
+            try:
+                ans = _request("/rest/v1/rpc/rb_reset_status", {"rid": rid, "pc": pc_id()})
+                self._back.emit(lambda: done(True, ans))
+            except Exception:  # noqa: BLE001
+                self._back.emit(lambda: done(False, None))
+        threading.Thread(target=work, daemon=True).start()
+
+    def probe(self) -> None:
+        """Is the internet back? One small question to the server."""
+        if self.logged_in():
+            self.ask("rb_timers", {}, lambda _ok, _d: None)
 
     def _beaten(self, ans: dict) -> None:
         before = (self.minutes, self.elsewhere, self.offline, self.username())

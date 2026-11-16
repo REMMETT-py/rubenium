@@ -1,0 +1,987 @@
+"""2.4 games: the new Beat Tap (four lanes), Memory, the scratch card and duels between friends.
+
+Every score is worked out by the server: the app only sends what you pressed and when."""
+import math
+import random
+import time
+
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
+from PyQt6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtWidgets import QGridLayout, QWidget
+
+from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
+from .econ import RARITY_COLOURS, RARITY_NAMES
+from .shop import CoinBar, GOLD_TEXT, clock_text
+from .wallet import coins_text, paint_coin
+from .widgets import Button, IconButton, Label, Segmented, draw_icon, hbox, vbox
+
+LANE_KEYS = [Qt.Key.Key_D, Qt.Key.Key_F, Qt.Key.Key_J, Qt.Key.Key_K]
+LANE_NAMES = ["D", "F", "J", "K"]
+LANE_COLOURS = ["#FF5C8A", "#4FC3FF", "#5BE08A", "#FFB547"]
+
+
+def window_text(day: dict) -> str:
+    """'Next 2 hours: 40 / 150 coins' for the mini game limits."""
+    day = day or {}
+    return tr("These 2 hours: {n} / {cap} coins", n=coins_text(int(day.get("paid") or 0)),
+              cap=coins_text(int(day.get("cap") or 150)))
+
+
+# ================================================================ Beat Tap 2
+class BeatRush(QWidget):
+    """Four lanes. Notes fall to the line: press D F J K (or click the lane) as they touch it. Long notes are held.
+    Notes come faster and faster; hits in a row build a combo."""
+    LEAD = 1.15                                   # seconds a note takes to fall
+
+    def __init__(self, page, on_end=None) -> None:
+        super().__init__()
+        self.page, self.ctx, self.on_end = page, page.ctx, on_end
+        self.setFixedSize(page.W, S(320))
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.state = "idle"                       # idle -> wait -> count -> play -> send -> done
+        self.chart: list = []
+        self.round = ""
+        self.hits: dict = {}                      # note -> {"i", "t", "u"}
+        self.judged: dict = {}                    # note -> "p" / "g" / "o" / "m"
+        self.holding: dict = {}                   # lane -> note being held
+        self.pressed = [0.0] * 4                  # when each lane was last pressed (for the glow)
+        self.pops: list = []
+        self.sparks: list = []
+        self.combo = self.best = 0
+        self.t0 = 0.0
+        self.result: dict = {}
+        self.duel = False
+        self._frames = QTimer(self)
+        self._frames.setTimerType(Qt.TimerType.PreciseTimer)
+        self._frames.setInterval(16)
+        self._frames.timeout.connect(self._tick)
+
+    # -- rounds
+    def start(self) -> None:
+        if self.state in ("wait", "count", "play", "send"):
+            return
+        self.state = "wait"
+        self.update()
+        sent = time.monotonic()
+
+        def got(ok: bool, data) -> None:
+            if not ok or not isinstance(data, dict):
+                self.state = "idle"
+                self.update()
+                return self.ctx.toast(tr(str(data)), "warn")
+            self.begin(data, sent)
+        self.ctx.econ.call("rb_tap_start", {}, got)
+
+    def begin(self, data: dict, sent: float, duel: bool = False) -> None:
+        now = time.monotonic()
+        self.t0 = sent + (now - sent) / 2              # the server started its clock about half-way
+        self.round, self.chart, self.duel = data["round"], list(data.get("chart") or []), duel
+        self.hits, self.judged, self.holding, self.pops, self.sparks = {}, {}, {}, [], []
+        self.combo = self.best = 0
+        self.result = {}
+        self.state = "play"
+        self.setFocus()
+        self._frames.start()
+
+    def abort(self) -> None:
+        self._frames.stop()
+        self.state = "idle"
+
+    def hideEvent(self, _e) -> None:
+        self._frames.stop()
+
+    def _ms(self) -> float:
+        return (time.monotonic() - self.t0) * 1000
+
+    def _end_ms(self) -> float:
+        if not self.chart:
+            return 1.0
+        return max(n["t"] + n["h"] for n in self.chart) + 900
+
+    def _tick(self) -> None:
+        if self.state == "play":
+            ms = self._ms()
+            for i, n in enumerate(self.chart):           # notes that went past without a press
+                if i not in self.judged and ms > n["t"] + 260:
+                    self.judged[i] = "m"
+                    self.combo = 0
+                    self._pop(n["l"], tr("MISS"), "#FF5C6C")
+            for lane, i in list(self.holding.items()):   # holds that reached their end
+                n = self.chart[i]
+                if ms >= n["t"] + n["h"]:
+                    self.hits[i]["u"] = int(ms)
+                    del self.holding[lane]
+                    self._burst(lane, LANE_COLOURS[lane], 10)
+            if ms > self._end_ms():
+                self._send()
+        self.update()
+        if self.state in ("idle", "done") and not self.pops and not self.sparks:
+            self._frames.stop()
+
+    def _send(self) -> None:
+        self.state = "send"
+        for lane, i in list(self.holding.items()):
+            self.hits[i]["u"] = int(self._ms())
+        self.holding = {}
+        hits = list(self.hits.values())
+
+        def got(ok: bool, data) -> None:
+            self.state = "done"
+            if not ok:
+                self.ctx.toast(tr(str(data)), "warn")
+                data = {}
+            self.result = data if isinstance(data, dict) else {}
+            if int(self.result.get("paid") or 0):
+                sfx.play("on")
+            self._frames.start()
+            if self.on_end:
+                self.on_end(self.result)
+        self.ctx.econ.call("rb_tap_finish", {"round": self.round, "hits": hits}, got)
+
+    # -- input
+    def _press(self, lane: int) -> None:
+        if self.state != "play":
+            return
+        ms = self._ms()
+        self.pressed[lane] = time.monotonic()
+        best, gap = -1, 1e9
+        for i, n in enumerate(self.chart):
+            if n["l"] != lane or i in self.judged:
+                continue
+            d = abs(ms - n["t"])
+            if d <= 260 and d < gap:
+                best, gap = i, d
+            if n["t"] > ms + 300:
+                break
+        if best < 0:
+            return
+        n = self.chart[best]
+        self.hits[best] = {"i": best, "t": int(ms)}
+        kind, text, col = (("p", "PERFECT", "#5BE08A") if gap <= 80 else
+                           (("g", "GREAT", "#4FC3FF") if gap <= 160 else ("o", "GOOD", GOLD_TEXT)))
+        self.judged[best] = kind
+        self.combo += 1
+        self.best = max(self.best, self.combo)
+        if n["h"]:
+            self.holding[lane] = best
+        sfx.play("pick")
+        self._pop(lane, tr(text), col)
+        self._burst(lane, LANE_COLOURS[lane], 14 if kind == "p" else 8)
+
+    def _release(self, lane: int) -> None:
+        if lane in self.holding:
+            i = self.holding.pop(lane)
+            self.hits[i]["u"] = int(self._ms())
+
+    def keyPressEvent(self, e) -> None:
+        if e.isAutoRepeat():
+            return
+        if e.key() in LANE_KEYS:
+            self._press(LANE_KEYS.index(e.key()))
+        elif e.key() in (Qt.Key.Key_Space, Qt.Key.Key_Return) and self.state in ("idle", "done") and not self.duel:
+            self.start()
+        else:
+            super().keyPressEvent(e)
+
+    def keyReleaseEvent(self, e) -> None:
+        if not e.isAutoRepeat() and e.key() in LANE_KEYS:
+            self._release(LANE_KEYS.index(e.key()))
+
+    def _lane_at(self, x: float) -> int:
+        return max(0, min(3, int((x - self._board().left()) / (self._board().width() / 4))))
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        self.setFocus()
+        if e.button() == Qt.MouseButton.LeftButton:
+            self._mouse_lane = self._lane_at(e.position().x())
+            self._press(self._mouse_lane)
+
+    def mouseReleaseEvent(self, e) -> None:
+        lane = getattr(self, "_mouse_lane", None)
+        if lane is not None:
+            self._release(lane)
+            self._mouse_lane = None
+
+    # -- effects
+    def _pop(self, lane: int, text: str, col: str) -> None:
+        self.pops.append((lane, time.monotonic(), text, col))
+
+    def _burst(self, lane: int, col: str, n: int) -> None:
+        b = self._board()
+        x = b.left() + b.width() / 4 * (lane + 0.5)
+        y = self._line_y()
+        now = time.monotonic()
+        for _ in range(n):
+            a = random.uniform(math.pi * 1.05, math.pi * 1.95)
+            v = random.uniform(S(60), S(170))
+            self.sparks.append((x, y, math.cos(a) * v, math.sin(a) * v, now, col))
+
+    # -- drawing
+    def _board(self) -> QRectF:
+        return QRectF(self.rect()).adjusted(S(6), S(6), -S(6), -S(6))
+
+    def _line_y(self) -> float:
+        return self._board().bottom() - S(44)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        b = self._board()
+        now = time.monotonic()
+        ms = self._ms() if self.state in ("play", "send") else 0.0
+        # background: dark, with a soft pulse on the beat once it gets going
+        g = QLinearGradient(b.topLeft(), b.bottomLeft())
+        g.setColorAt(0, QColor("#07090C"))
+        g.setColorAt(1, QColor("#10141A"))
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(g)
+        p.drawRoundedRect(b, S(12), S(12))
+        lw = b.width() / 4
+        line = self._line_y()
+        speed = (line - b.top()) / (self.LEAD * 1000)
+        for lane in range(4):
+            x = b.left() + lw * lane
+            col = QColor(LANE_COLOURS[lane])
+            glow = max(0.0, 1 - (now - self.pressed[lane]) / 0.25)
+            lg = QLinearGradient(QPointF(0, b.top()), QPointF(0, line))
+            lg.setColorAt(0, alpha(col, 0.0))
+            lg.setColorAt(1, alpha(col, 0.07 + 0.22 * glow))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(lg)
+            p.drawRect(QRectF(x + 1, b.top() + S(4), lw - 2, line - b.top()))
+            if lane:
+                p.setPen(QPen(alpha("#FFFFFF", 0.05), 1))
+                p.drawLine(QPointF(x, b.top() + S(8)), QPointF(x, b.bottom() - S(8)))
+            # the key under each lane
+            key = QRectF(x + lw / 2 - S(16), line + S(10), S(32), S(24))
+            p.setPen(QPen(alpha(col, 0.35 + 0.65 * glow), S(1.4)))
+            p.setBrush(alpha(col, 0.08 + 0.35 * glow))
+            p.drawRoundedRect(key, S(6), S(6))
+            p.setPen(QColor(TEXT) if glow > 0.2 else alpha(col, 0.9))
+            p.setFont(font(11, QFont.Weight.ExtraBold))
+            p.drawText(key, int(Qt.AlignmentFlag.AlignCenter), LANE_NAMES[lane])
+        # the hit line
+        p.setPen(QPen(alpha(ui.accent, 0.9), S(2.2)))
+        p.drawLine(QPointF(b.left() + S(6), line), QPointF(b.right() - S(6), line))
+        # notes
+        if self.state in ("play", "send"):
+            for i, n in enumerate(self.chart):
+                dt = n["t"] - ms
+                if dt > self.LEAD * 1000 + 50:
+                    break
+                lane, col = n["l"], QColor(LANE_COLOURS[n["l"]])
+                held = self.holding.get(lane) == i
+                if self.judged.get(i) not in (None, "m") and not held and not (n["h"] and i in self.hits and "u" not in self.hits[i]):
+                    continue
+                y = line - dt * speed
+                x = b.left() + lw * lane
+                if n["h"]:
+                    top = line - (n["t"] + n["h"] - ms) * speed
+                    bottom = line if held else y
+                    if bottom > b.top():
+                        tail = QRectF(x + lw * 0.34, max(b.top(), top), lw * 0.32, max(0.0, bottom - max(b.top(), top)))
+                        p.setPen(Qt.PenStyle.NoPen)
+                        p.setBrush(alpha(col, 0.75 if held else 0.4))
+                        p.drawRoundedRect(tail, S(4), S(4))
+                    if held:
+                        continue
+                if self.judged.get(i) == "m":
+                    p.setOpacity(max(0.0, 1 + dt / 260))
+                head = QRectF(x + S(6), y - S(8), lw - S(12), S(16))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha(col, 0.28))
+                p.drawRoundedRect(head.adjusted(-S(3), -S(3), S(3), S(3)), S(9), S(9))
+                hg = QLinearGradient(head.topLeft(), head.bottomLeft())
+                hg.setColorAt(0, mix(col, QColor("#FFFFFF"), 0.45))
+                hg.setColorAt(1, col)
+                p.setBrush(hg)
+                p.drawRoundedRect(head, S(7), S(7))
+                p.setOpacity(1.0)
+        # sparks and words
+        keep = []
+        for x, y, vx, vy, born, col in self.sparks:
+            age = now - born
+            if age < 0.5:
+                keep.append((x, y, vx, vy, born, col))
+                p.setOpacity(1 - age / 0.5)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(col))
+                p.drawEllipse(QPointF(x + vx * age, y + vy * age + S(220) * age * age), S(2.2), S(2.2))
+        self.sparks = keep
+        p.setOpacity(1.0)
+        keep = []
+        for lane, born, text, col in self.pops:
+            age = now - born
+            if age < 0.6:
+                keep.append((lane, born, text, col))
+                p.setOpacity(1 - age / 0.6)
+                p.setPen(QColor(col))
+                p.setFont(font(10, QFont.Weight.ExtraBold))
+                x = b.left() + lw * lane
+                p.drawText(QRectF(x - S(10), line - S(46) - S(18) * age, lw + S(20), S(16)), int(Qt.AlignmentFlag.AlignCenter), text)
+        self.pops = keep
+        p.setOpacity(1.0)
+        if self.state in ("play", "send"):
+            if self.combo >= 5:                                     # combo counter
+                p.setPen(alpha("#FFFFFF", 0.85))
+                p.setFont(font(24 + min(10, self.combo // 10 * 2), QFont.Weight.Black))
+                p.drawText(QRectF(b.left(), b.top() + S(30), b.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter), str(self.combo))
+                p.setPen(alpha(ui.accent, 0.9))
+                p.setFont(font(9, QFont.Weight.Bold))
+                p.drawText(QRectF(b.left(), b.top() + S(68), b.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter), tr("COMBO"))
+            bar = QRectF(b.left() + S(10), b.top() + S(8), b.width() - S(20), S(4))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.08))
+            p.drawRoundedRect(bar, S(2), S(2))
+            p.setBrush(ui.accent)
+            p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * min(1.0, ms / self._end_ms()), bar.height()), S(2), S(2))
+        if self.state in ("idle", "wait", "send", "done"):
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#000000", 0.55))
+            p.drawRoundedRect(b, S(12), S(12))
+            self._draw_card(p, b)
+
+    def _draw_card(self, p: QPainter, b: QRectF) -> None:
+        c = b.center()
+        if self.state == "done" and self.result:
+            res = self.result
+            pct = int(res.get("pct") or 0)
+            p.setPen(QColor(TEXT))
+            p.setFont(font(26, QFont.Weight.Black))
+            p.drawText(QRectF(b.left(), c.y() - S(96), b.width(), S(36)), int(Qt.AlignmentFlag.AlignCenter), f"{pct}%")
+            grade = "S" if pct >= 95 else "A" if pct >= 85 else "B" if pct >= 70 else "C" if pct >= 50 else "D"
+            p.setPen(QColor({"S": GOLD_TEXT, "A": "#5BE08A", "B": "#4FC3FF", "C": TEXT_DIM, "D": "#FF5C6C"}[grade]))
+            p.setFont(font(13, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(b.left(), c.y() - S(60), b.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Grade {g}", g=grade) + "  ·  " + tr("Best combo {n}", n=res.get("combo", 0)))
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            parts = [("PERFECT", res.get("perfect", 0), "#5BE08A"), ("GREAT", res.get("great", 0), "#4FC3FF"),
+                     ("GOOD", res.get("good", 0), GOLD_TEXT), ("MISS", res.get("miss", 0), "#FF5C6C")]
+            w = b.width() / 4
+            for k, (name, n, col) in enumerate(parts):
+                r = QRectF(b.left() + w * k, c.y() - S(34), w, S(30))
+                p.setPen(QColor(col))
+                p.drawText(QRectF(r.left(), r.top(), r.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter), tr(name))
+                p.setPen(QColor(TEXT))
+                p.drawText(QRectF(r.left(), r.top() + S(14), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), str(n))
+            paid = int(res.get("paid") or 0)
+            p.setPen(QColor(GOLD_TEXT if paid else TEXT_DIM))
+            p.setFont(font(20, QFont.Weight.ExtraBold))
+            text = tr("Duel score sent") if res.get("duel") else ("+" + coins_text(paid) if paid else tr("No coins this time"))
+            p.drawText(QRectF(b.left(), c.y() + S(6), b.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter), text)
+            if res.get("day"):
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10, QFont.Weight.DemiBold))
+                p.drawText(QRectF(b.left(), c.y() + S(40), b.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), window_text(res["day"]))
+            return
+        p.setPen(QColor(TEXT))
+        p.setFont(font(15, QFont.Weight.Bold))
+        text = {"wait": tr("Get ready…"), "send": tr("Counting…")}.get(self.state, tr("Press Start"))
+        p.drawText(QRectF(b.left(), c.y() - S(40), b.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter), text)
+        if self.state == "idle":
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(b.left() + S(16), c.y() - S(10), b.width() - S(32), S(60)),
+                       int(Qt.AlignmentFlag.AlignHCenter | Qt.TextFlag.TextWordWrap),
+                       tr("Press D F J K (or click the lanes) when a note touches the line. Hold the long ones."))
+
+
+# ================================================================ Memory
+SYMBOLS = ["#FF5C8A", "#4FC3FF", "#5BE08A", "#FFB547", "#B36BFF", "#FF8A3D", "#2EE6D6", "#F4F04A",
+           "#FF5CC8", "#8CFF2E", "#6A8CFF", "#E6EEF5"]
+
+
+def paint_symbol(p: QPainter, kind: int, c: QPointF, r: float) -> None:
+    """One of 12 shapes, each with its own colour."""
+    col = QColor(SYMBOLS[kind % 12])
+    p.save()
+    p.translate(c)
+    p.setPen(Qt.PenStyle.NoPen)
+    glow = QRadialGradient(QPointF(0, 0), r * 1.6)
+    glow.setColorAt(0, alpha(col, 0.35))
+    glow.setColorAt(1, alpha(col, 0.0))
+    p.setBrush(glow)
+    p.drawEllipse(QPointF(0, 0), r * 1.6, r * 1.6)
+    p.setBrush(col)
+    path = QPainterPath()
+    if kind == 0:
+        path.addEllipse(QPointF(0, 0), r, r)
+    elif kind == 1:
+        path.addRoundedRect(QRectF(-r * 0.85, -r * 0.85, r * 1.7, r * 1.7), r * 0.25, r * 0.25)
+    elif kind == 2:
+        path.moveTo(0, -r); path.lineTo(r * 0.95, r * 0.8); path.lineTo(-r * 0.95, r * 0.8); path.closeSubpath()
+    elif kind == 3:
+        path.moveTo(0, -r); path.lineTo(r * 0.8, 0); path.lineTo(0, r); path.lineTo(-r * 0.8, 0); path.closeSubpath()
+    elif kind == 4:
+        for k in range(10):
+            a = -math.pi / 2 + k * math.pi / 5
+            rr = r if k % 2 == 0 else r * 0.45
+            pt = QPointF(math.cos(a) * rr, math.sin(a) * rr)
+            path.moveTo(pt) if k == 0 else path.lineTo(pt)
+        path.closeSubpath()
+    elif kind == 5:                                               # heart
+        path.moveTo(0, r * 0.9)
+        path.cubicTo(-r * 1.3, -r * 0.1, -r * 0.5, -r * 1.1, 0, -r * 0.35)
+        path.cubicTo(r * 0.5, -r * 1.1, r * 1.3, -r * 0.1, 0, r * 0.9)
+    elif kind == 6:                                               # ring
+        path.addEllipse(QPointF(0, 0), r, r)
+        inner = QPainterPath()
+        inner.addEllipse(QPointF(0, 0), r * 0.5, r * 0.5)
+        path = path.subtracted(inner)
+    elif kind == 7:                                               # plus
+        w = r * 0.38
+        path.addRect(QRectF(-w, -r, 2 * w, 2 * r))
+        path.addRect(QRectF(-r, -w, 2 * r, 2 * w))
+        path = path.simplified()
+    elif kind == 8:                                               # hexagon
+        for k in range(6):
+            a = k * math.pi / 3
+            pt = QPointF(math.cos(a) * r, math.sin(a) * r)
+            path.moveTo(pt) if k == 0 else path.lineTo(pt)
+        path.closeSubpath()
+    elif kind == 9:                                               # moon
+        path.addEllipse(QPointF(0, 0), r, r)
+        cut = QPainterPath()
+        cut.addEllipse(QPointF(r * 0.45, -r * 0.3), r * 0.85, r * 0.85)
+        path = path.subtracted(cut)
+    elif kind == 10:                                              # bolt
+        pts = [(0.25, -1), (-0.6, 0.15), (-0.05, 0.15), (-0.3, 1), (0.6, -0.2), (0.05, -0.2)]
+        path.moveTo(pts[0][0] * r, pts[0][1] * r)
+        for x, y in pts[1:]:
+            path.lineTo(x * r, y * r)
+        path.closeSubpath()
+    else:                                                         # music note
+        path.addEllipse(QPointF(-r * 0.3, r * 0.55), r * 0.42, r * 0.32)
+        path.addRect(QRectF(r * 0.02, -r, r * 0.18, r * 1.55))
+        path.addRect(QRectF(r * 0.02, -r, r * 0.65, r * 0.22))
+        path = path.simplified()
+    p.drawPath(path)
+    p.restore()
+
+
+class MemoryGame(QWidget):
+    """Find the pairs. The server keeps the board and shows one card at a time, so nothing can be peeked."""
+
+    def __init__(self, page, on_end=None) -> None:
+        super().__init__()
+        self.page, self.ctx, self.on_end = page, page.ctx, on_end
+        self.setFixedSize(page.W, S(300))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.state = "idle"                       # idle -> busy -> play -> done
+        self.round = ""
+        self.n, self.cols = 16, 4
+        self.faces: dict = {}                     # card -> symbol shown now
+        self.found: set = set()
+        self.flip_at: dict = {}                   # card -> when it turned (for the animation)
+        self.wait = False
+        self.flips = 0
+        self.t0 = 0.0
+        self.result: dict = {}
+        self.duel = False
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self._tick)
+
+    def start(self) -> None:
+        if self.state == "busy":
+            return
+        self.state = "busy"
+        tier = int(getattr(self.ctx, "mem_tier", 0) or 0) + 1
+
+        def got(ok: bool, data) -> None:
+            if not ok or not isinstance(data, dict):
+                self.state = "idle"
+                self.update()
+                return self.ctx.toast(tr(str(data)), "warn")
+            self.begin(data)
+        self.ctx.econ.call("rb_mem_start", {"tier": tier}, got)
+
+    def begin(self, data: dict, duel: bool = False) -> None:
+        self.round, self.n, self.cols, self.duel = data["round"], int(data["cards"]), int(data["cols"]), duel
+        self.faces, self.found, self.flip_at, self.wait, self.flips, self.result = {}, set(), {}, False, 0, {}
+        self.t0 = time.monotonic()
+        self.state = "play"
+        self._t.start()
+        self.update()
+
+    def _rows(self) -> int:
+        return math.ceil(self.n / self.cols)
+
+    def _cell(self, i: int) -> QRectF:
+        rows = self._rows()
+        gap = S(6)
+        w = min((self.width() - gap * (self.cols + 1)) / self.cols, (self.height() - S(24) - gap * (rows + 1)) / rows)
+        ox = (self.width() - (w * self.cols + gap * (self.cols - 1))) / 2
+        r, c = divmod(i, self.cols)
+        return QRectF(ox + c * (w + gap), S(22) + gap + r * (w + gap), w, w)
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        if self.state != "play" or self.wait or e.button() != Qt.MouseButton.LeftButton:
+            return
+        for i in range(self.n):
+            if self._cell(i).contains(e.position()):
+                if i in self.found or i in self.faces:
+                    return
+                return self._flip(i)
+
+    def _flip(self, i: int) -> None:
+        self.wait = True
+
+        def got(ok: bool, data) -> None:
+            self.wait = False
+            if not ok or not isinstance(data, dict):
+                self.ctx.toast(tr(str(data)), "warn")
+                return self.update()
+            self.faces[i] = int(data["sym"])
+            self.flip_at[i] = time.monotonic()
+            sfx.play("pick")
+            if data.get("first"):
+                return self.update()
+            self.flips = int(data.get("flips") or self.flips + 2)
+            other = int(data.get("other", -1))
+            if data.get("match"):
+                self.found |= {i, other}
+                sfx.play("on")
+                if data.get("done"):
+                    self.state = "done"
+                    self.result = data
+                    if self.on_end:
+                        self.on_end(data)
+                    QTimer.singleShot(250, self.update)
+            else:
+                self.wait = True                              # look at both for a moment, then turn them back
+
+                def hide() -> None:
+                    for k in (i, other):
+                        self.faces.pop(k, None)
+                        self.flip_at[k] = time.monotonic()
+                    self.wait = False
+                    self.update()
+                QTimer.singleShot(700, hide)
+            self.update()
+        self.ctx.econ.call("rb_mem_flip", {"round": self.round, "card": i}, got)
+
+    def _tick(self) -> None:
+        self.update()
+        if self.state != "play" and not any(time.monotonic() - t < 0.3 for t in self.flip_at.values()):
+            self._t.stop()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        if self.state in ("play", "done"):
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            secs = (now - self.t0) if self.state == "play" else float(self.result.get("secs") or 0)
+            p.drawText(QRectF(S(4), 0, self.width() - S(8), S(18)), int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+                       tr("Pairs {a} / {b}", a=len(self.found) // 2, b=self.n // 2))
+            p.drawText(QRectF(S(4), 0, self.width() - S(8), S(18)), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                       tr("{n} flips", n=self.flips) + f"  ·  {int(secs)} s")
+            for i in range(self.n):
+                r = self._cell(i)
+                k = min(1.0, (now - self.flip_at.get(i, 0)) / 0.25)
+                face = i in self.faces or i in self.found
+                squeeze = abs(math.cos(k * math.pi)) if k < 1 else 1.0
+                showing = face if k >= 0.5 else not face
+                rr = QRectF(r.center().x() - r.width() / 2 * squeeze, r.top(), r.width() * squeeze, r.height())
+                if showing:
+                    sym = self.faces.get(i)
+                    col = QColor(SYMBOLS[sym % 12]) if sym is not None else QColor(TEXT_DIM)
+                    p.setPen(QPen(alpha(col, 0.9 if i in self.found else 0.5), S(1.6)))
+                    p.setBrush(QColor("#12161C"))
+                    p.drawRoundedRect(rr, S(8), S(8))
+                    if sym is not None and squeeze > 0.2:
+                        p.save()
+                        p.translate(rr.center())
+                        p.scale(squeeze, 1)
+                        paint_symbol(p, sym, QPointF(0, 0), r.width() * 0.26)
+                        p.restore()
+                else:
+                    g = QLinearGradient(rr.topLeft(), rr.bottomRight())
+                    g.setColorAt(0, mix(ui.accent, QColor("#1A1F26"), 0.55))
+                    g.setColorAt(1, QColor("#1A1F26"))
+                    p.setPen(QPen(alpha(ui.accent, 0.35), S(1.2)))
+                    p.setBrush(g)
+                    p.drawRoundedRect(rr, S(8), S(8))
+                    if squeeze > 0.5:
+                        p.setPen(alpha("#FFFFFF", 0.25))
+                        p.setFont(font(14, QFont.Weight.Black))
+                        p.drawText(rr, int(Qt.AlignmentFlag.AlignCenter), "R")
+        if self.state == "done" and self.result:
+            b = QRectF(self.rect()).adjusted(S(20), S(70), -S(20), -S(70))
+            p.setPen(QPen(alpha(ui.accent, 0.6), S(1.4)))
+            p.setBrush(alpha("#07090C", 0.92))
+            p.drawRoundedRect(b, S(12), S(12))
+            res = self.result
+            p.setPen(QColor(TEXT))
+            p.setFont(font(14, QFont.Weight.Bold))
+            p.drawText(QRectF(b.left(), b.top() + S(12), b.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("All pairs in {n} flips", n=res.get("flips", 0)))
+            paid = int(res.get("paid") or 0)
+            p.setPen(QColor(GOLD_TEXT if paid else TEXT_DIM))
+            p.setFont(font(20, QFont.Weight.ExtraBold))
+            text = tr("Duel score sent") if res.get("duel") else ("+" + coins_text(paid) if paid else tr("No coins this time"))
+            p.drawText(QRectF(b.left(), b.top() + S(40), b.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter), text)
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            line = tr("Perfect is {n} flips", n=res.get("perfect", self.n)) if not res.get("duel") else tr("{s} seconds", s=res.get("secs", 0))
+            if res.get("day"):
+                line += "  ·  " + window_text(res["day"])
+            p.drawText(QRectF(b.left(), b.top() + S(74), b.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), line)
+        elif self.state in ("idle", "busy"):
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(13, QFont.Weight.Bold))
+            p.drawText(QRectF(self.rect()), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Loading…") if self.state == "busy" else tr("Press Start"))
+
+
+# ================================================================ scratch card (every 12 hours)
+class ScratchCard(QWidget):
+    """A silver card. Scratch it with the mouse: it is hard at first, then easier and easier. Under it: a rarity
+    colour and the prize (coins or keys). The server decides the prize when you start scratching."""
+    COLS, ROWS = 30, 16
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedSize(page.W, S(170))
+        self.setCursor(Qt.CursorShape.CrossCursor)
+        self.prize: dict = {}
+        self.asked = False
+        self.cleared = 0
+        self.done = False
+        self.grid = [[False] * self.COLS for _ in range(self.ROWS)]
+        self.cover = None
+        self.last = None
+        self.done_at = 0.0
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self.update)
+
+    def _card(self) -> QRectF:
+        return QRectF(self.rect()).adjusted(S(4), S(4), -S(4), -S(4))
+
+    def _make_cover(self) -> None:
+        r = self._card()
+        img = QImage(int(r.width()), int(r.height()), QImage.Format.Format_ARGB32_Premultiplied)
+        img.fill(Qt.GlobalColor.transparent)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        g = QLinearGradient(0, 0, r.width(), r.height())
+        for k, c in enumerate(["#9AA3AD", "#D9DEE3", "#8B949E", "#C9CFD6", "#9AA3AD"]):
+            g.setColorAt(k / 4, QColor(c))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRoundedRect(QRectF(0, 0, r.width(), r.height()), S(12), S(12))
+        rnd = random.Random(7)
+        p.setPen(QPen(alpha("#FFFFFF", 0.18), 1))
+        for _ in range(140):
+            x, y = rnd.uniform(0, r.width()), rnd.uniform(0, r.height())
+            p.drawLine(QPointF(x, y), QPointF(x + rnd.uniform(-6, 6), y + rnd.uniform(-6, 6)))
+        p.setPen(QColor("#5C6670"))
+        p.setFont(font(15, QFont.Weight.Black))
+        p.drawText(QRectF(0, 0, r.width(), r.height()), int(Qt.AlignmentFlag.AlignCenter), tr("SCRATCH ME"))
+        p.end()
+        self.cover = img
+
+    def ready(self) -> bool:
+        return int(getattr(self.ctx.econ, "scratch_in", 0) or 0) <= 0
+
+    def _brush(self) -> float:
+        frac = self.cleared / (self.COLS * self.ROWS)
+        return S(6) + S(34) * frac ** 1.3                   # small at first, then bigger and bigger
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        if self.done or not self.ready() and not self.prize:
+            return
+        if not self.asked:
+            self.asked = True
+
+            def got(ok: bool, data) -> None:
+                if not ok or not isinstance(data, dict):
+                    self.asked = False
+                    return self.ctx.toast(tr(str(data)) if "countdown" not in str(data) else tr("Not ready yet"), "warn")
+                self.prize = data
+                self.ctx.econ.scratch_in = int(data.get("next") or 43200)
+                self.update()
+            self.ctx.econ.call("rb_scratch", {}, got, hold=True)
+        self.last = e.position()
+        self._scratch(e.position())
+
+    def mouseMoveEvent(self, e) -> None:
+        if self.last is None or self.done:
+            return
+        a, b = self.last, e.position()
+        steps = max(1, int(math.hypot(b.x() - a.x(), b.y() - a.y()) / S(3)))
+        for k in range(1, steps + 1):
+            self._scratch(QPointF(a.x() + (b.x() - a.x()) * k / steps, a.y() + (b.y() - a.y()) * k / steps))
+        self.last = b
+
+    def mouseReleaseEvent(self, _e) -> None:
+        self.last = None
+
+    def _scratch(self, pos: QPointF) -> None:
+        if self.cover is None or not self.prize and self.cleared > self.COLS * self.ROWS * 0.25:
+            return                                               # wait for the server before showing too much
+        r = self._card()
+        x, y = pos.x() - r.left(), pos.y() - r.top()
+        rad = self._brush()
+        p = QPainter(self.cover)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(0, 0, 0, 255))
+        p.drawEllipse(QPointF(x, y), rad, rad)
+        p.end()
+        cw, ch = r.width() / self.COLS, r.height() / self.ROWS
+        for row in range(max(0, int((y - rad) / ch)), min(self.ROWS, int((y + rad) / ch) + 1)):
+            for col in range(max(0, int((x - rad) / cw)), min(self.COLS, int((x + rad) / cw) + 1)):
+                if not self.grid[row][col] and math.hypot((col + 0.5) * cw - x, (row + 0.5) * ch - y) <= rad:
+                    self.grid[row][col] = True
+                    self.cleared += 1
+        if self.prize and self.cleared >= self.COLS * self.ROWS * 0.62:
+            self._finish()
+        self.update()
+
+    def _finish(self) -> None:
+        self.done = True
+        self.done_at = time.monotonic()
+        self._t.start()
+        QTimer.singleShot(1500, self._t.stop)
+        self.ctx.econ.absorb(self.prize)
+        self.ctx.econ.changed.emit()
+        sfx.play("on")
+        c, k = int(self.prize.get("coins_won") or 0), int(self.prize.get("keys_won") or 0)
+        self.ctx.toast(("+" + coins_text(c)) if c else tr("+{n} key(s)", n=k))
+
+    def reset(self) -> None:
+        self.prize, self.asked, self.cleared, self.done, self.last = {}, False, 0, False, None
+        self.grid = [[False] * self.COLS for _ in range(self.ROWS)]
+        self.cover = None
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = self._card()
+        if not self.ready() and not self.prize:
+            p.setPen(QPen(alpha("#FFFFFF", 0.1), 1))
+            p.setBrush(QColor("#11151A"))
+            p.drawRoundedRect(r, S(12), S(12))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(13, QFont.Weight.Bold))
+            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Next scratch card in {t}", t=clock_text(int(self.ctx.econ.scratch_in or 0))))
+            return
+        rar = self.prize.get("rarity", "standard")
+        col = QColor(RARITY_COLOURS.get(rar, "#9AA4AD")) if self.prize else QColor("#2A3038")
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, mix(col, QColor("#000000"), 0.15))
+        g.setColorAt(1, mix(col, QColor("#000000"), 0.6))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(12), S(12))
+        if self.prize:
+            if self.done:                                        # a little shine once it is all off
+                k = min(1.0, (time.monotonic() - self.done_at) / 1.2)
+                x = r.left() + r.width() * (k * 1.6 - 0.3)
+                sh = QLinearGradient(QPointF(x - S(40), 0), QPointF(x + S(40), 0))
+                sh.setColorAt(0, alpha("#FFFFFF", 0))
+                sh.setColorAt(0.5, alpha("#FFFFFF", 0.35 * (1 - k)))
+                sh.setColorAt(1, alpha("#FFFFFF", 0))
+                p.setBrush(sh)
+                p.drawRoundedRect(r, S(12), S(12))
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(font(11, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(r.left(), r.top() + S(18), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr(RARITY_NAMES.get(rar, "Common")).upper())
+            c, k = int(self.prize.get("coins_won") or 0), int(self.prize.get("keys_won") or 0)
+            p.setFont(font(26, QFont.Weight.Black))
+            p.drawText(QRectF(r.left(), r.center().y() - S(20), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter),
+                       coins_text(c) + " " + tr("coins") if c else tr("{n} key(s)", n=k))
+        if self.cover is None:
+            self._make_cover()
+        if not self.done:
+            p.drawImage(r.topLeft(), self.cover)
+        elif time.monotonic() - self.done_at < 0.4:
+            p.setOpacity(1 - (time.monotonic() - self.done_at) / 0.4)
+            p.drawImage(r.topLeft(), self.cover)
+            p.setOpacity(1.0)
+
+
+class ScratchRow(QWidget):
+    """A line in the games lobby: the scratch card is ready, or the time until the next one."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedHeight(S(40))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._t = QTimer(self)
+        self._t.setInterval(1000)
+        self._t.timeout.connect(self._step)
+
+    def _step(self) -> None:
+        econ = self.ctx.econ
+        if int(getattr(econ, "scratch_in", 0) or 0) > 0:
+            econ.scratch_in -= 1
+        self.update()
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.rect().contains(e.position().toPoint()):
+            self.page.open_sub("scratch")
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        left = int(getattr(self.ctx.econ, "scratch_in", 0) or 0)
+        ready = left <= 0
+        g = QLinearGradient(r.topLeft(), r.topRight())
+        g.setColorAt(0, QColor("#2A3038") if not ready else mix(QColor("#C9CFD6"), QColor("#1A1F26"), 0.55))
+        g.setColorAt(1, QColor("#161A20"))
+        p.setPen(QPen(alpha("#FFFFFF", 0.25 if ready else 0.08), 1))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(10), S(10))
+        p.save()
+        p.translate(r.left() + S(20), r.center().y())
+        draw_icon(p, "gift", QColor(TEXT) if ready else QColor(TEXT_DIM))
+        p.restore()
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left() + S(40), r.top(), r.width(), r.height()), int(Qt.AlignmentFlag.AlignVCenter), tr("Scratch card"))
+        p.setPen(QColor(GOLD_TEXT if ready else TEXT_DIM))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.drawText(r.adjusted(0, 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   tr("Ready!") if ready else clock_text(left))
+
+
+# ================================================================ duels
+DUEL_GAMES = {"tap": "Beat Tap", "memory": "Memory", "park": "Parking"}
+DUEL_BETS = [0, 100, 250, 500, 1000, 2500, 5000]
+
+
+class DuelRow(QWidget):
+    """One duel: who, which game, the bet, and what can be done now."""
+
+    def __init__(self, page, d: dict) -> None:
+        super().__init__()
+        self.page, self.d = page, d
+        lay = hbox(self, 6)
+        lay.setContentsMargins(S(10), S(6), S(8), S(6))
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet(f"background: {alpha('#FFFFFF', 0.04).name(QColor.NameFormat.HexArgb)}; border-radius: {S(10)}px;")
+        bet = int(d.get("bet") or 0)
+        title = tr("{game} vs {name}", game=tr(DUEL_GAMES.get(d.get("game"), "")), name=d.get("other", "?"))
+        sub = (tr("Bet {n} coins each", n=coins_text(bet)) if bet else tr("No bet")) + "  ·  " + self._state_text()
+        col = vbox(spacing=0)
+        col.addWidget(Label(title, 12, TEXT, bold=True))
+        col.addWidget(Label(sub, 10, TEXT_DIM))
+        lay.addLayout(col, 1)
+        st = d.get("state")
+        if st == "asked" and d.get("asked_me"):
+            yes = Button(tr("Accept"), "primary", 28)
+            yes.clicked.connect(lambda: page.duel_answer(d["id"], True))
+            no = Button(tr("No"), "ghost", 28)
+            no.clicked.connect(lambda: page.duel_answer(d["id"], False))
+            lay.addWidget(yes)
+            lay.addWidget(no)
+        elif st == "asked":
+            back = Button(tr("Take back"), "ghost", 28)
+            back.clicked.connect(lambda: page.duel_answer(d["id"], False))
+            lay.addWidget(back)
+        elif st == "on" and not d.get("played"):
+            go = Button(tr("Play"), "primary", 28)
+            go.clicked.connect(lambda: page.duel_play(d))
+            lay.addWidget(go)
+
+    def _state_text(self) -> str:
+        d = self.d
+        st = d.get("state")
+        if st == "asked":
+            return tr("Waiting for an answer") if not d.get("asked_me") else tr("They challenge you!")
+        if st == "on":
+            if d.get("played"):
+                return tr("Your score is in: waiting for them") if not d.get("other_played") else tr("Counting…")
+            return tr("Your turn: play within 15 minutes")
+        if st == "cancelled":
+            return {"declined": tr("Declined"), "expired": tr("No answer"), "taken back": tr("Taken back")}.get(d.get("why"), tr("Cancelled"))
+        if d.get("draw"):
+            return tr("Draw: bets given back")
+        return tr("You won!") if d.get("won") else tr("You lost")
+
+
+def build_duels(page, lay) -> None:
+    """The duel screen: challenge a friend, and the list of duels."""
+    ctx = page.ctx
+    top = hbox(spacing=8)
+    back = IconButton("back", 32, tip=tr("Back"))
+    back.clicked.connect(lambda: page.open_sub(None))
+    top.addWidget(back)
+    top.addWidget(Label(tr("Duels"), 16, bold=True), 1)
+    lay.addLayout(top)
+    lay.addWidget(CoinBar(ctx))
+    friends = [f for f in (getattr(ctx, "duel_friends", None) or [])]
+    lay.addWidget(Label(tr("CHALLENGE A FRIEND"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    if not friends:
+        lay.addWidget(Label(tr("Add friends in the Social tab to duel them."), 11, TEXT_DIM, wrap_w=page.W))
+    else:
+        names = [f["name"] for f in friends][:6]
+        pick = Segmented(names, min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1))
+        pick.changed.connect(lambda i: setattr(ctx, "duel_pick", i))
+        lay.addWidget(pick)
+        games = ["tap", "memory", "park"]
+        g = Segmented([tr(DUEL_GAMES[k]) for k in games], int(getattr(ctx, "duel_game", 0) or 0))
+        g.changed.connect(lambda i: setattr(ctx, "duel_game", i))
+        lay.addWidget(g)
+        lv = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], int(getattr(ctx, "duel_tier", 1)))
+        lv.changed.connect(lambda i: setattr(ctx, "duel_tier", i))
+        lay.addWidget(lv)
+        bets = Segmented([tr("No bet") if b == 0 else coins_text(b) for b in DUEL_BETS], int(getattr(ctx, "duel_bet", 0) or 0))
+        bets.changed.connect(lambda i: setattr(ctx, "duel_bet", i))
+        lay.addWidget(bets)
+        send = Button(tr("Send challenge"), "primary", 36, icon="shield")
+
+        def ask() -> None:
+            name = names[min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1)]
+            game = games[int(getattr(ctx, "duel_game", 0) or 0)]
+            bet = DUEL_BETS[int(getattr(ctx, "duel_bet", 0) or 0)]
+            if bet > ctx.econ.coins:
+                return ctx.toast(tr("Not enough coins"), "warn")
+
+            def done(ok: bool, data) -> None:
+                if not ok:
+                    return ctx.toast(tr(str(data)), "warn")
+                sfx.play("on")
+                ctx.toast(tr("Challenge sent to {name}", name=name))
+                page.load_duels()
+            ctx.econ.call("rb_duel_ask", {"name": name, "game": game, "tier": int(getattr(ctx, "duel_tier", 1)) + 1, "bet": bet}, done)
+        send.clicked.connect(ask)
+        lay.addWidget(send)
+        lay.addWidget(Label(tr("Both play the same level once. Best score wins both bets (5% fee); a draw gives them back. "
+                               "Beat Tap: more points wins. Memory and Parking: fewer flips or moves wins, then the faster."),
+                            10, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("YOUR DUELS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    duels = getattr(ctx, "duels_data", None)
+    if duels is None:
+        lay.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
+    elif not duels:
+        lay.addWidget(Label(tr("No duels yet."), 11, TEXT_DIM))
+    else:
+        for d in duels[:10]:
+            lay.addWidget(DuelRow(page, d))
+    page.load_duels(quiet=True)

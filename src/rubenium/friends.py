@@ -8,6 +8,7 @@ from PyQt6.QtGui import QColor, QFont, QImage, QPainter, QPainterPath, QPen, QPi
 from PyQt6.QtWidgets import QWidget
 
 from .bazaar import AskDialog, build_trade
+from .hub import build_leaders, build_messages, build_trade_history, open_chat
 from .core import DATA_DIR, S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, lang, tr, ui
 from .pages import Page
 from .widgets import Button, IconButton, Label, Segmented, hbox, heading, vbox
@@ -49,6 +50,7 @@ def ago_text(stamp) -> str:
 # --------------------------------------------------------------------------- #
 # Profile pictures: small JPEGs, kept in memory and on disk, asked for again only when they change
 # --------------------------------------------------------------------------- #
+
 class Faces:
     def __init__(self, ctx) -> None:
         self.ctx = ctx
@@ -407,13 +409,20 @@ class FriendsPage(Page):
         for ask in live.get("trades") or []:
             self.lay.addWidget(TradeAsk(self, ask))
         tab = int(getattr(ctx, "social_tab", 0) or 0)
-        seg = Segmented([tr("Friends"), tr("All players")], tab)
+        unread = int(getattr(ctx, "msg_unread", 0) or 0)
+        seg = Segmented([tr("Friends"), tr("Players"), tr("Chat") + (f" {unread}" if unread else ""), tr("Top"), tr("Trades")], tab)
 
         def switch(i: int) -> None:
             ctx.social_tab = i
             ctx.reload_page()
         seg.changed.connect(switch)
         self.lay.addWidget(seg)
+        if tab == 2:
+            return build_messages(self, self.lay)
+        if tab == 3:
+            return build_leaders(self, self.lay)
+        if tab == 4:
+            return build_trade_history(self, self.lay)
         if tab == 1:
             rows = getattr(ctx, "users_cache", None)
             if rows is None:
@@ -438,6 +447,21 @@ class FriendsPage(Page):
                 for info in group:
                     self.lay.addWidget(PlayerRow(self, info))
 
+    def _duel(self, name: str) -> None:
+        ctx = self.ctx
+        rows = list(getattr(ctx, "duel_friends", None) or [])
+        if not any(f.get("name") == name for f in rows):
+            rows.insert(0, {"name": name, "online": True})
+        else:
+            rows.sort(key=lambda f: f.get("name") != name)
+        ctx.duel_friends, ctx.duel_pick = rows, 0
+        ctx.friends_profile = None
+        ctx.games_sub = "duels"
+        for flag in ("quests_open", "mini_open", "park_open"):
+            setattr(ctx, flag, False)
+        ctx.window._drop_page("games")
+        ctx.window.goto("games")
+
     # -- server
     def refresh(self) -> None:
         ctx = self.ctx
@@ -446,8 +470,11 @@ class FriendsPage(Page):
         if getattr(ctx, "friends_profile", None):
             return ctx.online.ask("rb_profile", {"name": ctx.friends_profile}, self._got_profile_again)
         ctx.online.ask("rb_social", {}, self._got_me)
-        if int(getattr(ctx, "social_tab", 0) or 0) == 1:
+        tab = int(getattr(ctx, "social_tab", 0) or 0)
+        if tab == 1:
             ctx.online.ask("rb_users", {"search": "", "page": 0}, self._got_users)
+        elif tab in (2, 3, 4):
+            return
         else:
             ctx.online.ask("rb_friends_list", {}, self._listed)
 
@@ -605,6 +632,15 @@ class FriendsPage(Page):
             trade.clicked.connect(lambda: self.ask_trade(name))
             line.addWidget(trade, 1)
         self.lay.addLayout(line)
+        if not prof.get("me") and prof.get("friend"):
+            line = hbox(spacing=6)
+            chat = Button(tr("Message"), "ghost", 30, icon="users")
+            chat.clicked.connect(lambda: open_chat(ctx, name))
+            duel = Button(tr("Duel"), "ghost", 30, icon="shield")
+            duel.clicked.connect(lambda: self._duel(name))
+            line.addWidget(chat, 1)
+            line.addWidget(duel, 1)
+            self.lay.addLayout(line)
         badges = list(prof.get("badges") or [])
         self.lay.addWidget(heading(tr("Badges") + f"  ·  {len(badges)}"))
         if badges:

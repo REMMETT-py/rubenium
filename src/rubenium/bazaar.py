@@ -5,7 +5,7 @@ import random
 import time
 
 from PyQt6.QtCore import QObject, QPointF, QRectF, QTimer, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen
+from PyQt6.QtGui import QFontMetrics, QColor, QFont, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import QWidget
 
 from .collection import SLOTS, is_secret, worn
@@ -195,7 +195,18 @@ class ItemGrid(QWidget):
                 p.setFont(f)
                 text = p.fontMetrics().elidedText(en["text"], Qt.TextElideMode.ElideRight, int(line.width()))
                 p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), text)
-            if en.get("tag"):
+            if en.get("tag", "").startswith("×"):                      # duplicates: a small x2 / x3 chip
+                tag = "x" + en["tag"][1:]
+                f = font(9, QFont.Weight.ExtraBold)
+                tw = QFontMetrics(f).horizontalAdvance(tag) + S(10)
+                chip = QRectF(cell.right() - tw - S(3), cell.top() + S(3), tw, S(15))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(ui.accent)
+                p.drawRoundedRect(chip, S(7.5), S(7.5))
+                p.setPen(QColor("#0B0E10") if ui.accent.lightnessF() > 0.55 else QColor("#FFFFFF"))
+                p.setFont(f)
+                p.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), tag)
+            elif en.get("tag"):
                 p.setPen(QColor(TEXT))
                 p.setFont(font(9, QFont.Weight.Bold))
                 p.drawText(cell.adjusted(0, S(3), -S(5), 0), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop), en["tag"])

@@ -16,7 +16,8 @@ from .core import DATA_DIR, S, TEXT, alpha, font, tr
 # kind -> (setting name, colour)
 NOTE_KINDS = {"trade": ("Trade requests", "#E8C26A"), "friend": ("Friend requests and friends online", "#3DDC84"),
          "market": ("Market: new items, sales and offers", "#4FC3FF"), "gift": ("Gifts, giveaways and rewards", "#FF5CC8"),
-         "ready": ("Free spin, daily case and quests ready", "#B36BFF"), "tips": ("Tips to keep going", "#9AA4AD")}
+         "ready": ("Free spin, daily case and quests ready", "#B36BFF"), "tips": ("Tips to keep going", "#9AA4AD"),
+         "message": ("Messages from friends", "#2EE6D6"), "duel": ("Duel challenges and results", "#FF8A3D")}
 DEFAULT = {k: True for k in NOTE_KINDS}
 
 
@@ -250,6 +251,28 @@ class Notifier(QObject):
             self.push("market", tr("OFFER ACCEPTED"), tr("You bought {what}", what=item_name(data.get("item", ""))))
         elif kind == "refused":
             self.push("market", tr("OFFER REFUSED"), tr("Your offer for {what} was refused", what=item_name(data.get("item", ""))))
+        elif kind == "message":
+            self.ctx.msg_unread = int(getattr(self.ctx, "msg_unread", 0) or 0) + 1
+            self.push("message", tr("MESSAGE"), f"{data.get('from', '?')}: {data.get('text', '')}")
+            if hasattr(self.ctx, "messages_changed"):
+                self.ctx.messages_changed(data.get("from"))
+        elif kind in ("duel", "duel_yes", "duel_no", "duel_end"):
+            from .games2 import DUEL_GAMES
+            game, who = tr(DUEL_GAMES.get(data.get("game"), "")), data.get("from") or data.get("other", "?")
+            if kind == "duel":
+                bet = int(data.get("bet") or 0)
+                text = tr("{name} challenges you at {game}", name=who, game=game) + (
+                    "  ·  " + tr("Bet {n} coins each", n=coins_text(bet)) if bet else "")
+            elif kind == "duel_yes":
+                text = tr("{name} accepted your duel: play now!", name=who)
+            elif kind == "duel_no":
+                text = tr("{name} said no to your duel", name=who)
+            elif data.get("draw"):
+                text = tr("Duel with {name}: a draw", name=who)
+            else:
+                text = tr("You won the duel against {name}!", name=who) if data.get("won") else tr("{name} won the duel", name=who)
+            self.ctx.duels_data = None
+            self.push("duel", tr("DUEL"), text)
         else:
             return False
         return True

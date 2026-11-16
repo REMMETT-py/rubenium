@@ -162,7 +162,7 @@ class Table(QWidget):
 
 class AdminPage(Page):
     key = "admin"
-    SECTIONS = ["Overview", "Players", "Items", "Cases", "Live", "Settings", "Log"]
+    SECTIONS = ["Overview", "Players", "Items", "Cases", "Live", "Settings", "Log", "Help"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -181,7 +181,7 @@ class AdminPage(Page):
         pick.changed.connect(self._section)
         lay.addWidget(pick)
         self._lock_row(lay)
-        [self._overview, self._players, self._items, self._cases, self._live, self._settings, self._log][tab](lay)
+        [self._overview, self._players, self._items, self._cases, self._live, self._settings, self._log, self._help][tab](lay)
 
     # -- helpers
     def _reload(self) -> None:
@@ -344,6 +344,34 @@ class AdminPage(Page):
                                         on_no=lambda: self.do("rb_admin_revoke", {"name": name, "what": it["item"]}, tr("Taken")))
             grid.picked.connect(take)
             lay.addWidget(grid)
+        deals = self.fetch("rb_admin_deals", {"name": name})
+        lay.addWidget(heading(tr("Trades and market sales · click one to undo it")))
+        if deals is None:
+            lay.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
+        else:
+            rows = []
+            for t in deals.get("trades") or []:
+                gave = len(t.get("a_items") or []), len(t.get("b_items") or [])
+                rows.append(("trade", t, (tr("Trade") + f" {t['a']} ⇄ {t['b']}",
+                                         f"{gave[0]}+{coins_text(int(t['a_coins']))} / {gave[1]}+{coins_text(int(t['b_coins']))}",
+                                         tr("undone") if t.get("undone") else str(t.get("at", ""))[5:16].replace("T", " "),
+                                         TEXT_DIM if t.get("undone") else TEXT)))
+            for l in deals.get("sales") or []:
+                rows.append(("sale", l, (tr("Sale") + f" {l['seller']} → {l.get('buyer') or '?'}", item_name(l["what"])[:14],
+                                        tr("undone") if l.get("undone") else coins_text(int(l["price"])),
+                                        TEXT_DIM if l.get("undone") else GOLD_TEXT)))
+
+            def undo_deal(i: int) -> None:
+                kind, d, _row = rows[i]
+                if d.get("undone"):
+                    return self.ctx.toast(tr("Already undone"), "warn")
+                fn, arg = ("rb_admin_undo_trade", {"trade": d["id"]}) if kind == "trade" else ("rb_admin_undo_sale", {"listing": d["id"]})
+                self.ctx.window.confirm(tr("Undo this? Items go back to who had them and the coins are returned."),
+                                        lambda: self.do(fn, arg, tr("Undone")), yes=tr("Undo"))
+            if rows:
+                lay.addWidget(Table([r[2] for r in rows], self.W, undo_deal))
+            else:
+                lay.addWidget(Label(tr("None"), 11, TEXT_DIM))
         lay.addWidget(heading(tr("Games")))
         lay.addWidget(Table([(g["game"], tr("{n} rounds", n=g["rounds"]), f"{coins_text(int(g['bet']))} → {coins_text(int(g['paid']))}")
                              for g in d.get("games") or []], self.W))
@@ -522,6 +550,12 @@ class AdminPage(Page):
             return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
         cfg = st.get("config") or {}
         keys = sorted(k for k in cfg if k != "reset_008")
+        force = Button(tr("Everyone must update to my version"), "ghost", 30, icon="refresh")
+        force.setToolTip(tr("Older versions can no longer play online until they update"))
+        force.clicked.connect(lambda: self.ctx.window.confirm(
+            tr("Lock online play for older versions of Rubenium?"), lambda: self.do("rb_admin_force_update", {}, tr("Done")),
+            yes=tr("Yes")))
+        lay.addWidget(force)
         lay.addWidget(Label(tr("Click a setting to change it. Changes are live for everyone."), 10.5, TEXT_DIM, wrap_w=self.W))
 
         def edit(i: int) -> None:
@@ -542,8 +576,63 @@ class AdminPage(Page):
         rows = self.fetch("rb_admin_audit", {})
         if rows is None:
             return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        lay.addWidget(Table([(r["action"], str(r.get("target") or "")[:16], str(r["at"])[5:16].replace("T", " ")) for r in rows],
-                            self.W))
+        lay.addWidget(Label(tr("Everything done in the admin panel. Click a line with ↩ to undo it (coins, keys, items, "
+                               "cases, blocks, settings and the lock)."), 10.5, TEXT_DIM, wrap_w=self.W))
+
+        def undo(i: int) -> None:
+            r = rows[i]
+            if r.get("undone"):
+                return self.ctx.toast(tr("Already undone"), "warn")
+            if not r.get("can_undo"):
+                return self.ctx.toast(tr("This cannot be undone"), "warn")
+            self.ctx.window.confirm(tr("Undo “{what}” on {target}?", what=r["action"], target=r.get("target") or "-"),
+                                    lambda: self.do("rb_admin_undo", {"entry": r["id"]}, tr("Undone")), yes=tr("Undo"))
+        lay.addWidget(Table([(("↩ " if r.get("can_undo") else ("✓ " if r.get("undone") else "")) + r["action"],
+                              str(r.get("target") or "")[:16], str(r["at"])[5:16].replace("T", " "),
+                              TEXT_DIM if r.get("undone") else ("#FFC94D" if r.get("can_undo") else TEXT)) for r in rows],
+                            self.W, undo))
+
+    # -- forgotten passwords: is it really them?
+    VERDICTS = {"real": ("Looks real: asked from the account's own PC", "#3DDC84"),
+                "fake": ("Looks fake: asked from another player's PC", "#FF5C6C"),
+                "unsure": ("Not sure: a PC we do not know", "#FFC94D"),
+                "no_account": ("No account with this name", "#9AA4AD")}
+
+    def _help(self, lay) -> None:
+        rows = self.fetch("rb_admin_resets", {})
+        if rows is None:
+            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+        lay.addWidget(Label(tr("Forgotten passwords. Check the details, then give a new password or refuse. The player "
+                               "sees the new password on the PC that asked, and must change it after."), 10.5, TEXT_DIM, wrap_w=self.W))
+        if not rows:
+            return lay.addWidget(Label(tr("No requests."), 12, TEXT_DIM))
+        for r in rows[:30]:
+            text, col = self.VERDICTS.get(r.get("verdict"), ("?", TEXT_DIM))
+            lay.addWidget(heading(f"{r.get('name', '?')}  ·  {str(r.get('at', ''))[5:16].replace('T', ' ')}  ·  {tr(r.get('state', ''))}"))
+            lay.addWidget(Label(tr(text), 11.5, col, bold=True, wrap_w=self.W))
+            facts = [tr("Message: {m}", m=r.get("msg") or "-")]
+            if r.get("exists"):
+                facts.append(tr("Account: {h} h played, last seen {t}", h=f"{int(r.get('minutes') or 0) / 60:.1f}",
+                                t=str(r.get("seen") or "-")[:16].replace("T", " ")))
+            if r.get("pc_owner"):
+                facts.append(tr("This PC belongs to: {name}", name=r["pc_owner"]))
+            facts.append(tr("Requests from this PC (7 days): {a} · for this name: {b}", a=r.get("pc_asks", 0), b=r.get("name_asks", 0)))
+            for f in facts:
+                lay.addWidget(Label(f, 10.5, TEXT_DIM, wrap_w=self.W))
+            if r.get("state") == "open":
+                line = hbox(spacing=6)
+                yes = Button(tr("Give new password"), "primary", 28)
+                no = Button(tr("Refuse"), "ghost", 28)
+                rid = r["id"]
+                import secrets
+                temp = "Rb-" + secrets.token_hex(4)
+                yes.clicked.connect(lambda _c=False, rid=rid, temp=temp: FormDialog(
+                    self.ctx, tr("New password"), [("p", tr("Temporary password (8 or more)"), temp)], tr("Give"),
+                    lambda v, dlg: (dlg.close(), self.do("rb_admin_reset_do", {"rid": rid, "new_password": v["p"]}, tr("Done")))))
+                no.clicked.connect(lambda _c=False, rid=rid: self.do("rb_admin_reset_do", {"rid": rid, "new_password": None}, tr("Refused")))
+                line.addWidget(yes, 1)
+                line.addWidget(no, 1)
+                lay.addLayout(line)
 
 
 # --------------------------------------------------------------------------- #

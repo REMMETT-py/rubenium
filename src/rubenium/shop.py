@@ -509,7 +509,7 @@ class ShopPage(Page):
     """Six parts: Theme (colours, progression), Shop (balls, lines, fonts, themes), Badges, Cases, Market and
     Inventory."""
     key = "themes"
-    SECTIONS = ["Theme", "Shop", "Badges", "Cases", "Market", "Inventory"]
+    SECTIONS = ["Theme", "Shop", "Badges", "Cases", "Market", "Inventory", "Sets"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -533,6 +533,9 @@ class ShopPage(Page):
             build_market(self, lay)
         elif tab == 5:
             build_inventory(self, lay)
+        elif tab == 6:
+            from .hub import build_sets
+            build_sets(self, lay)
         else:
             self._look(lay)
         ctx.wallet.changed.connect(self._refresh)
@@ -892,6 +895,10 @@ class ShopPage(Page):
     def buy(self, ident: str) -> None:
         hours = self.ctx.wallet.hours_for(ident)
         self.ctx.toast(tr("Unlocks after {n} h with Rubenium", n=f"{hours:g}"), "warn")
+
+    def claim_set(self, which: str) -> None:
+        from .hub import claim_set
+        claim_set(self.ctx, which)
 
     def flair_changed(self) -> None:
         self.ctx.cfg.save()

@@ -219,11 +219,16 @@ class App(QObject):
         self.timer_overlay = extras.TimerOverlay(self.cfg, self.timer)
         self.hotkeys = extras.Hotkeys(qapp)
         self.hotkeys.triggered.connect(self._on_key)
+        from .music2 import TapKey
+        self.tapkey = TapKey(self)                  # tap Right Shift: show or hide Rubenium
+        self.tapkey.tapped.connect(self._tap_key)
+        self.outdated = False                       # the server or the updater says: update before playing online
         self._usage = QTimer(self)
         self._usage.setInterval(60000)
         self._usage.timeout.connect(self._count_usage)
         self._usage.start()
         self.window = MainWindow(self)
+        self.online.changed.connect(lambda: self.window.sync_lock())     # offline mode: cover the online tabs
         from .notify import Notifier
         self.notifier = Notifier(self)              # pop-ups and a quiet beep for what happens online
 
@@ -303,6 +308,7 @@ class App(QObject):
         self._zoomer.start()
         if self.cfg["update_check"] and not selftest:
             self._safe("updates", self.updater.start)
+        self._safe("show/hide key", lambda: self.tapkey.set_key(self.cfg["hotkey"]))
         self._pin = QTimer(self)
         self._pin.setInterval(2000)
         self._pin.timeout.connect(lambda: self._safe("housekeeping", self._housekeeping))
@@ -469,6 +475,9 @@ class App(QObject):
         self._pos_base, self._pos_t = float(st.position_ms), time.monotonic()
         if st.art_key != self._art_key:
             self._art_key = st.art_key
+            if st.has_track and st.title:
+                from .hub import history_add
+                history_add(st.title, st.artist, st.source_id or "")
             self.art_pixmap = None
             self.window.on_art(None)
             self.refresh_accent()
@@ -511,7 +520,7 @@ class App(QObject):
 
     # ------------------------------------------------------------------ glow
     def _sync_audio(self) -> None:
-        want = (self.cfg["halo"] and self.state.status is Status.PLAYING
+        want = ((self.cfg["halo"] or self.cfg["visualiser"] != "off") and self.state.status is Status.PLAYING
                 and not self.meter.failed and self.window.game_state != 2)
         if want and not self._audio.isActive():
             self._audio.start()
@@ -999,7 +1008,60 @@ class App(QObject):
             self.toast(tr("Windows blocked the change"), "error")
 
     # updates: found -> ask once (on the card), install -> verify -> restart
+    # ------------------------------------------------------------------ 2.4
+    def _tap_key(self) -> None:
+        if self.window.expanded:
+            self.window.collapse()
+        else:
+            self.window.expand()
+
+    def set_outdated(self, on: bool) -> None:
+        """Online games, trades and the market wait until Rubenium is up to date."""
+        if on != self.outdated:
+            self.outdated = on
+            self.window.sync_lock()
+
+    def after_login(self) -> None:
+        """Once logged in: the daily reward, the tour the first time, and a quiet online backup each day."""
+        from .hub import backup_to_cloud, check_login_reward
+        if not self.cfg["tutorial_done"]:
+            from .music2 import Tutorial
+            if not self.window.expanded:
+                self.window.expand()
+            QTimer.singleShot(500, lambda: setattr(self, "_tour", Tutorial(self, lambda: check_login_reward(self))))
+        else:
+            check_login_reward(self)
+        if time.time() - int(self.cfg["backup_at"] or 0) > 86400:
+            backup_to_cloud(self, quiet=True)
+
+    def start_tutorial(self) -> None:
+        from .music2 import Tutorial
+        if not self.window.expanded:
+            self.window.expand()
+        QTimer.singleShot(450, lambda: setattr(self, "_tour", Tutorial(self)))
+
+    def change_password_dialog(self) -> None:
+        from .bazaar import AskDialog
+
+        def got(pw: str, dlg) -> None:
+            if len(pw) < 8:
+                return dlg.say(tr("Password too short (8 or more)"))
+
+            def done(ok: bool, msg) -> None:
+                if not ok:
+                    return dlg.say(tr(str(msg)))
+                dlg.close()
+                self.toast(tr("Password changed"))
+            self.online.change_password(pw, done)
+        self._ask = AskDialog(self, tr("Change password"), tr("New password (8 or more)"), tr("Change"), got, 72)
+        self._ask.edit.setEchoMode(self._ask.edit.EchoMode.Password)
+
+    def apply_restored(self) -> None:
+        self.apply_config()
+        self.tapkey.set_key(self.cfg["hotkey"])
+
     def _update_found(self, info: dict) -> None:
+        self.set_outdated(True)
         if self.window.current == "settings" and self.window.expanded:
             self.window.reload_page()
         self.offer_update()
@@ -1109,6 +1171,7 @@ class App(QObject):
             self.online.stop()
             self.updater.stop()
             self.hotkeys.close()
+            self.tapkey.stop()
             self.timer_overlay.hide()
             self.meter.close()
             self.window.hide()
