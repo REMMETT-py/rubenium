@@ -13,7 +13,7 @@ import urllib.request
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from .core import APP_NAME, LYRICS_DIR, VERSION
+from .core import APP_NAME, LYRICS_DIR, VERSION, Net
 
 log = logging.getLogger("rubenium.lyrics")
 API = "https://lrclib.net/api/"
@@ -81,6 +81,8 @@ class LyricsService(QObject):
     def _get(self, endpoint: str, params: dict):
         if self._ssl is None:
             self._ssl = _ssl_context()
+        if Net.blocked:                                   # offline mode: only lyrics already saved
+            raise OSError("offline mode")
         url = API + endpoint + "?" + urllib.parse.urlencode(params)
         req = urllib.request.Request(url, headers={"User-Agent": f"{APP_NAME}/{VERSION}"})
         with urllib.request.urlopen(req, timeout=7, context=self._ssl) as resp:  # noqa: S310

@@ -31,26 +31,20 @@ CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moo
               "premium": ("sword", "bolt", "flame"), "jackpot": ("$", "$", "$"), "titan": ("shield", "rook", "anchor"),
               "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?"),
               "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame")}
-CASE_NOTES = {"gamble": "Half the time: almost nothing. The other half: always Rare or better.",
-              "painter": "Never a Basic badge: every badge comes in colour.",
-              "jackpot": "Coins only. Most of the time less than its price, sometimes double, and once in a while 10 to 30 times "
-                         "its price.",
-              "titan": "The biggest coin case, and the best chance of a Titanium badge. Big swings.",
-              "vault": "No Common badges inside.",
-              "mythic": "The best chance of a Mythic badge. Only Epic or better inside.",
-              "starter": "Small and safe: a good first case.", "standard": "Good coins, sometimes a Rare badge.",
-              "premium": "Bigger coins and better badges.",
-              "style": "Balls, song lines and fonts from the shop.", "themes": "Only themes: Rare or better.",
-              "profile": "Banners and frames for your profile."}
+CASE_NOTES = {"gamble": "High risk. Rare or better when it hits.",
+              "painter": "Painted badges only.",
+              "jackpot": "Coins only. Rare large payouts.",
+              "titan": "Best odds for Titanium badges.",
+              "vault": "No Common badges.",
+              "mythic": "Best odds for Mythic badges. Epic or better only.",
+              "starter": "Entry-level case.", "standard": "Coins, with a chance of a Rare badge.",
+              "premium": "Larger coin drops and better badges.",
+              "style": "Balls, song lines and fonts.", "themes": "Themes, Rare or better.",
+              "profile": "Banners and frames."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
 COIN_CASES = ("starter", "standard", "premium", "jackpot", "titan")
 HUNT_CASES = ("gamble", "painter", "vault", "mythic")
 STYLE_CASES = ("style", "themes", "profile")
-KIND_TEXT = {"coins": "Coin case: on average it pays back a little more than it costs, but about half the time you get "
-                      "less. Every coin drop has a 6% chance to be a lucky ×3.",
-             "hunt": "Rare hunt: the best chances at rare badges, but you lose coins on average (about half comes back).",
-             "style": "Style case: every ball, line, font, theme, banner and frame of the shop can come out. Counted at "
-                      "shop prices you get a little more than you paid; Legendary ones stay about 1 in 100."}
 
 
 def case_kind(case_id: str) -> str:

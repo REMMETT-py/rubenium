@@ -1338,7 +1338,7 @@ class LockCover(QWidget):
     def set_mode(self, mode: str, on_button=None) -> None:
         self.mode, self.on_button = mode, on_button
         self.button.setVisible(on_button is not None)
-        self.button.set_text(tr("Update now") if mode == "update" else tr("Try again"))
+        self.button.set_text(tr("Update now") if mode == "update" else tr("Go online") if mode == "offmode" else tr("Try again"))
         self.update()
 
     def resizeEvent(self, _e) -> None:
@@ -1379,15 +1379,14 @@ class LockCover(QWidget):
         p.save()
         p.translate(c)
         p.scale(S(64) / 20, S(64) / 20)
-        draw_icon(p, {"update": "refresh", "offline": "power"}.get(self.mode, "lock"), QColor("#FFFFFF"))
+        draw_icon(p, {"update": "refresh", "offline": "power", "offmode": "power"}.get(self.mode, "lock"), QColor("#FFFFFF"))
         p.restore()
         title, text = {
-            "update": (tr("Update needed"), tr("A new Rubenium is out. Update to keep playing games, opening cases, "
-                                              "trading and using the market. The music works as usual.")),
-            "offline": (tr("You are offline"), tr("No internet right now. The music, lyrics you already saw, the "
-                                                 "crosshair and the tools still work. Rubenium reconnects by itself.")),
-        }.get(self.mode, (tr("Locked for now"), tr("The admin is working on Rubenium. Games, cases, trades and the "
-                                                    "market come back soon. Your time still counts.")))
+            "update": (tr("Update needed"), tr("A new version is available. Update to use online features.")),
+            "offline": (tr("You are offline"), tr("No internet connection. Music, saved lyrics and tools still work. "
+                                                 "Rubenium reconnects automatically.")),
+            "offmode": (tr("Offline mode"), tr("Online features are paused. Music, saved lyrics and tools still work.")),
+        }.get(self.mode, (tr("Temporarily locked"), tr("Online features are under maintenance. Your time still counts.")))
         p.setPen(QColor(TEXT))
         p.setFont(font(15, QFont.Weight.Bold))
         p.drawText(QRectF(r.left(), c.y() + S(42), r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter), title)
@@ -1556,7 +1555,7 @@ class Body(QWidget):
             QTimer.singleShot(self.HOLD_MS, lambda at=self._press: self._arm(at))
 
     def _arm(self, at: QPoint) -> None:
-        if self._press is None or self._press is not at or win.mouse_captured():
+        if self._press is None or self._press is not at:
             return
         if not (QGuiApplication.mouseButtons() & Qt.MouseButton.LeftButton):
             self._press = None                  # the button was let go somewhere else
@@ -1867,6 +1866,9 @@ class MainWindow(QWidget):
         # mouse at all. Moving, aiming or clicking near it goes to the game. Right Shift still opens the menu.
         if not captured and self.ctx.cfg["game_mouse"] and not self.expanded:
             captured = win.fullscreen_in_front()
+        if captured and self.ball._press_pos is not None and self._press_held():
+            captured = False                    # the button is still held on the ball: a game seeing the same
+            #                                     click (Rocket League menus do) must not cancel the opening
         if captured:
             self.ball.cancel_press()            # a press that began just before the game took the mouse
         through = captured and self.ball._press_pos is None and self._drag_origin is None
@@ -1876,6 +1878,14 @@ class MainWindow(QWidget):
                 if hwnd:
                     win.set_click_through(hwnd, through)
         self._through = through
+
+    def _press_held(self) -> bool:
+        """The left button is still down and the pointer is still on the ball."""
+        down = win.key_down(0x01) if win.IS_WIN else bool(QGuiApplication.mouseButtons() & Qt.MouseButton.LeftButton)
+        if not down:
+            return False
+        m = S(14)
+        return self.ball.rect_global().adjusted(-m, -m, m, m).contains(QCursor.pos())
 
     def _unload_stats(self) -> None:
         """The Stats tab measures the PC while it is open; once you leave it, it is removed completely."""
@@ -1902,13 +1912,15 @@ class MainWindow(QWidget):
         from .pages2 import LOCK_PAGES
         cover = self.body.cover
         ctx = self.ctx
-        mode = ("locked" if ctx.econ.live.get("locked") else
+        mode = ("offmode" if ctx.cfg["offline_mode"] and ctx.online.logged_in() else
+                "locked" if ctx.econ.live.get("locked") else
                 "update" if getattr(ctx, "outdated", False) else
                 "offline" if ctx.online.logged_in() and ctx.online.offline else "")
         on = bool(mode) and self.expanded and self.current in LOCK_PAGES
         if on and mode != cover.mode:
             cover.set_mode(mode, ctx.install_update if mode == "update" and ctx.updater.latest else
-                           (ctx.online.probe if mode == "offline" else None))
+                           (ctx.online.probe if mode == "offline" else
+                            (lambda: ctx.set_offline_mode(False)) if mode == "offmode" else None))
         if on:
             cover.setGeometry(self.body.host.rect())
             cover.resizeEvent(None)

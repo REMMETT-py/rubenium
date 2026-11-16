@@ -426,7 +426,7 @@ def build_messages(page, lay) -> None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     if not data:
         return lay.addWidget(Label(tr("Add friends to send them messages."), 11.5, TEXT_DIM, wrap_w=page.W))
-    lay.addWidget(Label(tr("Click a friend to chat. Mute stops pop-ups for that friend."), 10.5, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Select a friend to chat."), 10.5, TEXT_DIM, wrap_w=page.W))
     for t in data:
         lay.addWidget(ThreadRow(page, t))
 
@@ -644,7 +644,7 @@ def build_sets(page, lay) -> None:
     ctx = page.ctx
     if server_wait(ctx, lay, page.W):
         return
-    lay.addWidget(Label(tr("Complete a set to get a big bonus, once. You must still own the badges when you claim."),
+    lay.addWidget(Label(tr("Complete a set for a one-time bonus."),
                         10.5, TEXT_DIM, wrap_w=page.W))
     data = getattr(ctx, "sets_data", None)
 
@@ -729,7 +729,7 @@ class LoginWindow(FloatWindow):
         col.addWidget(Label(tr("Your flame grows a little every day in a row."), 10.5, TEXT_DIM, wrap_w=S(210)))
         head.addLayout(col, 1)
         lay.addLayout(head)
-        lay.addWidget(Label(tr("Come back every day: day 7 gives a free case. Miss a day and it starts again."),
+        lay.addWidget(Label(tr("Day 7 gives a free case. Missing a day resets the streak."),
                             11, TEXT_DIM, wrap_w=S(294)))
         rewards = list(state.get("rewards") or [])
         today = int(state.get("day") or 0)
@@ -790,7 +790,7 @@ def check_login_reward(ctx, force: bool = False) -> None:
 
 
 # ================================================================ settings backups
-BACKUP_SKIP = {"usage_s", "page", "seen_version", "scale_before_games", "autostart"}
+BACKUP_SKIP = {"usage_s", "page", "seen_version", "scale_before_games", "autostart", "offline_mode"}
 
 
 def backup_data(ctx) -> dict:
@@ -864,8 +864,7 @@ def restore_from_file(ctx) -> None:
 def backup_section(ctx, lay, width: int) -> None:
     """Settings tab: back up and restore."""
     lay.addWidget(Label(tr("BACKUP"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
-    lay.addWidget(Label(tr("Your coins, items and friends are always safe on the server. This saves your settings, "
-                           "theme, crosshair and layout too, so a new PC gets everything back."), 10.5, TEXT_DIM, wrap_w=width))
+    lay.addWidget(Label(tr("Saves your settings, theme, crosshair and layout to your account."), 10.5, TEXT_DIM, wrap_w=width))
     line = hbox(spacing=6)
     a = Button(tr("Back up now"), "primary", 30)
 
@@ -923,6 +922,30 @@ def history_add(title: str, artist: str, source: str = "") -> None:
         pass
 
 
+def song_time(at) -> str:
+    """When a song played: the time today, else the day and month. `at` is seconds or a server date."""
+    try:
+        if isinstance(at, str):
+            when = datetime.datetime.fromisoformat(at.replace("Z", "+00:00")).timestamp()
+        else:
+            when = float(at or 0)
+    except (TypeError, ValueError):
+        return ""
+    if not when:
+        return ""
+    lt = time.localtime(when)
+    return time.strftime("%H:%M" if lt[:3] == time.localtime()[:3] else "%d/%m", lt)
+
+
+def history_share(ctx, title: str, artist: str) -> None:
+    """Friends can see what you play (3.0.0): sent quietly, never in offline mode or when sharing is off."""
+    if not title or not ctx.cfg["share_songs"] or ctx.cfg["offline_mode"]:
+        return
+    if not ctx.online.logged_in() or ctx.online.offline:
+        return
+    ctx.online.ask("rb_song_add", {"title": title[:120], "artist": (artist or "")[:120]}, lambda ok, data: None)
+
+
 class HistoryRow(QWidget):
     def __init__(self, row: dict, width: int) -> None:
         super().__init__()
@@ -958,7 +981,7 @@ class HistoryRow(QWidget):
                    self.row.get("artist", ""))
         p.setPen(QColor("#3DDC84") if time.monotonic() - self.copied < 1.1 else QColor(TEXT_FAINT))
         p.setFont(font(9.5))
-        text = tr("Copied") if time.monotonic() - self.copied < 1.1 else time.strftime("%H:%M", time.localtime(int(self.row.get("at") or 0)))
+        text = tr("Copied") if time.monotonic() - self.copied < 1.1 else song_time(self.row.get("at"))
         p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
 
 
@@ -968,16 +991,28 @@ class HistoryWindow(FloatWindow):
         from .widgets import ScrollArea
         lay = vbox(self, 8, (16, 14, 16, 16))
         top = hbox(spacing=6)
-        top.addWidget(Label(tr("Song history"), 15, bold=True), 1)
+        top.addWidget(Label(tr("Song History"), 15, bold=True), 1)
         close = IconButton("close", 26, tip=tr("Close"))
         close.clicked.connect(self.close)
         top.addWidget(close)
         lay.addLayout(top)
         rows = history_load()
+        if ctx.online.logged_in():
+            share = Toggle(bool(ctx.cfg["share_songs"]))
+
+            def on_share(v: bool) -> None:
+                ctx.cfg["share_songs"] = v
+                if not ctx.cfg["offline_mode"]:
+                    ctx.online.ask("rb_song_share", {"share": v}, lambda ok, data: None)
+            share.toggled_by_user.connect(on_share)
+            line = hbox(spacing=6)
+            line.addWidget(Label(tr("Visible to friends"), 11.5), 1)
+            line.addWidget(share)
+            lay.addLayout(line)
         if not rows:
             lay.addWidget(Label(tr("Songs you play show up here."), 11, TEXT_DIM))
         else:
-            lay.addWidget(Label(tr("The last {n} songs. Click one to copy its name.", n=len(rows)), 10.5, TEXT_DIM, wrap_w=S(298)))
+            lay.addWidget(Label(tr("Last {n} songs. Click one to copy it.", n=len(rows)), 10.5, TEXT_DIM, wrap_w=S(298)))
             inner = QWidget()
             col = vbox(inner, 4)
             for r in rows:

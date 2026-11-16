@@ -13,7 +13,7 @@ from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
 from .econ import RARITY_COLOURS, RARITY_NAMES
 from .shop import CoinBar, GOLD_TEXT, clock_text
 from .wallet import coins_text, paint_coin
-from .widgets import Button, IconButton, Label, Segmented, draw_icon, hbox, vbox
+from .widgets import Button, IconButton, Label, Segmented, SliderRow, draw_icon, hbox, vbox
 
 TAP_MODES = [("normal", "Normal", "The classic: faster and faster."), ("rush", "Rush", "Much faster, many more notes."),
              ("holds", "Long notes", "Lots of notes to hold down."), ("chords", "Chords", "Two notes at once, very often.")]
@@ -896,7 +896,29 @@ class ScratchRow(QWidget):
 
 # ================================================================ duels
 DUEL_GAMES = {"tap": "Beat Tap", "memory": "Memory", "park": "Parking"}
-DUEL_BETS = [0, 100, 250, 500, 1000, 2500, 5000]
+
+
+def duel_limit(ctx, name: str, page=None) -> int:
+    """Highest duel bet with this friend: 80% of the lower of the two balances, in tens. Asked to the server
+    once a minute per friend; until it answers (or on an older server) only your own balance counts."""
+    cache = getattr(ctx, "duel_limits", None)
+    if cache is None:
+        cache = ctx.duel_limits = {}
+    mine = int(int(ctx.econ.coins) * 0.8) // 10 * 10
+    got = cache.get(name)
+    if got is None or time.monotonic() - got[1] > 60:
+        cache[name] = (got[0] if got else None, time.monotonic())
+
+        def done(ok: bool, data) -> None:
+            if ok and isinstance(data, (int, float)):
+                old = cache.get(name, (None, 0))[0]
+                cache[name] = (int(data), time.monotonic())
+                if old != int(data) and ctx.window.current == "games" and getattr(ctx, "games_sub", None) == "duels":
+                    ctx.reload_page()
+        ctx.online.ask("rb_duel_limit", {"name": name}, done)
+    top = cache.get(name, (None, 0))[0]
+    return max(0, min(mine, top) if top is not None else mine)
+
 
 
 class DuelRow(QWidget):
@@ -966,7 +988,6 @@ def build_duels(page, lay) -> None:
     else:
         names = [f["name"] for f in friends][:6]
         pick = Segmented(names, min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1))
-        pick.changed.connect(lambda i: setattr(ctx, "duel_pick", i))
         lay.addWidget(pick)
         games = ["tap", "memory", "park"]
         g = Segmented([tr(DUEL_GAMES[k]) for k in games], int(getattr(ctx, "duel_game", 0) or 0))
@@ -975,15 +996,44 @@ def build_duels(page, lay) -> None:
         lv = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], int(getattr(ctx, "duel_tier", 1)))
         lv.changed.connect(lambda i: setattr(ctx, "duel_tier", i))
         lay.addWidget(lv)
-        bets = Segmented([tr("No bet") if b == 0 else coins_text(b) for b in DUEL_BETS], int(getattr(ctx, "duel_bet", 0) or 0))
-        bets.changed.connect(lambda i: setattr(ctx, "duel_bet", i))
-        lay.addWidget(bets)
+
+        def who() -> str:
+            return names[min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1)]
+        top_bet = duel_limit(ctx, who(), page)
+        mode = Segmented([tr("Bet"), tr("No bet")], 1 if getattr(ctx, "duel_nobet", False) or top_bet < 10 else 0)
+        lay.addWidget(mode)
+        amount = None
+        if top_bet >= 10:
+            start = max(10, min(top_bet, int(getattr(ctx, "duel_amount", 0) or 100)))
+            amount = SliderRow(tr("Bet"), 10, top_bet, start, 10, start, lambda v: coins_text(int(v)), label_w=60)
+            amount._val.setFixedWidth(S(78))
+            amount.changed.connect(lambda v: setattr(ctx, "duel_amount", int(v)))
+            amount.setVisible(mode.index() == 0)
+            lay.addWidget(amount)
+            lay.addWidget(Label(tr("Maximum {n} (80% of the lower balance).", n=coins_text(top_bet)),
+                                10, TEXT_DIM, wrap_w=page.W))
+        else:
+            lay.addWidget(Label(tr("Not enough coins for a bet."), 10, TEXT_DIM, wrap_w=page.W))
+
+        def on_mode(i: int) -> None:
+            if top_bet < 10:
+                return mode.set_index(1)
+            ctx.duel_nobet = i == 1
+            if amount is not None:
+                amount.setVisible(i == 0)
+
+        def on_pick(i: int) -> None:
+            ctx.duel_pick = i
+            ctx.reload_page()                       # the highest bet depends on the friend
+        mode.changed.connect(on_mode)
+        pick.changed.connect(on_pick)
         send = Button(tr("Send challenge"), "primary", 36, icon="shield")
 
         def ask() -> None:
-            name = names[min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1)]
+            name = who()
             game = games[int(getattr(ctx, "duel_game", 0) or 0)]
-            bet = DUEL_BETS[int(getattr(ctx, "duel_bet", 0) or 0)]
+            bet = 0 if amount is None or getattr(ctx, "duel_nobet", False) else int(amount.value())
+            bet = 0 if bet < 10 else bet - bet % 10
             if bet > ctx.econ.coins:
                 return ctx.toast(tr("Not enough coins"), "warn")
 
@@ -996,8 +1046,7 @@ def build_duels(page, lay) -> None:
             ctx.econ.call("rb_duel_ask", {"name": name, "game": game, "tier": int(getattr(ctx, "duel_tier", 1)) + 1, "bet": bet}, done)
         send.clicked.connect(ask)
         lay.addWidget(send)
-        lay.addWidget(Label(tr("Both play the same level once. Best score wins both bets (5% fee); a draw gives them back. "
-                               "Beat Tap: more points wins. Memory and Parking: fewer flips or moves wins, then the faster."),
+        lay.addWidget(Label(tr("Same level for both players. Best score wins the pot (5% fee). A draw refunds both bets."),
                             10, TEXT_DIM, wrap_w=page.W))
     lay.addWidget(Label(tr("YOUR DUELS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
     duels = getattr(ctx, "duels_data", None)
@@ -1078,8 +1127,7 @@ class BigCard(QWidget):
 def build_minigames(page, lay) -> None:
     """Earn coins: the free mini games, each with what it pays."""
     page._back_bar(lay, tr("Earn coins"))
-    lay.addWidget(Label(tr("Free games that pay coins. Each one pays up to 150 coins every 2 hours; the better you "
-                           "play, the more you get."), 10.5, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Each game pays up to 150 coins every 2 hours."), 10.5, TEXT_DIM, wrap_w=page.W))
     games = [
         ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
          ("#FF5C8A", "#7A1FFF"), "12-50", lambda: page._show_mini(True)),

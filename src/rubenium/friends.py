@@ -341,12 +341,14 @@ class StatsCard(QWidget):
         p.drawRoundedRect(r, S(12), S(12))
         d, st = self.data, self.data.get("stats") or {}
         name = d.get("username") or self.ctx.online.username()
-        banner = self.ctx.econ.look_of(name).get("banner")
+        look = self.ctx.econ.look_of(name)
+        banner = look.get("banner")
         if banner:                                         # your banner behind the top of the card
             from .cosmetics import paint_banner
             p.save()
             p.setOpacity(0.55)
-            paint_banner(p, QRectF(r.left(), r.top(), r.width(), S(66)), banner, time.monotonic(), S(12))
+            paint_banner(p, QRectF(r.left(), r.top(), r.width(), S(66)), banner, time.monotonic(), S(12), 1.0,
+                         int(look.get("gold") or 0))
             p.restore()
         paint_face(p, self._face(), self.ctx, name, int(d.get("avatar_v") or self.ctx.econ.avatar_v or 0))
         p.setPen(QColor(TEXT))
@@ -357,7 +359,7 @@ class StatsCard(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(S(76), S(38), r.width() - S(90), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("{h} played · member since {d}", h=played_text(int(d.get("minutes") or 0)), d=date_text(d.get("since"))))
+                   tr("{h} Played · Member Since {d}", h=played_text(int(d.get("minutes") or 0)), d=date_text(d.get("since"))))
         bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
         cells = [(coins_text(int(d.get("coins") or 0)), tr("Coins")), (str(int(d.get("keys") or 0)), tr("Keys")),
                  (str(int(st.get("items") or 0)), tr("Items")), (str(int(st.get("badges") or 0)), tr("Badges")),
@@ -386,7 +388,7 @@ class TradeAsk(QWidget):
         self.setFixedHeight(S(44))
         lay = hbox(self, 6, (12, 0, 6, 0))
         lay.addWidget(Label(tr("{name} wants to trade", name=ask.get("from", "?")), 12, TRADE_GOLD, bold=True), 1)
-        yes, no = Button(tr("Open trade"), "primary", 28), Button(tr("Decline"), "ghost", 28)
+        yes, no = Button(tr("Open Trade"), "primary", 28), Button(tr("Decline"), "ghost", 28)
         yes.clicked.connect(lambda: page.accept_trade(ask["id"]))
         no.clicked.connect(lambda: page.ctx.econ.call("rb_trade_cancel", {"trade": ask["id"]},
                                                       lambda _o, _d: page.ctx.econ.poll_live()))
@@ -468,16 +470,20 @@ class FriendsPage(Page):
         card.picture.connect(self._picture)
         self.lay.addWidget(card)
         line = hbox(spacing=6)
-        rename = Button(tr("Change name"), "ghost", 28)
+        rename = Button(tr("Change Name"), "ghost", 28)
         rename.clicked.connect(self._rename)
-        again = Button(tr("Refresh"), "ghost", 28, icon="refresh")
-        again.clicked.connect(self._refresh_all)
+        songs = Button(tr("Song History"), "ghost", 28, icon="note")
+
+        def open_songs() -> None:
+            from .hub import HistoryWindow
+            ctx._hist = HistoryWindow(ctx)
+        songs.clicked.connect(open_songs)
         line.addWidget(rename, 1)
-        line.addWidget(again, 1)
+        line.addWidget(songs, 1)
         self.lay.addLayout(line)
         live = ctx.econ.live
         if live.get("open_trade") and not ctx.trade.trade_id:
-            b = Button(tr("Back to your trade"), "primary", 32)
+            b = Button(tr("Back to Your Trade"), "primary", 32)
             b.clicked.connect(lambda: self.open_trade(live["open_trade"]))
             self.lay.addWidget(b)
         for ask in live.get("trades") or []:
@@ -542,6 +548,9 @@ class FriendsPage(Page):
         if not ctx.online.logged_in() or ctx.trade.trade_id:
             return
         if getattr(ctx, "friends_profile", None):
+            cur = getattr(ctx, "friends_data", None) or {}
+            if (cur.get("profile") or {}).get("stats") is not None:
+                self._ask_songs(ctx.friends_profile)
             return ctx.online.ask("rb_profile", {"name": ctx.friends_profile}, self._got_profile_again)
         ctx.online.ask("rb_social", {}, self._got_me)
         tab = int(getattr(ctx, "social_tab", 0) or 0)
@@ -581,14 +590,6 @@ class FriendsPage(Page):
             self.refresh()
             self.ctx.online.ask("rb_users", {"search": "", "page": 0}, self._got_users)
         self.ctx.econ.call(fn, {"name": name}, done)
-
-    def _refresh_all(self) -> None:
-        sfx.play("pick")
-        self.ctx.econ.refresh()
-        self.ctx.econ.poll_live()
-        self.ctx.online._tick()
-        self.refresh()
-        self.ctx.toast(tr("Refreshed"))
 
     def _picture(self) -> None:
         path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")
@@ -636,7 +637,7 @@ class FriendsPage(Page):
             dlg.close()
             self.ctx.window.confirm(tr("Change your name to {name}? You can only do it once every 24 hours. "
                                        "Log in with your new name from now on.", name=name), go, yes=tr("Change"))
-        self._dialog = AskDialog(self.ctx, tr("Change name"), tr("New username"), tr("Next"), send, 10,
+        self._dialog = AskDialog(self.ctx, tr("Change Name"), tr("New username"), tr("Next"), send, 10,
                                  tr("Once every 24 hours. Friends, items and hours stay the same."))
 
     # -- trades
@@ -679,9 +680,6 @@ class FriendsPage(Page):
         back.clicked.connect(lambda: self.open_profile(None))
         top.addWidget(back)
         top.addWidget(Label(name, 16, bold=True), 1)
-        again = IconButton("refresh", 30, tip=tr("Refresh"))
-        again.clicked.connect(lambda: (setattr(ctx, "friends_data", None), ctx.reload_page()))
-        top.addWidget(again)
         self.lay.addLayout(top)
         if data is None:
             self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -703,10 +701,19 @@ class FriendsPage(Page):
         if prof.get("stats") is None:
             return
         self._details(prof)
+        songs = data.get("songs")
+        if songs is not None and (songs.get("rows") or not songs.get("shared", True)):
+            self.lay.addWidget(heading(tr("Recently Played")))
+            if not songs.get("shared", True):
+                self.lay.addWidget(Label(tr("Hidden by this user"), 11, TEXT_FAINT))
+            else:
+                from .hub import HistoryRow
+                for row in (songs.get("rows") or [])[:10]:
+                    self.lay.addWidget(HistoryRow(row, self.W))
         if hist is None:
             return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        for key, title in (("trades", tr("Last 3 trades")), ("cases", tr("Last 3 cases")), ("spins", tr("Last 3 spins")),
-                           ("bets", tr("Last 30 bets"))):
+        for key, title in (("trades", tr("Last 3 Trades")), ("cases", tr("Last 3 Cases")), ("spins", tr("Last 3 Spins")),
+                           ("bets", tr("Last 30 Bets"))):
             rows = hist.get(key) or []
             self.lay.addWidget(heading(title))
             if not rows:
@@ -725,7 +732,7 @@ class FriendsPage(Page):
         state = prof.get("state")
         if prof.get("friend"):
             self.lay.addWidget(Label("✓ " + tr("You are friends"), 12, "#3DDC84", bold=True))
-            acts = [(tr("Message"), "users"), (tr("Duel"), "shield"), (tr("Trade"), "chip"), (tr("Gift a case"), "gift")]
+            acts = [(tr("Message"), "users"), (tr("Duel"), "shield"), (tr("Trade"), "chip"), (tr("Gift a Case"), "gift")]
             grid = NavTiles(acts, -1, select=False)
 
             def act(i: int) -> None:
@@ -742,7 +749,7 @@ class FriendsPage(Page):
                     ctx.window.goto("themes")
             grid.changed.connect(act)
             self.lay.addWidget(grid)
-            rm = Button(tr("Remove friend"), "quiet", 24)
+            rm = Button(tr("Remove Friend"), "quiet", 24)
             rm.clicked.connect(lambda: ctx.window.confirm(tr("Remove {name} from your friends?", name=name),
                                lambda: self.act("rb_friend_remove", name, lambda _ok: self.open_profile(None)), yes=tr("Remove")))
             self.lay.addWidget(rm, 0, Qt.AlignmentFlag.AlignRight)
@@ -758,17 +765,17 @@ class FriendsPage(Page):
         for icon, head, text in self.PERKS:
             cl.addWidget(PerkRow(icon, tr(head), tr(text), self.W - S(24)))
         if state == "asks":
-            b = Button(tr("Accept friend"), "primary", 34)
+            b = Button(tr("Accept Friend"), "primary", 34)
             b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
             cl.addWidget(b)
         elif state == "asked":
             cl.addWidget(Label(tr("Waiting for them to accept."), 11, TEXT_DIM))
         else:
-            b = Button(tr("Add friend"), "primary", 34, icon="plus")
+            b = Button(tr("Add Friend"), "primary", 34, icon="plus")
             b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
             cl.addWidget(b)
         self.lay.addWidget(card)
-        trade = Button(tr("Trade without being friends"), "ghost", 28)
+        trade = Button(tr("Trade Without Being Friends"), "ghost", 28)
         trade.setToolTip(tr("Both users need 5 hours with Rubenium"))
         trade.clicked.connect(lambda: self.ask_trade(name))
         self.lay.addWidget(trade)
@@ -783,17 +790,17 @@ class FriendsPage(Page):
         seen = tr("Online") if prof.get("online") else (ago_text(prof.get("seen")) or "—")
         self.lay.addWidget(heading(tr("Stats")))
         self.lay.addWidget(Numbers([
-            (played_text(int(prof.get("minutes") or 0)), tr("Played")), (seen, tr("Last seen")),
+            (played_text(int(prof.get("minutes") or 0)), tr("Played")), (seen, tr("Last Seen")),
             (int(st.get("friends") or 0), tr("Friends")),
-            (int(st.get("items") or 0), tr("Items")), (coins_text(int(st.get("worth") or 0)), tr("Collection worth")),
+            (int(st.get("items") or 0), tr("Items")), (coins_text(int(st.get("worth") or 0)), tr("Collection Worth")),
             (int(st.get("badges") or 0), tr("Badges")),
-            (int(st.get("gold") or 0), tr("Gold badges"), "#E8C26A"), (int(st.get("cases") or 0), tr("Cases opened")),
+            (int(st.get("gold") or 0), tr("Gold Badges"), "#E8C26A"), (int(st.get("cases") or 0), tr("Cases Opened")),
             (int(st.get("trades") or 0), tr("Trades")),
-            (int(st.get("rounds") or 0), tr("Casino bets")), (coins_text(int(st.get("best") or 0)), tr("Best win")),
-            (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino result"),
+            (int(st.get("rounds") or 0), tr("Casino Bets")), (coins_text(int(st.get("best") or 0)), tr("Best Win")),
+            (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino Result"),
              "#5BE08A" if won >= bet else "#FF7A7A"),
             (int(st.get("mini") or 0), tr("Beat Tap")), (int(st.get("park") or 0), tr("Parking")),
-            (int(st.get("spins") or 0), tr("Free spins"))], self.W))
+            (int(st.get("spins") or 0), tr("Free Spins"))], self.W))
         eq = prof.get("equip") or {}
         wearing = [eq.get(k) for k in ("ball", "ring", "theme", "font")]
         wearing = [w for w in wearing if w and w.split(":")[0] in ("ball", "line", "theme", "font")]
@@ -814,6 +821,18 @@ class FriendsPage(Page):
         self._redo()
         if data.get("stats") is not None:
             self.ctx.online.ask("rb_history", {"name": name}, self._got_history)
+            self._ask_songs(name)
+
+    def _ask_songs(self, name: str) -> None:
+        """The songs a friend played lately (3.0.0 server; nothing is shown on an older one)."""
+        def got(ok: bool, data) -> None:
+            cur = getattr(self.ctx, "friends_data", None)
+            if cur is None or getattr(self.ctx, "friends_profile", None) != name or not ok or not isinstance(data, dict):
+                return
+            if data != cur.get("songs"):
+                cur["songs"] = data
+                self._redo()
+        self.ctx.online.ask("rb_songs", {"name": name}, got)
 
     def _got_profile_again(self, ok: bool, data) -> None:
         cur = getattr(self.ctx, "friends_data", None)
@@ -873,7 +892,9 @@ class ProfileCard(QWidget):
         p.drawRoundedRect(r, S(12), S(12))
         top = QRectF(r.left(), r.top(), r.width(), S(70))
         if eq.get("banner"):
-            paint_banner(p, top, eq["banner"], now, S(12))
+            look = self.ctx.econ.look_of(name)
+            gold = int(look.get("gold") or 0) if look.get("banner") == eq["banner"] else 0
+            paint_banner(p, top, eq["banner"], now, S(12), 1.0, gold)
         else:                                               # no banner: a soft band in their own colour
             hue = (sum(ord(c) for c in name.lower()) * 37 % 360) / 360
             g = QLinearGradient(top.topLeft(), top.bottomRight())
@@ -900,7 +921,7 @@ class ProfileCard(QWidget):
             from .cosmetics import paint_tag
             paint_tag(p, nx, top.bottom() - S(17), eq["tag"], now, 9)
         cells = ((tr("Online") if prof.get("online") else (tr("Offline") if known else "—"), tr("Status")),
-                 (played_text(int(prof.get("minutes", 0))), tr("Played")), (date_text(prof.get("since")), tr("Member since")))
+                 (played_text(int(prof.get("minutes", 0))), tr("Played")), (date_text(prof.get("since")), tr("Member Since")))
         left = face.right() + S(6)
         w = (r.right() - left - S(6)) / 3
         for i, (big, small) in enumerate(cells):
@@ -1006,7 +1027,7 @@ class HistoryList(QWidget):
                 right = (f"−{coins_text(gave)} " if gave else "") + (f"+{coins_text(got)}" if got else "")
             elif self.kind == "cases":
                 game = str(row.get("game", ""))
-                name = tr(CASE_NAMES.get(game.split(":")[-1], "Case")) if game != "daily" else tr("Daily case")
+                name = tr(CASE_NAMES.get(game.split(":")[-1], "Case")) if game != "daily" else tr("Daily Case")
                 p.drawText(r.adjusted(S(8), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
                 if row.get("item"):
                     show_item(p, row["item"], QRectF(r.right() - S(30), r.top() + S(5), S(20), S(20)), 0, effects=False)

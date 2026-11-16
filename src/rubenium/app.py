@@ -19,7 +19,7 @@ from . import win
 from .econ import Econ
 from .online import Online
 from .wallet import COLOURS, Wallet
-from .core import BUILD, APP_NAME, ACCENT_DEFAULT, FONT_DEFAULT, FONT_FAMILIES, TEXT, Config, alpha, apply_look, set_lang, sfx, setup_logging, tr, ui
+from .core import BUILD, Net, APP_NAME, ACCENT_DEFAULT, FONT_DEFAULT, FONT_FAMILIES, TEXT, Config, alpha, apply_look, set_lang, sfx, setup_logging, tr, ui
 from .engines import CrosshairOverlay, DisplayEngine, HudOverlay, PingTest, Sensors
 from .lyrics import LyricsService
 from .media import CMD_SEEK, MediaService, Status, TrackState, source_keywords
@@ -301,6 +301,12 @@ class App(QObject):
         self._safe("online swaps", lambda: extras.fetch_online_swaps(self))
         self._safe("splash", self.splash.start)
         self._safe("coins", self.wallet.start)
+        if self.cfg["offline_mode"]:               # offline mode survives a restart, but only when logged in
+            if self.online.logged_in():
+                Net.blocked = True
+                self.online.offline = True
+            else:
+                self.cfg["offline_mode"] = False
         if "--selftest" not in sys.argv:
             self._safe("account", self.online.start)
             self._safe("economy", self.econ.start)
@@ -478,8 +484,9 @@ class App(QObject):
         if st.art_key != self._art_key:
             self._art_key = st.art_key
             if st.has_track and st.title:
-                from .hub import history_add
+                from .hub import history_add, history_share
                 history_add(st.title, st.artist, st.source_id or "")
+                history_share(self, st.title, st.artist)
             self.art_pixmap = None
             self.window.on_art(None)
             self.refresh_accent()
@@ -1011,6 +1018,56 @@ class App(QObject):
 
     # updates: found -> ask once (on the card), install -> verify -> restart
     # ------------------------------------------------------------------ 2.4
+    def _game_running(self) -> bool:
+        """A casino round or a mini game is being played on the open page."""
+        page = self.window.page() if self.window.expanded else None
+        if page is None:
+            return False
+        from PyQt6.QtWidgets import QWidget
+        return any(getattr(w, "busy", False) is True for w in page.findChildren(QWidget))
+
+    def set_offline_mode(self, on: bool) -> bool:
+        """Offline mode: Rubenium makes no internet request. It cannot be used to dodge anything: it can only be
+        switched on between games, cases and trades, at most once a minute, and the time spent offline earns
+        nothing (the server only counts minutes it hears about). Returns False when the switch was refused."""
+        on = bool(on)
+        if on == bool(self.cfg["offline_mode"]):
+            return True
+        now = time.monotonic()
+        if on:
+            if not self.online.logged_in():
+                self.toast(tr("Log in first"), "warn")
+                return False
+            busy = (self.econ.holding or bool(self.trade.trade_id)
+                    or getattr(self, "games_sub", None) == "duel_run" or self._game_running())
+            if busy:
+                self.toast(tr("Finish what you are doing first"), "warn")
+                return False
+            wait = 60 - (now - getattr(self, "_offline_switched", -1e9))
+            if wait > 0:
+                self.toast(tr("Wait {s} s", s=int(wait) + 1), "warn")
+                return False
+        self._offline_switched = now
+        self.cfg["offline_mode"] = on
+        Net.blocked = on
+        if on:
+            self.online._set_offline(True)
+            self.toast(tr("Offline mode on"))
+        else:
+            self.online.offline = False
+            self.online.changed.emit()
+            self.online.ask("rb_song_share", {"share": bool(self.cfg["share_songs"])}, lambda ok, d: None)
+            self.online._tick()
+            self.econ.refresh()
+            self.econ.poll_live()
+            self.econ.fetch_looks(force=True)
+            self.toast(tr("Back online"))
+        sfx.play("on" if not on else "off")
+        self.window.sync_lock()
+        if self.window.expanded:
+            self.reload_page()
+        return True
+
     def _tap_key(self) -> None:
         if self.window.expanded:
             self.window.collapse()

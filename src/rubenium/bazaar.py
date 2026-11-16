@@ -458,7 +458,7 @@ def build_cosmetics(page, lay) -> None:
             if not any(k.startswith(kind + ":") for k in ec.catalog):         # the server has not had 2.6 yet
                 from .hub import WaitCard
                 return lay.addWidget(WaitCard(page.W))
-            lay.addWidget(Label(tr("Everyone sees your banner and frame on your profile, in lists and in the chat."),
+            lay.addWidget(Label(tr("Visible on your profile, in lists and in chat."),
                                 10.5, TEXT_DIM, wrap_w=page.W))
         entries = []
         for base, name in _designs(kind):
@@ -483,7 +483,7 @@ def build_cosmetics(page, lay) -> None:
             ctx.reload_page()
         grid.picked.connect(pick)
         lay.addWidget(grid)
-        lay.addWidget(Label(tr("Everything here can be worn, traded and sold. Prices start at the one shown."), 10.5,
+        lay.addWidget(Label(tr("Every item can be worn, traded and sold."), 10.5,
                             TEXT_DIM, wrap_w=page.W))
         return
     # one design: preview, colours, buy or wear
@@ -565,6 +565,9 @@ def _cid(kind: str, design: str, colour: str) -> str:
     return f"{kind}:{design}" if kind in ("theme", "banner", "frame") else f"{kind}:{design}:{colour}"
 
 
+GOLD_STEPS = {"standard": (10, 30, 75), "rare": (15, 45, 110), "special": (25, 75, 180), "epic": (40, 120, 300)}
+
+
 class LookPreview(QWidget):
     """How a banner or a frame looks on your own profile."""
 
@@ -599,7 +602,7 @@ class LookPreview(QWidget):
         banner = self.item if kind == "banner" else ec.look_of(name).get("banner", "")
         top = QRectF(r.left(), r.top(), r.width(), S(74))
         if banner:
-            paint_banner(p, top, banner, now, S(12))
+            paint_banner(p, top, banner, now, S(12), 1.0, ec.gold_of(banner))
         else:
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha("#FFFFFF", 0.05))
@@ -619,7 +622,18 @@ class LookPreview(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.drawText(QRectF(x, top.bottom() + S(6), r.width() - x - S(10), S(30)), int(Qt.AlignmentFlag.AlignVCenter),
-                   self.note or tr("Preview on your profile"))
+                   self.note or self._gold_note(kind) or tr("Preview on your profile"))
+
+    def _gold_note(self, kind: str) -> str:
+        """For a banner you own: how far it is from its next gold level."""
+        from .cosmetics import gold_steps_text
+        if kind != "banner":
+            return ""
+        w = self.ctx.econ.wear_data.get(self.item)
+        if w:
+            return gold_steps_text(w.get("steps"), int(w.get("minutes") or 0))
+        steps = GOLD_STEPS.get(self.ctx.econ.rarity(self.item))
+        return tr("Turns gold after {a}, {b} and {c} h worn", a=steps[0], b=steps[1], c=steps[2]) if steps else ""
 
 
 # --------------------------------------------------------------------------- #
@@ -1136,7 +1150,7 @@ def build_market(page, lay) -> None:
     if rows is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     if not rows:
-        lay.addWidget(Label(tr("You have nothing on sale. Put an item on sale from your Inventory.") if tab else
+        lay.addWidget(Label(tr("Nothing on sale. List an item from your Inventory.") if tab else
                             tr("Nothing on sale right now. Be the first: put an item on sale from your Inventory."),
                             12, TEXT_DIM, wrap_w=page.W))
     for row in rows[:40]:
@@ -1146,7 +1160,7 @@ def build_market(page, lay) -> None:
         w.clicked.connect(lambda r=row: _market_click(page, r, bool(tab)))
         lay.addWidget(w)
     if not tab:
-        lay.addWidget(Label(tr("The price is fixed by the seller. The market keeps 5% of every sale."), 10.5, TEXT_DIM,
+        lay.addWidget(Label(tr("Fixed price set by the seller. 5% market fee."), 10.5, TEXT_DIM,
                             wrap_w=page.W))
 
 
@@ -1460,7 +1474,7 @@ def build_trade(page, lay) -> None:
     side(tr("You give"), mine, my_coins, give, my_ready, True)
     side(tr("You get"), theirs, their_coins, get, their_ready, False)
     if give > max(get * 2, get + 500):
-        lay.addWidget(Label(tr("Careful: you give much more than you get. Look again before you accept."), 11.5, "#FFB020",
+        lay.addWidget(Label(tr("Uneven trade: you give much more than you get."), 11.5, "#FFB020",
                             bold=True, wrap_w=page.W))
     if my_ready and their_ready:
         cd = Countdown(link)
@@ -1481,7 +1495,7 @@ def build_trade(page, lay) -> None:
     ready = Button(tr("Not ready") if my_ready else tr("Ready"), "ghost" if my_ready else "primary", 36)
     ready.clicked.connect(lambda: link.act("rb_trade_ready", {"ready": not my_ready, "seen_version": version}))
     lay.addWidget(ready)
-    lay.addWidget(Label(tr("Any change makes both users not ready again. Nothing moves until both confirm."), 10.5,
+    lay.addWidget(Label(tr("Any change resets both confirmations."), 10.5,
                         TEXT_DIM, wrap_w=page.W))
     offered = {r["id"] for r in mine}
     pool = [i for i in ec.items if not i.get("locked") and i["id"] not in offered

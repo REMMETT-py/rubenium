@@ -2031,8 +2031,7 @@ class GamesPage(Page):
         self.beat_btn = Button(tr("Start"), "primary", 38)
         self.beat_btn.clicked.connect(lambda: (self.beat_btn.setEnabled(False), self.beat.start()))
         lay.addWidget(self.beat_btn)
-        lay.addWidget(Label(tr("Four lanes, about 40 seconds, faster and faster. Hits in a row build a combo. 12 to 50 coins "
-                               "a round; after 6 rounds in 2 hours it pays less (150 every 2 hours at most)."), 10.5, TEXT_DIM,
+        lay.addWidget(Label(tr("12 to 50 coins a round. Up to 150 coins every 2 hours."), 10.5, TEXT_DIM,
                             wrap_w=self.W))
 
     # -- 2.4: sub-screens (Memory, duels, scratch card)
@@ -2066,8 +2065,7 @@ class GamesPage(Page):
         go = Button(tr("New game"), "primary", 36)
         go.clicked.connect(self.mem.start)
         lay.addWidget(go)
-        lay.addWidget(Label(tr("Turn two cards: same picture, they stay. Easy 16 cards 12-30, Medium 20 cards 18-40, "
-                               "Hard 24 cards 25-55 coins: fewer flips pay more. 150 every 2 hours at most."),
+        lay.addWidget(Label(tr("Find every pair. Fewer flips pay more. Up to 150 coins every 2 hours."),
                             10.5, TEXT_DIM, wrap_w=self.W))
         QTimer.singleShot(50, self.mem.start)
 
@@ -2075,9 +2073,7 @@ class GamesPage(Page):
         self._back_bar(lay, tr("Scratch card"))
         card = ScratchCard(self)
         lay.addWidget(card)
-        lay.addWidget(Label(tr("One card every 12 hours. Scratch it with the mouse: hard at first, then easier and easier. "
-                               "The colour shows how lucky you were: Common or Rare give coins, Epic 1 key, Legendary 2 keys, "
-                               "Mythic 2 500 coins."), 10.5, TEXT_DIM, wrap_w=self.W))
+        lay.addWidget(Label(tr("One card every 12 hours. Common and Rare: coins. Epic: 1 key. Legendary: 2 keys. Mythic: 2 500 coins."), 10.5, TEXT_DIM, wrap_w=self.W))
 
     def load_duels(self, quiet: bool = False) -> None:
         ctx = self.ctx
@@ -2145,7 +2141,7 @@ class GamesPage(Page):
             again.clicked.connect(w.restart)
             lay.addWidget(again)
             QTimer.singleShot(30, w.restart)
-        lay.addWidget(Label(tr("One try. Your score is sent when you finish; the winner is shown in Duels."), 10.5,
+        lay.addWidget(Label(tr("One try. The result appears in Duels."), 10.5,
                             TEXT_DIM, wrap_w=self.W))
 
     def _show_park(self, on: bool) -> None:
@@ -2176,8 +2172,7 @@ class GamesPage(Page):
         line.addWidget(again, 1)
         line.addWidget(new, 1)
         lay.addLayout(line)
-        lay.addWidget(Label(tr("Drag the cars along their lane to make way, then drive the red car out on the right. "
-                               "Easy 12-25, Medium 18-38, Hard 30-50 coins: fewer moves pay more. 150 every 2 hours at most."),
+        lay.addWidget(Label(tr("Move the cars to free the red car. Fewer moves pay more. Up to 150 coins every 2 hours."),
                             10.5, TEXT_DIM, wrap_w=self.W))
         QTimer.singleShot(50, self.park.new)
 

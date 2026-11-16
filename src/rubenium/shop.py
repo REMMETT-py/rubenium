@@ -806,12 +806,11 @@ class ShopPage(Page):
         self._daily_timer.start()
         self._timers()
         if not cid:
-            from .collection import KIND_TEXT, case_kind
+            from .collection import case_kind
             lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
                 for kind, title in (("coins", tr("Coin cases")), ("hunt", tr("Rare hunts")), ("style", tr("Style cases"))):
                     lay.addWidget(heading(title))
-                    lay.addWidget(Label(tr(KIND_TEXT[kind]), 10.5, TEXT_DIM, wrap_w=self.W))
                     for case in ec.cases:
                         if case_kind(case["id"]) == kind:
                             lay.addWidget(CaseCard(self, case))
@@ -821,8 +820,7 @@ class ShopPage(Page):
             else:
                 for case in ec.cases:
                     lay.addWidget(CaseCard(self, case))
-            lay.addWidget(Label(tr("A case costs coins and 1 key. You earn 1 key for every hour with Rubenium."), 10.5,
-                                TEXT_DIM, wrap_w=self.W))
+            lay.addWidget(Label(tr("Each case costs coins and 1 key. Keys: 1 per hour."), 10.5, TEXT_DIM, wrap_w=self.W))
             return
         case = self.DAILY if cid == "daily" else next((c for c in ec.cases if c["id"] == cid), ec.cases[0])
         top = hbox(spacing=8)
@@ -842,13 +840,9 @@ class ShopPage(Page):
         self.open_btn.clicked.connect(lambda: self._open(case))
         lay.addWidget(self.open_btn)
         if cid != "daily":
-            from .collection import CASE_NOTES, KIND_TEXT, case_kind
+            from .collection import CASE_NOTES
             if case["id"] in CASE_NOTES:
                 lay.addWidget(Label(tr(CASE_NOTES[case["id"]]), 11, TEXT_DIM, wrap_w=self.W))
-            if case_kind(case["id"]):
-                lay.addWidget(Label(tr(KIND_TEXT[case_kind(case["id"])]), 10.5,
-                                    {"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF"}[case_kind(case["id"])],
-                                    wrap_w=self.W))
             gift = Button(tr("Gift this case to a friend"), "ghost", 30)
             gift.clicked.connect(lambda: self._gift(case))
             lay.addWidget(gift)
@@ -856,7 +850,7 @@ class ShopPage(Page):
             lay.addWidget(heading(tr("Chances")))
             lay.addWidget(OddsTable(case, self.W))
         else:
-            lay.addWidget(Label(tr("Once a day: coins, a key or a badge (Common, sometimes Rare, rarely Epic)."),
+            lay.addWidget(Label(tr("Once a day: coins, a key or a badge."),
                                 10.5, TEXT_DIM, wrap_w=self.W))
 
     def open_case(self, cid) -> None:

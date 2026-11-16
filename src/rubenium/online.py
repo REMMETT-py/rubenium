@@ -14,7 +14,7 @@ import uuid
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 
 from . import win
-from .core import DATA_DIR
+from .core import DATA_DIR, Net
 
 log = logging.getLogger("rubenium.online")
 
@@ -44,6 +44,8 @@ class ApiError(Exception):
 
 def _request(path: str, body=None, token: str = "", method: str = "POST", timeout: float = 12.0):
     """One call to the server. Returns the decoded answer; raises ApiError('offline' | a server message)."""
+    if Net.blocked:                                   # offline mode: nothing leaves the PC
+        raise ApiError("offline")
     import ssl
     import urllib.error
     import urllib.request
@@ -78,6 +80,8 @@ def public_file(path: str) -> str:
 
 
 def download(url: str, timeout: float = 120.0) -> bytes:
+    if Net.blocked:
+        raise ApiError("offline")
     import ssl
     import urllib.request
     try:
@@ -323,6 +327,10 @@ class Online(QObject):
 
     def log_out(self) -> None:
         token = self.s.get("access_token", "")
+        if Net.blocked:                                # logging out leaves offline mode (the login needs the internet)
+            Net.blocked = False
+            self.ctx.cfg["offline_mode"] = False
+            token = ""
         self.s, self.minutes, self.elsewhere = {}, 0, False
         self._save()
         self.changed.emit()
@@ -456,7 +464,9 @@ class Online(QObject):
             self._retry = QTimer(self)
             self._retry.setInterval(20000)
             self._retry.timeout.connect(self.probe)
-        if off and not self._retry.isActive():
+        if off and Net.blocked:
+            self._retry.stop()                   # offline mode: no point asking
+        elif off and not self._retry.isActive():
             self._retry.start()                  # offline mode: try again every 20 seconds, quietly
         elif not off:
             self._retry.stop()
@@ -500,7 +510,7 @@ class Online(QObject):
 
     def probe(self) -> None:
         """Is the internet back? One small question to the server."""
-        if self.logged_in():
+        if self.logged_in() and not Net.blocked:
             self.ask("rb_timers", {}, lambda _ok, _d: None)
 
     def _beaten(self, ans: dict) -> None:

@@ -80,6 +80,7 @@ class Econ(QObject):
         self.streak, self.streak_day = 0, None
         self.looks: dict = {}                    # username -> {tag, frame, banner} for everyone (2.6)
         self._looks_at = 0.0
+        self.wear_data: dict = {}                   # your banners: item -> {minutes, level, steps} (3.0.0 gold banners)
         self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
         self._live_sig = ""
         self._live_timer = QTimer(self)
@@ -169,14 +170,32 @@ class Econ(QObject):
     def look_of(self, name: str) -> dict:
         """The tag, frame and banner someone shows. Yours comes from what you wear right now."""
         if name and self.ready and name.lower() == (self.online.username() or "").lower():
-            return {k: self.worn(k) for k in ("tag", "frame", "banner") if self.worn(k) and self.can_wear(self.worn(k))}
+            mine = {k: self.worn(k) for k in ("tag", "frame", "banner") if self.worn(k) and self.can_wear(self.worn(k))}
+            if mine.get("banner") and self.gold_of(mine["banner"]):
+                mine["gold"] = self.gold_of(mine["banner"])
+            return mine
         return self.looks.get(name) or {}
+
+    def gold_of(self, item: str) -> int:
+        """How gold one of your banners is (0-3), from the hours you wore it."""
+        try:
+            return max(0, min(3, int((self.wear_data.get(item) or {}).get("level") or 0)))
+        except (TypeError, ValueError):
+            return 0
+
+    def fetch_wear(self) -> None:
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, dict) and data != self.wear_data:
+                self.wear_data = data
+                self.looks_changed.emit()
+        self.online.ask("rb_wear_mine", {}, got)
 
     def fetch_looks(self, force: bool = False) -> None:
         import time
         if not self.online.logged_in() or (not force and time.monotonic() - self._looks_at < 40):
             return
         self._looks_at = time.monotonic()
+        self.fetch_wear()
 
         def got(ok: bool, data) -> None:
             if ok and isinstance(data, dict) and data != self.looks:
@@ -245,7 +264,7 @@ class Econ(QObject):
         elif not now_in and self._was_in:
             self.ready = False
             self._live_timer.stop()
-            self.live, self.admin, self.stock, self.looks = {}, False, {}, {}
+            self.live, self.admin, self.stock, self.looks, self.wear_data = {}, False, {}, {}, {}
             self.live_changed.emit()
             self.coins = self.keys = self.minutes = 0
             self.items, self.seen, self.equip, self._owned = [], set(), {}, {}

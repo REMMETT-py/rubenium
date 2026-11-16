@@ -34,16 +34,21 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("storm", "Storm", "#8FA8FF", "#4B6BFF", dict(glow=3, stars=44, links=10, comets=6, aurora=True)),
                ("retro", "Retro", "#D94BFF", "#35D6E6", dict(glow=3, stars=52, links=14, sparkles=8, edge="shine"))]
 # profile looks (2.6): a banner behind your profile, a frame around your picture, a tag after your name
-BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("waves", "Waves"), ("grid", "Grid"),
-           ("stripes", "Stripes"), ("dots", "Dots"), ("aurora", "Aurora"), ("circuit", "Circuit"), ("sunset", "Sunset"),
-           ("peaks", "Peaks"), ("galaxy", "Galaxy"), ("lava", "Lava"), ("matrix", "Matrix"), ("prism", "Prism"),
-           ("snow", "Snow"), ("ember", "Ember"), ("nebula", "Nebula"), ("jungle", "Jungle"), ("sakura", "Sakura")]
+BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("stripes", "Stripes"), ("dots", "Dots"),
+           ("carbon", "Carbon"), ("dunes", "Dunes"),
+           ("waves", "Waves"), ("peaks", "Peaks"), ("ember", "Ember"), ("circuit", "Circuit"), ("sunset", "Sunset"),
+           ("honeycomb", "Honeycomb"), ("comet", "Comet"), ("deepsea", "Deep Sea"),
+           ("grid", "Grid"), ("jungle", "Jungle"), ("sakura", "Sakura"), ("lava", "Lava"), ("prism", "Prism"),
+           ("city", "City Nights"), ("neon", "Neon"), ("fireflies", "Fireflies"),
+           ("galaxy", "Galaxy"), ("nebula", "Nebula"), ("matrix", "Matrix"), ("storm", "Storm"), ("vortex", "Vortex"),
+           ("snow", "Snow"), ("aurora", "Aurora")]
 FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
           ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine")]
 TAGS = [("og", "OG")]
 MOVING = {"waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
-          "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine"}
+          "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine",
+          "honeycomb", "comet", "deepsea", "city", "fireflies", "storm", "vortex"}
 EVENT_LOOKS = {"banner:snow", "banner:aurora", "frame:frost"}      # kept for the Christmas event
 KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "banner": "Banner",
               "frame": "Frame", "tag": "Tag"}
@@ -338,7 +343,11 @@ _BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), 
                 "circuit": ("#04170F", "#2ECC71"), "sunset": ("#2B0F3D", "#FF8A3D"), "peaks": ("#0E1A2B", "#8FA8FF"),
                 "galaxy": ("#05040F", "#9B5CFF"), "lava": ("#1A0503", "#FF3D1F"), "matrix": ("#010A04", "#3DFF7A"),
                 "prism": ("#101018", "#FF5CC8"), "snow": ("#16304A", "#BFE6FF"), "ember": ("#1A0806", "#FF7A2E"),
-                "nebula": ("#07051A", "#4FE3FF"), "jungle": ("#06200F", "#2ECC71"), "sakura": ("#2A0E22", "#FF9CCB")}
+                "nebula": ("#07051A", "#4FE3FF"), "jungle": ("#06200F", "#2ECC71"), "sakura": ("#2A0E22", "#FF9CCB"),
+                "carbon": ("#15181C", "#2C3238"), "dunes": ("#F2A65A", "#FFD9A0"), "honeycomb": ("#1A1204", "#FFB627"),
+                "comet": ("#060B1E", "#4F8BFF"), "deepsea": ("#021226", "#1FB5D6"), "city": ("#0B0F2A", "#3A2A6B"),
+                "neon": ("#0A0412", "#2A0F3D"), "fireflies": ("#0C2416", "#1B3D22"), "storm": ("#0D1220", "#3A4A6B"),
+                "vortex": ("#08041A", "#4FE3FF")}
 
 
 def look_moves(item: str) -> bool:
@@ -351,8 +360,9 @@ def _rand(i: int, k: int = 0) -> float:
     return x - math.floor(x)
 
 
-def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius: float = 10.0, dim: float = 1.0) -> None:
-    """A profile banner filling `rect` (rounded corners)."""
+def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius: float = 10.0, dim: float = 1.0,
+                 gold: int = 0) -> None:
+    """A profile banner filling `rect` (rounded corners). `gold` 1-3: it turned gold with the hours it was worn."""
     base = parts(item)[1]
     c1, c2 = (QColor(c) for c in _BANNER_COLS.get(base, ("#1A2026", "#3A4650")))
     w, h = rect.width(), rect.height()
@@ -599,12 +609,246 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
             p.setBrush(alpha("#FFC1DE", 0.85))
             p.drawEllipse(QPointF(0, 0), 2.4, 1.3)
             p.restore()
+    elif base == "carbon":                                     # carbon fibre weave
+        cell = max(6.0, h * 0.09)
+        for gy in range(int(h / cell) + 2):
+            for gx in range(int(w / cell) + 2):
+                r_ = QRectF(L + gx * cell, T + gy * cell, cell, cell)
+                g2 = QLinearGradient(r_.topLeft(), r_.bottomRight() if (gx + gy) % 2 else r_.bottomLeft())
+                g2.setColorAt(0, alpha("#FFFFFF", 0.07))
+                g2.setColorAt(1, alpha("#000000", 0.25))
+                p.fillRect(r_.adjusted(0.5, 0.5, -0.5, -0.5), g2)
+    elif base == "dunes":                                      # warm dunes under a low sun
+        p.setBrush(alpha("#FFE2A8", 0.85))
+        p.drawEllipse(QPointF(L + w * 0.78, T + h * 0.32), h * 0.16, h * 0.16)
+        for k, (y0, col) in enumerate(((0.55, "#C98A4B"), (0.68, "#A86A35"), (0.82, "#7E4C24"))):
+            path = QPainterPath(QPointF(L, rect.bottom()))
+            for x in range(0, int(w) + 8, 8):
+                path.lineTo(L + x, T + h * y0 + math.sin(x / w * 5.0 + k * 1.9) * h * 0.06)
+            path.lineTo(rect.right(), rect.bottom())
+            p.setBrush(QColor(col))
+            p.drawPath(path)
+    elif base == "honeycomb":                                  # hexagons that light up one after another
+        rr = max(7.0, h * 0.13)
+        dx, dy = rr * 1.73, rr * 1.5
+        for gy in range(int(h / dy) + 2):
+            for gx in range(int(w / dx) + 2):
+                cx = L + gx * dx + (dx / 2 if gy % 2 else 0)
+                cy = T + gy * dy
+                glow = max(0.0, math.sin(now * 1.4 - gx * 0.45 + gy * 0.9)) ** 3
+                hexp = QPainterPath()
+                for n in range(7):
+                    a = math.radians(60 * n + 30)
+                    pt = QPointF(cx + rr * 0.92 * math.cos(a), cy + rr * 0.92 * math.sin(a))
+                    hexp.lineTo(pt) if n else hexp.moveTo(pt)
+                p.setPen(QPen(alpha(c2, 0.35 + 0.5 * glow), 1.1))
+                p.setBrush(alpha(c2, 0.05 + 0.3 * glow))
+                p.drawPath(hexp)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "comet":                                      # comets crossing a starry sky
+        for i in range(30):
+            p.setBrush(alpha("#FFFFFF", 0.25 + 0.5 * ((i * 37) % 10) / 10))
+            p.drawEllipse(QPointF(L + (i * 97 % 1000) / 1000 * w, T + (i * 61 % 1000) / 1000 * h), 0.9, 0.9)
+        for k in range(3):
+            t = (now * 0.22 + k / 3) % 1.0
+            head = QPointF(L - w * 0.2 + t * w * 1.4, T + h * (0.15 + 0.25 * k) + t * h * 0.35)
+            tail = QPointF(head.x() - w * 0.22, head.y() - h * 0.055 * 1)
+            g2 = QLinearGradient(tail, head)
+            g2.setColorAt(0, alpha(c2, 0.0))
+            g2.setColorAt(1, alpha("#FFFFFF", 0.9))
+            p.setPen(QPen(g2, 2.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(tail, head)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawEllipse(head, 2.2, 2.2)
+    elif base == "deepsea":                                    # light rays from above, bubbles rising
+        for k in range(5):
+            x0 = L + w * (0.1 + 0.2 * k) + math.sin(now * 0.4 + k) * w * 0.03
+            ray = QPainterPath(QPointF(x0 - w * 0.03, T))
+            ray.lineTo(x0 + w * 0.03, T)
+            ray.lineTo(x0 + w * 0.12, rect.bottom())
+            ray.lineTo(x0 - w * 0.02, rect.bottom())
+            g2 = QLinearGradient(QPointF(0, T), QPointF(0, rect.bottom()))
+            g2.setColorAt(0, alpha(c2, 0.28))
+            g2.setColorAt(1, alpha(c2, 0.0))
+            p.setBrush(g2)
+            p.drawPath(ray)
+        for i in range(16):
+            t = (now * (0.12 + (i % 4) * 0.03) + i * 0.137) % 1.0
+            x = L + (i * 131 % 1000) / 1000 * w + math.sin(now * 2 + i) * 3
+            p.setPen(QPen(alpha("#BFF4FF", 0.7 * (1 - t)), 1))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(QPointF(x, rect.bottom() - t * h), 1.5 + (i % 3), 1.5 + (i % 3))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "city":                                       # a skyline at night, windows switching on and off
+        p.setBrush(alpha("#FFE9A8", 0.9))
+        p.drawEllipse(QPointF(L + w * 0.85, T + h * 0.22), h * 0.09, h * 0.09)
+        x, i = L, 0
+        while x < rect.right():
+            bw = w * (0.05 + ((i * 53) % 7) / 100)
+            bh = h * (0.35 + ((i * 29) % 9) / 16)
+            top_ = rect.bottom() - bh
+            p.setBrush(QColor("#0A0D1A") if i % 2 else QColor("#121633"))
+            p.drawRect(QRectF(x, top_, bw, bh))
+            for wy in range(int(bh / 7)):
+                for wx in range(max(1, int(bw / 6))):
+                    lit = math.sin(i * 7.1 + wy * 3.3 + wx * 1.7 + math.floor(now * 0.5 + (i + wx) * 0.13)) > 0.35
+                    if lit:
+                        p.setBrush(alpha("#FFD36B", 0.85))
+                        p.drawRect(QRectF(x + 2 + wx * 6, top_ + 3 + wy * 7, 2.4, 3))
+            x += bw + 1
+            i += 1
+    elif base == "neon":                                       # glowing tubes that pulse
+        for k, (col, y0) in enumerate((("#FF2BD6", 0.3), ("#2EF2FF", 0.55), ("#B6FF2E", 0.8))):
+            pulse = 0.55 + 0.45 * math.sin(now * 2.2 + k * 2.1)
+            path = QPainterPath(QPointF(L - 4, T + h * y0))
+            for x in range(0, int(w) + 10, 10):
+                path.lineTo(L + x, T + h * y0 + (h * 0.08 if (x // 40) % 2 else -h * 0.08))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width, a in ((7, 0.12), (3.5, 0.35), (1.6, 1.0)):
+                p.setPen(QPen(alpha(col, a * pulse), width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                              Qt.PenJoinStyle.RoundJoin))
+                p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "fireflies":                                  # a dark forest with drifting lights
+        for k in range(9):
+            x = L + w * (k / 8)
+            p.setBrush(QColor("#06140C"))
+            tri = QPainterPath(QPointF(x, T + h * (0.25 + 0.1 * (k % 3))))
+            tri.lineTo(x - w * 0.07, rect.bottom())
+            tri.lineTo(x + w * 0.07, rect.bottom())
+            tri.closeSubpath()
+            p.drawPath(tri)
+        for i in range(22):
+            x = L + ((i * 89 % 1000) / 1000 + 0.03 * math.sin(now * 0.5 + i)) * w
+            y = T + ((i * 47 % 1000) / 1000 * 0.8 + 0.1 + 0.04 * math.cos(now * 0.7 + i * 2)) * h
+            a = max(0.0, math.sin(now * 1.7 + i * 1.3))
+            gl = QRadialGradient(QPointF(x, y), 6)
+            gl.setColorAt(0, alpha("#E8FF7A", 0.9 * a))
+            gl.setColorAt(1, alpha("#E8FF7A", 0.0))
+            p.setBrush(gl)
+            p.drawEllipse(QPointF(x, y), 6, 6)
+    elif base == "storm":                                      # heavy clouds, rain and lightning
+        flash = max(0.0, 1 - ((now * 0.45) % 1.0) * 9)        # a bright flash once every ~2 seconds
+        for k in range(7):
+            p.setBrush(alpha("#2A3550", 0.85))
+            p.drawEllipse(QPointF(L + w * (k / 6) + math.sin(now * 0.2 + k) * 6, T + h * 0.12), w * 0.13, h * 0.32)
+        p.setPen(QPen(alpha("#9FC3FF", 0.35), 1))
+        for i in range(40):
+            t = (now * 1.6 + i * 0.173) % 1.0
+            x = L + (i * 113 % 1000) / 1000 * w
+            p.drawLine(QPointF(x - t * 6, T + h * 0.3 + t * h * 0.7), QPointF(x - t * 6 - 3, T + h * 0.3 + t * h * 0.7 + 7))
+        if flash > 0:
+            bolt = QPainterPath(QPointF(L + w * 0.62, T + h * 0.25))
+            for dxf, dyf in ((-0.04, 0.2), (0.03, 0.18), (-0.05, 0.22), (0.02, 0.2)):
+                cur = bolt.currentPosition()
+                bolt.lineTo(cur.x() + w * dxf, cur.y() + h * dyf)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width, a in ((6, 0.25), (2, 1.0)):
+                p.setPen(QPen(alpha("#E6F0FF", a * flash), width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawPath(bolt)
+            p.fillRect(rect, alpha("#CFE0FF", 0.18 * flash))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "vortex":                                     # a slowly turning spiral of light
+        cen = QPointF(L + w * 0.5, T + h * 0.5)
+        for arm in range(4):
+            path = QPainterPath()
+            for n in range(60):
+                t = n / 59
+                ang = arm * math.pi / 2 + t * 5.5 + now * 0.6
+                rr = t * w * 0.55
+                pt = QPointF(cen.x() + rr * math.cos(ang), cen.y() + rr * 0.45 * math.sin(ang))
+                path.lineTo(pt) if n else path.moveTo(pt)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width, a in ((8, 0.10), (3, 0.35), (1.2, 0.9)):
+                p.setPen(QPen(alpha(c2 if arm % 2 else QColor("#FF5CC8"), a), width, Qt.PenStyle.SolidLine,
+                              Qt.PenCapStyle.RoundCap))
+                p.drawPath(path)
+        core = QRadialGradient(cen, h * 0.4)
+        core.setColorAt(0, alpha("#FFFFFF", 0.85))
+        core.setColorAt(1, alpha(c2, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(core)
+        p.drawEllipse(cen, h * 0.4, h * 0.4)
+    if gold > 0:
+        paint_gold(p, rect, gold, now)
     shade = QLinearGradient(rect.topLeft(), rect.bottomLeft())       # a soft shade at the bottom, for text on top
     shade.setColorAt(0.55, alpha("#000000", 0.0))
     shade.setColorAt(1.0, alpha("#000000", 0.35))
     p.fillRect(rect, shade)
     p.restore()
 
+
+
+GOLD_NAMES = {1: "Gold I", 2: "Gold II", 3: "Gold III"}
+
+
+def paint_gold(p: QPainter, rect: QRectF, level: int, now: float = 0.0) -> None:
+    """A banner worn for many hours turns gold: I a gold tint and edge, II a richer gold with a moving shine,
+    III solid gold with a bright sweep and sparkles."""
+    level = max(0, min(3, int(level)))
+    if not level:
+        return
+    p.save()
+    p.setPen(Qt.PenStyle.NoPen)
+    tint = QLinearGradient(rect.topLeft(), rect.bottomRight())
+    k = (0.45, 0.7, 0.95)[level - 1]
+    tint.setColorAt(0, alpha("#FFD978", k))
+    tint.setColorAt(0.5, alpha("#E0A93A", k))
+    tint.setColorAt(1, alpha("#8A5A14", k))
+    p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Overlay)
+    p.fillRect(rect, tint)
+    if level >= 2:                                         # the colours of the banner turn to gold
+        gray = QLinearGradient(rect.topLeft(), rect.bottomLeft())
+        gray.setColorAt(0, alpha("#FFE9A8", 0.5 if level == 2 else 0.95))
+        gray.setColorAt(1, alpha("#C98F2A", 0.5 if level == 2 else 0.95))
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Multiply)
+        p.fillRect(rect, gray)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Screen)
+        p.fillRect(rect, alpha("#6B4510", 0.35 if level == 2 else 0.7))
+    p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+    if level >= 2:                                         # a band of light sweeping across
+        t = (now * (0.25 if level == 2 else 0.4)) % 1.6 - 0.3
+        x = rect.left() + t * rect.width()
+        sweep = QLinearGradient(QPointF(x - rect.width() * 0.15, 0), QPointF(x + rect.width() * 0.15, 0))
+        sweep.setColorAt(0, alpha("#FFFFFF", 0.0))
+        sweep.setColorAt(0.5, alpha("#FFF6D8", 0.35 if level == 2 else 0.55))
+        sweep.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.fillRect(rect, sweep)
+    if level >= 3:                                         # sparkles
+        for i in range(10):
+            a = max(0.0, math.sin(now * 2.3 + i * 1.9))
+            if a < 0.2:
+                continue
+            c = QPointF(rect.left() + (i * 157 % 1000) / 1000 * rect.width(),
+                        rect.top() + (i * 83 % 1000) / 1000 * rect.height() * 0.8 + rect.height() * 0.05)
+            s = 2.5 + 2.5 * a
+            star = QPainterPath(QPointF(c.x(), c.y() - s))
+            for pt in ((c.x() + s * 0.25, c.y() - s * 0.25), (c.x() + s, c.y()), (c.x() + s * 0.25, c.y() + s * 0.25),
+                       (c.x(), c.y() + s), (c.x() - s * 0.25, c.y() + s * 0.25), (c.x() - s, c.y()),
+                       (c.x() - s * 0.25, c.y() - s * 0.25)):
+                star.lineTo(QPointF(*pt))
+            star.closeSubpath()
+            p.setBrush(alpha("#FFF6D8", 0.9 * a))
+            p.drawPath(star)
+    edge = QLinearGradient(rect.topLeft(), rect.bottomRight())
+    edge.setColorAt(0, QColor("#FFE7A0"))
+    edge.setColorAt(0.5, QColor("#E8C26A"))
+    edge.setColorAt(1, QColor("#9C6B1E"))
+    p.setPen(QPen(edge, (1.2, 2.0, 2.8)[level - 1]))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.drawRect(rect.adjusted(0.5, 0.5, -0.5, -0.5))      # clipped to the rounded banner
+    p.restore()
+
+
+def gold_steps_text(steps, minutes: int) -> str:
+    """'Gold I in 6 h' / 'Gold III' for the progress of one banner."""
+    hours = [int(h) for h in (steps or [])][:3]
+    level = sum(1 for h in hours if minutes >= h * 60)
+    if level >= len(hours) or not hours:
+        return tr(GOLD_NAMES.get(level, "")) if level else ""
+    left = max(1, math.ceil((hours[level] * 60 - minutes) / 60))
+    return tr("{gold} in {h} h", gold=tr(GOLD_NAMES[level + 1]), h=left)
 
 _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"), "ink": ("#0B0E10", "#FFFFFF"),
                "neon": ("#2EF2FF", "#2EF2FF"), "dashed": ("#FFFFFF", "#9AA4AD"), "twin": ("#FF5CB8", "#2EC5FF"),

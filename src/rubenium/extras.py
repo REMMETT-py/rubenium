@@ -17,7 +17,7 @@ from PyQt6.QtGui import QColor, QFont, QGuiApplication, QIcon, QPainter, QPen
 from PyQt6.QtWidgets import QFileIconProvider, QWidget
 
 from . import win
-from .core import CROSSHAIR, S, TEXT, alpha, font, mix, ui
+from .core import CROSSHAIR, Net, S, TEXT, alpha, font, mix, ui
 from .engines import OVERLAY_FLAGS
 
 log = logging.getLogger("rubenium.extras")
@@ -808,6 +808,15 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("3.0.0", ['Duels: choose any bet with a slider, from 10 coins up to 80% of the lower balance of the two players',
+               'Song History moved to the Social tab, and friends can now see what you played (you can turn this off)',
+               'Offline mode in Settings: disconnects Rubenium from the internet until you go back online',
+               '10 new banners: Carbon, Dunes, Honeycomb, Comet, Deep Sea, City Nights, Neon, Fireflies, Storm and Vortex',
+               'Gold banners: a banner turns Gold I, II and III the longer you wear it (rarer banners need more hours)',
+               'Balls and banners re-ranked: the animated designs are now the rarer ones',
+               'The Social tab refreshes by itself every 10 seconds',
+               'Fixed: holding the ball over a game menu (Rocket League) could stop the menu from opening',
+               'Cleaner, shorter texts across the app']),
     ("3.0", ['Style cases: every ball, line, font, theme, banner and frame can now come from a case (Style, Theme and Profile cases)',
              'Rare drops feel rare: the case strip shows the real odds, never repeats an item, and only Epic or better get rays, flashes and fanfare',
              'One account can be CREATED per PC; you can log into your account from any PC',
@@ -2122,6 +2131,8 @@ class Updater(QObject):
             ctx = ssl.create_default_context(cafile=certifi.where())
         except Exception:  # noqa: BLE001
             ctx = ssl.create_default_context()
+        if Net.blocked:
+            raise OSError("offline mode")
         req = urllib.request.Request(url, headers={"User-Agent": "Rubenium-updater", "Accept": accept})
         with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:  # noqa: S310
             data = resp.read(limit + 1)
@@ -2179,6 +2190,8 @@ class Updater(QObject):
             ctx = ssl.create_default_context(cafile=certifi.where())
         except Exception:  # noqa: BLE001
             ctx = ssl.create_default_context()
+        if Net.blocked:
+            raise OSError("offline mode")
         req = urllib.request.Request(url, headers={"User-Agent": "Rubenium-updater"})
         with urllib.request.urlopen(req, timeout=30, context=ctx) as resp, open(dest, "wb") as out:  # noqa: S310
             total = int(resp.headers.get("Content-Length") or 0)

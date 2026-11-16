@@ -1747,19 +1747,18 @@ class SettingsPage(Page):
                 line.addWidget(pw, 1)
                 line.addWidget(out, 1)
                 lay.addLayout(line)
-                lay.addWidget(heading(tr("Music")))
-                line = hbox(spacing=6)
-                hist = Button(tr("Song history"), "ghost", 30, icon="note")
+                lay.addWidget(heading(tr("Connection")))
+                off = Toggle(bool(cfg["offline_mode"]))
 
-                def open_hist() -> None:
-                    from .hub import HistoryWindow
-                    ctx._hist = HistoryWindow(ctx)
-                hist.clicked.connect(open_hist)
+                def set_off(v: bool) -> None:
+                    if not ctx.set_offline_mode(v):
+                        off.set_checked(not v)          # not allowed right now: the switch goes back
+                off.toggled_by_user.connect(set_off)
+                lay.addWidget(row(tr("Offline mode"), off))
+                lay.addWidget(Label(tr("Disconnects Rubenium from the internet. Online features and time rewards are paused."), 10, TEXT_DIM, wrap_w=self.W))
                 tour = Button(tr("Show the tour again"), "ghost", 30)
                 tour.clicked.connect(ctx.start_tutorial)
-                line.addWidget(hist, 1)
-                line.addWidget(tour, 1)
-                lay.addLayout(line)
+                lay.addWidget(tour)
                 lay.addSpacing(S(8))
                 gone = Button(tr("Delete account"), "quiet", 24)
                 gone.setFixedWidth(max(S(120), gone.sizeHint().width()))
