@@ -126,3 +126,14 @@ bought, so the key is the real limit on cases; a gift now costs its price and 1 
 - Quick sell for badges: 3% of worth (at least 25% of base value).
 - Titanium badges are sold in the shop at their worth (50 x value). Gold and Mythic are never sold.
 - Sets: 5 Shiny 60 000 + 10 keys, 3 Titanium 250 000 + 20, a Gold 500 000 + 25, every Legendary 150 000 + 20, the 6 Mythics 5 000 000 + 100.
+
+## 3.2
+- Keys: 1 every 30 minutes, earning stops at 12. Every existing player was filled to 12 once. Keys can be traded.
+- Cases: bought with coins (up to 10 at a time) into "Your cases", opened with 1 key (style cases need none). A gifted case costs the buyer coins only; the receiver opens it with a key.
+- Worth: every item has one, from its base value x design rank (0.85-1.25) x colour rank (0.95-1.05), rounded. Shop price = worth x 1.2 (the shop tax, `shop_tax`), minus any sale. Limited items are never sold in the shop.
+- Drop chances: every item of a case has its own weight (1 / worth factor), shown in the case's list.
+- Coinflip: up to 6 items a side; the joiner must be within 10% of the creator's worth and has 30 s; flip 15 s after lock-in; chance = share of the pot, clamped 49-51%; no fee. One open coinflip at a time; it closes after 5 minutes with nobody in. Decided at lock-in, items moved once.
+- Mini Golf: open lobbies (one per player, 5 minutes), 5 holes from 24.
+- Roulette: 25 pockets, 12 red and 12 black pay x2, 1 gold pays x24 (96% return). Hi-Lo: each step pays (1 / chance) x 0.985.
+- Chat: 300 characters, 1.5 s between messages, 5 per 10 s, the same text not again within 60 s.
+- Advent calendar: Dec 1-24 one door a day (coins, keys, limited looks and cases), big door on the 25th: 10 000 coins, 6 keys, North Star banner and frame, 3 Winter Cases.

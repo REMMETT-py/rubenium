@@ -83,3 +83,10 @@ Choices made where the request left room, newest last.
 - Password help: requests carry the PC id; the admin sees if it came from the account's own PC. The new password is shown
   only to the PC that asked, for one day, and every session of the account is logged out.
 - Update lock: the app sends its build number; the admin can make older builds unable to play online.
+
+## 3.2
+
+- ONLINE mode is the same MainWindow with columns: every page is reused, nothing is drawn twice.
+- Coinflip result is picked by the server at lock-in and hidden until the coin lands; items move once in `rb_flip_settle`, so a crash or a reload can never copy or undo anything. Closing or leaving before lock-in gives the items back.
+- Leaving online mode (or quitting) calls `rb_online_leave`: open lobbies close, a joined coinflip that is not locked is left, a live giveaway entry is dropped. The user is told first in one message.
+- Old apps calling `rb_golf_invite` or `rb_slots` get "update needed".

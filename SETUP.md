@@ -16,3 +16,4 @@
 13. Then run `017_quick_fixes.sql` once (closes the OG tag and the OG event, worth = shop price everywhere, better quick sell for badges, 16 golf holes). Safe to run again.
 14. Then run `018_v31.sql` once (3.1: streak AFK bonus, new quests, Golden Wheel, Timing, 5 new cases, Titanium in the shop, gold banner choice, admin test tools). Safe to run again. Apps older than 3.1 must update.
 15. Then run `019_fixes31.sql` once (Royal Case nerf, style cases without a key, market usual price fixed). Safe to run again.
+16. Then run `020_v32.sql` once (3.2: ONLINE mode, Coinflip, golf and coinflip lobbies, 5 golf holes, Roulette and Hi-Lo, cases bought with coins and opened with a key, tradeable keys, 1 key every 30 min up to 12 and a full key wallet for everyone, item worth and 20% shop tax, new cosmetics and cases, advent calendar, chat limits). Safe to run again. Apps older than 3.2 must update.

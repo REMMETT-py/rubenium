@@ -1,3 +1,15 @@
+Rubenium 3.2 - ONLINE
+
+- ONLINE button: Games, Shop and Social open together in a big menu that drops from the top
+- Coinflip duel (up to 6 items each, 49-51% chance) and Mini Golf now use open lobbies, no invitations
+- Mini Golf: 5 holes a match, 8 new holes
+- New casino games: Roulette and Hi-Lo (slot machine removed)
+- Cases are bought with coins and opened with a key; keys can be traded; 1 key every 30 min, up to 12
+- Every item has a worth; shop price = worth + 20% tax
+- New cases, banners, frames, balls, lines and themes; advent calendar in December
+- Play asks which music app you use; adverts can be muted
+- Chat wraps long messages, 300 characters max, anti-spam; Timing instant; AFK timer moves; long texts fit
+
 Rubenium 3.1 - fixes
 
 - Royal Case pays less; style cases no longer need a key
