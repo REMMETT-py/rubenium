@@ -30947,7 +30947,7 @@ def ask_music_app(ctx, then_open: bool = True) -> None:
     ctx.window.embed(w)
 
 
-class AppTile(QWidget):
+class MusicAppTile(QWidget):
     picked = pyqtSignal(str)
 
     def __init__(self, app: tuple, current: bool) -> None:
@@ -31010,7 +31010,7 @@ class MusicAppPicker(QWidget):
         gl.setContentsMargins(0, 0, 0, 0)
         gl.setSpacing(S(6))
         for i, app in enumerate(MUSIC_APPS):
-            t = AppTile(app, ctx.cfg["music_app"] == app[0])
+            t = MusicAppTile(app, ctx.cfg["music_app"] == app[0])
             t.picked.connect(self._pick)
             gl.addWidget(t, i // 2, i % 2)
         lay.addWidget(grid)
