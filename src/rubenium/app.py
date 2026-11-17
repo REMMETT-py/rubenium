@@ -376,14 +376,17 @@ class App(QObject):
         if self.welcome is not None:               # the welcome screen is part of the test: press Launch
             self.welcome.launch(force=True)
             return QTimer.singleShot(3500, self._selftest)
-        steps = [w.expand] + [lambda k=k: w.goto(k) for k, _, _ in TABS]
+        steps = [w.expand] + [lambda k=k: w.goto(k) for k, _, _ in TABS if k != "online"]
         steps += [lambda t=t: self.preview_theme(t["id"]) for t in extras.THEMES]      # every theme paints
         steps += [lambda: self.preview_theme("")]
         steps += [lambda: self.set_language("fr"), lambda: w.goto("home"), lambda: w.goto("rl"),
                   lambda: self.set_language(lang or "en"), w.collapse, w.expand, w.collapse]
+        steps += [lambda: self.enter_online(), lambda: None, lambda: None,      # 3.2: the online menu opens and closes
+                  lambda: self.leave_online(ask=False), lambda: None, lambda: None, lambda: None]
 
         def run(i: int = 0) -> None:
             if i < len(steps):
+                log.info("SELFTEST step %d", i)
                 try:
                     steps[i]()
                 except Exception as exc:  # noqa: BLE001
