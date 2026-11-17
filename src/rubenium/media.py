@@ -327,12 +327,7 @@ class WindowsBackend:
 
     def send(self, command: str, arg, state: Optional[TrackState]) -> None:
         session = self._pick(self._sessions())
-        if session is None:
-            if command == CMD_TOGGLE:          # nothing is running: open the default player
-                try:
-                    os.startfile("spotify:")   # type: ignore[attr-defined]  # noqa: S606
-                except OSError:
-                    pass
+        if session is None:                    # 3.2: nothing is running: the app opens the music app the user picked
             return
         if command == CMD_PREV:
             self._run(session.try_skip_previous_async())

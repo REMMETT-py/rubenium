@@ -335,6 +335,9 @@ class HomePage(Page):
         self.art.set_pixmap(pixmap)
 
     def _toggle(self) -> None:
+        if self.ctx.state.status is Status.NOT_RUNNING:          # 3.2: no music app open: yours opens (asked once)
+            from .music3 import play_with_nothing_open
+            return play_with_nothing_open(self.ctx)
         playing_now = self.ctx.state.status is Status.PLAYING
         self._opt_playing = not playing_now           # optimistic flip, corrected by the next real state
         self._opt_until = time.monotonic() + 0.8
@@ -380,7 +383,10 @@ class HomePage(Page):
         elif st.status is Status.STOPPED:
             title, artist = tr("Nothing is playing"), tr("Press play in your music app")
         else:
-            title, artist = tr("No music app is open"), tr("Press play to open Spotify")
+            from .music3 import app_name
+            mine = app_name(self.ctx.cfg["music_app"])
+            title, artist = tr("No music app is open"), (tr("Press play to open {app}", app=mine) if mine else
+                                                         tr("Press play to open your music app"))
         self.title.set_text(title)
         self.artist.set_text(artist)
         self.setToolTip(st.message if st.status is Status.UNAVAILABLE else "")
@@ -1555,6 +1561,13 @@ class SettingsPage(Page):
             lay.addWidget(Label(tr("Show / hide key"), 11.5, TEXT))
             lay.addWidget(hk)
             note(tr("Tap it once to open or close Rubenium, even in a game."))
+            lay.addWidget(heading(tr("Music")))                 # 3.2
+            from .music3 import app_name, ask_music_app
+            app_btn = Button(app_name(cfg["music_app"]) or tr("Ask me"), "ghost", 30)
+            app_btn.clicked.connect(lambda: ask_music_app(ctx, then_open=False))
+            lay.addWidget(row(tr("Play opens"), app_btn))
+            toggle(tr("Mute adverts"), "ad_mute", after=lambda v: (None if v else ctx.admute.release()))
+            note(tr("While the music app plays an advert, its sound is muted, then comes back with the music."))
             lay.addWidget(heading(tr("Games")))
             toggle(tr("Game mode"), "game_mouse")
             note(tr("In fullscreen games the mouse goes through Rubenium, so it never gets in the way."))
@@ -1583,7 +1596,7 @@ class SettingsPage(Page):
             lay.addWidget(heading(tr("Tabs in the menu bar")))
             from .pages2 import TABS
             for key, _icon, label in TABS:             # Home, Lyrics and Settings always stay
-                if key in LOCKED_TABS or key in ("giveaway", "admin"):
+                if key in LOCKED_TABS or key in ("giveaway", "admin", "online"):      # ONLINE always stays
                     continue
                 t = Toggle(bool(cfg["news_tab"]) if key == "new" else not cfg["tabs_off"].get(key))
                 t.toggled_by_user.connect(lambda v, k=key: ctx.set_tab(k, v))

@@ -76,9 +76,20 @@ class CoinBar(QWidget):
         p.setFont(font(11, QFont.Weight.DemiBold))
         ec = self.ctx.econ
         bonus = ec.streak_bonus()
-        text = f"+{int(ec.cfg.get('coin_amount', 10)) + bonus}  ·  {clock_text(ec.next_coin_s())}"
+        text = f"+{int(float(ec.cfg.get('coin_amount', 10) or 10)) + bonus}  ·  {clock_text(ec.next_coin_s())}"
+        tip = tr("AFK coins: +{n} every {m} minutes while Rubenium is in use (music playing, or the mouse or keyboard "
+                 "used in the last 10 minutes).", n=int(float(ec.cfg.get('coin_amount', 10) or 10)) + bonus,
+                 m=int(float(ec.cfg.get('coin_every_min', 10) or 10)))
         if not ec.ready:
             text = tr("Offline") if self.ctx.online.offline or not self.ctx.online.logged_in() else "…"
+        elif ec.afk_capped():
+            text = tr("Daily max reached")
+            tip = tr("You earned every AFK coin for today. They start again at midnight.")
+        elif ec.afk_paused():
+            text = tr("AFK paused")
+            tip = tr("Paused: play music or use your PC to keep earning. Only one PC earns at a time.")
+        if self.toolTip() != tip:
+            self.setToolTip(tip)
         p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
         if ec.ready and bonus and not self.keys:            # the streak buff, visible
             p.setFont(font(9.5, QFont.Weight.Bold))
@@ -93,8 +104,7 @@ class CoinBar(QWidget):
             p.setPen(QColor("#FFB16B"))
             p.setFont(font(9.5, QFont.Weight.Bold))
             p.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), chip_t)
-            self.setToolTip(tr("Every day of your login streak adds {n} coins to every 10 minutes (up to {m} days).",
-                               n=int(ec.cfg.get("streak_coin", 5)), m=int(ec.cfg.get("streak_coin_days", 20))))
+            pass
         if self.keys:
             tw = p.fontMetrics().horizontalAdvance(text)
             n = str(min(self.ctx.wallet.keys(), 99))
@@ -216,7 +226,7 @@ class ThemeCard(QAbstractButton):
             p.restore()
             shop = th["id"].startswith("theme:")              # a shop theme: its price in coins
             paint_price(p, QRectF(foot.left() + S(18), foot.top(), foot.width() - S(18), foot.height()),
-                        int(ctx.econ.info(th["id"]).get("price") or 0) if shop else ctx.wallet.hours_for(ident), 10.5,
+                        int(ctx.econ.shop_price(th["id"]) or 0) if shop else ctx.wallet.hours_for(ident), 10.5,
                         GOLD_TEXT if nxt else TEXT_DIM, centre=False, hours=not shop)
 
 
@@ -541,8 +551,9 @@ class ShopPage(Page):
     ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "timer"]
     GET = [1, 7, 3, 4]                     # getting things: shop, today's deals, cases, market
     MINE = [5, 2, 6, 0]                    # what is yours: inventory, collection, sets, your style
-    NOTES = ["Your profile, your colours and the looks you unlock with time.", "Balls, lines, fonts, themes, banners and frames to buy.",
-             "Your collection: click a badge to see every colour.", "Open cases for coins and badges. Gifts are free.",
+    NOTES = ["Your profile, your colours and the looks you unlock with time.",
+             "Balls, lines, fonts, themes, banners and frames. Shop price = worth + 20% tax.",
+             "Your collection: click a badge to see every colour.", "Buy cases with coins, open them with a key.",
              "Buy and sell with other users.", "Everything you own. Sell, show or trade it.",
              "Collect full sets for a big bonus.", "4 items cheaper today. New deals every day at midnight."]
 
@@ -735,13 +746,14 @@ class ShopPage(Page):
             self.luck.set_text(head + "\n" + tr("Chance of this exact badge per open:") + " " + best)
         else:
             self.luck.set_text(head + "\n" + tr("Not in any case right now."))
-        price = ec.price(item)
+        price = ec.shop_price(item)
         if ec.owns(item):
             on = item in worn(self.ctx)
             self.badge_btn.set_text(tr("Take off") if on else tr("Show on the music tab"))
             self.badge_btn.set_kind("ghost" if on else "primary")
         elif price is not None:
-            self.badge_btn.set_text(tr("Buy for {n} coins", n=coins_text(price)))
+            self.badge_btn.set_text(tr("Buy for {n} coins", n=coins_text(price)) + "  " +
+                                    tr("(worth {w} + {t}% tax)", w=coins_text(ec.worth(item)), t=int(round(ec.tax() * 100))))
             self.badge_btn.set_kind("primary")
         else:
             self.badge_btn.set_text(tr("Only from cases"))
@@ -755,7 +767,7 @@ class ShopPage(Page):
         if not ok:
             sfx.play("off")
             self.ctx.toast(tr(str(data)), "warn")
-        if getattr(self, "picker", None) is not None and self.ctx.window.current == "themes":
+        if getattr(self, "picker", None) is not None and self.ctx.window.showing("themes"):
             try:
                 self._variant(self.picker.var)
                 self.picker.restart()
@@ -777,7 +789,7 @@ class ShopPage(Page):
                 return ctx.toast(tr("Your showcase is full: take one off first"), "warn")
             sfx.play("pick")
             return ec.wear(free, item, self._answer)
-        price = ec.price(item)
+        price = ec.shop_price(item)
         if price is None:
             self.ctx.shop_tab = 2
             self.ctx.shop_badge = None
@@ -824,7 +836,7 @@ class ShopPage(Page):
                 card.update()
 
     def _cases(self, lay) -> None:
-        from .collection import CASE_NAMES, CaseCard, CaseReel, OddsTable
+        from .collection import CASE_NAMES, CaseCard, CaseReel, CaseShelf, OddsTable
         ctx, ec = self.ctx, self.ctx.econ
         if not ec.ready or not ec.cases:
             return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to open cases"),
@@ -839,23 +851,35 @@ class ShopPage(Page):
             from .collection import case_kind
             from .games import KeyCard
             lay.addWidget(KeyCard(ctx))
+            owned = [c for c in ec.cases if int(ec.stock.get(c["id"], 0) or 0) > 0]
+            lay.addWidget(heading(tr("Your cases")))
+            if owned:
+                lay.addWidget(CaseShelf(self, owned))
+                lay.addWidget(Label(tr("Click a case to open it. Opening uses 1 key (style cases need none)."), 10.5, TEXT_DIM,
+                                    wrap_w=self.W))
+            else:
+                lay.addWidget(Label(tr("Cases you buy or get as gifts wait here until you open them with a key."), 10.5,
+                                    TEXT_DIM, wrap_w=self.W))
             lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
                 groups = (("coins", tr("Coin cases"), tr("Mostly coins, and badges of every rarity too.")),
                           ("hunt", tr("Rare hunts"), tr("Fewer coins, much better odds for rare badges.")),
-                          ("style", tr("Style cases"), tr("Balls, lines, fonts, themes, banners and frames.")))
+                          ("style", tr("Style cases"), tr("Balls, lines, fonts, themes, banners and frames. No key needed.")))
                 for kind, title, sub in groups:
                     lay.addWidget(heading(title))
                     lay.addWidget(Label(sub, 10.5, TEXT_DIM, wrap_w=self.W))
-                    for case in sorted((c for c in ec.cases if case_kind(c["id"]) == kind), key=lambda c: int(c["price"])):
+                    for case in sorted((c for c in ec.cases if case_kind(c["id"]) == kind and not c.get("limited")),
+                                       key=lambda c: int(c["price"])):
                         lay.addWidget(CaseCard(self, case))
                 for case in ec.cases:                         # a case the admin added later
-                    if not case_kind(case["id"]):
+                    if not case_kind(case["id"]) and not case.get("limited"):
                         lay.addWidget(CaseCard(self, case))
             else:
                 for case in ec.cases:
                     lay.addWidget(CaseCard(self, case))
-            lay.addWidget(Label(tr("Each case costs coins and 1 key."), 10.5, TEXT_DIM, wrap_w=self.W))
+            lay.addWidget(Label(tr("Buy cases with coins: they go to Your cases. Open them with a key (1 key every {m} min, "
+                                   "up to {n}).", m=int(float(ec.cfg.get("key_every_min", 30) or 30)),
+                                   n=int(float(ec.cfg.get("key_cap", 12) or 12))), 10.5, TEXT_DIM, wrap_w=self.W))
             return
         case = self.DAILY if cid == "daily" else next((c for c in ec.cases if c["id"] == cid), ec.cases[0])
         top = hbox(spacing=8)
@@ -867,28 +891,90 @@ class ShopPage(Page):
         self.reel = CaseReel(self, case)
         self.reel.done.connect(self._opened)
         lay.addWidget(self.reel)
-        gifts = int(ec.stock.get(case["id"], 0) or 0) if cid != "daily" else 0
-        from .collection import case_kind
-        text = (tr("Open for free") if cid == "daily" else
-                tr("Open your gift for free ({n} left)", n=gifts) if gifts else
-                (tr("Open for {n} coins", n=coins_text(case["price"])) if case_kind(case["id"]) == "style" and "timing_on" in ec.cfg
-                 else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))))
-        self.open_btn = Button(text, "primary", 40)
-        self.open_btn.clicked.connect(lambda: self._open(case))
-        lay.addWidget(self.open_btn)
+        from .collection import case_keyless
+        self.case_now = case
+        if cid == "daily":
+            self.open_btn = Button(tr("Open for free"), "primary", 40)
+            self.open_btn.clicked.connect(lambda: self._open(case))
+            lay.addWidget(self.open_btn)
+            self.buy_btn = None
+        else:
+            self.have_lbl = Label("", 11.5, TEXT, bold=True)
+            lay.addWidget(self.have_lbl)
+            row_ = hbox(spacing=6)
+            self.open_btn = Button("", "primary", 40, icon="" if case_keyless(case) else "key")
+            self.open_btn.clicked.connect(lambda: self._open(case))
+            row_.addWidget(self.open_btn, 3)
+            self.buy_btn = None
+            if not case.get("limited"):
+                self.buy_btn = Button(tr("Buy {n}", n=coins_text(case["price"])), "ghost", 40)
+                self.buy_btn.clicked.connect(lambda: self._buy(case, 1))
+                row_.addWidget(self.buy_btn, 2)
+                five = Button("×5", "ghost", 40)
+                five.setToolTip(tr("Buy 5 for {n}", n=coins_text(case["price"] * 5)))
+                five.clicked.connect(lambda: self._buy(case, 5))
+                five.setFixedWidth(S(52))
+                row_.addWidget(five)
+            lay.addLayout(row_)
+            self._case_texts()
         if cid != "daily":
-            from .collection import CASE_NOTES, case_kind
+            from .collection import CASE_NOTES
             if case["id"] in CASE_NOTES:
                 lay.addWidget(Label(tr(CASE_NOTES[case["id"]]), 11, TEXT_DIM, wrap_w=self.W))
-            gift = Button(tr("Gift this case to a friend"), "ghost", 30)
-            gift.clicked.connect(lambda: self._gift(case))
-            lay.addWidget(gift)
+            if not case.get("limited"):
+                gift = Button(tr("Gift this case to a friend"), "ghost", 30)
+                gift.clicked.connect(lambda: self._gift(case))
+                lay.addWidget(gift)
         if cid != "daily":
             lay.addWidget(heading(tr("Chances")))
             lay.addWidget(OddsTable(case, self.W))
+            from .collection import DropList
+            drops = DropList(self, case)
+            if drops.rows:
+                lay.addWidget(heading(tr("Every item and its chance")))
+                lay.addWidget(drops)
         else:
             lay.addWidget(Label(tr("Once a day: coins, a key or a badge."),
                                 10.5, TEXT_DIM, wrap_w=self.W))
+
+    def _case_texts(self) -> None:
+        """The open and buy buttons say what you have and what it costs."""
+        from .collection import case_keyless
+        case = getattr(self, "case_now", None)
+        if case is None or case.get("id") == "daily":
+            return
+        ec = self.ctx.econ
+        have = int(ec.stock.get(case["id"], 0) or 0)
+        try:
+            self.have_lbl.set_text(tr("You have {n}", n=have) if have else tr("You have none yet: buy one first"))
+            if case_keyless(case):
+                self.open_btn.set_text(tr("Open (no key)"))
+            else:
+                self.open_btn.set_text(tr("Open  ·  1 key"))
+            self.open_btn.set_kind("primary" if have else "ghost")
+        except RuntimeError:
+            pass
+
+    def _buy(self, case: dict, n: int) -> None:
+        ctx, ec = self.ctx, self.ctx.econ
+        if self.reel is not None and self.reel.busy() or getattr(self, "_asking", False):
+            return
+        cost = int(case["price"]) * n
+        if cost > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(cost - ec.coins)), "warn")
+        self._asking = True
+
+        def got(ok: bool, data) -> None:
+            self._asking = False
+            if not ok:
+                sfx.play("off")
+                return ctx.toast(tr(str(data)), "warn")
+            sfx.play("on")
+            ec.stock[case["id"]] = int(data.get("stock") or 0)
+            ec.changed.emit()
+            ctx.toast(tr("Added to Your cases") if n == 1 else tr("{n} cases added to Your cases", n=n))
+            self._case_texts()
+        ec.call("rb_case_buy", {"which": case["id"], "how_many": n}, got, once=True)
 
     def open_case(self, cid) -> None:
         if self.reel is not None and self.reel.busy():
@@ -905,16 +991,16 @@ class ShopPage(Page):
         daily = case["id"] == "daily"
         if daily and self.daily_wait() != 0:
             return ctx.toast(tr("Not ready yet"), "warn")
-        gifted = not daily and int(ec.stock.get(case["id"], 0) or 0) > 0        # a gift: free, no coins and no key
-        if gifted and ec.server_old and ec.keys < 1:
-            return ctx.toast(tr("Gifts open for free once the server update is done. Until then they need 1 key."), "warn")
-        from .collection import case_kind
-        keyless = case_kind(case["id"]) == "style" and "timing_on" in ec.cfg      # 3.1: style cases need no key
-        gold = not daily and not gifted and not keyless and ec.gold_keys > 0      # a gold key is used before a normal one
-        if not daily and not gifted and not keyless and ec.keys < 1 and not gold:
-            return ctx.toast(tr("You need a key: 1 key every 15 minutes"), "warn")
-        if not daily and not gifted and case["price"] > ec.coins:
-            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(case["price"] - ec.coins)), "warn")
+        from .collection import case_keyless
+        have = 0 if daily else int(ec.stock.get(case["id"], 0) or 0)
+        if not daily and have < 1:
+            if case.get("limited"):
+                return ctx.toast(tr("You do not have this case"), "warn")
+            return ctx.toast(tr("Buy the case first: it goes to Your cases"), "warn")
+        keyless = case_keyless(case)
+        gold = not daily and not keyless and ec.gold_keys > 0      # a gold key is used before a normal one
+        if not daily and not keyless and ec.keys < 1 and not gold:
+            return ctx.toast(tr("You need a key: 1 key every {m} minutes", m=int(float(ec.cfg.get("key_every_min", 30) or 30))), "warn")
         self._asking = True
         self._lock(True)
         ec.holding = True
@@ -960,15 +1046,7 @@ class ShopPage(Page):
                 sfx.play("on")
                 self.ctx.toast(tr("Lucky drop: ×3! +{n} coins", n=coins_text(won)))
             from .collection import case_kind
-            left = int(ec.stock.get(cid, 0) or 0) if cid and cid != "daily" else 0
-            case = next((c for c in ec.cases if c["id"] == cid), None)
-            if case is not None:
-                try:
-                    self.open_btn.set_text(tr("Open your gift for free ({n} left)", n=left) if left else
-                                           (tr("Open for {n} coins", n=coins_text(case["price"])) if case_kind(case["id"]) == "style" and "timing_on" in ec.cfg
-                 else tr("Open for {n} coins + 1 key", n=coins_text(case["price"]))))
-                except RuntimeError:
-                    pass
+            self._case_texts()
         QTimer.singleShot(900, lambda: self._lock(False))
 
     def _gift(self, case: dict) -> None:
@@ -981,8 +1059,6 @@ class ShopPage(Page):
         def send(name: str, dlg) -> None:
             if case["price"] > ec.coins:
                 return dlg.say(tr("Not enough coins"))
-            if ec.keys < 1 and "case_lucky_pct" in ec.cfg:
-                return dlg.say(tr("You need a key: 1 key every 15 minutes"))
 
             def done(ok: bool, data) -> None:
                 if not ok:
@@ -993,14 +1069,14 @@ class ShopPage(Page):
             ec.call("rb_case_gift", {"name": name, "which": case["id"]}, done, once=True)
         ctx._ask = AskDialog(ctx, tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), tr("Friend's username"),
                              tr("Gift for {n}", n=coins_text(case["price"])), send, 10,
-                             tr("It costs {n} coins and 1 key. Your friend opens it for free. 3 gifts a day at most.",
-                                n=coins_text(case["price"])) if "case_lucky_pct" in ec.cfg else
-                             tr("Your friend opens it for free. 3 gifts a day at most."))
+                             tr("It costs {n} coins (no key). It goes to your friend's cases; they open it with a key. "
+                                "3 gifts a day at most.", n=coins_text(case["price"])))
 
     def _lock(self, on: bool) -> None:
         try:
-            for wdg in (self.open_btn, self.case_back, *getattr(self, "navs", [])):
-                wdg.setEnabled(not on)
+            for wdg in (self.open_btn, self.case_back, getattr(self, "buy_btn", None), *getattr(self, "navs", [])):
+                if wdg is not None:
+                    wdg.setEnabled(not on)
         except RuntimeError:
             pass
 

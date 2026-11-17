@@ -19,24 +19,33 @@ from .widgets import Tween, draw_icon
 
 SHOWCASE = 3
 SLOTS = ("badge1", "badge2", "badge3")
-CASE_NAMES = {"starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing",
+CASE_NAMES = {"lucky": "Lucky Case", "frames": "Frame Case", "cosmos": "Cosmic Hunt", "winter": "Winter Case",
+              "giftbox": "Gift Box", "starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing",
               "painter": "Painter's Case", "premium": "Premium Case", "jackpot": "Jackpot Case",
               "titan": "Titanium Case", "vault": "Legend Vault", "mythic": "Mythic Hunt", "daily": "Daily Case",
               "style": "Style Case", "themes": "Theme Case", "profile": "Profile Case",
               "pocket": "Pocket Case", "elite": "Elite Case", "royal": "Royal Case", "shiny": "Shiny Hunt",
               "banners": "Banner Case"}
-CASE_COLOURS = {"starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
+CASE_COLOURS = {"lucky": "#57E389", "frames": "#C99BFF", "cosmos": "#5B6CFF", "winter": "#9FE3FF", "giftbox": "#FF4F6D",
+                "starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
                 "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0",
                 "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF",
                 "pocket": "#9AD27A", "elite": "#3DE0A0", "royal": "#E8C26A", "shiny": "#E6F2FF", "banners": "#FF6FA8"}
-CASE_FRONT = {"starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"),
+CASE_FRONT = {"lucky": ("clover", "dice", "clover"), "frames": ("crown", "star", "crown"), "cosmos": ("planet", "comet", "saturn"),
+              "winter": ("snowflake", "star", "snowflake"), "giftbox": ("$", "heart", "$"),
+              "starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"),
               "gamble": ("dice", "skull", "dice"), "painter": ("feather", "quill", "drop"),
               "premium": ("sword", "bolt", "flame"), "jackpot": ("$", "$", "$"), "titan": ("shield", "rook", "anchor"),
               "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?"),
               "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame"),
               "pocket": ("clover", "heart", "note"), "elite": ("bolt", "crown", "comet"), "royal": ("crown", "trophy", "crown"),
               "shiny": ("drop", "comet", "drop"), "banners": ("flame", "crown", "feather")}
-CASE_NOTES = {"gamble": "High risk. Rare or better when it hits.",
+CASE_NOTES = {"lucky": "Cheap and lively: mostly coins, now and then a badge.",
+              "frames": "Frames for your profile picture, every rarity.",
+              "cosmos": "No Common badges: big odds for Legendary and Mythic.",
+              "winter": "Limited: Christmas looks you cannot buy anywhere else.",
+              "giftbox": "Limited: a present full of coins, sometimes a badge.",
+              "gamble": "High risk. Rare or better when it hits.",
               "painter": "Painted badges only.",
               "jackpot": "Coins only. Rare large payouts.",
               "titan": "Best odds for Titanium badges.",
@@ -50,16 +59,25 @@ CASE_NOTES = {"gamble": "High risk. Rare or better when it hits.",
               "royal": "For high rollers: the biggest coin drops in the game.",
               "shiny": "No Basic badges: the best odds for Shiny finishes.", "banners": "Banners only, every rarity."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
-COIN_CASES = ("pocket", "starter", "standard", "premium", "jackpot", "titan", "elite", "royal")
-HUNT_CASES = ("gamble", "painter", "vault", "shiny", "mythic")
-STYLE_CASES = ("style", "themes", "banners", "profile")
+COIN_CASES = ("pocket", "starter", "standard", "premium", "jackpot", "titan", "elite", "royal", "lucky")
+HUNT_CASES = ("gamble", "painter", "vault", "shiny", "mythic", "cosmos")
+STYLE_CASES = ("style", "themes", "banners", "profile", "frames")
 
 
 def case_kind(case_id: str) -> str:
-    """"coins", "hunt", or "" (before the 2.6.1 server update the old numbers are still live)."""
+    """"coins", "hunt", "style", "limited", or "" (before the 2.6.1 server update the old numbers are still live).
+    3.2: the server says it for every case."""
     if ECON is None or "case_lucky_pct" not in (ECON.cfg or {}):
         return ""
+    row = next((c for c in ECON.cases if c.get("id") == case_id), None)
+    if row is not None and row.get("kind"):
+        return str(row["kind"])
     return "coins" if case_id in COIN_CASES else "hunt" if case_id in HUNT_CASES else "style" if case_id in STYLE_CASES else ""
+
+
+def case_keyless(case: dict) -> bool:
+    """Style cases open without a key (3.1)."""
+    return str(case.get("mode", "")).startswith("kinds:")
 ECON = None            # set by the app at start: lets this file know which Mythic badges are still secret
 
 
@@ -95,10 +113,10 @@ def item_chances(ec, item: str) -> list:
     if tier == 5:
         share = (1 if base == "rubenium" else 2) / 11
         per = {3: 0.96515 / 2, 5: 0.033, 4: 0.00185}.get(cls, 0) * share
-    else:
-        same = sum(1 for k, v in ec.catalog.items() if v.get("kind") == "badge" and v.get("rarity") == info.get("rarity")
-                   and int(v.get("cls") or 0) == cls)
-        per = 1 / max(1, same)
+    else:                                       # 3.2: inside its group, an item drops in proportion to its weight
+        group = [float(v.get("weight") or 1) for k, v in ec.catalog.items() if v.get("kind") == "badge"
+                 and v.get("rarity") == info.get("rarity") and int(v.get("cls") or 0) == cls and not v.get("limited")]
+        per = float(info.get("weight") or 1) / max(1e-9, sum(group) or 1)
     out = []
     for c in list(ec.cases) + [{"id": "daily"}]:
         if c["id"] == "daily":
@@ -518,6 +536,165 @@ class VariantPicker(_Shiny):
 # --------------------------------------------------------------------------- #
 # Cases
 # --------------------------------------------------------------------------- #
+def case_drops(ec, case: dict) -> list:
+    """3.2: every item a case can give and its exact chance per open: [(item, chance)], best first. Badges are grouped
+    by design (any colour and finish). The same maths as the server."""
+    odds = list(case.get("odds") or [])
+    total = sum(odds) or 1
+    mode = str(case.get("mode", ""))
+    cat = ec.catalog if ec is not None else {}
+    out: dict = {}
+    if mode.startswith("kinds:") or mode.startswith("items:"):
+        kinds = set(mode[6:].split(","))
+        for tier in range(1, min(6, len(odds))):
+            if not odds[tier]:
+                continue
+            want = TIERS[tier - 1]
+            if mode.startswith("kinds:"):
+                pool = [(k, float(v.get("weight") or 1)) for k, v in cat.items() if v.get("kind") in kinds
+                        and v.get("rarity") == want and v.get("price") is not None and not v.get("limited")]
+            else:
+                pool = [(k, float(cat.get(k, {}).get("weight") or 1)) for k in kinds if cat.get(k, {}).get("rarity") == want]
+            wsum = sum(w for _k, w in pool) or 1
+            for k, w in pool:
+                out[k] = out.get(k, 0) + odds[tier] / total * w / wsum
+        return sorted(out.items(), key=lambda x: -x[1])
+    variants = list(case.get("variants") or [1])
+    vs = sum(variants) or 1
+    for tier in range(1, min(6, len(odds))):
+        if not odds[tier]:
+            continue
+        pt = odds[tier] / total
+        want = TIERS[tier - 1]
+        if tier == 5:
+            for base in EXOTIC_IDS:
+                out["badge:%s:white" % base] = pt * (1 if base == "rubenium" else 2) / 11
+            continue
+        for cls, share in enumerate(variants):
+            if not share:
+                continue
+            c = 2 if (cls == 3 and tier <= 2) else cls
+            group = [(k, v) for k, v in cat.items() if v.get("kind") == "badge" and v.get("rarity") == want
+                     and int(v.get("cls") or 0) == c]
+            wsum = sum(float(v.get("weight") or 1) for _k, v in group) or 1
+            for k, v in group:
+                key = "badge:%s:grey" % v.get("base")
+                out[key] = out.get(key, 0) + pt * share / vs * float(v.get("weight") or 1) / wsum
+    return sorted(out.items(), key=lambda x: -x[1])
+
+
+class DropList(QWidget):
+    """Every item of a case and its chance, two columns, rarest last."""
+
+    def __init__(self, page, case: dict) -> None:
+        super().__init__()
+        self.page = page
+        self.rows = case_drops(page.ctx.econ, case)[::-1][::-1]
+        self.rows.sort(key=lambda x: (TIERS.index(page.ctx.econ.rarity(x[0])) if page.ctx.econ.rarity(x[0]) in TIERS else 0, -x[1]))
+        self.row_h = S(30)
+        self.cols = 2
+        n = (len(self.rows) + self.cols - 1) // self.cols
+        self.setFixedSize(page.W, max(1, int(n * self.row_h)))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def paintEvent(self, _e) -> None:
+        from .cosmetics import item_name
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        ec = self.page.ctx.econ
+        cw = self.width() / self.cols
+        for i, (item, chance) in enumerate(self.rows):
+            r = QRectF((i % self.cols) * cw, (i // self.cols) * self.row_h, cw, self.row_h).adjusted(S(1), S(1.5), -S(1), -S(1.5))
+            col = QColor(RARITY_COLOURS.get(ec.rarity(item), "#9AA4AD"))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.08))
+            p.drawRoundedRect(r, S(6), S(6))
+            icon = QRectF(r.left() + S(4), r.top() + S(2), r.height() - S(4), r.height() - S(4))
+            show_item(p, item, icon, 0, effects=False)
+            name = badge_label(item).replace(" · " + tr("Basic"), "") if item.startswith("badge:") else item_name(item)
+            if item.startswith("badge:"):
+                name = tr(BADGE_NAME.get(item.split(":")[1], "?")) if not is_secret(item) else "???"
+            pct = chance * 100
+            text = (f"{pct:.3f}%" if pct < 0.1 else f"{pct:.2f}%" if pct < 10 else f"{pct:.1f}%")
+            if lang() == "fr":
+                text = text.replace(".", ",")
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            tw = p.fontMetrics().horizontalAdvance(text)
+            p.setPen(QColor(TEXT))
+            p.drawText(r.adjusted(0, 0, -S(6), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
+            p.setPen(col)
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            room = r.width() - icon.width() - tw - S(16)
+            from PyQt6.QtGui import QFontMetrics
+            p.drawText(QRectF(icon.right() + S(4), r.top(), room, r.height()), int(Qt.AlignmentFlag.AlignVCenter),
+                       QFontMetrics(p.font()).elidedText(name, Qt.TextElideMode.ElideRight, int(room)))
+
+
+class CaseShelf(QWidget):
+    """Your cases (bought, gifted, won): click one to open it."""
+
+    def __init__(self, page, cases: list) -> None:
+        super().__init__()
+        self.page, self.cases = page, cases
+        self.per = 4
+        self.th = S(78)
+        rows = (len(cases) + self.per - 1) // self.per
+        self.setFixedHeight(rows * self.th + (rows - 1) * S(6))
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.hover = -1
+
+    def _tile(self, i: int) -> QRectF:
+        gap = S(6)
+        w = (self.width() - gap * (self.per - 1)) / self.per
+        r, c = divmod(i, self.per)
+        return QRectF(c * (w + gap), r * (self.th + gap), w, self.th)
+
+    def _at(self, pos) -> int:
+        return next((i for i in range(len(self.cases)) if self._tile(i).contains(pos)), -1)
+
+    def mouseMoveEvent(self, e) -> None:
+        h = self._at(e.position())
+        if h != self.hover:
+            self.hover = h
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        i = self._at(e.position())
+        if i >= 0:
+            sfx.play("pick")
+            self.page.open_case(self.cases[i]["id"])
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        ec = self.page.ctx.econ
+        for i, case in enumerate(self.cases):
+            r = self._tile(i).adjusted(0.5, 0.5, -0.5, -0.5)
+            col = QColor(CASE_COLOURS.get(case["id"], "#3DDC84"))
+            p.setPen(QPen(mix(alpha("#FFFFFF", 0.08), col, 0.5 if i == self.hover else 0.2), 1.2))
+            p.setBrush(alpha(col, 0.12 if i == self.hover else 0.07))
+            p.drawRoundedRect(r, S(10), S(10))
+            paint_case(p, QRectF(r.center().x() - S(20), r.top() + S(6), S(40), S(40)), case["id"])
+            p.setPen(QColor(TEXT))
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            from PyQt6.QtGui import QFontMetrics
+            name = QFontMetrics(p.font()).elidedText(tr(CASE_NAMES.get(case["id"], case["id"])), Qt.TextElideMode.ElideRight,
+                                                     int(r.width() - S(6)))
+            p.drawText(QRectF(r.left(), r.bottom() - S(30), r.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter), name)
+            n = int(ec.stock.get(case["id"], 0) or 0)
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(10, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(r.left(), r.bottom() - S(16), r.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter), f"×{n}")
+
+
 def paint_case(p: QPainter, rect: QRectF, case_id: str, shake: float = 0.0) -> None:
     """A small closed case in its colour, with three of its badges on the front."""
     p.save()
@@ -598,8 +775,9 @@ class CaseCard(QWidget):
         have = int(self.ctx.econ.stock.get(cid, 0) or 0)
         kind = case_kind(cid)
         if kind:                                            # what this case is for, at a glance
-            text = {"coins": tr("COINS + BADGES"), "hunt": tr("RARE BADGES"), "style": tr("COSMETICS")}[kind]
-            kc = QColor({"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF"}[kind])
+            text = {"coins": tr("COINS + BADGES"), "hunt": tr("RARE BADGES"), "style": tr("COSMETICS"),
+                    "limited": tr("LIMITED")}.get(kind, kind.upper())
+            kc = QColor({"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF", "limited": "#9FE3FF"}.get(kind, "#FFFFFF"))
             p.setFont(font(9, QFont.Weight.Black, 0.6))
             kw = p.fontMetrics().horizontalAdvance(text) + S(14)
             ktag = QRectF(r.right() - kw - S(10), r.bottom() - S(27), kw, S(18))
@@ -609,30 +787,40 @@ class CaseCard(QWidget):
             p.setPen(kc)
             p.drawText(ktag, int(Qt.AlignmentFlag.AlignCenter), text)
         if have:
-            tag = QRectF(r.right() - S(86), r.top() + S(9), S(76), S(20))
+            p.setFont(font(10, QFont.Weight.Bold))
+            text = tr("{n} owned", n=have)
+            tw = p.fontMetrics().horizontalAdvance(text) + S(18)
+            tag = QRectF(r.right() - tw - S(10), r.top() + S(9), tw, S(20))
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(GOLD_TEXT, 0.16))
             p.drawRoundedRect(tag, S(10), S(10))
             p.setPen(QColor(GOLD_TEXT))
-            p.setFont(font(10, QFont.Weight.Bold))
-            p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), tr("{n} gifted", n=have))
+            p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), text)
         if cid == "daily":
             wait = self.page.daily_wait()
             p.setPen(QColor(GOLD_TEXT) if wait == 0 else QColor(TEXT_DIM))
             p.setFont(font(11, QFont.Weight.DemiBold))
             p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter),
                        tr("Free: ready") if wait == 0 else ("…" if wait is None else tr("Free again in {t}", t=clock_text(wait))))
+        elif self.case.get("limited"):                      # limited: never sold, only owned or given
+            p.setPen(QColor("#9FE3FF"))
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter), tr("Limited: not sold"))
         else:
             paint_price(p, line, self.case["price"], 11, GOLD_TEXT, centre=False)
-            p.setFont(font(11, QFont.Weight.DemiBold))
-            pw = p.fontMetrics().horizontalAdvance(coins_text(self.case["price"])) + S(26)
-            p.setPen(QColor(TEXT_DIM))
-            p.drawText(QRectF(x + pw, line.top(), S(14), S(18)), int(Qt.AlignmentFlag.AlignVCenter), "+")
-            p.save()
-            p.translate(x + pw + S(20), line.center().y())
-            p.scale(S(12) / 20, S(12) / 20)
-            draw_icon(p, "key", ui.accent)
-            p.restore()
+            if not case_keyless(self.case):                  # opening it needs a key (style cases do not)
+                p.setFont(font(11, QFont.Weight.DemiBold))
+                pw = p.fontMetrics().horizontalAdvance(coins_text(self.case["price"])) + S(26)
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10, QFont.Weight.DemiBold))
+                p.drawText(QRectF(x + pw, line.top(), S(120), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                           tr("· opens with"))
+                kx = x + pw + p.fontMetrics().horizontalAdvance(tr("· opens with")) + S(10)
+                p.save()
+                p.translate(kx, line.center().y())
+                p.scale(S(12) / 20, S(12) / 20)
+                draw_icon(p, "key", ui.accent)
+                p.restore()
 
 
 class OddsTable(QWidget):

@@ -14,7 +14,8 @@ from .pages import Page
 from .widgets import Button, IconButton, Label, Segmented, hbox, heading, vbox
 
 GAME_NAMES = {"slots": "Slots", "plinko": "Plinko", "dice": "Dice", "mines": "Bombs", "rocket": "Rocket",
-              "blackjack": "Blackjack", "daily": "Daily case", "spin": "Free spin", "mini": "Beat Tap"}
+              "blackjack": "Blackjack", "daily": "Daily case", "spin": "Free spin", "mini": "Beat Tap",
+              "roulette": "Roulette", "hilo": "Hi-Lo", "timing": "Timing", "golf": "Mini Golf", "flip": "Coinflip"}
 ADMIN_COLOUR = "#FF4B6E"
 
 
@@ -470,8 +471,8 @@ class FriendsPage(Page):
             row.update()
 
     def _redo(self) -> None:
-        if self.ctx.window.current == "friends" and self.ctx.window.expanded:
-            self.ctx.reload_page()
+        if self.ctx.window.showing("friends") and self.ctx.window.expanded:
+            self.ctx.reload_page("friends")
 
     def _build(self) -> None:
         ctx = self.ctx
@@ -559,15 +560,11 @@ class FriendsPage(Page):
                     self.lay.addWidget(PlayerRow(self, info))
 
     def _duel(self, name: str) -> None:
+        """3.2: no more invitations: open the Mini Golf lobby (open a match there and your friend joins it)."""
         ctx = self.ctx
-        rows = list(getattr(ctx, "duel_friends", None) or [])
-        if not any(f.get("name") == name for f in rows):
-            rows.insert(0, {"name": name, "online": True})
-        else:
-            rows.sort(key=lambda f: f.get("name") != name)
-        ctx.duel_friends, ctx.duel_pick = rows, 0
-        ctx.friends_profile = None
         ctx.games_sub = "duels"
+        ctx.golf_id = None
+        ctx.toast(tr("Open a match: {name} can join it from the Mini Golf lobby", name=name))
         for flag in ("quests_open", "mini_open", "park_open"):
             setattr(ctx, flag, False)
         ctx.window._drop_page("games")

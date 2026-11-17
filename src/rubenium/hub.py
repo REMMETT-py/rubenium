@@ -205,8 +205,33 @@ def server_wait(ctx, lay, width: int) -> bool:
 
 
 # ================================================================ messages
+def wrap_lines(fm: QFontMetrics, text: str, width: int) -> list:
+    """Lines of `text` that fit in `width`: wrapped between words, and a word longer than a line is cut where it
+    must be (a long link or "aaaaaaa..." never runs off the bubble)."""
+    out = []
+    for para in str(text).split("\n"):
+        line = ""
+        for word in para.split(" "):
+            cand = (line + " " + word) if line else word
+            if fm.horizontalAdvance(cand) <= width:
+                line = cand
+                continue
+            if line:
+                out.append(line)
+                line = ""
+            while fm.horizontalAdvance(word) > width:          # a word wider than the bubble: cut it
+                n = len(word)
+                while n > 1 and fm.horizontalAdvance(word[:n]) > width:
+                    n -= 1
+                out.append(word[:n])
+                word = word[n:]
+            line = word
+        out.append(line)
+    return out or [""]
+
+
 class Bubbles(QWidget):
-    """The messages of one chat, newest at the bottom."""
+    """The messages of one chat, newest at the bottom. Every message wraps inside its bubble."""
 
     def __init__(self, width: int) -> None:
         super().__init__()
@@ -214,6 +239,7 @@ class Bubbles(QWidget):
         self.setFixedWidth(width)
         self.setFixedHeight(S(300))
         self.scroll = 0.0
+        self._cache: dict = {}
 
     def set_rows(self, rows: list) -> None:
         self.rows = rows
@@ -224,23 +250,33 @@ class Bubbles(QWidget):
         self.scroll = max(0.0, self.scroll + e.angleDelta().y() / 120 * S(40))
         self.update()
 
+    def _lines(self, fm: QFontMetrics, text: str, width: int) -> list:
+        key = (text, width)
+        if key not in self._cache:
+            if len(self._cache) > 300:
+                self._cache.clear()
+            self._cache[key] = wrap_lines(fm, text, width)
+        return self._cache[key]
+
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         f = font(11.5)
         fm = QFontMetrics(f)
         p.setFont(f)
+        p.setClipRect(self.rect())
         y = self.height() + self.scroll
-        maxw = int(self.width() * 0.74)
+        maxw = int(self.width() * 0.78)                     # a bubble never takes the whole width
+        inner = maxw - S(22)
+        lh = fm.height()
         if not self.rows:
             p.setPen(QColor(TEXT_DIM))
             p.drawText(QRectF(self.rect()), int(Qt.AlignmentFlag.AlignCenter), tr("No messages yet: say hi!"))
             return
         for m in reversed(self.rows):
-            text = str(m.get("text", ""))
-            box = fm.boundingRect(0, 0, maxw - S(20), 2000, int(Qt.TextFlag.TextWordWrap), text)
-            h = box.height() + S(14)
-            w = box.width() + S(22)
+            lines = self._lines(fm, str(m.get("text", "")), inner)
+            w = min(maxw, max(fm.horizontalAdvance(ln) for ln in lines) + S(22))
+            h = lh * len(lines) + S(14)
             y -= h + S(6)
             if y + h < 0:
                 break
@@ -250,7 +286,9 @@ class Bubbles(QWidget):
             p.setBrush(alpha(ui.accent, 0.85) if mine else QColor("#232A33"))
             p.drawRoundedRect(r, S(10), S(10))
             p.setPen(QColor("#0B0E10") if mine and ui.accent.lightnessF() > 0.6 else QColor(TEXT))
-            p.drawText(r.adjusted(S(11), S(7), -S(11), -S(7)), int(Qt.TextFlag.TextWordWrap), text)
+            for k, ln in enumerate(lines):
+                p.drawText(QRectF(r.left() + S(11), r.top() + S(7) + k * lh, r.width() - S(22), lh),
+                           int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft), ln)
 
 
 class ChatWindow(FloatWindow):
@@ -286,11 +324,15 @@ class ChatWindow(FloatWindow):
             f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}"
             f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
         self.edit.returnPressed.connect(self._send)
+        self.edit.textChanged.connect(self._count)
         send = Button(tr("Send"), "primary", 34)
         send.clicked.connect(self._send)
         line.addWidget(self.edit, 1)
         line.addWidget(send)
         lay.addLayout(line)
+        self.counter = Label("", 9.5, TEXT_FAINT, align=Qt.AlignmentFlag.AlignRight)
+        lay.addWidget(self.counter)
+        self._last_sent, self._last_text, self._recent = 0.0, "", []
         self._poll = QTimer(self)
         self._poll.setInterval(4000)
         self._poll.timeout.connect(self.load)
@@ -309,10 +351,27 @@ class ChatWindow(FloatWindow):
                     self.bubbles.set_rows(data)
         self.ctx.online.ask("rb_msg_get", {"name": self.name}, got)
 
+    MAX = 300
+
+    def _count(self, text: str) -> None:
+        n = len(text)
+        self.counter.set_text(f"{n} / {self.MAX}" if n >= self.MAX - 60 else "")
+        self.counter.set_color("#FF8A8A" if n >= self.MAX else TEXT_FAINT)
+
     def _send(self) -> None:
         text = self.edit.text().strip()
         if not text:
             return
+        now = time.monotonic()                    # the same rules as the server, so the toast comes at once
+        self._recent = [t for t in self._recent if now - t < 10]
+        if len(text) > self.MAX:
+            return self.ctx.toast(tr("300 characters at most"), "warn")
+        if now - self._last_sent < 1.5 or len(self._recent) >= 5:
+            return self.ctx.toast(tr("Easy! Wait a moment before sending again"), "warn")
+        if text.lower() == self._last_text.lower() and now - self._last_sent < 60:
+            return self.ctx.toast(tr("You just sent that: try saying something new"), "warn")
+        self._last_sent, self._last_text = now, text
+        self._recent.append(now)
         self.edit.clear()
         self.bubbles.set_rows(self.bubbles.rows + [{"id": -1, "mine": True, "text": text}])
 
@@ -419,8 +478,8 @@ def build_messages(page, lay) -> None:
         if ok and isinstance(rows, list) and rows != getattr(ctx, "threads_data", None):
             ctx.threads_data = rows
             ctx.msg_unread = sum(int(t.get("unread") or 0) for t in rows)
-            if ctx.window.current == "friends" and int(getattr(ctx, "social_tab", 0) or 0) == 2:
-                ctx.reload_page()
+            if ctx.window.showing("friends") and int(getattr(ctx, "social_tab", 0) or 0) == 2:
+                ctx.reload_page("friends")
     ctx.online.ask("rb_msg_threads", {}, got)
     if data is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -506,8 +565,8 @@ def build_leaders(page, lay) -> None:
         if ok and isinstance(rows, dict):
             if getattr(ctx, "board_data", None) != (key, rows):
                 ctx.board_data = (key, rows)
-                if ctx.window.current == "friends" and int(getattr(ctx, "social_tab", 0) or 0) == 3:
-                    ctx.reload_page()
+                if ctx.window.showing("friends") and int(getattr(ctx, "social_tab", 0) or 0) == 3:
+                    ctx.reload_page("friends")
     ctx.online.ask("rb_leaders", {"kind": kind, "friends": friends}, got)
     if not data or data[0] != key:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -575,8 +634,8 @@ def build_trade_history(page, lay) -> None:
     def got(ok: bool, rows) -> None:
         if ok and isinstance(rows, list) and rows != getattr(ctx, "trade_hist", None):
             ctx.trade_hist = rows
-            if ctx.window.current == "friends" and int(getattr(ctx, "social_tab", 0) or 0) == 4:
-                ctx.reload_page()
+            if ctx.window.showing("friends") and int(getattr(ctx, "social_tab", 0) or 0) == 4:
+                ctx.reload_page("friends")
     ctx.online.ask("rb_trade_history", {}, got)
     if data is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -651,8 +710,8 @@ def build_sets(page, lay) -> None:
     def got(ok: bool, rows) -> None:
         if ok and isinstance(rows, list) and rows != getattr(ctx, "sets_data", None):
             ctx.sets_data = rows
-            if ctx.window.current == "themes" and int(getattr(ctx, "shop_tab", 0) or 0) == 6:
-                ctx.reload_page()
+            if ctx.window.showing("themes") and int(getattr(ctx, "shop_tab", 0) or 0) == 6:
+                ctx.reload_page("themes")
     ctx.online.ask("rb_sets", {}, got)
     if data is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -1599,8 +1658,8 @@ def build_deals(page, lay) -> None:
         def got(ok: bool, ans) -> None:
             if ok and isinstance(ans, dict):
                 ctx.deals_data = (time.monotonic(), ans)
-                if ctx.window.current == "themes" and int(getattr(ctx, "shop_tab", 0) or 0) == 7:
-                    ctx.reload_page()
+                if ctx.window.showing("themes") and int(getattr(ctx, "shop_tab", 0) or 0) == 7:
+                    ctx.reload_page("themes")
         ctx.online.ask("rb_deals", {}, got)
     if data is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))

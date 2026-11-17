@@ -217,6 +217,26 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
         arc2.moveTo(5.5, 2.6)
         arc2.cubicTo(8, 2.8, 9, 4.5, 9, 7)
         p.drawPath(arc2)
+    elif kind == "flag":                                  # 3.2: a golf flag
+        p.drawPath(_poly((-4, 8.5), (-4, -8)))
+        flag = _poly((-4, -8), (7, -4.5), (-4, -1))
+        flag.closeSubpath()
+        p.drawPath(flag)
+        p.drawPath(_poly((-8, 8.5), (2, 8.5)))
+    elif kind == "globe":                                 # 3.2: online
+        p.drawEllipse(QPointF(0, 0), 8, 8)
+        p.drawEllipse(QPointF(0, 0), 3.4, 8)
+        p.drawPath(_poly((-8, 0), (8, 0)))
+        p.drawPath(_poly((-6.8, -4.2), (6.8, -4.2)))
+        p.drawPath(_poly((-6.8, 4.2), (6.8, 4.2)))
+    elif kind == "coin":                                  # 3.2: coinflip
+        p.drawEllipse(QPointF(0, 0), 8, 8)
+        p.drawEllipse(QPointF(0, 0), 5, 5)
+    elif kind == "calendar":                              # 3.2: the advent calendar
+        p.drawRoundedRect(QRectF(-8, -6.5, 16, 14.5), 2.5, 2.5)
+        p.drawPath(_poly((-8, -2), (8, -2)))
+        p.drawPath(_poly((-4, -9), (-4, -4.5)))
+        p.drawPath(_poly((4, -9), (4, -4.5)))
     elif kind == "gem":
         p.drawPath(_poly((-8, -2), (-4, -7), (4, -7), (8, -2), (0, 8), (-8, -2)))
         p.drawPath(_poly((-8, -2), (8, -2)))
@@ -409,6 +429,32 @@ class Button(QAbstractButton):
         w = QFontMetrics(self._font).horizontalAdvance(self._text) + S(28) + (S(18) if self._icon else 0)
         return QSize(w, self.height())
 
+    def minimumSizeHint(self):
+        from PyQt6.QtCore import QSize
+        return QSize(S(40), self.height())
+
+    def _fitted_font(self, room: float):
+        """3.2: a long text (often French) gets a little smaller until it fits, and is only cut as a last resort."""
+        from PyQt6.QtGui import QFontMetrics
+        key = (self._text, int(room))
+        if getattr(self, "_fit_key", None) == key:
+            return self._fit_font
+        f = self._font
+        size = f.pointSizeF() if f.pointSizeF() > 0 else 0
+        px = f.pixelSize()
+        step = 0
+        while QFontMetrics(f).horizontalAdvance(self._text) > room and step < 6:
+            f = QFont(f)
+            step += 1
+            if size > 0:
+                f.setPointSizeF(size * (1 - 0.06 * step))
+            elif px > 0:
+                f.setPixelSize(max(8, int(round(px * (1 - 0.06 * step)))))
+            else:
+                break
+        self._fit_key, self._fit_font = key, f
+        return f
+
     def enterEvent(self, e) -> None:
         self._hover.to(1.0, 140)
         super().enterEvent(e)
@@ -457,10 +503,11 @@ class Button(QAbstractButton):
         else:
             p.setBrush(mix(QColor(SURFACE_HI), QColor("#3A3A3A"), h))
         p.drawRoundedRect(r, rad, rad)
-        p.setFont(self._font)
+        room = r.width() - S(12) - (S(20) if self._icon else 0)
+        p.setFont(self._fitted_font(room))
         p.setPen(fg)
         if self._icon:
-            tw = p.fontMetrics().horizontalAdvance(self._text)
+            tw = min(p.fontMetrics().horizontalAdvance(self._text), room)
             x0 = r.center().x() - (tw + S(20)) / 2
             p.save()
             p.translate(x0 + S(7), r.center().y())
@@ -468,7 +515,8 @@ class Button(QAbstractButton):
             draw_icon(p, self._icon, fg)
             p.restore()
             p.setPen(fg)
-            p.drawText(QRectF(x0 + S(20), r.top(), tw + 4, r.height()), int(Qt.AlignmentFlag.AlignVCenter), self._text)
+            text = p.fontMetrics().elidedText(self._text, Qt.TextElideMode.ElideRight, int(room))
+            p.drawText(QRectF(x0 + S(20), r.top(), tw + 4, r.height()), int(Qt.AlignmentFlag.AlignVCenter), text)
         else:
             text = p.fontMetrics().elidedText(self._text, Qt.TextElideMode.ElideRight, int(r.width() - S(12)))
             p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
@@ -697,7 +745,13 @@ class Segmented(QWidget):
         pill = QRectF(self._pos.level * sw + S(2), S(2), sw - S(4), r.height() - S(4))
         p.setBrush(alpha(ui.accent, 0.22))
         p.drawRoundedRect(pill, S(6), S(6))
-        p.setFont(self._font)
+        from PyQt6.QtGui import QFontMetrics
+        f = self._font                                    # 3.2: shrink a little before cutting a label
+        widest = max((QFontMetrics(f).horizontalAdvance(lb) for lb in self._labels), default=0)
+        if widest > sw - S(8) and f.pixelSize() > 0:
+            f = QFont(f)
+            f.setPixelSize(max(int(f.pixelSize() * 0.8), int(f.pixelSize() * (sw - S(8)) / max(1, widest))))
+        p.setFont(f)
         for i, label in enumerate(self._labels):
             near = max(0.0, 1.0 - abs(self._pos.level - i))
             col = mix(QColor(TEXT_DIM), mix(ui.accent, QColor(TEXT), 0.55), near)
@@ -1122,7 +1176,7 @@ class ScrollArea(QWidget):
 
     def resizeEvent(self, _e) -> None:
         self.content.setGeometry(0, -int(round(self._pos.level)), self.width() - S(self.GUTTER),
-                                 max(self._content_h, self.height()))
+                                 self._content_h if getattr(self, "no_stretch", False) else max(self._content_h, self.height()))
         self._overlay.setGeometry(self.rect())
         self._overlay.raise_()
         if self._target > self.max_offset():
@@ -1172,17 +1226,22 @@ class TabBar(QWidget):
         self._tabs = [(k, i, l, locked if k == key else lk) for k, i, l, lk in self._tabs]
         self.update()
 
+    def _always(self) -> float:
+        """3.2: the ONLINE button always shows its name."""
+        return sum(self._lw[i] for i, t in enumerate(self._tabs) if t[0] == "online")
+
     def _slot(self) -> float:
         """Icon slot width: shrinks a little when the open label would not fit otherwise."""
         n = len(self._tabs)
-        return min(float(S(self.SLOT)), (self.width() - max(self._lw)) / n)
+        return min(float(S(self.SLOT)), (self.width() - max(self._lw) - self._always()) / n)
 
     def _rects(self) -> list:
         n, slot = len(self._tabs), self._slot()
-        gap = max(0.0, (self.width() - n * slot - max(self._lw)) / max(1, n - 1))
+        gap = max(0.0, (self.width() - n * slot - max(self._lw) - self._always()) / max(1, n - 1))
         out, x = [], 0.0
         for i in range(n):
-            w = slot + self._lw[i] * max(0.0, self._w[i].level)
+            open_ = 1.0 if self._tabs[i][0] == "online" else max(0.0, self._w[i].level)
+            w = slot + self._lw[i] * open_
             out.append(QRectF(x, 0, w, self._full_h))
             x += w + gap
         return out
@@ -1229,6 +1288,20 @@ class TabBar(QWidget):
                 p.setBrush(mix(alpha("#FFFFFF", 0.07 * h), alpha(ui.accent, 0.18), w))
                 p.drawRoundedRect(r.adjusted(0, S(1), 0, -S(1)), S(9), S(9))
             fg = mix(mix(QColor(TEXT_DIM), QColor(TEXT), h), ui.accent, w)
+            if key == "online":                             # 3.2: the ONLINE button, always lit and labelled
+                import time as _t
+                pulse = 0.5 + 0.5 * math.sin(_t.monotonic() * 2.4)
+                green = QColor("#3DDC84")
+                p.setPen(QPen(alpha(green, 0.45 + 0.35 * pulse + 0.2 * h), S(1.2)))
+                p.setBrush(alpha(green, 0.10 + 0.06 * pulse + 0.10 * h))
+                p.drawRoundedRect(r.adjusted(0, S(1), 0, -S(1)), S(9), S(9))
+                fg = mix(green, QColor("#FFFFFF"), 0.2 * h)
+                w = 1.0
+                if not hasattr(self, "_on_t"):
+                    self._on_t = QTimer(self)
+                    self._on_t.setInterval(60)
+                    self._on_t.timeout.connect(self.update)
+                    self._on_t.start()
             if key == "giveaway":                            # a live giveaway: the tab shines gold
                 import time as _t
                 pulse = 0.5 + 0.5 * math.sin(_t.monotonic() * 3)
@@ -1257,7 +1330,7 @@ class TabBar(QWidget):
                 p.setClipRect(r)
                 p.setOpacity(w)
                 p.setFont(self._font)
-                p.setPen(mix(ui.accent, QColor(TEXT), 0.45))
+                p.setPen(fg if key == "online" else mix(ui.accent, QColor(TEXT), 0.45))
                 p.drawText(QRectF(r.left() + slot - S(3), 0, self._lw[i], self._full_h),
                            int(Qt.AlignmentFlag.AlignVCenter), label)
                 p.restore()

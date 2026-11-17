@@ -45,7 +45,12 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_too_many": "Too many at once: wait a little", "rb_slow_down": "Slow down a little",
           "rb_already_undone": "Already undone", "rb_cant_undo": "This cannot be undone",
           "rb_weak_password": "8 characters at least", "rb_too_big": "Too big",
-          "rb_server_old": "Coming very soon: the server is being updated"}
+          "rb_server_old": "Coming very soon: the server is being updated",
+          "rb_too_long": "300 characters at most", "rb_chat_wait": "Easy! Wait a moment before sending again",
+          "rb_same_message": "You just sent that: try saying something new", "rb_no_key": "You need a key to open it",
+          "rb_case_none": "Buy the case first", "rb_one_lobby": "You already have one going: finish or close it first",
+          "rb_flip_range": "Your items must be worth about the same", "rb_flip_locked": "Too late: it is locked in",
+          "rb_not_your_turn": "Not your turn"}
 
 
 def server_missing(data) -> bool:
@@ -124,11 +129,20 @@ class Econ(QObject):
                 best = max(best, int(s.get("pct", 0)))
         return best
 
+    def tax(self) -> float:
+        """3.2: what the shop adds to an item's worth (0.20 = 20%)."""
+        try:
+            return float(self.cfg.get("shop_tax", 0) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
     def shop_price(self, item: str):
+        """What the shop asks: worth + tax, minus a sale (the same sum as the server)."""
         price = self.price(item)
-        if price is None:
+        if price is None or self.info(item).get("limited"):
             return None
-        return max(1, -(-int(price) * (100 - self.sale(item)) // 100))
+        import math
+        return max(1, math.ceil(int(price) * (1 + self.tax()) * (100 - self.sale(item)) / 100 - 1e-9))
 
     def can_trade(self) -> bool:
         return self.minutes >= int(self.cfg.get("trade_min_minutes", 300))
@@ -225,11 +239,13 @@ class Econ(QObject):
         return "quick_share" in self.cfg
 
     def worth(self, item: str) -> int:
-        """What an item is worth, the same everywhere (and the same rule as the server): its shop price when the shop
-        sells it; Titanium and Gold badges 50 x their value; Mythic badges 400 x their value."""
+        """What an item is worth, the same everywhere (and the same rule as the server). 3.2: every item has its own
+        worth from the server; before that, its shop price, or 50 x / 400 x its value for Titanium, Gold and Mythic."""
         info = self.info(item)
         if not info:
             return 0
+        if info.get("worth") is not None:
+            return int(info["worth"])
         if info.get("price"):
             return int(info["price"])
         v = int(info.get("value") or 0)
@@ -263,13 +279,35 @@ class Econ(QObject):
                 done(ok, data)
         self.call("rb_quick_sell", {"ids": list(ids)}, back, once=True)
 
+    def _since_beat(self) -> float:
+        import time
+        at = getattr(self, "_beat_at", None)
+        return 0.0 if at is None else max(0.0, time.monotonic() - at)
+
+    def afk_paused(self) -> bool:
+        """The time counter is not moving: no heartbeat for over 2 minutes (Rubenium idle, offline or another PC)."""
+        import time
+        at = getattr(self, "_beat_at", None)
+        return at is None or time.monotonic() - at > 130 or bool(getattr(self.online, "elsewhere", False))
+
+    def afk_capped(self) -> bool:
+        """Today's AFK coins are all earned (the timer still runs for keys)."""
+        try:
+            cap = int(float(self.cfg.get("coin_day_cap", 0) or 0)) + self.streak_bonus() * 72
+        except (TypeError, ValueError):
+            return False
+        return cap > 0 and self.day_coins >= cap
+
     def next_coin_s(self) -> int:
-        every = int(self.cfg.get("coin_every_min", 15))
-        return max(60, (every - self.coin_min) * 60)
+        """Seconds until the next AFK coins: whole minutes from the server, counted down by the second here."""
+        every = int(float(self.cfg.get("coin_every_min", 10) or 10))
+        left = (every - self.coin_min) * 60 - (0 if self.afk_paused() else self._since_beat())
+        return int(max(0, min(every * 60, left)))
 
     def next_key_s(self) -> int:
-        every = int(self.cfg.get("key_every_min", 60))
-        return max(60, (every - self.key_min) * 60)
+        every = int(float(self.cfg.get("key_every_min", 30) or 30))
+        left = (every - self.key_min) * 60 - (0 if self.afk_paused() else self._since_beat())
+        return int(max(0, min(every * 60, left)))
 
     # -- talking to the server
     def start(self) -> None:
@@ -416,7 +454,11 @@ class Econ(QObject):
             self.equip = dict(ans["equip"])
 
     def _beat(self, ans: dict) -> None:
+        import time
         before = (self.coins, self.keys, self.minutes)
+        self._beat_at = time.monotonic()          # the AFK counters count down from here until the next heartbeat
+        if ans.get("day_coins") is not None:
+            self.day_coins = int(ans["day_coins"])
         self.absorb(ans)
         if before != (self.coins, self.keys, self.minutes):
             self.changed.emit()
@@ -506,7 +548,8 @@ class Econ(QObject):
                     offset += 1000
                 cases = _request("/rest/v1/rb_cases?select=*&order=pos", method="GET") or []
                 cfg = {r["key"]: r["value"] for r in (_request("/rest/v1/rb_config?select=*", method="GET") or [])}
-                catalog = {r["id"]: {k: r.get(k) for k in ("kind", "base", "variant", "rarity", "price", "value", "tradeable", "cls")}
+                catalog = {r["id"]: {k: r.get(k) for k in ("kind", "base", "variant", "rarity", "price", "value", "tradeable", "cls",
+                                                            "worth", "weight", "limited")}
                            for r in rows}
                 if catalog:
                     self.online._back.emit(lambda: self._got_catalog(catalog, cases, cfg))

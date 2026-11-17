@@ -458,6 +458,112 @@ def _shop_scene(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QCo
             y = horizon + (h - horizon) * (k / 7) ** 1.8
             p.drawLine(QPointF(0, y), QPointF(w, y))
         p.setPen(Qt.PenStyle.NoPen)
+    elif style == "lagoon":                               # 3.2 Rare: a calm turquoise lagoon, a palm and its reflection
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha(c2, 0.35))
+        g.setColorAt(0.55, alpha(c1, 0.30))
+        g.setColorAt(1, alpha("#03363A", 0.55))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        water = h * 0.6
+        p.fillRect(QRectF(0, water, w, h - water), alpha("#0A5A62", 0.35))
+        for k in range(6):
+            y = water + (h - water) * (k + 1) / 7
+            p.setPen(QPen(alpha("#BFF8F0", 0.12), max(1.0, unit)))
+            p.drawLine(QPointF(w * 0.1 + k * 7 * unit, y), QPointF(w * 0.9 - k * 9 * unit, y))
+        p.setPen(Qt.PenStyle.NoPen)
+        trunk = QPainterPath(QPointF(w * 0.18, water))
+        trunk.quadTo(w * 0.2, h * 0.3, w * 0.26, h * 0.2)
+        p.setPen(QPen(alpha("#0B2A22", 0.9), 4 * unit, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawPath(trunk)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k in range(6):
+            ang = math.radians(-160 + k * 40)
+            leaf = QPainterPath(QPointF(w * 0.26, h * 0.2))
+            leaf.quadTo(w * 0.26 + math.cos(ang) * 30 * unit, h * 0.2 + math.sin(ang) * 10 * unit - 8 * unit,
+                        w * 0.26 + math.cos(ang) * 46 * unit, h * 0.2 + math.sin(ang) * 22 * unit)
+            p.setPen(QPen(alpha("#0B2A22", 0.9), 3 * unit, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawPath(leaf)
+        p.setPen(Qt.PenStyle.NoPen)
+        moon = QPointF(w * 0.76, h * 0.22)
+        mg = QRadialGradient(moon, h * 0.3)
+        mg.setColorAt(0, alpha("#FFFFFF", 0.45))
+        mg.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.setBrush(mg)
+        p.drawEllipse(moon, h * 0.3, h * 0.3)
+        p.setBrush(alpha("#F4FFFD", 0.85))
+        p.drawEllipse(moon, h * 0.07, h * 0.07)
+        for k in range(5):                                  # the moon's path on the water
+            p.setBrush(alpha("#F4FFFD", 0.25 - k * 0.04))
+            p.drawRoundedRect(QRectF(moon.x() - (18 - k * 3) * unit, water + (6 + k * 7) * unit, (36 - k * 6) * unit, 2 * unit),
+                              unit, unit)
+    elif style == "midnight":                             # 3.2 Epic: a deep blue city skyline under a huge moon
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha("#070B24", 0.75))
+        g.setColorAt(1, alpha(c2, 0.45))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        for _ in range(50):
+            p.setBrush(alpha("#FFFFFF", rnd.uniform(0.2, 0.8)))
+            r = rnd.uniform(0.4, 1.1) * unit
+            p.drawEllipse(QPointF(rnd.uniform(0, w), rnd.uniform(0, h * 0.6)), r, r)
+        moon = QPointF(w * 0.7, h * 0.32)
+        mg = QRadialGradient(moon, h * 0.5)
+        mg.setColorAt(0, alpha(c1, 0.45))
+        mg.setColorAt(1, alpha(c1, 0.0))
+        p.setBrush(mg)
+        p.drawEllipse(moon, h * 0.5, h * 0.5)
+        p.setBrush(alpha("#E8ECFF", 0.9))
+        p.drawEllipse(moon, h * 0.16, h * 0.16)
+        p.setBrush(alpha("#C5CCF2", 0.6))
+        for dx, dy, rr in ((-0.04, -0.03, 0.03), (0.05, 0.04, 0.02), (0.01, 0.07, 0.015)):
+            p.drawEllipse(QPointF(moon.x() + dx * h, moon.y() + dy * h), rr * h, rr * h)
+        x = 0.0
+        while x < w:
+            bw = rnd.uniform(14, 34) * unit
+            bh = h * rnd.uniform(0.18, 0.5)
+            p.setBrush(alpha("#05081A", 0.95))
+            p.drawRect(QRectF(x, h - bh, bw - 2 * unit, bh))
+            for wy in range(int(bh // (7 * unit))):
+                for wx in range(int(bw // (6 * unit))):
+                    if rnd.random() < 0.28:
+                        p.setBrush(alpha("#FFD98A", rnd.uniform(0.35, 0.85)))
+                        p.drawRect(QRectF(x + 3 * unit + wx * 6 * unit, h - bh + 4 * unit + wy * 7 * unit, 2 * unit, 3 * unit))
+            x += bw
+    elif style == "inferno":                              # 3.2 Legendary: a volcano, flowing lava, embers rising
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha("#1A0500", 0.8))
+        g.setColorAt(0.6, alpha(c1, 0.35))
+        g.setColorAt(1, alpha("#3A0A00", 0.75))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        top = QPointF(w * 0.5, h * 0.3)
+        mount = QPainterPath(QPointF(w * 0.08, h))
+        mount.lineTo(top.x() - w * 0.07, top.y())
+        mount.lineTo(top.x() + w * 0.07, top.y())
+        mount.lineTo(w * 0.92, h)
+        p.setBrush(alpha("#140402", 0.95))
+        p.drawPath(mount)
+        glow = QRadialGradient(top, h * 0.6)
+        glow.setColorAt(0, alpha(c2, 0.6))
+        glow.setColorAt(1, alpha(c1, 0.0))
+        p.setBrush(glow)
+        p.drawEllipse(top, h * 0.6, h * 0.4)
+        for k, dx in enumerate((-0.02, 0.015, 0.0)):        # rivers of lava down the sides
+            lava = QPainterPath(QPointF(top.x() + w * dx, top.y()))
+            for st in range(1, 9):
+                lava.lineTo(top.x() + w * (dx + (k - 1) * 0.035 * st), top.y() + (h - top.y()) * st / 8)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width_, a in ((6, 0.25), (2.4, 0.9)):
+                p.setPen(QPen(alpha(c2 if width_ < 3 else c1, a), width_ * unit, Qt.PenStyle.SolidLine,
+                              Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+                p.drawPath(lava)
+        p.setPen(Qt.PenStyle.NoPen)
+        for _ in range(60):                                 # embers in the smoke
+            ex, ey = rnd.uniform(w * 0.2, w * 0.8), rnd.uniform(0, top.y() + h * 0.1)
+            p.setBrush(alpha(rnd.choice(["#FFC14D", "#FF5A1F", "#FFE9B0"]), rnd.uniform(0.4, 0.95)))
+            r = rnd.uniform(0.6, 1.8) * unit
+            p.drawEllipse(QPointF(ex, ey), r, r)
+        for k in range(6):
+            p.setBrush(alpha("#2A0A04", 0.35))
+            p.drawEllipse(QPointF(top.x() + (k - 2.5) * 18 * unit, top.y() - (12 + k * 6) * unit), 22 * unit, 12 * unit)
 
 
 def _draw_theme(p: QPainter, theme: dict, w: float, h: float, accent: QColor, second, unit: float) -> None:
@@ -995,6 +1101,19 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("3.2", ['ONLINE: one button instead of Games, Shop and Social. The menu flies up and a big online menu drops down',
+             'Coinflip: put in up to 6 items, pick black or white. Winner takes everything (49% to 51% chance)',
+             'Mini Golf and Coinflip use open lobbies: open one, anyone can join. No more invitations',
+             'Mini Golf: 5 holes a match and 8 new holes',
+             'Two new casino games: Roulette and Hi-Lo. The slot machine is gone',
+             'Cases: buy them with coins, they wait in Your cases, open them with a key. Keys can be traded',
+             'Keys: 1 every 30 minutes, up to 12. Everyone got a full key wallet',
+             'Every item has a worth. Buying from the shop adds a 20% tax, so trading is cheaper',
+             'New cases: Lucky, Frame Case and Cosmic Hunt. New banners, frames, balls, lines and themes',
+             'Advent calendar from 1 December: limited looks and cases you cannot buy',
+             'Play asks which music app you use (no more Spotify only). Adverts can be muted',
+             'Chat: long messages wrap, 300 characters at most, and spam is slowed down',
+             'Timing reacts instantly, the AFK timer counts down, long texts fit their buttons']),
     ("3.1", ['The 6 shop themes have their own scenes: Sunset, Ocean, Forest, Candy, Storm and Retro keep their colours',
              'Gold banners: choose to show the normal banner or any gold level you unlocked',
              'AFK coins: 25 every 10 minutes, +5 for every day of your login streak (up to +100)',

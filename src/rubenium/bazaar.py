@@ -416,6 +416,13 @@ def _on_sale(ec, item: str) -> bool:
     return item in ec.catalog and (ec.catalog[item].get("price") is not None or ec.owns(item))
 
 
+def _design_shown(ec, kind: str, base: str) -> bool:
+    """A ball, line, font or theme design is in the shop when one of its colours is sold (limited ones: when yours)."""
+    head = f"{kind}:{base}"
+    return any((k == head or k.startswith(head + ":")) and (v.get("price") is not None or ec.owns(k))
+               for k, v in ec.catalog.items())
+
+
 def look_worn(ctx, item: str) -> bool:
     """A banner, frame or tag is worn on the server (everyone sees it)."""
     return ctx.econ.worn(item.split(":")[0]) == item
@@ -465,13 +472,16 @@ def build_cosmetics(page, lay) -> None:
         for base, name in _designs(kind):
             if kind in ("banner", "frame") and not _on_sale(ec, f"{kind}:{base}"):
                 continue
+            if kind not in ("banner", "frame") and not _design_shown(ec, kind, base):
+                continue
             item = f"{kind}:{base}" if kind in ("theme", "banner", "frame") else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
             cheapest = item if kind in ("theme", "banner", "frame") else f"{kind}:{base}:grey"
             owned = any(k.startswith(f"{kind}:{base}") for k in ec._owned)
             pct = max((ec.sale(k) for k in ec.catalog if k.startswith(f"{kind}:{base}")), default=0)
             entries.append({"item": item, "price": ec.shop_price(cheapest), "tag": tr(name),
                             "mark": "sale" if pct else ("worn" if owned else ""), "pct": pct})
-        designs = [d for d in _designs(kind) if kind not in ("banner", "frame") or _on_sale(ec, f"{kind}:{d[0]}")]
+        designs = [d for d in _designs(kind) if (_on_sale(ec, f"{kind}:{d[0]}") if kind in ("banner", "frame")
+                                                 else _design_shown(ec, kind, d[0]))]
         if kind in ("banner", "frame"):                    # cheapest first: Common to Legendary
             order = sorted(range(len(entries)), key=lambda i: (entries[i]["price"] or 0, i))
             entries, designs = [entries[i] for i in order], [designs[i] for i in order]
@@ -486,6 +496,7 @@ def build_cosmetics(page, lay) -> None:
         lay.addWidget(grid)
         lay.addWidget(Label(tr("Every item can be worn, traded and sold."), 10.5,
                             TEXT_DIM, wrap_w=page.W))
+        lay.addWidget(tax_explainer(ctx, page.W))
         return
     # one design: preview, colours, buy or wear
     names = dict(_designs(kind))
@@ -541,9 +552,10 @@ def build_cosmetics(page, lay) -> None:
         lay.addWidget(Label(tr("Sell it or put it on the market from your Inventory."), 10.5, TEXT_DIM, wrap_w=page.W))
     elif price is not None:
         text = tr("Buy for {n} coins", n=coins_text(price))
-        if price != full:
+        if ec.sale(item):
             text += f"  (-{ec.sale(item)}%)"
         b = Button(text, "primary", 38)
+        lay.addWidget(TaxNote(ctx, item, page.W))
 
         def buy() -> None:
             if price > ec.coins:
@@ -560,6 +572,49 @@ def build_cosmetics(page, lay) -> None:
                                lambda: (b.setEnabled(False), ec.buy(item, done)), yes=tr("Buy"))
         b.clicked.connect(buy)
         lay.addWidget(b)
+
+
+class TaxNote(QWidget):
+    """3.2: why the shop costs more: worth (what players pay each other) + the shop tax = the shop price."""
+
+    def __init__(self, ctx, item: str, width: int) -> None:
+        super().__init__()
+        self.ctx, self.item = ctx, item
+        self.setFixedSize(width, S(54))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        ec = self.ctx.econ
+        worth, price = ec.worth(self.item), ec.shop_price(self.item) or 0
+        tax = int(round(ec.tax() * 100))
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha(GOLD_TEXT, 0.3), 1))
+        p.setBrush(alpha(GOLD_TEXT, 0.06))
+        p.drawRoundedRect(r, S(10), S(10))
+        third = r.width() / 3
+        cells = [(tr("Worth"), coins_text(worth), TEXT), (tr("+{n}% shop tax", n=tax), coins_text(max(0, price - worth)), TEXT_DIM),
+                 (tr("Shop price"), coins_text(price), GOLD_TEXT)]
+        for i, (head, val, col) in enumerate(cells):
+            box = QRectF(r.left() + i * third, r.top(), third, r.height())
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9, QFont.Weight.DemiBold))
+            p.drawText(QRectF(box.left(), box.top() + S(7), box.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter), head)
+            p.setPen(QColor(col))
+            p.setFont(font(12.5, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(box.left(), box.top() + S(23), box.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), val)
+            if i:
+                p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+                p.drawLine(QPointF(box.left(), box.top() + S(8)), QPointF(box.left(), box.bottom() - S(8)))
+
+
+def tax_explainer(ctx, width: int):
+    """The one line that explains the two prices."""
+    tax = int(round(ctx.econ.tax() * 100))
+    return Label(tr("Every item has a worth: what players pay each other in trades, on the market and in coinflips. "
+                    "Buying straight from the shop adds a {n}% tax, so trading with players is cheaper.", n=tax),
+                 10, TEXT_DIM, wrap_w=width)
 
 
 def _cid(kind: str, design: str, colour: str) -> str:
@@ -675,6 +730,50 @@ class LedgerList(QWidget):
                        "  ".join(bits))
 
 
+class WalletRow(QWidget):
+    """Your keys (they can be traded) and your cases waiting to be opened."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedHeight(S(40))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip(tr("Keys can be added to trades. Click to see your cases."))
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.rect().contains(e.position().toPoint()):
+            sfx.play("pick")
+            self.ctx.shop_tab, self.ctx.shop_case = 3, None
+            self.ctx.reload_page()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        ec = self.ctx.econ
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(r, S(10), S(10))
+        half = r.width() / 2
+        p.save()
+        p.translate(r.left() + S(20), r.center().y())
+        p.scale(S(14) / 20, S(14) / 20)
+        draw_icon(p, "key", ui.accent)
+        p.restore()
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left() + S(36), r.top(), half - S(40), r.height()), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("{n} keys", n=ec.keys))
+        cases = sum(int(v or 0) for v in ec.stock.values())
+        from .collection import paint_case
+        paint_case(p, QRectF(r.left() + half + S(8), r.top() + S(8), S(26), r.height() - S(16)), "standard")
+        p.drawText(QRectF(r.left() + half + S(40), r.top(), half - S(44), r.height()), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("{n} cases to open", n=cases))
+
+
 class AdventBanner(QWidget):
     """2027 LIMITED · ADVENT CALENDAR: a white snowy banner. Hovering it greys it out: coming soon."""
 
@@ -704,8 +803,17 @@ class AdventBanner(QWidget):
 
     def mousePressEvent(self, e) -> None:
         e.accept()
+        ctx = self.ctx
+        data = getattr(ctx, "advent_data", None) or {}
+        if data.get("open"):                              # 3.2: the calendar is here
+            sfx.play("pick")
+            ctx.games_sub = "advent"
+            for flag in ("quests_open", "mini_open", "park_open"):
+                setattr(ctx, flag, False)
+            ctx.window._drop_page("games")
+            return ctx.window.goto("games")
         sfx.play("off")
-        self.ctx.toast(tr("The 2027 Advent Calendar is coming soon"))
+        ctx.toast(tr("The Advent Calendar opens on 1 December"))
 
     def _step(self) -> None:
         self._hover += (self._want - self._hover) * 0.25
@@ -792,6 +900,7 @@ def build_inventory(page, lay) -> None:
         ctx.reload_page()
     picker.changed.connect(switch)
     lay.addWidget(picker)
+    lay.addWidget(WalletRow(page))                       # 3.2: keys and cases are yours too
     if tab == 7:
         rows = getattr(ctx, "ledger_rows", None)
         if rows is None or time.monotonic() - getattr(ctx, "ledger_at", 0) > 8:
@@ -800,8 +909,8 @@ def build_inventory(page, lay) -> None:
             def got(ok: bool, data) -> None:
                 if ok and isinstance(data, list) and data != getattr(ctx, "ledger_rows", None):
                     ctx.ledger_rows = data
-                    if ctx.window.current == "themes" and getattr(ctx, "inv_tab", 0) == 7:
-                        ctx.reload_page()
+                    if ctx.window.showing("themes") and getattr(ctx, "inv_tab", 0) == 7:
+                        ctx.reload_page("themes")
             ec.online.ask("rb_ledger_list", {}, got)
         lay.addWidget(heading(tr("Coin history")))
         if rows:
@@ -1000,8 +1109,8 @@ def build_profile_style(page, lay) -> None:
 
     def to_collection() -> None:
         ctx.shop_tab = 2
-        if ctx.window.current == "themes":
-            ctx.reload_page()
+        if ctx.window.showing("themes"):
+            ctx.reload_page("themes")
         else:
             ctx.window._drop_page("themes")
             ctx.window.goto("themes")
@@ -1144,8 +1253,8 @@ def build_market(page, lay) -> None:
                 return
             changed = data != getattr(ctx, "mk_rows", None) or getattr(ctx, "mk_key", None) != key
             ctx.mk_rows, ctx.mk_key = data, key
-            if changed and ctx.window.current == "themes" and getattr(ctx, "shop_tab", 0) == 4:
-                ctx.reload_page()
+            if changed and ctx.window.showing("themes") and getattr(ctx, "shop_tab", 0) == 4:
+                ctx.reload_page("themes")
         ec.online.ask(fn, args, got)
     if not tab:
         cheap = bool(getattr(ctx, "mk_sort", 0))
@@ -1238,8 +1347,8 @@ def _offers(page, lay) -> None:
         def got(ok: bool, d) -> None:
             if ok and isinstance(d, dict) and d != getattr(ctx, "offer_rows", None):
                 ctx.offer_rows = d
-                if ctx.window.current == "themes" and getattr(ctx, "shop_tab", 0) == 4:
-                    ctx.reload_page()
+                if ctx.window.showing("themes") and getattr(ctx, "shop_tab", 0) == 4:
+                    ctx.reload_page("themes")
         ec.online.ask("rb_market_offers", {}, got)
     if data is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -1338,7 +1447,7 @@ class TradeLink(QObject):
                 return
             self.data, self.got_at = data, time.monotonic()
             sig = str([data.get(k) for k in ("state", "version", "a_ready", "b_ready", "a_ok", "b_ok", "a_coins",
-                                              "b_coins")]) + str(data.get("wait") is None)
+                                              "b_coins", "a_keys", "b_keys")]) + str(data.get("wait") is None)
             if data.get("state") in ("done", "cancelled"):
                 self._timer.stop()
                 self.ctx.econ.refresh()
@@ -1444,16 +1553,17 @@ def build_trade(page, lay) -> None:
     mine = [i for i in items if i.get("side") == me]
     theirs = [i for i in items if i.get("side") == other]
     my_coins, their_coins = int(d.get(me + "_coins") or 0), int(d.get(other + "_coins") or 0)
+    my_keys, their_keys = int(d.get(me + "_keys") or 0), int(d.get(other + "_keys") or 0)      # 3.2: keys can be traded
     my_ready, their_ready = bool(d.get(me + "_ready")), bool(d.get(other + "_ready"))
     my_ok, their_ok = bool(d.get(me + "_ok")), bool(d.get(other + "_ok"))
     give = sum(int(i.get("estimate") or 0) for i in mine) + my_coins
     get = sum(int(i.get("estimate") or 0) for i in theirs) + their_coins
     version = int(d.get("version") or 0)
 
-    def offer(ids: list, coins: int) -> None:
-        link.act("rb_trade_offer", {"items": ids, "coins": coins})
+    def offer(ids: list, coins: int, keys: int = None) -> None:
+        link.act("rb_trade_offer", {"items": ids, "coins": coins, "keys": my_keys if keys is None else keys})
 
-    def side(title: str, rows: list, coins: int, total: int, ready: bool, removable: bool) -> None:
+    def side(title: str, rows: list, coins: int, total: int, ready: bool, removable: bool, keys: int = 0) -> None:
         head = hbox(spacing=6)
         head.addWidget(Label(title, 12, bold=True), 1)
         head.addWidget(Label(tr("Ready") if ready else tr("Not ready"), 10.5, "#5BE08A" if ready else TEXT_FAINT, bold=True))
@@ -1465,9 +1575,23 @@ def build_trade(page, lay) -> None:
             grid.picked.connect(lambda i: offer([r["id"] for k, r in enumerate(mine) if k != i], my_coins))
         lay.addWidget(grid)
         foot = hbox(spacing=6)
-        foot.addWidget(Label(tr("Coins: {n}", n=coins_text(coins)), 11.5, GOLD_TEXT, bold=True))
+        foot.addWidget(Label(tr("Coins: {n}", n=coins_text(coins)), 11.5, GOLD_TEXT, bold=True).fit())
+        foot.addWidget(Label(tr("Keys: {n}", n=keys), 11.5, ui.accent.name(), bold=True).fit())
         foot.addWidget(Label(tr("Worth about {v}", v=coins_text(total)), 10.5, TEXT_DIM), 1)
         if removable:
+            kb = Button(tr("Keys"), "ghost", 24, icon="key")
+
+            def change_keys() -> None:
+                def got(n: int, dlg) -> None:
+                    if n > ec.keys:
+                        return dlg.say(tr("You have {n} keys", n=ec.keys))
+                    if n > 99:
+                        return dlg.say(tr("99 at most"))
+                    dlg.close()
+                    offer([r["id"] for r in mine], coins, n)
+                ask_number(ctx, tr("Keys to give"), "0", tr("OK"), got, tr("You have {n} keys.", n=ec.keys))
+            kb.clicked.connect(change_keys)
+            foot.addWidget(kb)
             b = Button(tr("Change coins"), "ghost", 24)
 
             def change() -> None:
@@ -1480,8 +1604,8 @@ def build_trade(page, lay) -> None:
             b.clicked.connect(change)
             foot.addWidget(b)
         lay.addLayout(foot)
-    side(tr("You give"), mine, my_coins, give, my_ready, True)
-    side(tr("You get"), theirs, their_coins, get, their_ready, False)
+    side(tr("You give"), mine, my_coins, give, my_ready, True, my_keys)
+    side(tr("You get"), theirs, their_coins, get, their_ready, False, their_keys)
     if give > max(get * 2, get + 500):
         lay.addWidget(Label(tr("Uneven trade: you give much more than you get."), 11.5, "#FFB020",
                             bold=True, wrap_w=page.W))

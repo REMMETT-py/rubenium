@@ -918,8 +918,8 @@ def duel_limit(ctx, name: str, page=None) -> int:
             if ok and isinstance(data, (int, float)):
                 old = cache.get(name, (None, 0))[0]
                 cache[name] = (int(data), time.monotonic())
-                if old != int(data) and ctx.window.current == "games" and getattr(ctx, "games_sub", None) == "duels":
-                    ctx.reload_page()
+                if old != int(data) and ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "duels":
+                    ctx.reload_page("games")
         ctx.online.ask("rb_duel_limit", {"name": name}, done)
     top = cache.get(name, (None, 0))[0]
     return max(0, min(mine, top) if top is not None else mine)

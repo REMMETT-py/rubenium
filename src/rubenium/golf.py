@@ -1,8 +1,9 @@
-"""3.0.0: live 1 v 1 mini golf between friends (it replaces duels).
+"""Live 1 v 1 mini golf (3.0.0). 3.2: open lobbies instead of invitations, 5 holes, 8 new holes.
 
 Both players see the same course. They take turns: drag back from anywhere, let go to shoot. Every shot is sent to
-the server with where the ball stopped; the other player sees it roll a moment later. 3 holes, at most 6 strokes a
-hole, 25 seconds a turn. Fewest strokes wins the bet (5% fee); a draw gives both bets back."""
+the server with where the ball stopped; the other player sees it roll a moment later. 5 holes, at most 6 strokes a
+hole, 25 seconds a turn. Fewest strokes wins the bet (5% fee); a draw gives both bets back. Anyone can open a lobby
+(one at a time); it closes by itself after 5 minutes if nobody joins."""
 import math
 import time
 
@@ -53,11 +54,31 @@ HOLES = {
     16: dict(name="Express", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[(0.30, 0.0, 0.70, 0.22), (0.30, 0.40, 0.70, 0.62)],
              circles=[], boost=[(0.32, 0.24, 0.42, 0.38, 1.8, 0.0)], ice=[(0.44, 0.22, 0.70, 0.40)],
              sand=[(0.78, 0.18, 0.86, 0.44)]),
+    # 3.2: eight new holes
+    17: dict(name="Horseshoe", tee=(0.10, 0.12), cup=(0.12, 0.50), rects=[(0.0, 0.28, 0.72, 0.34)], circles=[(0.86, 0.31, 0.04)],
+             sand=[(0.40, 0.40, 0.56, 0.62)]),
+    18: dict(name="Twin Lakes", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[], circles=[(0.50, 0.31, 0.035)],
+             water=[(0.25, 0.0, 0.75, 0.20), (0.25, 0.42, 0.75, 0.62)]),
+    19: dict(name="Pinball Alley", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[(0.20, 0.0, 0.80, 0.10), (0.20, 0.52, 0.80, 0.62)],
+             circles=[(0.32, 0.22, 0.03), (0.32, 0.40, 0.03), (0.47, 0.31, 0.03), (0.62, 0.20, 0.03), (0.62, 0.42, 0.03),
+                      (0.76, 0.31, 0.03)]),
+    20: dict(name="Ice Bridge", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[], circles=[],
+             water=[(0.22, 0.0, 0.78, 0.24), (0.22, 0.38, 0.78, 0.62)], ice=[(0.22, 0.24, 0.78, 0.38)]),
+    21: dict(name="Fortress", tee=(0.10, 0.31), cup=(0.70, 0.31),
+             rects=[(0.55, 0.16, 0.85, 0.20), (0.55, 0.42, 0.85, 0.46), (0.81, 0.20, 0.85, 0.42), (0.55, 0.20, 0.59, 0.27),
+                    (0.55, 0.35, 0.59, 0.42)], circles=[(0.35, 0.31, 0.04)]),
+    22: dict(name="Slalom", tee=(0.08, 0.10), cup=(0.92, 0.52),
+             rects=[(0.22, 0.0, 0.26, 0.42), (0.42, 0.20, 0.46, 0.62), (0.62, 0.0, 0.66, 0.42), (0.80, 0.20, 0.84, 0.62)],
+             circles=[]),
+    23: dict(name="Booster Loop", tee=(0.10, 0.50), cup=(0.10, 0.12), rects=[(0.0, 0.28, 0.70, 0.34)], circles=[],
+             boost=[(0.74, 0.36, 0.96, 0.60, 0.0, -1.7), (0.40, 0.04, 0.70, 0.24, -1.6, 0.0)], ice=[(0.20, 0.0, 0.40, 0.28)]),
+    24: dict(name="Dunes", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[(0.48, 0.24, 0.52, 0.38)], circles=[],
+             sand=[(0.18, 0.0, 0.88, 0.22), (0.18, 0.40, 0.88, 0.62)], boost=[(0.20, 0.26, 0.34, 0.36, 1.2, 0.0)]),
 }
 
 
 def get_hole(hid: int) -> dict:
-    """Hole 1-16; 101-116 is the same hole mirrored left to right."""
+    """Hole 1-24; 101-124 is the same hole mirrored left to right."""
     base = HOLES.get(hid % 100, HOLES[1])
     if hid < 100:
         return base
@@ -209,17 +230,20 @@ class GolfView(QWidget):
                 self.ctx.reload_page()
         self.ctx.online.ask("rb_golf_state", {"gid": self.gid}, got)
 
+    def n_holes(self) -> int:
+        return max(1, len(self.g.get("holes") or [1, 2, 3, 4, 5]))
+
     def hole(self, n: int = 0) -> dict:
-        """The layout of hole n (1-3) of this match; the current hole by default."""
-        hs = list(self.g.get("holes") or [1, 2, 3])
-        n = max(1, min(3, int(n or self.g.get("hole") or 1)))
+        """The layout of hole n of this match; the current hole by default."""
+        hs = list(self.g.get("holes") or [1, 2, 3, 4, 5])
+        n = max(1, min(len(hs), int(n or self.g.get("hole") or 1)))
         return get_hole(int(hs[n - 1]) if len(hs) >= n else 1)
 
     def set_state(self, g: dict) -> None:
         old = self.g
         self.g = g
         if old and old.get("hole") != g.get("hole") and g.get("state") == "live":
-            self._banner, self._banner_at = tr("Hole {n} of 3", n=g.get("hole")), time.monotonic()
+            self._banner, self._banner_at = tr("Hole {n} of {t}", n=g.get("hole"), t=self.n_holes()), time.monotonic()
             sfx.play("on")
         shots = sorted(g.get("shots") or [], key=lambda s: int(s.get("n") or 0))
         if self.seen < 0:                                    # just opened: no replay of old shots
@@ -481,7 +505,7 @@ class GolfView(QWidget):
         w = r.width() / 3
         for i, side in enumerate(("a", "b")):
             box = QRectF(r.left() + (0 if i == 0 else 2 * w), r.top(), w, r.height())
-            strokes = list(g.get(side + "_strokes") or [0, 0, 0])
+            strokes = list(g.get(side + "_strokes") or [0])
             active = g.get("state") == "live" and g.get("turn") == side
             p.setPen(ui.accent if side == me else QColor("#FFB627"))
             p.setFont(font(11, QFont.Weight.Bold))
@@ -498,7 +522,7 @@ class GolfView(QWidget):
         p.setPen(QColor(TEXT))
         p.setFont(font(11, QFont.Weight.Black))
         p.drawText(mid.adjusted(0, S(3), 0, -r.height() / 2), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("Hole {n} of 3", n=hole) if g.get("state") == "live" else tr("Final score"))
+                   tr("Hole {n} of {t}", n=hole, t=self.n_holes()) if g.get("state") == "live" else tr("Final score"))
         p.setFont(font(10, QFont.Weight.DemiBold))
         if g.get("state") == "live":
             left = max(0, int(float(g.get("left") or 0)))
@@ -508,47 +532,71 @@ class GolfView(QWidget):
             p.drawText(mid.adjusted(0, r.height() / 2, 0, -S(3)), int(Qt.AlignmentFlag.AlignCenter), text)
 
 
-def golf_limit(ctx, name: str) -> int:
-    from .games2 import duel_limit
-    return duel_limit(ctx, name)
-
-
-class GolfRow(QWidget):
-    """One match in the list: who, the bet, and what can be done now."""
+class LobbyRow(QWidget):
+    """One open lobby: who opened it, the bet, how long it stays, and Join (or Close for your own)."""
 
     def __init__(self, page, m: dict) -> None:
         super().__init__()
-        self.setFixedHeight(S(52))
+        self.m = m
+        self.setFixedHeight(S(50))
         lay = hbox(self, 6)
         lay.setContentsMargins(S(10), 0, S(6), 0)
         bet = int(m.get("bet") or 0)
-        title = tr("vs {name}", name=m.get("other", "?")) + ("  ·  " + coins_text(bet) if bet else "")
+        name = Label(str(m.get("host", "?")), 12, TEXT, bold=True)
+        name.setFixedWidth(name.text_width() + S(8))
+        lay.addWidget(name)
+        lay.addWidget(Label((coins_text(bet) + " " + tr("coins")) if bet else tr("No bet"), 10.5, "#E8C26A" if bet else TEXT_DIM), 1)
+        if m.get("mine"):
+            b = Button(tr("Close"), "ghost", 30)
+            b.clicked.connect(lambda: golf_cancel(page, m["id"]))
+        else:
+            b = Button(tr("Join"), "primary", 30)
+            b.clicked.connect(lambda: golf_join(page, m))
+        lay.addWidget(b)
+        self._t0, self._left = time.monotonic(), int(m.get("left") or 0)
+        self._tick = QTimer(self)
+        self._tick.setInterval(1000)
+        self._tick.timeout.connect(self.update)
+        self._tick.start()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha(ui.accent, 0.5), 1.2) if self.m.get("mine") else Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.05))
+        p.drawRoundedRect(r, S(10), S(10))
+        left = max(0, self._left - int(time.monotonic() - self._t0))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9.5, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left() + S(10), r.bottom() - S(15), r.width() * 0.5, S(13)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("Closes in {t}", t=f"{left // 60}:{left % 60:02d}"))
+
+
+class GolfRow(QWidget):
+    """One match of your history: who, the bet and the score."""
+
+    def __init__(self, page, m: dict) -> None:
+        super().__init__()
+        self.setFixedHeight(S(44))
+        lay = hbox(self, 6)
+        lay.setContentsMargins(S(10), 0, S(6), 0)
+        bet = int(m.get("bet") or 0)
+        title = tr("vs {name}", name=m.get("other") or "?") + ("  ·  " + coins_text(bet) if bet else "")
         state = m.get("state")
-        if state == "asked":
-            sub = tr("They challenge you!") if m.get("asked_me") else tr("Waiting for an answer")
-        elif state == "live":
+        if state == "live":
             sub = tr("Live now")
         elif state == "done":
             sub = (tr("Draw") if m.get("draw") else tr("Won") if m.get("won") else tr("Lost")) + \
                   f"  ·  {m.get('me_total', 0)} – {m.get('other_total', 0)}"
         else:
             sub = tr("Cancelled")
-        name = Label(title, 12, TEXT, bold=True)
+        name = Label(title, 11.5, TEXT, bold=True)
         name.setFixedWidth(name.text_width() + S(8))
         lay.addWidget(name)
         lay.addWidget(Label(sub, 10.5, "#3DDC84" if state == "live" or m.get("won") else TEXT_DIM), 1)
-        if state == "asked" and m.get("asked_me"):
-            yes, no = Button(tr("Play"), "primary", 30), Button(tr("Decline"), "ghost", 30)
-            yes.clicked.connect(lambda: golf_answer(page, m["id"], True))
-            no.clicked.connect(lambda: golf_answer(page, m["id"], False))
-            lay.addWidget(yes)
-            lay.addWidget(no)
-        elif state == "asked":
-            back = Button(tr("Cancel"), "ghost", 30)
-            back.clicked.connect(lambda: golf_answer(page, m["id"], False))
-            lay.addWidget(back)
-        elif state == "live":
-            go = Button(tr("Open"), "primary", 30)
+        if state == "live":
+            go = Button(tr("Open"), "primary", 28)
             go.clicked.connect(lambda: golf_open(page, m["id"]))
             lay.addWidget(go)
 
@@ -556,7 +604,7 @@ class GolfRow(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.05))
+        p.setBrush(alpha("#FFFFFF", 0.035))
         p.drawRoundedRect(QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), S(10), S(10))
 
 
@@ -566,54 +614,74 @@ def golf_open(page, gid: str) -> None:
     page.ctx.reload_page()
 
 
-def golf_answer(page, gid: str, yes: bool) -> None:
+def golf_cancel(page, gid: str) -> None:
     ctx = page.ctx
 
     def done(ok: bool, data) -> None:
         if not ok:
             return ctx.toast(tr(str(data)), "warn")
-        ctx.econ.refresh()
-        ctx.golf_list = None
-        if yes and isinstance(data, dict) and data.get("state") == "live":
-            return golf_open(page, gid)
         sfx.play("off")
-        ctx.reload_page()
-    ctx.econ.call("rb_golf_answer", {"gid": gid, "yes": yes}, done)
+        ctx.econ.refresh()
+        ctx.golf_lobby = None
+        load_golf(page)
+    ctx.econ.call("rb_golf_cancel", {"gid": gid}, done)
+
+
+def golf_join(page, m: dict) -> None:
+    ctx = page.ctx
+    bet = int(m.get("bet") or 0)
+    if bet > ctx.econ.coins:
+        return ctx.toast(tr("Not enough coins"), "warn")
+
+    def done(ok: bool, data) -> None:
+        if not ok:
+            ctx.golf_lobby = None
+            load_golf(page)
+            return ctx.toast(tr(str(data)), "warn")
+        ctx.econ.refresh()
+        golf_open(page, m["id"])
+
+    def go() -> None:
+        ctx.econ.call("rb_golf_join", {"gid": m["id"]}, done)
+    if bet:
+        ctx.window.confirm(tr("Join {name}'s match for {n} coins?", name=m.get("host", "?"), n=coins_text(bet)), go,
+                           yes=tr("Join"))
+    else:
+        go()
 
 
 def load_golf(page) -> None:
-    """The match list (asked every 2 seconds while the screen is open). A match that just went live opens."""
+    """The lobby (asked every 2 seconds while the screen is open). Your own match going live opens it."""
     ctx = page.ctx
 
     def got(ok: bool, data) -> None:
         if not ok:
             if "soon" in str(data).lower():
                 ctx.golf_missing = True
-                if ctx.window.current == "games" and getattr(ctx, "games_sub", None) == "duels":
-                    ctx.reload_page()
+                if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "duels":
+                    ctx.reload_page("games")
             return
-        if not isinstance(data, list):
+        if not isinstance(data, dict):
             return
         ctx.golf_missing = False
-        old = getattr(ctx, "golf_list", None)
-        live = next((m for m in data if m.get("state") == "live"), None)
-        if live and not getattr(ctx, "golf_id", None) and (old is None or not any(
-                o.get("id") == live["id"] and o.get("state") == "live" for o in old)):
-            ctx.golf_id = live["id"]                         # your friend just said yes: straight in
-            ctx.golf_list = data
+        old = getattr(ctx, "golf_lobby", None)
+        live = data.get("live")
+        if live and not getattr(ctx, "golf_id", None) and (old is None or old.get("live") != live):
+            ctx.golf_id = live                               # somebody joined your lobby: straight in
+            ctx.golf_lobby = data
             sfx.play("on")
-            if ctx.window.current == "games" and getattr(ctx, "games_sub", None) == "duels":
-                ctx.reload_page()
+            if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "duels":
+                ctx.reload_page("games")
             return
         if data != old:
-            ctx.golf_list = data
-            if ctx.window.current == "games" and getattr(ctx, "games_sub", None) == "duels" and not getattr(ctx, "golf_id", None):
-                ctx.reload_page()
-    ctx.online.ask("rb_golf_list", {}, got)
+            ctx.golf_lobby = data
+            if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "duels" and not getattr(ctx, "golf_id", None):
+                ctx.reload_page("games")
+    ctx.online.ask("rb_golf_lobbies", {}, got)
 
 
 class _ListPoll(QWidget):
-    """Invisible: refreshes the match list while the golf screen is shown."""
+    """Invisible: refreshes the lobby while the golf screen is shown."""
 
     def __init__(self, page) -> None:
         super().__init__()
@@ -632,7 +700,7 @@ class _ListPoll(QWidget):
 
 
 def build_golf(page, lay) -> None:
-    """Mini golf 1 v 1: a live match, or challenge a friend and the list of matches."""
+    """Mini golf 1 v 1: a live match, or the lobby (open a match, or join one)."""
     from .hub import server_wait
     from .shop import CoinBar
     ctx = page.ctx
@@ -643,12 +711,15 @@ def build_golf(page, lay) -> None:
     def leave_screen() -> None:
         if gid:
             ctx.golf_id = None
-            ctx.golf_list = None
-            return ctx.reload_page()
+            ctx.golf_lobby = None
+            return ctx.reload_page("games")
         page.open_sub(None)
     back.clicked.connect(leave_screen)
     top.addWidget(back)
-    top.addWidget(Label(tr("Mini Golf 1v1"), 16, bold=True), 1)
+    top.addWidget(Label(tr("Mini Golf"), 16, bold=True), 1)
+    duel = Label(tr("DUEL"), 10, "#3DDC84", bold=True)
+    duel.fit()
+    top.addWidget(duel)
     lay.addLayout(top)
     if getattr(ctx, "golf_missing", False):
         server_wait(ctx, lay, page.W)
@@ -664,77 +735,78 @@ def build_golf(page, lay) -> None:
                 view.ask()
             if view.g.get("state") != "live":
                 return leave_screen()
-            ctx.window.confirm(tr("Leave? Your friend wins the match."),
+            ctx.window.confirm(tr("Leave? The other player wins the match."),
                                lambda: ctx.online.ask("rb_golf_leave", {"gid": gid}, done), yes=tr("Leave"))
         quit_.clicked.connect(leave)
         lay.addWidget(quit_)
-        lay.addWidget(Label(tr("Drag back anywhere, then let go to shoot. 3 holes, 25 seconds a turn. Fewest strokes wins."),
+        lay.addWidget(Label(tr("Drag back anywhere, then let go to shoot. {n} holes, 25 seconds a turn. Fewest strokes wins.",
+                               n=view.n_holes() if view.g else int(float(ctx.econ.cfg.get("golf_holes", 5) or 5))),
                             10, TEXT_DIM, wrap_w=page.W))
         return
     lay.addWidget(CoinBar(ctx))
     lay.addWidget(_ListPoll(page))
-    friends = list(getattr(ctx, "duel_friends", None) or [])
-    lay.addWidget(Label(tr("CHALLENGE A FRIEND"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
-    if not friends:
-        lay.addWidget(Label(tr("Add friends in the Social tab to play them."), 11, TEXT_DIM, wrap_w=page.W))
-    else:
-        names = [f["name"] for f in friends][:6]
-        pick = Segmented(names, min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1))
-        lay.addWidget(pick)
-
-        def who() -> str:
-            return names[min(int(getattr(ctx, "duel_pick", 0) or 0), len(names) - 1)]
-        top_bet = golf_limit(ctx, who())
-        mode = Segmented([tr("Bet"), tr("No bet")], 1 if getattr(ctx, "duel_nobet", False) or top_bet < 10 else 0)
+    data = getattr(ctx, "golf_lobby", None)
+    if data is None:
+        lay.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
+        return
+    lobbies = list(data.get("lobbies") or [])
+    mine = next((m for m in lobbies if m.get("mine")), None)
+    holes = int(data.get("holes") or 5)
+    if mine is None:
+        lay.addWidget(Label(tr("OPEN A MATCH"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+        cap = int(data.get("cap") or 0)
+        mode = Segmented([tr("Bet"), tr("No bet")], 1 if getattr(ctx, "duel_nobet", False) or cap < 10 else 0)
         lay.addWidget(mode)
         amount = None
-        if top_bet >= 10:
-            start = max(10, min(top_bet, int(getattr(ctx, "duel_amount", 0) or 100)))
-            amount = SliderRow(tr("Bet"), 10, top_bet, start, 10, start, lambda v: coins_text(int(v)), label_w=60)
+        if cap >= 10:
+            start = max(10, min(cap, int(getattr(ctx, "duel_amount", 0) or 100)))
+            amount = SliderRow(tr("Bet"), 10, cap, start, 10, start, lambda v: coins_text(int(v)), label_w=60)
             amount._val.setFixedWidth(S(78))
             amount.changed.connect(lambda v: setattr(ctx, "duel_amount", int(v)))
             amount.setVisible(mode.index() == 0)
             lay.addWidget(amount)
-            lay.addWidget(Label(tr("Maximum {n} (80% of the lower balance).", n=coins_text(top_bet)), 10, TEXT_DIM,
-                                wrap_w=page.W))
 
         def on_mode(i: int) -> None:
-            if top_bet < 10:
+            if cap < 10:
                 return mode.set_index(1)
             ctx.duel_nobet = i == 1
             if amount is not None:
                 amount.setVisible(i == 0)
-
-        def on_pick(i: int) -> None:
-            ctx.duel_pick = i
-            ctx.reload_page()
         mode.changed.connect(on_mode)
-        pick.changed.connect(on_pick)
-        send = Button(tr("Send challenge"), "primary", 36, icon="shield")
+        make = Button(tr("Open a match"), "primary", 36, icon="flag")
 
-        def ask() -> None:
-            name = who()
+        def create() -> None:
             bet = 0 if amount is None or getattr(ctx, "duel_nobet", False) else int(amount.value())
             bet = 0 if bet < 10 else bet - bet % 10
             if bet > ctx.econ.coins:
                 return ctx.toast(tr("Not enough coins"), "warn")
 
-            def done(ok: bool, data) -> None:
+            def done(ok: bool, d) -> None:
                 if not ok:
-                    return ctx.toast(tr(str(data)), "warn")
+                    return ctx.toast(tr(str(d)), "warn")
                 sfx.play("on")
-                ctx.toast(tr("Challenge sent to {name}", name=name))
+                ctx.toast(tr("Match open: waiting for a player"))
                 ctx.econ.refresh()
+                ctx.golf_lobby = None
                 load_golf(page)
-            ctx.econ.call("rb_golf_invite", {"name": name, "bet": bet}, done)
-        send.clicked.connect(ask)
-        lay.addWidget(send)
-    lay.addWidget(Label(tr("YOUR MATCHES"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
-    rows = getattr(ctx, "golf_list", None)
-    if rows is None:
-        lay.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
-    elif not rows:
-        lay.addWidget(Label(tr("No matches yet."), 11, TEXT_DIM))
+            ctx.econ.call("rb_golf_create", {"bet": bet}, done)
+        make.clicked.connect(create)
+        lay.addWidget(make)
+        lay.addWidget(Label(tr("{n} holes. Anyone can join. The winner gets both bets (5% fee); a draw gives them back. "
+                               "Nobody joins in 5 minutes: it closes and your bet comes back.", n=holes),
+                            10, TEXT_DIM, wrap_w=page.W))
     else:
-        for m in rows[:10]:
+        lay.addWidget(Label(tr("YOUR MATCH"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+        lay.addWidget(LobbyRow(page, mine))
+        lay.addWidget(Label(tr("Waiting for a player. It starts as soon as someone joins."), 10.5, TEXT_DIM, wrap_w=page.W))
+    others = [m for m in lobbies if not m.get("mine")]
+    lay.addWidget(Label(tr("OPEN MATCHES"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    if not others:
+        lay.addWidget(Label(tr("No open match right now. Open one!"), 11, TEXT_DIM, wrap_w=page.W))
+    for m in others[:12]:
+        lay.addWidget(LobbyRow(page, m))
+    hist = list(data.get("history") or [])
+    if hist:
+        lay.addWidget(Label(tr("YOUR LAST MATCHES"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+        for m in hist[:6]:
             lay.addWidget(GolfRow(page, m))

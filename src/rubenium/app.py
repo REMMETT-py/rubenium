@@ -199,6 +199,8 @@ class App(QObject):
         self.hud = HudOverlay(self.cfg, self.sensors)
         self.meter = win.AudioMeter()
         self.appvol = win.AppVolume()
+        from .music3 import AdMuter
+        self.admute = AdMuter(self)
         self._env = 0.0
         self._audio = QTimer(self)
         self._audio.setInterval(33)
@@ -232,6 +234,9 @@ class App(QObject):
         self._usage.timeout.connect(self._count_usage)
         self._usage.start()
         self.window = MainWindow(self)
+        self.main_window = self.window              # 3.2: the small menu; self.window is the online menu while it is on
+        self.online_mode = False
+        self._online_win = None
         self.online.changed.connect(lambda: self.window.sync_lock())     # offline mode: cover the online tabs
         from .notify import Notifier
         self.notifier = Notifier(self)              # pop-ups and a quiet beep for what happens online
@@ -480,6 +485,7 @@ class App(QObject):
     # ------------------------------------------------------------------ media
     def _on_state(self, st: TrackState) -> None:
         self.state = st
+        self.admute.on_state(st)                      # 3.2: adverts are muted while they play
         self._pos_base, self._pos_t = float(st.position_ms), time.monotonic()
         if st.art_key != self._art_key:
             self._art_key = st.art_key
@@ -613,6 +619,8 @@ class App(QObject):
         if game is not None:
             self.cfg["game"] = game
         self.casino = True
+        if self.online_mode:                          # 3.2: the online menu is already big
+            return self.reload_page("games")
         base = self.cfg["scale_before_games"] or self.cfg["scale"]
         want = self._casino_scale(base)
         if want != self.cfg["scale"]:
@@ -625,6 +633,8 @@ class App(QObject):
 
     def leave_casino(self) -> None:
         self.casino = False
+        if self.online_mode and not self.cfg["scale_before_games"]:
+            return self.reload_page("games")
         before = self.cfg["scale_before_games"]
         if before:
             self.cfg["scale"] = before
@@ -640,7 +650,7 @@ class App(QObject):
         w = self.window
         if not self.casino or w.morph.busy or w.slide.busy or w.zoom.busy or w.fade.busy or self.welcome is not None:
             return
-        if w.expanded and w.current == "games":
+        if w.expanded and w.showing("games"):
             return
         entry = w.pages.get("games")
         page = entry[1] if entry else None
@@ -825,15 +835,15 @@ class App(QObject):
             self.window.ball.update()
 
     def faces_changed(self) -> None:
-        if self.window.current in ("friends", "admin") and self.window.expanded:
-            page = self.window.page()
-            if page is not None:
+        for key in ("friends", "admin"):
+            if self.window.expanded and key in self.window.pages:
+                page = self.window.pages[key][1]
                 for w in [page] + page.findChildren(QWidget):
                     w.update()
 
     def _trade_changed(self) -> None:
-        if self.window.current == "friends" and self.window.expanded:
-            self.reload_page()
+        if self.window.showing("friends") and self.window.expanded:
+            self.reload_page("friends")
 
     def _live_changed(self) -> None:
         """Giveaways, the admin tab, the lock: from the server's latest news."""
@@ -859,15 +869,20 @@ class App(QObject):
         if want != LIVE_TABS:
             LIVE_TABS.clear()
             LIVE_TABS.update(want)
-            if self.window.current in ("giveaway", "admin") and self.window.current not in want:
+            if not self.online_mode and self.window.current in ("giveaway", "admin") and self.window.current not in want:
                 self.window.goto("home")
             self.window.tabs_changed()
+            if self.main_window is not self.window:
+                self.main_window.tabs_changed()
         self.window.sync_lock()
-        if self.window.current in ("giveaway", "themes") and self.window.expanded and not self.econ.holding:
-            cur = self.window.page()
-            if self.window.current == "giveaway" or getattr(self, "shop_tab", 0) in (1, 4):
-                if cur is None or not getattr(cur, "reel", None) or not cur.reel.busy():
-                    self.reload_page()
+        for key in ("giveaway", "themes"):            # 3.2: the online menu may show both at once
+            if not self.window.showing(key) or self.econ.holding:
+                continue
+            if key == "themes" and getattr(self, "shop_tab", 0) not in (1, 4):
+                continue
+            cur = (self.window.pages.get(key) or (None, None))[1]
+            if cur is None or not getattr(cur, "reel", None) or not cur.reel.busy():
+                self.reload_page(key)
 
     def notice(self, kind: str, data: dict) -> None:
         """A small message from the server (a gift, a giveaway win, something from the admin)."""
@@ -1235,8 +1250,111 @@ class App(QObject):
     def goto(self, key: str) -> None:
         self.window.goto(key)
 
-    def reload_page(self) -> None:
-        QTimer.singleShot(0, self.window.reload_page)
+    def reload_page(self, key: str = None) -> None:
+        """Rebuild a page: the current one, or (3.2) the one named, wherever it is shown."""
+        QTimer.singleShot(0, lambda: self.window.reload_page(key))
+
+    # ------------------------------------------------------------------ 3.2: online mode
+    def enter_online(self, focus: str = None) -> None:
+        """The ONLINE button: the menu folds into the ball, the ball flies up off the screen and the online menu
+        drops down from the top."""
+        if self.online_mode:
+            if focus:
+                self.window.goto(focus)
+            return
+        if getattr(self, "_online_busy", False) or self.welcome is not None:
+            return
+        if not self.online.logged_in():
+            return self.toast(tr("Log in first"), "warn")
+        main = self.main_window
+        self._online_busy = True
+        self._online_back_open = main.expanded
+        if focus in ("games", "themes", "friends", "giveaway"):
+            self.cfg["online_tab"] = focus if focus != "giveaway" else self.cfg["online_tab"]
+        from .onlinewin import fly_up, online_window
+
+        def fly() -> None:
+            if self._online_win is None:
+                self._online_win = online_window(self, main)
+            ow = self._online_win
+            if focus:
+                ow.current = focus
+            self.online_mode = True
+            self.window = ow
+
+            def drop() -> None:
+                self._online_busy = False
+                ow.open()
+                self.econ.poll_live()
+            fly_up(self, main, drop)
+        if main.expanded:
+            main.collapse()
+            QTimer.singleShot(340, fly)
+        else:
+            fly()
+
+    def leave_online(self, after=None, ask: bool = True) -> None:
+        """The back arrow: tell what leaving would close (lobbies, a live match, a giveaway entry) and ask once; then
+        the black hole takes the banner and the ball floats back down to where it lives."""
+        if not self.online_mode or getattr(self, "_online_busy", False):
+            return
+        ow = self._online_win
+        if not ask or not self.online.logged_in() or self.cfg["offline_mode"]:
+            return self._leave_now(after, cancel=False)
+
+        def got(ok: bool, st) -> None:
+            if not ok or not isinstance(st, dict):
+                return self._leave_now(after, cancel=False)
+            lines = []
+            if st.get("flip_open"):
+                lines.append(tr("Your Coinflip lobby will close and your items come back."))
+            if st.get("flip_joined"):
+                lines.append(tr("You will leave the Coinflip you joined."))
+            if st.get("golf_open"):
+                lines.append(tr("Your Mini Golf lobby will close and your bet comes back."))
+            if st.get("golf_live"):
+                lines.append(tr("You will forfeit your live Mini Golf match."))
+            gws = list(st.get("giveaways") or [])
+            if gws:
+                lines.append(tr("You will leave the giveaway: {t}.", t=", ".join(str(g) for g in gws[:2])))
+            if not lines:
+                return self._leave_now(after, cancel=False)
+            if len(lines) == 1:
+                text = tr("Leave online mode?") + " " + lines[0]
+            else:
+                text = tr("Leave online mode? This will be cancelled:") + "\n• " + "\n• ".join(lines)
+            ow.confirm(text, lambda: self._leave_now(after, cancel=True), yes=tr("Leave"), no=tr("Stay"))
+        self.online.ask("rb_online_status", {}, got)
+
+    def _leave_now(self, after=None, cancel: bool = True) -> None:
+        if not self.online_mode or getattr(self, "_online_busy", False):
+            return
+        self._online_busy = True
+        ow, main = self._online_win, self.main_window
+        if cancel:
+            def left(ok: bool, data) -> None:
+                if ok:
+                    self.econ.refresh()
+                    self.golf_lobby = self.flip_data = None
+            self.online.ask("rb_online_leave", {}, left)
+        from .onlinewin import float_down
+
+        def gone() -> None:
+            self.online_mode = False
+            self.window = main
+            self.cfg["card_open"] = False
+
+            def home() -> None:
+                self._online_busy = False
+                main.ball.set_center(main.ball.center)
+                main.show_ball()
+                if after is not None:
+                    after()
+                elif self._online_back_open:
+                    main.expand()
+                self.on_visibility()
+            float_down(self, main, home)
+        ow.start_leaving(gone)
 
     def pick_file(self, title: str, pattern: str) -> str:
         return self.window.pick_file(title, pattern)
@@ -1276,6 +1394,13 @@ class App(QObject):
         self._closing = True
         log.info("Shutting down")
         try:
+            self.admute.release()                    # never leave the music app muted
+            if self.online_mode and self.online.logged_in():
+                try:                                 # leaving the app while online closes your lobbies
+                    from .online import _request
+                    _request("/rest/v1/rpc/rb_online_leave", {}, self.online.s.get("access_token", ""), timeout=3)
+                except Exception:  # noqa: BLE001
+                    pass
             self._audio.stop()
             self._usage.stop()
             self.rocket.stop()

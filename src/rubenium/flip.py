@@ -1,0 +1,667 @@
+"""3.2: Coinflip, a duel of items.
+
+Open a coinflip: pick black or white and up to 6 of your items. It waits in the lobby for 5 minutes. Someone joins:
+they have 30 seconds to put in up to 6 items worth about the same (within 10%). Once they lock in, nothing can be taken
+back: 15 seconds later the coin flips and lands on black or white. The winner takes every item. The chance follows
+the share of the pot, never below 49% or above 51%. The server decides the flip the moment both sides are locked in,
+keeps it secret until the coin lands, then moves the items once: nothing can be copied or undone."""
+import math
+import random
+import time
+
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen, QRadialGradient
+from PyQt6.QtWidgets import QWidget
+
+from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, lang, mix, tr, ui
+from .shop import GOLD_TEXT
+from .wallet import coins_text, paint_coin
+from .widgets import Button, IconButton, Label, Segmented, hbox
+
+WIN_C, LOSE_C = "#35E0A1", "#FF5C6C"
+
+
+def pct(x: float) -> str:
+    t = f"{x * 100:.1f}%"
+    return t.replace(".", ",") if lang() == "fr" else t
+
+
+def side_name(side: str) -> str:
+    return tr("Black") if side == "black" else tr("White")
+
+
+# ================================================================ your items to put in
+class ItemPicker(QWidget):
+    """Your items that can go in a coinflip (tradeable, free, worth something). Click to add or take out; 6 at most."""
+    changed = pyqtSignal()
+
+    def __init__(self, page, limit: int = 6, want=None) -> None:
+        super().__init__()
+        self.page, self.ctx, self.limit = page, page.ctx, limit
+        self.want = want                                    # (min, max) worth a joiner must reach, or None
+        ec = self.ctx.econ
+        rows = []
+        for it in ec.items:
+            info = ec.info(it["item"])
+            if it.get("locked") or not info or not info.get("tradeable") or info.get("kind") in ("prog", "tag"):
+                continue
+            w = ec.worth(it["item"])
+            if w > 0:
+                rows.append((it["id"], it["item"], w))
+        rows.sort(key=lambda r: -r[2])
+        self.rows = rows[:60]
+        self.picked: list = []
+        self.per = 5
+        self.th = S(70)
+        n = max(1, (len(self.rows) + self.per - 1) // self.per)
+        self.setFixedSize(page.W, n * self.th + (n - 1) * S(5) if self.rows else S(60))
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.hover = -1
+
+    def total(self) -> int:
+        return sum(w for iid, _it, w in self.rows if iid in self.picked)
+
+    def ids(self) -> list:
+        return list(self.picked)
+
+    def _tile(self, i: int) -> QRectF:
+        gap = S(5)
+        w = (self.width() - gap * (self.per - 1)) / self.per
+        r, c = divmod(i, self.per)
+        return QRectF(c * (w + gap), r * (self.th + gap), w, self.th)
+
+    def _at(self, pos) -> int:
+        return next((i for i in range(len(self.rows)) if self._tile(i).contains(pos)), -1)
+
+    def mouseMoveEvent(self, e) -> None:
+        h = self._at(e.position())
+        if h != self.hover:
+            self.hover = h
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        i = self._at(e.position())
+        if i < 0:
+            return
+        iid = self.rows[i][0]
+        if iid in self.picked:
+            self.picked.remove(iid)
+            sfx.play("off")
+        elif len(self.picked) >= self.limit:
+            return self.ctx.toast(tr("{n} items at most", n=self.limit), "warn")
+        else:
+            self.picked.append(iid)
+            sfx.play("pick")
+        self.update()
+        self.changed.emit()
+
+    def paintEvent(self, _e) -> None:
+        from .collection import rarity_colour, show_item
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        if not self.rows:
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(11))
+            p.drawText(QRectF(self.rect()), int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap),
+                       tr("No item to put in: get some from cases, the shop or the market."))
+            return
+        now = time.monotonic()
+        for i, (iid, item, w) in enumerate(self.rows):
+            r = self._tile(i).adjusted(0.5, 0.5, -0.5, -0.5)
+            on = iid in self.picked
+            col = rarity_colour(self.ctx, item)
+            p.setPen(QPen(ui.accent if on else alpha(col, 0.35 if i == self.hover else 0.15), S(2) if on else 1))
+            p.setBrush(alpha(col, 0.16 if on else 0.06))
+            p.drawRoundedRect(r, S(9), S(9))
+            d = min(r.width(), r.height()) * 0.52
+            show_item(p, item, QRectF(r.center().x() - d / 2, r.top() + S(6), d, d), now, effects=False)
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(9, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left(), r.bottom() - S(17), r.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter),
+                       coins_text(w))
+            if on:
+                k = self.picked.index(iid) + 1
+                b = QRectF(r.right() - S(17), r.top() + S(3), S(14), S(14))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(ui.accent)
+                p.drawEllipse(b)
+                p.setPen(QColor("#06110A"))
+                p.setFont(font(8.5, QFont.Weight.Black))
+                p.drawText(b, int(Qt.AlignmentFlag.AlignCenter), str(k))
+
+
+class TotalBar(QWidget):
+    """What you put in, and (for a joiner) the range it must be in."""
+
+    def __init__(self, picker: ItemPicker, want=None) -> None:
+        super().__init__()
+        self.picker, self.want = picker, want
+        self.setFixedHeight(S(38))
+        picker.changed.connect(self.update)
+
+    def ok(self) -> bool:
+        t = self.picker.total()
+        if not self.picker.picked:
+            return False
+        return self.want is None or self.want[0] <= t <= self.want[1]
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        t = self.picker.total()
+        good = self.ok()
+        p.setPen(QPen(alpha(WIN_C if good else "#FFFFFF", 0.5 if good else 0.1), 1.2))
+        p.setBrush(alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(r, S(10), S(10))
+        paint_coin(p, QPointF(r.left() + S(18), r.center().y()), S(7))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(13, QFont.Weight.Bold))
+        p.drawText(r.adjusted(S(32), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter),
+                   coins_text(t) + "  ·  " + tr("{n}/{m} items", n=len(self.picker.picked), m=self.picker.limit))
+        if self.want is not None:
+            lo, hi = self.want
+            p.setPen(QColor(WIN_C) if good else QColor("#FFB16B"))
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       tr("Needs {a} to {b}", a=coins_text(lo), b=coins_text(hi)))
+
+
+# ================================================================ a coinflip in the lobby
+class FlipRow(QWidget):
+    """One coinflip of the lobby: who, which side, the items and their worth, time left, Join."""
+
+    def __init__(self, page, f: dict) -> None:
+        super().__init__()
+        self.page, self.f = page, f
+        self.setFixedHeight(S(76))
+        self._t0 = time.monotonic()
+        lay = hbox(self, 6)
+        lay.setContentsMargins(0, 0, S(8), 0)
+        lay.addStretch(1)
+        state = f.get("state")
+        if f.get("mine") or f.get("joiner"):
+            b = Button(tr("Open"), "primary", 30)
+            b.clicked.connect(lambda: open_flip(page, f["id"]))
+            lay.addWidget(b, 0, Qt.AlignmentFlag.AlignBottom)
+        elif state == "open":
+            b = Button(tr("Join"), "primary", 30)
+            b.clicked.connect(lambda: join_flip(page, f))
+            lay.addWidget(b, 0, Qt.AlignmentFlag.AlignBottom)
+        else:
+            b = Button(tr("Watch"), "ghost", 30)
+            b.clicked.connect(lambda: open_flip(page, f["id"]))
+            lay.addWidget(b, 0, Qt.AlignmentFlag.AlignBottom)
+        lay.setContentsMargins(0, 0, S(8), S(8))
+        self._tick = QTimer(self)
+        self._tick.setInterval(1000)
+        self._tick.timeout.connect(self.update)
+        self._tick.start()
+
+    def paintEvent(self, _e) -> None:
+        from .collection import show_item
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        f = self.f
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha(ui.accent, 0.55), 1.2) if (f.get("mine") or f.get("joiner")) else Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.05))
+        p.drawRoundedRect(r, S(11), S(11))
+        from .games3 import paint_flip_coin
+        paint_flip_coin(p, QPointF(r.left() + S(24), r.top() + S(24)), S(12), 0.0, f.get("a_side", "black"))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left() + S(44), r.top() + S(8), r.width() * 0.5, S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                   str(f.get("a") or "?"))
+        p.setPen(QColor(GOLD_TEXT))
+        p.setFont(font(11.5, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left(), r.top() + S(8), r.width() - S(12), S(18)),
+                   int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), coins_text(int(f.get("a_value") or 0)))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9.5, QFont.Weight.DemiBold))
+        state = f.get("state")
+        left = int(f.get("expires") or 0) - int(time.monotonic() - self._t0)
+        sub = {"open": tr("Waiting · {t}", t=f"{max(0, left) // 60}:{max(0, left) % 60:02d}"),
+               "joined": tr("{name} is choosing", name=f.get("b") or "?"),
+               "locked": tr("Locked in: flipping soon"),
+               "done": tr("{name} won", name=f.get("winner") or "?")}.get(state, "")
+        p.drawText(QRectF(r.left() + S(44), r.top() + S(26), r.width() * 0.6, S(14)), int(Qt.AlignmentFlag.AlignVCenter), sub)
+        x = r.left() + S(10)
+        for it in (f.get("a_items") or [])[:6]:
+            show_item(p, it.get("item", ""), QRectF(x, r.bottom() - S(30), S(24), S(24)), 0, effects=False)
+            x += S(28)
+
+
+# ================================================================ the coin
+class FlipStage(QWidget):
+    """The two sides, the pot, the countdown and the coin itself (it spins, slows down and lands)."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.f: dict = {}
+        self.setFixedSize(page.W, S(250))
+        self._spin_t = 0.0
+        self._landed = None
+        self._shown_result = None
+        self._t = QTimer(self)
+        self._t.setTimerType(Qt.TimerType.PreciseTimer)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self.update)
+        self._sync_t = time.monotonic()
+        self._confetti: list = []
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def set_state(self, f: dict) -> None:
+        old = self.f
+        self.f = f
+        self._sync_t = time.monotonic()
+        if f.get("state") == "done" and f.get("result") and self._shown_result is None:
+            self._shown_result = f["result"]
+            self._spin_t = time.monotonic()               # the coin starts to spin now and lands on the result
+            sfx.play("on")
+        elif f.get("state") == "locked" and old.get("state") != "locked":
+            sfx.play("pick")
+        self.update()
+
+    SPIN_S = 3.2
+
+    def coin_angle(self, now: float) -> float:
+        if self._shown_result is None:
+            if self.f.get("state") == "locked":
+                return now * 1.6                          # waiting: the coin turns slowly
+            return 0.0
+        k = min(1.0, (now - self._spin_t) / self.SPIN_S)
+        end = 2 * math.pi * 9 + (0.0 if self._shown_result == "black" else math.pi)
+        e = 1 - (1 - k) ** 4
+        if k >= 1.0 and self._landed is None:
+            self._landed = now
+            won = bool(self.f.get("won"))
+            mine = self.f.get("mine") or self.f.get("joiner")
+            sfx.play("on" if (won or not mine) else "off")
+            if won:
+                rnd = random.Random()
+                self._confetti = [(rnd.uniform(0, 1), rnd.uniform(0, 1), rnd.uniform(0, math.tau), rnd.random())
+                                  for _ in range(60)]
+                from .onlinewin import shake
+                shake(self.ctx.window, 4.0, 300)
+        return end * e
+
+    def paintEvent(self, _e) -> None:
+        from .collection import show_item
+        from .games3 import paint_flip_coin
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        f, now = self.f, time.monotonic()
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        g = QLinearGradient(r.topLeft(), r.bottomLeft())
+        g.setColorAt(0, QColor("#0D1214"))
+        g.setColorAt(1, QColor("#080B0C"))
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+        if not f:
+            return
+        state = f.get("state")
+        landed = self._landed is not None
+        winner_side = self._shown_result if landed else None
+        # the two players
+        for i, who in enumerate(("a", "b")):
+            box = QRectF(r.left() + S(10) if i == 0 else r.right() - S(10) - r.width() * 0.3, r.top() + S(10),
+                         r.width() * 0.3, S(150))
+            side = f.get(who + "_side", "black")
+            win = landed and winner_side == side
+            p.setPen(QPen(QColor(WIN_C), S(2)) if win else QPen(alpha("#FFFFFF", 0.08), 1))
+            p.setBrush(alpha(WIN_C, 0.10) if win else alpha("#FFFFFF", 0.03))
+            p.drawRoundedRect(box, S(11), S(11))
+            paint_flip_coin(p, QPointF(box.left() + S(16), box.top() + S(16)), S(9), 0, side)
+            name = f.get(who) or (tr("Waiting…") if who == "b" else "?")
+            p.setPen(QColor(TEXT))
+            p.setFont(font(11, QFont.Weight.Bold))
+            p.drawText(QRectF(box.left() + S(30), box.top() + S(6), box.width() - S(34), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
+                       QFontMetrics(p.font()).elidedText(str(name), Qt.TextElideMode.ElideRight, int(box.width() - S(34))))
+            items = f.get(who + "_items") or []
+            for k, it in enumerate(items[:6]):
+                cell = QRectF(box.left() + S(8) + (k % 3) * (box.width() - S(16)) / 3, box.top() + S(32) + (k // 3) * S(40),
+                              (box.width() - S(16)) / 3, S(36))
+                d = min(cell.width(), cell.height()) * 0.8
+                show_item(p, it.get("item", ""), QRectF(cell.center().x() - d / 2, cell.center().y() - d / 2, d, d), now,
+                          effects=False)
+            val = int(f.get(who + "_value") or 0)
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(11, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(box.left(), box.bottom() - S(42), box.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       coins_text(val) if val else "—")
+            ch = f.get("chance_a")
+            if ch is not None:
+                c = float(ch) if who == "a" else 1 - float(ch)
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10, QFont.Weight.DemiBold))
+                p.drawText(QRectF(box.left(), box.bottom() - S(22), box.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                           tr("{p} chance", p=pct(c)))
+        # the coin in the middle
+        c = QPointF(r.center().x(), r.top() + S(85))
+        ang = self.coin_angle(now)
+        spinning = self._shown_result is not None and not landed
+        lift = math.sin(min(1.0, (now - self._spin_t) / self.SPIN_S) * math.pi) * S(34) if spinning else 0.0
+        glow = QRadialGradient(c, S(70))
+        glow.setColorAt(0, alpha(ui.accent, 0.25 if spinning else 0.12))
+        glow.setColorAt(1, alpha(ui.accent, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, S(70), S(70))
+        if landed:
+            paint_flip_coin(p, QPointF(c.x(), c.y()), S(38), 0, winner_side)
+        else:
+            paint_flip_coin(p, QPointF(c.x(), c.y() - lift), S(38) * (1 + lift / S(200)), ang, None)
+        # what is happening, below the coin
+        p.setFont(font(12.5, QFont.Weight.ExtraBold))
+        line = QRectF(r.left(), r.top() + S(135), r.width(), S(22))
+        elapsed = now - self._sync_t
+        if state == "open":
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), tr("Waiting for a player"))
+        elif state == "joined":
+            left = max(0, int(f.get("pick_left") or 0) - int(elapsed))
+            p.setPen(QColor("#FFB16B"))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), tr("Choosing items · {s} s", s=left))
+        elif state == "locked" or (state == "done" and not landed):
+            left = max(0.0, float(f.get("flip_in") or 0) - elapsed)
+            p.setPen(QColor(TEXT))
+            if state == "locked" and left > 0.05:
+                p.setFont(font(22, QFont.Weight.Black))
+                p.drawText(QRectF(line.left(), line.top() - S(4), line.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
+                           f"{math.ceil(left)}")
+            else:
+                p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), tr("Flipping…"))
+        elif state == "done":
+            won = f.get("won")
+            mine = f.get("mine") or f.get("joiner")
+            p.setPen(QColor(WIN_C) if won else (QColor(LOSE_C) if mine else QColor(TEXT)))
+            text = (tr("You win {n}!", n=coins_text(int(f.get("a_value") or 0) + int(f.get("b_value") or 0))) if won else
+                    tr("{name} wins", name=f.get("winner") or "?"))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), text)
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(r.left(), line.bottom() + S(2), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("The coin landed on {side}", side=side_name(winner_side or "black")))
+        elif state == "cancelled":
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), tr("Closed: the items went back"))
+        # confetti for the winner
+        if self._confetti and self._landed is not None:
+            age = now - self._landed
+            for x0, y0, rot, hue in self._confetti:
+                y = r.top() + (y0 * 0.4 + age * 0.45) % 1.0 * r.height()
+                x = r.left() + x0 * r.width() + math.sin(age * 3 + rot) * S(8)
+                p.save()
+                p.translate(x, y)
+                p.rotate(age * 220 + rot * 57)
+                p.setBrush(QColor.fromHsvF(hue, 0.6, 1.0))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.drawRect(QRectF(-S(3), -S(1.3), S(6), S(2.6)))
+                p.restore()
+            if age > 4:
+                self._confetti = []
+
+
+# ================================================================ talking to the server
+def load_flips(page) -> None:
+    ctx = page.ctx
+
+    def got(ok: bool, data) -> None:
+        if not ok or not isinstance(data, dict):
+            if not ok and "soon" in str(data).lower():
+                ctx.flip_missing = True
+            return
+        ctx.flip_missing = False
+        mine = data.get("mine")
+        if mine and not getattr(ctx, "flip_id", None):
+            ctx.flip_id = mine                         # you are in one: it opens
+        old = getattr(ctx, "flip_data", None)
+        if data != old:
+            ctx.flip_data = data
+            if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "flip" and not getattr(ctx, "flip_id", None):
+                ctx.reload_page("games")
+            elif mine and (old is None or old.get("mine") != mine) and ctx.window.showing("games") \
+                    and getattr(ctx, "games_sub", None) == "flip":
+                ctx.reload_page("games")
+    ctx.online.ask("rb_flip_list", {}, got)
+
+
+def open_flip(page, fid: str) -> None:
+    page.ctx.flip_id = fid
+    sfx.play("pick")
+    page.ctx.reload_page("games")
+
+
+def join_flip(page, f: dict) -> None:
+    ctx = page.ctx
+
+    def done(ok: bool, data) -> None:
+        if not ok:
+            ctx.flip_data = None
+            load_flips(page)
+            return ctx.toast(tr(str(data)), "warn")
+        sfx.play("on")
+        ctx.flip_id = f["id"]
+        ctx.flip_state = data
+        ctx.reload_page("games")
+    ctx.econ.call("rb_flip_join", {"fid": f["id"]}, done)
+
+
+class _Poll(QWidget):
+    def __init__(self, ms: int, fn) -> None:
+        super().__init__()
+        self.setFixedHeight(0)
+        self.fn = fn
+        self._t = QTimer(self)
+        self._t.setInterval(ms)
+        self._t.timeout.connect(fn)
+
+    def showEvent(self, _e) -> None:
+        self.fn()
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+
+def build_flip(page, lay) -> None:
+    from .hub import server_wait
+    from .shop import CoinBar
+    ctx = page.ctx
+    top = hbox(spacing=8)
+    back = IconButton("back", 32, tip=tr("Back"))
+    fid = getattr(ctx, "flip_id", None)
+
+    def leave() -> None:
+        if fid:
+            ctx.flip_id = None
+            ctx.flip_data = None
+            return ctx.reload_page("games")
+        page.open_sub(None)
+    back.clicked.connect(leave)
+    top.addWidget(back)
+    top.addWidget(Label(tr("Coinflip"), 16, bold=True), 1)
+    duel = Label(tr("DUEL"), 10, "#3DDC84", bold=True)
+    duel.fit()
+    top.addWidget(duel)
+    lay.addLayout(top)
+    if server_wait(ctx, lay, page.W) or getattr(ctx, "flip_missing", False):
+        return
+    if fid:
+        return _build_view(page, lay, fid)
+    lay.addWidget(_Poll(2000, lambda: load_flips(page)))
+    data = getattr(ctx, "flip_data", None)
+    if data is None:
+        lay.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
+        return
+    limit = int(data.get("max_items") or 6)
+    rng = float(data.get("range") or 0.1)
+    lay.addWidget(Label(tr("OPEN A COINFLIP"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    side = Segmented([tr("Black"), tr("White")], int(getattr(ctx, "flip_side", 0) or 0))
+    side.changed.connect(lambda i: setattr(ctx, "flip_side", i))
+    lay.addWidget(side)
+    picker = ItemPicker(page, limit)
+    bar = TotalBar(picker)
+    lay.addWidget(bar)
+    lay.addWidget(picker)
+    make = Button(tr("Open the coinflip"), "primary", 38, icon="coin")
+
+    def create() -> None:
+        if not picker.picked:
+            return ctx.toast(tr("Pick 1 to {n} items first", n=limit), "warn")
+
+        def done(ok: bool, d) -> None:
+            if not ok:
+                return ctx.toast(tr(str(d)), "warn")
+            sfx.play("on")
+            ctx.econ.refresh()
+            ctx.flip_id = d.get("id")
+            ctx.flip_state = d
+            ctx.reload_page("games")
+        ctx.econ.call("rb_flip_create", {"side": "black" if side.index() == 0 else "white", "items": picker.ids()}, done)
+    make.clicked.connect(create)
+    lay.addWidget(make)
+    lay.addWidget(Label(tr("Up to {n} items. The other player must put in about the same worth (within {r}%). It stays open "
+                           "5 minutes; nobody joins and your items come back. The winner takes everything. Your chance is your "
+                           "share of the pot, between 49% and 51%.", n=limit, r=int(round(rng * 100))),
+                        10, TEXT_DIM, wrap_w=page.W))
+    flips = [f for f in (data.get("flips") or []) if not f.get("mine")]
+    lay.addWidget(Label(tr("OPEN COINFLIPS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    if not any(f.get("state") == "open" for f in flips):
+        lay.addWidget(Label(tr("No open coinflip right now. Open one!"), 11, TEXT_DIM, wrap_w=page.W))
+    for f in flips[:14]:
+        lay.addWidget(FlipRow(page, f))
+    hist = list(data.get("history") or [])
+    if hist:
+        lay.addWidget(Label(tr("YOUR LAST COINFLIPS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+        for h in hist[:6]:
+            text = (tr("Won {n} against {name}", n=coins_text(int(h.get("value") or 0)), name=h.get("other") or "?") if h.get("won")
+                    else tr("Lost against {name}", name=h.get("other") or "?"))
+            lay.addWidget(Label(text, 11, WIN_C if h.get("won") else TEXT_DIM))
+
+
+def _build_view(page, lay, fid: str) -> None:
+    ctx = page.ctx
+    stage = FlipStage(page)
+    lay.addWidget(stage)
+    first = getattr(ctx, "flip_state", None)
+    if isinstance(first, dict) and first.get("id") == fid:
+        stage.set_state(first)
+    holder = {"picker": None, "bar": None, "lock": None, "state": (first or {}).get("state")}
+    area = QWidget()
+    from .widgets import vbox
+    al = vbox(area, 8)
+    lay.addWidget(area)
+
+    def build_controls(f: dict) -> None:
+        """The buttons under the coin change with the state: picking items, waiting, or done."""
+        while al.count():
+            item = al.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.hide()
+                w.deleteLater()
+        holder["picker"] = holder["bar"] = None
+        state = f.get("state")
+        if state == "joined" and f.get("joiner"):
+            limit = int((getattr(ctx, "flip_data", None) or {}).get("max_items") or 6)
+            al.addWidget(Label(tr("Put in items worth {a} to {b}. You have 30 seconds.", a=coins_text(int(f.get("min") or 0)),
+                                  b=coins_text(int(f.get("max") or 0))), 11, TEXT, wrap_w=page.W))
+            picker = ItemPicker(page, limit, (int(f.get("min") or 0), int(f.get("max") or 0)))
+            bar = TotalBar(picker, picker.want)
+            al.addWidget(bar)
+            al.addWidget(picker)
+            row = hbox(spacing=6)
+            lock = Button(tr("Lock in"), "primary", 38)
+            lock.clicked.connect(lambda: lock_in(f, picker, bar))
+            walk = Button(tr("Leave"), "ghost", 38)
+            walk.clicked.connect(lambda: ctx.econ.call("rb_flip_leave", {"fid": fid}, lambda ok, d: (
+                setattr(ctx, "flip_id", None), setattr(ctx, "flip_data", None), ctx.reload_page("games"))))
+            row.addWidget(lock, 2)
+            row.addWidget(walk, 1)
+            al.addLayout(row)
+            holder["picker"], holder["bar"] = picker, bar
+        elif state == "open" and f.get("mine"):
+            close = Button(tr("Close it (items come back)"), "ghost", 34)
+
+            def do_close() -> None:
+                def done(ok: bool, d) -> None:
+                    if not ok:
+                        return ctx.toast(tr(str(d)), "warn")
+                    sfx.play("off")
+                    ctx.econ.refresh()
+                    ctx.flip_id = None
+                    ctx.flip_data = None
+                    ctx.reload_page("games")
+                ctx.econ.call("rb_flip_cancel", {"fid": fid}, done)
+            close.clicked.connect(do_close)
+            al.addWidget(close)
+            al.addWidget(Label(tr("Waiting for someone to join. Once they lock in their items, it cannot be cancelled."),
+                               10.5, TEXT_DIM, wrap_w=page.W))
+        elif state == "joined":
+            al.addWidget(Label(tr("{name} joined and is choosing items.", name=f.get("b") or "?"), 11, TEXT, wrap_w=page.W))
+        elif state == "locked":
+            al.addWidget(Label(tr("Both sides are locked in. Nothing can stop it now: the coin flips when the count ends."),
+                               10.5, TEXT_DIM, wrap_w=page.W))
+        elif state in ("done", "cancelled"):
+            again = Button(tr("Back to the lobby"), "primary", 36)
+            again.clicked.connect(lambda: (setattr(ctx, "flip_id", None), setattr(ctx, "flip_data", None),
+                                           ctx.reload_page("games")))
+            al.addWidget(again)
+
+    def lock_in(f: dict, picker, bar) -> None:
+        if not bar.ok():
+            return ctx.toast(tr("Your items must be worth {a} to {b}", a=coins_text(int(f.get("min") or 0)),
+                                b=coins_text(int(f.get("max") or 0))), "warn")
+
+        def done(ok: bool, d) -> None:
+            if not ok:
+                return ctx.toast(tr(str(d)), "warn")
+            sfx.play("on")
+            ctx.econ.refresh()
+            apply(d)
+        ctx.econ.call("rb_flip_lock", {"fid": fid, "items": picker.ids()}, done)
+
+    def apply(f: dict) -> None:
+        try:
+            new, old = f.get("state"), holder["state"]
+            if new != old and not (old == "locked" and new == "done"):
+                ctx.flip_state = f                     # another state: the page is built again for it
+                return ctx.reload_page("games")
+            stage.set_state(f)
+            if new != old or not al.count():
+                holder["state"] = new
+                build_controls(f)
+                if new == "done":
+                    QTimer.singleShot(int(FlipStage.SPIN_S * 1000) + 200, ctx.econ.refresh)
+        except RuntimeError:
+            pass
+
+    def poll() -> None:
+        def got(ok: bool, d) -> None:
+            if ok and isinstance(d, dict):
+                apply(d)
+            elif not ok and "over" in str(d).lower():
+                ctx.flip_id = None
+                ctx.reload_page("games")
+        ctx.online.ask("rb_flip_state", {"fid": fid}, got)
+    lay.addWidget(_Poll(900, poll))
+    if isinstance(first, dict) and first.get("id") == fid:
+        build_controls(first)
+        holder["state"] = first.get("state")

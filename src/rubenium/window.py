@@ -610,7 +610,7 @@ class PreviewDrawer(QWidget):
         self._buy.setVisible(shop)
         if shop:
             from .wallet import coins_text
-            self._buy.set_text(tr("Buy for {n} coins", n=coins_text(int(self.ctx.econ.info(theme["id"]).get("price") or 0))))
+            self._buy.set_text(tr("Buy for {n} coins", n=coins_text(int(self.ctx.econ.shop_price(theme["id"]) or 0))))
         self.show()
         self._slide.to(1.0, 260)
         self._frame.start()
@@ -701,7 +701,7 @@ class PreviewDrawer(QWidget):
         from .shop import paint_price
         shop = str(th.get("id", "")).startswith("theme:")
         paint_price(p, QRectF(S(15), tile.bottom() + S(34), self.width() - S(30), S(18)),
-                    int(self.ctx.econ.info(th["id"]).get("price") or 0) if shop else
+                    int(self.ctx.econ.shop_price(th["id"]) or 0) if shop else
                     self.ctx.wallet.hours_for(f"theme:{th['id']}"), 11.5, "#E8C26A", centre=False, hours=not shop)
 
 
@@ -1829,6 +1829,8 @@ class MainWindow(QWidget):
             self.slide.jump(1.0)
 
     def goto(self, key: str) -> None:
+        if key == "online" or key in ("games", "themes", "friends", "giveaway"):
+            return self.ctx.enter_online(None if key == "online" else key)      # 3.2: they live in the online menu
         if key not in self.tab_keys():
             return
         if getattr(self, "sheet", None) is not None and key != self.sheet_tab:     # another tab: the small screen closes
@@ -1947,8 +1949,16 @@ class MainWindow(QWidget):
         elif cover.isVisible():
             cover.hide()
 
-    def reload_page(self) -> None:
-        """Rebuild the current page (its content changed) and glide to its new height."""
+    def showing(self, key: str) -> bool:
+        """3.2: this page is on screen right now (the online menu shows several at once)."""
+        return self.expanded and self.current == key
+
+    def reload_page(self, key: str = None) -> None:
+        """Rebuild the current page (its content changed) and glide to its new height. 3.2: a page that is not the
+        current one is just dropped, so it is built fresh when it is opened."""
+        if key is not None and key != self.current:
+            self._drop_page(key)
+            return
         if not self.expanded:
             self._drop_page(self.current)
             return

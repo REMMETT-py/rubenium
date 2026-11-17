@@ -17,7 +17,7 @@ from .core import DATA_DIR, S, TEXT, alpha, font, tr
 NOTE_KINDS = {"trade": ("Trade requests", "#E8C26A"), "friend": ("Friend requests and friends online", "#3DDC84"),
          "market": ("Market: new items, sales and offers", "#4FC3FF"), "gift": ("Gifts, giveaways and rewards", "#FF5CC8"),
          "ready": ("Free spin, daily case and quests ready", "#B36BFF"), "tips": ("Tips to keep going", "#9AA4AD"),
-         "message": ("Messages from friends", "#2EE6D6"), "duel": ("Duel challenges and results", "#FF8A3D")}
+         "message": ("Messages from friends", "#2EE6D6"), "duel": ("Duels: Mini Golf and Coinflip", "#FF8A3D")}
 DEFAULT = {k: True for k in NOTE_KINDS}
 
 
@@ -263,19 +263,19 @@ class Notifier(QObject):
                 text = tr("{name} challenges you to Mini Golf", name=who) + (
                     "  ·  " + tr("Bet {n} coins each", n=coins_text(bet)) if bet else "")
             elif kind == "golf_yes":
-                text = tr("{name} accepted: the match starts now!", name=who)
+                text = tr("{name} joined your Mini Golf match: it starts now!", name=who)
             elif kind == "golf_no":
                 text = tr("{name} declined your Mini Golf match", name=who)
             elif data.get("draw"):
                 text = tr("Mini Golf with {name}: a draw", name=who)
             else:
                 text = tr("You beat {name} at Mini Golf!", name=who) if data.get("won") else tr("{name} won the Mini Golf match", name=who)
-            self.ctx.golf_list = None
+            self.ctx.golf_lobby = None
             self.push("duel", tr("MINI GOLF"), text)
-            if kind in ("golf", "golf_yes") and self.ctx.window.current == "games" and \
+            if kind in ("golf", "golf_yes") and self.ctx.window.showing("games") and \
                     getattr(self.ctx, "games_sub", None) == "duels" and not getattr(self.ctx, "golf_id", None):
                 from .golf import load_golf
-                page = self.ctx.window.page()
+                page = (self.ctx.window.pages.get("games") or (None, None))[1]
                 if page is not None:
                     load_golf(page)
         elif kind in ("duel", "duel_yes", "duel_no", "duel_end"):
@@ -295,6 +295,20 @@ class Notifier(QObject):
                 text = tr("You won the duel against {name}!", name=who) if data.get("won") else tr("{name} won the duel", name=who)
             self.ctx.duels_data = None
             self.push("duel", tr("DUEL"), text)
+        elif kind in ("flip_join", "flip_locked", "flip_end"):         # 3.2: coinflip
+            who = data.get("from", "?")
+            if kind == "flip_join":
+                text = tr("{name} joined your coinflip and is choosing items", name=who)
+            elif kind == "flip_locked":
+                text = tr("{name} locked in: your coinflip flips in 15 seconds!", name=who)
+            else:
+                text = (tr("You won the coinflip: +{n} in items!", n=coins_text(int(data.get("value") or 0))) if data.get("won")
+                        else tr("You lost the coinflip"))
+                self.ctx.econ.refresh()
+            self.ctx.flip_data = None
+            if kind != "flip_end" and data.get("id"):
+                self.ctx.flip_id = data["id"]
+            self.push("duel", tr("COINFLIP"), text)
         else:
             return False
         return True
