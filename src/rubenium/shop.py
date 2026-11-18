@@ -547,15 +547,17 @@ class ShopPage(StylePart, Page):
     """Six parts: Theme (colours, progression), Shop (balls, lines, fonts, themes), Badges, Cases, Market and
     Inventory."""
     key = "themes"
-    SECTIONS = ["Notifications", "Shop", "Collection", "Cases", "Market", "Inventory", "Sets", "Deals"]
-    ICONS = ["bell", "ball", "shield", "gift", "chip", "folder", "grid", "timer"]
+    SECTIONS = ["Notifications", "Shop", "Collection", "Cases", "Market", "Inventory", "Sets", "Deals", "Style"]
+    ICONS = ["bell", "ball", "shield", "gift", "chip", "folder", "grid", "timer", "spark"]
     GET = [1, 7, 3, 4]                     # getting things: shop, today's deals, cases, market
-    MINE = [5, 2, 6, 0]                    # what is yours: inventory, collection, sets, notifications
+    MINE = [5, 2, 8, 0]                    # what is yours: inventory, collection, style, notifications (4.2: the
+    #                                        sets are in Games > Quests, the style came from Settings)
     NOTES = ["Everything you were told, newest first. Click one to go there.",
              "Balls, lines, fonts, themes, banners and frames. Shop price = worth + 20% tax.",
              "Your collection: click a badge to see every colour.", "Buy cases with coins, open them with a key.",
              "Buy and sell with other users.", "Everything you own. Sell, show or trade it.",
-             "Collect full sets for a big bonus.", "Items cheaper today. New deals every day at midnight."]
+             "Collect full sets for a big bonus.", "Items cheaper today. New deals every day at midnight.",
+             "Your ball, its glow, your colours, the R and ring styles and the themes."]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -596,6 +598,8 @@ class ShopPage(StylePart, Page):
         elif tab == 6:
             from .hub import build_sets
             build_sets(self, lay)
+        elif tab == 8:
+            self.build_style(lay)
         elif tab == 7:
             from .hub import build_deals
             build_deals(self, lay)

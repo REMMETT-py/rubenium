@@ -1102,8 +1102,10 @@ def timing_pos(seed: dict, ms: float) -> float:
 
 
 class Timing(Game):
-    """Start, then stop the needle as close to the target as you can. It speeds up the longer you wait, and the
-    target moves every round. Perfect x4, good x1.8, close x0.9 (most of the bet back)."""
+    """Start, then stop the needle as close to the target as you can. It speeds up a little the longer you wait
+    (4.2: much less than before), and the target moves every round. Perfect x4, good x1.8, close x0.9.
+    4.2: the round's clock is checked against the PC's real clock; an app that slows Rubenium down is caught here and
+    on the server (which then judges the stop with its own clock)."""
     ZONES = (("perfect", 0.008, 4.0, "#FFD36B"), ("good", 0.025, 1.8, "#3DDC84"), ("close", 0.05, 0.9, "#2E9BFF"))
 
     def __init__(self, page) -> None:
@@ -1135,6 +1137,8 @@ class Timing(Game):
     def _started(self, ans: dict) -> None:
         self.seed = ans.get("seed") or {}
         self.t0 = time.monotonic()
+        self.wall0 = time.time()
+        self.slowed = False
         self.running = True
         self.round_no = getattr(self, "round_no", 0) + 1
         self._frames.start()
@@ -1151,11 +1155,19 @@ class Timing(Game):
         d = abs(pos - c)
         return next((name for name, half, _m, _c in self.ZONES if d <= half), "miss")
 
+    def clock_slowed(self) -> bool:
+        """The round's clock runs clearly slower than the PC's real clock: something is slowing Rubenium down."""
+        mono, wall = time.monotonic() - self.t0, time.time() - getattr(self, "wall0", time.time())
+        return wall > 0.6 and mono < wall * 0.94
+
     def stop(self, force: bool = False) -> None:
         if not self.running or self.waiting:
             return
         if not force and time.monotonic() - self.t0 < 0.35:          # the Start click itself never stops it
             return
+        if self.clock_slowed():
+            self.slowed = True
+            self.ctx.toast(tr("Rubenium's clock is being slowed down: this round is judged on the server's clock"), "warn")
         # 3.2: the needle stops the very moment you press, worked out here from the clock; the server checks the
         # same time in the background and pays.
         ms = int((time.monotonic() - self.t0) * 1000)
@@ -1195,7 +1207,7 @@ class Timing(Game):
                        tr("How to play Timing"))
             p.setFont(font(11, QFont.Weight.DemiBold))
             p.setPen(QColor(TEXT_DIM))
-            lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, faster and faster."),
+            lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, a little faster as time goes."),
                      tr("3. Press STOP when it is on the target."),
                      tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0")]
             y = r.top() + S(48)
@@ -1214,6 +1226,8 @@ class Timing(Game):
             zone = QRectF(bar.left() + bar.width() * (c - half), bar.top(), bar.width() * half * 2, bar.height())
             p.setBrush(alpha(col, 0.55))
             p.drawRoundedRect(zone, S(3), S(3))
+        if self.running and self.seed and self.clock_slowed():
+            QTimer.singleShot(0, lambda: self.stop(force=True))      # a slowed clock ends the round at once
         if self.running and self.seed:
             pos = timing_pos(self.seed, (now - self.t0) * 1000)
         elif self.result is not None:
@@ -1282,7 +1296,7 @@ class Rocket(Game):
         return self.phase == "fly"
 
     def options(self):
-        return [tr("By hand") if t == 0 else f"×{t:g}" for t in self.TARGETS], self.target
+        return [tr("Manual") if t == 0 else f"×{t:g}" for t in self.TARGETS], self.target
 
     def set_option(self, i: int) -> None:
         if not self.busy:
@@ -1376,12 +1390,18 @@ class Rocket(Game):
         m = self.mult_now()
         if flying:
             self.page.sync_labels()
-        area = r.adjusted(S(22), S(54), -S(22), -S(22))
-        p.setPen(QPen(alpha("#FFFFFF", 0.07), 1))
-        for k in range(4):
+        area = r.adjusted(S(44), S(70), -S(22), -S(34))
+        aim = self.aim()
+        # 4.2: the view always reaches the auto cash-out you picked (its line used to be off the top), then grows
+        top = max(2.0, m * 1.15, (aim or 0) * 1.12)
+        p.setFont(font(8.5, QFont.Weight.Bold))
+        for k in range(4):                                   # levels, labelled: ×1 at the bottom
             y = area.bottom() - area.height() * k / 3
+            p.setPen(QPen(alpha("#FFFFFF", 0.07), 1))
             p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
-        top = max(2.0, m * 1.15)                             # the view grows with the multiplier
+            p.setPen(QColor(TEXT_FAINT))
+            p.drawText(QRectF(r.left() + S(4), y - S(8), S(36), S(16)), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                       f"×{1 + (top - 1) * k / 3:.1f}")
         t_end = math.log(max(m, 1.0001)) / self.RATE
         span = max(4.0, t_end * 1.15)
         path = QPainterPath()
@@ -1410,25 +1430,28 @@ class Rocket(Game):
             p.drawEllipse(head, S(9), S(9))
             p.setBrush(QColor("#FFFFFF"))
             p.drawEllipse(head, S(4.2), S(4.2))
-        aim = self.aim()
-        if aim:                                              # the automatic cash-out line
+        if aim:                                              # the automatic cash-out line (always on screen)
             y = area.bottom() - area.height() * (aim - 1.0) / (top - 1.0)
-            if y > area.top():
-                p.setPen(QPen(alpha(GOLD_TEXT, 0.55), 1, Qt.PenStyle.DashLine))
-                p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
-                p.setPen(QColor(GOLD_TEXT))
-                p.setFont(font(9.5, QFont.Weight.Bold))
-                p.drawText(QRectF(area.right() - S(80), y - S(16), S(80), S(14)),
-                           int(Qt.AlignmentFlag.AlignRight), tr("auto ×{m}", m=f"{aim:g}"))
+            p.setPen(QPen(alpha(GOLD_TEXT, 0.75), S(1.4), Qt.PenStyle.DashLine))
+            p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            p.drawText(QRectF(area.right() - S(160), y - S(17), S(160), S(14)),
+                       int(Qt.AlignmentFlag.AlignRight), tr("Auto cash-out ×{m}", m=f"{aim:g}"))
         p.setPen(QColor(LOSE) if (self.crashed and not flying) else QColor(TEXT))
         p.setFont(font(28, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left(), r.top() + S(10), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter), f"×{m:.2f}")
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
-        if not flying:
-            hint = tr("Chance to reach ×{m}: {c}%", m=f"{aim:g}", c=int(96 / aim)) if aim else \
-                tr("Cash out from ×1.20. The higher, the riskier.")
-            p.drawText(QRectF(r.left(), r.top() + S(46), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), hint)
+        if flying:
+            hint = (tr("It cashes out by itself at ×{m}, or press Cash out", m=f"{aim:g}") if aim else
+                    tr("Press Cash out before it blows up"))
+        elif aim:
+            hint = tr("Wins {n} if it reaches ×{m} ({c}% chance)", n=coins_text(int(self.page.bet() * aim)), m=f"{aim:g}",
+                      c=int(96 / aim))
+        else:
+            hint = tr("Launch, then cash out (from ×1.20) before it blows up")
+        p.drawText(QRectF(r.left(), r.top() + S(48), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), hint)
         x = r.left() + S(14)                                  # the last flights
         p.setFont(font(9, QFont.Weight.Bold))
         for c in self.history[:8]:
@@ -2168,6 +2191,8 @@ class GamesPage(Page):
         back = IconButton("back", 32, tip=tr("Back"))
         top.addWidget(back)
         top.addWidget(Label(tr("Beat Tap"), 16, bold=True), 1)
+        from .gamehelp import HelpButton
+        top.addWidget(HelpButton(self.ctx, "beat"))
         lay.addLayout(top)
         lay.addWidget(CoinBar(self.ctx))
         from .hub import server_wait
@@ -2198,17 +2223,20 @@ class GamesPage(Page):
         self.ctx.games_sub = name
         self.ctx.reload_page()
 
-    def _back_bar(self, lay, title: str, on_back=None) -> None:
+    def _back_bar(self, lay, title: str, on_back=None, help_key=None) -> None:
         top = hbox(spacing=8)
         back = IconButton("back", 32, tip=tr("Back"))
         back.clicked.connect(on_back or (lambda: self.open_sub(None)))
         top.addWidget(back)
         top.addWidget(Label(title, 16, bold=True), 1)
+        if help_key:                                     # 4.2: the golden "?" of the game
+            from .gamehelp import HelpButton
+            top.addWidget(HelpButton(self.ctx, help_key))
         lay.addLayout(top)
         lay.addWidget(CoinBar(self.ctx))
 
     def _memory(self, lay) -> None:
-        self._back_bar(lay, tr("Memory"), lambda: self.open_sub("minigames"))
+        self._back_bar(lay, tr("Memory"), lambda: self.open_sub("minigames"), "memory")
         tier = int(getattr(self.ctx, "mem_tier", 0) or 0)
         seg = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], tier)
         lay.addWidget(seg)
@@ -2226,7 +2254,7 @@ class GamesPage(Page):
         QTimer.singleShot(50, self.mem.start)
 
     def _scratch(self, lay) -> None:
-        self._back_bar(lay, tr("Scratch card"))
+        self._back_bar(lay, tr("Scratch card"), None, "scratch")
         card = ScratchCard(self)
         lay.addWidget(card)
         hours = int(float(self.ctx.econ.cfg.get("scratch_hours", 12) or 12))
@@ -2289,7 +2317,7 @@ class GamesPage(Page):
     def _duel_run(self, lay) -> None:
         run = getattr(self.ctx, "duel_run", None) or {}
         game, data = run.get("game"), run.get("data") or {}
-        self._back_bar(lay, tr("Duel vs {name}", name=run.get("other", "?")), lambda: self.open_sub("duels"))
+        self._back_bar(lay, tr("Duel vs {name}", name=run.get("other", "?")), lambda: self.open_sub("duels"), "duels")
 
         def ended(_res) -> None:
             self.ctx.duels_data = None
@@ -2325,6 +2353,8 @@ class GamesPage(Page):
         back = IconButton("back", 32, tip=tr("Back"))
         top.addWidget(back)
         top.addWidget(Label(tr("Parking"), 16, bold=True), 1)
+        from .gamehelp import HelpButton
+        top.addWidget(HelpButton(self.ctx, "parking"))
         lay.addLayout(top)
         lay.addWidget(CoinBar(self.ctx))
         tier = int(getattr(self.ctx, "park_tier", 0) or 0)
@@ -2361,6 +2391,12 @@ class GamesPage(Page):
         top.addWidget(Label(tr("Quests"), 16, bold=True), 1)
         lay.addLayout(top)
         lay.addWidget(CoinBar(ctx))
+        view = Segmented([tr("Quests"), tr("Sets")], 1 if getattr(ctx, "quests_sets", False) else 0)   # 4.2
+        view.changed.connect(lambda i: (setattr(ctx, "quests_sets", i == 1), ctx.reload_page("games")))
+        lay.addWidget(view)
+        if getattr(ctx, "quests_sets", False):
+            from .hub import build_sets
+            return build_sets(self, lay)
         data = getattr(ctx, "quests_data", None)
         if data is None:
             lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -2430,9 +2466,12 @@ class GamesPage(Page):
         self.back = back
         top.addWidget(back)
         top.addWidget(CoinBar(ctx, keys=True), 1)
+        from .gamehelp import CASINO_KEYS, HelpButton           # 4.2: the help of the game on screen
+        top.addWidget(HelpButton(ctx, lambda: CASINO_KEYS.get(self.NAMES[self.games.index(self.game)])
+                                 if self.game in getattr(self, "games", []) else None, 36))
         lay.addLayout(top)
         lock_strip(ctx, lay, "casino", self.W)                   # 4.0: paused by the admins
-        which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < self.PICKER else 0
+        which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < len(self.NAMES) else 0     # 4.2: the free spin too
         if getattr(ctx, "casino_pick", None) is not None:           # a tile of the lobby was clicked
             which, ctx.casino_pick = ctx.casino_pick, None
         self.seg = GamePicker([tr(n) for n in self.NAMES[:self.PICKER]], min(which, self.PICKER - 1))

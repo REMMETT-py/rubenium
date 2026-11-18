@@ -1,8 +1,10 @@
 """3.2: Coinflip, a duel of items.
 
-Open a coinflip: pick black or white and up to 6 of your items. It waits in the lobby for 5 minutes. Someone joins:
-they have 30 seconds to put in up to 6 items worth about the same (within 10%). Once they lock in, nothing can be taken
-back: 15 seconds later the coin flips and lands on black or white. The winner takes every item. The chance follows
+Open a coinflip: pick black or white and up to 6 of your items. It waits in the lobby. Someone joins by picking up to 6
+items worth about the same (within 10%) and locking in: only then are they in (4.2: the first to lock in gets the seat,
+the others are told and keep everything). Or play a bot: it is searched, found, picks its items, joins, 3-2-1, and the
+usual 15 second count starts. Once both sides are in, nothing can be taken back: the coin flips and lands on black or
+white. The winner takes every item. The chance follows
 the share of the pot, never below 49% or above 51%. The server decides the flip the moment both sides are locked in,
 keeps it secret until the coin lands, then moves the items once: nothing can be copied or undone."""
 import math
@@ -196,8 +198,8 @@ class FlipRow(QWidget):
             b = Button(tr("Join"), "primary", 30)
             b.clicked.connect(lambda: join_flip(page, f))
             lay.addWidget(b, 0, Qt.AlignmentFlag.AlignBottom)
-        else:
-            b = Button(tr("Watch"), "ghost", 30)
+        elif state in ("locked", "done"):                  # 4.2: the eye: watch it flip
+            b = IconButton("eye", 32, tip=tr("Watch"))
             b.clicked.connect(lambda: open_flip(page, f["id"]))
             lay.addWidget(b, 0, Qt.AlignmentFlag.AlignBottom)
         lay.setContentsMargins(0, 0, S(8), S(8))
@@ -244,7 +246,7 @@ class FlipRow(QWidget):
         sub = {"open": tr("Waiting · {t}", t=f"{max(0, left) // 60}:{max(0, left) % 60:02d}"),
                "setup": tr("Choosing items"),
                "joined": tr("{name} is choosing", name=show_name(f, "b")),
-               "locked": tr("Locked in: flipping soon"),
+               "locked": bot_phase_text(f, time.monotonic() - self._t0) or tr("Locked in: flipping soon"),
                "done": tr("{name} won", name=f.get("winner") or "?")}.get(state, "")
         p.drawText(QRectF(r.left() + S(44), r.top() + S(26), r.width() * 0.6, S(14)), int(Qt.AlignmentFlag.AlignVCenter), sub)
         x = r.left() + S(10)
@@ -292,6 +294,18 @@ class FlipStage(QWidget):
 
     SPIN_S = 3.2
 
+    def _phase_sound(self, found_left: float, join_left: float, count_left: float, f: dict) -> None:
+        """A sound when the bot is found, when it joins, and on each number of the 3-2-1."""
+        if not f.get("vs_bot") or f.get("state") != "locked":
+            return
+        phase = ("search" if found_left > 0 else "choose" if join_left > 0 else
+                 f"count{math.ceil(count_left)}" if count_left > 0 else "flip")
+        last = getattr(self, "_last_phase", None)
+        if phase != last:
+            self._last_phase = phase
+            if last is not None:
+                sfx.play("on" if phase == "choose" else "pick")
+
     def coin_angle(self, now: float) -> float:
         if self._shown_result is None:
             if self.f.get("state") == "locked":
@@ -331,6 +345,10 @@ class FlipStage(QWidget):
         state = f.get("state")
         landed = self._landed is not None
         winner_side = self._shown_result if landed else None
+        elapsed = now - self._sync_t
+        found_left, join_left, count_left = bot_phases(f, elapsed)
+        searching = found_left > 0 or (join_left > 0 and not f.get("b") and f.get("vs_bot"))
+        self._phase_sound(found_left, join_left, count_left, f)
         # the two players
         for i, who in enumerate(("a", "b")):
             box = QRectF(r.left() + S(10) if i == 0 else r.right() - S(10) - r.width() * 0.3, r.top() + S(10),
@@ -342,6 +360,20 @@ class FlipStage(QWidget):
             p.drawRoundedRect(box, S(11), S(11))
             paint_flip_coin(p, QPointF(box.left() + S(16), box.top() + S(16)), S(9), 0, side)
             name = show_name(f, who) if f.get(who) else (tr("Waiting…") if who == "b" else "?")
+            if who == "b" and searching:                 # 4.2: a bot is being searched: a spinner in its seat
+                name = tr("Searching…")
+                c0 = QPointF(box.center().x(), box.top() + S(70))
+                for k in range(8):
+                    a = now * 5 + k * math.tau / 8
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(alpha(TEXT, 0.15 + 0.85 * ((k / 8 + now * 0.8) % 1.0)))
+                    p.drawEllipse(QPointF(c0.x() + math.cos(a) * S(14), c0.y() + math.sin(a) * S(14)), S(2.6), S(2.6))
+            elif who == "b" and f.get("vs_bot") and join_left > 0:      # found: it is picking its items
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10, QFont.Weight.DemiBold))
+                dots = "." * (1 + int(now * 2.5) % 3)
+                p.drawText(QRectF(box.left(), box.top() + S(56), box.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
+                           tr("Choosing") + dots)
             p.setPen(QColor(TEXT))
             p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(QRectF(box.left() + S(30), box.top() + S(6), box.width() - S(34), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
@@ -383,8 +415,20 @@ class FlipStage(QWidget):
         # what is happening, below the coin
         p.setFont(font(12.5, QFont.Weight.ExtraBold))
         line = QRectF(r.left(), r.top() + S(135), r.width(), S(22))
-        elapsed = now - self._sync_t
-        if state == "open":
+        if state == "locked" and (searching or join_left > 0):
+            p.setPen(QColor("#FFB16B"))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), bot_phase_text(f, elapsed))
+        elif state == "locked" and count_left > 0:          # 4.2: the bot joined: 3, 2, 1
+            k = count_left - math.floor(count_left)
+            p.setPen(QColor(ui.accent))
+            p.setFont(font(26 + 10 * k, QFont.Weight.Black))
+            p.drawText(QRectF(line.left(), line.top() - S(10), line.width(), S(42)), int(Qt.AlignmentFlag.AlignCenter),
+                       str(math.ceil(count_left)))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left(), line.bottom() + S(12), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                       bot_phase_text(f, elapsed))
+        elif state == "open":
             p.setPen(QColor(TEXT_DIM))
             p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), tr("Waiting for a player"))
         elif state == "joined":
@@ -453,6 +497,24 @@ def show_name(f: dict, side: str) -> str:
     return name
 
 
+def bot_phases(f: dict, elapsed: float) -> tuple:
+    """4.2 VS bot: seconds left searching, choosing, and in the 3-2-1 (all 0 once the 15 second count runs)."""
+    if not f.get("vs_bot") or f.get("state") != "locked":
+        return 0.0, 0.0, 0.0
+    return tuple(max(0.0, float(f.get(k) or 0) - elapsed) for k in ("found_in", "join_in", "count_in"))
+
+
+def bot_phase_text(f: dict, elapsed: float) -> str:
+    found, join, count = bot_phases(f, elapsed)
+    if found > 0 or (join > 0 and not f.get("b")):
+        return tr("Searching for a bot…")
+    if join > 0:
+        return tr("{name} is choosing items…", name=show_name(f, "b"))
+    if count > 0:
+        return tr("{name} joined", name=show_name(f, "b"))
+    return ""
+
+
 def load_flips(page) -> None:
     ctx = page.ctx
 
@@ -483,6 +545,7 @@ def open_flip(page, fid: str) -> None:
 
 
 def join_flip(page, f: dict) -> None:
+    """4.2: joining only opens your items: you are in once you lock in (first to lock in gets the seat)."""
     ctx = page.ctx
 
     def done(ok: bool, data) -> None:
@@ -490,11 +553,19 @@ def join_flip(page, f: dict) -> None:
             ctx.flip_data = None
             load_flips(page)
             return ctx.toast(tr(str(data)), "warn")
-        sfx.play("on")
+        sfx.play("pick")
         ctx.flip_id = f["id"]
+        ctx.flip_joining = f["id"]
         ctx.flip_state = data
         ctx.reload_page("games")
     ctx.econ.call("rb_flip_join", {"fid": f["id"]}, done)
+
+
+def leave_view(ctx) -> None:
+    ctx.flip_id = None
+    ctx.flip_joining = None
+    ctx.flip_data = None
+    ctx.reload_page("games")
 
 
 class _Poll(QWidget):
@@ -524,13 +595,13 @@ def build_flip(page, lay) -> None:
 
     def leave() -> None:
         if fid:
-            ctx.flip_id = None
-            ctx.flip_data = None
-            return ctx.reload_page("games")
+            return leave_view(ctx)
         page.open_sub(None)
     back.clicked.connect(leave)
     top.addWidget(back)
     top.addWidget(Label(tr("Coinflip"), 16, bold=True), 1)
+    from .gamehelp import HelpButton
+    top.addWidget(HelpButton(ctx, "coinflip"))
     duel = Label(tr("DUEL"), 10, "#3DDC84", bold=True)
     duel.fit()
     top.addWidget(duel)
@@ -636,10 +707,12 @@ def _build_view(page, lay, fid: str) -> None:
             row.addWidget(close, 1)
             al.addLayout(row)
             holder["picker"], holder["bar"] = picker, bar
-        elif state == "joined" and f.get("joiner"):
+        elif (state == "open" and not f.get("mine") and getattr(ctx, "flip_joining", None) == fid) or \
+                (state == "joined" and f.get("joiner")):
             limit = int((getattr(ctx, "flip_data", None) or {}).get("max_items") or 6)
-            al.addWidget(Label(tr("Put in items worth {a} to {b}. You have 30 seconds.", a=coins_text(int(f.get("min") or 0)),
-                                  b=coins_text(int(f.get("max") or 0))), 11, TEXT, wrap_w=page.W))
+            al.addWidget(Label(tr("Put in items worth {a} to {b}, then lock in. You are in once you lock in.",
+                                  a=coins_text(int(f.get("min") or 0)), b=coins_text(int(f.get("max") or 0))),
+                               11, TEXT, wrap_w=page.W))
             picker = ItemPicker(page, limit, (int(f.get("min") or 0), int(f.get("max") or 0)))
             bar = TotalBar(picker, picker.want)
             al.addWidget(bar)
@@ -648,13 +721,26 @@ def _build_view(page, lay, fid: str) -> None:
             lock = Button(tr("Lock in"), "primary", 38)
             lock.clicked.connect(lambda: lock_in(f, picker, bar))
             walk = Button(tr("Leave"), "ghost", 38)
-            walk.clicked.connect(lambda: ctx.econ.call("rb_flip_leave", {"fid": fid}, lambda ok, d: (
-                setattr(ctx, "flip_id", None), setattr(ctx, "flip_data", None), ctx.reload_page("games"))))
+            if state == "joined":
+                walk.clicked.connect(lambda: ctx.econ.call("rb_flip_leave", {"fid": fid}, lambda ok, d: leave_view(ctx)))
+            else:
+                walk.clicked.connect(lambda: leave_view(ctx))
             row.addWidget(lock, 2)
             row.addWidget(walk, 1)
             al.addLayout(row)
             holder["picker"], holder["bar"] = picker, bar
         elif state == "open" and f.get("mine"):
+            bot = Button(tr("Play a bot"), "primary", 38, icon="robot")
+
+            def vs_bot() -> None:
+                def done(ok: bool, d) -> None:
+                    if not ok:
+                        return ctx.toast(tr(str(d)), "warn")
+                    sfx.play("pick")
+                    apply(d)
+                ctx.econ.call("rb_flip_vs_bot", {"fid": fid}, done)
+            bot.clicked.connect(vs_bot)
+            al.addWidget(bot)
             close = Button(tr("Close it (items come back)"), "ghost", 34)
 
             def do_close() -> None:
@@ -669,17 +755,19 @@ def _build_view(page, lay, fid: str) -> None:
                 ctx.econ.call("rb_flip_cancel", {"fid": fid}, done)
             close.clicked.connect(do_close)
             al.addWidget(close)
-            al.addWidget(Label(tr("Waiting for someone to join. Once they lock in their items, it cannot be cancelled."),
+            al.addWidget(Label(tr("Waiting for a player, or play a bot now. Once someone is in, it cannot be cancelled."),
                                10.5, TEXT_DIM, wrap_w=page.W))
         elif state == "joined":
             al.addWidget(Label(tr("{name} joined and is choosing items.", name=show_name(f, "b")), 11, TEXT, wrap_w=page.W))
+        elif state == "locked" and f.get("vs_bot") and f.get("mine"):
+            al.addWidget(Label(tr("A bot is joining your coinflip. It cannot be cancelled now."), 10.5, TEXT_DIM,
+                               wrap_w=page.W))
         elif state == "locked":
             al.addWidget(Label(tr("Both sides are locked in. Nothing can stop it now: the coin flips when the count ends."),
                                10.5, TEXT_DIM, wrap_w=page.W))
         elif state in ("done", "cancelled"):
             again = Button(tr("Back to the lobby"), "primary", 36)
-            again.clicked.connect(lambda: (setattr(ctx, "flip_id", None), setattr(ctx, "flip_data", None),
-                                           ctx.reload_page("games")))
+            again.clicked.connect(lambda: leave_view(ctx))
             al.addWidget(again)
 
     def lock_in(f: dict, picker, bar) -> None:
@@ -689,15 +777,27 @@ def _build_view(page, lay, fid: str) -> None:
 
         def done(ok: bool, d) -> None:
             if not ok:
+                if "rb_flip_taken" in str(d) or "first" in str(d).lower():
+                    return kicked()
                 return ctx.toast(tr(str(d)), "warn")
             sfx.play("on")
+            ctx.flip_joining = None
             ctx.econ.refresh()
             apply(d)
         ctx.econ.call("rb_flip_lock", {"fid": fid, "items": picker.ids()}, done)
 
+    def kicked() -> None:
+        """Someone else locked in first: you were never in, nothing of yours moved."""
+        sfx.play("off")
+        ctx.toast(tr("Someone else locked in first. Nothing of yours was taken."), "warn")
+        ctx.econ.refresh()
+        leave_view(ctx)
+
     def apply(f: dict) -> None:
         try:
             new, old = f.get("state"), holder["state"]
+            if getattr(ctx, "flip_joining", None) == fid and new != "open" and not f.get("joiner"):
+                return kicked()
             if new != old and not (old == "locked" and new == "done"):
                 ctx.flip_state = f                     # another state: the page is built again for it
                 return ctx.reload_page("games")
@@ -715,8 +815,7 @@ def _build_view(page, lay, fid: str) -> None:
             if ok and isinstance(d, dict):
                 apply(d)
             elif not ok and "over" in str(d).lower():
-                ctx.flip_id = None
-                ctx.reload_page("games")
+                leave_view(ctx)
         ctx.online.ask("rb_flip_state", {"fid": fid}, got)
     lay.addWidget(_Poll(900, poll))
     if isinstance(first, dict) and first.get("id") == fid:

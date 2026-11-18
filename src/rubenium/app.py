@@ -654,12 +654,21 @@ class App(QObject):
             self.reload_page()
 
     def game_zoom(self) -> None:
-        """Leaving the Games tab (or closing the menu) while in the casino goes back to the lobby and your size.
-        A round that is still running finishes first."""
+        """Switching the left half of the online menu away from Games while in the casino goes back to the lobby (a
+        running round finishes first). 4.2: closing the menu, hiding it, going into a game or leaving online mode
+        keeps the casino game you were on: it is there again next time."""
         w = self.window
         if not self.casino or w.morph.busy or w.slide.busy or w.zoom.busy or w.fade.busy or self.welcome is not None:
             return
-        if w.expanded and w.showing("games"):
+        before = self.cfg["scale_before_games"]
+        if not self.online_mode:                       # the casino lives in the online menu: it waits there
+            if before:                                 # (a size left by an older version is put back once)
+                self.cfg["scale"] = before
+                self.cfg["scale_before_games"] = 0
+                ui.scale = before / 100
+                self.rebuild_ui()
+            return
+        if "games" in w.tab_keys():
             return
         entry = w.pages.get("games")
         page = entry[1] if entry else None
@@ -667,14 +676,7 @@ class App(QObject):
             page.wrap_up()
             return
         self.casino = False
-        before = self.cfg["scale_before_games"]
-        if before:
-            self.cfg["scale"] = before
-            self.cfg["scale_before_games"] = 0
-            ui.scale = before / 100
-            self.rebuild_ui()
-        else:
-            w._drop_page("games")
+        w._drop_page("games")
 
     def usage_hours(self) -> float:
         return self.cfg["usage_s"] / 3600

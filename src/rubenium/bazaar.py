@@ -447,7 +447,7 @@ def wear_look(ctx, item: str, on: bool) -> None:
         else:
             ctx.econ.looks_changed.emit()
         ctx.reload_page()
-    if on and item == "frame:yuletide":           # 4.0: the advent frame rings its bells when you put it on
+    if on and item in ("frame:yuletide", "frame:firstfrost"):     # the advent frames ring their bells when put on
         sfx.tune("jingle")
     else:
         sfx.play("pick")

@@ -434,7 +434,7 @@ class SweeperBoard(QWidget):
 
 # ================================================================ the pages (inside Games)
 def _top(page, lay, title: str, game: str) -> None:
-    page._back_bar(lay, title, lambda: page.open_sub("minigames"))
+    page._back_bar(lay, title, lambda: page.open_sub("minigames"), game)
     line = hbox(spacing=6)
     seg = Segmented([tr(m) for m in MODES[game]], int(getattr(page.ctx, game + "_mode", 0) or 0))
     seg.changed.connect(lambda i: page.mg_mode(game, i))

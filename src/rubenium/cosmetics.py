@@ -5,9 +5,10 @@ An item is named like the server names it: "ball:orbit:blue", "line:dash:red", "
 import math
 
 from PyQt6.QtCore import QPointF, QRectF, Qt
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import (QColor, QConicalGradient, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF,
+                         QRadialGradient)
 
-from .core import TEXT, alpha, font, mix, tr
+from .core import S, TEXT, alpha, font, mix, tr
 
 SHOP_COLOURS = {"grey": "#9AA4AD", "blue": "#4B6BFF", "green": "#2ECC71", "red": "#FF4B4B", "yellow": "#F4F04A",
                 "orange": "#FF8A3D", "brown": "#A8744C", "teal": "#1ABC9C", "lava": "#FF3D1F", "purple": "#9B5CFF",
@@ -54,9 +55,10 @@ FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
           ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine"),
           ("wood", "Wood"), ("pulse", "Pulse"), ("thorns", "Thorns"), ("gears", "Gears"), ("phoenix", "Phoenix"),
-          ("holly", "Holly"), ("snowflake", "Snowflake"), ("northstar", "North Star"), ("yuletide", "Yuletide")]
+          ("holly", "Holly"), ("snowflake", "Snowflake"), ("northstar", "North Star"), ("yuletide", "Yuletide"),
+          ("firstfrost", "First Frost 2026")]
 TAGS = [("og", "OG")]
-MOVING = {"yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
+MOVING = {"firstfrost", "yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
           "phoenix", "snowflake", "holly", "waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
           "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine",
           "honeycomb", "comet", "deepsea", "city", "fireflies", "storm", "vortex"}
@@ -1326,7 +1328,123 @@ _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"
                "wood": ("#B97A4A", "#6B3E1F"), "pulse": ("#3DDC84", "#0F6B3A"), "thorns": ("#3A5A2E", "#C8283D"),
                "gears": ("#D9DEE3", "#8A939C"), "phoenix": ("#FFC14D", "#FF4B1F"), "holly": ("#1F7A4A", "#E8384F"),
                "snowflake": ("#E8F6FF", "#7FC8FF"), "northstar": ("#FFE9A8", "#E8C26A"),
-               "yuletide": ("#FFD36B", "#C8283D")}
+               "yuletide": ("#FFD36B", "#C8283D"), "firstfrost": ("#DFF8FF", "#7FD3FF")}
+
+
+def _snowflake(p: QPainter, at: QPointF, size: float, turn: float, col: QColor) -> None:
+    """A six-armed snowflake with little side branches."""
+    p.save()
+    p.translate(at)
+    p.rotate(turn)
+    pen = QPen(col, max(0.8, size * 0.13))
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    p.setPen(pen)
+    for k in range(6):
+        p.rotate(60)
+        p.drawLine(QPointF(0, 0), QPointF(0, -size))
+        p.drawLine(QPointF(0, -size * 0.55), QPointF(-size * 0.28, -size * 0.78))
+        p.drawLine(QPointF(0, -size * 0.55), QPointF(size * 0.28, -size * 0.78))
+    p.restore()
+
+
+def _paint_firstfrost(p: QPainter, c: QPointF, r: float, wd: float, now: float) -> None:
+    """4.2, advent door 1 of 2026 (Legendary, limited: it will never be made again). A ring of frosted crystal with
+    an aurora sweeping through it, ice shards around it, three snowflakes slowly turning on their orbit, snow falling
+    through and piling up at the bottom, glints that twinkle, and a small 2026 tag."""
+    breathe = 0.6 + 0.4 * math.sin(now * 1.5)
+    p.save()
+    outer = r + wd * 6.0
+    aura = QRadialGradient(c, outer)                            # an icy halo
+    aura.setColorAt(0.0, QColor(0, 0, 0, 0))
+    aura.setColorAt(max(0.01, r / outer - 0.05), QColor(0, 0, 0, 0))
+    aura.setColorAt(r / outer, alpha("#BFF0FF", 0.50 * breathe))
+    aura.setColorAt(min(0.99, r / outer + 0.22), alpha("#6FB8FF", 0.18 * breathe))
+    aura.setColorAt(1.0, QColor(0, 0, 0, 0))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(aura)
+    p.drawEllipse(c, outer, outer)
+    for i in range(12):                                         # ice shards standing out of the ring
+        a = i / 12 * math.tau + math.pi / 12
+        long_ = wd * (2.3 if i % 2 == 0 else 1.5) * (1 + 0.06 * math.sin(now * 2 + i))
+        base = r + wd * 0.2
+        tip = QPointF(c.x() + math.cos(a) * (base + long_), c.y() + math.sin(a) * (base + long_))
+        side = wd * 0.42
+        left = QPointF(c.x() + math.cos(a - 0.09) * base - math.sin(a) * side * 0.2,
+                       c.y() + math.sin(a - 0.09) * base + math.cos(a) * side * 0.2)
+        right = QPointF(c.x() + math.cos(a + 0.09) * base + math.sin(a) * side * 0.2,
+                        c.y() + math.sin(a + 0.09) * base - math.cos(a) * side * 0.2)
+        shard = QPainterPath(left)
+        shard.lineTo(tip)
+        shard.lineTo(right)
+        shard.closeSubpath()
+        sg = QLinearGradient(QPointF(c.x() + math.cos(a) * base, c.y() + math.sin(a) * base), tip)
+        sg.setColorAt(0, alpha("#E9FBFF", 0.95))
+        sg.setColorAt(1, alpha("#7FD3FF", 0.55))
+        p.setBrush(sg)
+        p.drawPath(shard)
+    ring = QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r)          # the crystal band, an aurora running through it
+    sweep = QConicalGradient(c, -now * 40)
+    for k, col in enumerate(("#DFF8FF", "#7FE3FF", "#B9A6FF", "#7FFFD4", "#DFF8FF", "#9CD8FF", "#DFF8FF")):
+        sweep.setColorAt(k / 6, QColor(col))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.setPen(QPen(sweep, wd * 0.95))
+    p.drawEllipse(ring)
+    p.setPen(QPen(alpha("#FFFFFF", 0.85), max(1.0, wd * 0.16)))   # its bright inner edge
+    p.drawEllipse(ring.adjusted(wd * 0.42, wd * 0.42, -wd * 0.42, -wd * 0.42))
+    p.setPen(Qt.PenStyle.NoPen)
+    for i in range(3):                                          # three snowflakes on a slow orbit
+        a = now * 0.35 + i * math.tau / 3
+        at = QPointF(c.x() + math.cos(a) * (r + wd * 1.9), c.y() + math.sin(a) * (r + wd * 1.9))
+        fg = QRadialGradient(at, wd * 1.6)
+        fg.setColorAt(0, alpha("#FFFFFF", 0.45))
+        fg.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(fg)
+        p.drawEllipse(at, wd * 1.6, wd * 1.6)
+        _snowflake(p, at, wd * 1.05, now * 30 + i * 40, QColor("#FFFFFF"))
+    p.setPen(Qt.PenStyle.NoPen)
+    for i in range(14):                                         # snow falling through it
+        k = (now * (0.10 + (i % 4) * 0.025) + i * 0.173) % 1.0
+        x = c.x() + (((i * 0.618) % 1.0) * 2 - 1) * (r + wd * 3.2) + math.sin(now * 1.1 + i) * wd * 0.6
+        y = c.y() - r - wd * 4 + k * (2 * r + wd * 7)
+        size = wd * (0.16 + 0.10 * (i % 3))
+        p.setBrush(alpha("#FFFFFF", 0.85 * math.sin(k * math.pi)))
+        p.drawEllipse(QPointF(x, y), size, size)
+    drift = QPainterPath()                                      # the snow that settled at the bottom of the ring
+    bottom = c.y() + r
+    drift.moveTo(c.x() - r * 0.62, bottom - wd * 0.1)
+    drift.cubicTo(QPointF(c.x() - r * 0.35, bottom - wd * 1.5), QPointF(c.x() - r * 0.05, bottom - wd * 0.9),
+                  QPointF(c.x() + r * 0.1, bottom - wd * 1.35))
+    drift.cubicTo(QPointF(c.x() + r * 0.3, bottom - wd * 1.7), QPointF(c.x() + r * 0.5, bottom - wd * 0.8),
+                  QPointF(c.x() + r * 0.62, bottom - wd * 0.1))
+    drift.cubicTo(QPointF(c.x() + r * 0.3, bottom + wd * 0.9), QPointF(c.x() - r * 0.3, bottom + wd * 0.9),
+                  QPointF(c.x() - r * 0.62, bottom - wd * 0.1))
+    dg = QLinearGradient(QPointF(c.x(), bottom - wd * 1.7), QPointF(c.x(), bottom + wd * 0.9))
+    dg.setColorAt(0, QColor("#FFFFFF"))
+    dg.setColorAt(1, QColor("#BFE6FF"))
+    p.setBrush(dg)
+    p.drawPath(drift)
+    for i in range(5):                                          # glints on the ice
+        tw = max(0.0, math.sin(now * 2.7 + i * 2.1))
+        if tw < 0.05:
+            continue
+        a = i / 5 * math.tau + 0.4
+        gc = QPointF(c.x() + math.cos(a) * (r + wd * 0.1), c.y() + math.sin(a) * (r + wd * 0.1))
+        p.setBrush(alpha("#FFFFFF", 0.95 * tw))
+        s = wd * 0.9 * tw
+        p.drawPolygon(QPolygonF([QPointF(gc.x(), gc.y() - s), QPointF(gc.x() + s * 0.22, gc.y()),
+                                 QPointF(gc.x(), gc.y() + s), QPointF(gc.x() - s * 0.22, gc.y())]))
+        p.drawPolygon(QPolygonF([QPointF(gc.x() - s, gc.y()), QPointF(gc.x(), gc.y() + s * 0.22),
+                                 QPointF(gc.x() + s, gc.y()), QPointF(gc.x(), gc.y() - s * 0.22)]))
+    if r > S(20):                                               # the year, on a little ice tag at the bottom
+        tag = QRectF(c.x() - wd * 2.6, bottom + wd * 0.55, wd * 5.2, wd * 1.9)
+        p.setBrush(alpha("#0B2A44", 0.85))
+        p.setPen(QPen(alpha("#BFF0FF", 0.9), max(0.8, wd * 0.12)))
+        p.drawRoundedRect(tag, wd * 0.9, wd * 0.9)
+        p.setPen(QColor("#E9FBFF"))
+        p.setFont(font(max(5.0, wd * 1.15 / S(1)), QFont.Weight.Black))
+        p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), "2026")
+    p.restore()
 
 
 def _paint_yuletide(p: QPainter, c: QPointF, r: float, wd: float, now: float) -> None:
@@ -1552,6 +1670,8 @@ def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: flo
         p.drawEllipse(top)
     if base in ("wood", "pulse", "thorns", "gears", "phoenix", "holly", "snowflake", "northstar"):
         _paint_frame_32(p, base, c, r, wd, c1, c2, now)
+    if base == "firstfrost":
+        _paint_firstfrost(p, c, r, wd, now)
     if base == "yuletide":
         _paint_yuletide(p, c, r, wd, now)
     if base == "laurel":                                      # leaves up both sides

@@ -760,6 +760,8 @@ def build_golf(page, lay) -> None:
     back.clicked.connect(leave_screen)
     top.addWidget(back)
     top.addWidget(Label(tr("Mini Golf"), 16, bold=True), 1)
+    from .gamehelp import HelpButton
+    top.addWidget(HelpButton(ctx, "golf"))
     duel = Label(tr("DUEL"), 10, "#3DDC84", bold=True)
     duel.fit()
     top.addWidget(duel)

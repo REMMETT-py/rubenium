@@ -1101,6 +1101,12 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("4.2", ['Coinflip: play a bot (searching, found, choosing, 3-2-1, then the coin), five bots each with their own range, an eye to watch a flip, and you are only in once you lock in (nothing is taken if someone beats you)',
+             'A golden ? on every game: how to play, the best way to play, payouts and chances',
+             'Advent door 1: First Frost 2026, a Legendary frame with snow, limited, never made again',
+             'Rocket is clearer and its auto cash-out lines always show; Timing speeds up far less and cannot be slowed down',
+             'Mythic badges are a ? inside cases until you win one; the free spin opens again',
+             'Style is in the Shop (it was Settings > Look), the sets are in Games > Quests, and the menu keeps your exact casino game when you go back into a game']),
     ("4.1", ['New minigame: Block Blast (in place of 2048). Place the pieces, clear rows and columns, three modes and leaderboards',
              'Online menu: wider halves, games and shop on the left, social and settings on the right',
              'The advent calendar is now on the Games tab',

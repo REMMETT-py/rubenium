@@ -833,7 +833,9 @@ def build_sets(page, lay) -> None:
     def got(ok: bool, rows) -> None:
         if ok and isinstance(rows, list) and rows != getattr(ctx, "sets_data", None):
             ctx.sets_data = rows
-            if ctx.window.showing("themes") and int(getattr(ctx, "shop_tab", 0) or 0) == 6:
+            if ctx.window.showing("games") and getattr(ctx, "quests_open", False) and getattr(ctx, "quests_sets", False):
+                ctx.reload_page("games")                  # 4.2: the sets live in Games > Quests
+            elif ctx.window.showing("themes") and int(getattr(ctx, "shop_tab", 0) or 0) == 6:
                 ctx.reload_page("themes")
     ctx.online.ask("rb_sets", {}, got)
     if data is None:

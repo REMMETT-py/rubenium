@@ -1039,6 +1039,8 @@ def build_duels(page, lay) -> None:
     back.clicked.connect(lambda: page.open_sub(None))
     top.addWidget(back)
     top.addWidget(Label(tr("Duels"), 16, bold=True), 1)
+    from .gamehelp import HelpButton
+    top.addWidget(HelpButton(ctx, "duels"))
     lay.addLayout(top)
     lay.addWidget(CoinBar(ctx))
     friends = [f for f in (getattr(ctx, "duel_friends", None) or [])]

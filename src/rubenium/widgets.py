@@ -280,6 +280,21 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
     elif kind == "grid":
         for gx, gy in ((-7.5, -7.5), (1.5, -7.5), (-7.5, 1.5), (1.5, 1.5)):
             p.drawRoundedRect(QRectF(gx, gy, 6, 6), 1.5, 1.5)
+    elif kind == "eye":                          # 4.2: watch a coinflip
+        eye = QPainterPath()
+        eye.moveTo(-8.5, 0)
+        eye.quadTo(0, -8.5, 8.5, 0)
+        eye.quadTo(0, 8.5, -8.5, 0)
+        p.drawPath(eye)
+        p.drawEllipse(QPointF(0, 0), 2.8, 2.8)
+    elif kind == "robot":                        # 4.2: play a coinflip bot
+        p.drawRoundedRect(QRectF(-6.5, -4, 13, 10), 2.5, 2.5)
+        p.drawLine(QPointF(0, -4), QPointF(0, -7))
+        p.drawEllipse(QPointF(0, -7.8), 1.0, 1.0)
+        p.drawEllipse(QPointF(-2.6, 0.6), 1.2, 1.2)
+        p.drawEllipse(QPointF(2.6, 0.6), 1.2, 1.2)
+        p.drawLine(QPointF(-8.5, 0), QPointF(-6.5, 0))
+        p.drawLine(QPointF(6.5, 0), QPointF(8.5, 0))
     elif kind == "blocks":                       # 4.1: Block Blast: an L piece and one square
         for gx, gy in ((-8, -8), (-8, -2), (-2, -2)):
             p.drawRoundedRect(QRectF(gx, gy, 5.2, 5.2), 1.3, 1.3)

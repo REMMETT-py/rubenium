@@ -105,6 +105,21 @@ def show_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: b
     paint_item(p, item, rect, now, effects, dim)
 
 
+def is_mythic(item: str) -> bool:
+    from .econ import MYTHICS
+    parts = (item or "").split(":")
+    return len(parts) >= 2 and parts[0] == "badge" and parts[1] in MYTHICS
+
+
+def show_case_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: bool = True,
+                   reveal: bool = False) -> None:
+    """4.2: inside a case every Mythic badge is a "?" (even one you had, even for the admins), so nothing can be
+    spotted as the strip races by. Only the one you win is shown, once the strip has stopped on it."""
+    if is_mythic(item) and not reveal:
+        return paint_secret(p, rect, now, effects)
+    show_item(p, item, rect, now, effects)
+
+
 def item_chances(ec, item: str) -> list:
     """The exact chance of this one badge (this design, colour and finish) per open, in every case that can give it,
     best first: [(case id, chance)]. Same maths as the server."""
@@ -712,10 +727,10 @@ class DropList(QWidget):
             p.setBrush(alpha(col, 0.08))
             p.drawRoundedRect(r, S(6), S(6))
             icon = QRectF(r.left() + S(4), r.top() + S(2), r.height() - S(4), r.height() - S(4))
-            show_item(p, item, icon, 0, effects=False)
+            show_case_item(p, item, icon, 0, effects=False)
             name = badge_label(item).replace(" · " + tr("Basic"), "") if item.startswith("badge:") else item_name(item)
             if item.startswith("badge:"):
-                name = tr(BADGE_NAME.get(item.split(":")[1], "?")) if not is_secret(item) else "???"
+                name = "???" if is_mythic(item) else tr(BADGE_NAME.get(item.split(":")[1], "?"))
             pct = chance * 100
             text = (f"{pct:.3f}%" if pct < 0.1 else f"{pct:.2f}%" if pct < 10 else f"{pct:.1f}%")
             if lang() == "fr":
@@ -1175,7 +1190,7 @@ class CaseReel(QWidget):
     def hideEvent(self, _e) -> None:
         self.skip()
 
-    def _card(self, p: QPainter, rect: QRectF, drop: tuple, now: float, flash: float = 0.0) -> None:
+    def _card(self, p: QPainter, rect: QRectF, drop: tuple, now: float, flash: float = 0.0, reveal: bool = False) -> None:
         kind, what = drop
         col = QColor(GOLD_TEXT) if kind == "coins" else rarity_colour(self.ctx, what)
         g = QLinearGradient(rect.topLeft(), rect.bottomLeft())
@@ -1195,8 +1210,8 @@ class CaseReel(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
         else:
             size = rect.width() * 0.5
-            show_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
-                      now, effects=self.state != "spin")
+            show_case_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
+                           now, effects=self.state != "spin", reveal=reveal)
         if flash > 0:
             p.setBrush(QColor(255, 255, 255, int(150 * flash)))
             p.drawRoundedRect(rect, S(8), S(8))
@@ -1278,11 +1293,12 @@ class CaseReel(QWidget):
             if self.state == "landed" and i == self.WIN:
                 flash = max(0.0, 1.0 - (now - self._stop_t) / 0.6) * (0.5 + 0.5 * math.sin((now - self._stop_t) * 30))
             rect = QRectF(cx - self.offset + i * step, top, self.cw, ch)
+            reveal = i == self.WIN and self.state != "spin"       # yours is shown once the strip stops on it
             if speed > 0.25:                              # motion blur while it races
                 p.setOpacity(0.18 * speed)
                 self._card(p, rect.translated(S(10) * speed, 0), self.strip[i], now)
                 p.setOpacity(1.0)
-            self._card(p, rect, self.strip[i], now, flash)
+            self._card(p, rect, self.strip[i], now, flash, reveal)
         fade = QLinearGradient(r.topLeft(), r.topRight())
         for at, a in ((0.0, 250), (0.22, 0), (0.78, 0), (1.0, 250)):
             fade.setColorAt(at, QColor(9, 12, 13, a))

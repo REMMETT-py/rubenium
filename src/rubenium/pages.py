@@ -1660,8 +1660,8 @@ class BallPreview(QWidget):
 
 
 class StylePart:
-    """4.0: your colours, the R and ring styles you unlock with time and the themes. Shown in Settings > Look
-    (it used to be the Shop's Style part, which only repeated what Social > Edit Profile already shows)."""
+    """Your ball, its effects, your colours, the R and ring styles you unlock with time and the themes. 4.2: the
+    Shop's Style again (in 4.0 and 4.1 it was Settings > Look)."""
     cards: list
     unlocks: list
     c1 = None
@@ -1672,6 +1672,34 @@ class StylePart:
 
     def flair_changed(self) -> None:
         self.ctx.cfg.save()
+
+    def build_style(self, lay) -> None:
+        """4.2: the Shop's Style (it was Settings > Look): the ball, its effects, colours, R and ring styles, themes."""
+        ctx, cfg = self.ctx, self.ctx.cfg
+
+        def toggle(label, key, after=None):
+            t = Toggle(bool(cfg[key]))
+
+            def on(v):
+                cfg[key] = v
+                if after:
+                    after(v)
+            t.toggled_by_user.connect(on)
+            lay.addWidget(row(label, t))
+            return t
+        lay.addWidget(heading(tr("Ball")))
+        self.preview = BallPreview(ctx)
+        lay.addWidget(self.preview)
+        ball = SliderRow(tr("Ball size"), min(BALL_SIZES), max(BALL_SIZES), cfg["ball_size"], 10, 100,
+                         lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
+        ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
+        lay.addWidget(ball)
+        lay.addWidget(heading(tr("Effects")))
+        toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
+        toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
+        toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
+        self._look(lay)
+        ctx.wallet.changed.connect(self._refresh_style)
 
     def _look(self, lay) -> None:
         """Colours, the progression (R and ring styles) and the themes."""
@@ -1826,11 +1854,14 @@ class SettingsPage(StylePart, Page):
 
         from .hub import NavTiles
         sec = int(getattr(ctx, "settings_tab", 0) or 0)
-        tiles = NavTiles([(tr("General"), "cog"), (tr("Look"), "spark"), (tr("Sounds"), "volume"),
-                          (tr("Account"), "users"), (tr("Backup"), "folder"), (tr("About"), "refresh")], sec, per_row=3)
+        shown = [0, 2, 3, 4, 5]                         # 4.2: Look moved to the Shop (Style)
+        if sec not in shown:
+            sec = ctx.settings_tab = 0
+        tiles = NavTiles([(tr("General"), "cog"), (tr("Sounds"), "volume"), (tr("Account"), "users"),
+                          (tr("Backup"), "folder"), (tr("About"), "refresh")], shown.index(sec), per_row=3)
 
         def pick(i: int) -> None:
-            ctx.settings_tab = i
+            ctx.settings_tab = shown[i]
             ctx.reload_page()
         tiles.changed.connect(pick)
         lay.addWidget(tiles)
@@ -1891,22 +1922,7 @@ class SettingsPage(StylePart, Page):
                              marks=list(range(70, 151, 10)))
             size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
             lay.addWidget(size)
-
-        elif sec == 1:                                  # ---------------------------------------------- Look
-            lay.addWidget(heading(tr("Ball")))
-            self.preview = BallPreview(ctx)
-            lay.addWidget(self.preview)
-            ball = SliderRow(tr("Ball size"), min(BALL_SIZES), max(BALL_SIZES), cfg["ball_size"], 10, 100,
-                             lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
-            ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
-            lay.addWidget(ball)
-            lay.addWidget(heading(tr("Effects")))
-            toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
-            toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
-            toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
-            self._look(lay)                         # 4.0: colours, R and ring styles, themes (was the Shop's Style)
-            ctx.wallet.changed.connect(self._refresh_style)
-            lay.addWidget(heading(tr("Tabs in the menu bar")))
+            lay.addWidget(heading(tr("Tabs in the menu bar")))           # 4.2: moved here from Look
             from .pages2 import TABS
             for key, _icon, label in TABS:             # Home, Lyrics and Settings always stay
                 if key in LOCKED_TABS or key in ("giveaway", "admin", "online"):      # ONLINE always stays
