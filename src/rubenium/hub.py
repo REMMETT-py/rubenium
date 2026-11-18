@@ -1591,7 +1591,7 @@ class StreakRow(QWidget):
     def __init__(self, page) -> None:
         super().__init__()
         self.page, self.ctx = page, page.ctx
-        self.setFixedHeight(S(44))
+        self.setFixedHeight(S(72))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._t = QTimer(self)
         self._t.setInterval(80)                # 4.0: a calm flame, fewer repaints
@@ -1616,28 +1616,25 @@ class StreakRow(QWidget):
             sfx.play("pick")
             check_login_reward(self.ctx, force=True)
 
+    def enterEvent(self, _e) -> None:
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.update()
+
     def paintEvent(self, _e) -> None:
+        from .games2 import paint_freebie
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         streak, claimed = self._state()
         outer, mid, _core = flame_colours(max(1, streak))
-        g = QLinearGradient(r.topLeft(), r.topRight())
-        g.setColorAt(0, mix(outer, QColor("#14181D"), 0.78))
-        g.setColorAt(1, QColor("#14181D"))
-        p.setPen(QPen(alpha(mid, 0.45 if not claimed else 0.15), 1.2))
-        p.setBrush(g)
-        p.drawRoundedRect(r, S(10), S(10))
-        paint_flame(p, QPointF(r.left() + S(22), r.center().y()), S(17), streak, time.monotonic(), sparks=streak > 0)
-        p.setPen(QColor(TEXT))
-        p.setFont(font(12, QFont.Weight.Bold))
-        p.drawText(QRectF(r.left() + S(44), r.top(), r.width(), r.height()), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("Daily reward") + (f"  ·  {tr('{n} days', n=streak)}" if streak > 1 else ""))
-        p.setPen(QColor(TEXT_DIM if claimed else mid.name()))
-        p.setFont(font(11, QFont.Weight.DemiBold))
-        p.drawText(r.adjusted(0, 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                   tr("Done for today") if claimed else tr("Claim!"))
-
+        if claimed:
+            text = tr("{n} days", n=streak) if streak > 1 else tr("Done for today")
+        else:
+            text = tr("Claim!")
+        paint_freebie(self, p, tr("Daily reward"), text, not claimed, mid,
+                      lambda p, c: paint_flame(p, QPointF(c.x(), c.y() + S(2)), S(17), streak, time.monotonic(),
+                                               sparks=streak > 0))
 
 
 class AmountWindow(FloatWindow):

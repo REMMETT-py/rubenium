@@ -218,9 +218,10 @@ def start_pos(hole: dict, side: str):
 class GolfView(QWidget):
     """The course, both balls, the scoreboard and the aim. Asks the server every 0.6 s while a match is on."""
 
-    def __init__(self, page, gid: str) -> None:
+    def __init__(self, page, gid: str, solo: bool = False) -> None:
         super().__init__()
         self.page, self.ctx, self.gid = page, page.ctx, gid
+        self.solo = solo                     # 4.3: a round alone: no opponent, no clock, coins by strokes
         w = page.W
         self.head_h = S(46)
         self.setFixedSize(w, int(self.head_h + w * FIELD_H))
@@ -234,7 +235,7 @@ class GolfView(QWidget):
         self._asking = False
         self._banner, self._banner_at = "", 0.0
         self._poll = QTimer(self)
-        self._poll.setInterval(450)                # 4.0: the other player's shot shows sooner
+        self._poll.setInterval(3000 if solo else 450)   # 4.0: the other player's shot shows sooner
         self._poll.timeout.connect(self.ask)
         self._frame = QTimer(self)
         self._frame.setInterval(16)
@@ -262,8 +263,9 @@ class GolfView(QWidget):
                 self.set_state(data)
             elif not ok and "gone" in str(data).lower():
                 self.ctx.golf_id = None
+                self.ctx.golf_solo_id = None
                 self.ctx.reload_page()
-        self.ctx.online.ask("rb_golf_state", {"gid": self.gid}, got)
+        self.ctx.online.ask("rb_golf_solo_state" if self.solo else "rb_golf_state", {"gid": self.gid}, got)
 
     def n_holes(self) -> int:
         return max(1, len(self.g.get("holes") or [1, 2, 3, 4, 5]))
@@ -275,9 +277,10 @@ class GolfView(QWidget):
         return get_hole(int(hs[n - 1]) if len(hs) >= n else 1)
 
     def set_state(self, g: dict) -> None:
-        old = self.g
         self.g = g
-        if old and old.get("hole") != g.get("hole") and g.get("state") == "live":
+        seen_hole = getattr(self, "_hole_was", None)
+        self._hole_was = g.get("hole")
+        if seen_hole is not None and seen_hole != g.get("hole") and g.get("state") == "live":
             self._banner, self._banner_at = tr("Hole {n} of {t}", n=g.get("hole"), t=self.n_holes()), time.monotonic()
             sfx.play("on")
         shots = sorted(g.get("shots") or [], key=lambda s: int(s.get("n") or 0))
@@ -297,8 +300,9 @@ class GolfView(QWidget):
         if not new:
             self.seen = max(self.seen, int(g.get("seq") or 0) - 1)
         self._settle()
-        if g.get("state") == "done" and old.get("state") == "live":
+        if g.get("state") == "done" and getattr(self, "_was", "") == "live":     # 4.3: also when our own shot ends it
             self._finished()
+        self._was = g.get("state")
 
     def _settle(self) -> None:
         """Balls where the server says they are."""
@@ -318,9 +322,12 @@ class GolfView(QWidget):
     def _finished(self) -> None:
         g = self.g
         me = g.get("me")
-        won = g.get("winner") == me
+        won = int(g.get("paid") or 0) > 0 if self.solo else g.get("winner") == me
         sfx.play("on" if won else "off")
         self.ctx.golf_list = None
+        if self.solo:
+            self.ctx.econ.refresh()
+            QTimer.singleShot(400, lambda: self.ctx.reload_page("games"))     # the Play again button shows
         self.update()
 
     # -- playing
@@ -381,6 +388,8 @@ class GolfView(QWidget):
                 self.ctx.toast(tr(str(data)), "warn")
                 self._mine_sent = False
                 self.ask()
+        if self.solo:
+            return self.ctx.online.ask("rb_golf_solo_shot", {"gid": self.gid, "n": n, "x": x, "y": y, "holed": holed}, done)
         self.ctx.online.ask("rb_golf_shot", {"gid": self.gid, "n": n, "x0": ball[0], "y0": ball[1], "ang": ang,
                                              "pow": pw, "x": x, "y": y, "holed": holed}, done)
 
@@ -522,7 +531,19 @@ class GolfView(QWidget):
             p.setFont(font(16, QFont.Weight.Black))
             p.drawText(f, int(Qt.AlignmentFlag.AlignCenter), self._banner)
             p.setOpacity(1.0)
-        if g.get("state") == "done":
+        if g.get("state") == "done" and self.solo:
+            p.fillRect(f, alpha("#000000", 0.6))
+            paid = int(g.get("paid") or 0)
+            total = sum(int(x or 0) for x in (g.get("a_strokes") or []))
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(font(20, QFont.Weight.Black))
+            p.drawText(QRectF(f.left(), f.center().y() - S(34), f.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Round over: {n} strokes", n=total))
+            p.setFont(font(13, QFont.Weight.Bold))
+            p.setPen(QColor("#E8C26A") if paid else QColor(TEXT_DIM))
+            p.drawText(QRectF(f.left(), f.center().y() + S(2), f.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter),
+                       ("+" + coins_text(paid) + " " + tr("coins")) if paid else tr("No coins this time (limit reached)"))
+        elif g.get("state") == "done":
             p.fillRect(f, alpha("#000000", 0.6))
             won, draw = g.get("winner") == me, not g.get("winner")
             p.setPen(QColor("#3DDC84") if won else QColor("#FFFFFF"))
@@ -543,6 +564,8 @@ class GolfView(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(alpha("#FFFFFF", 0.05))
         p.drawRoundedRect(r, S(10), S(10))
+        if self.solo:
+            return self._paint_solo_head(p, g, r)
         me = g.get("me", "a")
         hole = int(g.get("hole") or 1)
         w = r.width() / 3
@@ -573,6 +596,41 @@ class GolfView(QWidget):
             p.setPen(QColor("#3DDC84") if mine else QColor(TEXT_DIM))
             text = tr("Your turn · {s} s", s=left) if mine else tr("Waiting · {s} s", s=left)
             p.drawText(mid.adjusted(0, r.height() / 2, 0, -S(3)), int(Qt.AlignmentFlag.AlignCenter), text)
+
+
+    SOLO_PAYS = (60, 35, 20, 10, 5, 0)
+
+    def _paint_solo_head(self, p: QPainter, g: dict, r: QRectF) -> None:
+        """4.3 solo: your strokes, the hole, and what holing the next shot pays."""
+        w = r.width() / 3
+        hole = int(g.get("hole") or 1)
+        strokes = list(g.get("a_strokes") or [0])
+        left, mid, right = (QRectF(r.left() + i * w, r.top(), w, r.height()) for i in range(3))
+        top_half = lambda b: b.adjusted(S(8), S(3), -S(8), -r.height() / 2)
+        low_half = lambda b: b.adjusted(S(8), r.height() / 2, -S(8), -S(3))
+        p.setPen(ui.accent)
+        p.setFont(font(11, QFont.Weight.Bold))
+        p.drawText(top_half(left), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft), str(g.get("a") or ""))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        n = sum(int(x or 0) for x in strokes)
+        p.drawText(low_half(left), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+                   tr("1 stroke") if n == 1 else tr("{n} strokes", n=n))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(11, QFont.Weight.Black))
+        p.drawText(top_half(mid), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Hole {n} of {t}", n=hole, t=self.n_holes()) if g.get("state") == "live" else tr("Final score"))
+        p.setPen(QColor("#3DDC84"))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        if g.get("state") == "live":
+            p.drawText(low_half(mid), int(Qt.AlignmentFlag.AlignCenter), tr("Solo · no clock"))
+            now_s = int(strokes[hole - 1] if len(strokes) >= hole else 0)
+            pays = self.SOLO_PAYS[min(5, now_s)]
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(top_half(right), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), tr("Hole it now"))
+            p.setPen(QColor("#E8C26A") if pays else QColor(TEXT_DIM))
+            p.setFont(font(11, QFont.Weight.Bold))
+            p.drawText(low_half(right), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), "+" + coins_text(pays))
 
 
 class LobbyRow(QWidget):
@@ -723,6 +781,71 @@ def load_golf(page) -> None:
     ctx.online.ask("rb_golf_lobbies", {}, got)
 
 
+def build_golf_solo(page, lay, sid, leave_screen) -> None:
+    """4.3: Mini Golf alone. No bet and no clock: coins by strokes, paid at the end of the round."""
+    from .shop import CoinBar
+    ctx = page.ctx
+
+    def start() -> None:
+        def done(ok: bool, data) -> None:
+            if not ok:
+                return ctx.toast(tr(str(data)), "warn")
+            sfx.play("on")
+            ctx.golf_solo_id = data.get("id")
+            ctx.reload_page("games")
+        ctx.econ.call("rb_golf_solo_start", {}, done)
+    if sid:
+        view = GolfView(page, sid, solo=True)
+        lay.addWidget(view)
+        if view.g.get("state") == "done" or getattr(ctx, "golf_solo_done", None) == sid:
+            row = hbox(spacing=6)
+            again = Button(tr("Play again"), "primary", 34, icon="flag")
+            again.clicked.connect(start)
+            out = Button(tr("Back"), "ghost", 34)
+            out.clicked.connect(leave_screen)
+            row.addWidget(again, 2)
+            row.addWidget(out, 1)
+            lay.addLayout(row)
+        else:
+            quit_ = Button(tr("Leave the round"), "ghost", 30)
+
+            def leave() -> None:
+                if view.g.get("state") != "live":
+                    return leave_screen()
+
+                def go() -> None:
+                    ctx.online.ask("rb_golf_solo_quit", {"gid": sid}, lambda _o, _d: None)
+                    leave_screen()
+                ctx.window.confirm(tr("Leave? This round pays nothing."), go, yes=tr("Leave"))
+            quit_.clicked.connect(leave)
+            lay.addWidget(quit_)
+
+        def watch(g=None) -> None:                       # the round ends: Play again replaces Leave
+            if view.g.get("state") == "done" and getattr(ctx, "golf_solo_done", None) != sid:
+                ctx.golf_solo_done = sid
+        old = view.set_state
+
+        def set_state(g: dict) -> None:
+            old(g)
+            watch()
+        view.set_state = set_state
+        lay.addWidget(Label(tr("Drag back anywhere, then let go to shoot. Holing it sooner pays more."),
+                            10, TEXT_DIM, wrap_w=page.W))
+        return
+    lay.addWidget(CoinBar(ctx))
+    lay.addWidget(Label(tr("PLAY ALONE"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    go = Button(tr("Start a round"), "primary", 36, icon="flag")
+    go.clicked.connect(start)
+    lay.addWidget(go)
+    holes = int(float(ctx.econ.cfg.get("golf_holes", 5) or 5))
+    lay.addWidget(Label(tr("{n} holes, no bet and no clock. Each hole pays by strokes:", n=holes), 10.5, TEXT, wrap_w=page.W))
+    lay.addWidget(Label(tr("1 stroke: 60 · 2: 35 · 3: 20 · 4: 10 · 5: 5 · 6: nothing"), 11, "#E8C26A", bold=True,
+                        wrap_w=page.W))
+    lay.addWidget(Label(tr("Coins are paid at the end of the round. Like the other mini games, what you can earn is "
+                           "limited every 2 hours."), 10, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Want to bet against someone? Pick Duel above."), 10, TEXT_DIM, wrap_w=page.W))
+
+
 class _ListPoll(QWidget):
     """Invisible: refreshes the lobby while the golf screen is shown."""
 
@@ -749,11 +872,14 @@ def build_golf(page, lay) -> None:
     ctx = page.ctx
     top = hbox(spacing=8)
     gid = getattr(ctx, "golf_id", None)
+    solo = bool(getattr(ctx, "golf_solo", False)) and not gid       # 4.3: Solo or Duel
+    sid = getattr(ctx, "golf_solo_id", None) if solo else None
     back = IconButton("back", 32, tip=tr("Back"))
 
     def leave_screen() -> None:
-        if gid:
+        if gid or sid:
             ctx.golf_id = None
+            ctx.golf_solo_id = None
             ctx.golf_lobby = None
             return ctx.reload_page("games")
         page.open_sub(None)
@@ -762,13 +888,24 @@ def build_golf(page, lay) -> None:
     top.addWidget(Label(tr("Mini Golf"), 16, bold=True), 1)
     from .gamehelp import HelpButton
     top.addWidget(HelpButton(ctx, "golf"))
-    duel = Label(tr("DUEL"), 10, "#3DDC84", bold=True)
+    duel = Label(tr("SOLO") if solo else tr("DUEL"), 10, "#3DDC84", bold=True)
     duel.fit()
     top.addWidget(duel)
     lay.addLayout(top)
     if getattr(ctx, "golf_missing", False):
         server_wait(ctx, lay, page.W)
         return
+    if not gid and not sid:
+        which = Segmented([tr("Solo"), tr("Duel")], 0 if solo else 1)
+
+        def pick(i: int) -> None:
+            ctx.golf_solo = i == 0
+            sfx.play("pick")
+            ctx.reload_page("games")
+        which.changed.connect(pick)
+        lay.addWidget(which)
+    if solo:
+        return build_golf_solo(page, lay, sid, leave_screen)
     if gid:
         view = GolfView(page, gid)
         lay.addWidget(view)

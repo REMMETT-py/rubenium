@@ -1,0 +1,32 @@
+name: Release history
+# 4.3: gives every past release its real version name and only its own notes (release_history.json).
+on:
+  push:
+    branches: [build-test, main]
+    paths: ["release_history.json"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  titles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rename and rewrite the releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          data = json.load(open("release_history.json", encoding="utf-8"))
+          rels = json.loads(subprocess.check_output(["gh", "api", "repos/${{ github.repository }}/releases?per_page=100"]))
+          done = 0
+          for r in rels:
+              want = data.get(r["tag_name"])
+              if not want or (r["name"] == want["name"] and r["body"] == want["body"]):
+                  continue
+              subprocess.check_call(["gh", "api", "-X", "PATCH", f"repos/${{ github.repository }}/releases/{r['id']}",
+                                     "-f", "name=" + want["name"], "-f", "body=" + want["body"]], stdout=subprocess.DEVNULL)
+              done += 1
+          print("releases updated:", done)
+          PY

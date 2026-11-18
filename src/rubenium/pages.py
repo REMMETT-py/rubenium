@@ -288,7 +288,8 @@ class HomePage(Page):
             return
         res = self.ctx.appvol.get(self._vol_match()) if self.ctx.state.source_id else None
         show = res is not None
-        if show != self.vol.isVisible():
+        self._vol_ok = show
+        if show != self.b_vol.isVisible():
             self.vol.setVisible(show)
             self.b_vol.setVisible(show)
         if show:
@@ -319,7 +320,14 @@ class HomePage(Page):
         self.chip.update()
         self._place_flair()
         win = self.ctx.window
-        want = bool(self.ctx.cfg["compact_music"]) and (getattr(win, "game_state", 0) > 0 or level < 0.5)
+        # 4.3: compact only while you are away from Rubenium (in a game, the mouse elsewhere). As soon as the menu bar
+        # comes back (mouse over it, or it has the focus) everything unfolds again. The setting only decides whether
+        # it folds at all.
+        if self.ctx.cfg["autohide"]:
+            away = level < 0.5
+        else:
+            away = getattr(win, "game_state", 0) > 0 and not getattr(win, "_in_since", 0.0) and not win.isActiveWindow()
+        want = bool(self.ctx.cfg["compact_music"]) and away
         if want != getattr(self, "_compact", False):
             self._compact = want
             self._apply_compact()
@@ -328,10 +336,13 @@ class HomePage(Page):
         """4.1: the card folds smoothly, the way the menu bar does: the button row closes up, the cover gets a little
         smaller, the title and artist grow, and the whole menu gets shorter with it (no gap is left)."""
         on = getattr(self, "_compact", False)
-        if on:                                      # the buttons go first, then the row closes
-            for b in (self.b_prev, self.b_play, self.b_next, self.b_look, self.b_shuffle, self.b_repeat, self.b_vol,
-                      self.vol):
-                b.hide()
+        if not on:                                  # 4.3: unfolding: the buttons are back at once and fade in
+            st = self.ctx.state
+            for b in (self.b_prev, self.b_play, self.b_next, self.b_look):
+                b.show()
+            self.b_shuffle.setVisible(st.shuffle is not None)
+            self.b_repeat.setVisible(st.repeat is not None)
+            QTimer.singleShot(0, self._vol_poll)
         self.on_state(self.ctx.state)               # the hint never mentions a button that is not there
         if self.isVisible() and self.ctx.window.expanded:
             self.squash.to(1.0 if on else 0.0, 380)
@@ -342,19 +353,22 @@ class HomePage(Page):
         k = max(0.0, min(1.0, self.squash.level))
         self.ctrl_box.setFixedHeight(int(round(S(self.CTRL_H) * (1 - k))))
         self.ctrl_box.setVisible(k < 0.999)
+        self._ctrl_fade(max(0.0, min(1.0, 1.0 - k / 0.55)))      # 4.3: gone by half way, back over the last half
         side = S(self.ART + (self.ART_COMPACT - self.ART) * k)
         self.art.setFixedSize(side, side)
         self.title.set_size(round((15 + 4 * k) * 2) / 2)
         self.title.setFixedHeight(S(22 + 6 * k))
         self.artist.set_size(12 + (1 if k > 0.5 else 0))
-        if k <= 0.001 and not getattr(self, "_compact", False):      # unfolded: the buttons come back
-            st = self.ctx.state
-            for b in (self.b_prev, self.b_play, self.b_next, self.b_look):
-                b.show()
-            self.b_shuffle.setVisible(st.shuffle is not None)
-            self.b_repeat.setVisible(st.repeat is not None)
-            QTimer.singleShot(0, self._vol_poll)
         self._refit()
+
+    def _ctrl_fade(self, o: float) -> None:
+        """4.3: the play, skip and other buttons fade with the fold (painted fade: a graphics effect would not draw
+        on the see-through menu)."""
+        for b in (self.b_shuffle, self.b_prev, self.b_play, self.b_next, self.b_repeat, self.b_vol, self.b_look):
+            if abs(b.fade - o) > 0.004:
+                b.fade = o
+                b.update()
+        self.vol.setVisible(bool(getattr(self, "_vol_ok", False)) and o > 0.6)
 
     def _refit(self) -> None:
         """Tell the menu the page is shorter (or taller) now: the card follows it frame by frame."""
@@ -463,9 +477,8 @@ class HomePage(Page):
         self.chip.set_text(text)
         self.chip.setFixedWidth(QFontMetrics(font(12, QFont.Weight.DemiBold)).horizontalAdvance(text) + S(16))
 
-        compact = getattr(self, "_compact", False) or self.squash.level > 0.001
-        self.b_shuffle.setVisible(st.shuffle is not None and not compact)        # never a dead control
-        self.b_repeat.setVisible(st.repeat is not None and not compact)
+        self.b_shuffle.setVisible(st.shuffle is not None)        # never a dead control (the folded row hides itself)
+        self.b_repeat.setVisible(st.repeat is not None)
         self.b_shuffle.set_active(bool(st.shuffle))
         self.b_repeat.set_active(bool(st.repeat))
         self.b_repeat.set_kind("repeat1" if st.repeat == 1 else "repeat")

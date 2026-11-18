@@ -901,13 +901,39 @@ class ScratchOdds(QWidget):
                        f"{row.get('pct', 0)}%")
 
 
+def paint_freebie(widget, p, title: str, status: str, ready: bool, accent, icon) -> None:
+    """4.3: the three freebies (daily reward, free spin, scratch card) as equal tiles in one row:
+    the icon on top, the name under it, then ready or how long to wait."""
+    r = QRectF(widget.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+    accent = QColor(accent)
+    hover = 1.0 if widget.underMouse() else 0.0
+    g = QLinearGradient(r.topLeft(), r.bottomLeft())
+    g.setColorAt(0, mix(accent, QColor("#12161B"), 0.80 - 0.06 * hover) if ready else alpha("#FFFFFF", 0.05 + 0.02 * hover))
+    g.setColorAt(1, QColor("#12161B") if ready else alpha("#FFFFFF", 0.025 + 0.02 * hover))
+    p.setPen(QPen(alpha(accent, 0.55) if ready else alpha("#FFFFFF", 0.08 + 0.05 * hover), 1.2))
+    p.setBrush(g)
+    p.drawRoundedRect(r, S(11), S(11))
+    icon(p, QPointF(r.center().x(), r.top() + S(21)))
+    fm = QFontMetrics(font(11.5, QFont.Weight.Bold))
+    p.setPen(QColor(TEXT))
+    p.setFont(font(11.5, QFont.Weight.Bold))
+    p.drawText(QRectF(r.left() + S(6), r.top() + S(35), r.width() - S(12), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+               fm.elidedText(title, Qt.TextElideMode.ElideRight, int(r.width() - S(12))))
+    p.setPen(QColor(accent if ready else QColor(TEXT_DIM)))
+    p.setFont(font(10.5, QFont.Weight.DemiBold))
+    p.drawText(QRectF(r.left() + S(6), r.top() + S(52), r.width() - S(12), S(16)), int(Qt.AlignmentFlag.AlignCenter), status)
+
+
+FREEBIE_H = 72
+
+
 class ScratchRow(QWidget):
-    """A line in the games lobby: the scratch card is ready, or the time until the next one."""
+    """A tile in the games lobby: the scratch card is ready, or the time until the next one."""
 
     def __init__(self, page) -> None:
         super().__init__()
         self.page, self.ctx = page, page.ctx
-        self.setFixedHeight(S(40))
+        self.setFixedHeight(S(FREEBIE_H))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._t = QTimer(self)
         self._t.setInterval(1000)
@@ -929,29 +955,27 @@ class ScratchRow(QWidget):
         if self.rect().contains(e.position().toPoint()):
             self.page.open_sub("scratch")
 
+    def enterEvent(self, _e) -> None:
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.update()
+
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         left = int(getattr(self.ctx.econ, "scratch_in", 0) or 0)
         ready = left <= 0 and not self.ctx.econ.server_old
-        g = QLinearGradient(r.topLeft(), r.topRight())
-        g.setColorAt(0, QColor("#2A3038") if not ready else mix(QColor("#C9CFD6"), QColor("#1A1F26"), 0.55))
-        g.setColorAt(1, QColor("#161A20"))
-        p.setPen(QPen(alpha("#FFFFFF", 0.25 if ready else 0.08), 1))
-        p.setBrush(g)
-        p.drawRoundedRect(r, S(10), S(10))
-        p.save()
-        p.translate(r.left() + S(20), r.center().y())
-        draw_icon(p, "gift", QColor(TEXT) if ready else QColor(TEXT_DIM))
-        p.restore()
-        p.setPen(QColor(TEXT))
-        p.setFont(font(12, QFont.Weight.Bold))
-        p.drawText(QRectF(r.left() + S(40), r.top(), r.width(), r.height()), int(Qt.AlignmentFlag.AlignVCenter), tr("Scratch card"))
-        p.setPen(QColor(GOLD_TEXT if ready else TEXT_DIM))
-        p.setFont(font(11, QFont.Weight.DemiBold))
-        p.drawText(r.adjusted(0, 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                   tr("Ready!") if ready else (tr("Soon") if self.ctx.econ.server_old else clock_text(left)))
+
+        def icon(p, c):
+            p.save()
+            p.translate(c)
+            p.scale(1.15, 1.15)
+            draw_icon(p, "gift", QColor(TEXT) if ready else QColor(TEXT_DIM))
+            p.restore()
+        paint_freebie(self, p, tr("Scratch card"), tr("Ready!") if ready else (tr("Soon") if self.ctx.econ.server_old
+                                                                               else clock_text(left)),
+                      ready, "#D5DBE2", icon)
 
 
 # ================================================================ duels

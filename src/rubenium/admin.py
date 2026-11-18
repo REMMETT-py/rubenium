@@ -1122,7 +1122,7 @@ class AdminPage(Page):
         top_day = w.get("top_day") or []
         if top_day:
             lay.addWidget(Table([(x["name"], tr("level {n}", n=x["level"]), f"{x['xp']} XP · {x['events']}",
-                                  "#FFB020" if int(x["xp"]) >= int(caps.get("day") or 2500) else TEXT) for x in top_day],
+                                  "#FFB020" if int(x["xp"]) >= int(caps.get("day") or 1000) else TEXT) for x in top_day],
                                 self.W, lambda i: (setattr(self.ctx, "admin_xp_name", top_day[i]["name"]), self.ctx.reload_page())))
         else:
             lay.addWidget(Label(tr("Nobody yet."), 11, TEXT_FAINT))

@@ -2213,13 +2213,18 @@ class MainWindow(QWidget):
         now = time.monotonic()
         m = S(6)
         inside = self.card_global().adjusted(-m, -m, m, m).contains(QCursor.pos())
+        if inside != getattr(self, "_was_inside", None):       # 4.3: Compact Music Mode unfolds under the mouse
+            self._was_inside = inside
+            if not self.ctx.cfg["autohide"]:
+                QTimer.singleShot(0, lambda: (lambda pg: pg.set_compact(self.chrome.level)
+                                              if pg is not None and hasattr(pg, "set_compact") else None)(self.page()))
         if inside:
             self._in_since, self._out_since = self._in_since or now, 0.0
         else:
             self._out_since, self._in_since = self._out_since or now, 0.0
         allowed = self._chrome_allowed()
         if self.chrome.target > 0.5:
-            if allowed and self._out_since and now - self._out_since > 2.5:
+            if allowed and self._out_since and now - self._out_since > 2.5 and not self.isActiveWindow():   # 4.3: focused: stays
                 self.toast_w.hide()
                 self.chrome.to(0.0, 420)
         elif not allowed or (self._in_since and now - self._in_since > 0.25) or (inside and win.key_down(0x01)):

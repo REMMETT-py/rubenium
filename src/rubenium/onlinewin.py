@@ -250,6 +250,53 @@ class GoldButton(QWidget):
         p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), self.text)
 
 
+class LeaveButton(QWidget):
+    """4.3: leaving online mode, easy to see: an arrow and the words, in a clear pill."""
+    clicked = pyqtSignal()
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFixedHeight(S(32))
+        self.hover = 0.0
+        self.text = tr("Leave online")
+        from PyQt6.QtGui import QFontMetrics
+        self.setFixedWidth(QFontMetrics(font(11.5, QFont.Weight.Bold)).horizontalAdvance(self.text) + S(46))
+        self.setToolTip(tr("Back to the small menu"))
+
+    def enterEvent(self, _e) -> None:
+        self.hover = 1.0
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = 0.0
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.rect().contains(e.position().toPoint()):
+            sfx.play("pick")
+            self.clicked.emit()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.setPen(QPen(alpha("#FFFFFF", 0.45 + 0.35 * self.hover), S(1.3)))
+        p.setBrush(alpha("#FFFFFF", 0.08 + 0.10 * self.hover))
+        p.drawRoundedRect(r, r.height() / 2, r.height() / 2)
+        p.save()
+        p.translate(r.left() + S(18), r.center().y())
+        p.scale(S(14) / 20, S(14) / 20)
+        draw_icon(p, "back", QColor(TEXT))
+        p.restore()
+        p.setPen(QColor(TEXT))
+        p.setFont(font(11.5, QFont.Weight.Bold))
+        p.drawText(r.adjusted(S(32), 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter), self.text)
+
+
 class PaneSwitch(QWidget):
     """4.0: over each half of the online menu: Games, Shop, Social, Settings (and the live Giveaway). The other half's
     choice is marked with a dot; picking it swaps the two halves."""
@@ -358,9 +405,10 @@ class OnlineBody(QWidget):
         from .window import LockCover
         self.win = window
         self.tabbar = _NoTabs()
-        self.to_ball = IconButton("back", 30, tip=tr("Leave online mode"), parent=self)
+        self.to_ball = LeaveButton(self)                # 4.3: a clear "Leave online" pill
         self.stow = IconButton("rball", 30, tip=tr("Hide for now (click the R to bring it back)"), parent=self)
-        self.top = GoldButton(self)
+        self.top = GoldButton(self)                     # 4.3: Leaderboards moved into Social; kept hidden
+        self.top.hide()
         self.xp = XPBar(window.ctx, self)
         self.xp.clicked.connect(window.open_levels)
         self.switches = [PaneSwitch(window, i, self) for i in range(2)]
@@ -399,16 +447,16 @@ class OnlineBody(QWidget):
         return QRectF(left + i * (cw + gap), S(HEAD_H), cw, self.height() - S(HEAD_H) - S(BOTTOM))
 
     def resizeEvent(self, _e) -> None:
-        y = (S(HEAD_H) - self.to_ball.height()) // 2
-        x = self.width() - S(PAD) - self.to_ball.width()
+        x = self.width() - S(PAD)
         for b in (self.to_ball, self.stow):
-            b.move(x, y)
-            x -= b.width() + S(6)
-        self.top.move(x - self.top.width() + S(2), (S(HEAD_H) - self.top.height()) // 2)
-        xw = min(S(380), max(S(200), self.width() - S(PAD) * 2 - S(250) - (self.width() - self.top.x())))
+            x -= b.width()
+            b.move(x, (S(HEAD_H) - b.height()) // 2)
+            x -= S(8)
+        left_end = x                                     # the buttons start here
+        xw = min(S(460), max(S(200), self.width() - S(PAD) * 2 - S(250) - (self.width() - left_end)))
         self.xp.setGeometry(int(self.width() / 2 - xw / 2), (S(HEAD_H) - self.xp.height()) // 2, int(xw), self.xp.height())
-        if self.xp.geometry().right() > self.top.x() - S(10):          # a narrow banner: the bar moves left
-            self.xp.move(self.top.x() - S(10) - xw, self.xp.y())
+        if self.xp.geometry().right() > left_end - S(12):              # a narrow banner: the bar moves left
+            self.xp.move(left_end - S(12) - xw, self.xp.y())
         n = len(self.win.tab_keys())
         for i, sw in enumerate(self.switches):
             sw.setVisible(i < n)
@@ -589,7 +637,7 @@ def _make_class():
             n = len(self.tab_keys())
             cw, gap, g = col_width(), S(COL_GAP), S(GLOW)
             w = n * cw + (n - 1) * gap + 2 * S(PAD)
-            h = int(min(wa.height() * 0.86, S(HEAD_H + COL_TITLE_H + BOTTOM) + S(760)))
+            h = int(min(wa.height() - S(18), S(HEAD_H + COL_TITLE_H + BOTTOM) + S(980)))   # 4.3: taller, less scrolling
             x = wa.center().x() - w // 2
             y = wa.top() + S(6)
             banner = QRect(x, y, w, h)

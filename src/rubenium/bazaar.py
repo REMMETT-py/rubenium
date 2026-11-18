@@ -933,34 +933,13 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
 
 
 def quick_sell(ctx, ids: list, what: str) -> None:
-    """Sell to Rubenium right away: low price (a quarter of the value), but instant. The server says the exact
-    amount first."""
+    """4.3: quick sell is the pawn shop: it asks first, then you go in and take his offer or haggle."""
     ec = ctx.econ
     if not ec.quick_ready():
         return ctx.toast(tr("Coming very soon: the server is being updated"), "warn")
-
-    def quoted(ok: bool, q) -> None:
-        if not ok or not isinstance(q, dict):
-            from .econ import server_missing
-            return ctx.toast(tr("Coming very soon: the server is being updated") if server_missing(q)
-                             else tr("Something went wrong: try again"), "warn")
-        total, n = int(q.get("total") or 0), int(q.get("n") or 0)
-        if not n:
-            return ctx.toast(tr("This cannot be sold"), "warn")
-
-        def go() -> None:
-            def done(ok2: bool, d) -> None:
-                if not ok2:
-                    sfx.play("off")
-                    return ctx.toast(tr(str(d)), "warn")
-                sfx.play("on")
-                ctx.toast(tr("Sold for {n} coins", n=coins_text(int(d.get("paid") or total))))
-                ctx.inv_pick = ""
-                ctx.reload_page()
-            ec.quick_sell(ids, done)
-        ctx.window.confirm(tr("Quick sell {what} for {n} coins? Instant, but the market usually pays more.",
-                              what=what, n=coins_text(total)), go, yes=tr("Sell"))
-    ec.quick_quote(ids, quoted)
+    first = next((i for i in ec.items if i["id"] == (ids[0] if ids else None)), None)
+    from .pawn import open_pawn
+    open_pawn(ctx, list(ids), first["item"] if first else "", what)
 
 
 def build_profile_style(page, lay) -> None:

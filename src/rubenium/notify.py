@@ -398,6 +398,16 @@ class Notifier(QObject):
                 page = (self.ctx.window.pages.get("games") or (None, None))[1]
                 if page is not None:
                     load_golf(page)
+        elif kind in ("wave_yes", "wave_end"):                     # 4.3: Wave Rush duels
+            who = data.get("from") or data.get("other", "?")
+            if kind == "wave_yes":
+                text = tr("{name} joined your Wave Rush duel: it starts now!", name=who)
+            elif data.get("draw"):
+                text = tr("Wave Rush with {name}: a draw", name=who)
+            else:
+                text = tr("You beat {name} at Wave Rush!", name=who) if data.get("won") else tr("{name} won the Wave Rush duel", name=who)
+            self.ctx.wave_lobby = None
+            self.push("duel", tr("WAVE RUSH"), text, "wave")
         elif kind in ("duel", "duel_yes", "duel_no", "duel_end"):
             from .games2 import DUEL_GAMES
             game, who = tr(DUEL_GAMES.get(data.get("game"), "")), data.get("from") or data.get("other", "?")
@@ -509,10 +519,12 @@ def go(ctx, action) -> None:
         ctx.shop_tab = {"market": 4, "inventory": 5, "shop": 1, "cases": 3, "levels": 5, "notifications": 0}[key]
         if key == "levels":
             ctx.inv_tab = "levels"
-    elif key in ("golf", "flip", "advent", "minigames"):
+    elif key in ("golf", "flip", "advent", "minigames", "wave"):
         target = "games"
         ctx.casino = False
-        ctx.games_sub = {"golf": "duels", "flip": "flip", "advent": "advent", "minigames": "minigames"}[key]
+        ctx.games_sub = {"golf": "duels", "flip": "flip", "advent": "advent", "minigames": "minigames", "wave": "wave"}[key]
+        if key == "wave":
+            ctx.wave_mode = "duel"
     elif key == "spin":
         target = "games"
         from .games import GamesPage

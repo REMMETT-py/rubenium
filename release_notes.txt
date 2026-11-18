@@ -1,8 +1,13 @@
-Rubenium 1.9
+Rubenium 4.3
 
-Already have Rubenium? Open it, go to Settings and press Check for updates.
-New here? Download RubeniumSetup.exe below (no admin rights needed, removable from Settings > Apps).
-
-- New Friends tab: add players by their username, accept or decline requests, and see who is online.
-- Open a friend's profile to see their status, time played and when they joined.
-- Play history (casino, cases, spins) will fill in once the online casino arrives in the next big update.
+- XP: nothing for a lost bet and only a little for a win (1 to 5), every source slower, at most 1 000 XP a day. XP coupons are worth 40 to 600
+- Coinflip bots remade: always 5 to 10 bot flips open, low, middle and high bots, sized to the wealth of the players online (one player: sized to them; a crowd: the server's average). No more Mythic pots
+- New casino game: Slots. Three reels, one clear table of prizes, about 96.6% back over time
+- New: Wave Rush. Hold to rise, let go to fall; the course narrows, twists and grows spikes the further you go. Solo pays by distance (the server replays every run), or duel someone on the same course with or without a bet
+- Mini Golf: Solo (5 holes, no bet, coins by strokes) or Duel as before
+- Quick sell is the pawn shop: take his offer or haggle with the slider. Push him too far and he throws you out for 30 minutes
+- Social: one Users tab (friends first, with a blue dot), Leaderboards in the tabs, and a clear "Leave online" button
+- Cases: badge cases first, odds evened out, Open shows only when you have the case, no more "(no key)"
+- Games lobby tidied (coins and Quests on one line, the three freebies side by side); the online menu is taller
+- Compact Music Mode only folds while you are away from Rubenium; hover it and everything fades back in
+- Patch notes rewritten: one entry per release since 0.1, nothing about features that are gone

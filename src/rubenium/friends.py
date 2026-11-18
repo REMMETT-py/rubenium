@@ -15,7 +15,8 @@ from .widgets import Button, IconButton, Label, Segmented, hbox, heading, vbox
 
 GAME_NAMES = {"slots": "Slots", "plinko": "Plinko", "dice": "Dice", "mines": "Bombs", "rocket": "Rocket",
               "blackjack": "Blackjack", "daily": "Daily case", "spin": "Free spin", "mini": "Beat Tap",
-              "roulette": "Roulette", "hilo": "Hi-Lo", "timing": "Timing", "golf": "Mini Golf", "flip": "Coinflip"}
+              "roulette": "Roulette", "hilo": "Hi-Lo", "timing": "Timing", "golf": "Mini Golf", "flip": "Coinflip",
+              "golf_solo": "Mini Golf", "wave": "Wave Rush", "tower": "Tower", "blocks": "Block Blast", "sweeper": "Minesweeper"}
 ADMIN_COLOUR = "#FF4B6E"
 
 
@@ -284,6 +285,7 @@ class PlayerRow(QWidget):
         self.page, self.ctx, self.info = page, page.ctx, info
         self.setFixedHeight(S(46))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setMouseTracking(True)
         lay = hbox(self, 6, (0, 0, 6, 0))
         lay.addStretch(1)
         name, state = info["username"], info.get("state")
@@ -361,6 +363,21 @@ class PlayerRow(QWidget):
             if n:
                 sub += "  ·  " + tr("{n} on show", n=n)
         p.drawText(QRectF(x, r.top() + S(22), S(200), S(16)), int(Qt.AlignmentFlag.AlignVCenter), sub)
+        if state == "friend":                         # 4.3: a blue dot on the right: this one is a friend
+            c = self._dot()
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#3D9BFF", 0.22))
+            p.drawEllipse(c, S(8), S(8))
+            p.setBrush(QColor("#3D9BFF"))
+            p.drawEllipse(c, S(4.5), S(4.5))
+
+    def _dot(self) -> QPointF:
+        return QPointF(self.width() - S(20), self.height() / 2)
+
+    def mouseMoveEvent(self, e) -> None:
+        if self.info.get("state") == "friend":
+            near = (e.position() - self._dot()).manhattanLength() < S(16)
+            self.setToolTip(tr("FRIENDS") if near else "")
 
 
 class StatsCard(QWidget):
@@ -628,50 +645,58 @@ class FriendsPage(Page):
         tab = int(getattr(ctx, "social_tab", 0) or 0)
         unread = int(getattr(ctx, "msg_unread", 0) or 0)
         asks_n = int(ctx.econ.live.get("asks") or 0)
-        nav = NavTiles([(tr("Friends"), "users"), (tr("Users"), "search"), (tr("Chat"), "chat"), (tr("Trades"), "swap")],
-                       {0: 0, 1: 1, 2: 2, 4: 3}.get(tab, -1), per_row=4, badges={0: asks_n, 2: unread})
+        if tab == 1:                                     # 4.3: Users and Friends are one tab now
+            tab = ctx.social_tab = 0
+        nav = NavTiles([(tr("Users"), "users"), (tr("Leaderboards"), "trophy"), (tr("Chat"), "chat"), (tr("Trades"), "swap")],
+                       {0: 0, 3: 1, 2: 2, 4: 3}.get(tab, -1), per_row=4, badges={0: asks_n, 2: unread})
 
         def switch(i: int) -> None:
-            ctx.social_tab = [0, 1, 2, 4][i]
+            ctx.social_tab = [0, 3, 2, 4][i]
             ctx.reload_page()
         nav.changed.connect(switch)
         self.lay.addWidget(nav)
-        if tab == 3:
-            top = hbox(spacing=8)
-            back = IconButton("back", 28, tip=tr("Back"))
-            back.clicked.connect(lambda: (setattr(ctx, "social_tab", 0), ctx.reload_page()))
-            top.addWidget(back)
-            top.addWidget(Label("🏆  " + tr("Leaderboards"), 15, "#E8C26A", bold=True), 1)
-            self.lay.addLayout(top)
         if tab == 2:
             return build_messages(self, self.lay)
         if tab == 3:
             return build_leaders(self, self.lay)
         if tab == 4:
             return build_trade_history(self, self.lay)
-        if tab == 1:
-            rows = getattr(ctx, "users_cache", None)
-            if rows is None:
-                return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-            self.lay.addWidget(Label(tr("{n} users. Click one to see their profile.", n=len(rows)), 10.5, TEXT_DIM))
-            for info in rows:
-                self.lay.addWidget(PlayerRow(self, info))
-            return
+        self._users()
+
+    def _users(self) -> None:
+        """4.3: one Users tab: requests and friends first, then everyone else (a blue dot marks a friend)."""
+        ctx = self.ctx
         if self.friends is None:
             return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        if not self.friends:
-            return self.lay.addWidget(Label(tr("No friends yet. Open Users and add someone."), 12, TEXT_DIM,
-                                            wrap_w=self.W))
         asks = [f for f in self.friends if f["state"] == "asks"]
         mine = [f for f in self.friends if f["state"] == "friend"]
         sent = [f for f in self.friends if f["state"] == "asked"]
+        mine.sort(key=lambda f: (not f.get("online"), f["username"].lower()))
         online = sum(1 for f in mine if f.get("online"))
-        for title, group in ((tr("Requests"), asks), (tr("Friends") + f"  ·  {online} " + tr("online"), mine),
-                             (tr("Sent"), sent)):
-            if group:
-                self.lay.addWidget(heading(title))
-                for info in group:
-                    self.lay.addWidget(PlayerRow(self, info))
+        if asks:
+            self.lay.addWidget(heading(tr("Requests")))
+            for info in asks:
+                self.lay.addWidget(PlayerRow(self, info))
+        self.lay.addWidget(heading(tr("Friends") + f"  ·  {online} " + tr("online")))
+        if not mine:
+            self.lay.addWidget(Label(tr("No friends yet. Press Add next to someone below."), 11, TEXT_DIM, wrap_w=self.W))
+        for info in mine:
+            self.lay.addWidget(PlayerRow(self, info))
+        if sent:
+            self.lay.addWidget(heading(tr("Sent")))
+            for info in sent:
+                self.lay.addWidget(PlayerRow(self, info))
+        rows = getattr(ctx, "users_cache", None)
+        known = {f["username"] for f in self.friends}
+        self.lay.addWidget(heading(tr("Other users")))
+        if rows is None:
+            return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+        others = [r for r in rows if r.get("username") not in known and not r.get("me")]
+        if not others:
+            return self.lay.addWidget(Label(tr("Nobody else yet"), 11, TEXT_DIM))
+        self.lay.addWidget(Label(tr("{n} users. Click one to see their profile.", n=len(others)), 10.5, TEXT_DIM))
+        for info in others:
+            self.lay.addWidget(PlayerRow(self, info))
 
     def _duel(self, name: str) -> None:
         """3.2: no more invitations: open the Mini Golf lobby (open a match there and your friend joins it)."""
@@ -696,12 +721,10 @@ class FriendsPage(Page):
             return ctx.online.ask("rb_profile", {"name": ctx.friends_profile}, self._got_profile_again)
         ctx.online.ask("rb_social", {}, self._got_me)
         tab = int(getattr(ctx, "social_tab", 0) or 0)
-        if tab == 1:
-            ctx.online.ask("rb_users", {"search": "", "page": 0}, self._got_users)
-        elif tab in (2, 3, 4):
+        if tab in (2, 3, 4):
             return
-        else:
-            ctx.online.ask("rb_friends_list", {}, self._listed)
+        ctx.online.ask("rb_friends_list", {}, self._listed)
+        ctx.online.ask("rb_users", {"search": "", "page": 0}, self._got_users)
 
     def _got_me(self, ok: bool, data) -> None:
         if ok and isinstance(data, dict) and data != getattr(self.ctx, "social_me", None):

@@ -1384,7 +1384,7 @@ class TabBar(QWidget):
                     self._gold_t.timeout.connect(self.update)
                     self._gold_t.start()
             p.save()
-            p.translate(r.left() + slot / 2, r.center().y())
+            p.translate(r.center().x() if not label else r.left() + slot / 2, r.center().y())   # 4.3: an icon alone is centred
             k = S(15.5) / 20
             p.scale(k, k)
             draw_icon(p, icon, fg, max(h, w))
@@ -1434,7 +1434,7 @@ def hbox(parent=None, spacing: float = 8, margins=(0, 0, 0, 0)) -> QHBoxLayout:
 
 
 # 4.0: what players see when the admins paused a part of Rubenium
-LOCK_NAMES = {"trading": "Trading", "market": "The Market", "coinflip": "Coinflip", "roulette": "Roulette",
+LOCK_NAMES = {"wave": "Wave Rush", "trading": "Trading", "market": "The Market", "coinflip": "Coinflip", "roulette": "Roulette",
               "casino": "The casino", "minigames": "Mini games", "golf": "Mini Golf", "wheel": "The free spin",
               "scratch": "Scratch cards", "advent": "The advent calendar", "cases": "Cases", "shop": "The shop",
               "chat": "The chat", "giveaways": "Giveaways", "quests": "Quests", "coupons": "XP coupons",

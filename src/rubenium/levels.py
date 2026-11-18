@@ -502,8 +502,8 @@ class LevelIntro(QWidget):
 
 
 # ================================================================ XP coupons
-COUPONS = {"coupon:common": ("Common XP coupon", 150, "#9AA4AD"), "coupon:uncommon": ("Uncommon XP coupon", 400, "#3DDC84"),
-           "coupon:rare": ("Rare XP coupon", 1000, "#4FC3FF"), "coupon:epic": ("Epic XP coupon", 2500, "#B36BFF"),
+COUPONS = {"coupon:common": ("Common XP coupon", 40, "#9AA4AD"), "coupon:uncommon": ("Uncommon XP coupon", 100, "#3DDC84"),
+           "coupon:rare": ("Rare XP coupon", 250, "#4FC3FF"), "coupon:epic": ("Epic XP coupon", 600, "#B36BFF"),
            "coupon:og": ("OG XP coupon", 0, "#E8C26A")}
 
 
@@ -754,7 +754,7 @@ def build_levels(page, lay) -> None:
     x = ctx.econ.xp
     lvl = int(x.get("level") or 0)
     lay.addWidget(XPBar(ctx))
-    today, cap = int(x.get("today") or 0), int(x.get("cap") or 2500)
+    today, cap = int(x.get("today") or 0), int(x.get("cap") or 1000)
     lay.addWidget(Label(tr("Today: {a} / {b} XP", a=today, b=cap), 10, TEXT_DIM,
                         wrap_w=page.W))
     coupons = [it for it in ctx.econ.items if str(it.get("item", "")).startswith("coupon:")]
@@ -804,10 +804,12 @@ def build_levels(page, lay) -> None:
                                                                case=tr(CASE_NAMES.get(c["id"], c["id"]))),
                                 11, "#5BE08A" if done else TEXT_DIM, bold=done, wrap_w=page.W))
     lay.addWidget(heading(tr("How to earn XP")))
-    for text in (tr("Casino games: up to 25 XP a bet (600 a day)"), tr("Minigames: 10 to 45 XP when they pay (900 a day)"),
-                 tr("Mini Golf: 40 XP a match, +30 for the winner"), tr("Coinflip: 25 XP each"), tr("Trades: 15 XP each"),
-                 tr("Quests: 60 XP, sets: 150 XP"), tr("Online: 10 XP every 10 minutes"), tr("Cases: 8 XP, wheel and scratch card: 15 XP"),
-                 tr("Advent calendar: 100 XP a door, 500 on the 25th"), tr("XP coupons: from cases, the wheel and scratch cards")):
+    for text in (tr("Casino: 1 to 5 XP a win, nothing on a loss (120 a day)"),
+                 tr("Minigames: 3 to 12 XP when they pay (300 a day)"),
+                 tr("Mini Golf duels: 12 XP, +10 for the winner"), tr("Coinflip: 10 XP for the winner"),
+                 tr("Trades: 8 XP each"), tr("Quests: 25 XP, sets: 80 XP"), tr("Online: 5 XP every 10 minutes"),
+                 tr("Cases: 2 XP, wheel and scratch card: 4 XP"), tr("Advent calendar: 100 XP a door, 500 on the 25th"),
+                 tr("XP coupons: from cases, the wheel and scratch cards"), tr("At most 1 000 XP a day (coupons and the advent apart)")):
         lay.addWidget(Label("•  " + text, 10.5, TEXT_DIM, wrap_w=page.W))
 
 

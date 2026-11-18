@@ -161,11 +161,31 @@ HELP = {
         "The bet is at most 80% of the lower balance."]),
     "golf": ("Mini Golf", [
         "Drag back from the ball to aim and set the power, then let go to shoot.",
-        "5 holes, 25 seconds a turn. Anyone can join your lobby."], [
+        "Solo: 5 holes alone, no bet and no clock.",
+        "Duel: 5 holes against another player, 25 seconds a turn. Anyone can join your lobby."], [
         "Use the walls: a bank shot is often the shortest way.",
         "A short safe shot beats a long risky one."], [
-        "Fewest strokes wins both bets, minus a {golf}% fee. A draw gives both bets back.",
+        "Solo: each hole pays by strokes: 60, 35, 20, 10, 5, then nothing. Paid at the end, with the 2-hour mini game limit.",
+        "Duel: fewest strokes wins both bets, minus a {golf}% fee. A draw gives both bets back.",
         "Nobody joins in 5 minutes: it closes and your bet comes back."]),
+    "wave": ("Wave Rush", [
+        "Hold (mouse button or Space) to rise, let go to fall. You always move at 45 degrees.",
+        "Touching a wall or a spike ends the run: there is no sliding along a wall.",
+        "The course gets narrower, twistier and spikier the further you go. The colour of the walls shows how hard it is."], [
+        "Small, early taps beat big late ones: steer before the bend, not in it.",
+        "Look ahead, not at the arrow.",
+        "In a narrow zigzag, tap in rhythm with the walls."], [
+        "Solo: coins from 30 m, more the further you get (100 m: 22, 300 m: 98, 600 m: 252), with the 2-hour mini game limit.",
+        "The server replays your run to count the distance: it can't be faked.",
+        "Duel: both players get the same course at the same time. The longer run wins both bets (5% fee); a tie gives them back."]),
+    "slots": ("Slots", [
+        "Pick your bet and press Spin. The three reels stop one after the other.",
+        "Only the middle line counts."], [
+        "Every spin is a fresh draw: nothing is due, and nothing is hot or cold.",
+        "Gems and sevens are rare, cherries and lemons are common."], [
+        "Three of a kind: ×5 (cherries) to ×70 (gems). The table next to the reels shows each prize.",
+        "Two bells or two sevens: ×2. Two gems: ×4.",
+        "About 1 spin in 4 wins something. Over time Slots returns about 96.6% of what is bet."]),
     "coinflip": ("Coinflip", [
         "Create a coinflip: pick black or white and up to 6 items. Someone joins with items worth about the same "
         "(±10%), or you play a bot.",
@@ -174,11 +194,12 @@ HELP = {
         "Only put in items you are ready to lose."], [
         "The winner takes every item.",
         "Your chance is your share of the total worth, between 49% and 51%.",
-        "Bots play by the same rules, with the same coin."]),
+        "Bots play by the same rules, with the same coin.",
+        "There are always 5 to 10 bot coinflips open, from small to big, sized to the players online."]),
 }
 
 CASINO_KEYS = {"Blackjack": "blackjack", "Plinko": "plinko", "Bombs": "bombs", "Roulette": "roulette", "Dice": "dice",
-               "Timing": "timing", "Rocket": "rocket", "Hi-Lo": "hilo", "Tower": "tower", "Free spin": "spin"}
+               "Timing": "timing", "Rocket": "rocket", "Hi-Lo": "hilo", "Tower": "tower", "Slots": "slots", "Free spin": "spin"}
 
 
 def help_lines(ctx, key: str) -> tuple:

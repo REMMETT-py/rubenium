@@ -4,7 +4,7 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
 from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, lang, mix, tr, ui
@@ -438,7 +438,7 @@ class DuelTile(QWidget):
 
     def mouseReleaseEvent(self, e) -> None:
         if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
-            self.page.open_sub("duels" if self.kind == "golf" else "flip")
+            self.page.open_sub({"golf": "duels", "wave": "wave"}.get(self.kind, "flip"))
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -446,7 +446,7 @@ class DuelTile(QWidget):
         h = self._hover.level
         now = time.monotonic()
         r = QRectF(self.rect()).adjusted(1.5, 1.5, -1.5, -1.5)
-        col = QColor("#2E9E4F") if self.kind == "golf" else QColor("#C9CED3")
+        col = {"golf": QColor("#2E9E4F"), "wave": QColor("#2EE6D6")}.get(self.kind, QColor("#C9CED3"))
         g = QLinearGradient(r.topLeft(), r.bottomRight())
         g.setColorAt(0, mix(QColor("#0C1113"), col, 0.22 + 0.1 * h))
         g.setColorAt(1, QColor("#0A0D0E"))
@@ -471,15 +471,36 @@ class DuelTile(QWidget):
             p.drawPath(flag)
             p.setBrush(QColor("#FFFFFF"))
             p.drawEllipse(QPointF(art.x() - S(12), art.y() + S(7)), S(3.4), S(3.4))
+        elif self.kind == "wave":                         # 4.3: a zigzag trail and the arrow at its tip
+            pts = [QPointF(art.x() - S(26) + k * S(10), art.y() + (S(9) if k % 2 == 0 else -S(9))) for k in range(5)]
+            shift = (now * 1.2) % 1.0
+            p.setPen(QPen(alpha("#2EE6D6", 0.25), S(6), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                          Qt.PenJoinStyle.MiterJoin))
+            path = QPainterPath(pts[0])
+            for q in pts[1:]:
+                path.lineTo(q)
+            p.drawPath(path)
+            p.setPen(QPen(QColor("#B9FFF7"), S(2.2), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                          Qt.PenJoinStyle.MiterJoin))
+            p.drawPath(path)
+            tip = pts[-1]
+            p.save()
+            p.translate(tip)
+            p.rotate(-45 + 90 * (shift > 0.5))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawPolygon(QPolygonF([QPointF(S(7), 0), QPointF(-S(5), -S(5)), QPointF(-S(2), 0), QPointF(-S(5), S(5))]))
+            p.restore()
         else:
             paint_flip_coin(p, art, S(22), now * 2.2, None)
         p.setPen(QColor(TEXT))
         p.setFont(font(14, QFont.Weight.ExtraBold))
-        name = tr("Mini Golf") if self.kind == "golf" else tr("Coinflip")
+        name = {"golf": tr("Mini Golf"), "wave": tr("Wave Rush")}.get(self.kind, tr("Coinflip"))
         p.drawText(QRectF(r.left() + S(80), r.top() + S(14), r.width() - S(150), S(24)), int(Qt.AlignmentFlag.AlignVCenter), name)
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
-        sub = (tr("1v1 live, 5 holes. Bet coins.") if self.kind == "golf" else tr("Items against items. Black or white."))
+        sub = {"golf": tr("Solo or 1v1 live, 5 holes."), "wave": tr("Solo or 1v1. Hold to rise, let go to fall.")}.get(
+            self.kind, tr("Items against items. Black or white."))
         p.drawText(QRectF(r.left() + S(80), r.top() + S(40), r.width() - S(100), S(20)), int(Qt.AlignmentFlag.AlignVCenter), sub)
         tag = tr("DUEL")
         p.setFont(font(9.5, QFont.Weight.Black, 1.0))

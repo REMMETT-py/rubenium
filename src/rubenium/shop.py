@@ -801,8 +801,8 @@ class ShopPage(StylePart, Page):
                                     wrap_w=self.W))
             lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
-                groups = (("coins", tr("Coin cases"), tr("Mostly coins, and badges of every rarity too.")),
-                          ("hunt", tr("Rare badge cases"), tr("Fewer coins, much better odds for rare badges.")),
+                groups = (("hunt", tr("Rare badge cases"), tr("Fewer coins, much better odds for rare badges.")),   # 4.3: first
+                          ("coins", tr("Coin cases"), tr("Mostly coins, and badges of every rarity too.")),
                           ("style", tr("Style cases"), tr("Balls, lines, fonts, themes, banners and frames. No key needed.")))
                 for kind, title, sub in groups:
                     lay.addWidget(heading(title))
@@ -900,11 +900,10 @@ class ShopPage(StylePart, Page):
         have = int(ec.stock.get(case["id"], 0) or 0)
         try:
             self.have_lbl.set_text(tr("You have {n}", n=have) if have else tr("You have none yet: buy one first"))
-            if case_keyless(case):
-                self.open_btn.set_text(tr("Open (no key)"))
-            else:
-                self.open_btn.set_text(tr("Open  ·  1 key"))
-            self.open_btn.set_kind("primary" if have else "ghost")
+            self.open_btn.set_text(tr("Open") if case_keyless(case) else tr("Open  ·  1 key"))
+            self.open_btn.set_kind("primary")
+            busy = self.reel is not None and self.reel.busy()
+            self.open_btn.setVisible(have > 0 or busy)        # 4.3: no Open button until you have one to open
         except RuntimeError:
             pass
 
