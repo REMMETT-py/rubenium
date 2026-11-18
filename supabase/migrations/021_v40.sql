@@ -1872,7 +1872,7 @@ do $$ declare r record; src text; fn regprocedure; pos integer; begin
         ('rb_login_claim()', 'quests')) v(sig, feat) loop
         fn := to_regprocedure('public.' || r.sig);
         if fn is null then continue; end if;
-        select pg_get_functiondef(fn) into src;
+        src := replace(pg_get_functiondef(fn), chr(13), '');      -- functions saved from Windows have CRLF line ends
         if position('rb_need_feature' in src) > 0 or position('LANGUAGE plpgsql' in src) = 0 then continue; end if;
         pos := position(E'\nbegin\n' in src);
         if pos = 0 then continue; end if;
