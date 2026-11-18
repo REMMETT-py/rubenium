@@ -137,3 +137,47 @@ bought, so the key is the real limit on cases; a gift now costs its price and 1 
 - Roulette: 25 pockets, 12 red and 12 black pay x2, 1 gold pays x24 (96% return). Hi-Lo: each step pays (1 / chance) x 0.985.
 - Chat: 300 characters, 1.5 s between messages, 5 per 10 s, the same text not again within 60 s.
 - Advent calendar: Dec 1-24 one door a day (coins, keys, limited looks and cases), big door on the 25th: 10 000 coins, 6 keys, North Star banner and frame, 3 Winter Cases.
+
+## 4.0 prices (021_v40.sql)
+
+Badge prices come from bands (table `rb_price_bands`), never from one multiplier. Inside a band, a badge's place depends
+on its design (more detailed = dearer) and its colour, so the same badge is always worth more Painted than Basic, and
+more Shiny than Painted. `rb_price_all()` recomputes everything; admins can change a band and run it again.
+
+| Badge | Common | Rare | Epic | Legendary |
+|---|---|---|---|---|
+| Basic (grey) | 650-1 000 | 2 000-3 000 | 5 400-8 000 | 14 000-20 500 |
+| Painted | 1 400-2 200 | 4 200-6 500 | 11 300-17 500 | 42 000-66 000 |
+| Shiny ("Brilliant") | 25 000-35 000 | 45 000-65 000 | 90 000-130 000 | 170 000-240 000 |
+| Titanium | – | – | 750 000-950 000 | 1 000 000-1 250 000 |
+| Gold | 2 000 000-2 600 000 | 2 500 000-3 200 000 | 3 200 000-4 000 000 | 4 000 000-5 000 000 |
+
+Mythic: Titanium 10-14 M, Prismatic 14-19 M, Gold 20-25 M. Looks (balls, lines, fonts, banners, frames, themes): their
+3.2 price, grey looks a third cheaper, coloured balls and lines 10% cheaper. Quick sell pays 35% of an item's worth.
+The market "usual price" only counts sales made after the 4.0 prices (`price_epoch`).
+
+Every open listing was given back to its seller when 021 ran (a notice tells them); no item, coin or key moved
+otherwise. Backups: `rb_bak021_catalog`, `rb_bak021_listings`, `rb_bak021_config`; `021_down.sql` restores prices and
+settings.
+
+## 4.0 levels and XP
+
+XP to reach a level: 50 + 12 L + 0.6 L² per level. Level 1 = 50 XP, 5 = 386, 10 = 1 207, 20 = 4 754, 50 = 41 435,
+100 = 261 370 (months of regular play with the daily cap of 2 500 XP from playing).
+
+| Source | XP | Daily cap |
+|---|---|---|
+| Casino bet (10 coins or more) | 3 + bet / 40, at most 25 | 600 |
+| Minigame that pays | 10 + pay / 6, at most 45 | 900 |
+| Mini Golf match | 40, +30 for the winner | 600 |
+| Coinflip | 25 each | 300 |
+| Trade done | 15 each | 150 |
+| Online | 10 every 10 minutes | 300 |
+| Case opened | 8 | 200 |
+| Free spin, scratch card | 15 | 60 |
+| Quest / set claimed | 60 / 150 | 600 |
+| Advent door | 100 (500 on the 25th) | not capped |
+| XP coupons | Common 150, Uncommon 400, Rare 1 000, Epic 2 500; OG: up to level 5 | not capped |
+
+Minigame pay is multiplied by 1 + 0.004 × level (level 100: +40%), inside the same window caps. Cases unlock at
+levels 2 (Cosmic Hunt), 3 (Shiny Hunt), 4 (Epic Vault) and 5 (Mythic Hunt); nothing is locked after level 5.

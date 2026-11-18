@@ -90,3 +90,20 @@ Choices made where the request left room, newest last.
 - Coinflip result is picked by the server at lock-in and hidden until the coin lands; items move once in `rb_flip_settle`, so a crash or a reload can never copy or undo anything. Closing or leaving before lock-in gives the items back.
 - Leaving online mode (or quitting) calls `rb_online_leave`: open lobbies close, a joined coinflip that is not locked is left, a live giveaway entry is dropped. The user is told first in one message.
 - Old apps calling `rb_golf_invite` or `rb_slots` get "update needed".
+
+## 4.0
+
+- Every server change is in one transaction (`021_v40.sql`), tested twice in a row on a copy of the production schema
+  and once on a copy of production data before it ran for real.
+- LOCKDOWN and feature locks are checked by the server in every function they cover (`rb_need_feature`), not by the
+  app. Locking cancels what runs in that part with no winner and no loser (trades, coinflips, golf bets, open casino
+  rounds, minigame rounds, duels) and gives everything back.
+- XP is only given by the server (triggers on rounds, golf, trades and claims), with a cap per source and per day.
+  Coupons and the advent calendar are outside the cap.
+- Coinflip bots never change the odds: the coin is the same 49-51% share of the pot for everyone. Bot and admin flips
+  are labelled BOT and RUBENIUM OFFER. A player who beats a bot gets the bot's items minted; one who loses gives theirs
+  up (logged in the audit).
+- Profile pictures: the client sends every name it needs (it used to send only 40), remembers "no picture" for that
+  version, never asks in a loop, and keeps the last picture while a newer one loads.
+- Network: one SSL context, kept-alive connections and a pool of six network threads instead of a new thread and a new
+  TLS handshake for every call (the main cause of the online lag).

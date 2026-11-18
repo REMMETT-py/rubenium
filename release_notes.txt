@@ -1,3 +1,22 @@
+Rubenium 4.0 - the full release
+
+- Levels 0 to 100: XP from games, Mini Golf, Coinflip, trades, quests, time online and XP coupons; a badge every 5 levels, level-up scene, Inventory > Levels
+- OG players get a one-time XP coupon to level 5
+- Online menu: choose the two sections shown side by side; gold Leaderboards button; XP bar on top; hide it in the black hole and click the R to bring it back
+- Trading: switch between your inventory and your friend's (look only), green READY lights for both, a summary when it is done
+- New casino games: Tower, Keno, Limbo; Roulette number bets; half / double bet buttons; roulette balance fixed
+- New minigames: 2048 and Minesweeper with modes and leaderboards; minigames pay a little more at higher levels
+- Mini Golf: 16 new holes (40 in all), smoother and better synced
+- Coinflip: create, choose items, confirm; bots (BOT) and Rubenium offers, same fair coin, 1 hour
+- Economy rebalanced; quick sell fairer; every market listing went back to its owner
+- Cases renamed with honest descriptions, chance overview (lowest / average / highest), full reward list on demand, opening speed setting; big cases unlock between levels 2 and 5
+- Scratch card and free spin pay at once (with XP coupons); the scratch card shows its real odds
+- Advent calendar: Christmas theme, door 25 on top, door 1 is a Legendary frame for everyone (from 1 December)
+- Market search, notification history (Shop > Notifications), clickable notifications, chat reactions, Online Activity
+- Admin: LOCKDOWN, live feature locks, XP tools, bot coinflip offers; RL Swap Add fixed
+- Custom crosshair image, Compact Music Mode, Beat Tap keyboard fix, brighter glowing colours
+- Profile pictures load reliably; faster, steadier online connection
+
 Rubenium 3.2 - ONLINE
 
 - ONLINE button: Games, Shop and Social open together in a big menu that drops from the top
