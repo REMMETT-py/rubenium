@@ -1,67 +1,13 @@
-Rubenium 4.2
+Rubenium 4.3
 
-- Coinflip: play a bot. It is searched, found, picks its items, joins, 3-2-1, then the usual 15 second count. Five bots, each with its own worth range: Pixel and Milo (low), Nova and Vega (middle to high), Atlas (high to huge)
-- Coinflip: joining only opens your items; you are in once you lock in. If someone else locks in first you are told, and nothing of yours was taken
-- Coinflip: an eye on every coinflip that is counting down, to watch it flip
-- A golden ? on every game: how to play, the best way to play, and the real payouts and chances
-- Advent door 1: First Frost 2026, a Legendary frame with falling snow and ice, limited, never made again
-- Rocket: the auto cash-out line always shows, levels on the chart, clear hints (what you win and the chance)
-- Timing: speeds up far less; an app slowing Rubenium down is caught (the server judges with its own clock)
-- Cases: every Mythic badge is a ? on the strip and in the reward list, until you win one
-- Style is in the Shop again (it was Settings > Look); the sets are in Games > Quests
-- Fixed: the free spin did not open from the lobby
-- Fixed: hiding the menu or going back into a game lost the casino game you were on
-
-Rubenium 4.1
-
-- New minigame: Block Blast, in place of 2048. Drag the pieces onto the grid, clear rows and columns; Classic 8x8, Relaxed 10x10, Hard 7x7, a leaderboard for each. The server checks every move
-- Online menu: both halves are wider and everything is re-fitted to them; Games and Shop always on the left, Social (with the Leaderboards) and Settings always on the right
-- The advent calendar banner is now on the Games tab (admins can still preview it)
-- Compact Music Mode folds smoothly like the menu bar: bigger title, smaller cover, no gap, and no "press play" hint without a play button
-- RL Swap: Lantern Lift goal explosion (on Big Splash). The Sparkles boost was removed because it crashed the game; anyone who still has it gets the original Flamethrower back
-- Keno and Limbo were removed; the free spin left the casino bar (it stays in the lobby)
-- Every case is now called a Case; the Mythic Hunt is now the Top Tier Case
-- Shorter texts everywhere: only what you need to know
-- Fixed: Settings > Look crashed and was empty (also from online mode)
-- Fixed: leaving online mode could make the R disappear so Rubenium could not be opened
-- Fixed: the OG scratch card moved with the mouse and lagged badly
-
-Rubenium 4.0 - the full release
-
-- Levels 0 to 100: XP from games, Mini Golf, Coinflip, trades, quests, time online and XP coupons; a badge every 5 levels, level-up scene, Inventory > Levels
-- OG players get a one-time XP coupon to level 5
-- Online menu: choose the two sections shown side by side; gold Leaderboards button; XP bar on top; hide it in the black hole and click the R to bring it back
-- Trading: switch between your inventory and your friend's (look only), green READY lights for both, a summary when it is done
-- New casino games: Tower, Keno, Limbo; Roulette number bets; half / double bet buttons; roulette balance fixed
-- New minigames: 2048 and Minesweeper with modes and leaderboards; minigames pay a little more at higher levels
-- Mini Golf: 16 new holes (40 in all), smoother and better synced
-- Coinflip: create, choose items, confirm; bots (BOT) and Rubenium offers, same fair coin, 1 hour
-- Economy rebalanced; quick sell fairer; every market listing went back to its owner
-- Cases renamed with honest descriptions, chance overview (lowest / average / highest), full reward list on demand, opening speed setting; big cases unlock between levels 2 and 5
-- Scratch card and free spin pay at once (with XP coupons); the scratch card shows its real odds
-- Advent calendar: Christmas theme, door 25 on top, door 1 is a Legendary frame for everyone (from 1 December)
-- Market search, notification history (Shop > Notifications), clickable notifications, chat reactions, Online Activity
-- Admin: LOCKDOWN, live feature locks, XP tools, bot coinflip offers; RL Swap Add fixed
-- Custom crosshair image, Compact Music Mode, Beat Tap keyboard fix, brighter glowing colours
-- Profile pictures load reliably; faster, steadier online connection
-
-Rubenium 3.2 - ONLINE
-
-- ONLINE button: Games, Shop and Social open together in a big menu that drops from the top
-- Coinflip duel (up to 6 items each, 49-51% chance) and Mini Golf now use open lobbies, no invitations
-- Mini Golf: 5 holes a match, 8 new holes
-- New casino games: Roulette and Hi-Lo (slot machine removed)
-- Cases are bought with coins and opened with a key; keys can be traded; 1 key every 30 min, up to 12
-- Every item has a worth; shop price = worth + 20% tax
-- New cases, banners, frames, balls, lines and themes; advent calendar in December
-- Play asks which music app you use; adverts can be muted
-- Chat wraps long messages, 300 characters max, anti-spam; Timing instant; AFK timer moves; long texts fit
-
-Rubenium 3.1 - fixes
-
-- Royal Case pays less; style cases no longer need a key
-- Profile pictures stay after restarting; My Stats in the Social tab
-- Market usual price never far below an item's worth
-- Timing: no more stopping by itself; Enter casino button removed
-- Auto login countdown is 3 seconds
-
+- XP: nothing for a lost bet and only a little for a win (1 to 5), every source slower, at most 1 000 XP a day. XP coupons are worth 40 to 600
+- Coinflip bots remade: always 5 to 10 bot flips open, low, middle and high bots, sized to the wealth of the players online (one player: sized to them; a crowd: the server's average). No more Mythic pots
+- New casino game: Slots. Three reels, one clear table of prizes, about 96.6% back over time
+- New: Wave Rush. Hold to rise, let go to fall; the course narrows, twists and grows spikes the further you go. Solo pays by distance (the server replays every run), or duel someone on the same course with or without a bet
+- Mini Golf: Solo (5 holes, no bet, coins by strokes) or Duel as before
+- Quick sell is the pawn shop: take his offer or haggle with the slider. Push him too far and he throws you out for 30 minutes
+- Social: one Users tab (friends first, with a blue dot), Leaderboards in the tabs, and a clear "Leave online" button
+- Cases: badge cases first, odds evened out, Open shows only when you have the case, no more "(no key)"
+- Games lobby tidied (coins and Quests on one line, the three freebies side by side); the online menu is taller
+- Compact Music Mode only folds while you are away from Rubenium; hover it and everything fades back in
+- Patch notes rewritten: one entry per release since 0.1, nothing about features that are gone

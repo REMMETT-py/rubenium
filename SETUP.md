@@ -22,3 +22,4 @@
 19. Then run `023_search_path.sql` once (database advisor fixes: pins the search path of five helper functions and indexes nine foreign keys). Safe to run again.
 20. Then run `024_v41.sql` once (4.1: Block Blast replaces 2048, Keno and Limbo can no longer be played, apps older than 4.1 must update). One transaction, safe to run again. `024_down.sql` undoes it.
 21. Then run `025_v42.sql` once (4.2: coinflip VS bot with five bots, joining only on lock-in, Timing fix, advent door 1 = First Frost 2026, apps older than 4.2 must update). One transaction, safe to run again. `025_down.sql` undoes it.
+22. Then run `026_v43.sql` once (4.3: XP rework, coinflip bots sized to the players online, Slots, evened-out case odds, Mini Golf solo, Wave Rush, the pawn shop, quests that count every game; apps older than 4.3 must update). One transaction, safe to run again. `026_down.sql` undoes it (open Wave Rush bets are refunded first).
