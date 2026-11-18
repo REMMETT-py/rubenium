@@ -1102,6 +1102,9 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("4.4", ['Updates now install by themselves as soon as they are out',
+             'The daily reward opens in online mode, the first time each day; a slow red dot and a reminder every 30 minutes while it waits',
+             'Shorter texts in Wave Rush and Mini Golf']),
     ("4.3", ['XP is earned, not farmed: nothing for a lost bet, a little for a win, lower daily limits (1 000 XP a day)',
            'Coinflip bots remade: 5 to 10 bot flips always open, from small to big, sized to the players online; never a Mythic',
            'New casino game: Slots. Three reels, one table of prizes',

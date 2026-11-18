@@ -841,9 +841,6 @@ def build_golf_solo(page, lay, sid, leave_screen) -> None:
     lay.addWidget(Label(tr("{n} holes, no bet and no clock. Each hole pays by strokes:", n=holes), 10.5, TEXT, wrap_w=page.W))
     lay.addWidget(Label(tr("1 stroke: 60 · 2: 35 · 3: 20 · 4: 10 · 5: 5 · 6: nothing"), 11, "#E8C26A", bold=True,
                         wrap_w=page.W))
-    lay.addWidget(Label(tr("Coins are paid at the end of the round. Like the other mini games, what you can earn is "
-                           "limited every 2 hours."), 10, TEXT_DIM, wrap_w=page.W))
-    lay.addWidget(Label(tr("Want to bet against someone? Pick Duel above."), 10, TEXT_DIM, wrap_w=page.W))
 
 
 class _ListPoll(QWidget):

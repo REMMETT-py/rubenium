@@ -225,6 +225,21 @@ class App(QObject):
         self.updater.failed.connect(self._update_failed)
         self._update_prompted = ""
         extras.Updater.cleanup()
+        from .hub import daily_nag, daily_unclaimed
+        self._daily_timer = QTimer(self)                 # 4.4: unclaimed daily reward: a reminder every 30 minutes
+        self._daily_timer.setInterval(30 * 60 * 1000)
+        self._daily_timer.timeout.connect(lambda: daily_nag(self))
+        self._daily_timer.start()
+
+        def dots() -> None:                              # and a slow red dot on the online button
+            from .widgets import NOTIFY_DOTS
+            want = daily_unclaimed(self)
+            if want != ("online" in NOTIFY_DOTS):
+                NOTIFY_DOTS.discard("online") if not want else NOTIFY_DOTS.add("online")
+        self._dot_timer = QTimer(self)
+        self._dot_timer.setInterval(2000)
+        self._dot_timer.timeout.connect(dots)
+        self._dot_timer.start()
         self.session = extras.Session()
         self.sensors.sample.connect(self.session.feed)
         self.timer = extras.TimerEngine(self.cfg)
@@ -1221,9 +1236,12 @@ class App(QObject):
             self.tour_pending = False
             self._tour = Tutorial(self, lambda: QTimer.singleShot(300, self.on_opened))
             return
-        if getattr(self, "login_pending", False) and self.online.logged_in():
-            self.login_pending = False
-            check_login_reward(self)
+        if getattr(self, "login_pending", False) and self.online.logged_in() and self.online_mode:
+            today = time.strftime("%Y-%m-%d")             # 4.4: the daily reward opens in online mode, once a day
+            if self.cfg["daily_shown"] != today:
+                self.cfg["daily_shown"] = today
+                self.login_pending = False
+                check_login_reward(self)
 
     def start_tutorial(self) -> None:
         from .music2 import Tutorial
@@ -1252,23 +1270,23 @@ class App(QObject):
         self.tapkey.set_key(self.cfg["hotkey"])
 
     def _update_found(self, info: dict) -> None:
+        """4.4: a new version installs by itself, straight away: no question (an old version can't play online)."""
         self.set_outdated(True)
         if self.window.current == "settings" and self.window.expanded:
             self.window.reload_page()
         self.offer_update()
-        if self.tray is not None and not self.window.expanded:
-            self.tray.showMessage("Rubenium", tr("Update {v} available", v=info["label"]),
-                                  QSystemTrayIcon.MessageIcon.Information, 5000)
 
     def offer_update(self) -> None:
         info = self.updater.latest
-        if not info or self._update_prompted == info["version"] or not self.window.expanded:
-            return
-        if self.window.confirm_w.isVisible() or self.window.busy_w.isVisible():
+        if not info or self._update_prompted == info["version"] or self.updater.busy:
             return
         self._update_prompted = info["version"]
-        self.window.confirm(tr("Update {v} available", v=info["label"]), self.install_update,
-                            yes=tr("Update"), no=tr("Later"))
+        if self.tray is not None and not self.window.expanded:
+            self.tray.showMessage("Rubenium", tr("Updating to {v}…", v=info["label"]),
+                                  QSystemTrayIcon.MessageIcon.Information, 4000)
+        else:
+            self.toast(tr("Updating to {v}…", v=info["label"]))
+        self.install_update()
 
     def install_update(self) -> None:
         if self.updater.install():
@@ -1289,6 +1307,8 @@ class App(QObject):
             self.window.end_busy(lambda: self.toast(tr("Update installed. Restart Rubenium."), "ok"))
 
     def _update_failed(self, key: str) -> None:
+        self._update_prompted = ""                   # 4.4: the next check tries again by itself
+
         def after() -> None:
             if key == "blocked":
                 self.toast(tr("Windows blocked the update. Download it from GitHub."), "error")
@@ -1335,6 +1355,9 @@ class App(QObject):
         self._online_back_open = main.expanded
         if focus in ("games", "themes", "friends", "giveaway"):
             self.cfg["online_tab"] = focus if focus != "giveaway" else self.cfg["online_tab"]
+        if focus == "admin":                       # 4.4: the admin panel opens in the right half, full size
+            left = next((k for k in (self.cfg["online_panes"] or []) if k in ("games", "themes")), "games")
+            self.cfg["online_panes"] = [left, "admin"]
         from .onlinewin import fly_up, online_window
 
         state = {"dropped": False}
@@ -1363,6 +1386,8 @@ class App(QObject):
                 log.exception("online menu failed to open")
                 return back_home()
             self.econ.poll_live()
+            self.login_pending = True                  # 4.4: the first visit of the day shows the daily reward
+            QTimer.singleShot(1200, self.on_opened)
 
         def fly() -> None:
             try:

@@ -1836,7 +1836,7 @@ class MainWindow(QWidget):
             self.slide.jump(1.0)
 
     def goto(self, key: str) -> None:
-        if key == "online" or key in ("games", "themes", "friends", "giveaway"):
+        if key == "online" or key in ("games", "themes", "friends", "giveaway", "admin"):   # 4.4: admin opens full size online
             return self.ctx.enter_online(None if key == "online" else key)      # 3.2: they live in the online menu
         if key not in self.tab_keys():
             return

@@ -586,8 +586,6 @@ def _solo(page, lay) -> None:
         old_press(on)
     view._press = press
     lay.addWidget(view)
-    lay.addWidget(Label(tr("Hold to rise, let go to fall. Touch nothing: walls and spikes end the run. "
-                           "It gets narrower and twistier the further you go."), 10.5, TEXT, wrap_w=page.W))
     lay.addWidget(Label(tr("Coins from 30 m: 100 m: {a} · 300 m: {b} · 600 m: {c}. Like the other mini games, what you "
                            "can earn is limited every 2 hours.", a=wave_pay(10000), b=wave_pay(30000), c=wave_pay(60000)),
                         10, TEXT_DIM, wrap_w=page.W))
@@ -927,5 +925,3 @@ def _duel_run(page, lay, did: str, leave_screen) -> None:
             ctx.window.confirm(tr("Leave? The other player wins the duel."), go, yes=tr("Leave"))
         quit_.clicked.connect(leave)
         lay.addWidget(quit_)
-    lay.addWidget(Label(tr("Same course for both of you. Hold to rise, let go to fall: the longer run wins."),
-                        10, TEXT_DIM, wrap_w=page.W))

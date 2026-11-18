@@ -26,7 +26,7 @@ from .widgets import IconButton, ScrollArea, Tween, align_slider_rows, draw_icon
 
 ONLINE_KEYS = ("games", "themes", "friends", "settings")
 TITLES = {"games": ("dice", "Games"), "themes": ("gem", "Shop"), "friends": ("users", "Social"),
-          "giveaway": ("gift", "Giveaway"), "settings": ("cog", "Settings")}
+          "giveaway": ("gift", "Giveaway"), "settings": ("cog", "Settings"), "admin": ("shield", "Admin")}
 ORDER = ("games", "themes", "friends", "giveaway", "settings")
 SECTIONS = ("games", "themes", "friends", "settings")           # 4.0: the four parts; two are shown side by side
 LEFT = ("games", "themes", "giveaway")          # 4.1: games and shop on the left half only
@@ -34,7 +34,7 @@ RIGHT = ("friends", "settings")                 # social (with the leaderboards)
 
 
 def side_of(key: str) -> int:
-    return 1 if key in RIGHT else 0
+    return 1 if key in RIGHT or key == "admin" else 0          # 4.4: the admin panel opens in the right half
 HEAD_H = 64                      # wordmark, XP bar, leaderboards, back arrow
 COL_TITLE_H = 46                 # 4.0: the section switch over each half
 COL_GAP = 16
@@ -315,8 +315,9 @@ class PaneSwitch(QWidget):
         from .pages2 import LIVE_TABS
         live = ["giveaway"] if "giveaway" in LIVE_TABS else []
         if len(self.win.tab_keys()) < 2:
-            return list(SECTIONS) + live
-        return [k for k in LEFT if k != "giveaway"] + live if self.index == 0 else list(RIGHT)
+            return list(SECTIONS) + live + (["admin"] if "admin" in LIVE_TABS else [])
+        admin = ["admin"] if "admin" in LIVE_TABS else []           # 4.4: admins get their panel here, full size
+        return [k for k in LEFT if k != "giveaway"] + live if self.index == 0 else list(RIGHT) + admin
 
     def _layout(self) -> None:
         keys = self.keys()
@@ -575,10 +576,10 @@ def _make_class():
         def panes(self) -> list:
             """4.0: the two parts shown side by side (picked by the player, kept in the settings)."""
             from .pages2 import LIVE_TABS
-            ok = list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else [])
+            ok = list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else []) + (["admin"] if "admin" in LIVE_TABS else [])
             want = [k for k in (self.ctx.cfg["online_panes"] or []) if k in ok]
             left = next((k for k in want if k in LEFT), "games")          # 4.1: each part on its own side
-            right = next((k for k in want if k in RIGHT), "friends")
+            right = next((k for k in want if side_of(k) == 1), "friends")
             return [left, right]
 
         def tab_keys(self) -> list:
@@ -750,7 +751,7 @@ def _make_class():
                     sw.update()
 
         def goto(self, key: str) -> None:
-            if key in ("games", "themes", "friends", "giveaway", "settings"):
+            if key in ("games", "themes", "friends", "giveaway", "settings", "admin"):
                 if key not in self.tab_keys():                # brought into its own half
                     self.set_pane(side_of(key), key)
                 if not self.expanded:

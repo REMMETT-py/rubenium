@@ -2960,4 +2960,10 @@ FR = {
     'No coins: the 2-hour limit is reached': 'Pas de pièces : la limite sur 2 heures est atteinte',
     'crashed': 'crash',
     'Compact Music Mode only folds while you are away from Rubenium; hover it and the tabs, play, skip and the rest fade back in': "Le mode musique compact ne se replie que quand tu n'es pas sur Rubenium ; passe la souris dessus et les onglets, lecture, suivant et le reste réapparaissent en fondu",
+    # 4.4
+    'Updating to {v}…': 'Mise à jour vers {v}…',
+    'Your daily reward is waiting in online mode': "Ta récompense du jour t'attend dans le mode en ligne",
+    'Updates now install by themselves as soon as they are out': "Les mises à jour s'installent toutes seules dès leur sortie",
+    'The daily reward opens in online mode, the first time each day; a slow red dot and a reminder every 30 minutes while it waits': "La récompense du jour s'ouvre dans le mode en ligne, la première fois de la journée ; un point rouge lent et un rappel toutes les 30 minutes tant qu'elle attend",
+    'Shorter texts in Wave Rush and Mini Golf': 'Des textes plus courts dans Wave Rush et le Mini Golf',
 }

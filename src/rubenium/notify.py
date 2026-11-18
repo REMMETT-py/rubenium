@@ -532,6 +532,11 @@ def go(ctx, action) -> None:
         ctx.casino = True
     elif key == "giveaway":
         target = "giveaway"
+    elif key == "daily":                                   # 4.4: the daily reward, in the Games half
+        target = "games"
+        from .hub import check_login_reward
+        QTimer.singleShot(1500 if not getattr(ctx, "online_mode", False) else 200,
+                          lambda: check_login_reward(ctx, force=True))
     sfx.play("pick")
     if getattr(ctx, "online_mode", False):
         ctx.window.goto(target)

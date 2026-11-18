@@ -956,6 +956,25 @@ class LoginWindow(FloatWindow):
         self.ctx.econ.call("rb_login_claim", {}, done)
 
 
+def daily_unclaimed(ctx) -> bool:
+    """4.4: today's daily reward is still waiting (for the red dot)."""
+    ec = ctx.econ
+    if not ctx.online.logged_in() or not ec.ready or getattr(ec, "server_old", False):
+        return False
+    return str(ec.streak_day or "")[:10] != datetime.date.today().isoformat()
+
+
+def daily_nag(ctx) -> None:
+    """4.4: every 30 minutes while it is not claimed: a reminder (the server says whether it is)."""
+    if not ctx.online.logged_in() or getattr(ctx.econ, "server_old", False):
+        return
+
+    def got(ok: bool, state) -> None:
+        if ok and isinstance(state, dict) and not state.get("claimed"):
+            ctx.notifier.push("ready", tr("DAILY REWARD"), tr("Your daily reward is waiting in online mode"), "daily")
+    ctx.online.ask("rb_login_state", {}, got)
+
+
 def check_login_reward(ctx, force: bool = False) -> None:
     if not ctx.online.logged_in() or getattr(ctx.econ, "server_old", False):
         return
@@ -1635,6 +1654,9 @@ class StreakRow(QWidget):
         paint_freebie(self, p, tr("Daily reward"), text, not claimed, mid,
                       lambda p, c: paint_flame(p, QPointF(c.x(), c.y() + S(2)), S(17), streak, time.monotonic(),
                                                sparks=streak > 0))
+        if not claimed:                                   # 4.4: the same slow red dot as on the online button
+            from .widgets import paint_notify_dot
+            paint_notify_dot(p, QPointF(self.width() - S(12), S(12)), S(3.6))
 
 
 class AmountWindow(FloatWindow):

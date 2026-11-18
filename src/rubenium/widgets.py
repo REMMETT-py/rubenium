@@ -1393,6 +1393,8 @@ class TabBar(QWidget):
                 p.scale(0.42, 0.42)
                 draw_icon(p, "lock", QColor(TEXT_FAINT))
             p.restore()
+            if key in NOTIFY_DOTS:                          # 4.4: something waits there (the daily reward)
+                paint_notify_dot(p, QPointF(r.right() - S(5), r.top() + S(6)), S(3.2))
             if w > 0.05:
                 p.save()
                 p.setClipRect(r)
@@ -1431,6 +1433,22 @@ def hbox(parent=None, spacing: float = 8, margins=(0, 0, 0, 0)) -> QHBoxLayout:
     lay.setContentsMargins(*[S(m) for m in margins])
     lay.setSpacing(S(spacing))
     return lay
+
+
+NOTIFY_DOTS: set = set()        # 4.4: tab keys that wear a slow red dot (the online button: daily reward waiting)
+
+
+def paint_notify_dot(p, c, r: float) -> None:
+    """A small red dot that breathes slowly (never blinks)."""
+    import time as _t
+    k = 0.5 + 0.5 * math.sin(_t.monotonic() * 2.0)
+    p.save()
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(255, 70, 80, int(60 + 60 * k)))
+    p.drawEllipse(c, r * (1.5 + 0.5 * k), r * (1.5 + 0.5 * k))
+    p.setBrush(QColor(255, int(70 + 30 * k), 80))
+    p.drawEllipse(c, r, r)
+    p.restore()
 
 
 # 4.0: what players see when the admins paused a part of Rubenium
