@@ -181,3 +181,13 @@ XP to reach a level: 50 + 12 L + 0.6 L² per level. Level 1 = 50 XP, 5 = 386, 10
 
 Minigame pay is multiplied by 1 + 0.004 × level (level 100: +40%), inside the same window caps. Cases unlock at
 levels 2 (Cosmic Hunt), 3 (Shiny Hunt), 4 (Epic Vault) and 5 (Mythic Hunt); nothing is locked after level 5.
+
+## 4.1 (024_v41.sql)
+
+- Block Blast replaces 2048 as a minigame. Pay = score ÷ 5 up to 300 coins (Classic 8x8), score ÷ 8 up to 200 (Relaxed 10x10),
+  score ÷ 3 up to 360 (Hard 7x7), then the usual minigame window (game_window_cap every 2 hours, level multiplier).
+  A bot that plays like a casual player scores a median of about 550 / 530 / 410, so a typical game pays 70 to 140 coins.
+- Score: 1 point per square placed; clearing L lines at once adds 10 x L x L; clearing again on the next piece adds 20 per
+  step of the streak.
+- Keno and Limbo are removed (their functions can no longer be called). The house edge table above no longer lists them.
+

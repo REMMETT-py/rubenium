@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "4.0"         # the version people see
-BUILD = "2026.11.18.00"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "4.1"         # the version people see
+BUILD = "2026.11.18.12"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1606,7 +1606,25 @@ def alpha(c: QColor | str, a: float) -> QColor:
 
 
 # Metrics at 100 % (the window multiplies through S()).
+_PAGE_EXTRA = [0]           # set while the online menu builds its pages: they are made for its wider halves
+
+
+def page_width() -> int:
+    """The width a page (or a small screen inside the menu) is built for, in the menu building it right now."""
+    return S(CARD_W - 2 * PAD + _PAGE_EXTRA[0])
+
+
+class wide_pages:
+    """with wide_pages(): pages made inside are made for the online menu's halves."""
+
+    def __enter__(self):
+        _PAGE_EXTRA[0] = ONLINE_EXTRA
+
+    def __exit__(self, *_a):
+        _PAGE_EXTRA[0] = 0
+
 CARD_W = 380
+ONLINE_EXTRA = 150          # 4.1: each half of the online menu is this much wider than the small menu's page
 GLOW = 22
 RADIUS = 18
 PAD = 14
@@ -5508,7 +5526,6 @@ FR = {
     'A free XP coupon for our OG players is in your Inventory': "Un coupon XP gratuit pour nos joueurs OG t'attend dans ton Inventaire",
     'A game': 'Une partie',
     'Advent calendar: 100 XP a door, 500 on the 25th': "Calendrier de l'Avent : 100 XP par porte, 500 le 25",
-    'All quiet. Start a game others can join:': "Tout est calme. Lance une partie que d'autres peuvent rejoindre :",
     'Amethyst': 'Améthyste',
     'Any change to the offer sets both players back to Not ready.': "Tout changement dans l'offre remet les deux joueurs sur Pas prêt.",
     'Any finish': 'Toutes',
@@ -5530,7 +5547,7 @@ FR = {
     'Big coin drops and better odds for Epic and Legendary badges.': 'De gros gains de pièces et de meilleures chances de badges Épiques et Légendaires.',
     'Bigger coin drops and better badge odds than the Standard Case.': 'Plus de pièces et de meilleures chances de badges que la Caisse Standard.',
     'Bigger coin drops, and Epic or Legendary badges now and then.': 'Plus de pièces, et de temps en temps un badge Épique ou Légendaire.',
-    'Blackjack, Plinko, Bombs, Dice, Timing, Rocket, Hi-Lo, Tower, Keno, Limbo': 'Blackjack, Plinko, Bombes, Dés, Timing, Fusée, Hi-Lo, Tour, Keno, Limbo',
+    'Blackjack, Plinko, Bombs, Dice, Timing, Rocket, Hi-Lo, Tower': 'Blackjack, Plinko, Bombes, Dés, Timing, Fusée, Hi-Lo, Tour',
     'Board': 'Plateau',
     'Bonus: {what}! It is in Inventory > Levels.': 'Bonus : {what} ! Il est dans Inventaire > Niveaux.',
     'Boom! Try again': 'Boum ! Réessaie',
@@ -5915,6 +5932,45 @@ FR = {
     'Advent calendar: Christmas look, door 1 is a Legendary frame for everyone': "Calendrier de l'Avent : ambiance de Noël, la porte 1 est un cadre Légendaire pour tout le monde",
     'Market search, notification history, chat reactions, Online Activity, your own crosshair image': 'Recherche sur le marché, historique des notifications, réactions dans le chat, Activité en ligne, ton image de viseur',
     'Compact Music Mode while gaming, Beat Tap keyboard fix, profile pictures load every time, less lag online': 'Mode musique compact en jeu, clavier corrigé pour Beat Tap, photos de profil toujours chargées, moins de lag en ligne',
+    # 4.1
+    'Beat Tap, Memory, Block Blast, Minesweeper and the others': 'Beat Tap, Memory, Block Blast, Démineur et les autres',
+    'One door a day, 1 to 25 December.': 'Une porte par jour, du 1er au 25 décembre.',
+    'Buying from the shop adds a {n}% tax.': 'Acheter dans la boutique ajoute une taxe de {n} %.',
+    'Everything is already in your Inventory.': 'Tout est déjà dans ton Inventaire.',
+    'Cosmic Case': 'Caisse cosmique',
+    'Gift Case': 'Caisse cadeau',
+    'All or Nothing Case': 'Caisse Tout ou rien',
+    'Vault Case': 'Caisse Coffre-fort',
+    'Top Tier Case': 'Caisse Haut de gamme',
+    'Shiny Case': 'Caisse brillante',
+    'Rare badge cases': 'Caisses de badges rares',
+    'Up to {n} items, same worth on both sides (±{r}%). Your chance is your share of the pot. The winner takes everything.': "Jusqu'à {n} objets, même valeur des deux côtés (±{r} %). Ta chance est ta part de la mise. Le gagnant prend tout.",
+    'One card every {h} hours.': 'Une carte toutes les {h} heures.',
+    'Block Blast': 'Block Blast',
+    'Each game pays up to {n} coins every 2 hours.': "Chaque jeu rapporte jusqu'à {n} pièces toutes les 2 heures.",
+    'Place the pieces, clear rows and columns. Classic, Relaxed or Hard. Leaderboard for each.': 'Place les pièces, vide les lignes et les colonnes. Classique, Détente ou Difficile. Un classement pour chacun.',
+    'Classic 8×8': 'Classique 8×8',
+    'Relaxed 10×10': 'Détente 10×10',
+    'Hard 7×7': 'Difficile 7×7',
+    'No more space': 'Plus de place',
+    'Score ÷ {d}, up to {n} coins': "Score ÷ {d}, jusqu'à {n} pièces",
+    'Drag the pieces onto the grid. Fill a row or a column to clear it.': 'Glisse les pièces sur la grille. Remplis une ligne ou une colonne pour la vider.',
+    'Lines {n}': 'Lignes {n}',
+    '{n} holes. The winner gets both bets (5% fee). Closes after 5 minutes if nobody joins.': '{n} trous. Le gagnant remporte les deux mises (5 % de frais). Se ferme après 5 minutes si personne ne rejoint.',
+    'Best Block Blast score': 'Meilleur score à Block Blast',
+    'Today: {a} / {b} XP': "Aujourd'hui : {a} / {b} XP",
+    'Earn XP by playing, trading and being online.': "Gagne de l'XP en jouant, en échangeant et en étant en ligne.",
+    'A new badge every 5 levels. Pick yours in Inventory > Levels.': 'Un nouveau badge tous les 5 niveaux. Choisis le tien dans Inventaire > Niveaux.',
+    'Nothing yet.': "Rien pour l'instant.",
+    'In fullscreen games the mouse goes through Rubenium.': 'Dans les jeux en plein écran, la souris passe à travers Rubenium.',
+    '1 key every {m} min, up to {n}.': "1 clé toutes les {m} min, jusqu'à {n}.",
+    'New minigame: Block Blast (in place of 2048). Place the pieces, clear rows and columns, three modes and leaderboards': 'Nouveau mini-jeu : Block Blast (à la place de 2048). Place les pièces, vide lignes et colonnes, trois modes et des classements',
+    'Online menu: wider halves, games and shop on the left, social and settings on the right': 'Menu en ligne : moitiés plus larges, jeux et boutique à gauche, social et réglages à droite',
+    'The advent calendar is now on the Games tab': "Le calendrier de l'Avent est maintenant dans l'onglet Jeux",
+    'Compact Music Mode folds smoothly and makes the title bigger, with no gap': 'Le mode musique compact se replie en douceur et agrandit le titre, sans espace vide',
+    'RL Swap: Lantern Lift goal explosion (on Big Splash). The Sparkles boost was removed: it crashed the game': 'RL Swap : explosion de but Lantern Lift (sur Big Splash). Le boost Sparkles a été retiré : il faisait planter le jeu',
+    'Fixes: Settings > Look no longer crashes, the R always comes back after online mode, the OG scratch card is smooth': 'Corrections : Réglages > Apparence ne plante plus, le R revient toujours après le mode en ligne, le ticket OG se gratte sans lag',
+    'Keno, Limbo and the free spin left the casino bar (the free spin stays in the lobby). Every case is now a Case': "Keno, Limbo et le tour gratuit quittent la barre du casino (le tour gratuit reste dans le salon). Chaque caisse s'appelle maintenant Caisse",
 }
 
 
@@ -6196,6 +6252,10 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
     elif kind == "grid":
         for gx, gy in ((-7.5, -7.5), (1.5, -7.5), (-7.5, 1.5), (1.5, 1.5)):
             p.drawRoundedRect(QRectF(gx, gy, 6, 6), 1.5, 1.5)
+    elif kind == "blocks":                       # 4.1: Block Blast: an L piece and one square
+        for gx, gy in ((-8, -8), (-8, -2), (-2, -2)):
+            p.drawRoundedRect(QRectF(gx, gy, 5.2, 5.2), 1.3, 1.3)
+        p.drawRoundedRect(QRectF(3, 3, 5.2, 5.2), 1.3, 1.3)
     elif kind == "ball":
         p.drawEllipse(QPointF(0, 0), 5.5, 5.5)
         p.setBrush(fg)
@@ -9871,6 +9931,13 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("4.1", ['New minigame: Block Blast (in place of 2048). Place the pieces, clear rows and columns, three modes and leaderboards',
+             'Online menu: wider halves, games and shop on the left, social and settings on the right',
+             'The advent calendar is now on the Games tab',
+             'Compact Music Mode folds smoothly and makes the title bigger, with no gap',
+             'RL Swap: Lantern Lift goal explosion (on Big Splash). The Sparkles boost was removed: it crashed the game',
+             'Fixes: Settings > Look no longer crashes, the R always comes back after online mode, the OG scratch card is smooth',
+             'Keno, Limbo and the free spin left the casino bar (the free spin stays in the lobby). Every case is now a Case']),
     ("4.0", ['Levels 0 to 100 with XP from everything you play, a badge every 5 levels, a level-up scene and Inventory > Levels',
              'XP coupons in cases, the wheel and scratch cards. OG players get a free coupon to level 5',
              'Online menu: pick the two sections you want side by side, gold Leaderboards button, XP bar on top',
@@ -10098,6 +10165,7 @@ RL_ITEMS = [
     dict(id="atomizer_gentlemates", cat="goal", old="Atomizer", new="Gentle Mates 2025", file="explosion_Rekt_SF.upk"),
     dict(id="splash_adidas", cat="goal", old="Big Splash", new="Adidas", file="explosion_splash_SF.upk"),
     dict(id="splash_supernova", cat="goal", old="Big Splash", new="SuperNova III", file="explosion_splash_SF.upk"),
+    dict(id="splash_lanternlift", cat="goal", old="Big Splash", new="Lantern Lift", file="explosion_splash_SF.upk"),
     dict(id="octane_fennec", cat="body", old="Octane", new="Fennec", file="Body_Octane_SF.upk"),
     dict(id="fennec_flames_likescraft", cat="fdecal", old="Flames", new="Likescraft", file="skin_grain_flames_SF.upk"),
     dict(id="fennec_flames_blacklunation", cat="fdecal", old="Flames", new="Black Lunation",
@@ -10116,7 +10184,6 @@ RL_ITEMS = [
     dict(id="bubbles_purple", cat="boost", old="Bubbles", new="Invisible Boost", file="Boost_Bubble_SF.upk",
          preview=False),
     dict(id="standard_purple", cat="boost", old="Standard", new="Purple Standard", file="Boost_Standard_SF.upk"),
-    dict(id="flamethrower_sparkles", cat="boost", old="Flamethrower", new="Sparkles", file="Boost_Flamethrower_SF.upk"),
     dict(id="dieci_black_infinium", cat="wheels", old="Black Dieci", new="Infinium", file="WHEEL_Caliber_SF.upk"),
     dict(id="stern_alpha", cat="wheels", old="Stern", new="Alpha Wheels", file="WHEEL_Hydra_SF.upk"),
     dict(id="anodized_pearl", cat="paint", old="Anodized", new="Anodized Pearl", file="paintfinish_anodized_SF.upk"),
@@ -10139,7 +10206,9 @@ RETIRED = {"f1cb440607e0dd4cabfd155b71c29ad444d2d44b7322251455b3f1e1ea30a9fd": "
            "ed814c9961159e70f1dcef48755cdb54e455fee66110b0ef6e19e05662617827": "explosion_Dragon_SF.upk",
            "b529dea013234bcaebc4841426a0d483360f9ff7509948372af9b6917f4ac2f7": "explosion_Dragon_SF.upk",
            "3c4680632863f58e2fe4c736802e959d6bc351dcbf74cda4fd5b110b4fab0a6b": "explosion_Dragon_SF.upk",
-           "122727c810efe7df76f3fada4caf085b18af1781e63d4f70697fa7c744ab018d": "playerBanner_DiamondTile_SF.upk"}
+           "122727c810efe7df76f3fada4caf085b18af1781e63d4f70697fa7c744ab018d": "playerBanner_DiamondTile_SF.upk",
+           # 4.1: the Sparkles boost crashed the game. Anyone who still has it gets the original Flamethrower back.
+           "3e2a2477547e3fe22fc95fd1de6347db8c817bb01c98c12f0921b490db466344": "Boost_Flamethrower_SF.upk"}
 
 
 def swap_files() -> list:
@@ -10147,7 +10216,8 @@ def swap_files() -> list:
     return sorted({it["file"] for it in RL_ITEMS} | set(RETIRED.values()), key=str.lower)
 
 
-REMOVED_SWAPS = ("dragons_lanternlift", "dragons_monsoon", "diamond_electric", "fennec_stripes_strongline")
+REMOVED_SWAPS = ("dragons_lanternlift", "dragons_monsoon", "diamond_electric", "fennec_stripes_strongline",
+                 "flamethrower_sparkles")
 
 # Clean game files shipped with the app in swaps/_originals: used to put a game file back when the player's own
 # saved copy is missing or unusable. Only files checked to be untouched originals are listed (and a shipped
@@ -14524,7 +14594,8 @@ class Page(QWidget):
     def __init__(self, ctx) -> None:
         super().__init__()
         self.ctx = ctx
-        self.W = S(CARD_W - 2 * PAD)
+        pass
+        self.W = page_width()                   # 4.1: wider in the online menu's halves
 
     def content_height(self) -> int:
         if self.fixed_height:
@@ -14672,6 +14743,7 @@ class HoldButton(QAbstractButton):
 
 class HomePage(Page):
     key = "home"
+    ART, ART_COMPACT, CTRL_H = 88, 64, 38          # 4.1: Compact Music Mode: smaller cover, no button row
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -14718,7 +14790,10 @@ class HomePage(Page):
         self.b_look.clicked.connect(lambda: badge_menu(ctx, self._look_changed))
         controls.addWidget(self.b_look)
         info.addStretch(1)
-        info.addLayout(controls)
+        self.ctrl_box = QWidget()                     # 4.1: Compact Music Mode folds this row away smoothly
+        self.ctrl_box.setLayout(controls)
+        self.ctrl_box.setFixedHeight(S(self.CTRL_H))
+        info.addWidget(self.ctrl_box)
         body.addWidget(self.art, 0, Qt.AlignmentFlag.AlignTop)
         body.addLayout(info, 1)
         prog = hbox(spacing=8)
@@ -14750,6 +14825,7 @@ class HomePage(Page):
         self._timer = QTimer(self)
         self._timer.setInterval(250)
         self._timer.timeout.connect(self._tick)
+        self.squash = Tween(self, 0.0, self._squash_step, QEasingCurve.Type.InOutCubic)
         self.on_state(ctx.state)
         self.art.set_pixmap(ctx.art_pixmap)
 
@@ -14806,20 +14882,54 @@ class HomePage(Page):
             self._apply_compact()
 
     def _apply_compact(self) -> None:
+        """4.1: the card folds smoothly, the way the menu bar does: the button row closes up, the cover gets a little
+        smaller, the title and artist grow, and the whole menu gets shorter with it (no gap is left)."""
         on = getattr(self, "_compact", False)
-        for b in (self.b_prev, self.b_play, self.b_next, self.b_look):
-            b.setVisible(not on)
-        st = self.ctx.state
-        self.b_shuffle.setVisible(not on and st.shuffle is not None)
-        self.b_repeat.setVisible(not on and st.repeat is not None)
-        if on:
-            self.b_vol.hide()
-            self.vol.hide()
+        if on:                                      # the buttons go first, then the row closes
+            for b in (self.b_prev, self.b_play, self.b_next, self.b_look, self.b_shuffle, self.b_repeat, self.b_vol,
+                      self.vol):
+                b.hide()
+        self.on_state(self.ctx.state)               # the hint never mentions a button that is not there
+        if self.isVisible() and self.ctx.window.expanded:
+            self.squash.to(1.0 if on else 0.0, 380)
         else:
+            self.squash.jump(1.0 if on else 0.0)
+
+    def _squash_step(self) -> None:
+        k = max(0.0, min(1.0, self.squash.level))
+        self.ctrl_box.setFixedHeight(int(round(S(self.CTRL_H) * (1 - k))))
+        self.ctrl_box.setVisible(k < 0.999)
+        side = S(self.ART + (self.ART_COMPACT - self.ART) * k)
+        self.art.setFixedSize(side, side)
+        self.title.set_size(round((15 + 4 * k) * 2) / 2)
+        self.title.setFixedHeight(S(22 + 6 * k))
+        self.artist.set_size(12 + (1 if k > 0.5 else 0))
+        if k <= 0.001 and not getattr(self, "_compact", False):      # unfolded: the buttons come back
+            st = self.ctx.state
+            for b in (self.b_prev, self.b_play, self.b_next, self.b_look):
+                b.show()
+            self.b_shuffle.setVisible(st.shuffle is not None)
+            self.b_repeat.setVisible(st.repeat is not None)
             QTimer.singleShot(0, self._vol_poll)
-        self.title.set_size(19 if on else 15)
-        self.title.setFixedHeight(S(28 if on else 22))
-        self.artist.set_size(13 if on else 12)
+        self._refit()
+
+    def _refit(self) -> None:
+        """Tell the menu the page is shorter (or taller) now: the card follows it frame by frame."""
+        win = self.ctx.window
+        entry = win.pages.get(self.key) if hasattr(win, "pages") else None
+        if entry is None or entry[1] is not self:
+            return
+        lay = self.layout()
+        lay.invalidate()
+        h = self.content_height()
+        if h == entry[2]:
+            return
+        win.pages[self.key] = (entry[0], self, h)
+        entry[0].set_content_height(h)
+        if win.current == self.key and win.expanded and not win.morph.busy and not win.slide.busy:
+            win.pageh.jump(win._card_h(self.key))
+            win._layout_body()
+            win.update()
 
     def _place_flair(self) -> None:
         """The badges sit on their own line above the song title (or under the artist): they never cover it."""
@@ -14894,8 +15004,11 @@ class HomePage(Page):
         else:
             pass
             mine = app_name(self.ctx.cfg["music_app"])
-            title, artist = tr("No music app is open"), (tr("Press play to open {app}", app=mine) if mine else
-                                                         tr("Press play to open your music app"))
+            if getattr(self, "_compact", False):     # 4.1: no play button in Compact Music Mode
+                title, artist = tr("No music app is open"), (mine or "")
+            else:
+                title, artist = tr("No music app is open"), (tr("Press play to open {app}", app=mine) if mine else
+                                                             tr("Press play to open your music app"))
         self.title.set_text(title)
         self.artist.set_text(artist)
         self.setToolTip(st.message if st.status is Status.UNAVAILABLE else "")
@@ -14907,7 +15020,7 @@ class HomePage(Page):
         self.chip.set_text(text)
         self.chip.setFixedWidth(QFontMetrics(font(12, QFont.Weight.DemiBold)).horizontalAdvance(text) + S(16))
 
-        compact = getattr(self, "_compact", False)
+        compact = getattr(self, "_compact", False) or self.squash.level > 0.001
         self.b_shuffle.setVisible(st.shuffle is not None and not compact)        # never a dead control
         self.b_repeat.setVisible(st.repeat is not None and not compact)
         self.b_shuffle.set_active(bool(st.shuffle))
@@ -16173,7 +16286,7 @@ class StylePart:
         self._tick.setInterval(15000)
         self._tick.timeout.connect(self._music_text)
         self._tick.start()
-        self._refresh()
+        self._refresh_style()
 
     def _music_text(self) -> None:
         wait = self.ctx.wallet.music_wait()
@@ -16236,7 +16349,7 @@ class StylePart:
             drawer.close_drawer()
         else:
             drawer.open_for(th)
-        self._refresh()
+        self._refresh_style()
 
     def _refresh_style(self) -> None:
         self._rows()
@@ -16311,25 +16424,21 @@ class SettingsPage(StylePart, Page):
             app_btn.clicked.connect(lambda: ask_music_app(ctx, then_open=False))
             lay.addWidget(row(tr("Play opens"), app_btn))
             toggle(tr("Mute adverts"), "ad_mute", after=lambda v: (None if v else ctx.admute.release()))
-            note(tr("While the music app plays an advert, its sound is muted, then comes back with the music."))
 
             def compact_set(_v) -> None:
                 home = ctx.window.pages.get("home")
                 if home is not None:
                     home[1].set_compact(ctx.window.chrome.level)
             toggle(tr("Compact Music Mode"), "compact_music", after=compact_set)
-            note(tr("While you play a game (or the menu bar is hidden), the music card keeps only the track, its "
-                    "time and a bigger title. Turn it off to keep every button."))
             lay.addWidget(heading(tr("Games")))
             toggle(tr("Game mode"), "game_mouse")
-            note(tr("In fullscreen games the mouse goes through Rubenium, so it never gets in the way."))
+            note(tr("In fullscreen games the mouse goes through Rubenium."))
             speeds = ["slow", "normal", "fast"]                  # 4.0: how fast cases open
             sp = Segmented([tr("Slow") + " 0.75×", tr("Normal") + " 1×", tr("Fast") + " 2.5×"],
                            speeds.index(cfg["chest_speed"]) if cfg["chest_speed"] in speeds else 1)
             sp.changed.connect(lambda i: cfg.__setitem__("chest_speed", speeds[i]))
             lay.addWidget(Label(tr("Case opening speed"), 12))
             lay.addWidget(sp)
-            note(tr("Only the animation changes: what you win is decided by the server before it starts."))
             lay.addWidget(heading(tr("Language and size")))
             seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
             seg.setFixedWidth(S(170))
@@ -17235,13 +17344,10 @@ class ShopPage(StylePart, Page):
                 lay.addWidget(CaseShelf(self, owned))
                 lay.addWidget(Label(tr("Click a case to open it. Opening uses 1 key (style cases need none)."), 10.5, TEXT_DIM,
                                     wrap_w=self.W))
-            else:
-                lay.addWidget(Label(tr("Cases you buy or get as gifts wait here until you open them with a key."), 10.5,
-                                    TEXT_DIM, wrap_w=self.W))
             lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
                 groups = (("coins", tr("Coin cases"), tr("Mostly coins, and badges of every rarity too.")),
-                          ("hunt", tr("Rare hunts"), tr("Fewer coins, much better odds for rare badges.")),
+                          ("hunt", tr("Rare badge cases"), tr("Fewer coins, much better odds for rare badges.")),
                           ("style", tr("Style cases"), tr("Balls, lines, fonts, themes, banners and frames. No key needed.")))
                 for kind, title, sub in groups:
                     lay.addWidget(heading(title))
@@ -17255,8 +17361,7 @@ class ShopPage(StylePart, Page):
             else:
                 for case in ec.cases:
                     lay.addWidget(CaseCard(self, case))
-            lay.addWidget(Label(tr("Buy cases with coins: they go to Your cases. Open them with a key (1 key every {m} min, "
-                                   "up to {n}).", m=int(float(ec.cfg.get("key_every_min", 30) or 30)),
+            lay.addWidget(Label(tr("1 key every {m} min, up to {n}.", m=int(float(ec.cfg.get("key_every_min", 30) or 30)),
                                    n=int(float(ec.cfg.get("key_cap", 12) or 12))), 10.5, TEXT_DIM, wrap_w=self.W))
             return
         case = self.DAILY if cid == "daily" else next((c for c in ec.cases if c["id"] == cid), ec.cases[0])
@@ -17561,13 +17666,13 @@ from PyQt6.QtWidgets import QWidget
 
 SHOWCASE = 3
 SLOTS = ("badge1", "badge2", "badge3")
-CASE_NAMES = {"lucky": "Coin Rush Case", "frames": "Frame Case", "cosmos": "Cosmic Hunt", "winter": "Winter Case",
-              "giftbox": "Gift Box", "starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing",
+CASE_NAMES = {"lucky": "Coin Rush Case", "frames": "Frame Case", "cosmos": "Cosmic Case", "winter": "Winter Case",
+              "giftbox": "Gift Case", "starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing Case",
               "painter": "Painter's Case", "premium": "Premium Case", "jackpot": "Jackpot Case",
-              "titan": "Titan Case", "vault": "Epic Vault", "mythic": "Mythic Hunt", "daily": "Daily Case",
+              "titan": "Titan Case", "vault": "Vault Case", "mythic": "Top Tier Case", "daily": "Daily Case",
               "style": "Ball, Line & Font Case", "themes": "Theme Case", "profile": "Banner & Frame Case",
-              "pocket": "Pocket Case", "elite": "Elite Case", "royal": "Royal Case", "shiny": "Shiny Hunt",
-              "banners": "Banner Case"}            # 4.0: every name says what is inside (no claim a case cannot keep)
+              "pocket": "Pocket Case", "elite": "Elite Case", "royal": "Royal Case", "shiny": "Shiny Case",
+              "banners": "Banner Case"}            # 4.1: every one is a "Case", and no name promises what it cannot keep
 CASE_COLOURS = {"lucky": "#57E389", "frames": "#C99BFF", "cosmos": "#5B6CFF", "winter": "#9FE3FF", "giftbox": "#FF4F6D",
                 "starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
                 "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0",
@@ -19548,8 +19653,7 @@ class TaxNote(QWidget):
 def tax_explainer(ctx, width: int):
     """The one line that explains the two prices."""
     tax = int(round(ctx.econ.tax() * 100))
-    return Label(tr("Every item has a worth: what players pay each other in trades, on the market and in coinflips. "
-                    "Buying straight from the shop adds a {n}% tax, so trading with players is cheaper.", n=tax),
+    return Label(tr("Buying from the shop adds a {n}% tax.", n=tax),
                  10, TEXT_DIM, wrap_w=width)
 
 
@@ -19710,121 +19814,9 @@ class WalletRow(QWidget):
                    tr("{n} cases to open", n=cases))
 
 
-class AdventBanner(QWidget):
-    """2027 LIMITED · ADVENT CALENDAR: a white snowy banner. Hovering it greys it out: coming soon."""
-
-    def __init__(self, ctx, width: int) -> None:
-        super().__init__()
-        self.ctx = ctx
-        self.setFixedSize(width, S(84))
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip(tr("Coming soon"))
-        self._hover = 0.0
-        self._want = 0.0
-        self._timer = QTimer(self)
-        self._timer.setInterval(40)
-        self._timer.timeout.connect(self._step)
-
-    def showEvent(self, _e) -> None:
-        self._timer.start()
-
-    def hideEvent(self, _e) -> None:
-        self._timer.stop()
-
-    def enterEvent(self, _e) -> None:
-        self._want = 1.0
-
-    def leaveEvent(self, _e) -> None:
-        self._want = 0.0
-
-    def mousePressEvent(self, e) -> None:
-        e.accept()
-        ctx = self.ctx
-        data = getattr(ctx, "advent_data", None) or {}
-        if data.get("open"):                              # 3.2: the calendar is here
-            sfx.play("pick")
-            ctx.games_sub = "advent"
-            for flag in ("quests_open", "mini_open", "park_open"):
-                setattr(ctx, flag, False)
-            ctx.window._drop_page("games")
-            return ctx.window.goto("games")
-        sfx.play("off")
-        ctx.toast(tr("The Advent Calendar opens on 1 December"))
-
-    def _step(self) -> None:
-        self._hover += (self._want - self._hover) * 0.25
-        self.update()
-
-    def paintEvent(self, _e) -> None:
-        from PyQt6.QtGui import QPainterPath
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        now = time.monotonic()
-        h = self._hover
-        r = QRectF(self.rect()).adjusted(S(3), S(3), -S(3), -S(3))
-        glow = 0.35 + 0.25 * math.sin(now * 2)                     # a soft icy glow around it
-        for k in (3, 2, 1):
-            p.setPen(QPen(alpha("#BFE6FF", glow * (1 - h) * 0.18 * k), S(k * 1.5)))
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawRoundedRect(r.adjusted(-k, -k, k, k), S(14), S(14))
-        g = QLinearGradient(r.topLeft(), r.bottomRight())
-        g.setColorAt(0.0, mix(QColor("#FFFFFF"), QColor("#8A9096"), h))
-        g.setColorAt(0.55, mix(QColor("#EAF6FF"), QColor("#767C82"), h))
-        g.setColorAt(1.0, mix(QColor("#C9E6FA"), QColor("#5E646A"), h))
-        clip = QPainterPath()
-        clip.addRoundedRect(r, S(14), S(14))
-        p.setClipPath(clip)
-        p.fillPath(clip, g)
-        p.setPen(Qt.PenStyle.NoPen)                                 # snowy hills at the bottom
-        for k, (col, hh) in enumerate((("#D6ECFB", 0.72), ("#FFFFFF", 0.84))):
-            path = QPainterPath(QPointF(r.left(), r.bottom()))
-            for x in range(0, int(r.width()) + 8, 8):
-                path.lineTo(r.left() + x, r.top() + r.height() * hh + math.sin(x / r.width() * 6 + k * 2) * S(4))
-            path.lineTo(r.right(), r.bottom())
-            p.setBrush(mix(QColor(col), QColor("#6E747A"), h))
-            p.drawPath(path)
-        for i in range(40):                                         # falling snow
-            fr = math.sin(i * 12.9898) * 43758.5453
-            fx = fr - math.floor(fr)
-            fy = (fx * 7.3 + now * (0.08 + (i % 5) * 0.025)) % 1.0
-            x = r.left() + (fx + 0.03 * math.sin(now + i)) * r.width()
-            size = S(1.2) + (i % 4) * S(0.6)
-            p.setBrush(alpha("#9FCBEA" if i % 3 else "#FFFFFF", 0.9 * (1 - h * 0.6)))
-            p.drawEllipse(QPointF(x, r.top() + fy * r.height()), size, size)
-        tag = QRectF(r.left() + S(14), r.top() + S(12), S(96), S(20))  # the red "2027 LIMITED" ribbon
-        p.setBrush(mix(QColor("#E0303E"), QColor("#55595D"), h))
-        p.drawRoundedRect(tag, S(10), S(10))
-        p.setPen(QColor("#FFFFFF"))
-        p.setFont(font(9.5, QFont.Weight.Black, 1.0))
-        p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), "2027 LIMITED")
-        p.setPen(mix(QColor("#14324D"), QColor("#2A2E32"), h))
-        p.setFont(font(17, QFont.Weight.Black, 1.2))
-        p.drawText(QRectF(r.left() + S(14), r.top() + S(34), r.width() - S(28), S(28)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("ADVENT CALENDAR") + "  ▾")
-        for i in range(3):                                          # three gift boxes on the right
-            bx = QRectF(r.right() - S(40) - i * S(30), r.top() + S(22) + (i % 2) * S(6), S(24), S(24))
-            bob = math.sin(now * 2 + i) * S(1.5) * (1 - h)
-            bx.translate(0, bob)
-            col = ["#E0303E", "#2E9E5B", "#2D7FD8"][i]
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(mix(QColor(col), QColor("#6E747A"), h))
-            p.drawRoundedRect(bx, S(4), S(4))
-            p.setBrush(mix(QColor("#FFE08A"), QColor("#9A9EA2"), h))
-            p.drawRect(QRectF(bx.center().x() - S(2), bx.top(), S(4), bx.height()))
-            p.drawRect(QRectF(bx.left(), bx.center().y() - S(2), bx.width(), S(4)))
-        if h > 0.02:                                                # hovering: greyed out, "Coming soon"
-            p.setBrush(alpha("#3A3F44", 0.85 * h))
-            p.drawRect(r)
-            p.setPen(alpha("#FFFFFF", h))
-            p.setFont(font(15, QFont.Weight.Black, 1.5))
-            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), tr("COMING SOON"))
-        p.setClipping(False)
-
-
 def build_inventory(page, lay) -> None:
     pass
     ctx, ec = page.ctx, page.ctx.econ
-    lay.addWidget(AdventBanner(ctx, page.W))
     if not ec.ready:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see your items"), 12, TEXT_DIM))
     raw = getattr(ctx, "inv_tab", 0)
@@ -20903,7 +20895,7 @@ def _trade_summary(page, lay, link, them: str) -> None:
     net = worth_got - worth_gave
     lay.addWidget(Label(tr("Value change: about {v}", v=("+" if net >= 0 else "−") + coins_text(abs(net))), 11.5,
                         READY_GREEN if net >= 0 else LOSS_RED, bold=True))
-    lay.addWidget(Label(tr("Everything is already in your Inventory. This summary closes when you leave."), 10.5,
+    lay.addWidget(Label(tr("Everything is already in your Inventory."), 10.5,
                         TEXT_DIM, wrap_w=page.W))
 
 
@@ -22255,7 +22247,7 @@ def build_minigames(page, lay) -> None:
     """Earn coins: the free mini games, each with what it pays."""
     page._back_bar(lay, tr("Earn coins"))
     cap = int(float(page.ctx.econ.cfg.get("game_window_cap", 300) or 300) * (1 + 0.004 * page.ctx.econ.level))
-    lay.addWidget(Label(tr("Each game pays up to {n} coins every 2 hours. Higher levels pay a little more.", n=cap), 10.5,
+    lay.addWidget(Label(tr("Each game pays up to {n} coins every 2 hours.", n=cap), 10.5,
                         TEXT_DIM, wrap_w=page.W))
     games = [
         ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
@@ -22264,8 +22256,8 @@ def build_minigames(page, lay) -> None:
          ("#FF8A3D", "#C2271F"), "12-50", lambda: page._show_park(True)),
         ("Memory", tr("Find the pairs in as few flips as you can. 3 sizes, 3 card styles."), "gem",
          ("#4FC3FF", "#2E5BFF"), "12-55", lambda: page.open_sub("memory")),
-        ("2048", tr("Slide and merge the tiles. Classic, Relaxed or Hard. Leaderboard for each."), "grid",
-         ("#E8C26A", "#E8503A"), "5-360", lambda: page.open_sub("g2048")),
+        ("Block Blast", tr("Place the pieces, clear rows and columns. Classic, Relaxed or Hard. Leaderboard for each."),
+         "blocks", ("#FFB547", "#E8503A"), "5-360", lambda: page.open_sub("blocks")),
         ("Minesweeper", tr("Open every safe cell, as fast as you can. Easy, Medium, Hard. Leaderboard for each."), "flag",
          ("#3DDC84", "#0F6B3A"), "35-420", lambda: page.open_sub("sweeper")),
     ]
@@ -23106,8 +23098,7 @@ def build_golf(page, lay) -> None:
             ctx.econ.call("rb_golf_create", {"bet": bet}, done)
         make.clicked.connect(create)
         lay.addWidget(make)
-        lay.addWidget(Label(tr("{n} holes. Anyone can join. The winner gets both bets (5% fee); a draw gives them back. "
-                               "Nobody joins in 5 minutes: it closes and your bet comes back.", n=holes),
+        lay.addWidget(Label(tr("{n} holes. The winner gets both bets (5% fee). Closes after 5 minutes if nobody joins.", n=holes),
                             10, TEXT_DIM, wrap_w=page.W))
     else:
         lay.addWidget(Label(tr("YOUR MATCH"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
@@ -24316,8 +24307,7 @@ class Timing(Game):
             p.setPen(QColor(TEXT_DIM))
             lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, faster and faster."),
                      tr("3. Press STOP when it is on the target."),
-                     tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0"),
-                     tr("The target moves every round. Practice makes the difference.")]
+                     tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0")]
             y = r.top() + S(48)
             for text in lines:
                 box = p.fontMetrics().boundingRect(0, 0, int(r.width() - S(36)), 1000, int(Qt.TextFlag.TextWordWrap), text)
@@ -24921,7 +24911,7 @@ def game_feature(name: str) -> str:
     return {"Roulette": "roulette", "Free spin": "wheel"}.get(name, "casino")
 
 
-SUB_FEATURES = {"minigames": "minigames", "memory": "minigames", "g2048": "minigames", "sweeper": "minigames",
+SUB_FEATURES = {"minigames": "minigames", "memory": "minigames", "blocks": "minigames", "sweeper": "minigames",
                 "duels": "golf", "duel_run": "golf", "flip": "coinflip", "advent": "advent", "scratch": "scratch"}
 
 
@@ -25035,21 +25025,6 @@ class GameTile(QWidget):
                     lit = (row, col) in ((0, 1), (1, 0), (2, 2))
                     p.setBrush(alpha(ui.accent, 0.9) if lit else QColor("#1A2125"))
                     p.drawRoundedRect(QRectF(art.x() - S(16) + col * S(11), art.y() + S(10) - row * S(8), S(9), S(6)), S(1.5), S(1.5))
-        elif self.name == "Keno":                              # a grid of balls, some drawn
-            for i in range(12):
-                on = i in (1, 4, 6, 11)
-                p.setBrush(QColor("#E8C26A") if on else QColor("#1A2125"))
-                p.drawEllipse(QPointF(art.x() - S(15) + (i % 4) * S(10), art.y() - S(10) + (i // 4) * S(10)), S(4), S(4))
-        elif self.name == "Limbo":                             # a ring and a rising number
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.setPen(QPen(alpha("#FFFFFF", 0.15), S(3)))
-            p.drawEllipse(art, S(14), S(14))
-            p.setPen(QPen(ui.accent, S(3), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-            p.drawArc(QRectF(art.x() - S(14), art.y() - S(14), S(28), S(28)), 90 * 16, -250 * 16)
-            p.setPen(QColor("#FFFFFF"))
-            p.setFont(font(8, QFont.Weight.Black))
-            p.drawText(QRectF(art.x() - S(14), art.y() - S(8), S(28), S(16)), int(Qt.AlignmentFlag.AlignCenter), "×2")
-            p.setPen(Qt.PenStyle.NoPen)
         else:                                                  # Hi-Lo: two cards and an arrow
             for k, (dx, txt) in enumerate(((-S(8), "7"), (S(8), "?"))):
                 p.setBrush(QColor("#F4F5F6") if k == 0 else alpha(ui.accent, 0.55))
@@ -25185,8 +25160,8 @@ class QuestRow(QWidget):
 class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
-    NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Tower", "Keno", "Limbo",
-             "Free spin"]
+    NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Tower", "Free spin"]
+    PICKER = len(NAMES) - 1                  # 4.1: the free spin is not in the bar of games (its row in the lobby opens it)
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -25233,9 +25208,9 @@ class GamesPage(Page):
                 return build_advent(self, lay)
             if sub == "scratch":
                 return self._scratch(lay)
-            if sub == "g2048":                                       # 4.0: the new minigames
+            if sub == "blocks":                                      # 4.1: Block Blast (in place of 2048)
                 pass
-                return build_2048(self, lay)
+                return build_blocks(self, lay)
             if sub == "sweeper":
                 pass
                 return build_sweeper(self, lay)
@@ -25365,7 +25340,7 @@ class GamesPage(Page):
         card = ScratchCard(self)
         lay.addWidget(card)
         hours = int(float(self.ctx.econ.cfg.get("scratch_hours", 12) or 12))
-        lay.addWidget(Label(tr("One card every {h} hours. The prize is yours as soon as the card is revealed.", h=hours),
+        lay.addWidget(Label(tr("One card every {h} hours.", h=hours),
                             10.5, TEXT_DIM, wrap_w=self.W))
         odds = getattr(self.ctx, "scratch_odds", None)            # 4.0: the server's own odds, never a copy
         if odds is None:
@@ -25567,16 +25542,16 @@ class GamesPage(Page):
         top.addWidget(CoinBar(ctx, keys=True), 1)
         lay.addLayout(top)
         lock_strip(ctx, lay, "casino", self.W)                   # 4.0: paused by the admins
-        which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < len(self.NAMES) else 0
+        which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < self.PICKER else 0
         if getattr(ctx, "casino_pick", None) is not None:           # a tile of the lobby was clicked
             which, ctx.casino_pick = ctx.casino_pick, None
-        self.seg = GamePicker([tr(n) for n in self.NAMES], which)
+        self.seg = GamePicker([tr(n) for n in self.NAMES[:self.PICKER]], min(which, self.PICKER - 1))
         self.seg.changed.connect(self._choose)
         lay.addWidget(self.seg)
         pass
         pass
         self.games = [Blackjack(self), Plinko(self), Bombs(self), Roulette(self), Dice(self), Timing(self), Rocket(self),
-                      HiLo(self), Tower(self), Keno(self), Limbo(self), Daily(self)]
+                      HiLo(self), Tower(self), Daily(self)]
         for g in self.games:
             g.setVisible(False)
             lay.addWidget(g)
@@ -25668,8 +25643,11 @@ class GamesPage(Page):
     # -- which game
     def _choose(self, i: int) -> None:
         if self.game is not None and self.game.busy:              # finish the round first
-            return self.seg.set_index(self.games.index(self.game))
-        self.ctx.cfg["game"] = i
+            return self.seg.set_index(min(self.games.index(self.game), self.PICKER - 1))
+        spin = i >= self.PICKER
+        self.seg.setVisible(not spin)                             # the free spin shows alone, without the bar
+        if not spin:
+            self.ctx.cfg["game"] = i
         for n, g in enumerate(self.games):
             g.setVisible(n == i)
             if self.opts[n] is not None:
@@ -25738,13 +25716,13 @@ class GamesPage(Page):
         self.sync()
 
     def on_hide(self) -> None:
-        if getattr(self.ctx, "games_sub", None) in ("g2048", "duel_run") or getattr(self.ctx, "mini_open", False):
+        if getattr(self.ctx, "games_sub", None) == "duel_run" or getattr(self.ctx, "mini_open", False):
             QTimer.singleShot(0, self._keys_back)       # (not on a rebuild of the same screen)
 
     def _keys_back(self) -> None:
         """The keyboard goes back to the game you play once no keyboard game is on screen."""
         ctx = self.ctx
-        still = ctx.window.showing("games") and (getattr(ctx, "games_sub", None) in ("g2048", "duel_run")
+        still = ctx.window.showing("games") and (getattr(ctx, "games_sub", None) == "duel_run"
                                                  or getattr(ctx, "mini_open", False))
         if not still:
             ctx.window.allow_keys(False)
@@ -26333,12 +26311,12 @@ def build_messages(page, lay) -> None:
 
 # ================================================================ leaderboards
 BOARDS = [("coins", "Richest"), ("worth", "Worth"), ("level", "Level"), ("badges", "Badges"), ("hours", "Hours"),
-          ("streak", "Streak"), ("tap", "Beat Tap"), ("park", "Parking"), ("memory", "Memory"), ("g2048", "2048"),
+          ("streak", "Streak"), ("tap", "Beat Tap"), ("park", "Parking"), ("memory", "Memory"), ("blocks", "Block Blast"),
           ("sweeper", "Minesweeper")]
 BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are worth", "badges": "Different badges owned",
                "hours": "Hours with Rubenium", "streak": "Days in a row of daily rewards", "tap": "Best Beat Tap score (%)",
                "park": "Parking puzzles solved", "memory": "Memory games finished", "level": "Highest level (by XP)",
-               "g2048": "Best 2048 score", "sweeper": "Fastest Minesweeper clear"}
+               "blocks": "Best Block Blast score", "sweeper": "Fastest Minesweeper clear"}
 
 
 class LeaderRow(QWidget):
@@ -26419,7 +26397,7 @@ def build_leaders(page, lay) -> None:
     lay.addWidget(pick)
     kind = BOARDS[min(k, len(BOARDS) - 1)][0]
     mode = int(getattr(ctx, "board_mode", 0) or 0)
-    if kind in ("g2048", "sweeper"):                       # 4.0: the new minigames, one board per mode
+    if kind in ("blocks", "sweeper"):                       # 4.0: the new minigames, one board per mode
         pass
         mseg = Segmented([tr(m) for m in MODES[kind]], mode)
         mseg.changed.connect(lambda i: (setattr(ctx, "board_mode", i), setattr(ctx, "board_data", None), ctx.reload_page()))
@@ -26433,7 +26411,7 @@ def build_leaders(page, lay) -> None:
                 ctx.board_data = (key, rows)
                 if ctx.window.showing("friends") and int(getattr(ctx, "social_tab", 0) or 0) == 3:
                     ctx.reload_page("friends")
-    if kind in ("g2048", "sweeper"):
+    if kind in ("blocks", "sweeper"):
         ctx.online.ask("rb_mg_board", {"game": kind, "mode": mode, "friends": friends}, got)
     else:
         ctx.online.ask("rb_leaders", {"kind": kind, "friends": friends}, got)
@@ -28106,11 +28084,9 @@ def build_activity(page, lay) -> None:
         if g.get("state") == "live" and not g.get("joined"):
             rows.append(("#FF5CC8", tr("Live giveaway: {title}", title=g.get("title", "")), tr("Open"), lambda: go(ctx, "giveaway"), None))
             break
-    lay.addWidget(Label(tr("ONLINE ACTIVITY"), 9.5, TEXT_FAINT, weight=QFont.Weight.Bold))
-    if not rows:
-        lay.addWidget(ActivityRow("#5A626B", tr("All quiet. Start a game others can join:"), tr("Play"),
-                                  lambda: go(ctx, "flip"), (tr("Mini Golf"), lambda: go(ctx, "golf"))))
+    if not rows:                                    # 4.1: nothing going on: no heading, no filler row
         return
+    lay.addWidget(Label(tr("ONLINE ACTIVITY"), 9.5, TEXT_FAINT, weight=QFont.Weight.Bold))
     for colour, text, action, fn, second in rows[:6]:
         lay.addWidget(ActivityRow(colour, text, action, fn, second))
 
@@ -29824,8 +29800,8 @@ class AdminPage(Page):
                 "market": ("Market", "Buying, selling and listing"),
                 "coinflip": ("Coinflip", "Open coinflips are cancelled, items go back"),
                 "roulette": ("Roulette", ""),
-                "casino": ("Other casino games", "Blackjack, Plinko, Bombs, Dice, Timing, Rocket, Hi-Lo, Tower, Keno, Limbo"),
-                "minigames": ("Mini games", "Beat Tap, Memory, 2048, Minesweeper and the others"),
+                "casino": ("Other casino games", "Blackjack, Plinko, Bombs, Dice, Timing, Rocket, Hi-Lo, Tower"),
+                "minigames": ("Mini games", "Beat Tap, Memory, Block Blast, Minesweeper and the others"),
                 "golf": ("Mini Golf", "Running matches are cancelled and bets given back"),
                 "wheel": ("Free spin wheel", ""), "scratch": ("Scratch cards", ""), "advent": ("Advent calendar", ""),
                 "notifications": ("Notifications", "Gift and system messages"),
@@ -31034,7 +31010,7 @@ def build_history(page, lay) -> None:
     lay.addLayout(top)
     items = list(reversed(ctx.notifier.history()))
     if not items:
-        return lay.addWidget(Label(tr("Nothing yet. Trades, offers, messages, duels and rewards will show here."), 11,
+        return lay.addWidget(Label(tr("Nothing yet."), 11,
                                    TEXT_DIM, wrap_w=page.W))
     day0 = time.localtime()
     last = None
@@ -32580,114 +32556,136 @@ def paint_garland(p: QPainter, r: QRectF, now: float, sag: float) -> None:
 # --------------------------------------------------------------------------- #
 # the way in, on the Games lobby
 # --------------------------------------------------------------------------- #
-class AdventCard(QWidget):
-    """A small winter night: snow, a tree, a present, and today's news."""
+class AdventBanner(QWidget):
+    """2027 LIMITED · ADVENT CALENDAR: a white snowy banner, on the Games lobby (4.1: it was on the Shop's
+    Inventory). While the calendar is open it opens it; before, hovering it greys it out: coming soon."""
 
     def __init__(self, page) -> None:
         super().__init__()
         self.page, self.ctx = page, page.ctx
-        self.setFixedHeight(S(70))
+        self.setFixedSize(page.W, S(84))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._hover = Tween(self, on_change=self.update)
-        self._t = QTimer(self)
-        self._t.setInterval(80)
-        self._t.timeout.connect(self.update)
-        self.snow = Snow(30, 3)
+        self._hover = 0.0
+        self._want = 0.0
+        self._timer = QTimer(self)
+        self._timer.setInterval(40)
+        self._timer.timeout.connect(self._step)
 
     def showEvent(self, _e) -> None:
-        self._t.start()
+        self._timer.start()
 
     def hideEvent(self, _e) -> None:
-        self._t.stop()
+        self._timer.stop()
 
     def enterEvent(self, _e) -> None:
-        self._hover.to(1.0, 140)
+        self._want = 1.0
 
     def leaveEvent(self, _e) -> None:
-        self._hover.to(0.0, 220)
+        self._want = 0.0
+
+    def is_open(self) -> bool:
+        d = getattr(self.ctx, "advent_data", None) or {}
+        return bool(d.get("open") or d.get("admin"))            # the admins can always go in
 
     def mousePressEvent(self, e) -> None:
         e.accept()
 
     def mouseReleaseEvent(self, e) -> None:
-        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
-            self.page.open_sub("advent")
+        if e.button() != Qt.MouseButton.LeftButton or not self.rect().contains(e.position().toPoint()):
+            return
+        if self.is_open():
+            return self.page.open_sub("advent")
+        sfx.play("off")
+        self.ctx.toast(tr("The Advent Calendar opens on 1 December"))
+
+    def _step(self) -> None:
+        self._hover += (self._want - self._hover) * 0.25
+        self.update()
 
     def paintEvent(self, _e) -> None:
+        from PyQt6.QtGui import QPainterPath
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
         now = time.monotonic()
+        live = self.is_open()
+        lift = self._hover if live else 0.0                         # open: hovering makes it glow brighter
+        h = 0.0 if live else self._hover                            # not yet: hovering greys it out
+        r = QRectF(self.rect()).adjusted(S(3), S(3), -S(3), -S(3))
+        glow = 0.35 + 0.25 * math.sin(now * 2) + 0.4 * lift        # a soft icy glow around it
+        for k in (3, 2, 1):
+            p.setPen(QPen(alpha("#BFE6FF", glow * (1 - h) * 0.18 * k), S(k * 1.5)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(r.adjusted(-k, -k, k, k), S(14), S(14))
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0.0, mix(QColor("#FFFFFF"), QColor("#8A9096"), h))
+        g.setColorAt(0.55, mix(QColor("#EAF6FF"), QColor("#767C82"), h))
+        g.setColorAt(1.0, mix(QColor("#C9E6FA"), QColor("#5E646A"), h))
         clip = QPainterPath()
-        clip.addRoundedRect(r, S(13), S(13))
-        p.save()
+        clip.addRoundedRect(r, S(14), S(14))
         p.setClipPath(clip)
-        g = QLinearGradient(r.topLeft(), r.bottomLeft())
-        g.setColorAt(0, QColor(NIGHT_TOP))
-        g.setColorAt(1, QColor(NIGHT_LOW))
-        p.fillRect(r, g)
-        hill = QPainterPath(QPointF(r.left(), r.bottom()))
-        hill.lineTo(r.left(), r.bottom() - S(10))
-        hill.quadTo(QPointF(r.left() + r.width() * 0.35, r.bottom() - S(22)), QPointF(r.left() + r.width() * 0.7, r.bottom() - S(9)))
-        hill.quadTo(QPointF(r.left() + r.width() * 0.88, r.bottom() - S(3)), QPointF(r.right(), r.bottom() - S(12)))
-        hill.lineTo(r.right(), r.bottom())
-        hill.closeSubpath()
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor("#E3F0FA"))
-        p.drawPath(hill)
-        paint_tree(p, QPointF(r.right() - S(30), r.bottom() - S(8)), S(48), now, 4)
-        self.snow.paint(p, r, now, 0.85)
-        p.restore()
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.setPen(QPen(alpha(GOLD_TEXT, 0.45 + 0.45 * self._hover.level), S(1.4)))
-        p.drawRoundedRect(r, S(13), S(13))
-        c = QPointF(r.left() + S(32), r.center().y() + S(2))         # a present that bobs a little
-        c.setY(c.y() + math.sin(now * 2.2) * S(1.5) * (0.3 + self._hover.level))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(RED))
-        p.drawRoundedRect(QRectF(c.x() - S(15), c.y() - S(10), S(30), S(24)), S(4), S(4))
-        p.setBrush(QColor(GOLD_TEXT))
-        p.drawRect(QRectF(c.x() - S(3), c.y() - S(10), S(6), S(24)))
-        p.drawRect(QRectF(c.x() - S(15), c.y() - S(1), S(30), S(5)))
-        p.setPen(QPen(QColor(GOLD_TEXT), S(2)))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawEllipse(QPointF(c.x() - S(5), c.y() - S(14)), S(5), S(3.5))
-        p.drawEllipse(QPointF(c.x() + S(5), c.y() - S(14)), S(5), S(3.5))
-        data = getattr(self.ctx, "advent_data", None) or {}
-        today = int(data.get("today") or 0)
+        p.fillPath(clip, g)
+        p.setPen(Qt.PenStyle.NoPen)                                 # snowy hills at the bottom
+        for k, (col, hh) in enumerate((("#D6ECFB", 0.72), ("#FFFFFF", 0.84))):
+            path = QPainterPath(QPointF(r.left(), r.bottom()))
+            for x in range(0, int(r.width()) + 8, 8):
+                path.lineTo(r.left() + x, r.top() + r.height() * hh + math.sin(x / r.width() * 6 + k * 2) * S(4))
+            path.lineTo(r.right(), r.bottom())
+            p.setBrush(mix(QColor(col), QColor("#6E747A"), h))
+            p.drawPath(path)
+        for i in range(40):                                         # falling snow
+            fr = math.sin(i * 12.9898) * 43758.5453
+            fx = fr - math.floor(fr)
+            fy = (fx * 7.3 + now * (0.08 + (i % 5) * 0.025)) % 1.0
+            x = r.left() + (fx + 0.03 * math.sin(now + i)) * r.width()
+            size = S(1.2) + (i % 4) * S(0.6)
+            p.setBrush(alpha("#9FCBEA" if i % 3 else "#FFFFFF", 0.9 * (1 - h * 0.6)))
+            p.drawEllipse(QPointF(x, r.top() + fy * r.height()), size, size)
+        tag = QRectF(r.left() + S(14), r.top() + S(12), S(96), S(20))  # the red "2027 LIMITED" ribbon
+        p.setBrush(mix(QColor("#E0303E"), QColor("#55595D"), h))
+        p.drawRoundedRect(tag, S(10), S(10))
         p.setPen(QColor("#FFFFFF"))
-        p.setFont(font(14, QFont.Weight.ExtraBold))
-        p.drawText(QRectF(r.left() + S(60), r.top() + S(10), r.width() - S(120), S(22)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("Advent calendar"))
-        p.setFont(font(10.5, QFont.Weight.DemiBold))
-        p.setPen(QColor("#FFE7A8"))
-        if 1 <= today <= 25:
-            claimed = any(d.get("day") == today and d.get("claimed") for d in data.get("days") or [])
-            sub = tr("Door {n} is open: come and see!", n=today) if not claimed else tr("Door {n} opened. Come back tomorrow!", n=today)
-        elif today > 25:
-            sub = tr("Merry Christmas! See you next year.")
-        else:
-            left = starts_in(data)
-            sub = tr("Opens in {t} · door 1 is a gift for everyone", t=countdown_text(left)) if left else \
-                tr("Opens on 1 December · door 1 is a gift for everyone")
-        p.drawText(QRectF(r.left() + S(60), r.top() + S(34), r.width() - S(120), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
-                   p.fontMetrics().elidedText(sub, Qt.TextElideMode.ElideRight, int(r.width() - S(120))))
+        p.setFont(font(9.5, QFont.Weight.Black, 1.0))
+        p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), "2027 LIMITED")
+        p.setPen(mix(QColor("#14324D"), QColor("#2A2E32"), h))
+        p.setFont(font(17, QFont.Weight.Black, 1.2))
+        p.drawText(QRectF(r.left() + S(14), r.top() + S(34), r.width() - S(28), S(28)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("ADVENT CALENDAR"))
+        for i in range(3):                                          # three gift boxes on the right
+            bx = QRectF(r.right() - S(40) - i * S(30), r.top() + S(22) + (i % 2) * S(6), S(24), S(24))
+            bob = math.sin(now * 2 + i) * S(1.5) * (1 - h)
+            bx.translate(0, bob)
+            col = ["#E0303E", "#2E9E5B", "#2D7FD8"][i]
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(mix(QColor(col), QColor("#6E747A"), h))
+            p.drawRoundedRect(bx, S(4), S(4))
+            p.setBrush(mix(QColor("#FFE08A"), QColor("#9A9EA2"), h))
+            p.drawRect(QRectF(bx.center().x() - S(2), bx.top(), S(4), bx.height()))
+            p.drawRect(QRectF(bx.left(), bx.center().y() - S(2), bx.width(), S(4)))
+        if h > 0.02:                                                # hovering: greyed out, "Coming soon"
+            p.setBrush(alpha("#3A3F44", 0.85 * h))
+            p.drawRect(r)
+            p.setPen(alpha("#FFFFFF", h))
+            p.setFont(font(15, QFont.Weight.Black, 1.5))
+            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), tr("COMING SOON"))
+        p.setClipping(False)
 
 
 def advent_card(page, lay) -> None:
-    """On the Games lobby: everyone sees it (4.0), from November to the end of December."""
+    """On the Games lobby: the big snowy banner (4.1), for everyone from November to the end of December, and
+    for the admins (they preview the calendar) whenever the server lets them in."""
     ctx = page.ctx
     data = getattr(ctx, "advent_data", None)
     if data is None:
         def then(changed: bool) -> None:
-            if changed and (ctx.advent_data or {}).get("open") and ctx.window.showing("games") \
+            d = ctx.advent_data or {}
+            if changed and (d.get("open") or d.get("admin")) and ctx.window.showing("games") \
                     and not getattr(ctx, "games_sub", None) and not ctx.casino:
                 ctx.reload_page("games")
         if ctx.online.logged_in() and not ctx.econ.server_old:
             load_advent(ctx, then)
         return
-    if data.get("open"):
-        lay.addWidget(AdventCard(page))
+    if data.get("open") or data.get("admin"):
+        lay.addWidget(AdventBanner(page))
 
 
 # --------------------------------------------------------------------------- #
@@ -33183,9 +33181,7 @@ def build_advent(page, lay) -> None:
             go.clicked.connect(lambda: cal.claim(today))
             lay.addWidget(go)
     lay.addWidget(cal)
-    lay.addWidget(Label(tr("One door a day from 1 to 24 December, and the big door on Christmas Day. Door 1 is a "
-                           "Legendary frame for everyone. Doors open on their own day only (Paris time)."), 10.5,
-                        TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("One door a day, 1 to 25 December."), 10.5, TEXT_DIM, wrap_w=page.W))
     if data.get("admin") and not today:
         lay.addWidget(Label(tr("Admin preview: right-click a door to peek behind it."), 10.5, GOLD_TEXT, wrap_w=page.W))
 
@@ -33731,8 +33727,6 @@ def build_flip(page, lay) -> None:
     limit = int(data.get("max_items") or 6)
     rng = float(data.get("range") or 0.1)
     lay.addWidget(Label(tr("CREATE A COINFLIP"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
-    lay.addWidget(Label(tr("1. Create it and pick your side  ·  2. Put in your items and confirm  ·  3. Someone joins and "
-                           "matches them  ·  4. The coin flips"), 10, TEXT_DIM, wrap_w=page.W))
     row = hbox(spacing=6)
     side = Segmented([tr("Black"), tr("White")], int(getattr(ctx, "flip_side", 0) or 0))
     side.changed.connect(lambda i: setattr(ctx, "flip_side", i))
@@ -33752,9 +33746,8 @@ def build_flip(page, lay) -> None:
     make.clicked.connect(create)
     row.addWidget(make)
     lay.addLayout(row)
-    lay.addWidget(Label(tr("Up to {n} items. The other player must put in about the same worth (within {r}%). The winner "
-                           "takes everything. Your chance is your share of the pot, between 49% and 51%. Bots play by the "
-                           "same rules and odds.", n=limit, r=int(round(rng * 100))), 10, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Up to {n} items, same worth on both sides (±{r}%). Your chance is your share of the pot. "
+                           "The winner takes everything.", n=limit, r=int(round(rng * 100))), 10, TEXT_DIM, wrap_w=page.W))
     flips = [f for f in (data.get("flips") or []) if not f.get("mine")]
     lay.addWidget(Label(tr("OPEN COINFLIPS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
     if not any(f.get("state") == "open" for f in flips):
@@ -34447,8 +34440,8 @@ import math
 import random
 import time
 
-from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtCore import QRectF, QTimer, Qt
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen
 
 
 RNG = random.SystemRandom()
@@ -34617,419 +34610,343 @@ class Tower(Game):
                        tr("{t} tiles, {b} bomb a row · top pays {n}", t=tiles, b=bombs, n=coins_text(int(bet * self.mult_at(self.ROWS)))))
 
 
-# --------------------------------------------------------------------------- #
-# Keno
-# --------------------------------------------------------------------------- #
-KENO = {1: [0, 3.8], 2: [0, 1.7, 5], 3: [0, 1, 2.4, 15], 4: [0, 0, 2.3, 8.7, 47], 5: [0, 0, 1.5, 4, 18, 90],
-        6: [0, 0, 0.83, 3, 8.3, 44, 260], 7: [0, 0, 0.53, 2.1, 5.3, 19, 110, 530], 8: [0, 0, 0, 1.7, 4.4, 12, 50, 220, 1100],
-        9: [0, 0, 0, 1.3, 2.9, 7.3, 24, 97, 430, 2400], 10: [0, 0, 0, 1.1, 2.1, 4.6, 12, 46, 190, 930, 4600]}
-
-
-class Keno(Game):
-    def __init__(self, page) -> None:
-        super().__init__(page)
-        self.picks: list = [3, 11, 17, 24, 32]
-        self.drawn: list = []
-        self.shown = 0
-        self.hits = 0
-        self._t0 = 0.0
-        self.cells: list = []
-
-    def mouseReleaseEvent(self, e) -> None:
-        if self.busy:
-            return
-        for rect, n in self.cells:
-            if rect.contains(e.position()):
-                if n in self.picks:
-                    self.picks.remove(n)
-                elif len(self.picks) < 10:
-                    self.picks.append(n)
-                else:
-                    return self.ctx.toast(tr("10 numbers at most"), "warn")
-                self.drawn = []
-                sfx.play("pick")
-                self.page.sync()
-                self.update()
-                return
-
-    def random_pick(self) -> None:
-        if self.busy:
-            return
-        k = len(self.picks) or 5
-        self.picks = RNG.sample(range(1, 41), k)
-        self.drawn = []
-        sfx.play("pick")
-        self.update()
-
-    def clear(self) -> None:
-        if not self.busy:
-            self.picks, self.drawn = [], []
-            self.page.sync()
-            self.update()
-
-    def play(self) -> None:
-        if not self.picks:
-            return self.ctx.toast(tr("Pick 1 to 10 numbers"), "warn")
-        if self.busy or self.waiting or not self.take():
-            return
-        self.drawn = []
-        self.ask("rb_keno", {"bet": self.stake, "picks": sorted(self.picks)}, self._drawn, once=True, refund=self.stake)
-
-    def _drawn(self, ans: dict) -> None:
-        self.drawn = list(ans.get("drawn") or [])
-        self.hits = int(ans.get("hits") or 0)
-        self._paid = int(ans.get("paid") or 0)
-        self._t0 = time.monotonic()
-        self.animate(10 * 0.22 + 0.6)
-        QTimer.singleShot(int(10 * 220 + 300), lambda: self.finish(self._paid))
-
-    def buttons(self) -> list:
-        return [(tr("Random"), "ghost", self.random_pick, not self.busy), (tr("Clear"), "ghost", self.clear, not self.busy),
-                (tr("Draw"), "primary", self.play, not self.busy and bool(self.picks))]
-
-    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
-        self.cells = []
-        shown = len(self.drawn) if not self._t0 else min(len(self.drawn), int((now - self._t0) / 0.22))
-        if shown != self.shown and shown > self.shown:
-            sfx.play("pick")
-        self.shown = shown
-        visible = set(self.drawn[:shown])
-        grid_w = r.width() * 0.66
-        cw = (grid_w - S(14) - S(3) * 7) / 8
-        ch = (r.height() - S(20) - S(3) * 4) / 5
-        for n in range(1, 41):
-            row, col = (n - 1) // 8, (n - 1) % 8
-            box = QRectF(r.left() + S(8) + col * (cw + S(3)), r.top() + S(10) + row * (ch + S(3)), cw, ch)
-            mine, out = n in self.picks, n in visible
-            if mine and out:
-                fill, pen = QColor(WIN), QColor("#FFFFFF")
-            elif out:
-                fill, pen = mix(QColor(GOLD_TEXT), QColor("#000000"), 0.45), QColor("#FFFFFF")
-            elif mine:
-                fill, pen = mix(ui.accent, QColor("#000000"), 0.35), QColor("#FFFFFF")
-            else:
-                fill, pen = QColor("#1A2125"), QColor(TEXT_DIM)
-            p.setPen(QPen(alpha("#FFFFFF", 0.1), 1))
-            p.setBrush(fill)
-            p.drawRoundedRect(box, S(5), S(5))
-            p.setPen(pen)
-            p.setFont(font(10, QFont.Weight.Bold))
-            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), str(n))
-            self.cells.append((box, n))
-        # the prize table for this many picks
-        k = len(self.picks)
-        tx = r.left() + grid_w + S(4)
-        tw = r.right() - tx - S(8)
-        p.setFont(font(10, QFont.Weight.Bold))
-        p.setPen(QColor(TEXT))
-        p.drawText(QRectF(tx, r.top() + S(8), tw, S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("{n} picked", n=k))
-        if k:
-            bet = self.stake if self.busy else self.page.bet()
-            table = KENO[k]
-            rows = [(h, m) for h, m in enumerate(table) if m > 0]
-            y = r.top() + S(28)
-            rh = min(S(18), (r.height() - S(60)) / max(1, len(rows)))
-            got = self.hits if self.drawn and shown >= len(self.drawn) else -1
-            for h, m in reversed(rows):
-                box = QRectF(tx, y, tw, rh - S(2))
-                if h == got:
-                    p.setPen(Qt.PenStyle.NoPen)
-                    p.setBrush(alpha(WIN, 0.3))
-                    p.drawRoundedRect(box, S(4), S(4))
-                p.setFont(font(9, QFont.Weight.DemiBold))
-                p.setPen(QColor(TEXT_DIM))
-                p.drawText(box.adjusted(S(4), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), tr("{h} hits", h=h))
-                p.setPen(QColor(GOLD_TEXT))
-                p.drawText(box.adjusted(0, 0, -S(4), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                           "×" + _num(m).rstrip("0").rstrip(",.") if m != int(m) else f"×{int(m)}")
-                y += rh
-            p.setFont(font(8.5, QFont.Weight.DemiBold))
-            p.setPen(QColor(TEXT_FAINT))
-            p.drawText(QRectF(tx, r.bottom() - S(30), tw, S(26)), int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap),
-                       tr("Best prize {n}", n=coins_text(int(bet * table[-1]))))
-        else:
-            p.setFont(font(9.5, QFont.Weight.DemiBold))
-            p.setPen(QColor(TEXT_DIM))
-            p.drawText(QRectF(tx, r.top() + S(30), tw, S(80)), int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap),
-                       tr("Click 1 to 10 numbers"))
-
-
-# --------------------------------------------------------------------------- #
-# Limbo
-# --------------------------------------------------------------------------- #
-class Limbo(Game):
-    TARGETS = [1.5, 2.0, 3.0, 5.0, 10.0, 25.0, 100.0]
-
-    def __init__(self, page) -> None:
-        super().__init__(page)
-        self.choice = 1
-        self.result = None
-        self.history: list = []
-        self._t0 = 0.0
-
-    def options(self):
-        return ["×" + (f"{t:g}".replace(".", ",") if lang() == "fr" else f"{t:g}") for t in self.TARGETS], self.choice
-
-    def set_option(self, i: int) -> None:
-        if not self.busy:
-            self.choice = i
-            self.update()
-
-    def target(self) -> float:
-        return self.TARGETS[self.choice]
-
-    def play(self) -> None:
-        if self.busy or self.waiting or not self.take():
-            return
-        self.result = None
-        self.ask("rb_limbo", {"bet": self.stake, "target": self.target()}, self._got, once=True, refund=self.stake)
-
-    def _got(self, ans: dict) -> None:
-        self.result = float(ans.get("result") or 1)
-        self._win = bool(ans.get("win"))
-        self._paid = int(ans.get("paid") or 0)
-        self._t0 = time.monotonic()
-        self.animate(1.6)
-        QTimer.singleShot(1300, self._done)
-
-    def _done(self) -> None:
-        self.history.insert(0, (self.result, self._win))
-        del self.history[10:]
-        self.finish(self._paid)
-
-    def buttons(self) -> list:
-        return [(tr("Play  ·  target ×{t}", t=_num(self.target()).rstrip("0").rstrip(",.")), "primary", self.play, not self.busy)]
-
-    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
-        bet = self.stake if self.busy else self.page.bet()
-        tgt = self.target()
-        p.setFont(font(10.5, QFont.Weight.Bold))
-        p.setPen(QColor(TEXT_DIM))
-        chance = 97 / tgt
-        p.drawText(QRectF(r.left(), r.top() + S(10), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("Target ×{t} · chance {c}% · wins {n}", t=_num(tgt).rstrip("0").rstrip(",."),
-                      c=_num(chance).rstrip("0").rstrip(",."), n=coins_text(int(bet * tgt))))
-        c = QPointF(r.center().x(), r.center().y() - S(6))
-        shown = None
-        if self.result is not None:
-            k = min(1.0, (now - self._t0) / 1.2) if self._t0 else 1.0
-            shown = 1 + (self.result - 1) * ease_out(k, 3)
-        # a gauge: rising number, ring filling towards the target
-        rad = S(70)
-        p.setPen(QPen(alpha("#FFFFFF", 0.08), S(10)))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawEllipse(c, rad, rad)
-        if shown is not None:
-            frac = min(1.0, math.log(max(shown, 1)) / math.log(max(tgt, 1.01)))
-            done = self.result is not None and (now - self._t0) > 1.2
-            col = QColor(WIN) if done and self._win else QColor(LOSE) if done else ui.accent
-            p.setPen(QPen(col, S(10), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-            p.drawArc(QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad), 90 * 16, int(-360 * 16 * frac))
-            p.setPen(col)
-        else:
-            p.setPen(QColor(TEXT))
-        p.setFont(font(30, QFont.Weight.Black))
-        p.drawText(QRectF(c.x() - rad, c.y() - S(24), 2 * rad, S(40)), int(Qt.AlignmentFlag.AlignCenter),
-                   "×" + _num(shown if shown is not None else 1.0))
-        p.setFont(font(9.5, QFont.Weight.Bold))
-        p.setPen(QColor(GOLD_TEXT))
-        p.drawText(QRectF(c.x() - rad, c.y() + S(16), 2 * rad, S(16)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("target ×{t}", t=_num(tgt).rstrip("0").rstrip(",.")))
-        x = r.left() + S(12)
-        for res, won in self.history:
-            txt = "×" + _num(res)
-            p.setFont(font(9, QFont.Weight.Bold))
-            w = p.fontMetrics().horizontalAdvance(txt) + S(12)
-            if x + w > r.right() - S(8):
-                break
-            box = QRectF(x, r.bottom() - S(26), w, S(18))
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(alpha(WIN if won else LOSE, 0.25))
-            p.drawRoundedRect(box, S(9), S(9))
-            p.setPen(QColor(WIN if won else LOSE))
-            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), txt)
-            x += w + S(4)
-
-
 # ==================================================================================================
 # SECTION: games5
 # ==================================================================================================
+import math
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import QWidget
 
 
-MODES = {"g2048": ["Classic 4×4", "Relaxed 5×5", "Hard 3×3"], "sweeper": ["Easy", "Medium", "Hard"]}
-SIZES_2048 = [4, 5, 3]
+MODES = {"blocks": ["Classic 8×8", "Relaxed 10×10", "Hard 7×7"], "sweeper": ["Easy", "Medium", "Hard"]}
+SIZES_BLOCKS = [8, 10, 7]
+BLOCK_PAY = [(5, 300), (8, 200), (3, 360)]          # score ÷ n, up to … coins (the server's own numbers)
 
 
-# ================================================================ 2048 (the rules are the server's, step for step)
+# ================================================================ Block Blast (the rules are the server's, step for step)
 def lcg(s: int) -> int:
     return (s * 1103515245 + 12345) % 2147483648
 
 
-class Game2048:
+# every piece as (x, y) cells; the server keeps the same list in the same order (cells written y*5+x)
+PIECES = [
+    [(0, 0)],
+    [(0, 0), (1, 0)], [(0, 0), (0, 1)],
+    [(0, 0), (1, 0), (2, 0)], [(0, 0), (0, 1), (0, 2)],
+    [(0, 0), (1, 0), (0, 1)], [(0, 0), (1, 0), (1, 1)], [(0, 0), (0, 1), (1, 1)], [(1, 0), (0, 1), (1, 1)],
+    [(0, 0), (1, 0), (2, 0), (3, 0)], [(0, 0), (0, 1), (0, 2), (0, 3)],
+    [(0, 0), (1, 0), (0, 1), (1, 1)],
+    [(0, 0), (0, 1), (0, 2), (1, 2)], [(0, 0), (1, 0), (2, 0), (0, 1)], [(0, 0), (1, 0), (1, 1), (1, 2)],
+    [(2, 0), (0, 1), (1, 1), (2, 1)],
+    [(1, 0), (1, 1), (1, 2), (0, 2)], [(0, 0), (0, 1), (1, 1), (2, 1)], [(0, 0), (1, 0), (0, 1), (0, 2)],
+    [(0, 0), (1, 0), (2, 0), (2, 1)],
+    [(0, 0), (1, 0), (2, 0), (1, 1)], [(1, 0), (0, 1), (1, 1), (2, 1)], [(0, 0), (0, 1), (0, 2), (1, 1)],
+    [(1, 0), (1, 1), (1, 2), (0, 1)],
+    [(1, 0), (2, 0), (0, 1), (1, 1)], [(0, 0), (1, 0), (1, 1), (2, 1)], [(0, 0), (0, 1), (1, 1), (1, 2)],
+    [(1, 0), (1, 1), (0, 1), (0, 2)],
+    [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)], [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)],
+    [(0, 0), (0, 1), (0, 2), (1, 2), (2, 2)], [(0, 0), (1, 0), (2, 0), (0, 1), (0, 2)],
+    [(0, 0), (1, 0), (2, 0), (2, 1), (2, 2)], [(2, 0), (2, 1), (2, 2), (1, 2), (0, 2)],
+    [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)], [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2)],
+    [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2), (2, 2)],
+]
+WEIGHTS = [2, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 3] + [1] * 16 + [1, 1] + [1] * 4 + [1, 1, 1]
+BAG = [i for i, w in enumerate(WEIGHTS) for _ in range(w)]
+
+
+class Blocks:
     def __init__(self, n: int, seed: int):
-        self.n, self.s, self.score = n, seed, 0
-        self.b = [0] * (n * n)
+        self.n, self.s = n, seed
+        self.b = [0] * (n * n)          # 0 empty, else colour 1..8
+        self.score = 0
+        self.streak = 0
+        self.lines = 0
+        self.tray: list = []           # piece index or -1 (used)
         self.moves = ""
-        self.spawned = -1
-        self.merged: list = []
-        self._spawn()
-        self._spawn()
+        self.cleared: list = []        # cells cleared by the last move (for the animation)
+        self.last_gain = 0
+        self._deal()
 
-    def _spawn(self) -> int:
-        empties = [i for i, v in enumerate(self.b) if v == 0]
-        if not empties:
-            return -1
-        self.s = lcg(self.s)
-        idx = empties[self.s % len(empties)]
-        self.s = lcg(self.s)
-        self.b[idx] = 4 if self.s % 10 == 0 else 2
-        self.spawned = idx
-        return idx
+    def _deal(self) -> None:
+        self.tray = []
+        for _ in range(3):
+            self.s = lcg(self.s)
+            self.tray.append(BAG[self.s % len(BAG)])
 
-    def _pos(self, m: str, i: int, k: int) -> int:
+    def fits(self, piece: int, x: int, y: int) -> bool:
         n = self.n
-        return {"L": i * n + k, "R": i * n + (n - 1 - k), "U": k * n + i, "D": (n - 1 - k) * n + i}[m]
+        for cx, cy in PIECES[piece]:
+            px, py = x + cx, y + cy
+            if px < 0 or py < 0 or px >= n or py >= n or self.b[py * n + px]:
+                return False
+        return True
 
-    def move(self, m: str) -> bool:
-        self.moves += m
-        n, nb, changed, merged = self.n, list(self.b), False, []
-        for i in range(n):
-            line = [self.b[self._pos(m, i, k)] for k in range(n) if self.b[self._pos(m, i, k)]]
-            out, j = [], 0
-            while j < len(line):
-                if j + 1 < len(line) and line[j] == line[j + 1]:
-                    out.append(line[j] * 2)
-                    self.score += line[j] * 2
-                    merged.append(self._pos(m, i, len(out) - 1))
-                    j += 2
-                else:
-                    out.append(line[j])
-                    j += 1
-            for k in range(n):
-                p = self._pos(m, i, k)
-                v = out[k] if k < len(out) else 0
-                if self.b[p] != v:
-                    changed = True
-                nb[p] = v
-        self.merged = merged
-        self.spawned = -1
-        if changed:
-            self.b = nb
-            self._spawn()
-        return changed
+    def can_place(self, piece: int) -> bool:
+        return any(self.fits(piece, x, y) for y in range(self.n) for x in range(self.n))
 
-    def can_move(self) -> bool:
-        n = self.n
-        if 0 in self.b:
-            return True
-        for i in range(n):
-            for k in range(n):
-                v = self.b[i * n + k]
-                if (k + 1 < n and self.b[i * n + k + 1] == v) or (i + 1 < n and self.b[(i + 1) * n + k] == v):
-                    return True
-        return False
+    def over(self) -> bool:
+        return not any(p >= 0 and self.can_place(p) for p in self.tray)
 
-
-TILE = {2: "#3A4650", 4: "#4A5560", 8: "#E8873A", 16: "#E86A3A", 32: "#E8503A", 64: "#E8383A", 128: "#E8C26A",
-        256: "#E8B84A", 512: "#E8AE2A", 1024: "#3DDC84", 2048: "#2EC4B6", 4096: "#4FC3FF", 8192: "#B36BFF"}
+    def place(self, k: int, x: int, y: int) -> bool:
+        if not 0 <= k < 3 or self.tray[k] < 0 or not self.fits(self.tray[k], x, y):
+            return False
+        n, piece = self.n, self.tray[k]
+        self.moves += f"{k}{x:x}{y:x}"
+        for cx, cy in PIECES[piece]:
+            self.b[(y + cy) * n + x + cx] = piece % 8 + 1
+        rows = [r for r in range(n) if all(self.b[r * n + c] for c in range(n))]
+        cols = [c for c in range(n) if all(self.b[r * n + c] for r in range(n))]
+        gone = {r * n + c for r in rows for c in range(n)} | {r * n + c for c in cols for r in range(n)}
+        for i in gone:
+            self.b[i] = 0
+        lines = len(rows) + len(cols)
+        gain = len(PIECES[piece])
+        if lines:
+            self.streak += 1
+            gain += 10 * lines * lines + (20 * (self.streak - 1) if self.streak > 1 else 0)
+        else:
+            self.streak = 0
+        self.score += gain
+        self.lines += lines
+        self.last_gain = gain
+        self.cleared = sorted(gone)
+        self.tray[k] = -1
+        if all(p < 0 for p in self.tray):
+            self._deal()
+        return True
 
 
-class Board2048(QWidget):
-    def __init__(self, page, size: int) -> None:
+BLOCK_COLOURS = ["#FF5C5C", "#FF8A3D", "#F2C14E", "#3DDC84", "#2EC5FF", "#4F7BFF", "#B36BFF", "#FF5CC8"]
+
+
+def paint_block(p: QPainter, box: QRectF, colour: int, k: float = 1.0) -> None:
+    """One square of a piece: a bright tile with a light top edge and a darker bottom."""
+    if k <= 0.01:
+        return
+    c = QColor(BLOCK_COLOURS[(colour - 1) % len(BLOCK_COLOURS)])
+    box = QRectF(box.center().x() - box.width() * k / 2, box.center().y() - box.height() * k / 2,
+                 box.width() * k, box.height() * k)
+    rad = box.width() * 0.18
+    g = QLinearGradient(box.topLeft(), box.bottomLeft())
+    g.setColorAt(0, mix(c, QColor("#FFFFFF"), 0.22))
+    g.setColorAt(1, mix(c, QColor("#000000"), 0.22))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(g)
+    p.drawRoundedRect(box, rad, rad)
+    p.setBrush(alpha("#FFFFFF", 0.22))
+    p.drawRoundedRect(QRectF(box.left() + box.width() * 0.14, box.top() + box.height() * 0.1,
+                             box.width() * 0.72, box.height() * 0.2), rad * 0.6, rad * 0.6)
+
+
+class BlockBoard(QWidget):
+    """The grid and, under it, the three pieces to drag on it. Everything happens here: no window drag, no lag
+    (a frame is drawn only while something moves)."""
+
+    def __init__(self, page, width: int) -> None:
         super().__init__()
         self.page = page
-        self.setFixedSize(size, size)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.game = None
-        self._press = None
-        self._t_move = 0.0
+        self.side = min(width, S(360))
+        self.tray_h = S(92)
+        self.setFixedSize(width, self.side + S(10) + self.tray_h)
+        self.drag = -1                     # the slot being dragged
+        self.mouse = QPointF()
+        self.anchor = None                 # (x, y) where it would go, or None
+        self.fx: list = []                 # [start, kind, data]
         self._t = QTimer(self)
         self._t.setInterval(16)
         self._t.timeout.connect(self._frame)
 
+    # -- geometry
+    def grid_rect(self) -> QRectF:
+        return QRectF((self.width() - self.side) / 2, 0, self.side, self.side)
+
+    def cell(self) -> float:
+        n = self.game.n if self.game else 8
+        return (self.side - S(8)) / n
+
+    def slot_rect(self, k: int) -> QRectF:
+        w = self.width() / 3
+        return QRectF(k * w, self.side + S(10), w, self.tray_h)
+
+    # -- animation
+    def _kick(self) -> None:
+        if not self._t.isActive():
+            self._t.start()
+
     def _frame(self) -> None:
-        self.update()
-        if time.monotonic() - self._t_move > 0.25:
+        now = time.monotonic()
+        self.fx = [f for f in self.fx if now - f[0] < 0.6]
+        if not self.fx and self.drag < 0:
             self._t.stop()
+        self.update()
 
-    def keyPressEvent(self, e) -> None:
-        k = e.key()
-        m = {Qt.Key.Key_Left: "L", Qt.Key.Key_A: "L", Qt.Key.Key_Right: "R", Qt.Key.Key_D: "R",
-             Qt.Key.Key_Up: "U", Qt.Key.Key_W: "U", Qt.Key.Key_Down: "D", Qt.Key.Key_S: "D"}.get(k)
-        if m:
-            self.page.mg_move(m)
-            e.accept()
-        else:
-            super().keyPressEvent(e)
+    def placed(self, cells: list, cleared: list, gain: int, colours: dict) -> None:
+        now = time.monotonic()
+        self.fx.append([now, "pop", cells])
+        if cleared:
+            self.fx.append([now, "clear", (cleared, colours)])
+        if gain:
+            self.fx.append([now, "gain", gain])
+        self._kick()
 
+    # -- mouse: press a piece, drag it, let go on the grid
     def mousePressEvent(self, e) -> None:
-        self._press = e.position()
-        self.setFocus()
+        e.accept()
+        g = self.game
+        if g is None or g.over():
+            return
+        for k in range(3):
+            if g.tray[k] >= 0 and self.slot_rect(k).contains(e.position()):
+                self.drag = k
+                self.mouse = e.position()
+                self._aim()
+                sfx.play("pick")
+                self._kick()
+                return
+
+    def mouseMoveEvent(self, e) -> None:
+        e.accept()
+        if self.drag < 0:
+            return
+        self.mouse = e.position()
+        self._aim()
 
     def mouseReleaseEvent(self, e) -> None:
-        if self._press is None:
+        e.accept()
+        if self.drag < 0:
             return
-        d = e.position() - self._press
-        self._press = None
-        if max(abs(d.x()), abs(d.y())) < S(20):
-            return
-        self.page.mg_move(("R" if d.x() > 0 else "L") if abs(d.x()) > abs(d.y()) else ("D" if d.y() > 0 else "U"))
+        k, at = self.drag, self.anchor
+        self.drag, self.anchor = -1, None
+        if at is not None:
+            self.page.blocks_place(k, at[0], at[1])
+        self.update()
 
-    def moved(self) -> None:
-        self._t_move = time.monotonic()
-        self._t.start()
+    def _lift(self) -> float:
+        return S(46)                       # the piece floats above the finger, so you see where it goes
 
+    def _aim(self) -> None:
+        g = self.game
+        piece = g.tray[self.drag]
+        cells = PIECES[piece]
+        pw, ph = max(c[0] for c in cells) + 1, max(c[1] for c in cells) + 1
+        c = self.cell()
+        gr = self.grid_rect().adjusted(S(4), S(4), -S(4), -S(4))
+        x = round((self.mouse.x() - gr.left()) / c - pw / 2)
+        y = round((self.mouse.y() - self._lift() - gr.top()) / c - ph / 2)
+        self.anchor = (x, y) if g.fits(piece, x, y) else None
+        self.update()
+
+    def _would_clear(self) -> set:
+        """The rows and columns the piece being aimed would fill: they glow before you drop it."""
+        g = self.game
+        if self.anchor is None or g is None:
+            return set()
+        n, (x, y) = g.n, self.anchor
+        b = list(g.b)
+        for cx, cy in PIECES[g.tray[self.drag]]:
+            b[(y + cy) * n + x + cx] = 1
+        out = set()
+        for r in range(n):
+            if all(b[r * n + q] for q in range(n)):
+                out |= {r * n + q for q in range(n)}
+            if all(b[q * n + r] for q in range(n)):
+                out |= {q * n + r for q in range(n)}
+        return out
+
+    # -- drawing
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        gr = self.grid_rect()
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor("#11171A"))
-        p.drawRoundedRect(r, S(12), S(12))
+        p.drawRoundedRect(gr, S(12), S(12))
         g = self.game
         if g is None:
             p.setPen(QColor(TEXT_DIM))
             p.setFont(font(12, QFont.Weight.DemiBold))
-            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), tr("Press New game"))
+            p.drawText(gr, int(Qt.AlignmentFlag.AlignCenter), tr("Press New game"))
             return
-        n = g.n
-        gap = S(6)
-        cell = (r.width() - gap * (n + 1)) / n
-        age = time.monotonic() - self._t_move
+        n, c, now = g.n, self.cell(), time.monotonic()
+        inner = gr.adjusted(S(4), S(4), -S(4), -S(4))
+        glow = self._would_clear() if self.drag >= 0 else set()
+        ghost = set()
+        if self.drag >= 0 and self.anchor is not None:
+            ghost = {(self.anchor[1] + cy) * n + self.anchor[0] + cx for cx, cy in PIECES[g.tray[self.drag]]}
+        pops = {}
+        for f in self.fx:
+            if f[1] == "pop":
+                for i in f[2]:
+                    pops[i] = now - f[0]
         for i, v in enumerate(g.b):
-            x = r.left() + gap + (i % n) * (cell + gap)
-            y = r.top() + gap + (i // n) * (cell + gap)
-            box = QRectF(x, y, cell, cell)
+            box = QRectF(inner.left() + (i % n) * c, inner.top() + (i // n) * c, c, c).adjusted(S(1), S(1), -S(1), -S(1))
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor("#1C2328"))
-            p.drawRoundedRect(box, S(8), S(8))
-            if not v:
+            p.drawRoundedRect(box, c * 0.16, c * 0.16)
+            if v:
+                age = pops.get(i)
+                k = 1.0 if age is None or age > 0.18 else 0.6 + 0.4 * (age / 0.18) + 0.08 * math.sin(age / 0.18 * math.pi)
+                paint_block(p, box, v, k)
+                if i in glow:
+                    p.setBrush(alpha("#FFFFFF", 0.28 + 0.12 * math.sin(now * 10)))
+                    p.drawRoundedRect(box, c * 0.16, c * 0.16)
+            elif i in ghost:
+                col = g.tray[self.drag] % 8 + 1
+                p.setOpacity(0.45)
+                paint_block(p, box, col)
+                p.setOpacity(1.0)
+            elif i in glow:
+                p.setBrush(alpha("#FFFFFF", 0.10))
+                p.drawRoundedRect(box, c * 0.16, c * 0.16)
+        for f in self.fx:                                   # cleared lines: the squares burst and fade
+            t = now - f[0]
+            if f[1] == "clear" and t < 0.45:
+                cells, colours = f[2]
+                k = t / 0.45
+                for i in cells:
+                    box = QRectF(inner.left() + (i % n) * c, inner.top() + (i // n) * c, c, c).adjusted(S(1), S(1), -S(1), -S(1))
+                    p.setOpacity(1 - k)
+                    paint_block(p, box, colours.get(i, 1), 1.0 + 0.35 * k)
+                    p.setOpacity((1 - k) * 0.8)
+                    p.setBrush(QColor("#FFFFFF"))
+                    p.drawRoundedRect(box, c * 0.16, c * 0.16)
+                p.setOpacity(1.0)
+            elif f[1] == "gain" and t < 0.6:
+                p.setOpacity(1 - t / 0.6)
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(16 if f[2] < 30 else 20, QFont.Weight.Black))
+                p.drawText(QRectF(gr.left(), gr.center().y() - S(30) - t * S(40), gr.width(), S(30)),
+                           int(Qt.AlignmentFlag.AlignCenter), f"+{f[2]}")
+                p.setOpacity(1.0)
+        for k in range(3):                                  # the tray
+            piece = g.tray[k]
+            if piece < 0 or k == self.drag:
                 continue
-            k = 1.0
-            if i == g.spawned and age < 0.18:
-                k = 0.4 + 0.6 * (age / 0.18)
-            elif i in g.merged and age < 0.2:
-                k = 1.0 + 0.12 * (1 - abs(age / 0.1 - 1))
-            tile = QRectF(box.center().x() - cell * k / 2, box.center().y() - cell * k / 2, cell * k, cell * k)
-            col = QColor(TILE.get(v, "#FF5CC8"))
-            p.setBrush(col)
-            p.drawRoundedRect(tile, S(8), S(8))
-            p.setPen(QColor("#FFFFFF") if v > 4 else QColor(TEXT))
-            size = max(9.0, min(22.0, cell / S(1) * (0.42 if v < 100 else 0.34 if v < 1000 else 0.27)))
-            p.setFont(font(size, QFont.Weight.Black))
-            p.drawText(tile, int(Qt.AlignmentFlag.AlignCenter), str(v))
-        if not g.can_move():
+            self._paint_piece(p, piece, self.slot_rect(k).center(), min(c * 0.6, S(18)),
+                              1.0 if g.can_place(piece) else 0.3)
+        if self.drag >= 0:                                  # the piece in the hand, at full size
+            piece = g.tray[self.drag]
+            self._paint_piece(p, piece, QPointF(self.mouse.x(), self.mouse.y() - self._lift()), c * 0.92, 0.95)
+        if g.over() and not self.fx:
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(0, 0, 0, 150))
-            p.drawRoundedRect(r, S(12), S(12))
+            p.setBrush(QColor(0, 0, 0, 160))
+            p.drawRoundedRect(gr, S(12), S(12))
             p.setPen(QColor(TEXT))
             p.setFont(font(18, QFont.Weight.ExtraBold))
-            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), tr("No more moves"))
+            p.drawText(gr, int(Qt.AlignmentFlag.AlignCenter), tr("No more space"))
+
+    def _paint_piece(self, p: QPainter, piece: int, centre: QPointF, cell: float, opacity: float) -> None:
+        cells = PIECES[piece]
+        pw, ph = max(x for x, _y in cells) + 1, max(y for _x, y in cells) + 1
+        left, top = centre.x() - pw * cell / 2, centre.y() - ph * cell / 2
+        p.setOpacity(opacity)
+        for x, y in cells:
+            paint_block(p, QRectF(left + x * cell, top + y * cell, cell, cell).adjusted(1, 1, -1, -1), piece % 8 + 1)
+        p.setOpacity(1.0)
 
 
 # ================================================================ Minesweeper
@@ -35052,7 +34969,7 @@ class SweeperBoard(QWidget):
         self.update()
 
     def _resize(self) -> None:
-        cell = min(S(28), (self.width() - S(4)) / self.w)
+        cell = min(S(32), (self.width() - S(4)) / self.w)
         self.cell = cell
         self.setFixedHeight(int(cell * self.h + S(4)))
 
@@ -35123,7 +35040,7 @@ class SweeperBoard(QWidget):
 
 # ================================================================ the pages (inside Games)
 def _top(page, lay, title: str, game: str) -> None:
-    page._back_bar(lay, title, lambda: (page.ctx.window.allow_keys(False), page.open_sub("minigames")))
+    page._back_bar(lay, title, lambda: page.open_sub("minigames"))
     line = hbox(spacing=6)
     seg = Segmented([tr(m) for m in MODES[game]], int(getattr(page.ctx, game + "_mode", 0) or 0))
     seg.changed.connect(lambda i: page.mg_mode(game, i))
@@ -35135,36 +35052,27 @@ def _top(page, lay, title: str, game: str) -> None:
     lay.addLayout(line)
 
 
-def build_2048(page, lay) -> None:
+def build_blocks(page, lay) -> None:
     ctx = page.ctx
-    _top(page, lay, "2048", "g2048")
-    mode = int(getattr(ctx, "g2048_mode", 0) or 0)
-    pays = [tr("Score ÷ 40, up to 320 coins"), tr("Score ÷ 80, up to 200 coins"), tr("Score ÷ 14, up to 360 coins")][mode]
-    lay.addWidget(Label(tr("Slide with the arrow keys, WASD or a swipe. Equal tiles merge.") + "  " + pays, 10, TEXT_DIM,
-                        wrap_w=page.W))
+    _top(page, lay, tr("Block Blast"), "blocks")
+    mode = int(getattr(ctx, "blocks_mode", 0) or 0)
+    div, cap = BLOCK_PAY[mode]
+    lay.addWidget(Label(tr("Drag the pieces onto the grid. Fill a row or a column to clear it.") + "  " +
+                        tr("Score ÷ {d}, up to {n} coins", d=div, n=cap), 10, TEXT_DIM, wrap_w=page.W))
     page.mg_score = Label("", 13, TEXT, bold=True)
     lay.addWidget(page.mg_score)
-    side = min(page.W, S(330))
-    page.board2048 = Board2048(page, side)
-    page.board2048.game = getattr(ctx, "g2048_game", None)
-    lay.addWidget(page.board2048, 0, Qt.AlignmentFlag.AlignHCenter)
-    arrows = hbox(spacing=4)
-    for m, label in (("L", "←"), ("U", "↑"), ("D", "↓"), ("R", "→")):
-        b = Button(label, "ghost", 30)
-        b.clicked.connect(lambda _=False, m=m: page.mg_move(m))
-        arrows.addWidget(b)
-    lay.addLayout(arrows)
+    page.blocks = BlockBoard(page, page.W)
+    page.blocks.game = getattr(ctx, "blocks_game", None)
+    lay.addWidget(page.blocks, 0, Qt.AlignmentFlag.AlignHCenter)
     line = hbox(spacing=6)
     new = Button(tr("New game"), "primary", 34)
-    new.clicked.connect(lambda: page.mg_start("g2048"))
+    new.clicked.connect(lambda: page.mg_start("blocks"))
     stop = Button(tr("Finish and get paid"), "ghost", 34)
-    stop.clicked.connect(page.mg_finish_2048)
+    stop.clicked.connect(page.mg_finish_blocks)
     line.addWidget(new, 1)
     line.addWidget(stop, 1)
     lay.addLayout(line)
-    page.sync_2048()
-    ctx.window.allow_keys(True)                     # the arrows reach the board while it is open
-    page.board2048.setFocus()
+    page.sync_blocks()
 
 
 def build_sweeper(page, lay) -> None:
@@ -35205,8 +35113,8 @@ class MinigamePage:
     def mg_mode(self, game: str, i: int) -> None:
         ctx = self.ctx
         setattr(ctx, game + "_mode", i)
-        if game == "g2048":
-            ctx.g2048_game, ctx.g2048_round = None, None
+        if game == "blocks":
+            ctx.blocks_game, ctx.blocks_round = None, None
         else:
             ctx.sweeper_state, ctx.sweeper_round = None, None
         sfx.play("pick")
@@ -35229,14 +35137,14 @@ class MinigamePage:
             if not ok or not isinstance(data, dict):
                 return ctx.toast(tr(str(data)), "warn")
             sfx.play("on")
-            if game == "g2048":
-                ctx.g2048_round = data["id"]
-                ctx.g2048_game = Game2048(int(data.get("size") or SIZES_2048[mode]), int(data["seed"]))
-                if hasattr(self, "board2048"):
-                    self.board2048.game = ctx.g2048_game
-                    self.board2048.moved()
-                    self.board2048.setFocus()
-                self.sync_2048()
+            if game == "blocks":
+                ctx.blocks_round = data["id"]
+                ctx.blocks_game = Blocks(int(data.get("size") or SIZES_BLOCKS[mode]), int(data["seed"]))
+                if hasattr(self, "blocks"):
+                    self.blocks.game = ctx.blocks_game
+                    self.blocks.fx = []
+                    self.blocks.update()
+                self.sync_blocks()
             else:
                 ctx.sweeper_round = data["id"]
                 ctx.sweeper_state = {"w": int(data["w"]), "h": int(data["h"]), "m": int(data["m"]), "shown": {}, "flags": [],
@@ -35244,33 +35152,43 @@ class MinigamePage:
                 ctx.reload_page()
         ctx.econ.call("rb_mg_start", {"game": game, "mode": mode}, got)
 
-    # -- 2048
-    def mg_move(self, m: str) -> None:
-        g = getattr(self.ctx, "g2048_game", None)
-        if g is None or not g.can_move() or getattr(self.ctx, "g2048_round", None) is None:
-            return
-        if g.move(m):
-            self.board2048.moved()
-            if g.merged:
-                sfx.play("pick")
-        self.sync_2048()
-        if not g.can_move():
-            QTimer.singleShot(600, self.mg_finish_2048)
-
-    def sync_2048(self) -> None:
-        g = getattr(self.ctx, "g2048_game", None)
-        if hasattr(self, "mg_score"):
-            self.mg_score.set_text(tr("Score {n}", n=g.score) + "   ·   " + tr("Best tile {n}", n=max(g.b)) if g else
-                                   tr("Press New game to start"))
-        if hasattr(self, "board2048"):
-            self.board2048.update()
-
-    def mg_finish_2048(self) -> None:
+    # -- Block Blast
+    def blocks_place(self, k: int, x: int, y: int) -> None:
         ctx = self.ctx
-        rid, g = getattr(ctx, "g2048_round", None), getattr(ctx, "g2048_game", None)
+        g = getattr(ctx, "blocks_game", None)
+        if g is None or getattr(ctx, "blocks_round", None) is None or not 0 <= k < 3 or g.tray[k] < 0:
+            return
+        before, colour = list(g.b), g.tray[k] % 8 + 1
+        if not g.place(k, x, y):
+            return
+        fresh = [i for i in range(g.n * g.n) if not before[i] and g.b[i]]      # the new squares that stayed
+        colours = {i: before[i] or colour for i in g.cleared}     # what each cleared square looked like
+        self.blocks.placed(fresh, g.cleared, g.last_gain, colours)
+        sfx.play("on" if g.cleared else "pick")
+        self.sync_blocks()
+        if g.over():
+            QTimer.singleShot(900, self.mg_finish_blocks)
+
+    def sync_blocks(self) -> None:
+        g = getattr(self.ctx, "blocks_game", None)
+        if hasattr(self, "mg_score"):
+            try:
+                self.mg_score.set_text(tr("Score {n}", n=g.score) + "   ·   " + tr("Lines {n}", n=g.lines) if g else
+                                       tr("Press New game to start"))
+            except RuntimeError:
+                pass
+        if hasattr(self, "blocks"):
+            try:
+                self.blocks.update()
+            except RuntimeError:
+                pass
+
+    def mg_finish_blocks(self) -> None:
+        ctx = self.ctx
+        rid, g = getattr(ctx, "blocks_round", None), getattr(ctx, "blocks_game", None)
         if rid is None or g is None:
             return
-        ctx.g2048_round = None
+        ctx.blocks_round = None
 
         def got(ok: bool, data) -> None:
             if not ok or not isinstance(data, dict):
@@ -35280,7 +35198,7 @@ class MinigamePage:
             ctx.econ.changed.emit()
             ctx.toast(tr("Score {n}", n=data.get("score")) + "  ·  " + (tr("+{n} coins", n=paid) if paid else tr("No coins this time")))
             sfx.play("on" if paid else "off")
-        ctx.econ.call("rb_2048_finish", {"round": rid, "moves": g.moves}, got)
+        ctx.econ.call("rb_blocks_finish", {"round": rid, "moves": g.moves}, got)
 
     # -- Minesweeper
     def sweep_open(self, cell: int) -> None:
@@ -35354,7 +35272,7 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QGridLayout, QWidget
 
 
@@ -35814,9 +35732,8 @@ class LevelIntro(QWidget):
 
     def __init__(self, ctx) -> None:
         super().__init__()
-        pass
         self.ctx = ctx
-        self.setFixedWidth(S(CARD_W - 2 * PAD))
+        self.setFixedWidth(ctx.window.page_w())
         lay = vbox(self, 8)
         top = hbox(spacing=10)
         for lv in (0, 25, 50, 100):
@@ -35826,15 +35743,8 @@ class LevelIntro(QWidget):
         lay.addWidget(Label(tr("New: levels and XP"), 16, bold=True))
         w = self.width()
         for title, text in (
-                (tr("XP"), tr("Experience points. You get them by playing: games, Mini Golf, Coinflip, trades, quests, "
-                              "XP coupons and time spent online.")),
-                (tr("Levels"), tr("From level 0 to 100. The first levels come fast, the next ones take longer: "
-                                  "level 100 takes months.")),
-                (tr("Badges"), tr("Every 5 levels unlocks a new level badge, more impressive each time. Your level and "
-                                  "your XP bar show at the top of the online menu.")),
-                (tr("Your badge"), tr("Inventory > Levels: pick the unlocked badge your profile shows.")),
-                (tr("Rewards"), tr("Higher levels pay a little more in minigames, and a few big cases unlock "
-                                   "between levels 1 and 5. Nothing else is locked behind a level."))):
+                (tr("XP"), tr("Earn XP by playing, trading and being online.")),
+                (tr("Badges"), tr("A new badge every 5 levels. Pick yours in Inventory > Levels."))):
             lay.addWidget(Label(title, 12, TEXT, bold=True))
             lay.addWidget(Label(text, 10.5, TEXT_DIM, wrap_w=w))
         ok = Button(tr("Got it"), "primary", 34)
@@ -35861,8 +35771,8 @@ def coupon_xp_text(item: str) -> str:
     return tr("Up to level 5") if item == "coupon:og" else tr("{n} XP", n=f"{xp:,}".replace(",", " "))
 
 
-def paint_coupon(p: QPainter, r: QRectF, item: str, now: float = 0.0) -> None:
-    """A ticket with a torn edge, its colour, XP and a star."""
+def paint_coupon(p: QPainter, r: QRectF, item: str, now: float = 0.0, label: bool = True) -> None:
+    """A ticket with a torn edge, its colour, XP and a star (label=False: the scratch card writes its own)."""
     name, xp, col = COUPONS.get(item, ("XP coupon", 0, "#FFFFFF"))
     c = QColor(col)
     path = QPainterPath()
@@ -35884,12 +35794,13 @@ def paint_coupon(p: QPainter, r: QRectF, item: str, now: float = 0.0) -> None:
     p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(alpha("#FFFFFF", 0.9))
     p.drawPath(_lv_star(QPointF(r.left() + r.width() * 0.16, r.center().y()), r.height() * 0.24, r.height() * 0.1, 5))
-    p.setPen(QColor("#FFFFFF"))
-    p.setFont(font(max(6.0, r.height() / S(1) * 0.20), QFont.Weight.Black, 1))
-    p.drawText(QRectF(x + r.width() * 0.04, r.top(), r.width() * 0.62, r.height() * 0.55), int(Qt.AlignmentFlag.AlignBottom), "XP")
-    p.setFont(font(max(5.0, r.height() / S(1) * 0.13), QFont.Weight.Bold))
-    p.drawText(QRectF(x + r.width() * 0.04, r.top() + r.height() * 0.55, r.width() * 0.62, r.height() * 0.35),
-               int(Qt.AlignmentFlag.AlignTop), "OG" if item == "coupon:og" else f"+{xp}")
+    if label:
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(max(6.0, r.height() / S(1) * 0.20), QFont.Weight.Black, 1))
+        p.drawText(QRectF(x + r.width() * 0.04, r.top(), r.width() * 0.62, r.height() * 0.55), int(Qt.AlignmentFlag.AlignBottom), "XP")
+        p.setFont(font(max(5.0, r.height() / S(1) * 0.13), QFont.Weight.Bold))
+        p.drawText(QRectF(x + r.width() * 0.04, r.top() + r.height() * 0.55, r.width() * 0.62, r.height() * 0.35),
+                   int(Qt.AlignmentFlag.AlignTop), "OG" if item == "coupon:og" else f"+{xp}")
     if item in ("coupon:epic", "coupon:og"):                    # a shine for the best ones
         sweep = (now * 0.5) % 2.0 - 0.5
         p.save()
@@ -35904,70 +35815,140 @@ def paint_coupon(p: QPainter, r: QRectF, item: str, now: float = 0.0) -> None:
 
 
 class ScratchCoupon(QWidget):
-    """Scratch the silver off with the mouse (or press Reveal) to see the XP. The server already decided it."""
+    """Scratch the silver off with the mouse (or press Reveal) to see the XP. The server already decided it.
+    4.1: the silver is one picture the mouse erases (the same work at the first and the thousandth stroke) and the
+    press is kept here, so dragging scratches instead of moving the menu."""
     revealed = pyqtSignal()
+    CELL = 12                                       # the grid that measures how much is scratched
 
     def __init__(self, item: str) -> None:
         super().__init__()
         self.item = item
         self.setFixedHeight(S(120))
         self.setCursor(Qt.CursorShape.CrossCursor)
-        self.holes: list = []
         self.done = False
         self.text = coupon_xp_text(item)
-        self._t = QTimer(self)
-        self._t.setInterval(33)
+        self.foil = None                            # QImage of the silver, made at the first paint
+        self.cells: set = set()
+        self.total = 1
+        self.last = None
+        self._t = QTimer(self)                      # the coupon's gentle shine
+        self._t.setInterval(50)
         self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
         self._t.start()
 
-    def cleared(self) -> float:
-        cells = set()
-        for pt in self.holes:
-            cells.add((int(pt.x() // S(14)), int(pt.y() // S(14))))
-        total = max(1, (self.width() // S(14)) * (self.height() // S(14)))
-        return len(cells) / total
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
 
-    def mouseMoveEvent(self, e) -> None:
+    def _area(self) -> QRectF:
+        r = QRectF(self.rect()).adjusted(S(4), S(4), -S(4), -S(4))
+        return r.adjusted(r.width() * 0.33, S(6), -S(8), -S(6))
+
+    def _make_foil(self) -> None:
+        a = self._area()
+        dpr = self.devicePixelRatioF()
+        img = QImage(max(1, int(a.width() * dpr)), max(1, int(a.height() * dpr)), QImage.Format.Format_ARGB32_Premultiplied)
+        img.setDevicePixelRatio(dpr)
+        img.fill(Qt.GlobalColor.transparent)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        box = QRectF(0, 0, a.width(), a.height())
+        g = QLinearGradient(box.topLeft(), box.bottomRight())
+        g.setColorAt(0, QColor("#C9CED4"))
+        g.setColorAt(0.5, QColor("#8A929B"))
+        g.setColorAt(1, QColor("#D9DEE3"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRoundedRect(box, S(8), S(8))
+        p.setPen(QColor("#4A525B"))
+        p.setFont(font(10, QFont.Weight.Bold))
+        p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), tr("Scratch here"))
+        p.end()
+        self.foil = img
+        c = S(self.CELL)
+        self.total = max(1, int(a.width() // c) * int(a.height() // c))
+
+    def resizeEvent(self, _e) -> None:
+        self.foil = None
+        self.cells.clear()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()                                  # never let the drag reach the window
         if self.done:
             return
-        for k in range(3):
-            self.holes.append(e.position() + QPointF(random.uniform(-4, 4), random.uniform(-4, 4)))
-        if self.cleared() > 0.45:
+        self.last = e.position()
+        self._scratch(self.last)
+
+    def mouseMoveEvent(self, e) -> None:
+        e.accept()
+        if self.done or self.last is None:
+            return
+        a, b = self.last, e.position()
+        steps = max(1, int(math.hypot(b.x() - a.x(), b.y() - a.y()) / S(4)))
+        for k in range(1, steps + 1):
+            self._scratch(QPointF(a.x() + (b.x() - a.x()) * k / steps, a.y() + (b.y() - a.y()) * k / steps))
+        self.last = b
+        if len(self.cells) / self.total > 0.45:
             self.reveal()
+
+    def mouseReleaseEvent(self, e) -> None:
+        e.accept()
+        self.last = None
+
+    def _scratch(self, pos: QPointF) -> None:
+        if self.foil is None:
+            self._make_foil()
+        a = self._area()
+        local = pos - a.topLeft()
+        if not QRectF(0, 0, a.width(), a.height()).adjusted(-S(12), -S(12), S(12), S(12)).contains(local):
+            return
+        rad = S(12)
+        p = QPainter(self.foil)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(0, 0, 0))
+        p.drawEllipse(local, rad, rad)
+        p.end()
+        c = S(self.CELL)
+        cols, rows = int(a.width() // c), int(a.height() // c)
+        for dx in (-rad * 0.6, 0, rad * 0.6):
+            for dy in (-rad * 0.6, 0, rad * 0.6):
+                cx, cy = int((local.x() + dx) // c), int((local.y() + dy) // c)
+                if 0 <= cx < cols and 0 <= cy < rows:
+                    self.cells.add((cx, cy))
+        self.update(a.toAlignedRect().adjusted(-2, -2, 2, 2))
 
     def reveal(self) -> None:
         if not self.done:
             self.done = True
+            self.last = None
             sfx.tune("coupon")
+            self.update()
             self.revealed.emit()
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(S(4), S(4), -S(4), -S(4))
-        now = time.monotonic()
-        paint_coupon(p, r, self.item, now)
+        paint_coupon(p, r, self.item, time.monotonic(), label=False)
         p.setPen(QColor("#FFFFFF"))
-        p.setFont(font(20, QFont.Weight.Black))
-        p.drawText(r.adjusted(r.width() * 0.34, 0, 0, 0), int(Qt.AlignmentFlag.AlignCenter), self.text)
+        box = self._area().adjusted(S(6), 0, -S(6), 0)
+        size = 20.0
+        while size > 9:                             # the prize always fits under the silver
+            f = font(size, QFont.Weight.Black)
+            p.setFont(f)
+            if p.fontMetrics().horizontalAdvance(self.text) <= box.width():
+                break
+            size -= 1
+        p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), self.text)
         if self.done:
             return
-        foil = QPainterPath()
-        foil.addRoundedRect(r.adjusted(r.width() * 0.33, S(6), -S(8), -S(6)), S(8), S(8))
-        holes = QPainterPath()
-        for pt in self.holes:
-            holes.addEllipse(pt, S(11), S(11))
-        g = QLinearGradient(r.topLeft(), r.bottomRight())
-        g.setColorAt(0, QColor("#C9CED4"))
-        g.setColorAt(0.5, QColor("#8A929B"))
-        g.setColorAt(1, QColor("#D9DEE3"))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(g)
-        p.drawPath(foil.subtracted(holes))
-        p.setPen(QColor("#4A525B"))
-        p.setFont(font(10, QFont.Weight.Bold))
-        if not self.holes:
-            p.drawText(foil.boundingRect(), int(Qt.AlignmentFlag.AlignCenter), tr("Scratch here"))
+        if self.foil is None:
+            self._make_foil()
+        p.drawImage(self._area().topLeft(), self.foil)
 
 
 class CouponOpen(QWidget):
@@ -35975,9 +35956,8 @@ class CouponOpen(QWidget):
 
     def __init__(self, ctx, instance: str, item: str) -> None:
         super().__init__()
-        pass
         self.ctx, self.instance, self.item = ctx, instance, item
-        self.setFixedWidth(S(CARD_W - 2 * PAD))
+        self.setFixedWidth(ctx.window.page_w())
         lay = vbox(self, 8)
         name = COUPONS.get(item, ("XP coupon", 0, ""))[0]
         lay.addWidget(Label(tr(name), 16, bold=True))
@@ -35985,8 +35965,6 @@ class CouponOpen(QWidget):
             lay.addWidget(Label(tr("A special thank-you for our OG players. You've been here since day one, and we "
                                    "appreciate you being part of the journey. Enjoy your free XP reward!"),
                                 11, "#E8C26A", wrap_w=self.width()))
-            lay.addWidget(Label(tr("It is free because your account has the OG tag. It takes you to level 5."),
-                                10, TEXT_DIM, wrap_w=self.width()))
         self.card = ScratchCoupon(item)
         self.card.revealed.connect(self._use)
         lay.addWidget(self.card)
@@ -36036,7 +36014,7 @@ def build_levels(page, lay) -> None:
     lvl = int(x.get("level") or 0)
     lay.addWidget(XPBar(ctx))
     today, cap = int(x.get("today") or 0), int(x.get("cap") or 2500)
-    lay.addWidget(Label(tr("Today: {a} / {b} XP from playing (coupons do not count)", a=today, b=cap), 10, TEXT_DIM,
+    lay.addWidget(Label(tr("Today: {a} / {b} XP", a=today, b=cap), 10, TEXT_DIM,
                         wrap_w=page.W))
     coupons = [it for it in ctx.econ.items if str(it.get("item", "")).startswith("coupon:")]
     if coupons:
@@ -36078,8 +36056,6 @@ def build_levels(page, lay) -> None:
     if gated:                                     # 4.0: the only things levels open, all by level 5
         pass
         lay.addWidget(heading(tr("Unlocks")))
-        lay.addWidget(Label(tr("A few big cases open up in your first levels. After level 5 nothing is locked."), 10,
-                            TEXT_DIM, wrap_w=page.W))
         for c in gated:
             need = int(c["min_level"])
             done = lvl >= need
@@ -36234,13 +36210,10 @@ class MusicAppPicker(QWidget):
 
     def __init__(self, ctx, then_open: bool = True) -> None:
         super().__init__()
-        pass
         self.ctx, self.then_open = ctx, then_open
-        self.setFixedWidth(S(CARD_W - 2 * PAD))
+        self.setFixedWidth(ctx.window.page_w())
         lay = vbox(self, 8)
         lay.addWidget(Label(tr("Which music app do you use?"), 15, bold=True))
-        lay.addWidget(Label(tr("Play opens it when no music is running. Rubenium shows what plays in any of them. "
-                               "You can change it in Settings."), 10.5, TEXT_DIM, wrap_w=self.width()))
         grid = QWidget()
         from PyQt6.QtWidgets import QGridLayout
         gl = QGridLayout(grid)
@@ -36349,6 +36322,12 @@ TITLES = {"games": ("dice", "Games"), "themes": ("gem", "Shop"), "friends": ("us
           "giveaway": ("gift", "Giveaway"), "settings": ("cog", "Settings")}
 ORDER = ("games", "themes", "friends", "giveaway", "settings")
 SECTIONS = ("games", "themes", "friends", "settings")           # 4.0: the four parts; two are shown side by side
+LEFT = ("games", "themes", "giveaway")          # 4.1: games and shop on the left half only
+RIGHT = ("friends", "settings")                 # social (with the leaderboards) and settings on the right only
+
+
+def side_of(key: str) -> int:
+    return 1 if key in RIGHT else 0
 HEAD_H = 64                      # wordmark, XP bar, leaderboards, back arrow
 COL_TITLE_H = 46                 # 4.0: the section switch over each half
 COL_GAP = 16
@@ -36356,8 +36335,8 @@ BOTTOM = 14
 
 
 def col_width() -> int:
-    """A column is exactly as wide as the small menu's page: every page looks the same in both."""
-    return S(CARD_W - 2 * PAD + ScrollArea.GUTTER)
+    """4.1: a column is wider than the small menu's page (its pages are made for that width)."""
+    return S(CARD_W - 2 * PAD + ONLINE_EXTRA + ScrollArea.GUTTER)
 
 
 # ================================================================ effects over the whole screen
@@ -36578,8 +36557,12 @@ class PaneSwitch(QWidget):
         self.setMouseTracking(True)
 
     def keys(self) -> list:
+        """Two halves: each one switches between its own parts. One half (a small screen): every part."""
         pass
-        return list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else [])
+        live = ["giveaway"] if "giveaway" in LIVE_TABS else []
+        if len(self.win.tab_keys()) < 2:
+            return list(SECTIONS) + live
+        return [k for k in LEFT if k != "giveaway"] + live if self.index == 0 else list(RIGHT)
 
     def _layout(self) -> None:
         keys = self.keys()
@@ -36815,6 +36798,8 @@ def _make_class():
             want = ctx.cfg["online_tab"]
             panes = list(ctx.cfg["online_panes"] or ["games", "friends"])
             self.current = want if want in panes else (panes[0] if panes else "games")
+            if self.current not in LEFT + RIGHT:
+                self.current = "games"
             self.drop = Tween(self, 0.0, self._on_drop, QEasingCurve.Type.OutBack)
             self.drop.finished.connect(self._drop_done)
             self.suck = Tween(self, 0.0, self.update, QEasingCurve.Type.InCubic)
@@ -36837,12 +36822,9 @@ def _make_class():
             pass
             ok = list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else [])
             want = [k for k in (self.ctx.cfg["online_panes"] or []) if k in ok]
-            for k in ("games", "friends", "themes", "settings"):
-                if len(want) >= 2:
-                    break
-                if k not in want:
-                    want.append(k)
-            return want[:2]
+            left = next((k for k in want if k in LEFT), "games")          # 4.1: each part on its own side
+            right = next((k for k in want if k in RIGHT), "friends")
+            return [left, right]
 
         def tab_keys(self) -> list:
             keys = self.panes()
@@ -36853,17 +36835,13 @@ def _make_class():
             return keys
 
         def set_pane(self, index: int, key: str) -> None:
-            """Show `key` in half `index`. Already in the other half: the two swap."""
+            """Show `key` in its own half (4.1: games and shop left, social and settings right; `index` is kept for
+            the callers but the side always follows the part). A small screen shows one half: the one picked."""
             panes = self.panes()
-            if len(self.tab_keys()) == 1:
-                index = 0
-                panes = [key, panes[1] if panes[1] != key else panes[0]]
-            elif key in panes:
-                if panes.index(key) == index:
-                    return self.focus(key)
-                panes = [panes[1], panes[0]]
-            else:
-                panes[index] = key
+            index = side_of(key)
+            if panes[index] == key and len(self.tab_keys()) > 1:
+                return self.focus(key)
+            panes[index] = key
             self.ctx.cfg["online_panes"] = list(panes)
             sfx.play("pick")
             self.current = key
@@ -36878,7 +36856,7 @@ def _make_class():
             self.ctx.friends_profile = None
             self.ctx.social_edit = False
             if "friends" not in self.tab_keys():
-                self.set_pane(1 if len(self.tab_keys()) > 1 else 0, "friends")
+                self.set_pane(side_of("friends"), "friends")
             self.focus("friends", quiet=True)
             self.reload_page("friends")
 
@@ -36887,7 +36865,7 @@ def _make_class():
             self.ctx.shop_tab = 5
             self.ctx.inv_tab = "levels"
             if "themes" not in self.tab_keys():
-                self.set_pane(1 if len(self.tab_keys()) > 1 else 0, "themes")
+                self.set_pane(side_of("themes"), "themes")
             self.focus("themes", quiet=True)
             self.reload_page("themes")
 
@@ -36958,9 +36936,14 @@ def _make_class():
                 entry[0].setGeometry(int(r.left()), 0, col_width(), host.height())
 
         # -------------------------------------------------------------- columns
+        def page_w(self) -> int:
+            return S(CARD_W - 2 * PAD + ONLINE_EXTRA)
+
         def _ensure_page(self, key: str):
+            pass
             new = key not in self.pages
-            entry = super()._ensure_page(key)
+            with wide_pages():                          # 4.1: its pages are made for the wider halves
+                entry = super()._ensure_page(key)
             if new:
                 entry[0].no_stretch = True              # a column is taller than its page: the page keeps its size
                 entry[0].resizeEvent(None)
@@ -37013,10 +36996,8 @@ def _make_class():
 
         def goto(self, key: str) -> None:
             if key in ("games", "themes", "friends", "giveaway", "settings"):
-                if key not in self.tab_keys():                # brought into the half in use
-                    keys = self.tab_keys()
-                    idx = keys.index(self.current) if self.current in keys else 0
-                    self.set_pane(idx, key)
+                if key not in self.tab_keys():                # brought into its own half
+                    self.set_pane(side_of(key), key)
                 if not self.expanded:
                     self.current = key
                     return self.expand()
@@ -38922,7 +38903,8 @@ class SheetPage(QWidget):
     def __init__(self, ctx, widget) -> None:
         super().__init__()
         self.ctx, self.widget = ctx, widget
-        self.W = S(CARD_W - 2 * PAD)
+        pass
+        self.W = page_width()
         lay = vbox(self, 6)
         widget.setParent(self)
         if widget.width() > self.W:
@@ -39243,6 +39225,10 @@ class MainWindow(QWidget):
 
     # ------------------------------------------------------------------ pages
     # ------------------------------------------------------------------ small screens inside the menu
+    def page_w(self) -> int:
+        """4.1: how wide a small screen made for this menu should be (the online menu's halves are wider)."""
+        return S(CARD_W - 2 * PAD)
+
     def embed(self, widget, keys: bool = False) -> None:
         """Show `widget` inside the menu, over the current tab, until it is closed. keys: it has a text box."""
         old = getattr(self, "sheet", None)
@@ -40905,7 +40891,7 @@ class App(QObject):
         next move gets the server's answer."""
         self.window.sync_lock()
         for key in ("games", "themes", "friends"):
-            if key == "games" and (self.casino or getattr(self, "games_sub", None) in ("g2048", "sweeper", "memory",
+            if key == "games" and (self.casino or getattr(self, "games_sub", None) in ("blocks", "sweeper", "memory",
                                                                                      "duel_run")):
                 continue
             if self.window.showing(key):
@@ -41340,20 +41326,53 @@ class App(QObject):
             self.cfg["online_tab"] = focus if focus != "giveaway" else self.cfg["online_tab"]
         pass
 
-        def fly() -> None:
-            if self._online_win is None:
-                self._online_win = online_window(self, main)
-            ow = self._online_win
-            if focus:
-                ow.current = focus
-            self.online_mode = True
-            self.window = ow
+        state = {"dropped": False}
 
-            def drop() -> None:
-                self._online_busy = False
-                ow.open()
-                self.econ.poll_live()
-            fly_up(self, main, drop)
+        def back_home() -> None:
+            """4.1: the online menu could not open: never leave the user without the R."""
+            self._online_busy = False
+            self.online_mode = False
+            self.window = main
+            try:
+                if self._online_win is not None:
+                    self._online_win.hide()
+            except Exception:  # noqa: BLE001
+                pass
+            main.ball.set_center(main.ball.center)
+            main.show_ball()
+
+        def drop() -> None:
+            if state["dropped"]:
+                return
+            state["dropped"] = True
+            self._online_busy = False
+            try:
+                self._online_win.open()
+            except Exception:  # noqa: BLE001
+                log.exception("online menu failed to open")
+                return back_home()
+            self.econ.poll_live()
+
+        def fly() -> None:
+            try:
+                if self._online_win is None:
+                    self._online_win = online_window(self, main)
+                ow = self._online_win
+                if focus:
+                    ow.current = focus
+                self.online_mode = True
+                self.window = ow
+                fly_up(self, main, drop)
+            except Exception:  # noqa: BLE001
+                log.exception("entering online mode failed")
+                state["dropped"] = True
+                back_home()
+
+        def watchdog() -> None:
+            if not state["dropped"]:
+                log.warning("entering online mode did not finish, forcing it")
+                drop() if self.online_mode and self._online_win is not None else back_home()
+        QTimer.singleShot(4000, watchdog)
         if main.expanded:
             main.collapse()
             QTimer.singleShot(340, fly)
@@ -41405,23 +41424,59 @@ class App(QObject):
                     self.golf_lobby = self.flip_data = None
             self.online.ask("rb_online_leave", {}, left)
         pass
+        done = {"gone": False, "home": False}
 
-        def gone() -> None:
-            self.online_mode = False
-            self.window = main
-            self.cfg["card_open"] = False
-
-            def home() -> None:
-                self._online_busy = False
+        def home() -> None:
+            # 4.1: whatever happens on the way (an effect that never ends, a page that fails), the R always comes
+            # back: this runs once, from the animation or from the watchdog below.
+            if done["home"]:
+                return
+            done["home"] = True
+            self._online_busy = False
+            try:
                 main.ball.set_center(main.ball.center)
                 main.show_ball()
+            except Exception:  # noqa: BLE001
+                log.exception("ball back failed")
+                main.ball.show()
+            try:
                 if after is not None:
                     after()
                 elif self._online_back_open:
                     main.expand()
+            finally:
                 self.on_visibility()
-            float_down(self, main, home)
-        ow.start_leaving(gone)
+
+        def gone() -> None:
+            if done["gone"]:
+                return
+            done["gone"] = True
+            self.online_mode = False
+            self.window = main
+            self.cfg["card_open"] = False
+            try:
+                ow.hide()
+                ow.ball.hide()
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                float_down(self, main, home)
+            except Exception:  # noqa: BLE001
+                log.exception("float down failed")
+                home()
+
+        def watchdog() -> None:
+            if not done["gone"]:
+                log.warning("leaving online mode did not finish, forcing it")
+                gone()
+            if not done["home"]:
+                home()
+        QTimer.singleShot(4000, watchdog)
+        try:
+            ow.start_leaving(gone)
+        except Exception:  # noqa: BLE001
+            log.exception("leaving online mode failed")
+            gone()
 
     def pick_file(self, title: str, pattern: str) -> str:
         return self.window.pick_file(title, pattern)

@@ -107,3 +107,18 @@ Choices made where the request left room, newest last.
   version, never asks in a loop, and keeps the last picture while a newer one loads.
 - Network: one SSL context, kept-alive connections and a pool of six network threads instead of a new thread and a new
   TLS handshake for every call (the main cause of the online lag).
+
+## 4.1
+
+- Block Blast instead of 2048: the pieces come from the round's seed (same LCG as before) and the server places every piece
+  again (`rb_blocks_replay`), so a score cannot be made up. A move that does not fit is skipped, never an error, so a bad
+  client can only lose points. Over 6000 characters (2000 placements) is refused.
+- Keno and Limbo: EXECUTE revoked instead of dropping the functions, so `024_down.sql` can bring them back exactly.
+- Online menu: the halves are 150 px wider (ONLINE_EXTRA). Pages read their width from `page_width()` while the online
+  menu builds them, and small screens ask `window.page_w()`, so the small menu is unchanged.
+- Sides are fixed: Games, Shop and the live Giveaway on the left; Social and Settings on the right. On a screen too small
+  for two halves the single half still offers every part.
+- Leaving or entering online mode has a 4-second watchdog: whatever fails on the way, the R always comes back.
+- Removed swap (Sparkles): its file's fingerprint is in RETIRED, so an installed copy is replaced by the player's own
+  original automatically, like the swaps removed in 1.8.
+
