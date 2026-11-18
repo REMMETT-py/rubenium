@@ -1,6 +1,14 @@
-Rubenium 4.5.1
+Rubenium 4.6
 
-- Trades work again: Open and No on a trade request did nothing (the button crashed); requests now show up on the Social page as soon as they arrive
-- Every item can be added to a trade, and every item of the other player can be looked at (it stopped at 60); coins and keys are set with sliders
-- A trade request notification opens the trade; you get a notification when yours is accepted; requests and your open trade are in Profile > Trades too
-- The notification button says "See" ("Voir" in French) instead of "Avancer"
+- Game mode: a controller button on the home tab opens a small window. Pick a key: it turns game mode on and off. While it is on, Rubenium ignores the mouse completely (a padlock shows on the ball). Hold the key 5 seconds to turn it off and restart Rubenium. Hold to open and the show / hide key are set there too (no longer in Settings)
+- Trade up: in the collection, a full row of Painted colours can be traded for a random Shiny you don't have, and a full Shiny row for a random Titanium, with a spin. Never from Basic, never to Gold, never a duplicate
+- Sell on the market from your inventory, at a new market stall (price slider, usual price, what you get after the 5% fee). "Sell on the market" is gone from the collection
+- Pawn shop: more tolerant on price, the speech bubble isn't cut any more, and the ban countdown is big and also shown on the Quick sell button
+- Coinflip: the chances are shown as a bar, your chance shows while you pick your items, and a click on any item shows its name, rarity and worth (also in trades). Rubenium's own offers are marked BOT like the other bots, and there are 9 new bot names
+- No more notifications giving away the result before a coin lands, a case opens or a duel replay ends
+- Mini Golf: 8 new holes (48 in all), 30 seconds a shot. Wave Rush: gates (a spike above and below at once)
+- Duel lobbies: the bet is big and gold with what the winner takes, and the whole row joins
+- Titanium and Gold a little less rare, and Gold a touch easier for lower rarities. Still very rare
+- Online menu: one size, Medium or Large (Settings). The top tab is called Online. Leaving online mode no longer breaks the music cover or the menu, and the Leave button fits
+- First time you press play: pick your music app (or "No preference for now"). YouTube ads are muted more reliably
+- The accessory button moved away from the volume slider
