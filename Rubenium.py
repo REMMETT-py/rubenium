@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "4.5"         # the version people see
-BUILD = "2026.11.18.23"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "4.5.1"         # the version people see
+BUILD = "2026.11.18.24"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6358,6 +6358,12 @@ FR = {
     'Right': 'Droite',
     'Enter': 'Entrée',
     'Hold': 'Maintenir',
+    # 4.5.1
+    'Trades work again: Open and No on a trade request did nothing; requests now show up right away': "Les échanges marchent à nouveau : Ouvrir et Non sur une demande d'échange ne faisaient rien ; les demandes s'affichent tout de suite",
+    'Every item can be added to a trade (not only the first 60); coins and keys on sliders': 'Tous les objets peuvent être ajoutés à un échange (pas seulement les 60 premiers) ; pièces et clés sur des curseurs',
+    'A trade request notification opens the trade; you hear when yours is accepted; requests are in Profile > Trades too': "Une notification de demande d'échange ouvre l'échange ; tu es prévenu quand la tienne est acceptée ; les demandes sont aussi dans Profil > Échanges",
+    '{name} accepted your trade': '{name} a accepté ton échange',
+    'TRADE': 'ÉCHANGE',
 }
 
 
@@ -10701,6 +10707,9 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("4.5.1", ['Trades work again: Open and No on a trade request did nothing; requests now show up right away',
+               'Every item can be added to a trade (not only the first 60); coins and keys on sliders',
+               'A trade request notification opens the trade; you hear when yours is accepted; requests are in Profile > Trades too']),
     ("4.5", ['Wave Rush: see the other player in a duel, a replay of how they crashed, watch duels live, more obstacles, a difficulty bar',
              'Beat Tap, Wave Rush and the casino work with the keyboard, and every game shows its keys and mouse buttons',
              'HELP on every game: the steps, the controls and a little moving preview',
@@ -21701,7 +21710,12 @@ class TradeLink(QObject):
                     self._timer.stop()
                     self.changed.emit()
                 return
+            was = self.data.get("state")
             self.data, self.got_at = data, time.monotonic()
+            w = self.ctx.window
+            if was == "asked" and data.get("state") == "open" and not (w.showing("friends") and w.expanded):
+                self.ctx.notifier.push("trade", tr("TRADE"), tr("{name} accepted your trade", name=data.get(
+                    "b" if data.get("me") == "a" else "a", "?")), "trade:" + tid)       # 4.6: you hear about it anywhere
             sig = str([data.get(k) for k in ("state", "version", "a_ready", "b_ready", "a_ok", "b_ok", "a_coins",
                                               "b_coins", "a_keys", "b_keys")]) + str(data.get("wait") is None)
             if data.get("state") in ("done", "cancelled"):
@@ -21999,8 +22013,8 @@ def _trade_pool(page, link, mine: list, offer) -> QWidget:
         lay.addWidget(Label(tr("Nothing more to add."), 11.5, TEXT_DIM))
         return box
     lay.addWidget(Label(tr("Click an item to add it to your offer."), 10.5, TEXT_DIM, wrap_w=page.W))
-    pool = pool[:60]
-    grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(value_of(ctx, i["item"]))} for i in pool], page.W, 6, 64)
+    grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(value_of(ctx, i["item"]))} for i in pool], page.W, 6, 64,
+                    moving=False)                    # 4.6: every item, not only the first 60
 
     def add(i: int) -> None:
         if len(mine) >= 8:
@@ -22028,7 +22042,7 @@ def _trade_peek(page, link, them: str) -> QWidget:
     lay.addWidget(Label(tr("Look only: ask {name} in the chat to add something.", name=them), 10.5, TEXT_DIM,
                         wrap_w=page.W))
     grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(int(i.get("worth") or 0)),
-                           "mark": "offered" if i.get("offered") else ""} for i in items[:60]], page.W, 6, 64)
+                           "mark": "offered" if i.get("offered") else ""} for i in items], page.W, 6, 64, moving=False)
     grid.picked.connect(lambda _i: ctx.toast(tr("This is {name}'s inventory: you can only look.", name=them)))
     lay.addWidget(grid)
     return box
@@ -22150,34 +22164,15 @@ def build_trade(page, lay) -> None:
         lay.addWidget(AmountRow(coins, keys, tr("Worth about {v}", v=coins_text(total))))
         if not removable:
             return
-        row = hbox(spacing=6)
-        row.addStretch(1)
-        kb = Button(tr("Keys"), "ghost", 26, icon="key")
-
-        def change_keys() -> None:
-            def got(n: int, dlg) -> None:
-                if n > ec.keys:
-                    return dlg.say(tr("You have {n} keys", n=ec.keys))
-                if n > 99:
-                    return dlg.say(tr("99 at most"))
-                dlg.close()
-                offer([r["id"] for r in mine], None, n)
-            ask_number(ctx, tr("Keys to give"), str(keys), tr("OK"), got, tr("You have {n} keys.", n=ec.keys))
-        kb.clicked.connect(change_keys)
-        row.addWidget(kb)
-        b = Button(tr("Change coins"), "ghost", 26)
-
-        def change() -> None:
-            def got(n: int, dlg) -> None:
-                if n > ec.coins:
-                    return dlg.say(tr("Not enough coins"))
-                dlg.close()
-                offer([r["id"] for r in mine], n)
-            ask_number(ctx, tr("Coins to give"), str(coins), tr("OK"), got,
-                       tr("You have {n} coins.", n=coins_text(ec.coins)))
-        b.clicked.connect(change)
-        row.addWidget(b)
-        lay.addLayout(row)
+        pass
+        if ec.coins > 0:
+            cs = AmountSlider(tr("Coins"), 0, int(ec.coins), coins, coins_text, label_w=50)
+            cs.released.connect(lambda v: offer([r["id"] for r in mine], int(v)) if int(v) != coins else None)
+            lay.addWidget(cs)
+        if ec.keys > 0:
+            ks = AmountSlider(tr("Keys"), 0, min(99, int(ec.keys)), keys, str, label_w=50)
+            ks.released.connect(lambda v: offer([r["id"] for r in mine], None, int(v)) if int(v) != keys else None)
+            lay.addWidget(ks)
     side(tr("You give"), mine, my_coins, give, True, my_keys)
     side(tr("{name} gives", name=them), theirs, their_coins, get, False, their_keys)
     if give > max(get * 2, get + 500):
@@ -29746,11 +29741,11 @@ class ActivityRow(QWidget):
         if second is not None:
             b2 = Button(second[0], "ghost", 28)
             b2.setFixedWidth(max(S(64), b2.sizeHint().width()))
-            b2.clicked.connect(second[1])
+            b2.clicked.connect(lambda: second[1]())        # 4.6: never pass the click's 'checked' to the action
             lay.addWidget(b2)
         go = Button(action, "primary", 28)
         go.setFixedWidth(max(S(64), go.sizeHint().width()))
-        go.clicked.connect(on_go)
+        go.clicked.connect(lambda: on_go())              # 4.6: this passed False as the trade: Open crashed
         lay.addWidget(go)
 
     def paintEvent(self, _e) -> None:
@@ -29884,6 +29879,7 @@ class FriendsPage(Page):
         if tab == 3:
             return build_leaders(self, self.lay)
         if tab == 4:
+            build_activity_trades(self, self.lay)          # 4.6: requests and your open trade, above the history
             return build_trade_history(self, self.lay)
         self._users()
 
@@ -30124,7 +30120,8 @@ class FriendsPage(Page):
         sfx.play("pick")
         self.ctx.friends_profile = None
         self.ctx.trade.open(trade_id)
-        self.ctx.reload_page()
+        self.ctx.window.goto("friends")                  # 4.6: the trade screen opens wherever you were
+        self.ctx.reload_page("friends")
 
     def accept_trade(self, trade_id: str) -> None:
         def done(ok: bool, data) -> None:
@@ -30593,6 +30590,19 @@ class BadgeStrip(QWidget):
             p.drawEllipse(c, d / 2, d / 2)
             g = d * 0.5
             show_item(p, item, QRectF(c.x() - g / 2, c.y() - g / 2, g, g), now)
+
+
+def build_activity_trades(page, lay) -> None:
+    """4.6: in the Trades tab too: trade requests to answer and the trade you have open."""
+    ctx = page.ctx
+    live = ctx.econ.live
+    asks = live.get("trades") or []
+    for ask in asks:
+        lay.addWidget(TradeAsk(page, ask))
+    if live.get("open_trade") and not ctx.trade.trade_id:
+        back = Button(tr("Your trade is waiting") + "  ·  " + tr("Back to it"), "primary", 34, icon="swap")
+        back.clicked.connect(lambda: page.open_trade(live["open_trade"]))
+        lay.addWidget(back)
 
 
 # ==================================================================================================
@@ -32643,7 +32653,7 @@ class Popup(QWidget):
             p.drawRoundedRect(g, g.height() / 2, g.height() / 2)
             p.setPen(QColor("#052A15"))
             p.setFont(font(10, QFont.Weight.ExtraBold))
-            p.drawText(g, int(Qt.AlignmentFlag.AlignCenter), tr("Go"))
+            p.drawText(g, int(Qt.AlignmentFlag.AlignCenter), tr("See"))          # 4.6: "Go" read as "Avancer"
 
 
 class Notifier(QObject):
@@ -32797,7 +32807,8 @@ class Notifier(QObject):
         first, self._first = self._first, False
         for ask in live.get("trades") or []:
             if self._new("trade", ask.get("id")) and not first:
-                self.push("trade", tr("TRADE REQUEST"), tr("{name} wants to trade with you", name=ask.get("from", "?")), "social")
+                self.push("trade", tr("TRADE REQUEST"), tr("{name} wants to trade with you", name=ask.get("from", "?")),
+                          "trade:" + str(ask.get("id")))            # 4.6: See opens the trade itself
         asks = int(live.get("asks") or 0)
         if asks > self.seen.get("asks", 0) and not first:
             self.push("friend", tr("FRIEND REQUEST"), tr("Someone wants to be your friend"), "social")
@@ -32982,8 +32993,16 @@ def go(ctx, action) -> None:
     elif key == "chat":
         ctx.social_tab, ctx.friends_profile, ctx.social_edit = 2, None, False
         ctx.chat_with = arg or None
-    elif key == "trade":
+    elif key == "trade":                                       # 4.6: accept (when asked) and open the trade
         ctx.friends_profile = None
+        if arg:
+            def open_it() -> None:
+                if ctx.trade.trade_id == arg:
+                    return
+                ctx.econ.call("rb_trade_accept", {"trade": arg},
+                              lambda ok, d: (ctx.trade.open(arg), ctx.window.reload_page("friends")) if ok or "rb_trade_gone" not in str(d)
+                              else ctx.toast(tr(str(d)), "warn"))
+            QTimer.singleShot(300 if getattr(ctx, "online_mode", False) else 1800, open_it)
     elif key in ("market", "inventory", "shop", "cases", "levels", "notifications"):
         target = "themes"
         ctx.shop_tab = {"market": 4, "inventory": 5, "shop": 1, "cases": 3, "levels": 5, "notifications": 0}[key]
@@ -33083,7 +33102,7 @@ class NoticeRow(QWidget):
             p.drawRoundedRect(g, g.height() / 2, g.height() / 2)
             p.setPen(QColor("#052A15"))
             p.setFont(font(9.5, QFont.Weight.ExtraBold))
-            p.drawText(g, int(Qt.AlignmentFlag.AlignCenter), tr("Go"))
+            p.drawText(g, int(Qt.AlignmentFlag.AlignCenter), tr("See"))          # 4.6: "Go" read as "Avancer"
 
 
 def _ago(t: float) -> str:
@@ -46064,6 +46083,16 @@ class App(QObject):
             if self.main_window is not self.window:
                 self.main_window.tabs_changed()
         self.window.sync_lock()
+        # 4.6: a trade request (or friend request) shows on the Social page as soon as it comes in, not only after
+        # leaving and coming back to the page: that is why trades could not be accepted
+        import json as _json
+        sig = _json.dumps([self.econ.live.get("trades"), self.econ.live.get("open_trade"), self.econ.live.get("asks")],
+                          sort_keys=True, default=str)
+        if sig != getattr(self, "_social_sig", None):
+            self._social_sig = sig
+            if self.window.showing("friends") and not self.trade.trade_id and not getattr(self, "social_edit", False) \
+                    and int(getattr(self, "social_tab", 0) or 0) in (0, 4) and getattr(self, "friends_profile", None) is None:
+                self.reload_page("friends")
         for key in ("giveaway", "themes"):            # 3.2: the online menu may show both at once
             if not self.window.showing(key) or self.econ.holding:
                 continue
