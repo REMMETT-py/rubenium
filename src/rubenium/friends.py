@@ -558,11 +558,9 @@ def build_activity(page, lay) -> None:
         if g.get("state") == "live" and not g.get("joined"):
             rows.append(("#FF5CC8", tr("Live giveaway: {title}", title=g.get("title", "")), tr("Open"), lambda: go(ctx, "giveaway"), None))
             break
-    lay.addWidget(Label(tr("ONLINE ACTIVITY"), 9.5, TEXT_FAINT, weight=QFont.Weight.Bold))
-    if not rows:
-        lay.addWidget(ActivityRow("#5A626B", tr("All quiet. Start a game others can join:"), tr("Play"),
-                                  lambda: go(ctx, "flip"), (tr("Mini Golf"), lambda: go(ctx, "golf"))))
+    if not rows:                                    # 4.1: nothing going on: no heading, no filler row
         return
+    lay.addWidget(Label(tr("ONLINE ACTIVITY"), 9.5, TEXT_FAINT, weight=QFont.Weight.Bold))
     for colour, text, action, fn, second in rows[:6]:
         lay.addWidget(ActivityRow(colour, text, action, fn, second))
 

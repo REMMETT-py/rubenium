@@ -795,13 +795,10 @@ class ShopPage(StylePart, Page):
                 lay.addWidget(CaseShelf(self, owned))
                 lay.addWidget(Label(tr("Click a case to open it. Opening uses 1 key (style cases need none)."), 10.5, TEXT_DIM,
                                     wrap_w=self.W))
-            else:
-                lay.addWidget(Label(tr("Cases you buy or get as gifts wait here until you open them with a key."), 10.5,
-                                    TEXT_DIM, wrap_w=self.W))
             lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
                 groups = (("coins", tr("Coin cases"), tr("Mostly coins, and badges of every rarity too.")),
-                          ("hunt", tr("Rare hunts"), tr("Fewer coins, much better odds for rare badges.")),
+                          ("hunt", tr("Rare badge cases"), tr("Fewer coins, much better odds for rare badges.")),
                           ("style", tr("Style cases"), tr("Balls, lines, fonts, themes, banners and frames. No key needed.")))
                 for kind, title, sub in groups:
                     lay.addWidget(heading(title))
@@ -815,8 +812,7 @@ class ShopPage(StylePart, Page):
             else:
                 for case in ec.cases:
                     lay.addWidget(CaseCard(self, case))
-            lay.addWidget(Label(tr("Buy cases with coins: they go to Your cases. Open them with a key (1 key every {m} min, "
-                                   "up to {n}).", m=int(float(ec.cfg.get("key_every_min", 30) or 30)),
+            lay.addWidget(Label(tr("1 key every {m} min, up to {n}.", m=int(float(ec.cfg.get("key_every_min", 30) or 30)),
                                    n=int(float(ec.cfg.get("key_cap", 12) or 12))), 10.5, TEXT_DIM, wrap_w=self.W))
             return
         case = self.DAILY if cid == "daily" else next((c for c in ec.cases if c["id"] == cid), ec.cases[0])

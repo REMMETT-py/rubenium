@@ -1188,7 +1188,7 @@ def build_minigames(page, lay) -> None:
     """Earn coins: the free mini games, each with what it pays."""
     page._back_bar(lay, tr("Earn coins"))
     cap = int(float(page.ctx.econ.cfg.get("game_window_cap", 300) or 300) * (1 + 0.004 * page.ctx.econ.level))
-    lay.addWidget(Label(tr("Each game pays up to {n} coins every 2 hours. Higher levels pay a little more.", n=cap), 10.5,
+    lay.addWidget(Label(tr("Each game pays up to {n} coins every 2 hours.", n=cap), 10.5,
                         TEXT_DIM, wrap_w=page.W))
     games = [
         ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
@@ -1197,8 +1197,8 @@ def build_minigames(page, lay) -> None:
          ("#FF8A3D", "#C2271F"), "12-50", lambda: page._show_park(True)),
         ("Memory", tr("Find the pairs in as few flips as you can. 3 sizes, 3 card styles."), "gem",
          ("#4FC3FF", "#2E5BFF"), "12-55", lambda: page.open_sub("memory")),
-        ("2048", tr("Slide and merge the tiles. Classic, Relaxed or Hard. Leaderboard for each."), "grid",
-         ("#E8C26A", "#E8503A"), "5-360", lambda: page.open_sub("g2048")),
+        ("Block Blast", tr("Place the pieces, clear rows and columns. Classic, Relaxed or Hard. Leaderboard for each."),
+         "blocks", ("#FFB547", "#E8503A"), "5-360", lambda: page.open_sub("blocks")),
         ("Minesweeper", tr("Open every safe cell, as fast as you can. Easy, Medium, Hard. Leaderboard for each."), "flag",
          ("#3DDC84", "#0F6B3A"), "35-420", lambda: page.open_sub("sweeper")),
     ]

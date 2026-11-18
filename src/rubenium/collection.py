@@ -19,13 +19,13 @@ from .widgets import Tween, draw_icon
 
 SHOWCASE = 3
 SLOTS = ("badge1", "badge2", "badge3")
-CASE_NAMES = {"lucky": "Coin Rush Case", "frames": "Frame Case", "cosmos": "Cosmic Hunt", "winter": "Winter Case",
-              "giftbox": "Gift Box", "starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing",
+CASE_NAMES = {"lucky": "Coin Rush Case", "frames": "Frame Case", "cosmos": "Cosmic Case", "winter": "Winter Case",
+              "giftbox": "Gift Case", "starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing Case",
               "painter": "Painter's Case", "premium": "Premium Case", "jackpot": "Jackpot Case",
-              "titan": "Titan Case", "vault": "Epic Vault", "mythic": "Mythic Hunt", "daily": "Daily Case",
+              "titan": "Titan Case", "vault": "Vault Case", "mythic": "Top Tier Case", "daily": "Daily Case",
               "style": "Ball, Line & Font Case", "themes": "Theme Case", "profile": "Banner & Frame Case",
-              "pocket": "Pocket Case", "elite": "Elite Case", "royal": "Royal Case", "shiny": "Shiny Hunt",
-              "banners": "Banner Case"}            # 4.0: every name says what is inside (no claim a case cannot keep)
+              "pocket": "Pocket Case", "elite": "Elite Case", "royal": "Royal Case", "shiny": "Shiny Case",
+              "banners": "Banner Case"}            # 4.1: every one is a "Case", and no name promises what it cannot keep
 CASE_COLOURS = {"lucky": "#57E389", "frames": "#C99BFF", "cosmos": "#5B6CFF", "winter": "#9FE3FF", "giftbox": "#FF4F6D",
                 "starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
                 "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0",

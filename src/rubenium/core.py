@@ -19,8 +19,8 @@ from . import win
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "4.0"         # the version people see
-BUILD = "2026.11.18.00"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "4.1"         # the version people see
+BUILD = "2026.11.18.12"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -143,7 +143,25 @@ def alpha(c: QColor | str, a: float) -> QColor:
 
 
 # Metrics at 100 % (the window multiplies through S()).
+_PAGE_EXTRA = [0]           # set while the online menu builds its pages: they are made for its wider halves
+
+
+def page_width() -> int:
+    """The width a page (or a small screen inside the menu) is built for, in the menu building it right now."""
+    return S(CARD_W - 2 * PAD + _PAGE_EXTRA[0])
+
+
+class wide_pages:
+    """with wide_pages(): pages made inside are made for the online menu's halves."""
+
+    def __enter__(self):
+        _PAGE_EXTRA[0] = ONLINE_EXTRA
+
+    def __exit__(self, *_a):
+        _PAGE_EXTRA[0] = 0
+
 CARD_W = 380
+ONLINE_EXTRA = 150          # 4.1: each half of the online menu is this much wider than the small menu's page
 GLOW = 22
 RADIUS = 18
 PAD = 14

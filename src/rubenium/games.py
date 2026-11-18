@@ -1197,8 +1197,7 @@ class Timing(Game):
             p.setPen(QColor(TEXT_DIM))
             lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, faster and faster."),
                      tr("3. Press STOP when it is on the target."),
-                     tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0"),
-                     tr("The target moves every round. Practice makes the difference.")]
+                     tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0")]
             y = r.top() + S(48)
             for text in lines:
                 box = p.fontMetrics().boundingRect(0, 0, int(r.width() - S(36)), 1000, int(Qt.TextFlag.TextWordWrap), text)
@@ -1802,7 +1801,7 @@ def game_feature(name: str) -> str:
     return {"Roulette": "roulette", "Free spin": "wheel"}.get(name, "casino")
 
 
-SUB_FEATURES = {"minigames": "minigames", "memory": "minigames", "g2048": "minigames", "sweeper": "minigames",
+SUB_FEATURES = {"minigames": "minigames", "memory": "minigames", "blocks": "minigames", "sweeper": "minigames",
                 "duels": "golf", "duel_run": "golf", "flip": "coinflip", "advent": "advent", "scratch": "scratch"}
 
 
@@ -1916,21 +1915,6 @@ class GameTile(QWidget):
                     lit = (row, col) in ((0, 1), (1, 0), (2, 2))
                     p.setBrush(alpha(ui.accent, 0.9) if lit else QColor("#1A2125"))
                     p.drawRoundedRect(QRectF(art.x() - S(16) + col * S(11), art.y() + S(10) - row * S(8), S(9), S(6)), S(1.5), S(1.5))
-        elif self.name == "Keno":                              # a grid of balls, some drawn
-            for i in range(12):
-                on = i in (1, 4, 6, 11)
-                p.setBrush(QColor("#E8C26A") if on else QColor("#1A2125"))
-                p.drawEllipse(QPointF(art.x() - S(15) + (i % 4) * S(10), art.y() - S(10) + (i // 4) * S(10)), S(4), S(4))
-        elif self.name == "Limbo":                             # a ring and a rising number
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.setPen(QPen(alpha("#FFFFFF", 0.15), S(3)))
-            p.drawEllipse(art, S(14), S(14))
-            p.setPen(QPen(ui.accent, S(3), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-            p.drawArc(QRectF(art.x() - S(14), art.y() - S(14), S(28), S(28)), 90 * 16, -250 * 16)
-            p.setPen(QColor("#FFFFFF"))
-            p.setFont(font(8, QFont.Weight.Black))
-            p.drawText(QRectF(art.x() - S(14), art.y() - S(8), S(28), S(16)), int(Qt.AlignmentFlag.AlignCenter), "×2")
-            p.setPen(Qt.PenStyle.NoPen)
         else:                                                  # Hi-Lo: two cards and an arrow
             for k, (dx, txt) in enumerate(((-S(8), "7"), (S(8), "?"))):
                 p.setBrush(QColor("#F4F5F6") if k == 0 else alpha(ui.accent, 0.55))
@@ -2066,8 +2050,8 @@ class QuestRow(QWidget):
 class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
-    NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Tower", "Keno", "Limbo",
-             "Free spin"]
+    NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Tower", "Free spin"]
+    PICKER = len(NAMES) - 1                  # 4.1: the free spin is not in the bar of games (its row in the lobby opens it)
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -2114,9 +2098,9 @@ class GamesPage(Page):
                 return build_advent(self, lay)
             if sub == "scratch":
                 return self._scratch(lay)
-            if sub == "g2048":                                       # 4.0: the new minigames
-                from .games5 import build_2048
-                return build_2048(self, lay)
+            if sub == "blocks":                                      # 4.1: Block Blast (in place of 2048)
+                from .games5 import build_blocks
+                return build_blocks(self, lay)
             if sub == "sweeper":
                 from .games5 import build_sweeper
                 return build_sweeper(self, lay)
@@ -2246,7 +2230,7 @@ class GamesPage(Page):
         card = ScratchCard(self)
         lay.addWidget(card)
         hours = int(float(self.ctx.econ.cfg.get("scratch_hours", 12) or 12))
-        lay.addWidget(Label(tr("One card every {h} hours. The prize is yours as soon as the card is revealed.", h=hours),
+        lay.addWidget(Label(tr("One card every {h} hours.", h=hours),
                             10.5, TEXT_DIM, wrap_w=self.W))
         odds = getattr(self.ctx, "scratch_odds", None)            # 4.0: the server's own odds, never a copy
         if odds is None:
@@ -2448,16 +2432,16 @@ class GamesPage(Page):
         top.addWidget(CoinBar(ctx, keys=True), 1)
         lay.addLayout(top)
         lock_strip(ctx, lay, "casino", self.W)                   # 4.0: paused by the admins
-        which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < len(self.NAMES) else 0
+        which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < self.PICKER else 0
         if getattr(ctx, "casino_pick", None) is not None:           # a tile of the lobby was clicked
             which, ctx.casino_pick = ctx.casino_pick, None
-        self.seg = GamePicker([tr(n) for n in self.NAMES], which)
+        self.seg = GamePicker([tr(n) for n in self.NAMES[:self.PICKER]], min(which, self.PICKER - 1))
         self.seg.changed.connect(self._choose)
         lay.addWidget(self.seg)
         from .games3 import HiLo, Roulette
-        from .games4 import Keno, Limbo, Tower
+        from .games4 import Tower
         self.games = [Blackjack(self), Plinko(self), Bombs(self), Roulette(self), Dice(self), Timing(self), Rocket(self),
-                      HiLo(self), Tower(self), Keno(self), Limbo(self), Daily(self)]
+                      HiLo(self), Tower(self), Daily(self)]
         for g in self.games:
             g.setVisible(False)
             lay.addWidget(g)
@@ -2549,8 +2533,11 @@ class GamesPage(Page):
     # -- which game
     def _choose(self, i: int) -> None:
         if self.game is not None and self.game.busy:              # finish the round first
-            return self.seg.set_index(self.games.index(self.game))
-        self.ctx.cfg["game"] = i
+            return self.seg.set_index(min(self.games.index(self.game), self.PICKER - 1))
+        spin = i >= self.PICKER
+        self.seg.setVisible(not spin)                             # the free spin shows alone, without the bar
+        if not spin:
+            self.ctx.cfg["game"] = i
         for n, g in enumerate(self.games):
             g.setVisible(n == i)
             if self.opts[n] is not None:
@@ -2619,16 +2606,16 @@ class GamesPage(Page):
         self.sync()
 
     def on_hide(self) -> None:
-        if getattr(self.ctx, "games_sub", None) in ("g2048", "duel_run") or getattr(self.ctx, "mini_open", False):
+        if getattr(self.ctx, "games_sub", None) == "duel_run" or getattr(self.ctx, "mini_open", False):
             QTimer.singleShot(0, self._keys_back)       # (not on a rebuild of the same screen)
 
     def _keys_back(self) -> None:
         """The keyboard goes back to the game you play once no keyboard game is on screen."""
         ctx = self.ctx
-        still = ctx.window.showing("games") and (getattr(ctx, "games_sub", None) in ("g2048", "duel_run")
+        still = ctx.window.showing("games") and (getattr(ctx, "games_sub", None) == "duel_run"
                                                  or getattr(ctx, "mini_open", False))
         if not still:
             ctx.window.allow_keys(False)
 
 
-from . import games5  # noqa: E402,F401  (adds the 2048 and Minesweeper actions to GamesPage)
+from . import games5  # noqa: E402,F401  (adds the Block Blast and Minesweeper actions to GamesPage)

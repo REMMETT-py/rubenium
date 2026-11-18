@@ -280,6 +280,10 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
     elif kind == "grid":
         for gx, gy in ((-7.5, -7.5), (1.5, -7.5), (-7.5, 1.5), (1.5, 1.5)):
             p.drawRoundedRect(QRectF(gx, gy, 6, 6), 1.5, 1.5)
+    elif kind == "blocks":                       # 4.1: Block Blast: an L piece and one square
+        for gx, gy in ((-8, -8), (-8, -2), (-2, -2)):
+            p.drawRoundedRect(QRectF(gx, gy, 5.2, 5.2), 1.3, 1.3)
+        p.drawRoundedRect(QRectF(3, 3, 5.2, 5.2), 1.3, 1.3)
     elif kind == "ball":
         p.drawEllipse(QPointF(0, 0), 5.5, 5.5)
         p.setBrush(fg)

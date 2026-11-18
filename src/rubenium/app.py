@@ -900,7 +900,7 @@ class App(QObject):
         next move gets the server's answer."""
         self.window.sync_lock()
         for key in ("games", "themes", "friends"):
-            if key == "games" and (self.casino or getattr(self, "games_sub", None) in ("g2048", "sweeper", "memory",
+            if key == "games" and (self.casino or getattr(self, "games_sub", None) in ("blocks", "sweeper", "memory",
                                                                                      "duel_run")):
                 continue
             if self.window.showing(key):
@@ -1335,20 +1335,53 @@ class App(QObject):
             self.cfg["online_tab"] = focus if focus != "giveaway" else self.cfg["online_tab"]
         from .onlinewin import fly_up, online_window
 
-        def fly() -> None:
-            if self._online_win is None:
-                self._online_win = online_window(self, main)
-            ow = self._online_win
-            if focus:
-                ow.current = focus
-            self.online_mode = True
-            self.window = ow
+        state = {"dropped": False}
 
-            def drop() -> None:
-                self._online_busy = False
-                ow.open()
-                self.econ.poll_live()
-            fly_up(self, main, drop)
+        def back_home() -> None:
+            """4.1: the online menu could not open: never leave the user without the R."""
+            self._online_busy = False
+            self.online_mode = False
+            self.window = main
+            try:
+                if self._online_win is not None:
+                    self._online_win.hide()
+            except Exception:  # noqa: BLE001
+                pass
+            main.ball.set_center(main.ball.center)
+            main.show_ball()
+
+        def drop() -> None:
+            if state["dropped"]:
+                return
+            state["dropped"] = True
+            self._online_busy = False
+            try:
+                self._online_win.open()
+            except Exception:  # noqa: BLE001
+                log.exception("online menu failed to open")
+                return back_home()
+            self.econ.poll_live()
+
+        def fly() -> None:
+            try:
+                if self._online_win is None:
+                    self._online_win = online_window(self, main)
+                ow = self._online_win
+                if focus:
+                    ow.current = focus
+                self.online_mode = True
+                self.window = ow
+                fly_up(self, main, drop)
+            except Exception:  # noqa: BLE001
+                log.exception("entering online mode failed")
+                state["dropped"] = True
+                back_home()
+
+        def watchdog() -> None:
+            if not state["dropped"]:
+                log.warning("entering online mode did not finish, forcing it")
+                drop() if self.online_mode and self._online_win is not None else back_home()
+        QTimer.singleShot(4000, watchdog)
         if main.expanded:
             main.collapse()
             QTimer.singleShot(340, fly)
@@ -1400,23 +1433,59 @@ class App(QObject):
                     self.golf_lobby = self.flip_data = None
             self.online.ask("rb_online_leave", {}, left)
         from .onlinewin import float_down
+        done = {"gone": False, "home": False}
 
-        def gone() -> None:
-            self.online_mode = False
-            self.window = main
-            self.cfg["card_open"] = False
-
-            def home() -> None:
-                self._online_busy = False
+        def home() -> None:
+            # 4.1: whatever happens on the way (an effect that never ends, a page that fails), the R always comes
+            # back: this runs once, from the animation or from the watchdog below.
+            if done["home"]:
+                return
+            done["home"] = True
+            self._online_busy = False
+            try:
                 main.ball.set_center(main.ball.center)
                 main.show_ball()
+            except Exception:  # noqa: BLE001
+                log.exception("ball back failed")
+                main.ball.show()
+            try:
                 if after is not None:
                     after()
                 elif self._online_back_open:
                     main.expand()
+            finally:
                 self.on_visibility()
-            float_down(self, main, home)
-        ow.start_leaving(gone)
+
+        def gone() -> None:
+            if done["gone"]:
+                return
+            done["gone"] = True
+            self.online_mode = False
+            self.window = main
+            self.cfg["card_open"] = False
+            try:
+                ow.hide()
+                ow.ball.hide()
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                float_down(self, main, home)
+            except Exception:  # noqa: BLE001
+                log.exception("float down failed")
+                home()
+
+        def watchdog() -> None:
+            if not done["gone"]:
+                log.warning("leaving online mode did not finish, forcing it")
+                gone()
+            if not done["home"]:
+                home()
+        QTimer.singleShot(4000, watchdog)
+        try:
+            ow.start_leaving(gone)
+        except Exception:  # noqa: BLE001
+            log.exception("leaving online mode failed")
+            gone()
 
     def pick_file(self, title: str, pattern: str) -> str:
         return self.window.pick_file(title, pattern)

@@ -21,7 +21,7 @@ from PyQt6.QtGui import QColor, QFont, QGuiApplication, QLinearGradient, QPainte
 from PyQt6.QtWidgets import QWidget
 
 from . import extras, win
-from .core import BD, CARD_W, GLOW, PAD, S, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, sfx, tr, ui
+from .core import BD, CARD_W, GLOW, ONLINE_EXTRA, PAD, S, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, sfx, tr, ui
 from .widgets import IconButton, ScrollArea, Tween, align_slider_rows, draw_icon, snapshot
 
 ONLINE_KEYS = ("games", "themes", "friends", "settings")
@@ -29,6 +29,12 @@ TITLES = {"games": ("dice", "Games"), "themes": ("gem", "Shop"), "friends": ("us
           "giveaway": ("gift", "Giveaway"), "settings": ("cog", "Settings")}
 ORDER = ("games", "themes", "friends", "giveaway", "settings")
 SECTIONS = ("games", "themes", "friends", "settings")           # 4.0: the four parts; two are shown side by side
+LEFT = ("games", "themes", "giveaway")          # 4.1: games and shop on the left half only
+RIGHT = ("friends", "settings")                 # social (with the leaderboards) and settings on the right only
+
+
+def side_of(key: str) -> int:
+    return 1 if key in RIGHT else 0
 HEAD_H = 64                      # wordmark, XP bar, leaderboards, back arrow
 COL_TITLE_H = 46                 # 4.0: the section switch over each half
 COL_GAP = 16
@@ -36,8 +42,8 @@ BOTTOM = 14
 
 
 def col_width() -> int:
-    """A column is exactly as wide as the small menu's page: every page looks the same in both."""
-    return S(CARD_W - 2 * PAD + ScrollArea.GUTTER)
+    """4.1: a column is wider than the small menu's page (its pages are made for that width)."""
+    return S(CARD_W - 2 * PAD + ONLINE_EXTRA + ScrollArea.GUTTER)
 
 
 # ================================================================ effects over the whole screen
@@ -258,8 +264,12 @@ class PaneSwitch(QWidget):
         self.setMouseTracking(True)
 
     def keys(self) -> list:
+        """Two halves: each one switches between its own parts. One half (a small screen): every part."""
         from .pages2 import LIVE_TABS
-        return list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else [])
+        live = ["giveaway"] if "giveaway" in LIVE_TABS else []
+        if len(self.win.tab_keys()) < 2:
+            return list(SECTIONS) + live
+        return [k for k in LEFT if k != "giveaway"] + live if self.index == 0 else list(RIGHT)
 
     def _layout(self) -> None:
         keys = self.keys()
@@ -495,6 +505,8 @@ def _make_class():
             want = ctx.cfg["online_tab"]
             panes = list(ctx.cfg["online_panes"] or ["games", "friends"])
             self.current = want if want in panes else (panes[0] if panes else "games")
+            if self.current not in LEFT + RIGHT:
+                self.current = "games"
             self.drop = Tween(self, 0.0, self._on_drop, QEasingCurve.Type.OutBack)
             self.drop.finished.connect(self._drop_done)
             self.suck = Tween(self, 0.0, self.update, QEasingCurve.Type.InCubic)
@@ -517,12 +529,9 @@ def _make_class():
             from .pages2 import LIVE_TABS
             ok = list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else [])
             want = [k for k in (self.ctx.cfg["online_panes"] or []) if k in ok]
-            for k in ("games", "friends", "themes", "settings"):
-                if len(want) >= 2:
-                    break
-                if k not in want:
-                    want.append(k)
-            return want[:2]
+            left = next((k for k in want if k in LEFT), "games")          # 4.1: each part on its own side
+            right = next((k for k in want if k in RIGHT), "friends")
+            return [left, right]
 
         def tab_keys(self) -> list:
             keys = self.panes()
@@ -533,17 +542,13 @@ def _make_class():
             return keys
 
         def set_pane(self, index: int, key: str) -> None:
-            """Show `key` in half `index`. Already in the other half: the two swap."""
+            """Show `key` in its own half (4.1: games and shop left, social and settings right; `index` is kept for
+            the callers but the side always follows the part). A small screen shows one half: the one picked."""
             panes = self.panes()
-            if len(self.tab_keys()) == 1:
-                index = 0
-                panes = [key, panes[1] if panes[1] != key else panes[0]]
-            elif key in panes:
-                if panes.index(key) == index:
-                    return self.focus(key)
-                panes = [panes[1], panes[0]]
-            else:
-                panes[index] = key
+            index = side_of(key)
+            if panes[index] == key and len(self.tab_keys()) > 1:
+                return self.focus(key)
+            panes[index] = key
             self.ctx.cfg["online_panes"] = list(panes)
             sfx.play("pick")
             self.current = key
@@ -558,7 +563,7 @@ def _make_class():
             self.ctx.friends_profile = None
             self.ctx.social_edit = False
             if "friends" not in self.tab_keys():
-                self.set_pane(1 if len(self.tab_keys()) > 1 else 0, "friends")
+                self.set_pane(side_of("friends"), "friends")
             self.focus("friends", quiet=True)
             self.reload_page("friends")
 
@@ -567,7 +572,7 @@ def _make_class():
             self.ctx.shop_tab = 5
             self.ctx.inv_tab = "levels"
             if "themes" not in self.tab_keys():
-                self.set_pane(1 if len(self.tab_keys()) > 1 else 0, "themes")
+                self.set_pane(side_of("themes"), "themes")
             self.focus("themes", quiet=True)
             self.reload_page("themes")
 
@@ -638,9 +643,14 @@ def _make_class():
                 entry[0].setGeometry(int(r.left()), 0, col_width(), host.height())
 
         # -------------------------------------------------------------- columns
+        def page_w(self) -> int:
+            return S(CARD_W - 2 * PAD + ONLINE_EXTRA)
+
         def _ensure_page(self, key: str):
+            from .core import wide_pages
             new = key not in self.pages
-            entry = super()._ensure_page(key)
+            with wide_pages():                          # 4.1: its pages are made for the wider halves
+                entry = super()._ensure_page(key)
             if new:
                 entry[0].no_stretch = True              # a column is taller than its page: the page keeps its size
                 entry[0].resizeEvent(None)
@@ -693,10 +703,8 @@ def _make_class():
 
         def goto(self, key: str) -> None:
             if key in ("games", "themes", "friends", "giveaway", "settings"):
-                if key not in self.tab_keys():                # brought into the half in use
-                    keys = self.tab_keys()
-                    idx = keys.index(self.current) if self.current in keys else 0
-                    self.set_pane(idx, key)
+                if key not in self.tab_keys():                # brought into its own half
+                    self.set_pane(side_of(key), key)
                 if not self.expanded:
                     self.current = key
                     return self.expand()

@@ -37,7 +37,8 @@ class Page(QWidget):
     def __init__(self, ctx) -> None:
         super().__init__()
         self.ctx = ctx
-        self.W = S(CARD_W - 2 * PAD)
+        from .core import page_width
+        self.W = page_width()                   # 4.1: wider in the online menu's halves
 
     def content_height(self) -> int:
         if self.fixed_height:
@@ -185,6 +186,7 @@ class HoldButton(QAbstractButton):
 
 class HomePage(Page):
     key = "home"
+    ART, ART_COMPACT, CTRL_H = 88, 64, 38          # 4.1: Compact Music Mode: smaller cover, no button row
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -231,7 +233,10 @@ class HomePage(Page):
         self.b_look.clicked.connect(lambda: badge_menu(ctx, self._look_changed))
         controls.addWidget(self.b_look)
         info.addStretch(1)
-        info.addLayout(controls)
+        self.ctrl_box = QWidget()                     # 4.1: Compact Music Mode folds this row away smoothly
+        self.ctrl_box.setLayout(controls)
+        self.ctrl_box.setFixedHeight(S(self.CTRL_H))
+        info.addWidget(self.ctrl_box)
         body.addWidget(self.art, 0, Qt.AlignmentFlag.AlignTop)
         body.addLayout(info, 1)
         prog = hbox(spacing=8)
@@ -263,6 +268,7 @@ class HomePage(Page):
         self._timer = QTimer(self)
         self._timer.setInterval(250)
         self._timer.timeout.connect(self._tick)
+        self.squash = Tween(self, 0.0, self._squash_step, QEasingCurve.Type.InOutCubic)
         self.on_state(ctx.state)
         self.art.set_pixmap(ctx.art_pixmap)
 
@@ -319,20 +325,54 @@ class HomePage(Page):
             self._apply_compact()
 
     def _apply_compact(self) -> None:
+        """4.1: the card folds smoothly, the way the menu bar does: the button row closes up, the cover gets a little
+        smaller, the title and artist grow, and the whole menu gets shorter with it (no gap is left)."""
         on = getattr(self, "_compact", False)
-        for b in (self.b_prev, self.b_play, self.b_next, self.b_look):
-            b.setVisible(not on)
-        st = self.ctx.state
-        self.b_shuffle.setVisible(not on and st.shuffle is not None)
-        self.b_repeat.setVisible(not on and st.repeat is not None)
-        if on:
-            self.b_vol.hide()
-            self.vol.hide()
+        if on:                                      # the buttons go first, then the row closes
+            for b in (self.b_prev, self.b_play, self.b_next, self.b_look, self.b_shuffle, self.b_repeat, self.b_vol,
+                      self.vol):
+                b.hide()
+        self.on_state(self.ctx.state)               # the hint never mentions a button that is not there
+        if self.isVisible() and self.ctx.window.expanded:
+            self.squash.to(1.0 if on else 0.0, 380)
         else:
+            self.squash.jump(1.0 if on else 0.0)
+
+    def _squash_step(self) -> None:
+        k = max(0.0, min(1.0, self.squash.level))
+        self.ctrl_box.setFixedHeight(int(round(S(self.CTRL_H) * (1 - k))))
+        self.ctrl_box.setVisible(k < 0.999)
+        side = S(self.ART + (self.ART_COMPACT - self.ART) * k)
+        self.art.setFixedSize(side, side)
+        self.title.set_size(round((15 + 4 * k) * 2) / 2)
+        self.title.setFixedHeight(S(22 + 6 * k))
+        self.artist.set_size(12 + (1 if k > 0.5 else 0))
+        if k <= 0.001 and not getattr(self, "_compact", False):      # unfolded: the buttons come back
+            st = self.ctx.state
+            for b in (self.b_prev, self.b_play, self.b_next, self.b_look):
+                b.show()
+            self.b_shuffle.setVisible(st.shuffle is not None)
+            self.b_repeat.setVisible(st.repeat is not None)
             QTimer.singleShot(0, self._vol_poll)
-        self.title.set_size(19 if on else 15)
-        self.title.setFixedHeight(S(28 if on else 22))
-        self.artist.set_size(13 if on else 12)
+        self._refit()
+
+    def _refit(self) -> None:
+        """Tell the menu the page is shorter (or taller) now: the card follows it frame by frame."""
+        win = self.ctx.window
+        entry = win.pages.get(self.key) if hasattr(win, "pages") else None
+        if entry is None or entry[1] is not self:
+            return
+        lay = self.layout()
+        lay.invalidate()
+        h = self.content_height()
+        if h == entry[2]:
+            return
+        win.pages[self.key] = (entry[0], self, h)
+        entry[0].set_content_height(h)
+        if win.current == self.key and win.expanded and not win.morph.busy and not win.slide.busy:
+            win.pageh.jump(win._card_h(self.key))
+            win._layout_body()
+            win.update()
 
     def _place_flair(self) -> None:
         """The badges sit on their own line above the song title (or under the artist): they never cover it."""
@@ -407,8 +447,11 @@ class HomePage(Page):
         else:
             from .music3 import app_name
             mine = app_name(self.ctx.cfg["music_app"])
-            title, artist = tr("No music app is open"), (tr("Press play to open {app}", app=mine) if mine else
-                                                         tr("Press play to open your music app"))
+            if getattr(self, "_compact", False):     # 4.1: no play button in Compact Music Mode
+                title, artist = tr("No music app is open"), (mine or "")
+            else:
+                title, artist = tr("No music app is open"), (tr("Press play to open {app}", app=mine) if mine else
+                                                             tr("Press play to open your music app"))
         self.title.set_text(title)
         self.artist.set_text(artist)
         self.setToolTip(st.message if st.status is Status.UNAVAILABLE else "")
@@ -420,7 +463,7 @@ class HomePage(Page):
         self.chip.set_text(text)
         self.chip.setFixedWidth(QFontMetrics(font(12, QFont.Weight.DemiBold)).horizontalAdvance(text) + S(16))
 
-        compact = getattr(self, "_compact", False)
+        compact = getattr(self, "_compact", False) or self.squash.level > 0.001
         self.b_shuffle.setVisible(st.shuffle is not None and not compact)        # never a dead control
         self.b_repeat.setVisible(st.repeat is not None and not compact)
         self.b_shuffle.set_active(bool(st.shuffle))
@@ -1686,7 +1729,7 @@ class StylePart:
         self._tick.setInterval(15000)
         self._tick.timeout.connect(self._music_text)
         self._tick.start()
-        self._refresh()
+        self._refresh_style()
 
     def _music_text(self) -> None:
         wait = self.ctx.wallet.music_wait()
@@ -1749,7 +1792,7 @@ class StylePart:
             drawer.close_drawer()
         else:
             drawer.open_for(th)
-        self._refresh()
+        self._refresh_style()
 
     def _refresh_style(self) -> None:
         self._rows()
@@ -1824,25 +1867,21 @@ class SettingsPage(StylePart, Page):
             app_btn.clicked.connect(lambda: ask_music_app(ctx, then_open=False))
             lay.addWidget(row(tr("Play opens"), app_btn))
             toggle(tr("Mute adverts"), "ad_mute", after=lambda v: (None if v else ctx.admute.release()))
-            note(tr("While the music app plays an advert, its sound is muted, then comes back with the music."))
 
             def compact_set(_v) -> None:
                 home = ctx.window.pages.get("home")
                 if home is not None:
                     home[1].set_compact(ctx.window.chrome.level)
             toggle(tr("Compact Music Mode"), "compact_music", after=compact_set)
-            note(tr("While you play a game (or the menu bar is hidden), the music card keeps only the track, its "
-                    "time and a bigger title. Turn it off to keep every button."))
             lay.addWidget(heading(tr("Games")))
             toggle(tr("Game mode"), "game_mouse")
-            note(tr("In fullscreen games the mouse goes through Rubenium, so it never gets in the way."))
+            note(tr("In fullscreen games the mouse goes through Rubenium."))
             speeds = ["slow", "normal", "fast"]                  # 4.0: how fast cases open
             sp = Segmented([tr("Slow") + " 0.75×", tr("Normal") + " 1×", tr("Fast") + " 2.5×"],
                            speeds.index(cfg["chest_speed"]) if cfg["chest_speed"] in speeds else 1)
             sp.changed.connect(lambda i: cfg.__setitem__("chest_speed", speeds[i]))
             lay.addWidget(Label(tr("Case opening speed"), 12))
             lay.addWidget(sp)
-            note(tr("Only the animation changes: what you win is decided by the server before it starts."))
             lay.addWidget(heading(tr("Language and size")))
             seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
             seg.setFixedWidth(S(170))

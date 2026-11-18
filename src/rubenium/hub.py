@@ -584,12 +584,12 @@ def build_messages(page, lay) -> None:
 
 # ================================================================ leaderboards
 BOARDS = [("coins", "Richest"), ("worth", "Worth"), ("level", "Level"), ("badges", "Badges"), ("hours", "Hours"),
-          ("streak", "Streak"), ("tap", "Beat Tap"), ("park", "Parking"), ("memory", "Memory"), ("g2048", "2048"),
+          ("streak", "Streak"), ("tap", "Beat Tap"), ("park", "Parking"), ("memory", "Memory"), ("blocks", "Block Blast"),
           ("sweeper", "Minesweeper")]
 BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are worth", "badges": "Different badges owned",
                "hours": "Hours with Rubenium", "streak": "Days in a row of daily rewards", "tap": "Best Beat Tap score (%)",
                "park": "Parking puzzles solved", "memory": "Memory games finished", "level": "Highest level (by XP)",
-               "g2048": "Best 2048 score", "sweeper": "Fastest Minesweeper clear"}
+               "blocks": "Best Block Blast score", "sweeper": "Fastest Minesweeper clear"}
 
 
 class LeaderRow(QWidget):
@@ -670,7 +670,7 @@ def build_leaders(page, lay) -> None:
     lay.addWidget(pick)
     kind = BOARDS[min(k, len(BOARDS) - 1)][0]
     mode = int(getattr(ctx, "board_mode", 0) or 0)
-    if kind in ("g2048", "sweeper"):                       # 4.0: the new minigames, one board per mode
+    if kind in ("blocks", "sweeper"):                       # 4.0: the new minigames, one board per mode
         from .games5 import MODES
         mseg = Segmented([tr(m) for m in MODES[kind]], mode)
         mseg.changed.connect(lambda i: (setattr(ctx, "board_mode", i), setattr(ctx, "board_data", None), ctx.reload_page()))
@@ -684,7 +684,7 @@ def build_leaders(page, lay) -> None:
                 ctx.board_data = (key, rows)
                 if ctx.window.showing("friends") and int(getattr(ctx, "social_tab", 0) or 0) == 3:
                     ctx.reload_page("friends")
-    if kind in ("g2048", "sweeper"):
+    if kind in ("blocks", "sweeper"):
         ctx.online.ask("rb_mg_board", {"game": kind, "mode": mode, "friends": friends}, got)
     else:
         ctx.online.ask("rb_leaders", {"kind": kind, "friends": friends}, got)

@@ -547,8 +547,6 @@ def build_flip(page, lay) -> None:
     limit = int(data.get("max_items") or 6)
     rng = float(data.get("range") or 0.1)
     lay.addWidget(Label(tr("CREATE A COINFLIP"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
-    lay.addWidget(Label(tr("1. Create it and pick your side  ·  2. Put in your items and confirm  ·  3. Someone joins and "
-                           "matches them  ·  4. The coin flips"), 10, TEXT_DIM, wrap_w=page.W))
     row = hbox(spacing=6)
     side = Segmented([tr("Black"), tr("White")], int(getattr(ctx, "flip_side", 0) or 0))
     side.changed.connect(lambda i: setattr(ctx, "flip_side", i))
@@ -568,9 +566,8 @@ def build_flip(page, lay) -> None:
     make.clicked.connect(create)
     row.addWidget(make)
     lay.addLayout(row)
-    lay.addWidget(Label(tr("Up to {n} items. The other player must put in about the same worth (within {r}%). The winner "
-                           "takes everything. Your chance is your share of the pot, between 49% and 51%. Bots play by the "
-                           "same rules and odds.", n=limit, r=int(round(rng * 100))), 10, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Up to {n} items, same worth on both sides (±{r}%). Your chance is your share of the pot. "
+                           "The winner takes everything.", n=limit, r=int(round(rng * 100))), 10, TEXT_DIM, wrap_w=page.W))
     flips = [f for f in (data.get("flips") or []) if not f.get("mine")]
     lay.addWidget(Label(tr("OPEN COINFLIPS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
     if not any(f.get("state") == "open" for f in flips):

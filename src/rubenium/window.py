@@ -1422,7 +1422,8 @@ class SheetPage(QWidget):
     def __init__(self, ctx, widget) -> None:
         super().__init__()
         self.ctx, self.widget = ctx, widget
-        self.W = S(CARD_W - 2 * PAD)
+        from .core import page_width
+        self.W = page_width()
         lay = vbox(self, 6)
         widget.setParent(self)
         if widget.width() > self.W:
@@ -1743,6 +1744,10 @@ class MainWindow(QWidget):
 
     # ------------------------------------------------------------------ pages
     # ------------------------------------------------------------------ small screens inside the menu
+    def page_w(self) -> int:
+        """4.1: how wide a small screen made for this menu should be (the online menu's halves are wider)."""
+        return S(CARD_W - 2 * PAD)
+
     def embed(self, widget, keys: bool = False) -> None:
         """Show `widget` inside the menu, over the current tab, until it is closed. keys: it has a text box."""
         old = getattr(self, "sheet", None)

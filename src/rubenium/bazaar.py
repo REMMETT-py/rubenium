@@ -625,8 +625,7 @@ class TaxNote(QWidget):
 def tax_explainer(ctx, width: int):
     """The one line that explains the two prices."""
     tax = int(round(ctx.econ.tax() * 100))
-    return Label(tr("Every item has a worth: what players pay each other in trades, on the market and in coinflips. "
-                    "Buying straight from the shop adds a {n}% tax, so trading with players is cheaper.", n=tax),
+    return Label(tr("Buying from the shop adds a {n}% tax.", n=tax),
                  10, TEXT_DIM, wrap_w=width)
 
 
@@ -787,121 +786,9 @@ class WalletRow(QWidget):
                    tr("{n} cases to open", n=cases))
 
 
-class AdventBanner(QWidget):
-    """2027 LIMITED · ADVENT CALENDAR: a white snowy banner. Hovering it greys it out: coming soon."""
-
-    def __init__(self, ctx, width: int) -> None:
-        super().__init__()
-        self.ctx = ctx
-        self.setFixedSize(width, S(84))
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip(tr("Coming soon"))
-        self._hover = 0.0
-        self._want = 0.0
-        self._timer = QTimer(self)
-        self._timer.setInterval(40)
-        self._timer.timeout.connect(self._step)
-
-    def showEvent(self, _e) -> None:
-        self._timer.start()
-
-    def hideEvent(self, _e) -> None:
-        self._timer.stop()
-
-    def enterEvent(self, _e) -> None:
-        self._want = 1.0
-
-    def leaveEvent(self, _e) -> None:
-        self._want = 0.0
-
-    def mousePressEvent(self, e) -> None:
-        e.accept()
-        ctx = self.ctx
-        data = getattr(ctx, "advent_data", None) or {}
-        if data.get("open"):                              # 3.2: the calendar is here
-            sfx.play("pick")
-            ctx.games_sub = "advent"
-            for flag in ("quests_open", "mini_open", "park_open"):
-                setattr(ctx, flag, False)
-            ctx.window._drop_page("games")
-            return ctx.window.goto("games")
-        sfx.play("off")
-        ctx.toast(tr("The Advent Calendar opens on 1 December"))
-
-    def _step(self) -> None:
-        self._hover += (self._want - self._hover) * 0.25
-        self.update()
-
-    def paintEvent(self, _e) -> None:
-        from PyQt6.QtGui import QPainterPath
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        now = time.monotonic()
-        h = self._hover
-        r = QRectF(self.rect()).adjusted(S(3), S(3), -S(3), -S(3))
-        glow = 0.35 + 0.25 * math.sin(now * 2)                     # a soft icy glow around it
-        for k in (3, 2, 1):
-            p.setPen(QPen(alpha("#BFE6FF", glow * (1 - h) * 0.18 * k), S(k * 1.5)))
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawRoundedRect(r.adjusted(-k, -k, k, k), S(14), S(14))
-        g = QLinearGradient(r.topLeft(), r.bottomRight())
-        g.setColorAt(0.0, mix(QColor("#FFFFFF"), QColor("#8A9096"), h))
-        g.setColorAt(0.55, mix(QColor("#EAF6FF"), QColor("#767C82"), h))
-        g.setColorAt(1.0, mix(QColor("#C9E6FA"), QColor("#5E646A"), h))
-        clip = QPainterPath()
-        clip.addRoundedRect(r, S(14), S(14))
-        p.setClipPath(clip)
-        p.fillPath(clip, g)
-        p.setPen(Qt.PenStyle.NoPen)                                 # snowy hills at the bottom
-        for k, (col, hh) in enumerate((("#D6ECFB", 0.72), ("#FFFFFF", 0.84))):
-            path = QPainterPath(QPointF(r.left(), r.bottom()))
-            for x in range(0, int(r.width()) + 8, 8):
-                path.lineTo(r.left() + x, r.top() + r.height() * hh + math.sin(x / r.width() * 6 + k * 2) * S(4))
-            path.lineTo(r.right(), r.bottom())
-            p.setBrush(mix(QColor(col), QColor("#6E747A"), h))
-            p.drawPath(path)
-        for i in range(40):                                         # falling snow
-            fr = math.sin(i * 12.9898) * 43758.5453
-            fx = fr - math.floor(fr)
-            fy = (fx * 7.3 + now * (0.08 + (i % 5) * 0.025)) % 1.0
-            x = r.left() + (fx + 0.03 * math.sin(now + i)) * r.width()
-            size = S(1.2) + (i % 4) * S(0.6)
-            p.setBrush(alpha("#9FCBEA" if i % 3 else "#FFFFFF", 0.9 * (1 - h * 0.6)))
-            p.drawEllipse(QPointF(x, r.top() + fy * r.height()), size, size)
-        tag = QRectF(r.left() + S(14), r.top() + S(12), S(96), S(20))  # the red "2027 LIMITED" ribbon
-        p.setBrush(mix(QColor("#E0303E"), QColor("#55595D"), h))
-        p.drawRoundedRect(tag, S(10), S(10))
-        p.setPen(QColor("#FFFFFF"))
-        p.setFont(font(9.5, QFont.Weight.Black, 1.0))
-        p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), "2027 LIMITED")
-        p.setPen(mix(QColor("#14324D"), QColor("#2A2E32"), h))
-        p.setFont(font(17, QFont.Weight.Black, 1.2))
-        p.drawText(QRectF(r.left() + S(14), r.top() + S(34), r.width() - S(28), S(28)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("ADVENT CALENDAR") + "  ▾")
-        for i in range(3):                                          # three gift boxes on the right
-            bx = QRectF(r.right() - S(40) - i * S(30), r.top() + S(22) + (i % 2) * S(6), S(24), S(24))
-            bob = math.sin(now * 2 + i) * S(1.5) * (1 - h)
-            bx.translate(0, bob)
-            col = ["#E0303E", "#2E9E5B", "#2D7FD8"][i]
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(mix(QColor(col), QColor("#6E747A"), h))
-            p.drawRoundedRect(bx, S(4), S(4))
-            p.setBrush(mix(QColor("#FFE08A"), QColor("#9A9EA2"), h))
-            p.drawRect(QRectF(bx.center().x() - S(2), bx.top(), S(4), bx.height()))
-            p.drawRect(QRectF(bx.left(), bx.center().y() - S(2), bx.width(), S(4)))
-        if h > 0.02:                                                # hovering: greyed out, "Coming soon"
-            p.setBrush(alpha("#3A3F44", 0.85 * h))
-            p.drawRect(r)
-            p.setPen(alpha("#FFFFFF", h))
-            p.setFont(font(15, QFont.Weight.Black, 1.5))
-            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), tr("COMING SOON"))
-        p.setClipping(False)
-
-
 def build_inventory(page, lay) -> None:
     from .games import GamePicker
     ctx, ec = page.ctx, page.ctx.econ
-    lay.addWidget(AdventBanner(ctx, page.W))
     if not ec.ready:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see your items"), 12, TEXT_DIM))
     raw = getattr(ctx, "inv_tab", 0)
@@ -1980,7 +1867,7 @@ def _trade_summary(page, lay, link, them: str) -> None:
     net = worth_got - worth_gave
     lay.addWidget(Label(tr("Value change: about {v}", v=("+" if net >= 0 else "−") + coins_text(abs(net))), 11.5,
                         READY_GREEN if net >= 0 else LOSS_RED, bold=True))
-    lay.addWidget(Label(tr("Everything is already in your Inventory. This summary closes when you leave."), 10.5,
+    lay.addWidget(Label(tr("Everything is already in your Inventory."), 10.5,
                         TEXT_DIM, wrap_w=page.W))
 
 

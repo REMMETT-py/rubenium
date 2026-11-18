@@ -666,7 +666,7 @@ def build_history(page, lay) -> None:
     lay.addLayout(top)
     items = list(reversed(ctx.notifier.history()))
     if not items:
-        return lay.addWidget(Label(tr("Nothing yet. Trades, offers, messages, duels and rewards will show here."), 11,
+        return lay.addWidget(Label(tr("Nothing yet."), 11,
                                    TEXT_DIM, wrap_w=page.W))
     day0 = time.localtime()
     last = None

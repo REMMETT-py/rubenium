@@ -835,8 +835,7 @@ def build_golf(page, lay) -> None:
             ctx.econ.call("rb_golf_create", {"bet": bet}, done)
         make.clicked.connect(create)
         lay.addWidget(make)
-        lay.addWidget(Label(tr("{n} holes. Anyone can join. The winner gets both bets (5% fee); a draw gives them back. "
-                               "Nobody joins in 5 minutes: it closes and your bet comes back.", n=holes),
+        lay.addWidget(Label(tr("{n} holes. The winner gets both bets (5% fee). Closes after 5 minutes if nobody joins.", n=holes),
                             10, TEXT_DIM, wrap_w=page.W))
     else:
         lay.addWidget(Label(tr("YOUR MATCH"), 10, TEXT_DIM, weight=QFont.Weight.Bold))

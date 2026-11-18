@@ -11,7 +11,7 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QGridLayout, QWidget
 
 from .core import S, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, sfx, tr, ui
@@ -473,9 +473,8 @@ class LevelIntro(QWidget):
 
     def __init__(self, ctx) -> None:
         super().__init__()
-        from .core import CARD_W, PAD
         self.ctx = ctx
-        self.setFixedWidth(S(CARD_W - 2 * PAD))
+        self.setFixedWidth(ctx.window.page_w())
         lay = vbox(self, 8)
         top = hbox(spacing=10)
         for lv in (0, 25, 50, 100):
@@ -485,15 +484,8 @@ class LevelIntro(QWidget):
         lay.addWidget(Label(tr("New: levels and XP"), 16, bold=True))
         w = self.width()
         for title, text in (
-                (tr("XP"), tr("Experience points. You get them by playing: games, Mini Golf, Coinflip, trades, quests, "
-                              "XP coupons and time spent online.")),
-                (tr("Levels"), tr("From level 0 to 100. The first levels come fast, the next ones take longer: "
-                                  "level 100 takes months.")),
-                (tr("Badges"), tr("Every 5 levels unlocks a new level badge, more impressive each time. Your level and "
-                                  "your XP bar show at the top of the online menu.")),
-                (tr("Your badge"), tr("Inventory > Levels: pick the unlocked badge your profile shows.")),
-                (tr("Rewards"), tr("Higher levels pay a little more in minigames, and a few big cases unlock "
-                                   "between levels 1 and 5. Nothing else is locked behind a level."))):
+                (tr("XP"), tr("Earn XP by playing, trading and being online.")),
+                (tr("Badges"), tr("A new badge every 5 levels. Pick yours in Inventory > Levels."))):
             lay.addWidget(Label(title, 12, TEXT, bold=True))
             lay.addWidget(Label(text, 10.5, TEXT_DIM, wrap_w=w))
         ok = Button(tr("Got it"), "primary", 34)
@@ -520,8 +512,8 @@ def coupon_xp_text(item: str) -> str:
     return tr("Up to level 5") if item == "coupon:og" else tr("{n} XP", n=f"{xp:,}".replace(",", " "))
 
 
-def paint_coupon(p: QPainter, r: QRectF, item: str, now: float = 0.0) -> None:
-    """A ticket with a torn edge, its colour, XP and a star."""
+def paint_coupon(p: QPainter, r: QRectF, item: str, now: float = 0.0, label: bool = True) -> None:
+    """A ticket with a torn edge, its colour, XP and a star (label=False: the scratch card writes its own)."""
     name, xp, col = COUPONS.get(item, ("XP coupon", 0, "#FFFFFF"))
     c = QColor(col)
     path = QPainterPath()
@@ -543,12 +535,13 @@ def paint_coupon(p: QPainter, r: QRectF, item: str, now: float = 0.0) -> None:
     p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(alpha("#FFFFFF", 0.9))
     p.drawPath(_lv_star(QPointF(r.left() + r.width() * 0.16, r.center().y()), r.height() * 0.24, r.height() * 0.1, 5))
-    p.setPen(QColor("#FFFFFF"))
-    p.setFont(font(max(6.0, r.height() / S(1) * 0.20), QFont.Weight.Black, 1))
-    p.drawText(QRectF(x + r.width() * 0.04, r.top(), r.width() * 0.62, r.height() * 0.55), int(Qt.AlignmentFlag.AlignBottom), "XP")
-    p.setFont(font(max(5.0, r.height() / S(1) * 0.13), QFont.Weight.Bold))
-    p.drawText(QRectF(x + r.width() * 0.04, r.top() + r.height() * 0.55, r.width() * 0.62, r.height() * 0.35),
-               int(Qt.AlignmentFlag.AlignTop), "OG" if item == "coupon:og" else f"+{xp}")
+    if label:
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(max(6.0, r.height() / S(1) * 0.20), QFont.Weight.Black, 1))
+        p.drawText(QRectF(x + r.width() * 0.04, r.top(), r.width() * 0.62, r.height() * 0.55), int(Qt.AlignmentFlag.AlignBottom), "XP")
+        p.setFont(font(max(5.0, r.height() / S(1) * 0.13), QFont.Weight.Bold))
+        p.drawText(QRectF(x + r.width() * 0.04, r.top() + r.height() * 0.55, r.width() * 0.62, r.height() * 0.35),
+                   int(Qt.AlignmentFlag.AlignTop), "OG" if item == "coupon:og" else f"+{xp}")
     if item in ("coupon:epic", "coupon:og"):                    # a shine for the best ones
         sweep = (now * 0.5) % 2.0 - 0.5
         p.save()
@@ -563,70 +556,140 @@ def paint_coupon(p: QPainter, r: QRectF, item: str, now: float = 0.0) -> None:
 
 
 class ScratchCoupon(QWidget):
-    """Scratch the silver off with the mouse (or press Reveal) to see the XP. The server already decided it."""
+    """Scratch the silver off with the mouse (or press Reveal) to see the XP. The server already decided it.
+    4.1: the silver is one picture the mouse erases (the same work at the first and the thousandth stroke) and the
+    press is kept here, so dragging scratches instead of moving the menu."""
     revealed = pyqtSignal()
+    CELL = 12                                       # the grid that measures how much is scratched
 
     def __init__(self, item: str) -> None:
         super().__init__()
         self.item = item
         self.setFixedHeight(S(120))
         self.setCursor(Qt.CursorShape.CrossCursor)
-        self.holes: list = []
         self.done = False
         self.text = coupon_xp_text(item)
-        self._t = QTimer(self)
-        self._t.setInterval(33)
+        self.foil = None                            # QImage of the silver, made at the first paint
+        self.cells: set = set()
+        self.total = 1
+        self.last = None
+        self._t = QTimer(self)                      # the coupon's gentle shine
+        self._t.setInterval(50)
         self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
         self._t.start()
 
-    def cleared(self) -> float:
-        cells = set()
-        for pt in self.holes:
-            cells.add((int(pt.x() // S(14)), int(pt.y() // S(14))))
-        total = max(1, (self.width() // S(14)) * (self.height() // S(14)))
-        return len(cells) / total
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
 
-    def mouseMoveEvent(self, e) -> None:
+    def _area(self) -> QRectF:
+        r = QRectF(self.rect()).adjusted(S(4), S(4), -S(4), -S(4))
+        return r.adjusted(r.width() * 0.33, S(6), -S(8), -S(6))
+
+    def _make_foil(self) -> None:
+        a = self._area()
+        dpr = self.devicePixelRatioF()
+        img = QImage(max(1, int(a.width() * dpr)), max(1, int(a.height() * dpr)), QImage.Format.Format_ARGB32_Premultiplied)
+        img.setDevicePixelRatio(dpr)
+        img.fill(Qt.GlobalColor.transparent)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        box = QRectF(0, 0, a.width(), a.height())
+        g = QLinearGradient(box.topLeft(), box.bottomRight())
+        g.setColorAt(0, QColor("#C9CED4"))
+        g.setColorAt(0.5, QColor("#8A929B"))
+        g.setColorAt(1, QColor("#D9DEE3"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRoundedRect(box, S(8), S(8))
+        p.setPen(QColor("#4A525B"))
+        p.setFont(font(10, QFont.Weight.Bold))
+        p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), tr("Scratch here"))
+        p.end()
+        self.foil = img
+        c = S(self.CELL)
+        self.total = max(1, int(a.width() // c) * int(a.height() // c))
+
+    def resizeEvent(self, _e) -> None:
+        self.foil = None
+        self.cells.clear()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()                                  # never let the drag reach the window
         if self.done:
             return
-        for k in range(3):
-            self.holes.append(e.position() + QPointF(random.uniform(-4, 4), random.uniform(-4, 4)))
-        if self.cleared() > 0.45:
+        self.last = e.position()
+        self._scratch(self.last)
+
+    def mouseMoveEvent(self, e) -> None:
+        e.accept()
+        if self.done or self.last is None:
+            return
+        a, b = self.last, e.position()
+        steps = max(1, int(math.hypot(b.x() - a.x(), b.y() - a.y()) / S(4)))
+        for k in range(1, steps + 1):
+            self._scratch(QPointF(a.x() + (b.x() - a.x()) * k / steps, a.y() + (b.y() - a.y()) * k / steps))
+        self.last = b
+        if len(self.cells) / self.total > 0.45:
             self.reveal()
+
+    def mouseReleaseEvent(self, e) -> None:
+        e.accept()
+        self.last = None
+
+    def _scratch(self, pos: QPointF) -> None:
+        if self.foil is None:
+            self._make_foil()
+        a = self._area()
+        local = pos - a.topLeft()
+        if not QRectF(0, 0, a.width(), a.height()).adjusted(-S(12), -S(12), S(12), S(12)).contains(local):
+            return
+        rad = S(12)
+        p = QPainter(self.foil)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(0, 0, 0))
+        p.drawEllipse(local, rad, rad)
+        p.end()
+        c = S(self.CELL)
+        cols, rows = int(a.width() // c), int(a.height() // c)
+        for dx in (-rad * 0.6, 0, rad * 0.6):
+            for dy in (-rad * 0.6, 0, rad * 0.6):
+                cx, cy = int((local.x() + dx) // c), int((local.y() + dy) // c)
+                if 0 <= cx < cols and 0 <= cy < rows:
+                    self.cells.add((cx, cy))
+        self.update(a.toAlignedRect().adjusted(-2, -2, 2, 2))
 
     def reveal(self) -> None:
         if not self.done:
             self.done = True
+            self.last = None
             sfx.tune("coupon")
+            self.update()
             self.revealed.emit()
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(S(4), S(4), -S(4), -S(4))
-        now = time.monotonic()
-        paint_coupon(p, r, self.item, now)
+        paint_coupon(p, r, self.item, time.monotonic(), label=False)
         p.setPen(QColor("#FFFFFF"))
-        p.setFont(font(20, QFont.Weight.Black))
-        p.drawText(r.adjusted(r.width() * 0.34, 0, 0, 0), int(Qt.AlignmentFlag.AlignCenter), self.text)
+        box = self._area().adjusted(S(6), 0, -S(6), 0)
+        size = 20.0
+        while size > 9:                             # the prize always fits under the silver
+            f = font(size, QFont.Weight.Black)
+            p.setFont(f)
+            if p.fontMetrics().horizontalAdvance(self.text) <= box.width():
+                break
+            size -= 1
+        p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), self.text)
         if self.done:
             return
-        foil = QPainterPath()
-        foil.addRoundedRect(r.adjusted(r.width() * 0.33, S(6), -S(8), -S(6)), S(8), S(8))
-        holes = QPainterPath()
-        for pt in self.holes:
-            holes.addEllipse(pt, S(11), S(11))
-        g = QLinearGradient(r.topLeft(), r.bottomRight())
-        g.setColorAt(0, QColor("#C9CED4"))
-        g.setColorAt(0.5, QColor("#8A929B"))
-        g.setColorAt(1, QColor("#D9DEE3"))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(g)
-        p.drawPath(foil.subtracted(holes))
-        p.setPen(QColor("#4A525B"))
-        p.setFont(font(10, QFont.Weight.Bold))
-        if not self.holes:
-            p.drawText(foil.boundingRect(), int(Qt.AlignmentFlag.AlignCenter), tr("Scratch here"))
+        if self.foil is None:
+            self._make_foil()
+        p.drawImage(self._area().topLeft(), self.foil)
 
 
 class CouponOpen(QWidget):
@@ -634,9 +697,8 @@ class CouponOpen(QWidget):
 
     def __init__(self, ctx, instance: str, item: str) -> None:
         super().__init__()
-        from .core import CARD_W, PAD
         self.ctx, self.instance, self.item = ctx, instance, item
-        self.setFixedWidth(S(CARD_W - 2 * PAD))
+        self.setFixedWidth(ctx.window.page_w())
         lay = vbox(self, 8)
         name = COUPONS.get(item, ("XP coupon", 0, ""))[0]
         lay.addWidget(Label(tr(name), 16, bold=True))
@@ -644,8 +706,6 @@ class CouponOpen(QWidget):
             lay.addWidget(Label(tr("A special thank-you for our OG players. You've been here since day one, and we "
                                    "appreciate you being part of the journey. Enjoy your free XP reward!"),
                                 11, "#E8C26A", wrap_w=self.width()))
-            lay.addWidget(Label(tr("It is free because your account has the OG tag. It takes you to level 5."),
-                                10, TEXT_DIM, wrap_w=self.width()))
         self.card = ScratchCoupon(item)
         self.card.revealed.connect(self._use)
         lay.addWidget(self.card)
@@ -695,7 +755,7 @@ def build_levels(page, lay) -> None:
     lvl = int(x.get("level") or 0)
     lay.addWidget(XPBar(ctx))
     today, cap = int(x.get("today") or 0), int(x.get("cap") or 2500)
-    lay.addWidget(Label(tr("Today: {a} / {b} XP from playing (coupons do not count)", a=today, b=cap), 10, TEXT_DIM,
+    lay.addWidget(Label(tr("Today: {a} / {b} XP", a=today, b=cap), 10, TEXT_DIM,
                         wrap_w=page.W))
     coupons = [it for it in ctx.econ.items if str(it.get("item", "")).startswith("coupon:")]
     if coupons:
@@ -737,8 +797,6 @@ def build_levels(page, lay) -> None:
     if gated:                                     # 4.0: the only things levels open, all by level 5
         from .collection import CASE_NAMES
         lay.addWidget(heading(tr("Unlocks")))
-        lay.addWidget(Label(tr("A few big cases open up in your first levels. After level 5 nothing is locked."), 10,
-                            TEXT_DIM, wrap_w=page.W))
         for c in gated:
             need = int(c["min_level"])
             done = lvl >= need

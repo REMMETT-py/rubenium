@@ -113,13 +113,10 @@ class MusicAppPicker(QWidget):
 
     def __init__(self, ctx, then_open: bool = True) -> None:
         super().__init__()
-        from .core import CARD_W, PAD
         self.ctx, self.then_open = ctx, then_open
-        self.setFixedWidth(S(CARD_W - 2 * PAD))
+        self.setFixedWidth(ctx.window.page_w())
         lay = vbox(self, 8)
         lay.addWidget(Label(tr("Which music app do you use?"), 15, bold=True))
-        lay.addWidget(Label(tr("Play opens it when no music is running. Rubenium shows what plays in any of them. "
-                               "You can change it in Settings."), 10.5, TEXT_DIM, wrap_w=self.width()))
         grid = QWidget()
         from PyQt6.QtWidgets import QGridLayout
         gl = QGridLayout(grid)

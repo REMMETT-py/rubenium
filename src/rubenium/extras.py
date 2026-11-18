@@ -1101,6 +1101,13 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("4.1", ['New minigame: Block Blast (in place of 2048). Place the pieces, clear rows and columns, three modes and leaderboards',
+             'Online menu: wider halves, games and shop on the left, social and settings on the right',
+             'The advent calendar is now on the Games tab',
+             'Compact Music Mode folds smoothly and makes the title bigger, with no gap',
+             'RL Swap: Lantern Lift goal explosion (on Big Splash). The Sparkles boost was removed: it crashed the game',
+             'Fixes: Settings > Look no longer crashes, the R always comes back after online mode, the OG scratch card is smooth',
+             'Keno, Limbo and the free spin left the casino bar (the free spin stays in the lobby). Every case is now a Case']),
     ("4.0", ['Levels 0 to 100 with XP from everything you play, a badge every 5 levels, a level-up scene and Inventory > Levels',
              'XP coupons in cases, the wheel and scratch cards. OG players get a free coupon to level 5',
              'Online menu: pick the two sections you want side by side, gold Leaderboards button, XP bar on top',
@@ -1328,6 +1335,7 @@ RL_ITEMS = [
     dict(id="atomizer_gentlemates", cat="goal", old="Atomizer", new="Gentle Mates 2025", file="explosion_Rekt_SF.upk"),
     dict(id="splash_adidas", cat="goal", old="Big Splash", new="Adidas", file="explosion_splash_SF.upk"),
     dict(id="splash_supernova", cat="goal", old="Big Splash", new="SuperNova III", file="explosion_splash_SF.upk"),
+    dict(id="splash_lanternlift", cat="goal", old="Big Splash", new="Lantern Lift", file="explosion_splash_SF.upk"),
     dict(id="octane_fennec", cat="body", old="Octane", new="Fennec", file="Body_Octane_SF.upk"),
     dict(id="fennec_flames_likescraft", cat="fdecal", old="Flames", new="Likescraft", file="skin_grain_flames_SF.upk"),
     dict(id="fennec_flames_blacklunation", cat="fdecal", old="Flames", new="Black Lunation",
@@ -1346,7 +1354,6 @@ RL_ITEMS = [
     dict(id="bubbles_purple", cat="boost", old="Bubbles", new="Invisible Boost", file="Boost_Bubble_SF.upk",
          preview=False),
     dict(id="standard_purple", cat="boost", old="Standard", new="Purple Standard", file="Boost_Standard_SF.upk"),
-    dict(id="flamethrower_sparkles", cat="boost", old="Flamethrower", new="Sparkles", file="Boost_Flamethrower_SF.upk"),
     dict(id="dieci_black_infinium", cat="wheels", old="Black Dieci", new="Infinium", file="WHEEL_Caliber_SF.upk"),
     dict(id="stern_alpha", cat="wheels", old="Stern", new="Alpha Wheels", file="WHEEL_Hydra_SF.upk"),
     dict(id="anodized_pearl", cat="paint", old="Anodized", new="Anodized Pearl", file="paintfinish_anodized_SF.upk"),
@@ -1369,7 +1376,9 @@ RETIRED = {"f1cb440607e0dd4cabfd155b71c29ad444d2d44b7322251455b3f1e1ea30a9fd": "
            "ed814c9961159e70f1dcef48755cdb54e455fee66110b0ef6e19e05662617827": "explosion_Dragon_SF.upk",
            "b529dea013234bcaebc4841426a0d483360f9ff7509948372af9b6917f4ac2f7": "explosion_Dragon_SF.upk",
            "3c4680632863f58e2fe4c736802e959d6bc351dcbf74cda4fd5b110b4fab0a6b": "explosion_Dragon_SF.upk",
-           "122727c810efe7df76f3fada4caf085b18af1781e63d4f70697fa7c744ab018d": "playerBanner_DiamondTile_SF.upk"}
+           "122727c810efe7df76f3fada4caf085b18af1781e63d4f70697fa7c744ab018d": "playerBanner_DiamondTile_SF.upk",
+           # 4.1: the Sparkles boost crashed the game. Anyone who still has it gets the original Flamethrower back.
+           "3e2a2477547e3fe22fc95fd1de6347db8c817bb01c98c12f0921b490db466344": "Boost_Flamethrower_SF.upk"}
 
 
 def swap_files() -> list:
@@ -1377,7 +1386,8 @@ def swap_files() -> list:
     return sorted({it["file"] for it in RL_ITEMS} | set(RETIRED.values()), key=str.lower)
 
 
-REMOVED_SWAPS = ("dragons_lanternlift", "dragons_monsoon", "diamond_electric", "fennec_stripes_strongline")
+REMOVED_SWAPS = ("dragons_lanternlift", "dragons_monsoon", "diamond_electric", "fennec_stripes_strongline",
+                 "flamethrower_sparkles")
 
 # Clean game files shipped with the app in swaps/_originals: used to put a game file back when the player's own
 # saved copy is missing or unusable. Only files checked to be untouched originals are listed (and a shipped
