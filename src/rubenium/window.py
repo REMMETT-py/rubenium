@@ -1622,6 +1622,10 @@ class MainWindow(QWidget):
         self._guard = QTimer(self)
         self._guard.setInterval(25)
         self._guard.timeout.connect(self._mouse_guard)
+        self._heal_t = QTimer(self)                         # 4.5: never left blank or half off the screen
+        self._heal_t.setInterval(1500)
+        self._heal_t.timeout.connect(self.heal)
+        self._heal_t.start()
         if win.IS_WIN:
             self._guard.start()
         self._open_from = None               # where the ball was when the card opened
@@ -1881,6 +1885,33 @@ class MainWindow(QWidget):
         if gone:
             TEMP_TABS.difference_update(gone)
             self.body.set_tabs()
+
+    def heal(self) -> None:
+        """4.5: the small menu, open, always shows its page and sits on the screen; closed, it is not left drawn."""
+        if getattr(self, "modal", False) or self.morph.busy or self.slide.busy or self.pageh.busy:
+            return
+        try:
+            if self.ctx.window is not self:                 # online: this menu waits, folded into the ball
+                if self.isVisible() and not self.expanded:
+                    self.hide()
+                return
+            if self.expanded and self.isVisible():
+                if not self.body.isVisible() and getattr(self, "sheet", None) is None:
+                    self.morph.jump(1.0)
+                    self._on_morph()
+                card = self._card_rect()
+                tl = self.mapToGlobal(card.topLeft().toPoint())
+                g = QRect(tl, card.size().toSize())
+                wa = work_area(g.center())
+                if not wa.intersects(g) or g.left() < wa.left() - S(4) or g.right() > wa.right() + S(4) \
+                        or g.top() < wa.top() - S(4):
+                    self._place(self.ball.rect_global(), None)
+                    self._layout_body()
+                    self.update()
+            elif not self.expanded and self.isVisible() and self.morph.level <= 0.001:
+                self._on_morph()
+        except RuntimeError:
+            pass
 
     def _mouse_guard(self) -> None:
         """While a game hides or locks the mouse pointer, every Rubenium window lets clicks through to the

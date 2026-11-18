@@ -197,6 +197,16 @@ class Econ(QObject):
             return mine
         return self.looks.get(name) or {}
 
+    def bet_cap(self, coins: int) -> int:
+        """4.5: the biggest casino bet (the server's rb_bet_cap): 1 000, or 5% of your coins, up to 5 000."""
+        def c(k, d):
+            try:
+                return float(self.cfg.get(k, d) or d)
+            except (TypeError, ValueError, AttributeError):
+                return d
+        base, rich, pct = int(c("bet_max", 1000)), int(c("bet_max_rich", 5000)), c("bet_rich_pct", 5)
+        return max(base, min(rich, int(coins * pct / 100) // 10 * 10))
+
     def streak_bonus(self) -> int:
         """3.1: every day of the login streak adds coins to the AFK pay (up to 20 days)."""
         per = int(self.cfg.get("streak_coin", 0) or 0)

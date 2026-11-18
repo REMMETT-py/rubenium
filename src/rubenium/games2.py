@@ -59,6 +59,23 @@ class BeatRush(QWidget):
         self._frames.setTimerType(Qt.TimerType.PreciseTimer)
         self._frames.setInterval(16)
         self._frames.timeout.connect(self._tick)
+        from .widgets import KeyPoll                       # 4.5: D F J K and Space, read straight from the keyboard
+        self.keys = KeyPoll(["D", "F", "J", "K", "Space"], self._key, lambda: self.state in ("count", "play"))
+        self.keys.setParent(self)
+        self.on_space = None                               # the page's Start button
+
+    def _key(self, name: str, down: bool) -> None:
+        if name == "Space":
+            if down and self.state in ("idle", "done") and not self.duel:
+                (self.on_space or self.start)()
+            return
+        lane = "DFJK".index(name)
+        if down:
+            self.pressed[lane] = time.monotonic()
+            if self.state == "play":
+                self._press(lane)
+        else:
+            self._release(lane)
 
     # -- rounds
     def start(self) -> None:
@@ -85,9 +102,10 @@ class BeatRush(QWidget):
         self.combo = self.best = 0
         self.result = {}
         self.state = "play"
-        self.ctx.window.allow_keys(True)              # 4.0: the keys D F J K must reach this window
-        self.setFocus(Qt.FocusReason.OtherFocusReason)
-        self.grabKeyboard()                           # nothing else takes a key while notes fall
+        if not self.keys.live:                         # 4.5: on Windows the keys are read directly (KeyPoll)
+            self.ctx.window.allow_keys(True)
+            self.setFocus(Qt.FocusReason.OtherFocusReason)
+            self.grabKeyboard()
         self._frames.start()
 
     def abort(self) -> None:
@@ -184,7 +202,7 @@ class BeatRush(QWidget):
             self.hits[i]["u"] = int(self._ms())
 
     def keyPressEvent(self, e) -> None:
-        if e.isAutoRepeat():
+        if e.isAutoRepeat() or self.keys.live:
             return
         if e.key() in LANE_KEYS:
             self._press(LANE_KEYS.index(e.key()))
@@ -194,7 +212,7 @@ class BeatRush(QWidget):
             super().keyPressEvent(e)
 
     def keyReleaseEvent(self, e) -> None:
-        if not e.isAutoRepeat() and e.key() in LANE_KEYS:
+        if not e.isAutoRepeat() and not self.keys.live and e.key() in LANE_KEYS:
             self._release(LANE_KEYS.index(e.key()))
 
     def _lane_at(self, x: float) -> int:
@@ -1214,8 +1232,7 @@ def build_minigames(page, lay) -> None:
     """Earn coins: the free mini games, each with what it pays."""
     page._back_bar(lay, tr("Earn coins"))
     cap = int(float(page.ctx.econ.cfg.get("game_window_cap", 300) or 300) * (1 + 0.004 * page.ctx.econ.level))
-    lay.addWidget(Label(tr("Each game pays up to {n} coins every 2 hours.", n=cap), 10.5,
-                        TEXT_DIM, wrap_w=page.W))
+    del cap
     games = [
         ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
          ("#FF5C8A", "#7A1FFF"), "12-50", lambda: page._show_mini(True)),

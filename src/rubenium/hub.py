@@ -1660,12 +1660,12 @@ class StreakRow(QWidget):
 
 
 class AmountWindow(FloatWindow):
-    """Give or take coins or keys: quick buttons for the usual amounts, or type any number."""
-    wants_keys = True
+    """Give or take coins, keys or XP: Give / Take, one slider of round amounts, Apply. 4.5: no rows of buttons."""
+    wants_keys = False
 
     def __init__(self, ctx, title: str, presets: list, on_amount) -> None:
         super().__init__(ctx, 320)
-        from PyQt6.QtWidgets import QLineEdit
+        from .widgets import AmountSlider
         self.on_amount = on_amount
         lay = vbox(self, 8, (16, 14, 16, 16))
         top = hbox(spacing=6)
@@ -1674,39 +1674,15 @@ class AmountWindow(FloatWindow):
         close.clicked.connect(self.close)
         top.addWidget(close)
         lay.addLayout(top)
-        for row in (presets[:4], presets[4:8]):
-            if not row:
-                continue
-            line = hbox(spacing=6)
-            for n in row:
-                b = Button(("+" if n > 0 else "−") + coins_text(abs(n)), "primary" if n > 0 else "danger", 30)
-                b.clicked.connect(lambda _c=False, n=n: self._go(n))
-                line.addWidget(b, 1)
-            lay.addLayout(line)
-        lay.addWidget(Label(tr("Or type an amount (minus to take):"), 10.5, TEXT_DIM))
-        line = hbox(spacing=6)
-        self.edit = QLineEdit()
-        self.edit.setPlaceholderText("500 / -500")
-        self.edit.setFixedHeight(S(32))
-        self.edit.setStyleSheet(
-            f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
-            f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}")
-        self.edit.returnPressed.connect(self._typed)
-        ok = Button(tr("Apply"), "primary", 32)
-        ok.clicked.connect(self._typed)
-        line.addWidget(self.edit, 1)
-        line.addWidget(ok)
-        lay.addLayout(line)
+        self.mode = Segmented([tr("Give"), tr("Take")], 0)
+        lay.addWidget(self.mode)
+        top_n = max(abs(int(n)) for n in presets)
+        self.amount = AmountSlider("", 1, top_n, max(1, top_n // 100), coins_text)
+        lay.addWidget(self.amount)
+        ok = Button(tr("Apply"), "primary", 34)
+        ok.clicked.connect(lambda: self._go(self.amount.value() * (-1 if self.mode.index() == 1 else 1)))
+        lay.addWidget(ok)
         self.centre()
-
-    def _typed(self) -> None:
-        text = self.edit.text().replace(" ", "").replace("−", "-")
-        try:
-            n = int(text)
-        except ValueError:
-            return self.edit.setFocus()
-        if n:
-            self._go(n)
 
     def _go(self, n: int) -> None:
         self.close()
@@ -1737,21 +1713,9 @@ class DealCard(QWidget):
     def mouseReleaseEvent(self, e) -> None:
         if not self.rect().contains(e.position().toPoint()):
             return
-        ctx, ec, d = self.ctx, self.ctx.econ, self.d
-        if self.owned:
-            return ctx.toast(tr("You already have it"), "warn")
-        if d["now"] > ec.coins:
-            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(d["now"] - ec.coins)), "warn")
-        from .cosmetics import item_name
+        sfx.play("pick")
+        self.ctx.window.embed(DealSheet(self.ctx, self.d, self.owned))       # 4.5: see it before you buy it
 
-        def bought(ok: bool, data) -> None:
-            if not ok:
-                return ctx.toast(tr(str(data)), "warn")
-            sfx.play("on")
-            ctx.toast(tr("Bought: {what}", what=item_name(d["item"])))
-            ctx.reload_page()
-        ctx.window.confirm(tr("Buy {what} for {n} coins?", what=item_name(d["item"]), n=coins_text(d["now"])),
-                           lambda: ec.buy(d["item"], bought), yes=tr("Buy"))
 
     def paintEvent(self, _e) -> None:
         from .cosmetics import item_name, paint_cosmetic
@@ -1791,6 +1755,60 @@ class DealCard(QWidget):
         p.setFont(font(14, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left(), r.top() + S(110), r.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter),
                    tr("Owned") if self.owned else coins_text(int(self.d["now"])))
+
+
+class DealSheet(QWidget):
+    """4.5: a deal, up close: the item shown big (a theme is tried on the menu), then Buy or Back."""
+
+    def __init__(self, ctx, d: dict, owned: bool) -> None:
+        super().__init__()
+        from .bazaar import LookPreview, Preview
+        from .cosmetics import item_name
+        from .widgets import IconButton
+        self.ctx, self.d = ctx, d
+        w = ctx.window.page_w()
+        self.setFixedWidth(w)
+        lay = vbox(self, 8)
+        item = d["item"]
+        top = hbox(spacing=8)
+        back = IconButton("back", 30, tip=tr("Back"))
+        back.clicked.connect(self._close)
+        top.addWidget(back)
+        top.addWidget(Label(item_name(item), 15, bold=True), 1)
+        lay.addLayout(top)
+        kind = item.split(":")[0]
+        lay.addWidget(LookPreview(ctx, item, w) if kind in ("banner", "frame") else Preview(ctx, item))
+        if kind == "theme":
+            ctx.start_preview(item)
+        price = Label(tr("{a} → {b} coins", a=coins_text(int(d.get("was") or d.get("price") or 0)), b=coins_text(int(d["now"]))),
+                      13, GOLD_TEXT, bold=True)
+        lay.addWidget(price)
+        buy = Button(tr("You already have it") if owned else tr("Buy for {n} coins", n=coins_text(int(d["now"]))),
+                     "ghost" if owned else "primary", 38)
+        buy.setEnabled(not owned)
+        buy.clicked.connect(self._buy)
+        lay.addWidget(buy)
+
+    def on_closed(self) -> None:
+        self.ctx.stop_preview()
+
+    def _close(self) -> None:
+        self.ctx.stop_preview()
+        self.ctx.window.unembed(self)
+
+    def _buy(self) -> None:
+        ctx, ec, d = self.ctx, self.ctx.econ, self.d
+        if d["now"] > ec.coins:
+            return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(d["now"] - ec.coins)), "warn")
+        from .cosmetics import item_name
+
+        def bought(ok: bool, data) -> None:
+            if not ok:
+                return ctx.toast(tr(str(data)), "warn")
+            sfx.play("on")
+            ctx.toast(tr("Bought: {what}", what=item_name(d["item"])))
+            self._close()
+        ec.buy(d["item"], bought)
 
 
 def build_deals(page, lay) -> None:

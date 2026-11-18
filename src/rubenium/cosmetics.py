@@ -22,10 +22,12 @@ COLOUR_NAMES = {"grey": "Grey", "blue": "Blue", "green": "Green", "red": "Red", 
                 "gold": "Gold"}
 BALLS = [("orbit", "Orbit"), ("pixel", "Pixel"), ("split", "Split"), ("halo", "Halo"), ("bubble", "Bubble"),
          ("spiral", "Spiral"), ("bullseye", "Bullseye"), ("hex", "Hex"), ("ripple", "Ripple"), ("shard", "Shard"),
-         ("petal", "Petal"), ("gear", "Gear"), ("planet", "Planet"), ("nova", "Nova"), ("snowglobe", "Snow Globe")]
+         ("petal", "Petal"), ("gear", "Gear"), ("planet", "Planet"), ("nova", "Nova"), ("snowglobe", "Snow Globe"),
+         ("eclipse", "Eclipse")]
 LINES = [("dash", "Dash"), ("beads", "Beads"), ("zigzag", "Zigzag"), ("twin", "Twin"), ("pulse", "Pulse"),
          ("chain", "Chain"), ("ribbon", "Ribbon"), ("steps", "Steps"), ("spark", "Spark"), ("laser", "Laser"),
-         ("wave", "Wave"), ("stars", "Stars"), ("helix", "Helix"), ("lightning", "Lightning"), ("garland", "Garland")]
+         ("wave", "Wave"), ("stars", "Stars"), ("helix", "Helix"), ("lightning", "Lightning"), ("garland", "Garland"),
+         ("comet", "Comet")]
 FONTS = [("rounded", "Rounded", ["Trebuchet MS", "Verdana"]), ("mono", "Mono", ["Cascadia Mono", "Consolas", "Courier New"]),
          ("serif", "Serif", ["Georgia", "Cambria", "Times New Roman"]), ("display", "Display", ["Bahnschrift", "Impact"]),
          ("script", "Script", ["Segoe Print", "Segoe Script", "Comic Sans MS"])]
@@ -38,7 +40,14 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("retro", "Retro", "#D94BFF", "#35D6E6", dict(glow=3, stars=52, links=14, sparkles=8, edge="shine")),
                ("lagoon", "Lagoon", "#20D3C2", "#3A7BFF", dict(glow=2, stars=24, aurora=True, sparkles=4)),
                ("midnight", "Midnight", "#7C8CFF", "#1B2A6B", dict(glow=3, stars=60, comets=4, links=8, sparkles=6)),
-               ("inferno", "Inferno", "#FF5A1F", "#FFC14D", dict(glow=3, stars=36, comets=8, sparkles=12, edge="shine"))]
+               ("inferno", "Inferno", "#FF5A1F", "#FFC14D", dict(glow=3, edge="shine")),
+               # 4.5
+               ("glacier", "Glacier", "#7FD8FF", "#DDF6FF", dict(glow=2, sparkles=4)),
+               ("jade", "Jade", "#2FBF8A", "#E0B65A", dict(glow=2, sparkles=2)),
+               ("mirage", "Mirage", "#FFB067", "#FF6F8E", dict(glow=2)),
+               ("nebula", "Nebula", "#A070FF", "#4FC3FF", dict(glow=3, sparkles=8)),
+               ("obsidian", "Obsidian", "#B7A6FF", "#3B2F6B", dict(glow=3, edge="shine")),
+               ("prism", "Prism", "#FF5CB8", "#4FD8FF", dict(glow=3, sparkles=6, edge="shine"))]
 # profile looks (2.6): a banner behind your profile, a frame around your picture, a tag after your name
 BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("stripes", "Stripes"), ("dots", "Dots"),
            ("carbon", "Carbon"), ("dunes", "Dunes"),
@@ -50,15 +59,17 @@ BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Ros
            ("snow", "Snow"), ("aurora", "Aurora"),
            ("slate", "Slate"), ("pastel", "Pastel"), ("tides", "Tides"), ("canyon", "Canyon"), ("koi", "Koi Pond"),
            ("synthwave", "Synthwave"), ("supernova", "Supernova"), ("dragon", "Dragon"),
-           ("wreath", "Wreath"), ("hearth", "Hearth"), ("northstar", "North Star")]
+           ("wreath", "Wreath"), ("hearth", "Hearth"), ("northstar", "North Star"),
+           ("mosaic", "Mosaic"), ("reef", "Reef"), ("thunder", "Thunder"), ("blackhole", "Black Hole"), ("crystal", "Crystal")]
 FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
           ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine"),
           ("wood", "Wood"), ("pulse", "Pulse"), ("thorns", "Thorns"), ("gears", "Gears"), ("phoenix", "Phoenix"),
           ("holly", "Holly"), ("snowflake", "Snowflake"), ("northstar", "North Star"), ("yuletide", "Yuletide"),
-          ("firstfrost", "First Frost 2026")]
+          ("firstfrost", "First Frost 2026"),
+          ("chrome", "Chrome"), ("ripple", "Ripple"), ("comet", "Comet"), ("eclipse", "Eclipse")]
 TAGS = [("og", "OG")]
-MOVING = {"firstfrost", "yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
+MOVING = {"reef", "thunder", "blackhole", "crystal", "ripple", "comet", "eclipse", "firstfrost", "yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
           "phoenix", "snowflake", "holly", "waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
           "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine",
           "honeycomb", "comet", "deepsea", "city", "fireflies", "storm", "vortex"}
@@ -243,6 +254,22 @@ def paint_shop_ball(p: QPainter, box: QRectF, d: float, item: str, now: float = 
             tw = 0.5 + 0.5 * math.sin(now * 3 + k * 2)
             p.setBrush(alpha("#FFFFFF", 0.4 + 0.5 * tw))
             p.drawEllipse(QPointF(c.x() + sx * r, c.y() + sy * r), d * 0.018, d * 0.018)
+    elif design == "eclipse":                            # 4.5: a dark moon over a burning ring of light
+        turn = now * 0.5
+        for k, (w_, a) in enumerate(((0.16, 0.12), (0.09, 0.3), (0.04, 0.9))):
+            g = QConicalGradient(c, math.degrees(turn) + k * 40)
+            g.setColorAt(0.0, alpha(line, a))
+            g.setColorAt(0.5, alpha(mix(line, QColor("#FFFFFF"), 0.6), a))
+            g.setColorAt(1.0, alpha(line, a))
+            p.setPen(QPen(g, d * w_))
+            p.drawEllipse(c, r * 0.66, r * 0.66)
+        p.setPen(Qt.PenStyle.NoPen)
+        moon = QPointF(c.x() + r * 0.06 * math.cos(turn * 0.7), c.y() + r * 0.06 * math.sin(turn * 0.7))
+        p.setBrush(QColor("#07080B"))
+        p.drawEllipse(moon, r * 0.62, r * 0.62)
+        p.setBrush(alpha("#FFFFFF", 0.85))
+        bead = QPointF(c.x() + r * 0.66 * math.cos(turn * 2.2), c.y() + r * 0.66 * math.sin(turn * 2.2))
+        p.drawEllipse(bead, d * 0.03, d * 0.03)
     elif design in ("nova", "snowglobe"):              # 3.2 Legendary: a burst of rays and orbiting sparks
         if design == "snowglobe":                         # limited: a glass globe with falling snow
             p.setPen(QPen(alpha("#DDF3FF", 0.65), max(1.0, d * 0.025)))
@@ -407,6 +434,24 @@ def paint_shop_ring(p: QPainter, ring: QRectF, item: str, frac: float, width: fl
         p.drawPath(path)
         p.setPen(QPen(mix(col, QColor("#FFFFFF"), 0.85), width * 0.3))
         p.drawPath(path)
+    elif design == "comet":                                  # 4.5: a fading tail behind a bright head
+        pts = _arc_points(ring, frac, 3)
+        n = len(pts)
+        tail = max(2, min(n, 40))
+        p.setPen(round_pen(alpha(col, 0.18), width * 0.7))
+        p.drawArc(ring, 90 * 16, span)
+        for i in range(n - tail, n - 1):
+            k = (i - (n - tail)) / tail
+            p.setPen(round_pen(alpha(mix(col, QColor("#FFFFFF"), k * 0.6), 0.15 + 0.85 * k), width * (0.6 + 0.9 * k)))
+            p.drawLine(pts[i], pts[i + 1])
+        head = pts[-1]
+        p.setPen(Qt.PenStyle.NoPen)
+        glow = QRadialGradient(head, width * 3.2)
+        glow.setColorAt(0, alpha("#FFFFFF", 0.95))
+        glow.setColorAt(0.35, alpha(col, 0.6))
+        glow.setColorAt(1, alpha(col, 0.0))
+        p.setBrush(glow)
+        p.drawEllipse(head, width * 3.2, width * 3.2)
     elif design == "garland":                                # limited: a green garland with red and gold baubles
         p.setPen(round_pen(QColor("#1F7A4A"), width * 1.3))
         p.drawArc(ring, 90 * 16, span)
@@ -500,7 +545,9 @@ _BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), 
                 "slate": ("#2A3138", "#56616B"), "pastel": ("#F7C6D9", "#B8D8FF"), "tides": ("#062A3A", "#33C4D8"),
                 "canyon": ("#4A1E10", "#E07A3C"), "koi": ("#062A28", "#0E5B57"), "synthwave": ("#14052B", "#FF2BD6"),
                 "supernova": ("#05030F", "#FFB347"), "dragon": ("#120406", "#C8283D"), "wreath": ("#5A0E18", "#C8283D"),
-                "hearth": ("#1C0A05", "#FF8A3D"), "northstar": ("#050B1E", "#1B3A6B")}
+                "hearth": ("#1C0A05", "#FF8A3D"), "northstar": ("#050B1E", "#1B3A6B"),
+                "mosaic": ("#1B2230", "#5A6B8A"), "reef": ("#03263A", "#12A3B8"), "thunder": ("#0B1022", "#2A3A6B"),
+                "blackhole": ("#020205", "#120A24"), "crystal": ("#0A1424", "#2A4A7A")}
 
 
 def look_moves(item: str) -> bool:
@@ -923,6 +970,8 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(core)
         p.drawEllipse(cen, h * 0.4, h * 0.4)
+    elif base in ("mosaic", "reef", "thunder", "blackhole", "crystal"):
+        _paint_banner_45(p, base, rect, c1, c2, now)
     else:
         _paint_banner_32(p, base, rect, c1, c2, now)
     if gold > 0:
@@ -1328,7 +1377,9 @@ _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"
                "wood": ("#B97A4A", "#6B3E1F"), "pulse": ("#3DDC84", "#0F6B3A"), "thorns": ("#3A5A2E", "#C8283D"),
                "gears": ("#D9DEE3", "#8A939C"), "phoenix": ("#FFC14D", "#FF4B1F"), "holly": ("#1F7A4A", "#E8384F"),
                "snowflake": ("#E8F6FF", "#7FC8FF"), "northstar": ("#FFE9A8", "#E8C26A"),
-               "yuletide": ("#FFD36B", "#C8283D"), "firstfrost": ("#DFF8FF", "#7FD3FF")}
+               "yuletide": ("#FFD36B", "#C8283D"), "firstfrost": ("#DFF8FF", "#7FD3FF"),
+               "chrome": ("#FFFFFF", "#7C8792"), "ripple": ("#4FD8FF", "#1A6BFF"), "comet": ("#FFFFFF", "#7FB2FF"),
+               "eclipse": ("#FFE2A8", "#14101E")}
 
 
 def _snowflake(p: QPainter, at: QPointF, size: float, turn: float, col: QColor) -> None:
@@ -1670,6 +1721,8 @@ def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: flo
         p.drawEllipse(top)
     if base in ("wood", "pulse", "thorns", "gears", "phoenix", "holly", "snowflake", "northstar"):
         _paint_frame_32(p, base, c, r, wd, c1, c2, now)
+    if base in ("chrome", "ripple", "comet", "eclipse"):
+        _paint_frame_45(p, base, c, r, wd, c1, c2, now)
     if base == "firstfrost":
         _paint_firstfrost(p, c, r, wd, now)
     if base == "yuletide":
@@ -1937,3 +1990,163 @@ def paint_look_icon(p: QPainter, item: str, rect: QRectF, now: float = 0.0, dim:
     else:
         paint_tag(p, box.center().x(), box.center().y(), item, now, centre=True, px=d * 0.24)
     p.restore()
+
+
+# --------------------------------------------------------------------------- #
+# 4.5 banners and frames
+# --------------------------------------------------------------------------- #
+def _paint_banner_45(p: QPainter, base: str, rect: QRectF, c1: QColor, c2: QColor, now: float) -> None:
+    w, h = rect.width(), rect.height()
+    L, T = rect.left(), rect.top()
+    p.setPen(Qt.PenStyle.NoPen)
+    if base == "mosaic":                                       # Common: quiet tiles in three blues
+        cols = [QColor("#2A3550"), QColor("#34466B"), QColor("#24304A"), QColor("#40557F")]
+        size = h / 4
+        y, row = T, 0
+        while y < rect.bottom():
+            x = L - (size / 2 if row % 2 else 0)
+            i = 0
+            while x < rect.right():
+                p.setBrush(cols[int(_rand(row * 31 + i, 3) * 4) % 4])
+                p.drawRoundedRect(QRectF(x + 1.5, y + 1.5, size - 3, size - 3), 3, 3)
+                x += size
+                i += 1
+            y += size
+            row += 1
+    elif base == "reef":                                       # Rare: light from the surface and swaying coral
+        for k in range(5):
+            x = L + w * (0.1 + 0.2 * k) + math.sin(now * 0.5 + k) * w * 0.02
+            g = QLinearGradient(QPointF(x, T), QPointF(x + w * 0.08, rect.bottom()))
+            g.setColorAt(0, alpha("#BFF8FF", 0.22))
+            g.setColorAt(1, alpha("#BFF8FF", 0.0))
+            p.setBrush(g)
+            p.drawPolygon(QPolygonF([QPointF(x, T), QPointF(x + w * 0.05, T), QPointF(x + w * 0.12, rect.bottom()),
+                                     QPointF(x + w * 0.03, rect.bottom())]))
+        for k in range(7):
+            bx = L + w * (0.06 + k * 0.15)
+            sway = math.sin(now * 1.2 + k) * w * 0.012
+            col = ("#FF6F8E", "#FFB067", "#B36BFF")[k % 3]
+            path = QPainterPath(QPointF(bx, rect.bottom()))
+            path.cubicTo(QPointF(bx - w * 0.02 + sway, rect.bottom() - h * 0.25), QPointF(bx + w * 0.03 + sway, rect.bottom() - h * 0.35),
+                         QPointF(bx + sway * 2, rect.bottom() - h * (0.35 + 0.15 * _rand(k, 5))))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(alpha(col, 0.85), max(2.0, w * 0.012), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k in range(6):                                     # bubbles drifting up
+            y = rect.bottom() - ((now * 0.12 + _rand(k, 9)) % 1.0) * h
+            p.setBrush(alpha("#DDFBFF", 0.5))
+            p.drawEllipse(QPointF(L + w * _rand(k, 4), y), 1.6 + 1.2 * _rand(k, 2), 1.6 + 1.2 * _rand(k, 2))
+    elif base == "thunder":                                    # Rare: clouds and a far flash now and then
+        flash = max(0.0, 1.0 - ((now * 0.35) % 1.0) * 6)
+        p.fillRect(rect, alpha("#CFE0FF", 0.10 * flash))
+        for k in range(9):
+            cx = L + ((_rand(k, 1) * w + now * 6 * (0.5 + _rand(k, 2))) % (w * 1.2)) - w * 0.1
+            cy = T + h * (0.1 + 0.3 * _rand(k, 3))
+            g = QRadialGradient(QPointF(cx, cy), w * 0.16)
+            g.setColorAt(0, alpha("#3A4A6B", 0.85))
+            g.setColorAt(1, alpha("#3A4A6B", 0.0))
+            p.setBrush(g)
+            p.drawEllipse(QPointF(cx, cy), w * 0.16, h * 0.3)
+        if flash > 0.05:
+            bolt = QPainterPath(QPointF(L + w * 0.68, T + h * 0.25))
+            for k, (dx, dy) in enumerate(((-0.03, 0.2), (0.02, 0.18), (-0.04, 0.22), (0.01, 0.2))):
+                bolt.lineTo(bolt.currentPosition() + QPointF(w * dx, h * dy))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for width_, a in ((6, 0.25), (2, 1.0)):
+                p.setPen(QPen(alpha("#E6F0FF", a * flash), width_, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawPath(bolt)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "blackhole":                                  # Special: a disc of light bent around a black centre
+        cen = QPointF(L + w * 0.62, T + h * 0.52)
+        for k in range(60):
+            a = _rand(k, 1) * math.tau + now * (0.2 + 0.6 * _rand(k, 2))
+            rr = h * (0.3 + 0.9 * _rand(k, 3))
+            p.setBrush(alpha("#FFFFFF", 0.25 + 0.5 * _rand(k, 4)))
+            p.drawEllipse(QPointF(cen.x() + math.cos(a) * rr * 1.6, cen.y() + math.sin(a) * rr * 0.5), 0.9, 0.9)
+        for width_, a in ((h * 0.22, 0.12), (h * 0.1, 0.35), (h * 0.04, 0.9)):
+            g = QConicalGradient(cen, now * 40)
+            g.setColorAt(0, alpha("#FFB347", a))
+            g.setColorAt(0.5, alpha("#FF5C8A", a))
+            g.setColorAt(1, alpha("#FFB347", a))
+            p.setPen(QPen(g, width_))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(cen, h * 0.62, h * 0.18)
+        p.setPen(QPen(alpha("#FFD9A0", 0.7), h * 0.03))
+        p.drawEllipse(cen, h * 0.24, h * 0.24)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#000000"))
+        p.drawEllipse(cen, h * 0.22, h * 0.22)
+    elif base == "crystal":                                    # Epic: a cluster of crystals catching moving light
+        shine = (now * 0.25) % 1.6 - 0.3
+        spikes = [(0.15, 0.55, 0.06), (0.24, 0.35, 0.08), (0.33, 0.6, 0.05), (0.62, 0.3, 0.09), (0.72, 0.5, 0.07),
+                  (0.82, 0.62, 0.05), (0.46, 0.45, 0.07)]
+        for k, (x, top, half) in enumerate(spikes):
+            bx = L + w * x
+            path = QPainterPath(QPointF(bx - w * half, rect.bottom()))
+            path.lineTo(bx - w * half * 0.6, T + h * (top + 0.12))
+            path.lineTo(bx, T + h * top)
+            path.lineTo(bx + w * half * 0.6, T + h * (top + 0.12))
+            path.lineTo(bx + w * half, rect.bottom())
+            path.closeSubpath()
+            g = QLinearGradient(QPointF(bx - w * half, T), QPointF(bx + w * half, rect.bottom()))
+            lit = max(0.0, 1.0 - abs(shine - x) * 4)
+            g.setColorAt(0, alpha(mix(QColor("#9FDBFF"), QColor("#FFFFFF"), lit), 0.75))
+            g.setColorAt(0.5, alpha("#3A7BFF", 0.55))
+            g.setColorAt(1, alpha("#1A2A5A", 0.85))
+            p.setBrush(g)
+            p.setPen(QPen(alpha("#DDF3FF", 0.35 + 0.5 * lit), 1))
+            p.drawPath(path)
+            p.setPen(QPen(alpha("#FFFFFF", 0.2 + 0.5 * lit), 1))
+            p.drawLine(QPointF(bx, T + h * top), QPointF(bx, rect.bottom()))
+        p.setPen(Qt.PenStyle.NoPen)
+
+
+def _paint_frame_45(p: QPainter, base: str, c: QPointF, r: float, wd: float, c1: QColor, c2: QColor, now: float) -> None:
+    ring = QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    if base == "chrome":                                       # Common: polished metal with one highlight
+        g = QConicalGradient(c, 45)
+        for k, col in enumerate((c1, c2, c1, c2, c1)):
+            g.setColorAt(k / 4, col)
+        p.setPen(QPen(g, wd))
+        p.drawEllipse(ring)
+    elif base == "ripple":                                     # Rare: rings spreading out like water
+        p.setPen(QPen(c1, wd * 0.6))
+        p.drawEllipse(ring)
+        for k in range(3):
+            f = ((now * 0.6 + k / 3) % 1.0)
+            grow = wd * 2.4 * f
+            p.setPen(QPen(alpha(c1, 0.7 * (1 - f)), max(1.0, wd * 0.35)))
+            p.drawEllipse(ring.adjusted(-grow, -grow, grow, grow))
+    elif base == "comet":                                      # Special: a comet circling with its tail
+        p.setPen(QPen(alpha(c2, 0.35), wd * 0.45))
+        p.drawEllipse(ring)
+        head = now * 2.2
+        for k in range(24):
+            a = head - k * 0.06
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(mix(c2, c1, 1 - k / 24), (1 - k / 24) * 0.9))
+            rr = wd * 0.55 * (1 - k / 30)
+            p.drawEllipse(QPointF(c.x() + math.cos(a) * r, c.y() + math.sin(a) * r), rr, rr)
+        glow = QRadialGradient(QPointF(c.x() + math.cos(head) * r, c.y() + math.sin(head) * r), wd * 2)
+        glow.setColorAt(0, alpha("#FFFFFF", 0.9))
+        glow.setColorAt(1, alpha(c2, 0.0))
+        p.setBrush(glow)
+        p.drawEllipse(QPointF(c.x() + math.cos(head) * r, c.y() + math.sin(head) * r), wd * 2, wd * 2)
+    else:                                                      # Epic: eclipse, a burning corona behind a dark ring
+        for k, (w_, a) in enumerate(((3.4, 0.12), (2.2, 0.25), (1.2, 0.6))):
+            g = QConicalGradient(c, now * 30 + k * 60)
+            g.setColorAt(0.0, alpha(c1, a))
+            g.setColorAt(0.25, alpha("#FF8A3D", a * 0.6))
+            g.setColorAt(0.5, alpha(c1, a))
+            g.setColorAt(0.75, alpha("#FFFFFF", a))
+            g.setColorAt(1.0, alpha(c1, a))
+            p.setPen(QPen(g, wd * w_))
+            p.drawEllipse(ring)
+        p.setPen(QPen(c2, wd * 0.7))
+        p.drawEllipse(ring)
+        ang = now * 1.4
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.95))
+        p.drawEllipse(QPointF(c.x() + math.cos(ang) * r, c.y() + math.sin(ang) * r), wd * 0.35, wd * 0.35)

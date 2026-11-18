@@ -384,9 +384,22 @@ class PaneSwitch(QWidget):
             draw_icon(p, icon, ui.accent if on else QColor(TEXT if hov else TEXT_DIM))
             p.restore()
             if show_text:
-                p.setPen(QColor(TEXT) if on else QColor(TEXT_DIM))
-                p.drawText(QRectF(x + iw + S(6), rr.top(), rr.right() - x - iw - S(6), rr.height()),
-                           int(Qt.AlignmentFlag.AlignVCenter), text)
+                box = QRectF(x + iw + S(6), rr.top(), rr.right() - x - iw - S(6), rr.height())
+                if k == "admin":                         # 4.5: the admin tab glows softly, unlike the others
+                    glow = QRadialGradient(QPointF(box.left() + fm.horizontalAdvance(text) / 2, rr.center().y()),
+                                           fm.horizontalAdvance(text) * 0.8)
+                    glow.setColorAt(0, alpha("#FF6A5C", 0.32))
+                    glow.setColorAt(1, alpha("#FF6A5C", 0.0))
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(glow)
+                    p.drawRoundedRect(rr, S(10), S(10))
+                    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                        p.setPen(alpha("#FF6A5C", 0.35))
+                        p.drawText(box.translated(dx * S(0.8), dy * S(0.8)), int(Qt.AlignmentFlag.AlignVCenter), text)
+                    p.setPen(QColor("#FFD9D4"))
+                else:
+                    p.setPen(QColor(TEXT) if on else QColor(TEXT_DIM))
+                p.drawText(box, int(Qt.AlignmentFlag.AlignVCenter), text)
             if other:                                    # shown in the other half
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(alpha(ui.accent, 0.8))
@@ -968,9 +981,66 @@ def _make_class():
             if win.IS_WIN:
                 win.set_topmost(int(self.ball.winId()))
 
+        def pick_file(self, title: str, pattern: str) -> str:
+            """4.5: choosing a file (a profile picture, say) never sends the banner away or leaves it blank: it steps
+            aside while the dialog is open, then comes back exactly as it was."""
+            from PyQt6.QtWidgets import QFileDialog
+            if win.fullscreen_state() == 2:
+                self.toast(tr("Leave your game first"), "warn")
+                return ""
+            self.modal = True
+            self._watch.stop()
+            self.hide()
+            try:
+                path, _ = QFileDialog.getOpenFileName(None, title, "", pattern)
+            finally:
+                self.modal = False
+                self._was_down = True
+                self.heal(force=True)
+                if self.phase == "shown":
+                    self._watch.start()
+            return path or ""
+
+        def heal(self, force: bool = False) -> None:
+            """4.5: never stuck half drawn: shown means the banner, its pages and its place on the screen are right."""
+            if getattr(self, "modal", False):
+                return
+            if self.phase == "shown":
+                if not self.isVisible():
+                    self.show()
+                    if win.IS_WIN:
+                        win.set_topmost(int(self.winId()))
+                wa = self._area()
+                if force or not wa.contains(self.geometry().adjusted(S(GLOW), S(GLOW), -S(GLOW), -S(GLOW))) \
+                        or abs(self.drop.level - 1.0) > 0.01:
+                    self.drop.jump(1.0)
+                    self._place()
+                    self._pm = None
+                if force or not self.body.isVisible() or self.body.geometry().height() < S(100):
+                    self._pm = None
+                    self._layout_body()
+                    self.body.show()
+                    self.relayout()
+                self.update()
+            elif self.phase == "stowed" and self.isVisible():
+                self.hide()
+                self._show_stowed_ball()
+
+        def _mouse_guard(self) -> None:
+            """4.5: while the banner is open, every click on it is for Rubenium, never for the game behind."""
+            if self.phase in ("shown", "dropping"):
+                if self._through:
+                    for w in (self, self.drawer):
+                        hwnd = int(w.internalWinId() or 0)
+                        if hwnd:
+                            win.set_click_through(hwnd, False)
+                    self._through = False
+                return
+            super()._mouse_guard()
+
         def _watch_outside(self) -> None:
             """A click anywhere outside the banner (the desktop, a game) sends it up into the R."""
-            if self.phase != "shown":
+            if self.phase != "shown" or getattr(self, "modal", False):
                 return
             down = win.key_down(0x01) if win.IS_WIN else False
             if down and not self._was_down:

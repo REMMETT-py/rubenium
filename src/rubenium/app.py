@@ -249,6 +249,7 @@ class App(QObject):
         from .music2 import TapKey
         self.tapkey = TapKey(self)                  # tap Right Shift: show or hide Rubenium
         self.tapkey.tapped.connect(self._tap_key)
+        self.tapkey.held.connect(self.restart_app)
         self.outdated = False                       # the server or the updater says: update before playing online
         self._usage = QTimer(self)
         self._usage.setInterval(60000)
@@ -1175,6 +1176,15 @@ class App(QObject):
         if self.window.expanded:
             self.reload_page()
         return True
+
+    def restart_app(self) -> None:
+        """4.5: hold the show / hide key for 3 seconds: Rubenium starts again (a way out when something is stuck)."""
+        if self._closing:
+            return
+        path = sys.executable if getattr(sys, "frozen", False) else os.path.abspath(sys.argv[0])
+        log.info("Restart asked with the show / hide key")
+        if extras.restart(path):
+            QTimer.singleShot(150, self.quit)
 
     def _tap_key(self) -> None:
         if self.window.expanded:

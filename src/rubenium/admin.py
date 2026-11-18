@@ -205,6 +205,45 @@ class Chips(QWidget):
             grid.setColumnStretch(c, 1)
 
 
+class KindTabs(QWidget):
+    """4.5: big outlined tabs (Coins, Keys, XP, Cases, Items): the choice of what, set apart from the options below."""
+    changed = pyqtSignal(int)
+
+    def __init__(self, labels: list, index: int) -> None:
+        super().__init__()
+        self.labels, self.index = labels, index
+        self.setFixedHeight(S(40))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        i = int(e.position().x() // (self.width() / len(self.labels)))
+        if 0 <= i < len(self.labels) and i != self.index:
+            sfx.play("pick")
+            self.changed.emit(i)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.setPen(QPen(alpha("#FFFFFF", 0.35), S(1.6)))
+        p.setBrush(alpha("#FFFFFF", 0.03))
+        p.drawRoundedRect(r, S(10), S(10))
+        w = r.width() / len(self.labels)
+        for i, text in enumerate(self.labels):
+            cell = QRectF(r.left() + i * w, r.top(), w, r.height())
+            if i == self.index:
+                p.setPen(QPen(ui.accent, S(2)))
+                p.setBrush(alpha(ui.accent, 0.22))
+                p.drawRoundedRect(cell.adjusted(S(3), S(3), -S(3), -S(3)), S(8), S(8))
+            elif i:
+                p.setPen(QPen(alpha("#FFFFFF", 0.18), 1))
+                p.drawLine(QPointF(cell.left(), cell.top() + S(9)), QPointF(cell.left(), cell.bottom() - S(9)))
+            p.setPen(QColor(TEXT) if i == self.index else QColor(TEXT_DIM))
+            p.setFont(font(12, QFont.Weight.Black if i == self.index else QFont.Weight.Bold))
+            p.drawText(cell, int(Qt.AlignmentFlag.AlignCenter), text.upper())
+
+
 class CaseGrid(QWidget):
     """Every case as a picture with its name: click one."""
     picked = pyqtSignal(str)
@@ -293,16 +332,16 @@ def item_picker(page, lay, state: dict, multi: int = 1) -> None:
                      key=lambda k: (-int(cat[k].get("value") or 0), k))
         grid = ItemGrid(ctx, [{"item": k, "text": coins_text(int(cat[k].get("worth") or cat[k].get("value") or 0)),
                                "mark": k in chosen} for k in ids], page.W, 6, 64,
-                        ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1)
+                        ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1, moving=False)
         grid.picked.connect(lambda i: pick(ids[i]))
         return lay.addWidget(grid)
-    bases = []
-    seen = set()
-    for k in sorted(cat, key=lambda k: (-int(cat[k].get("value") or 0), k)):
+    plain: dict = {}                                    # 4.5: each design shows its plainest (cheapest) version,
+    for k in sorted(cat, key=lambda k: (int(cat[k].get("value") or 0), k)):    # not the golden one: no particle lag
         info = cat[k]
-        if info.get("kind") == kind and info.get("base") not in seen:
-            seen.add(info.get("base"))
-            bases.append((info.get("base"), k))
+        if info.get("kind") == kind and info.get("base") not in plain:
+            plain[info.get("base")] = k
+    bases = sorted(plain.items(), key=lambda bk: (-max(int(v.get("value") or 0) for v in cat.values()
+                                                       if v.get("kind") == kind and v.get("base") == bk[0]), bk[0]))
     base = state.get("base") or ""
     grid = ItemGrid(ctx, [{"item": k} for _b, k in bases], page.W, 8, 50,
                     next((i for i, (b, _k) in enumerate(bases) if b == base), -1), moving=False)
@@ -314,7 +353,7 @@ def item_picker(page, lay, state: dict, multi: int = 1) -> None:
         lay.addWidget(Label(en_name(ids[0]).split(" · ")[0] if ids else base, 11, TEXT_DIM, bold=True))
         g2 = ItemGrid(ctx, [{"item": k, "text": coins_text(int(cat[k].get("worth") or cat[k].get("value") or 0)),
                              "mark": k in chosen} for k in ids], page.W, 6, 64,
-                      ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1)
+                      ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1, moving=False)
         g2.picked.connect(lambda i: pick(ids[i]))
         lay.addWidget(g2)
 
@@ -490,7 +529,7 @@ class AdminPage(Page):
                                 [("Nobody yet", "", "")], self.W, (lambda i: self._open(top_day[i]["name"])) if top_day else None))
             sus = w.get("capped_days") or []
             if sus:
-                lay.addWidget(heading("At the daily XP cap 3+ days (14 days)"))
+                lay.addWidget(heading("Over 1 500 XP in a day, 3+ days (14 days)"))
                 lay.addWidget(Table([(x["name"], f"{x['days']} days", "", "#FF7A7A") for x in sus], self.W,
                                     lambda i: self._open(sus[i]["name"])))
 
@@ -550,7 +589,7 @@ class AdminPage(Page):
         lay.addWidget(Numbers([(coins_text(int(d["coins"])), "Coins", GOLD_TEXT), (d["keys"], "Keys"),
                                (f"{int(d['minutes']) / 60:.1f} h", "Played"),
                                (f"{info.get('level', '?')}", "Level"), (coins_text(int(info.get("xp") or 0)), "XP"),
-                               (f"{int(info.get('today') or 0)} / {int(info.get('cap') or 0)}", "XP today"),
+                               (f"{int(info.get('today') or 0)}", "XP today"),
                                (coins_text(int(st.get("bet") or 0)), "Bet"), (coins_text(int(st.get("won") or 0)), "Won"),
                                ("Online" if d.get("online") else "Offline", "Blocked" if d.get("banned") else "Status")],
                               self.W))
@@ -598,10 +637,10 @@ class AdminPage(Page):
             lay.addWidget(Label("Gifted cases: " + ", ".join(f"{CASE_NAMES.get(k, k)} ×{n}" for k, n in stock.items()),
                                 10.5, TEXT_DIM, wrap_w=self.W))
         items = d.get("items") or []
-        lay.addWidget(heading(f"Items ({len(items)}) · click one to take it"))
+        lay.addWidget(heading(f"Items ({len(items)})"))
         if items:
             ig = ItemGrid(self.ctx, [{"item": i["item"], "text": "🔒" if i.get("locked") else ""} for i in items[:120]],
-                          self.W, 8, 56)
+                          self.W, 8, 56, moving=False)
 
             def take(i: int) -> None:
                 it = items[i]
@@ -612,7 +651,7 @@ class AdminPage(Page):
             ig.picked.connect(take)
             lay.addWidget(ig)
         deals = self.fetch("rb_admin_deals", {"name": name})
-        lay.addWidget(heading("Trades and sales · click one to undo it"))
+        lay.addWidget(heading("Trades and sales"))
         if deals is None:
             self._loading(lay)
         else:
@@ -658,8 +697,9 @@ class AdminPage(Page):
         self.player_chips(lay, st, multi=True)
         lay.addWidget(heading("What"))
         kind = st.get("kind") or "case"
-        kc = Chips([n for _k, n in self.GIVE_KINDS], [k for k, _n in self.GIVE_KINDS], kind, per_row=5)
-        kc.toggled.connect(lambda k: (st.__setitem__("kind", k), self.ctx.reload_page("admin")))
+        keys = [k for k, _n in self.GIVE_KINDS]          # 4.5: tabs, clearly not like the buttons under them
+        kc = KindTabs([n for _k, n in self.GIVE_KINDS], keys.index(kind) if kind in keys else 0)
+        kc.changed.connect(lambda i: (st.__setitem__("kind", keys[i]), self.ctx.reload_page("admin")))
         lay.addWidget(kc)
         if kind in self.AMOUNTS:
             take = bool(st.get("take"))
@@ -667,10 +707,7 @@ class AdminPage(Page):
             mode.changed.connect(lambda i: (st.__setitem__("take", i == 1), self.ctx.reload_page("admin")))
             lay.addWidget(mode)
             amts = self.AMOUNTS[kind]
-            amount = st.get(kind + "_n") if st.get(kind + "_n") in amts else amts[2]
-            ac = Chips([coins_text(a) for a in amts], amts, amount, per_row=4)
-            ac.toggled.connect(lambda a: (st.__setitem__(kind + "_n", a), self.ctx.reload_page("admin")))
-            lay.addWidget(ac)
+            amount = self._slide(lay, st, kind + "_n", "How much", 1, amts[-1], amts[2], coins_text)
             what = f"{'−' if take else '+'}{coins_text(amount)} {self.dict_name(kind)}"
         else:
             if kind == "case":
@@ -683,12 +720,7 @@ class AdminPage(Page):
             else:
                 item_picker(self, lay, st)
                 thing = en_name(st["item"]) if st.get("item") else ""
-            lay.addWidget(heading("How many"))
-            counts = [1, 2, 3, 5, 10, 25, 50, 100]
-            n = st.get("count") if st.get("count") in counts else 1
-            nc = Chips([str(c) for c in counts], counts, n, per_row=8, height=28)
-            nc.toggled.connect(lambda c: (st.__setitem__("count", c), self.ctx.reload_page("admin")))
-            lay.addWidget(nc)
+            n = self._slide(lay, st, "count", "How many", 1, 100, 1)
             what = f"{n} × {thing}" if thing else ""
         to = list(st.get("to") or [])
         ready = bool(to and what)
@@ -710,7 +742,8 @@ class AdminPage(Page):
         jobs = []
         if kind in self.AMOUNTS:
             amts = self.AMOUNTS[kind]
-            n = (st.get(kind + "_n") if st.get(kind + "_n") in amts else amts[2]) * (-1 if st.get("take") else 1)
+            v = st.get(kind + "_n")
+            n = (v if isinstance(v, int) and 1 <= v <= amts[-1] else amts[2]) * (-1 if st.get("take") else 1)
             for name in to:
                 if kind == "coins":
                     jobs.append(("rb_admin_grant", {"name": name, "add_coins": n, "add_keys": 0}, name))
@@ -784,10 +817,10 @@ class AdminPage(Page):
                     lay.addWidget(cc)
                 drops = case_drops(self.ctx.econ, case)
                 drops.sort(key=lambda x: x[1])
-                lay.addWidget(Label("An item it can drop (rarest first)", 10.5, TEXT_DIM, bold=True))
+                lay.addWidget(Label("Items", 10.5, TEXT_DIM, bold=True))
                 ig = ItemGrid(self.ctx, [{"item": it, "text": f"{ch_ * 100:.3g}%", "mark": pick == ("item", it)}
                                          for it, ch_ in drops[:120]], self.W, 8, 60,
-                              next((i for i, (it, _c) in enumerate(drops[:120]) if pick == ("item", it)), -1))
+                              next((i for i, (it, _c) in enumerate(drops[:120]) if pick == ("item", it)), -1), moving=False)
                 ig.picked.connect(lambda i: set_pick(("item", drops[i][0])))
                 lay.addWidget(ig)
                 if isinstance(pick, tuple):
@@ -817,7 +850,7 @@ class AdminPage(Page):
                                            after=lambda: st.__setitem__("pick", None)))
         lay.addWidget(go)
         rigs = self.fetch("rb_admin_rigs", {})
-        lay.addWidget(heading("Waiting rigs · click one to remove it"))
+        lay.addWidget(heading("Waiting rigs"))
         if rigs is None:
             return self._loading(lay)
         if not rigs:
@@ -887,12 +920,24 @@ class AdminPage(Page):
             lay.addLayout(l3)
 
     def _choice(self, lay, st: dict, key: str, title: str, opts: list, default, fmt=str, per_row: int = 5):
+        if len(opts) > 3 and all(isinstance(o, int) and not isinstance(o, bool) for o in opts):
+            return self._slide(lay, st, key, title, min(opts), max(opts), default, fmt)
         lay.addWidget(Label(title, 10.5, TEXT_DIM, bold=True))
         cur = st.get(key) if st.get(key) in opts else default
         ch = Chips([fmt(o) for o in opts], opts, cur, per_row=per_row, height=28)
         ch.toggled.connect(lambda v: (st.__setitem__(key, v), self.ctx.reload_page("admin")))
         lay.addWidget(ch)
         return cur
+
+    def _slide(self, lay, st: dict, key: str, title: str, lo: int, hi: int, default: int, fmt=str) -> int:
+        """4.5: a value is picked on a slider of round numbers, not from a row of buttons."""
+        from .widgets import AmountSlider
+        cur = st.get(key)
+        cur = cur if isinstance(cur, int) and lo <= cur <= hi else default
+        sl = AmountSlider(title, lo, hi, cur, lambda v: str(fmt(v)), label_w=110)
+        sl.released.connect(lambda v: (st.__setitem__(key, int(v)), self.ctx.reload_page("admin")))
+        lay.addWidget(sl)
+        return sl.value()
 
     def _giveaway_form(self, lay, st: dict) -> None:
         kind = self._choice(lay, st, "kind", "Prize", ["coins", "keys", "case", "item"], "coins",
@@ -937,11 +982,11 @@ class AdminPage(Page):
             kinds = [k for k, _n in ITEM_KINDS if k not in ("tag", "coupon")]
             kind = self._choice(lay, st, "skind", "Kind", kinds, "theme", lambda k: dict(ITEM_KINDS)[k], 4)
             bases = []
-            for k in sorted(cat, key=lambda k: (-int(cat[k].get("value") or 0), k)):
+            for k in sorted(cat, key=lambda k: (int(cat[k].get("value") or 0), k)):     # 4.5: plainest version as the icon
                 v = cat[k]
                 if v.get("kind") == kind and v.get("price") is not None and (kind, v.get("base")) not in [(kind, b) for b, _ in bases]:
                     bases.append((v.get("base"), k))
-            lay.addWidget(Label("Every design, or click one design", 10.5, TEXT_DIM, bold=True))
+            lay.addWidget(Label("Design", 10.5, TEXT_DIM, bold=True))
             base = st.get("sbase") or ""
             grid = ItemGrid(self.ctx, [{"item": k} for _b, k in bases], self.W, 8, 50,
                             next((i for i, (b, _k) in enumerate(bases) if b == base), -1), moving=False)
@@ -978,7 +1023,7 @@ class AdminPage(Page):
             items = list(st.get("items") or [])
             val = 0
             lay.addWidget(Label(f"{len(items)} of 6 picked: " + ", ".join(en_name(i) for i in items) if items else
-                                "Click up to 6 items", 10.5, GOLD_TEXT if items else TEXT_DIM, wrap_w=self.W))
+                                "", 10.5, GOLD_TEXT if items else TEXT_DIM, wrap_w=self.W))
         bot = self._choice(lay, st, "bot", "Shown as", ["", "Pixel", "Milo", "Nova", "Juno", "Vega", "Atlas"], "",
                            lambda b: b or "Random bot", 4)
         side = self._choice(lay, st, "side", "Side", ["", "black", "white"], "", lambda s: s.capitalize() or "Random", 3)
@@ -1051,7 +1096,7 @@ class AdminPage(Page):
     def _danger(self, lay, name: str, d: dict) -> None:
         """Big red reset buttons. Each says exactly what it deletes, asks you to type the name, and can be undone
         from the Log."""
-        lay.addWidget(heading("Danger zone · undo from the Log"))
+        lay.addWidget(heading("Danger zone"))
         for what, title, text in self.RESETS:
             b = Button(en(title), "danger", 40 if what == "all" else 34, icon="trash")
             b.clicked.connect(lambda _c=False, what=what, title=title, text=text: self._reset(name, what, title, text))

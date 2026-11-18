@@ -2316,7 +2316,6 @@ class GamesPage(Page):
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
-        self._bet = 2                                # index in BETS
         self.game = None
         lay = vbox(self, 8)
         if not ctx.casino:
@@ -2451,18 +2450,24 @@ class GamesPage(Page):
         modes = Segmented([tr(n) for _k, n, _d in TAP_MODES], mode)
         modes.changed.connect(lambda i: (setattr(self.ctx, "tap_mode", i), self.ctx.reload_page()))
         lay.addWidget(modes)
-        lay.addWidget(Label(tr(TAP_MODES[mode][2]), 10.5, TEXT_DIM))
         self.beat = BeatRush(self, lambda _r: (self.beat_btn.setEnabled(True), self.beat_btn.set_text(tr("Play again"))))
         back.clicked.connect(lambda: (self.beat.abort(), self.ctx.window.allow_keys(False), self._show_mini(False)))
-        lay.addWidget(Label("⌨  " + tr("Recommended: Use your keyboard for the best Beat Tap experience."), 10.5,
-                            GOLD_TEXT, bold=True, wrap_w=self.W))
-        self.ctx.window.allow_keys(True)              # 4.0: D F J K reach the game (the menu takes the keyboard)
+        if not self.beat.keys.live:
+            self.ctx.window.allow_keys(True)          # 4.0: D F J K reach the game (the menu takes the keyboard)
         lay.addWidget(self.beat)
+        from .widgets import ControlsBar
+        lay.addWidget(ControlsBar([(["D", "F", "J", "K"], tr("Hit a lane")), ("LMB", tr("Hit a lane")),
+                                   ("Space", tr("Start"))], self.W))
         self.beat_btn = Button(tr("Start"), "primary", 38)
-        self.beat_btn.clicked.connect(lambda: (self.beat_btn.setEnabled(False), self.beat.start()))
+        self.beat_btn.keycap = "Space"
+
+        def go() -> None:
+            if self.beat_btn.isEnabled():
+                self.beat_btn.setEnabled(False)
+                self.beat.start()
+        self.beat_btn.clicked.connect(go)
+        self.beat.on_space = go
         lay.addWidget(self.beat_btn)
-        lay.addWidget(Label(tr("15 to 65 coins a round. Up to 200 coins every 2 hours."), 10.5, TEXT_DIM,
-                            wrap_w=self.W))
 
     # -- 2.4: sub-screens (Memory, duels, scratch card)
     def open_sub(self, name) -> None:
@@ -2498,8 +2503,8 @@ class GamesPage(Page):
         go = Button(tr("New game"), "primary", 36)
         go.clicked.connect(self.mem.start)
         lay.addWidget(go)
-        lay.addWidget(Label(tr("Find every pair. Fewer flips pay more. Up to 200 coins every 2 hours."),
-                            10.5, TEXT_DIM, wrap_w=self.W))
+        from .widgets import ControlsBar
+        lay.addWidget(ControlsBar([("LMB", tr("Turn a card"))], self.W))
         QTimer.singleShot(50, self.mem.start)
 
     def _scratch(self, lay) -> None:
@@ -2588,8 +2593,7 @@ class GamesPage(Page):
             again.clicked.connect(w.restart)
             lay.addWidget(again)
             QTimer.singleShot(30, w.restart)
-        lay.addWidget(Label(tr("One try. The result appears in Duels."), 10.5,
-                            TEXT_DIM, wrap_w=self.W))
+
 
     def _show_park(self, on: bool) -> None:
         sfx.play("pick")
@@ -2621,8 +2625,8 @@ class GamesPage(Page):
         line.addWidget(again, 1)
         line.addWidget(new, 1)
         lay.addLayout(line)
-        lay.addWidget(Label(tr("Move the cars to free the red car. Fewer moves pay more. Up to 200 coins every 2 hours."),
-                            10.5, TEXT_DIM, wrap_w=self.W))
+        from .widgets import ControlsBar
+        lay.addWidget(ControlsBar([("Drag", tr("Slide a car along its lane"))], self.W))
         QTimer.singleShot(50, self.park.new)
 
     def _show_quests(self, on: bool) -> None:
@@ -2746,27 +2750,12 @@ class GamesPage(Page):
                 seg.hide()
                 cl.addWidget(seg)
             self.opts.append(seg)
-        self.bet_row = QWidget()
+        self.bet_row = QWidget()                     # 4.5: one slider, from 10 to what your balance allows
         self.bet_row.setFixedHeight(S(34))
-        br = hbox(self.bet_row, 6)
-        self.b_less, self.b_more, self.b_max = Button("−", "ghost", 34), Button("+", "ghost", 34), Button(tr("Max"), "ghost", 34)
-        self.b_half, self.b_double = Button("½", "ghost", 34), Button("×2", "ghost", 34)        # 4.0: quicker bets
-        for b, w in ((self.b_half, 36), (self.b_less, 36), (self.b_more, 36), (self.b_double, 40), (self.b_max, 52)):
-            b.setFixedWidth(S(w))
-        self.bet_box = BetBox(self)
-        self.b_less.clicked.connect(lambda: self._step(-1))
-        self.b_more.clicked.connect(lambda: self._step(1))
-        self.b_max.clicked.connect(self._max)
-        self.b_half.clicked.connect(lambda: self._scale_bet(0.5))
-        self.b_double.clicked.connect(lambda: self._scale_bet(2.0))
-        self.b_half.setToolTip(tr("Half the bet"))
-        self.b_double.setToolTip(tr("Double the bet"))
-        br.addWidget(self.b_half)
-        br.addWidget(self.b_less)
-        br.addWidget(self.bet_box, 1)
-        br.addWidget(self.b_more)
-        br.addWidget(self.b_double)
-        br.addWidget(self.b_max)
+        self.bet_lay = hbox(self.bet_row, 6)
+        self.bet_slider = None
+        self._bet_top = -1
+        self._bet_slider()
         cl.addStretch(1)
         cl.addWidget(self.bet_row)
         lay.addWidget(controls)
@@ -2775,48 +2764,68 @@ class GamesPage(Page):
         self.act_lay = hbox(self.actions, 6)
         self.act_buttons: list = []
         lay.addWidget(self.actions)
+        from .widgets import ControlsBar, KeyPoll                # 4.5: every game can be played with the keyboard
+        lay.addWidget(ControlsBar([("Space", tr("Main button")), (["2", "3"], tr("Other buttons")),
+                                   (["Left", "Right"], tr("Bet"))], self.W))
+        self._keys = KeyPoll(["Space", "1", "2", "3", "4", "Left", "Right"], self._casino_key,
+                             lambda: self.game is not None and self.game.busy)
+        lay.addWidget(self._keys)
         self._choose(which)
         ctx.wallet.changed.connect(self.sync)
 
     # -- bet
+    def max_bet(self) -> int:
+        """4.5: the most you can bet: your balance, up to a limit that grows with it (the server's rb_bet_cap)."""
+        bal = int(self.ctx.wallet.balance())
+        return min(bal, self.ctx.econ.bet_cap(bal))
+
     def bet(self) -> int:
-        """The bet, never more than you have."""
-        bal = self.ctx.wallet.balance()
-        want = BETS[self._bet]
+        """The bet, never more than you can."""
         if self.game is not None and self.game.busy and not isinstance(self.game, Plinko):
             return self.game.stake
-        return want if want <= bal else max([b for b in BETS if b <= bal], default=0)
+        top = self.max_bet()
+        if top < 10:
+            return 0
+        return max(10, min(top, int(getattr(self.ctx, "casino_bet", 50) or 50)))
+
+    def _bet_slider(self) -> None:
+        """(Re)build the slider when the most you can bet changes."""
+        top = max(10, self.max_bet())
+        if top == self._bet_top and self.bet_slider is not None:
+            return
+        self._bet_top = top
+        if self.bet_slider is not None:
+            self.bet_slider.hide()
+            self.bet_slider.deleteLater()
+        from .widgets import AmountSlider
+        self.bet_slider = AmountSlider(tr("Bet"), 10, top, self.bet() or 10, coins_text, label_w=40)
+        self.bet_slider.changed.connect(self._bet_set)
+        self.bet_lay.addWidget(self.bet_slider, 1)
+
+    def _bet_set(self, v: int) -> None:
+        self.ctx.casino_bet = int(v)
+
+    def _casino_key(self, name: str, down: bool) -> None:
+        if not down or self.game is None or not self.game.isVisible():
+            return
+        if name in ("Left", "Right"):
+            return self._step(-1 if name == "Left" else 1)
+        i = 0 if name in ("Space", "1") else int(name) - 1
+        if i < len(self.act_buttons) and self.act_buttons[i].isEnabled() and self.act_buttons[i].isVisible():
+            self.act_buttons[i].click()
 
     def _step(self, d: int) -> None:
-        bal = self.ctx.wallet.balance()
-        i = max(0, min(len(BETS) - 1, self._bet + d))
-        while i > 0 and BETS[i] > bal:
-            i -= 1
-        if i != self._bet:
-            self._bet = i
-            sfx.play("pick")
-        self.sync()
-
-    def _scale_bet(self, k: float) -> None:
-        """Half or double: the nearest bet below half, or the first bet above double (never above the balance)."""
-        bal = self.ctx.wallet.balance()
-        want = BETS[self._bet] * k
-        if k < 1:
-            i = max([j for j, b in enumerate(BETS) if b <= want], default=0)
-        else:
-            i = min([j for j, b in enumerate(BETS) if b >= want], default=len(BETS) - 1)
-        while i > 0 and BETS[i] > bal:
-            i -= 1
-        if i != self._bet:
-            self._bet = i
-            sfx.play("pick")
-        self.sync()
-
-    def _max(self) -> None:
-        bal = self.ctx.wallet.balance()
-        self._bet = max([i for i, b in enumerate(BETS) if b <= bal], default=0)
+        """← / →: the next round value down or up."""
+        sl = self.bet_slider
+        if sl is None or (self.game is not None and self.game.busy):
+            return
+        vals = sl.values
+        cur = self.bet()
+        i = min(range(len(vals)), key=lambda k: abs(vals[k] - cur))
+        i = max(0, min(len(vals) - 1, i + d))
+        sl.set_value(vals[i])
+        self._bet_set(vals[i])
         sfx.play("pick")
-        self.sync()
 
     # -- which game
     def _choose(self, i: int) -> None:
@@ -2839,14 +2848,15 @@ class GamesPage(Page):
         if self.game is None:
             return
         busy = self.game.busy
-        for b in (self.b_less, self.b_more, self.b_max, self.b_half, self.b_double):
-            b.setEnabled(not busy)
+        if not busy:
+            self._bet_slider()
+        if self.bet_slider is not None:
+            self.bet_slider.setEnabled(not busy)
         self.seg.setEnabled(not busy)
         self.back.setEnabled(not busy)
         for seg in self.opts:
             if seg is not None:
                 seg.setEnabled(not busy)
-        self.bet_box.update()
         spec = self.game.buttons()
         if [s[0] for s in spec] != [b.text_key for b in self.act_buttons]:
             for b in self.act_buttons:
@@ -2857,6 +2867,7 @@ class GamesPage(Page):
                 b = Button(text, kind, 38)
                 b.text_key = text
                 (b.pressed if how and how[0] == "press" else b.clicked).connect(call)
+                b.keycap = "Space" if not self.act_buttons else str(len(self.act_buttons) + 1)     # 4.5: keys
                 self.act_lay.addWidget(b)
                 self.act_buttons.append(b)
         for b, (_t, _k, _c, on, *_how) in zip(self.act_buttons, spec):

@@ -10,7 +10,7 @@ from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
 from .core import S, TEXT, TEXT_DIM, alpha, font, sfx, tr
-from .widgets import Button, Label, vbox
+from .widgets import Button, Label, hbox, vbox
 
 HELP_GOLD = "#F2C14E"
 
@@ -198,6 +198,21 @@ HELP = {
         "There are always 5 to 10 bot coinflips open, from small to big, sized to the players online."]),
 }
 
+_CASINO = [("Space", "Main button"), (["2", "3"], "Other buttons"), (["Left", "Right"], "Change the bet")]
+CONTROLS = {
+    "blackjack": _CASINO, "plinko": _CASINO, "dice": _CASINO + [("Drag", "Set your chance")], "timing": _CASINO,
+    "rocket": _CASINO, "hilo": _CASINO, "slots": _CASINO,
+    "bombs": _CASINO + [("LMB", "Open a tile")], "tower": _CASINO + [("LMB", "Pick a tile")],
+    "roulette": _CASINO + [("LMB", "Pick what you bet on")],
+    "spin": [("LMB", "Spin the wheel")], "scratch": [("Drag", "Scratch the card")],
+    "beat": [(["D", "F", "J", "K"], "Hit a lane"), ("LMB", "Hit a lane"), ("Space", "Start")],
+    "memory": [("LMB", "Turn a card")], "parking": [("Drag", "Slide a car along its lane")],
+    "blocks": [("Drag", "Place a piece")], "sweeper": [("LMB", "Open a cell"), ("RMB", "Flag a mine")],
+    "golf": [("Drag", "Pull back from the ball to aim"), ("LMB", "Let go to shoot")],
+    "wave": [(["Hold", "Space", "Up", "W"], "Hold to rise, let go to fall")],
+    "coinflip": [("LMB", "Pick a side and your items")], "duels": [("LMB", "Pick a friend and a game")],
+}
+
 CASINO_KEYS = {"Blackjack": "blackjack", "Plinko": "plinko", "Bombs": "bombs", "Roulette": "roulette", "Dice": "dice",
                "Timing": "timing", "Rocket": "rocket", "Hi-Lo": "hilo", "Tower": "tower", "Slots": "slots", "Free spin": "spin"}
 
@@ -222,13 +237,14 @@ def help_lines(ctx, key: str) -> tuple:
 
 
 class HelpButton(QWidget):
-    """A round golden "?" that glows softly. Click: the help of its game."""
+    """A round golden "?" that glows softly, with a small HELP and an arrow pointing at it. Click: the help."""
     clicked = pyqtSignal()
 
     def __init__(self, ctx, key, size: int = 32) -> None:
         super().__init__()
         self.ctx, self.key = ctx, key                      # key: a HELP key, or a function giving one
-        self.setFixedSize(S(size), S(size))
+        self.size_ = S(size)
+        self.setFixedSize(self.size_ + S(50), self.size_)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(tr("How to play"))
         self._hover = 0.0
@@ -261,10 +277,22 @@ class HelpButton(QWidget):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect())
+        now = time.monotonic()
+        r = QRectF(self.width() - self.size_, 0, self.size_, self.size_)
         c = r.center()
         rad = r.width() / 2 - S(3)
-        pulse = 0.5 + 0.5 * math.sin(time.monotonic() * 2.6)
+        pulse = 0.5 + 0.5 * math.sin(now * 2.6)
+        # HELP and a small arrow nudging towards the "?"
+        nudge = math.sin(now * 3.0) * S(2)
+        p.setPen(alpha(HELP_GOLD, 0.75 + 0.25 * self._hover))
+        p.setFont(font(9.5, QFont.Weight.Black, 1.0))
+        p.drawText(QRectF(0, 0, S(32), self.height()), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   tr("HELP"))
+        ax = S(36) + nudge
+        p.setPen(QPen(alpha(HELP_GOLD, 0.85), S(1.5), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawLine(QPointF(ax, c.y()), QPointF(ax + S(8), c.y()))
+        p.drawLine(QPointF(ax + S(8), c.y()), QPointF(ax + S(5), c.y() - S(3)))
+        p.drawLine(QPointF(ax + S(8), c.y()), QPointF(ax + S(5), c.y() + S(3)))
         glow = QRadialGradient(c, r.width() / 2)
         glow.setColorAt(0.55, alpha(HELP_GOLD, 0.35 + 0.25 * pulse + 0.2 * self._hover))
         glow.setColorAt(1.0, alpha(HELP_GOLD, 0.0))
@@ -283,18 +311,237 @@ class HelpButton(QWidget):
         p.drawText(QRectF(c.x() - rad, c.y() - rad, rad * 2, rad * 2), int(Qt.AlignmentFlag.AlignCenter), "?")
 
 
+class HelpPreview(QWidget):
+    """4.5: a small moving picture of the game, at the top of its help."""
+
+    def __init__(self, key: str, width: int) -> None:
+        super().__init__()
+        self.key = key
+        self.setFixedSize(width, S(118))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._t = QTimer(self)
+        self._t.setInterval(33)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        from PyQt6.QtGui import QLinearGradient, QPainterPath, QPolygonF
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        now = time.monotonic()
+        clip = QPainterPath()
+        clip.addRoundedRect(r, S(12), S(12))
+        p.setClipPath(clip)
+        bg = QLinearGradient(r.topLeft(), r.bottomLeft())
+        bg.setColorAt(0, QColor("#141B20"))
+        bg.setColorAt(1, QColor("#0A0E11"))
+        p.fillRect(r, bg)
+        c = r.center()
+        u = S(1)
+        k = self.key
+        p.setPen(Qt.PenStyle.NoPen)
+        if k in ("blackjack", "hilo"):
+            cards = [("A", "#D8314A"), ("K", "#14181A")] if k == "blackjack" else [("7", "#14181A"), ("?", "#FFFFFF")]
+            for i, (t, col) in enumerate(cards):
+                p.save()
+                p.translate(c.x() - 26 * u + i * 52 * u, c.y() + math.sin(now * 2 + i) * 3 * u)
+                p.rotate(-8 + 16 * i)
+                p.setBrush(QColor("#F4F5F6") if t != "?" else QColor(HELP_GOLD))
+                p.drawRoundedRect(QRectF(-22 * u, -32 * u, 44 * u, 64 * u), 6 * u, 6 * u)
+                p.setPen(QColor(col))
+                p.setFont(font(20, QFont.Weight.Black))
+                p.drawText(QRectF(-22 * u, -32 * u, 44 * u, 64 * u), int(Qt.AlignmentFlag.AlignCenter), t)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.restore()
+        elif k == "plinko":
+            for row in range(6):
+                for j in range(row + 3):
+                    p.setBrush(alpha("#FFFFFF", 0.5))
+                    p.drawEllipse(QPointF(c.x() + (j - (row + 2) / 2) * 18 * u, r.top() + 14 * u + row * 14 * u), 2 * u, 2 * u)
+            ph = (now * 0.6) % 1.0
+            p.setBrush(QColor(HELP_GOLD))
+            p.drawEllipse(QPointF(c.x() + math.sin(ph * 9) * 20 * u * ph, r.top() + 8 * u + ph * 90 * u), 5 * u, 5 * u)
+        elif k in ("bombs", "tower", "sweeper", "memory"):
+            cols, rows = (5, 3) if k != "tower" else (3, 4)
+            lit = int(now * 2) % (cols * rows)
+            cell = 20 * u
+            ox, oy = c.x() - cols * cell / 2, c.y() - rows * cell / 2
+            for i in range(cols * rows):
+                q = QRectF(ox + (i % cols) * cell + 2 * u, oy + (i // cols) * cell + 2 * u, cell - 4 * u, cell - 4 * u)
+                p.setBrush(QColor(HELP_GOLD) if i == lit else QColor("#2A3238") if i > lit else QColor("#3DDC84"
+                           if k != "sweeper" else "#151B1F"))
+                p.drawRoundedRect(q, 4 * u, 4 * u)
+        elif k in ("dice", "roulette", "spin", "scratch", "slots", "rocket", "timing"):
+            if k == "dice":
+                p.setBrush(QColor("#F4F5F6"))
+                p.save()
+                p.translate(c)
+                p.rotate(math.sin(now * 2) * 12)
+                p.drawRoundedRect(QRectF(-26 * u, -26 * u, 52 * u, 52 * u), 9 * u, 9 * u)
+                p.setBrush(QColor("#14181A"))
+                for dx, dy in ((-12, -12), (12, 12), (0, 0), (12, -12), (-12, 12)):
+                    p.drawEllipse(QPointF(dx * u, dy * u), 4.5 * u, 4.5 * u)
+                p.restore()
+            elif k in ("roulette", "spin"):
+                cols = ["#E8384F", "#1E2429"] * 6 if k == "roulette" else ["#4FC3FF", "#FFB547", "#5BE08A", "#B36BFF"] * 3
+                p.save()
+                p.translate(c)
+                p.rotate(now * 60 % 360)
+                for i, col in enumerate(cols):
+                    p.setBrush(QColor(col))
+                    p.drawPie(QRectF(-42 * u, -42 * u, 84 * u, 84 * u), int(i * 5760 / len(cols)), int(5760 / len(cols)))
+                p.restore()
+                p.setBrush(QColor("#FFFFFF"))
+                p.drawPolygon(QPolygonF([QPointF(c.x() - 6 * u, r.top() + 6 * u), QPointF(c.x() + 6 * u, r.top() + 6 * u),
+                                         QPointF(c.x(), r.top() + 18 * u)]))
+            elif k == "scratch":
+                card = QRectF(c.x() - 70 * u, c.y() - 34 * u, 140 * u, 68 * u)
+                p.setBrush(QColor(HELP_GOLD))
+                p.drawRoundedRect(card, 8 * u, 8 * u)
+                p.setPen(QColor("#3A2600"))
+                p.setFont(font(16, QFont.Weight.Black))
+                p.drawText(card, int(Qt.AlignmentFlag.AlignCenter), "+300")
+                p.setPen(Qt.PenStyle.NoPen)
+                ph = (now * 0.5) % 1.0
+                p.setBrush(QColor("#8E99A3"))
+                p.drawRoundedRect(QRectF(card.left() + card.width() * ph, card.top(), card.width() * (1 - ph), card.height()),
+                                  8 * u, 8 * u)
+            elif k == "slots":
+                from .games import paint_slot_symbol
+                for i, sym in enumerate(("seven", "gem", "seven")):
+                    q = QRectF(c.x() - 60 * u + i * 42 * u, c.y() - 30 * u, 36 * u, 60 * u)
+                    p.setBrush(QColor("#1A2125"))
+                    p.drawRoundedRect(q, 6 * u, 6 * u)
+                    paint_slot_symbol(p, sym, q.center() + QPointF(0, math.sin(now * 5 + i) * 4 * u), 26 * u)
+            elif k == "rocket":
+                ph = (now * 0.4) % 1.0
+                path = QPainterPath(QPointF(r.left() + 20 * u, r.bottom() - 14 * u))
+                tip = QPointF(r.left() + 20 * u + ph * (r.width() - 60 * u), r.bottom() - 14 * u - ph * ph * 80 * u)
+                path.quadTo(QPointF(tip.x() * 0.7, r.bottom() - 14 * u), tip)
+                p.setPen(QPen(QColor("#5BE08A"), 2.6 * u))
+                p.drawPath(path)
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(15, QFont.Weight.Black))
+                p.drawText(r.adjusted(0, 8 * u, -12 * u, 0), int(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight),
+                           f"×{1 + ph * ph * 4:.2f}")
+            else:
+                bar = QRectF(r.left() + 30 * u, c.y() - 6 * u, r.width() - 60 * u, 12 * u)
+                p.setBrush(QColor("#1A2125"))
+                p.drawRoundedRect(bar, 6 * u, 6 * u)
+                p.setBrush(QColor("#3DDC84"))
+                p.drawRoundedRect(QRectF(bar.center().x() + 20 * u, bar.top(), 24 * u, bar.height()), 5 * u, 5 * u)
+                nx = bar.left() + (0.5 + 0.5 * math.sin(now * 2.4)) * bar.width()
+                p.setBrush(QColor("#FFFFFF"))
+                p.drawRoundedRect(QRectF(nx - 2 * u, bar.top() - 14 * u, 4 * u, bar.height() + 28 * u), 2 * u, 2 * u)
+        elif k == "beat":
+            cols = ["#FF5C8A", "#4FC3FF", "#5BE08A", "#FFB547"]
+            lw = 34 * u
+            ox = c.x() - 2 * lw
+            for i in range(4):
+                p.setBrush(alpha(cols[i], 0.10))
+                p.drawRect(QRectF(ox + i * lw + 2 * u, r.top(), lw - 4 * u, r.height()))
+                y = r.top() + ((now * 0.8 + i * 0.27) % 1.0) * (r.height() - 20 * u)
+                p.setBrush(QColor(cols[i]))
+                p.drawRoundedRect(QRectF(ox + i * lw + 5 * u, y, lw - 10 * u, 9 * u), 4 * u, 4 * u)
+            p.setBrush(alpha("#FFFFFF", 0.6))
+            p.drawRect(QRectF(ox, r.bottom() - 20 * u, 4 * lw, 2 * u))
+        elif k == "parking":
+            cell = 18 * u
+            ox, oy = c.x() - 3 * cell, c.y() - 3 * cell
+            p.setBrush(QColor("#1A2125"))
+            p.drawRoundedRect(QRectF(ox, oy, 6 * cell, 6 * cell), 6 * u, 6 * u)
+            slide = (0.5 + 0.5 * math.sin(now * 1.6)) * 2 * cell
+            p.setBrush(QColor("#E8384F"))
+            p.drawRoundedRect(QRectF(ox + 2 * u + slide, oy + 2 * cell + 2 * u, 2 * cell - 4 * u, cell - 4 * u), 4 * u, 4 * u)
+            p.setBrush(QColor("#4FC3FF"))
+            p.drawRoundedRect(QRectF(ox + 4 * cell + 2 * u, oy + 2 * u, cell - 4 * u, 3 * cell - 4 * u), 4 * u, 4 * u)
+        elif k == "blocks":
+            cell = 14 * u
+            ox, oy = c.x() - 4 * cell, c.y() - 3 * cell
+            for i in range(48):
+                filled = (i // 8) == 5 or i in (3, 11, 12, 20, 28)
+                p.setBrush(QColor("#B36BFF") if filled else QColor("#1A2125"))
+                p.drawRoundedRect(QRectF(ox + (i % 8) * cell + 1, oy + (i // 8) * cell + 1, cell - 2, cell - 2), 3 * u, 3 * u)
+        elif k == "golf":
+            p.setBrush(QColor("#2E9E4F"))
+            p.drawRoundedRect(r.adjusted(18 * u, 14 * u, -18 * u, -14 * u), 18 * u, 18 * u)
+            hole = QPointF(r.right() - 50 * u, c.y())
+            p.setBrush(QColor("#0B120D"))
+            p.drawEllipse(hole, 6 * u, 4 * u)
+            ph = (now * 0.45) % 1.0
+            ball = QPointF(r.left() + 50 * u + (hole.x() - r.left() - 50 * u) * min(1.0, ph * 1.3), c.y())
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawEllipse(ball, 5 * u, 5 * u)
+        elif k == "wave":
+            pts = []
+            for i in range(9):
+                x = r.left() + i * r.width() / 8 - ((now * 60 * u) % (r.width() / 8))
+                pts.append(QPointF(x, c.y() + (22 * u if i % 2 else -22 * u)))
+            p.setPen(QPen(QColor("#2EE6D6"), 2.4 * u))
+            p.drawPolyline(QPolygonF(pts))
+            p.setPen(QPen(alpha("#2EE6D6", 0.7), 2 * u))
+            p.drawLine(QPointF(r.left(), r.top() + 14 * u), QPointF(r.right(), r.top() + 14 * u))
+            p.drawLine(QPointF(r.left(), r.bottom() - 14 * u), QPointF(r.right(), r.bottom() - 14 * u))
+        else:                                                   # coinflip, duels
+            from .games3 import paint_flip_coin
+            paint_flip_coin(p, c, 34 * u, now * 2.2, None)
+        p.setClipping(False)
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRoundedRect(r, S(12), S(12))
+
+
+class StepRow(QWidget):
+    """One numbered step of how to play."""
+
+    def __init__(self, n: int, text: str, width: int) -> None:
+        super().__init__()
+        lay = hbox(self, 8)
+        self.n = n
+        badge = QWidget()
+        badge.setFixedSize(S(22), S(22))
+        badge.paintEvent = lambda _e, b=badge: self._badge(b)
+        lay.addWidget(badge, 0, Qt.AlignmentFlag.AlignTop)
+        lay.addWidget(Label(text, 11, TEXT, wrap_w=width - S(32)), 1)
+
+    def _badge(self, b) -> None:
+        p = QPainter(b)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(HELP_GOLD))
+        p.drawEllipse(QRectF(b.rect()).adjusted(1, 1, -1, -1))
+        p.setPen(QColor("#3A2600"))
+        p.setFont(font(10.5, QFont.Weight.Black))
+        p.drawText(QRectF(b.rect()), int(Qt.AlignmentFlag.AlignCenter), str(self.n))
+
+
 class HelpSheet(QWidget):
-    """The help of one game, shown inside the menu until it is closed."""
+    """The help of one game, shown inside the menu until it is closed: a moving preview, the steps, every control,
+    then the best way to play and what it pays."""
 
     def __init__(self, ctx, key: str) -> None:
         super().__init__()
+        from .widgets import ControlsBar
         self.ctx = ctx
         w = ctx.window.page_w()
         self.setFixedWidth(w)
         lay = vbox(self, 8)
         title, how, best, pay = help_lines(ctx, key)
         lay.addWidget(Label(title, 17, HELP_GOLD, bold=True))
-        for head, lines in ((tr("HOW TO PLAY"), how), (tr("BEST WAY TO PLAY"), best), (tr("PAYOUTS AND CHANCES"), pay)):
+        lay.addWidget(HelpPreview(key, w))
+        lay.addWidget(Label(tr("HOW TO PLAY"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+        for i, text in enumerate(how, 1):
+            lay.addWidget(StepRow(i, text, w))
+        if key in CONTROLS:
+            lay.addWidget(Label(tr("CONTROLS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+            lay.addWidget(ControlsBar([(k, tr(t)) for k, t in CONTROLS[key]], w))
+        for head, lines in ((tr("BEST WAY TO PLAY"), best), (tr("PAYOUTS AND CHANCES"), pay)):
             if not lines:
                 continue
             lay.addWidget(Label(head, 10, TEXT_DIM, weight=QFont.Weight.Bold))

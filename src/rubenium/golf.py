@@ -797,6 +797,8 @@ def build_golf_solo(page, lay, sid, leave_screen) -> None:
     if sid:
         view = GolfView(page, sid, solo=True)
         lay.addWidget(view)
+        from .widgets import ControlsBar
+        lay.addWidget(ControlsBar([("Drag", tr("Pull back from the ball to aim")), ("LMB", tr("Let go to shoot"))], page.W))
         if view.g.get("state") == "done" or getattr(ctx, "golf_solo_done", None) == sid:
             row = hbox(spacing=6)
             again = Button(tr("Play again"), "primary", 34, icon="flag")
@@ -838,9 +840,7 @@ def build_golf_solo(page, lay, sid, leave_screen) -> None:
     go.clicked.connect(start)
     lay.addWidget(go)
     holes = int(float(ctx.econ.cfg.get("golf_holes", 5) or 5))
-    lay.addWidget(Label(tr("{n} holes, no bet and no clock. Each hole pays by strokes:", n=holes), 10.5, TEXT, wrap_w=page.W))
-    lay.addWidget(Label(tr("1 stroke: 60 · 2: 35 · 3: 20 · 4: 10 · 5: 5 · 6: nothing"), 11, "#E8C26A", bold=True,
-                        wrap_w=page.W))
+    del holes
 
 
 class _ListPoll(QWidget):
@@ -906,6 +906,8 @@ def build_golf(page, lay) -> None:
     if gid:
         view = GolfView(page, gid)
         lay.addWidget(view)
+        from .widgets import ControlsBar
+        lay.addWidget(ControlsBar([("Drag", tr("Pull back from the ball to aim")), ("LMB", tr("Let go to shoot"))], page.W))
         quit_ = Button(tr("Leave the match"), "ghost", 30)
 
         def leave() -> None:
@@ -976,7 +978,6 @@ def build_golf(page, lay) -> None:
     else:
         lay.addWidget(Label(tr("YOUR MATCH"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
         lay.addWidget(LobbyRow(page, mine))
-        lay.addWidget(Label(tr("Waiting for a player. It starts as soon as someone joins."), 10.5, TEXT_DIM, wrap_w=page.W))
     others = [m for m in lobbies if not m.get("mine")]
     lay.addWidget(Label(tr("OPEN MATCHES"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
     if not others:

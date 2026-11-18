@@ -14,19 +14,22 @@ from .widgets import Button, Label, hbox, vbox
 
 # ================================================================ the show / hide key
 KEY_CHOICES = [("rshift", "Right Shift", 0xA1), ("rctrl", "Right Ctrl", 0xA3), ("insert", "Insert", 0x2D),
-               ("home", "Home", 0x24), ("f8", "F8", 0x77), ("off", "Off", 0)]
+               ("home", "Home", 0x24), ("ralt", "Right Alt", 0xA5), ("off", "Off", 0)]
 
 
 class TapKey(QObject):
     """Tap one key (default Right Shift) to show or hide Rubenium. A tap is a short press with no other key: holding
     the key (to run in a game, say) does nothing. It reads the key state, it does not hook the keyboard."""
     tapped = pyqtSignal()
+    held = pyqtSignal()                 # 4.5: held for 3 seconds: restart Rubenium
+    GAME_KEYS = (0x57, 0x41, 0x53, 0x44, 0x20, 0x25, 0x26, 0x27, 0x28, 0xA0, 0x01, 0x02)  # WASD space arrows LShift mouse (not LCtrl: AltGr sends it)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.vk = 0
         self._down_at = 0.0
         self._was = False
+        self._fired = False
         self._t = QTimer(self)
         self._t.setInterval(30)
         self._t.timeout.connect(self._poll)
@@ -44,6 +47,12 @@ class TapKey(QObject):
         now = time.monotonic()
         if down and not self._was:
             self._down_at = now
+            self._fired = False
+        elif down and not self._fired and any(win.key_down(k) for k in self.GAME_KEYS):
+            self._fired = True                          # held while playing (running, aiming...): never a restart
+        elif down and not self._fired and now - self._down_at >= 3.0:
+            self._fired = True
+            self.held.emit()
         elif not down and self._was and now - self._down_at < 0.35:
             self.tapped.emit()
         self._was = down

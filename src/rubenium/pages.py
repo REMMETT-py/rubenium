@@ -1867,10 +1867,10 @@ class SettingsPage(StylePart, Page):
 
         from .hub import NavTiles
         sec = int(getattr(ctx, "settings_tab", 0) or 0)
-        shown = [0, 2, 3, 4, 5]                         # 4.2: Look moved to the Shop (Style)
+        shown = [0, 1, 2, 3, 4, 5]                      # 4.5: Style is here too (also in the Shop), online or not
         if sec not in shown:
             sec = ctx.settings_tab = 0
-        tiles = NavTiles([(tr("General"), "cog"), (tr("Sounds"), "volume"), (tr("Account"), "users"),
+        tiles = NavTiles([(tr("General"), "cog"), (tr("Style"), "spark"), (tr("Sounds"), "volume"), (tr("Account"), "users"),
                           (tr("Backup"), "folder"), (tr("About"), "refresh")], shown.index(sec), per_row=3)
 
         def pick(i: int) -> None:
@@ -1905,6 +1905,8 @@ class SettingsPage(StylePart, Page):
             lay.addWidget(Label(tr("Show / hide key"), 11.5, TEXT))
             lay.addWidget(hk)
             note(tr("Tap it once to open or close Rubenium, even in a game."))
+            lay.addWidget(Label(tr("Holding this key down for 3 seconds restarts Rubenium, in case you are stuck or run into a problem."),
+                                10, "#FFD54A", wrap_w=self.W))
             lay.addWidget(heading(tr("Music")))                 # 3.2
             from .music3 import app_name, ask_music_app
             app_btn = Button(app_name(cfg["music_app"]) or tr("Ask me"), "ghost", 30)
@@ -1919,7 +1921,8 @@ class SettingsPage(StylePart, Page):
             toggle(tr("Compact Music Mode"), "compact_music", after=compact_set)
             lay.addWidget(heading(tr("Games")))
             toggle(tr("Game mode"), "game_mouse")
-            note(tr("In fullscreen games the mouse goes through Rubenium."))
+            note(tr("While a fullscreen game is in front and Rubenium is closed, the ball ignores the mouse: clicks and "
+                    "aiming near it go straight to the game. Open Rubenium with the show / hide key."))
             speeds = ["slow", "normal", "fast"]                  # 4.0: how fast cases open
             sp = Segmented([tr("Slow") + " 0.75×", tr("Normal") + " 1×", tr("Fast") + " 2.5×"],
                            speeds.index(cfg["chest_speed"]) if cfg["chest_speed"] in speeds else 1)
@@ -1944,6 +1947,8 @@ class SettingsPage(StylePart, Page):
                 t.toggled_by_user.connect(lambda v, k=key: ctx.set_tab(k, v))
                 lay.addWidget(row(tr(label), t))
 
+        elif sec == 1:                                  # ---------------------------------------------- Style
+            self.build_style(lay)
         elif sec == 2:                                  # ---------------------------------------------- Sounds
             lay.addWidget(heading(tr("Sounds")))
 

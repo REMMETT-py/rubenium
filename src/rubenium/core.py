@@ -19,8 +19,8 @@ from . import win
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "4.4"         # the version people see
-BUILD = "2026.11.18.22"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "4.5"         # the version people see
+BUILD = "2026.11.18.23"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -472,6 +472,8 @@ class Config(QObject):
         if d["crosshair"]["style"] not in ("cross", "tee", "dot", "circle"):
             d["crosshair"]["style"] = "cross"
         d["crosshair"]["size"] = 100
+        if d["hotkey"] == "f8":                          # 4.5: F8 became Right Alt
+            d["hotkey"] = "ralt"
         for slot in ("A", "B"):
             if isinstance(raw, dict) and raw.get("schema", 2) < 3 and d["display"][slot]["vibrance"] == 50:
                 d["display"][slot]["vibrance"] = -1             # 1.x saved 50 meaning "default"

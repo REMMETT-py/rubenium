@@ -132,7 +132,7 @@ def item_chances(ec, item: str) -> list:
     base = item.split(":")[1] if item.count(":") >= 2 else ""
     if tier == 5:
         share = (1 if base == "rubenium" else 2) / 11
-        per = {3: 0.96515 / 2, 5: 0.033, 4: 0.00185}.get(cls, 0) * share
+        per = {3: 0.943 / 2, 5: 0.053, 4: 0.004}.get(cls, 0) * share          # 4.5
     else:                                       # 3.2: inside its group, an item drops in proportion to its weight
         group = [float(v.get("weight") or 1) for k, v in ec.catalog.items() if v.get("kind") == "badge"
                  and v.get("rarity") == info.get("rarity") and int(v.get("cls") or 0) == cls and not v.get("limited")]

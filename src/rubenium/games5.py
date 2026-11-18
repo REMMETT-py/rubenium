@@ -382,7 +382,8 @@ class SweeperBoard(QWidget):
         if c < 0:
             return
         if e.button() == Qt.MouseButton.RightButton:
-            if c not in self.shown:
+            st = getattr(self.page.ctx, "sweeper_state", None)
+            if c not in self.shown and st is not None and not st.get("over"):
                 self.flags ^= {c}
                 sfx.play("pick")
                 self.update()
@@ -451,13 +452,14 @@ def build_blocks(page, lay) -> None:
     _top(page, lay, tr("Block Blast"), "blocks")
     mode = int(getattr(ctx, "blocks_mode", 0) or 0)
     div, cap = BLOCK_PAY[mode]
-    lay.addWidget(Label(tr("Drag the pieces onto the grid. Fill a row or a column to clear it.") + "  " +
-                        tr("Score ÷ {d}, up to {n} coins", d=div, n=cap), 10, TEXT_DIM, wrap_w=page.W))
+    del div, cap
     page.mg_score = Label("", 13, TEXT, bold=True)
     lay.addWidget(page.mg_score)
     page.blocks = BlockBoard(page, page.W)
     page.blocks.game = getattr(ctx, "blocks_game", None)
     lay.addWidget(page.blocks, 0, Qt.AlignmentFlag.AlignHCenter)
+    from .widgets import ControlsBar
+    lay.addWidget(ControlsBar([("Drag", tr("Place a piece"))], page.W))
     line = hbox(spacing=6)
     new = Button(tr("New game"), "primary", 34)
     new.clicked.connect(lambda: page.mg_start("blocks"))
@@ -474,8 +476,7 @@ def build_sweeper(page, lay) -> None:
     _top(page, lay, tr("Minesweeper"), "sweeper")
     mode = int(getattr(ctx, "sweeper_mode", 0) or 0)
     pays = [tr("up to 105 coins"), tr("up to 225 coins"), tr("up to 420 coins")][mode]
-    lay.addWidget(Label(tr("Open every safe cell. Right click: flag. The faster you clear it, the more it pays") + f" ({pays}).",
-                        10, TEXT_DIM, wrap_w=page.W))
+    del pays
     page.sw_info = Label("", 12, TEXT, bold=True)
     lay.addWidget(page.sw_info)
     page.sweeper = SweeperBoard(page, page.W)
@@ -490,6 +491,8 @@ def build_sweeper(page, lay) -> None:
         w, h, m = [(9, 9, 10), (12, 12, 24), (16, 14, 40)][mode]
         page.sweeper.setup(w, h, m)
     lay.addWidget(page.sweeper, 0, Qt.AlignmentFlag.AlignHCenter)
+    from .widgets import ControlsBar
+    lay.addWidget(ControlsBar([("LMB", tr("Open a cell")), ("RMB", tr("Flag a mine"))], page.W))
     new = Button(tr("New game"), "primary", 34)
     new.clicked.connect(lambda: page.mg_start("sweeper"))
     lay.addWidget(new)
@@ -511,6 +514,11 @@ class MinigamePage:
             ctx.blocks_game, ctx.blocks_round = None, None
         else:
             ctx.sweeper_state, ctx.sweeper_round = None, None
+            if hasattr(self, "sweeper"):
+                try:
+                    self.sweeper.flags = set()
+                except RuntimeError:
+                    pass
         sfx.play("pick")
         ctx.reload_page()
 
@@ -541,6 +549,11 @@ class MinigamePage:
                 self.sync_blocks()
             else:
                 ctx.sweeper_round = data["id"]
+                if hasattr(self, "sweeper"):
+                    try:
+                        self.sweeper.flags = set()
+                    except RuntimeError:
+                        pass
                 ctx.sweeper_state = {"w": int(data["w"]), "h": int(data["h"]), "m": int(data["m"]), "shown": {}, "flags": [],
                                      "mines": [], "boom": -1, "t0": None, "over": False, "paid": None}
                 ctx.reload_page()
@@ -614,6 +627,9 @@ class MinigamePage:
                 st["shown"][int(c)] = int(n)
             if data.get("over"):
                 st["over"] = True
+                st["flags"] = []
+                if hasattr(self, "sweeper"):
+                    self.sweeper.flags = set()
                 st["secs"] = data.get("secs")
                 if data.get("won"):
                     st["paid"] = int(data.get("paid") or 0)
@@ -642,7 +658,7 @@ class MinigamePage:
         try:
             if st is None:
                 return self.sw_info.set_text(tr("Press New game to start"))
-            if hasattr(self, "sweeper"):
+            if hasattr(self, "sweeper") and not st.get("over"):
                 st["flags"] = list(self.sweeper.flags)
             left = st["m"] - len(st.get("flags") or [])
             secs = st.get("secs") if st.get("over") else (time.monotonic() - st["t0"] if st.get("t0") else 0)

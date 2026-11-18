@@ -279,7 +279,7 @@ def _shop_scene(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QCo
     """3.1: the shop themes each have their own picture, not the night sky. The dearer, the richer."""
     import random
     from PyQt6.QtCore import QPointF
-    from PyQt6.QtGui import QLinearGradient, QPainterPath, QRadialGradient
+    from PyQt6.QtGui import QLinearGradient, QPainterPath, QPolygonF, QRadialGradient
     p.setPen(Qt.PenStyle.NoPen)
     rnd = random.Random(hash(style) & 0xFFFF)
     if style == "sunset":                                 # warm sky, a striped sun on the horizon, dark hills
@@ -528,42 +528,167 @@ def _shop_scene(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QCo
                         p.setBrush(alpha("#FFD98A", rnd.uniform(0.35, 0.85)))
                         p.drawRect(QRectF(x + 3 * unit + wx * 6 * unit, h - bh + 4 * unit + wy * 7 * unit, 2 * unit, 3 * unit))
             x += bw
-    elif style == "inferno":                              # 3.2 Legendary: a volcano, flowing lava, embers rising
+    elif style == "inferno":                              # 4.5 Legendary: cooled basalt plates over glowing seams
         g = QLinearGradient(0, 0, 0, h)
-        g.setColorAt(0, alpha("#1A0500", 0.8))
-        g.setColorAt(0.6, alpha(c1, 0.35))
-        g.setColorAt(1, alpha("#3A0A00", 0.75))
+        g.setColorAt(0, alpha("#120402", 0.85))
+        g.setColorAt(0.55, alpha("#2A0802", 0.6))
+        g.setColorAt(1, alpha("#4A1004", 0.7))
         p.fillRect(QRectF(0, 0, w, h), g)
-        top = QPointF(w * 0.5, h * 0.3)
-        mount = QPainterPath(QPointF(w * 0.08, h))
-        mount.lineTo(top.x() - w * 0.07, top.y())
-        mount.lineTo(top.x() + w * 0.07, top.y())
-        mount.lineTo(w * 0.92, h)
-        p.setBrush(alpha("#140402", 0.95))
-        p.drawPath(mount)
-        glow = QRadialGradient(top, h * 0.6)
-        glow.setColorAt(0, alpha(c2, 0.6))
-        glow.setColorAt(1, alpha(c1, 0.0))
-        p.setBrush(glow)
-        p.drawEllipse(top, h * 0.6, h * 0.4)
-        for k, dx in enumerate((-0.02, 0.015, 0.0)):        # rivers of lava down the sides
-            lava = QPainterPath(QPointF(top.x() + w * dx, top.y()))
-            for st in range(1, 9):
-                lava.lineTo(top.x() + w * (dx + (k - 1) * 0.035 * st), top.y() + (h - top.y()) * st / 8)
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            for width_, a in ((6, 0.25), (2.4, 0.9)):
-                p.setPen(QPen(alpha(c2 if width_ < 3 else c1, a), width_ * unit, Qt.PenStyle.SolidLine,
-                              Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-                p.drawPath(lava)
+        heat = QRadialGradient(QPointF(w * 0.5, h * 1.05), w * 0.7)
+        heat.setColorAt(0, alpha(c1, 0.55))
+        heat.setColorAt(0.5, alpha(c1, 0.18))
+        heat.setColorAt(1, alpha(c1, 0.0))
+        p.setBrush(heat)
+        p.drawRect(QRectF(0, 0, w, h))
+        cell = 26 * unit                                   # basalt plates: a jittered grid of dark polygons
+        top = h * 0.42
+        cols, rows = int(w / cell) + 2, int((h - top) / cell) + 2
+        pts = {}
+        for i in range(cols + 1):
+            for j in range(rows + 1):
+                pts[(i, j)] = QPointF(i * cell + rnd.uniform(-0.3, 0.3) * cell, top + j * cell * 0.8 + rnd.uniform(-0.25, 0.25) * cell)
+        for i in range(cols):
+            for j in range(rows):
+                poly = QPainterPath(pts[(i, j)])
+                for q in (pts[(i + 1, j)], pts[(i + 1, j + 1)], pts[(i, j + 1)]):
+                    poly.lineTo(q)
+                poly.closeSubpath()
+                depth = j / max(1, rows)
+                p.setPen(QPen(alpha(c2, 0.25 + 0.55 * depth), (1.0 + 1.6 * depth) * unit))
+                p.setBrush(alpha(mix(QColor("#1A0703"), QColor("#2E0C05"), rnd.random()), 0.95))
+                p.drawPath(poly)
         p.setPen(Qt.PenStyle.NoPen)
-        for _ in range(60):                                 # embers in the smoke
-            ex, ey = rnd.uniform(w * 0.2, w * 0.8), rnd.uniform(0, top.y() + h * 0.1)
-            p.setBrush(alpha(rnd.choice(["#FFC14D", "#FF5A1F", "#FFE9B0"]), rnd.uniform(0.4, 0.95)))
-            r = rnd.uniform(0.6, 1.8) * unit
-            p.drawEllipse(QPointF(ex, ey), r, r)
-        for k in range(6):
-            p.setBrush(alpha("#2A0A04", 0.35))
-            p.drawEllipse(QPointF(top.x() + (k - 2.5) * 18 * unit, top.y() - (12 + k * 6) * unit), 22 * unit, 12 * unit)
+        fade = QLinearGradient(0, top - 6 * unit, 0, top + cell)      # the plates melt into the heat above
+        fade.setColorAt(0, alpha("#120402", 0.9))
+        fade.setColorAt(1, alpha("#120402", 0.0))
+        p.setBrush(fade)
+        p.drawRect(QRectF(0, top - 6 * unit, w, cell + 6 * unit))
+        for _ in range(14):                                  # a few soft embers, not a firework
+            ex, ey = rnd.uniform(0.05, 0.95) * w, rnd.uniform(0.08, 0.45) * h
+            rr = rnd.uniform(1.0, 2.2) * unit
+            glow = QRadialGradient(QPointF(ex, ey), rr * 4)
+            glow.setColorAt(0, alpha("#FFD08A", rnd.uniform(0.5, 0.85)))
+            glow.setColorAt(0.3, alpha(c1, 0.3))
+            glow.setColorAt(1, alpha(c1, 0.0))
+            p.setBrush(glow)
+            p.drawEllipse(QPointF(ex, ey), rr * 4, rr * 4)
+    elif style == "glacier":                              # 4.5 Rare: pale sky, ice ridges with sharp light edges
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha("#0B2A44", 0.6))
+        g.setColorAt(1, alpha(c1, 0.25))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        for layer, (base_y, col, a) in enumerate(((0.55, "#9FDBFF", 0.35), (0.68, "#CFEFFF", 0.55), (0.8, "#FFFFFF", 0.75))):
+            path = QPainterPath(QPointF(0, h))
+            x = 0.0
+            while x <= w:
+                path.lineTo(x, h * base_y - rnd.uniform(0.02, 0.18) * h)
+                x += rnd.uniform(22, 48) * unit
+            path.lineTo(w, h)
+            path.closeSubpath()
+            p.setBrush(alpha(col, a * 0.5))
+            p.setPen(QPen(alpha("#FFFFFF", a), 1.2 * unit))
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif style == "jade":                                 # 4.5 Rare: misty jade hills and a thin gold sun
+        p.fillRect(QRectF(0, 0, w, h), alpha("#06231A", 0.55))
+        sun = QPointF(w * 0.72, h * 0.32)
+        p.setBrush(alpha(c2, 0.85))
+        p.drawEllipse(sun, 14 * unit, 14 * unit)
+        halo = QRadialGradient(sun, 60 * unit)
+        halo.setColorAt(0, alpha(c2, 0.35))
+        halo.setColorAt(1, alpha(c2, 0.0))
+        p.setBrush(halo)
+        p.drawEllipse(sun, 60 * unit, 60 * unit)
+        for k in range(4):
+            y0 = h * (0.5 + k * 0.12)
+            path = QPainterPath(QPointF(0, h))
+            for x in range(0, int(w) + 10, 10):
+                path.lineTo(x, y0 - math.sin(x / w * math.pi * (1.4 + k * 0.5) + k * 1.7) * h * 0.08)
+            path.lineTo(w, h)
+            path.closeSubpath()
+            p.setBrush(alpha(mix(c1, QColor("#03140E"), 0.25 + k * 0.2), 0.55 + 0.1 * k))
+            p.drawPath(path)
+    elif style == "mirage":                               # 4.5 Special: soft dunes in warm light
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha("#3A1530", 0.6))
+        g.setColorAt(0.5, alpha(c2, 0.3))
+        g.setColorAt(1, alpha(c1, 0.35))
+        p.fillRect(QRectF(0, 0, w, h), g)
+        sun = QPointF(w * 0.3, h * 0.42)
+        p.setBrush(alpha("#FFE2B0", 0.8))
+        p.drawEllipse(sun, 22 * unit, 22 * unit)
+        for k in range(4):
+            y0 = h * (0.58 + k * 0.1)
+            path = QPainterPath(QPointF(0, h))
+            for x in range(0, int(w) + 8, 8):
+                path.lineTo(x, y0 - (math.sin(x / w * 3.1 + k * 1.3) * 0.5 + 0.5) * h * 0.09)
+            path.lineTo(w, h)
+            path.closeSubpath()
+            dg = QLinearGradient(0, y0 - h * 0.1, 0, h)
+            dg.setColorAt(0, alpha(mix(c1, QColor("#FFE2B0"), 0.4 - k * 0.1), 0.7))
+            dg.setColorAt(1, alpha(mix(c1, QColor("#3A1530"), 0.3 + k * 0.15), 0.8))
+            p.setBrush(dg)
+            p.drawPath(path)
+    elif style == "nebula":                               # 4.5 Special: clouds of colour and a field of stars
+        p.fillRect(QRectF(0, 0, w, h), alpha("#06041A", 0.6))
+        for k in range(7):
+            cx, cy = rnd.uniform(0.1, 0.9) * w, rnd.uniform(0.15, 0.85) * h
+            rr = rnd.uniform(0.18, 0.35) * w
+            g = QRadialGradient(QPointF(cx, cy), rr)
+            g.setColorAt(0, alpha(c1 if k % 2 else c2, 0.32))
+            g.setColorAt(1, alpha(c1 if k % 2 else c2, 0.0))
+            p.setBrush(g)
+            p.drawEllipse(QPointF(cx, cy), rr, rr * 0.6)
+        for _ in range(70):
+            p.setBrush(alpha("#FFFFFF", rnd.uniform(0.3, 0.9)))
+            sr = rnd.uniform(0.4, 1.2) * unit
+            p.drawEllipse(QPointF(rnd.uniform(0, w), rnd.uniform(0, h)), sr, sr)
+    elif style == "obsidian":                             # 4.5 Epic: black volcanic glass, cut facets with violet light
+        p.fillRect(QRectF(0, 0, w, h), alpha("#05040A", 0.8))
+        x = -w * 0.1
+        while x < w * 1.1:
+            span = rnd.uniform(40, 90) * unit
+            facet = QPainterPath(QPointF(x, 0))
+            facet.lineTo(x + span, 0)
+            facet.lineTo(x + span * 0.4, h)
+            facet.lineTo(x - span * 0.6, h)
+            facet.closeSubpath()
+            g = QLinearGradient(QPointF(x, 0), QPointF(x + span, h))
+            g.setColorAt(0, alpha(c2, rnd.uniform(0.15, 0.45)))
+            g.setColorAt(1, alpha("#000000", 0.4))
+            p.setBrush(g)
+            p.setPen(QPen(alpha(c1, rnd.uniform(0.15, 0.5)), 1.0 * unit))
+            p.drawPath(facet)
+            x += span
+        p.setPen(Qt.PenStyle.NoPen)
+        shine = QLinearGradient(QPointF(w * 0.2, 0), QPointF(w * 0.6, h))
+        shine.setColorAt(0, alpha("#FFFFFF", 0.0))
+        shine.setColorAt(0.5, alpha(c1, 0.18))
+        shine.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.setBrush(shine)
+        p.drawRect(QRectF(0, 0, w, h))
+    elif style == "prism":                                # 4.5 Epic: white light through a prism, fanned into colour
+        p.fillRect(QRectF(0, 0, w, h), alpha("#07070D", 0.75))
+        apex = QPointF(w * 0.42, h * 0.22)
+        tri = QPolygonF([apex, QPointF(apex.x() - 34 * unit, apex.y() + 58 * unit), QPointF(apex.x() + 34 * unit, apex.y() + 58 * unit)])
+        hit = QPointF(apex.x() - 14 * unit, apex.y() + 30 * unit)
+        p.setPen(QPen(alpha("#FFFFFF", 0.8), 2.2 * unit))
+        p.drawLine(QPointF(0, h * 0.48), hit)
+        p.setPen(Qt.PenStyle.NoPen)
+        out = QPointF(apex.x() + 16 * unit, apex.y() + 32 * unit)
+        cols = ["#FF4B4B", "#FF8A3D", "#F4F04A", "#3DDC84", "#2EC5FF", "#4B6BFF", "#B36BFF"]
+        for k, col in enumerate(cols):
+            y0 = h * (0.25 + k * 0.1)
+            band = QPolygonF([out, QPointF(w, y0), QPointF(w, y0 + h * 0.1)])
+            g = QLinearGradient(out, QPointF(w, y0))
+            g.setColorAt(0, alpha(col, 0.15))
+            g.setColorAt(1, alpha(col, 0.55))
+            p.setBrush(g)
+            p.drawPolygon(band)
+        p.setBrush(alpha("#DDEBFF", 0.18))
+        p.setPen(QPen(alpha("#FFFFFF", 0.75), 1.4 * unit))
+        p.drawPolygon(tri)
+        p.setPen(Qt.PenStyle.NoPen)
 
 
 def _draw_theme(p: QPainter, theme: dict, w: float, h: float, accent: QColor, second, unit: float) -> None:
@@ -1102,6 +1227,16 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("4.5", ['Wave Rush: see the other player in a duel, a replay of how they crashed, watch duels live, more obstacles, a difficulty bar',
+             'Beat Tap, Wave Rush and the casino work with the keyboard, and every game shows its keys and mouse buttons',
+             'HELP on every game: the steps, the controls and a little moving preview',
+             'Cases: more coloured badges and a little more Shiny, Titanium and Gold. Still very rare',
+             '6 new themes, 5 banners, 4 frames, the Eclipse ball and the Comet line. Inferno redone',
+             'No more daily XP limit: a small limit per hour on each way of earning instead',
+             'Casino bets on a slider, up to 5% of your coins (5 000 at most). Trading is now between friends only',
+             'Profile picture: change, move or remove it. Style is also in Settings',
+             'Hold the show / hide key for 3 seconds to restart Rubenium. F8 is now Right Alt',
+             'Fixes: blank or half-off-screen menus, clicks going through to the game, Minesweeper flags after a loss']),
     ("4.4", ['Updates now install by themselves as soon as they are out',
              'The daily reward opens in online mode, the first time each day; a slow red dot and a reminder every 30 minutes while it waits',
              'Shorter texts in Wave Rush and Mini Golf']),

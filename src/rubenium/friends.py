@@ -620,7 +620,7 @@ class FriendsPage(Page):
             return self._edit_profile()
         me = getattr(ctx, "social_me", None) or {}
         card = StatsCard(ctx, me, self.W)
-        card.picture.connect(self._picture)
+        card.picture.connect(self._picture_menu)
         self.lay.addWidget(card)
         line = hbox(spacing=6)                       # 4.0: one row, the three things you do with your profile
         edit = Button(tr("Edit Profile"), "primary", 30, icon="spark")
@@ -771,13 +771,68 @@ class FriendsPage(Page):
         line = hbox(spacing=6)
         pic = Button(tr("Change Picture"), "ghost", 30)
         pic.setToolTip(tr("PNG or JPG"))
-        pic.clicked.connect(self._picture)
+        pic.clicked.connect(self._picture_menu)
         rename = Button(tr("Change Name"), "ghost", 30)
         rename.clicked.connect(self._rename)
         line.addWidget(pic, 1)
         line.addWidget(rename, 1)
         self.lay.addLayout(line)
         build_profile_style(self, self.lay)
+
+    def _picture_menu(self) -> None:
+        """4.5: a click on your picture asks what to do: a new picture, move the one you have, or remove it."""
+        from PyQt6.QtGui import QAction, QCursor
+        from PyQt6.QtWidgets import QMenu
+        ctx = self.ctx
+        has = bool(int(ctx.econ.avatar_v or 0)) and ctx.faces.get(ctx.online.username(), int(ctx.econ.avatar_v or 0)) is not None
+        m = QMenu()
+        m.setStyleSheet(f"QMenu {{ background: #14191C; color: #E9EDF0; border: 1px solid #2A3136; border-radius: 8px;"
+                        f" padding: 4px; font-size: {S(12)}px; }} QMenu::item {{ padding: 6px 18px; border-radius: 6px; }}"
+                        f" QMenu::item:selected {{ background: #232B30; }} QMenu::item:disabled {{ color: #5A6369; }}")
+        for text, fn, on in ((tr("Change profile picture"), self._picture, True),
+                             (tr("Edit (move and zoom)"), self._picture_edit, has),
+                             (tr("Remove profile picture"), self._picture_remove, has)):
+            a = QAction(text, m)
+            a.setEnabled(on)
+            a.triggered.connect(lambda _c=False, fn=fn: QTimer.singleShot(0, fn))
+            m.addAction(a)
+        m.exec(QCursor.pos())
+
+    def _picture_remove(self) -> None:
+        ctx = self.ctx
+
+        def go() -> None:
+            def done(ok: bool, data) -> None:
+                if not ok:
+                    return ctx.toast(tr(str(data)), "warn")
+                ctx.econ.avatar_v = int(data or 0)
+                me = ctx.online.username().lower()
+                ctx.faces.pix[me] = (int(data or 0), None)
+                try:
+                    for old in ctx.faces.folder.glob(f"{me}_*.jpg"):
+                        old.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                if isinstance(getattr(ctx, "social_me", None), dict):
+                    ctx.social_me["avatar_v"] = int(data or 0)
+                sfx.play("off")
+                ctx.toast(tr("Picture removed"))
+                ctx.faces_changed()
+                self._redo()
+            ctx.econ.call("rb_avatar_set", {"picture": ""}, done)
+        ctx.window.confirm(tr("Remove your profile picture?"), go, yes=tr("Remove"))
+
+    def _picture_edit(self) -> None:
+        """Move or zoom the picture you already have (the full picture you chose, when this PC still has it)."""
+        ctx = self.ctx
+        orig = ctx.faces.folder / "my_original.png"
+        img = QImage(str(orig)) if orig.exists() else QImage()
+        if img.isNull():
+            pm = ctx.faces.get(ctx.online.username(), int(ctx.econ.avatar_v or 0))
+            img = pm.toImage() if pm is not None else QImage()
+        if img.isNull():
+            return self._picture()
+        self._picture_open(img, keep=False)
 
     def _picture(self) -> None:
         path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")
@@ -786,6 +841,18 @@ class FriendsPage(Page):
         img = QImage(path)
         if img.isNull():
             return self.ctx.toast(tr("This picture cannot be used"), "warn")
+        self._picture_open(img, keep=True)
+
+    def _picture_open(self, img, keep: bool) -> None:
+        if keep:                                       # the full picture stays on this PC, to move it again later
+            try:
+                self.ctx.faces.folder.mkdir(parents=True, exist_ok=True)
+                side = max(img.width(), img.height())
+                small = img if side <= 900 else img.scaled(900, 900, Qt.AspectRatioMode.KeepAspectRatio,
+                                                           Qt.TransformationMode.SmoothTransformation)
+                small.save(str(self.ctx.faces.folder / "my_original.png"), "PNG")
+            except OSError:
+                pass
 
         def done(ok: bool, data) -> None:
             if not ok:
@@ -909,7 +976,7 @@ class FriendsPage(Page):
             else:
                 self.lay.addWidget(HistoryList(ctx, key, rows, self.W))
 
-    PERKS = [("users", "Chat", "Send messages"), ("shield", "Mini Golf", "Play 1v1 live, with bets"),
+    PERKS = [("users", "Chat", "Send messages"), ("swap", "Trading", "Swap items and coins"),
              ("gift", "Gifts", "Send cases to each other"), ("perf", "Full profile", "Stats, history, last seen"),
              ("spark", "Online", "See when they are on"), ("chip", "Leaderboard", "Compare in the Friends top")]
 
@@ -937,7 +1004,8 @@ class FriendsPage(Page):
                     ctx.window.goto("themes")
             grid.changed.connect(act)
             self.lay.addWidget(grid)
-            rm = Button(tr("Remove Friend"), "quiet", 24)
+            rm = Button(tr("Remove friend"), "quiet", 24)
+            rm._font.setUnderline(True)
             rm.clicked.connect(lambda: ctx.window.confirm(tr("Remove {name} from your friends?", name=name),
                                lambda: self.act("rb_friend_remove", name, lambda _ok: self.open_profile(None)), yes=tr("Remove")))
             self.lay.addWidget(rm, 0, Qt.AlignmentFlag.AlignRight)
@@ -962,10 +1030,7 @@ class FriendsPage(Page):
             b = Button(tr("Add Friend"), "primary", 34, icon="plus")
             b.clicked.connect(lambda: self.act("rb_friend_add", name, lambda _ok: self.open_profile(name)))
             cl.addWidget(b)
-        self.lay.addWidget(card)
-        trade = Button(tr("Trade Without Being Friends"), "ghost", 28)
-        trade.clicked.connect(lambda: self.ask_trade(name))
-        self.lay.addWidget(trade)
+        self.lay.addWidget(card)                       # 4.5: trading is for friends only
 
     def _details(self, prof: dict) -> None:
         """A friend's numbers and what they are wearing."""

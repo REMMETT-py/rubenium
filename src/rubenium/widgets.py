@@ -465,6 +465,7 @@ class Button(QAbstractButton):
         self._press = Tween(self, on_change=self.update)
         self._font = font(12, QFont.Weight.DemiBold)
         self.fade = 1.0
+        self.keycap = ""                                    # 4.5: the key that presses it, drawn as a small cap
 
     def set_text(self, text: str) -> None:
         self._text = text
@@ -571,6 +572,229 @@ class Button(QAbstractButton):
         else:
             text = p.fontMetrics().elidedText(self._text, Qt.TextElideMode.ElideRight, int(r.width() - S(12)))
             p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
+        if self.keycap and r.width() > S(60):
+            paint_keycap(p, QPointF(r.right() - S(6), r.center().y()), self.keycap, fg, align_right=True, small=True)
+
+
+def paint_keycap(p: QPainter, at: QPointF, text: str, fg=None, align_right: bool = False, small: bool = False) -> float:
+    """4.5: a keyboard key drawn as a little cap (or a mouse for LMB / RMB / Drag / Wheel). Returns its width."""
+    p.save()
+    h = S(15 if small else 20)
+    if text in ("LMB", "RMB", "Drag", "Wheel", "Hold"):
+        w = h * 0.72
+        x = at.x() - w if align_right else at.x()
+        body = QRectF(x, at.y() - h / 2, w, h)
+        p.setPen(QPen(alpha("#FFFFFF", 0.55), S(1.1)))
+        p.setBrush(alpha("#FFFFFF", 0.06))
+        p.drawRoundedRect(body, w / 2, w / 2)
+        p.drawLine(QPointF(body.center().x(), body.top()), QPointF(body.center().x(), body.top() + h * 0.42))
+        p.drawLine(QPointF(body.left(), body.top() + h * 0.42), QPointF(body.right(), body.top() + h * 0.42))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#F2C14E"))
+        if text in ("LMB", "Drag", "Hold"):
+            lobe = QPainterPath()
+            lobe.addRoundedRect(QRectF(body.left(), body.top(), w / 2, h * 0.42), w / 2.4, w / 2.4)
+            p.drawPath(lobe)
+        elif text == "RMB":
+            lobe = QPainterPath()
+            lobe.addRoundedRect(QRectF(body.center().x(), body.top(), w / 2, h * 0.42), w / 2.4, w / 2.4)
+            p.drawPath(lobe)
+        else:
+            p.drawRoundedRect(QRectF(body.center().x() - S(1.2), body.top() + h * 0.08, S(2.4), h * 0.28), S(1), S(1))
+        if text == "Drag":                                # little arrows: move while held
+            p.setPen(QPen(QColor("#F2C14E"), S(1.1)))
+            for dx in (-1, 1):
+                ax = body.center().x() + dx * (w / 2 + S(4))
+                p.drawLine(QPointF(ax, body.center().y()), QPointF(ax - dx * S(3), body.center().y() - S(2.5)))
+                p.drawLine(QPointF(ax, body.center().y()), QPointF(ax - dx * S(3), body.center().y() + S(2.5)))
+            w += S(10)
+        p.restore()
+        return w
+    names = {"Up": "↑", "Down": "↓", "Left": "←", "Right": "→", "Enter": "↵", "Space": tr("Space")}
+    label = names.get(text, text)
+    f = font(8.5 if small else 10, QFont.Weight.Bold)
+    p.setFont(f)
+    w = max(h, QFontMetrics(f).horizontalAdvance(label) + S(10))
+    x = at.x() - w if align_right else at.x()
+    cap = QRectF(x, at.y() - h / 2, w, h)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha("#000000", 0.45))
+    p.drawRoundedRect(cap.translated(0, S(1.5)), S(4), S(4))
+    p.setPen(QPen(alpha("#FFFFFF", 0.35), 1))
+    p.setBrush(QColor("#2A3136"))
+    p.drawRoundedRect(cap, S(4), S(4))
+    p.setPen(QColor(fg) if fg is not None and not small else QColor("#E9EDF0"))
+    p.drawText(cap, int(Qt.AlignmentFlag.AlignCenter), label)
+    p.restore()
+    return w
+
+
+class ControlsBar(QWidget):
+    """4.5: every control of a game, shown with real key caps and mouse icons: [(keys, what it does), ...]."""
+
+    def __init__(self, items: list, width: int) -> None:
+        super().__init__()
+        self.items = [(list(k) if isinstance(k, (list, tuple)) else [k], t) for k, t in items]
+        self.setFixedWidth(width)
+        self._rows = self._layout(width)
+        self.setFixedHeight(int(len(self._rows) * S(24) + S(4)))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def _measure(self, keys, text) -> float:
+        f = font(10, QFont.Weight.Bold)
+        fm = QFontMetrics(f)
+        w = 0.0
+        for k in keys:
+            if k in ("LMB", "RMB", "Wheel", "Hold"):
+                w += S(20) * 0.72 + S(3)
+            elif k == "Drag":
+                w += S(20) * 0.72 + S(13)
+            else:
+                label = {"Up": "↑", "Down": "↓", "Left": "←", "Right": "→", "Enter": "↵", "Space": tr("Space")}.get(k, k)
+                w += max(S(20), fm.horizontalAdvance(label) + S(10)) + S(3)
+        return w + S(4) + QFontMetrics(font(10, QFont.Weight.DemiBold)).horizontalAdvance(text) + S(14)
+
+    def _layout(self, width: int) -> list:
+        rows, cur, used = [], [], 0.0
+        for keys, text in self.items:
+            w = self._measure(keys, text)
+            if cur and used + w > width:
+                rows.append(cur)
+                cur, used = [], 0.0
+            cur.append((keys, text, w))
+            used += w
+        if cur:
+            rows.append(cur)
+        return rows
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(AA)
+        for i, row in enumerate(self._rows):
+            y = S(2) + i * S(24) + S(12)
+            x = 0.0
+            for keys, text, w in row:
+                cx = x
+                for k in keys:
+                    cx += paint_keycap(p, QPointF(cx, y), k) + S(3)
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10, QFont.Weight.DemiBold))
+                p.drawText(QRectF(cx + S(2), y - S(10), w, S(20)), int(Qt.AlignmentFlag.AlignVCenter), text)
+                x += w
+
+
+class KeyPoll(QWidget):
+    """4.5: keys for the keyboard games, read straight from the keyboard. Rubenium never takes the keyboard from
+    the game you play, so key presses are not sent to it: this reads them instead, but only while the game is on
+    screen and the mouse is over Rubenium (or the round is running), so typing elsewhere does nothing.
+    keys: {virtual key: name}; on_key(name, down). running(): True while a round runs."""
+    VK = {"Space": 0x20, "Up": 0x26, "Down": 0x28, "Left": 0x25, "Right": 0x27, "Enter": 0x0D, "W": 0x57, "D": 0x44,
+          "F": 0x46, "J": 0x4A, "K": 0x4B, "1": 0x31, "2": 0x32, "3": 0x33, "4": 0x34, "R": 0x52, "S": 0x53}
+
+    def __init__(self, names: list, on_key, running=None) -> None:
+        super().__init__()
+        self.setFixedSize(0, 0)
+        self.names, self.on_key, self.running = list(names), on_key, running
+        self.down = {n: False for n in self.names}
+        self.live = bool(win.IS_WIN)
+        self._t = QTimer(self)
+        self._t.setTimerType(Qt.TimerType.PreciseTimer)
+        self._t.setInterval(6)
+        self._t.timeout.connect(self._poll)
+
+    def showEvent(self, _e) -> None:
+        if self.live:
+            for n in self.names:                         # a key already held when the screen opens is not a press
+                self.down[n] = win.key_down(self.VK[n])
+            self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+        for n, d in self.down.items():
+            if d:
+                self.down[n] = False
+                try:
+                    self.on_key(n, False)
+                except RuntimeError:
+                    pass
+
+    def _active(self) -> bool:
+        from PyQt6.QtGui import QCursor
+        try:
+            if self.running is not None and self.running():
+                return True
+            top = self.window()
+            return top.isVisible() and top.frameGeometry().contains(QCursor.pos())
+        except RuntimeError:
+            return False
+
+    def _poll(self) -> None:
+        on = self._active()
+        for n in self.names:
+            d = on and win.key_down(self.VK[n])
+            if d != self.down[n]:
+                self.down[n] = d
+                try:
+                    self.on_key(n, d)
+                except RuntimeError:
+                    self._t.stop()
+                    return
+
+
+def nice_values(lo: int, hi: int) -> list:
+    """4.5: round numbers from lo to hi (1 2 3 4 5 … 10 12 15 20 25 30 40 50 60 75 100 …), lo and hi included."""
+    lo, hi = int(lo), int(hi)
+    if hi <= lo:
+        return [max(lo, hi)]
+    out = {lo, hi} | set(range(max(lo, 1), min(hi, 10) + 1))
+    m = 1
+    while m <= hi:
+        for k in (10, 12, 15, 20, 25, 30, 40, 50, 60, 75):
+            v = k * m // 10
+            if lo <= v <= hi and v * 10 == k * m:
+                out.add(v)
+        m *= 10
+    return sorted(out)
+
+
+class AmountSlider(QWidget):
+    """4.5: one slider in place of rows of amount buttons. It moves through round numbers (lo to hi) and clicks into
+    place on the roundest ones (1, 5, 10, 50, 100 …). changed(value) while dragging, released(value) at the end."""
+    changed = pyqtSignal(int)
+    released = pyqtSignal(int)
+
+    def __init__(self, label: str, lo: int, hi: int, value: int, fmt=None, label_w: int = 80, values=None) -> None:
+        super().__init__()
+        self.values = list(values) if values else nice_values(lo, hi)
+        self.fmt = fmt or (lambda v: f"{v:,}".replace(",", " "))
+        idx = min(range(len(self.values)), key=lambda i: abs(self.values[i] - value))
+        marks = [i for i, v in enumerate(self.values) if str(v).rstrip("0") in ("1", "5", "25") or i in (0, len(self.values) - 1)]
+        self.setFixedHeight(S(28))
+        lay = hbox(self, 8)
+        self.name = Label(label, 11.5) if label else None
+        if self.name is not None:
+            self.name.setFixedWidth(max(S(label_w), self.name.text_width() + S(8)))
+            lay.addWidget(self.name)
+        self.slider = Slider(0, max(1, len(self.values) - 1), idx, 1, marks=marks)
+        lay.addWidget(self.slider, 1)
+        self.val = Label(self.fmt(self.values[idx]), 12, TEXT, bold=True, align=Qt.AlignmentFlag.AlignRight)
+        self.val.setFixedWidth(max(S(70), QFontMetrics(font(12, QFont.Weight.Bold)).horizontalAdvance(self.fmt(self.values[-1])) + S(8)))
+        lay.addWidget(self.val)
+        self.slider.changed.connect(self._on)
+        self.slider.released.connect(lambda _v: self.released.emit(self.value()))
+
+    def _on(self, v: float) -> None:
+        self.val.set_text(self.fmt(self.value()))
+        self.changed.emit(self.value())
+
+    def value(self) -> int:
+        i = int(round(self.slider.value()))
+        return self.values[max(0, min(len(self.values) - 1, i))]
+
+    def set_value(self, v: int) -> None:
+        idx = min(range(len(self.values)), key=lambda i: abs(self.values[i] - v))
+        self.slider.set_value(idx, animate=False)
+        self.val.set_text(self.fmt(self.values[idx]))
 
 
 class Toggle(QAbstractButton):
