@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "4.3"         # the version people see
-BUILD = "2026.11.18.20"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "4.4"         # the version people see
+BUILD = "2026.11.18.22"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1803,6 +1803,7 @@ DEFAULTS: dict = {
     "lyrics_size": 15,
     "tutorial_done": False,
     "backup_at": 0,
+    "daily_shown": "",            # 4.4: the day the daily reward last opened by itself
     "reset_rid": "",
     "reset_name": "",
     "news_tab": False,
@@ -6272,6 +6273,12 @@ FR = {
     'No coins: the 2-hour limit is reached': 'Pas de pièces : la limite sur 2 heures est atteinte',
     'crashed': 'crash',
     'Compact Music Mode only folds while you are away from Rubenium; hover it and the tabs, play, skip and the rest fade back in': "Le mode musique compact ne se replie que quand tu n'es pas sur Rubenium ; passe la souris dessus et les onglets, lecture, suivant et le reste réapparaissent en fondu",
+    # 4.4
+    'Updating to {v}…': 'Mise à jour vers {v}…',
+    'Your daily reward is waiting in online mode': "Ta récompense du jour t'attend dans le mode en ligne",
+    'Updates now install by themselves as soon as they are out': "Les mises à jour s'installent toutes seules dès leur sortie",
+    'The daily reward opens in online mode, the first time each day; a slow red dot and a reminder every 30 minutes while it waits': "La récompense du jour s'ouvre dans le mode en ligne, la première fois de la journée ; un point rouge lent et un rappel toutes les 30 minutes tant qu'elle attend",
+    'Shorter texts in Wave Rush and Mini Golf': 'Des textes plus courts dans Wave Rush et le Mini Golf',
 }
 
 
@@ -7666,6 +7673,8 @@ class TabBar(QWidget):
                 p.scale(0.42, 0.42)
                 draw_icon(p, "lock", QColor(TEXT_FAINT))
             p.restore()
+            if key in NOTIFY_DOTS:                          # 4.4: something waits there (the daily reward)
+                paint_notify_dot(p, QPointF(r.right() - S(5), r.top() + S(6)), S(3.2))
             if w > 0.05:
                 p.save()
                 p.setClipRect(r)
@@ -7704,6 +7713,22 @@ def hbox(parent=None, spacing: float = 8, margins=(0, 0, 0, 0)) -> QHBoxLayout:
     lay.setContentsMargins(*[S(m) for m in margins])
     lay.setSpacing(S(spacing))
     return lay
+
+
+NOTIFY_DOTS: set = set()        # 4.4: tab keys that wear a slow red dot (the online button: daily reward waiting)
+
+
+def paint_notify_dot(p, c, r: float) -> None:
+    """A small red dot that breathes slowly (never blinks)."""
+    import time as _t
+    k = 0.5 + 0.5 * math.sin(_t.monotonic() * 2.0)
+    p.save()
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(255, 70, 80, int(60 + 60 * k)))
+    p.drawEllipse(c, r * (1.5 + 0.5 * k), r * (1.5 + 0.5 * k))
+    p.setBrush(QColor(255, int(70 + 30 * k), 80))
+    p.drawEllipse(c, r, r)
+    p.restore()
 
 
 # 4.0: what players see when the admins paused a part of Rubenium
@@ -10248,6 +10273,9 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("4.4", ['Updates now install by themselves as soon as they are out',
+             'The daily reward opens in online mode, the first time each day; a slow red dot and a reminder every 30 minutes while it waits',
+             'Shorter texts in Wave Rush and Mini Golf']),
     ("4.3", ['XP is earned, not farmed: nothing for a lost bet, a little for a win, lower daily limits (1 000 XP a day)',
            'Coinflip bots remade: 5 to 10 bot flips always open, from small to big, sized to the players online; never a Mythic',
            'New casino game: Slots. Three reels, one table of prizes',
@@ -23617,9 +23645,6 @@ def build_golf_solo(page, lay, sid, leave_screen) -> None:
     lay.addWidget(Label(tr("{n} holes, no bet and no clock. Each hole pays by strokes:", n=holes), 10.5, TEXT, wrap_w=page.W))
     lay.addWidget(Label(tr("1 stroke: 60 · 2: 35 · 3: 20 · 4: 10 · 5: 5 · 6: nothing"), 11, "#E8C26A", bold=True,
                         wrap_w=page.W))
-    lay.addWidget(Label(tr("Coins are paid at the end of the round. Like the other mini games, what you can earn is "
-                           "limited every 2 hours."), 10, TEXT_DIM, wrap_w=page.W))
-    lay.addWidget(Label(tr("Want to bet against someone? Pick Duel above."), 10, TEXT_DIM, wrap_w=page.W))
 
 
 class _ListPoll(QWidget):
@@ -27623,6 +27648,25 @@ class LoginWindow(FloatWindow):
         self.ctx.econ.call("rb_login_claim", {}, done)
 
 
+def daily_unclaimed(ctx) -> bool:
+    """4.4: today's daily reward is still waiting (for the red dot)."""
+    ec = ctx.econ
+    if not ctx.online.logged_in() or not ec.ready or getattr(ec, "server_old", False):
+        return False
+    return str(ec.streak_day or "")[:10] != datetime.date.today().isoformat()
+
+
+def daily_nag(ctx) -> None:
+    """4.4: every 30 minutes while it is not claimed: a reminder (the server says whether it is)."""
+    if not ctx.online.logged_in() or getattr(ctx.econ, "server_old", False):
+        return
+
+    def got(ok: bool, state) -> None:
+        if ok and isinstance(state, dict) and not state.get("claimed"):
+            ctx.notifier.push("ready", tr("DAILY REWARD"), tr("Your daily reward is waiting in online mode"), "daily")
+    ctx.online.ask("rb_login_state", {}, got)
+
+
 def check_login_reward(ctx, force: bool = False) -> None:
     if not ctx.online.logged_in() or getattr(ctx.econ, "server_old", False):
         return
@@ -28302,6 +28346,9 @@ class StreakRow(QWidget):
         paint_freebie(self, p, tr("Daily reward"), text, not claimed, mid,
                       lambda p, c: paint_flame(p, QPointF(c.x(), c.y() + S(2)), S(17), streak, time.monotonic(),
                                                sparks=streak > 0))
+        if not claimed:                                   # 4.4: the same slow red dot as on the online button
+            pass
+            paint_notify_dot(p, QPointF(self.width() - S(12), S(12)), S(3.6))
 
 
 class AmountWindow(FloatWindow):
@@ -29778,10 +29825,27 @@ import math
 import random
 import time
 
-from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF
-from PyQt6.QtWidgets import QAbstractButton, QLineEdit, QWidget
+from PyQt6.QtWidgets import QAbstractButton, QLineEdit, QSizePolicy, QWidget
 
+
+
+
+def en(text: str, **kw) -> str:
+    """4.4: the admin panel is English only (players' screens are still translated with tr)."""
+    return text.format(**kw) if kw else text
+
+
+def en_name(item: str) -> str:
+    """An item's name in English (the admin panel never shows French)."""
+    pass
+    old = lang()
+    set_lang("en")
+    try:
+        return item_name(item)
+    finally:
+        set_lang(old)
 
 
 class FormDialog(QWidget):
@@ -29823,7 +29887,7 @@ class FormDialog(QWidget):
         self.note = Label("", 11, DANGER, wrap_w=S(300))
         lay.addWidget(self.note)
         line = hbox(spacing=6)
-        cancel = Button(tr("Cancel"), "ghost", 32)
+        cancel = Button("Cancel", "ghost", 32)
         cancel.clicked.connect(self.close)
         go = Button(button, "primary", 32)
         go.clicked.connect(self._go)
@@ -29935,42 +29999,219 @@ class Table(QWidget):
             p.drawText(r.adjusted(0, 0, -S(8), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), str(right))
 
 
+class Chips(QWidget):
+    """A grid of buttons to click instead of typing. keys: what each one stands for; picked: the lit ones."""
+    toggled = pyqtSignal(object)
+
+    def __init__(self, labels: list, keys: list, picked, per_row: int = 4, height: int = 30) -> None:
+        super().__init__()
+        from PyQt6.QtWidgets import QGridLayout
+        grid = QGridLayout(self)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(S(4))
+        picked = set(picked) if isinstance(picked, (list, set)) else {picked}
+        for i, (text, key) in enumerate(zip(labels, keys)):
+            b = Button(text, "primary" if key in picked else "ghost", height)
+            b.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+            b.clicked.connect(lambda _c=False, key=key: self.toggled.emit(key))
+            grid.addWidget(b, i // per_row, i % per_row)
+        for c in range(per_row):
+            grid.setColumnStretch(c, 1)
+
+
+class CaseGrid(QWidget):
+    """Every case as a picture with its name: click one."""
+    picked = pyqtSignal(str)
+
+    def __init__(self, ids: list, width: int, selected: str = "", cols: int = 5) -> None:
+        super().__init__()
+        self.ids, self.selected, self.cols = ids, selected, cols
+        self.cw, self.ch = width / cols, S(74)
+        self.setFixedSize(width, int(self.ch * max(1, math.ceil(len(ids) / cols))))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setMouseTracking(True)
+        self._hover = -1
+
+    def _at(self, pos) -> int:
+        i = int(pos.y() // self.ch) * self.cols + int(pos.x() // self.cw)
+        return i if 0 <= i < len(self.ids) else -1
+
+    def mouseMoveEvent(self, e) -> None:
+        i = self._at(e.position())
+        if i != self._hover:
+            self._hover = i
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self._hover = -1
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        i = self._at(e.position())
+        if i >= 0:
+            sfx.play("pick")
+            self.picked.emit(self.ids[i])
+
+    def paintEvent(self, _e) -> None:
+        pass
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        for i, cid in enumerate(self.ids):
+            r = QRectF((i % self.cols) * self.cw, (i // self.cols) * self.ch, self.cw, self.ch).adjusted(S(2), S(2), -S(2), -S(2))
+            on = cid == self.selected
+            p.setPen(QPen(ui.accent if on else alpha("#FFFFFF", 0.10 if i == self._hover else 0.0), S(1.6) if on else 1))
+            p.setBrush(alpha(ui.accent, 0.16) if on else alpha("#FFFFFF", 0.07 if i == self._hover else 0.035))
+            p.drawRoundedRect(r, S(9), S(9))
+            paint_case(p, QRectF(r.center().x() - S(22), r.top() + S(6), S(44), S(36)), cid)
+            p.setPen(QColor(TEXT if on else TEXT_DIM))
+            p.setFont(font(9, QFont.Weight.Bold))
+            name = CASE_NAMES.get(cid, cid).replace(" Case", "")
+            p.drawText(QRectF(r.left() + S(2), r.bottom() - S(26), r.width() - S(4), S(24)),
+                       int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap), name)
+
+
+ITEM_KINDS = [("badge", "Badges"), ("ball", "Balls"), ("line", "Lines"), ("font", "Fonts"), ("theme", "Themes"),
+              ("banner", "Banners"), ("frame", "Frames"), ("tag", "Tags"), ("coupon", "XP coupons")]
+SINGLE_KINDS = ("theme", "banner", "frame", "tag", "coupon")          # one item per design, no colours or finishes
+
+
+def item_picker(page, lay, state: dict, multi: int = 1) -> None:
+    """Pick an item by clicking: a kind, then a design, then (for colours and finishes) the exact one, all on one
+    screen. state['item'] holds the pick (state['items'] when multi > 1, up to multi of them)."""
+    ctx, cat = page.ctx, page.ctx.econ.catalog
+    kinds = [k for k, _n in ITEM_KINDS]
+    kind = state.get("ikind") if state.get("ikind") in kinds else "badge"
+    ch = Chips([n for _k, n in ITEM_KINDS], kinds, kind, per_row=5, height=26)
+
+    def set_kind(k) -> None:
+        state["ikind"], state["base"] = k, ""
+        ctx.reload_page(page.key)
+    ch.toggled.connect(set_kind)
+    lay.addWidget(ch)
+    chosen = set(state.get("items") or []) if multi > 1 else {state.get("item") or ""}
+
+    def pick(item: str) -> None:
+        if multi > 1:
+            items = list(state.get("items") or [])
+            if item in items:
+                items.remove(item)
+            elif len(items) < multi:
+                items.append(item)
+            state["items"] = items
+        else:
+            state["item"] = item
+        ctx.reload_page(page.key)
+    if kind in SINGLE_KINDS:
+        ids = sorted((k for k, v in cat.items() if v.get("kind") == kind and v.get("tradeable", True)),
+                     key=lambda k: (-int(cat[k].get("value") or 0), k))
+        grid = ItemGrid(ctx, [{"item": k, "text": coins_text(int(cat[k].get("worth") or cat[k].get("value") or 0)),
+                               "mark": k in chosen} for k in ids], page.W, 6, 64,
+                        ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1)
+        grid.picked.connect(lambda i: pick(ids[i]))
+        return lay.addWidget(grid)
+    bases = []
+    seen = set()
+    for k in sorted(cat, key=lambda k: (-int(cat[k].get("value") or 0), k)):
+        info = cat[k]
+        if info.get("kind") == kind and info.get("base") not in seen:
+            seen.add(info.get("base"))
+            bases.append((info.get("base"), k))
+    base = state.get("base") or ""
+    grid = ItemGrid(ctx, [{"item": k} for _b, k in bases], page.W, 8, 50,
+                    next((i for i, (b, _k) in enumerate(bases) if b == base), -1), moving=False)
+    grid.picked.connect(lambda i: (state.__setitem__("base", bases[i][0]), ctx.reload_page(page.key)))
+    lay.addWidget(grid)
+    if base:
+        ids = sorted((k for k, v in cat.items() if v.get("kind") == kind and v.get("base") == base),
+                     key=lambda k: -int(cat[k].get("worth") or cat[k].get("value") or 0))
+        lay.addWidget(Label(en_name(ids[0]).split(" · ")[0] if ids else base, 11, TEXT_DIM, bold=True))
+        g2 = ItemGrid(ctx, [{"item": k, "text": coins_text(int(cat[k].get("worth") or cat[k].get("value") or 0)),
+                             "mark": k in chosen} for k in ids], page.W, 6, 64,
+                      ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1)
+        g2.picked.connect(lambda i: pick(ids[i]))
+        lay.addWidget(g2)
+
+
 class AdminPage(Page):
+    """4.4: the admin panel, rebuilt to be clicked, not typed: pick players and things from lists, see the result
+    in the list. English only."""
     key = "admin"
-    SECTIONS = ["Overview", "Users", "Items", "Cases", "Live", "Settings", "Log", "Help", "Bots", "Swaps", "Locks",
-                "Levels", "Coinflips"]
-    ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key", "spark", "rocket", "lock", "trophy", "coin"]
+    SECTIONS = ["Overview", "Players", "Give", "Rig", "Live", "Coinflips", "Cases", "Settings", "Locks", "Bots", "Swaps",
+                "Log"]
+    ICONS = ["perf", "users", "gift", "spark", "timer", "coin", "folder", "cog", "lock", "robot", "rocket", "refresh"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
-        pass
         self.lay = lay = vbox(self, 6)
-        top = hbox(spacing=8)
-        top.addWidget(Label(tr("Admin panel"), 16, bold=True), 1)
-        again = IconButton("refresh", 30, tip=tr("Refresh"))
-        again.clicked.connect(self._reload)
-        top.addWidget(again)
-        lay.addLayout(top)
         if not ctx.econ.admin:
-            return lay.addWidget(Label(tr("Admin only"), 12, TEXT_DIM))
+            return lay.addWidget(Label("Admin only", 12, TEXT_DIM))
         tab = int(getattr(ctx, "admin_tab", 0) or 0)
+        tab = tab if 0 <= tab < len(self.SECTIONS) else 0
         pass
-        pick = NavTiles([(tr(s), i) for s, i in zip(self.SECTIONS, self.ICONS)], tab, per_row=5)   # 2 full rows
+        pick = NavTiles(list(zip(self.SECTIONS, self.ICONS)), tab, per_row=6)
         pick.changed.connect(self._section)
         lay.addWidget(pick)
         self._lockdown_row(lay)
-        [self._overview, self._players, self._items, self._cases, self._live, self._settings, self._log, self._help,
-         self._bots, self._swaps, self._locks, self._levels, self._flips][min(tab, 12)](lay)
+        [self._overview, self._players, self._give, self._rig, self._live, self._flips, self._cases, self._settings,
+         self._locks, self._bots, self._swaps, self._log][tab](lay)
 
     # -- helpers
+    def state(self, name: str) -> dict:
+        """A small memory per screen (what is picked), kept while the panel is open."""
+        st = getattr(self.ctx, "admin_state", None)
+        if st is None:
+            st = self.ctx.admin_state = {}
+        return st.setdefault(name, {})
+
     def _reload(self) -> None:
         self.ctx.admin_cache = {}
-        self.ctx.reload_page()
+        self.ctx.reload_page("admin")
 
     def _section(self, i: int) -> None:
         self.ctx.admin_tab = i
         self.ctx.admin_player = None
-        self.ctx.reload_page()
+        self.ctx.reload_page("admin")
+
+    def _go(self, tab: str, **picks) -> None:
+        """Jump to a screen with things already picked (e.g. Give with this player)."""
+        for k, v in picks.items():
+            self.state(tab)[k] = v
+        self.ctx.admin_tab = self.SECTIONS.index(tab.capitalize())
+        self.ctx.reload_page("admin")
+
+    def _loading(self, lay) -> None:
+        lay.addWidget(Label("Loading…", 12, TEXT_DIM))
+
+    def player_chips(self, lay, st: dict, multi: bool) -> None:
+        """Players to click: online first, then the most recently seen. Find… for anyone else."""
+        rows = self.fetch("rb_admin_players", {"search": "", "sort": "", "page": 0})
+        if rows is None:
+            return self._loading(lay)
+        names = [r["username"] for r in rows if not r.get("bot")][:23]
+        picked = list(st.get("to") or [])
+        for n in picked:
+            if n not in names:
+                names.insert(0, n)
+        online = {r["username"] for r in rows if r.get("online")}
+        labels = [("● " if n in online else "") + n for n in names] + ["Find…"]
+        ch = Chips(labels, names + ["?"], picked, per_row=4, height=28)
+
+        def toggle(n) -> None:
+            if n == "?":
+                return FormDialog(self.ctx, "Find a player", [("n", "Username", "")], "Pick",
+                                  lambda v, d: (d.close(), toggle(v["n"].strip()) if v["n"].strip() else None))
+            cur = list(st.get("to") or [])
+            if n in cur:
+                cur.remove(n)
+            elif multi:
+                cur.append(n)
+            else:
+                cur = [n]
+            st["to"] = cur
+            self.ctx.reload_page("admin")
+        ch.toggled.connect(toggle)
+        lay.addWidget(ch)
 
     def fetch(self, fn: str, args: dict):
         """Cached answer of a server question (asked again after 15 s or after Refresh)."""
@@ -29982,34 +30223,602 @@ class AdminPage(Page):
         if got is None or time.monotonic() - got[0] > 15:
             def back(ok: bool, data) -> None:
                 if not ok:
-                    pass
-                    if server_missing(data):                 # the server update was not run yet: show it once, quietly
-                        cache[key] = (time.monotonic() + 3600, {} if fn != "rb_admin_audit" and fn != "rb_admin_resets" else [])
-                        self.ctx.econ.server_old = True
-                        return
-                    return self.ctx.toast(tr(str(data)), "warn")
+                    cache[key] = (time.monotonic(), {} if fn not in ("rb_admin_audit", "rb_admin_resets", "rb_admin_rigs") else [])
+                    if self.ctx.window.current == "admin" or getattr(self.ctx.window, "showing", lambda k: False)("admin"):
+                        self.ctx.reload_page("admin")
+                    return self.ctx.toast(str(data), "warn")
                 old = cache.get(key)
                 cache[key] = (time.monotonic(), data)
-                if (old is None or old[1] != data) and self.ctx.window.current == "admin":
-                    self.ctx.reload_page()
+                if old is None or old[1] != data:
+                    self.ctx.reload_page("admin")
             if got is None:
                 cache[key] = (time.monotonic(), None)
             self.ctx.online.ask(fn, args, back)
         return got[1] if got else None
 
-    def do(self, fn: str, args: dict, ok_text: str = "") -> None:
+    def do(self, fn: str, args: dict, ok_text: str = "", after=None) -> None:
+        """One admin action. The toast only says it worked once the server said so."""
         def back(ok: bool, data) -> None:
             if not ok:
                 sfx.play("off")
-                return self.ctx.toast(tr(str(data)), "warn")
+                return self.ctx.toast("Failed: " + str(data), "warn")
             sfx.play("on")
             if ok_text:
                 self.ctx.toast(ok_text)
             self.ctx.admin_cache = {}
             self.ctx.econ.refresh()
             self.ctx.econ.poll_live()
-            QTimer.singleShot(300, self.ctx.reload_page)
+            if after:
+                after()
+            QTimer.singleShot(300, lambda: self.ctx.reload_page("admin"))
         self.ctx.econ.call(fn, args, back)
+
+    def do_many(self, jobs: list, ok_text: str) -> None:
+        """Several actions (one per player): say how many really worked, and which ones failed."""
+        left, bad = [len(jobs)], []
+
+        def one(fn, args, who):
+            def back(ok: bool, data) -> None:
+                if not ok:
+                    bad.append(f"{who}: {data}")
+                left[0] -= 1
+                if left[0] == 0:
+                    done = len(jobs) - len(bad)
+                    if bad:
+                        sfx.play("off")
+                        self.ctx.toast(f"{ok_text}: {done} of {len(jobs)}. Failed: " + "; ".join(bad)[:160], "warn")
+                    else:
+                        sfx.play("on")
+                        self.ctx.toast(f"{ok_text}: {done} of {len(jobs)}")
+                    self.ctx.admin_cache = {}
+                    self.ctx.econ.refresh()
+                    QTimer.singleShot(300, lambda: self.ctx.reload_page("admin"))
+            self.ctx.econ.call(fn, args, back)
+        for fn, args, who in jobs:
+            one(fn, args, who)
+
+    # -- Overview
+    def _overview(self, lay) -> None:
+        st = self.fetch("rb_admin_stats", {})
+        if st is None:
+            return self._loading(lay)
+        lay.addWidget(Numbers([(st.get("players", 0), "Users"), (st.get("online", 0), "Online now"), (st.get("today", 0), "Today"),
+                               (coins_text(int(st.get("coins") or 0)), "Coins in total"), (st.get("keys", 0), "Keys in total"),
+                               (st.get("items", 0), "Items"), (st.get("listings", 0), "On the market"),
+                               (st.get("trades", 0), "Trades done"), ("", "")], self.W))
+        lay.addWidget(heading("Games: bets and payouts"))
+        rows = []
+        for g in st.get("games") or []:
+            bet, paid = int(g["bet"]), int(g["paid"])
+            keep = f"{100 - 100 * paid / bet:.1f}%" if bet else "—"
+            rows.append((g["game"], f"{g['rounds']} rounds", f"house {keep}", "#5BE08A" if paid <= bet else "#FF7A7A"))
+        lay.addWidget(Table(rows, self.W))
+        lay.addWidget(heading("Coins in and out (7 days)"))
+        lay.addWidget(Table([(x["reason"], f"{x['n']} times", ("+" if int(x["coins"]) >= 0 else "") + coins_text(int(x["coins"])),
+                              "#5BE08A" if int(x["coins"]) >= 0 else "#FF7A7A") for x in st.get("ledger") or []], self.W))
+        w = self.fetch("rb_admin_xp_watch", {})
+        if w:
+            top_day = w.get("top_day") or []
+            lay.addWidget(heading("Most XP in the last 24 hours"))
+            lay.addWidget(Table([(x["name"], f"level {x['level']}", f"{x['xp']} XP", TEXT) for x in top_day[:10]] or
+                                [("Nobody yet", "", "")], self.W, (lambda i: self._open(top_day[i]["name"])) if top_day else None))
+            sus = w.get("capped_days") or []
+            if sus:
+                lay.addWidget(heading("At the daily XP cap 3+ days (14 days)"))
+                lay.addWidget(Table([(x["name"], f"{x['days']} days", "", "#FF7A7A") for x in sus], self.W,
+                                    lambda i: self._open(sus[i]["name"])))
+
+    # -- Players
+    def _players(self, lay) -> None:
+        name = getattr(self.ctx, "admin_player", None)
+        if name:
+            return self._player(lay, name)
+        resets = self.fetch("rb_admin_resets", {}) or []
+        open_ = [r for r in resets if r.get("state") == "open"]
+        if open_ or getattr(self.ctx, "admin_pw", False):
+            b = Button(f"Password requests ({len(open_)})" if not getattr(self.ctx, "admin_pw", False) else "Back to players",
+                       "primary" if open_ else "ghost", 30, icon="key")
+            b.clicked.connect(lambda: (setattr(self.ctx, "admin_pw", not getattr(self.ctx, "admin_pw", False)),
+                                       self.ctx.reload_page("admin")))
+            lay.addWidget(b)
+            if getattr(self.ctx, "admin_pw", False):
+                return self._help(lay)
+        sort = int(getattr(self.ctx, "admin_sort", 0) or 0)
+        seg = Segmented(["Last seen", "Coins", "Hours"], sort)
+        seg.changed.connect(lambda i: (setattr(self.ctx, "admin_sort", i), self.ctx.reload_page("admin")))
+        lay.addWidget(seg)
+        find = Button("Find a player", "ghost", 28, icon="search")
+        find.clicked.connect(lambda: FormDialog(self.ctx, "Find a player", [("n", "Username", "")], "Open",
+                                                lambda v, d: (d.close(), self._open(v["n"]))))
+        lay.addWidget(find)
+        rows = self.fetch("rb_admin_players", {"search": "", "sort": ["", "coins", "hours"][sort], "page": 0})
+        if rows is None:
+            return self._loading(lay)
+        table = [(("● " if r["online"] else "") + r["username"] + (" · blocked" if r["banned"] else ""),
+                  f"{int(r['minutes']) / 60:.1f} h", coins_text(int(r["coins"])), "#5BE08A" if r["online"] else TEXT)
+                 for r in rows]
+        lay.addWidget(Table(table, self.W, lambda i: self._open(rows[i]["username"])))
+
+    def _open(self, name: str) -> None:
+        self.ctx.admin_player = name.strip()
+        self.ctx.admin_tab = 1
+        self.ctx.admin_pw = False
+        self.ctx.reload_page("admin")
+
+    def _player(self, lay, name: str) -> None:
+        pass
+        top = hbox(spacing=8)
+        back = IconButton("back", 30, tip="Back")
+        back.clicked.connect(lambda: (setattr(self.ctx, "admin_player", None), self.ctx.reload_page("admin")))
+        top.addWidget(back)
+        top.addWidget(Label(name, 15, bold=True), 1)
+        lay.addLayout(top)
+        d = self.fetch("rb_admin_player", {"name": name})
+        if d is None:
+            return self._loading(lay)
+        if not d:
+            return lay.addWidget(Label("No such player", 12, TEXT_DIM))
+        st = d.get("stats") or {}
+        xp = self.fetch("rb_admin_xp_view", {"name": name}) or {}
+        info = xp.get("info") or {}
+        lay.addWidget(Numbers([(coins_text(int(d["coins"])), "Coins", GOLD_TEXT), (d["keys"], "Keys"),
+                               (f"{int(d['minutes']) / 60:.1f} h", "Played"),
+                               (f"{info.get('level', '?')}", "Level"), (coins_text(int(info.get("xp") or 0)), "XP"),
+                               (f"{int(info.get('today') or 0)} / {int(info.get('cap') or 0)}", "XP today"),
+                               (coins_text(int(st.get("bet") or 0)), "Bet"), (coins_text(int(st.get("won") or 0)), "Won"),
+                               ("Online" if d.get("online") else "Offline", "Blocked" if d.get("banned") else "Status")],
+                              self.W))
+        acts = [("Give…", "gift"), ("Rig…", "spark"), ("Coins", "coin"), ("Keys", "key"), ("XP", "trophy"),
+                ("Unblock" if d.get("banned") else "Block", "lock"), ("Remove picture", "trash"), ("Reset timers", "timer"),
+                ("Undo last", "refresh"), ("Refresh", "refresh")]
+        grid = NavTiles(acts, -1, per_row=5, select=False)
+
+        def act(i: int) -> None:
+            ctx = self.ctx
+            if i == 0:
+                self._go("give", to=[name])
+            elif i == 1:
+                self._go("rig", to=[name])
+            elif i == 2:
+                ctx._amount = AmountWindow(ctx, f"Coins for {name}", [100, 1000, 10000, 100000, -100, -1000, -10000, -100000],
+                                           lambda n: self.do("rb_admin_grant", {"name": name, "add_coins": n, "add_keys": 0},
+                                                             f"{name}: {'+' if n > 0 else ''}{coins_text(n)} coins"))
+            elif i == 3:
+                ctx._amount = AmountWindow(ctx, f"Keys for {name}", [1, 5, 10, 50, -1, -5, -10, -50],
+                                           lambda n: self.do("rb_admin_grant", {"name": name, "add_coins": 0, "add_keys": n},
+                                                             f"{name}: {n:+d} keys"))
+            elif i == 4:
+                ctx._amount = AmountWindow(ctx, f"XP for {name}", [100, 1000, 5000, 20000, -100, -1000, -5000, -20000],
+                                           lambda n: self.do("rb_admin_xp", {"name": name, "delta": n, "reason": "admin"},
+                                                             f"{name}: {n:+d} XP"))
+            elif i == 5:
+                ctx.window.confirm(f"Unblock {name}?" if d.get("banned") else f"Block {name}? They can't use anything online.",
+                                   lambda: self.do("rb_admin_ban", {"name": name, "ban": not d.get("banned")},
+                                                   f"{name} unblocked" if d.get("banned") else f"{name} blocked"), yes="Yes")
+            elif i == 6:
+                ctx.window.confirm(f"Remove {name}'s picture?",
+                                   lambda: self.do("rb_admin_avatar_clear", {"name": name}, "Picture removed"), yes="Remove")
+            elif i == 7:
+                self.do("rb_admin_reset_timers", {"name": name}, f"{name}: free spin and scratch card ready")
+            elif i == 8:
+                self._undo_last(name)
+            else:
+                self._reload()
+        grid.changed.connect(act)
+        lay.addWidget(grid)
+        stock = d.get("stock") or {}
+        if stock:
+            pass
+            lay.addWidget(Label("Gifted cases: " + ", ".join(f"{CASE_NAMES.get(k, k)} ×{n}" for k, n in stock.items()),
+                                10.5, TEXT_DIM, wrap_w=self.W))
+        items = d.get("items") or []
+        lay.addWidget(heading(f"Items ({len(items)}) · click one to take it"))
+        if items:
+            ig = ItemGrid(self.ctx, [{"item": i["item"], "text": "🔒" if i.get("locked") else ""} for i in items[:120]],
+                          self.W, 8, 56)
+
+            def take(i: int) -> None:
+                it = items[i]
+                self.ctx.window.confirm(f"Take {en_name(it['item'])} from {name}?",
+                                        lambda: self.do("rb_admin_take", {"item_id": it["id"]}, "Taken"), yes="Take one",
+                                        no="Take every copy",
+                                        on_no=lambda: self.do("rb_admin_revoke", {"name": name, "what": it["item"]}, "Taken"))
+            ig.picked.connect(take)
+            lay.addWidget(ig)
+        deals = self.fetch("rb_admin_deals", {"name": name})
+        lay.addWidget(heading("Trades and sales · click one to undo it"))
+        if deals is None:
+            self._loading(lay)
+        else:
+            rows = []
+            for t in deals.get("trades") or []:
+                gave = len(t.get("a_items") or []), len(t.get("b_items") or [])
+                rows.append(("trade", t, (f"Trade {t['a']} ⇄ {t['b']}",
+                                         f"{gave[0]}+{coins_text(int(t['a_coins']))} / {gave[1]}+{coins_text(int(t['b_coins']))}",
+                                         "undone" if t.get("undone") else str(t.get("at", ""))[5:16].replace("T", " "),
+                                         TEXT_DIM if t.get("undone") else TEXT)))
+            for l_ in deals.get("sales") or []:
+                rows.append(("sale", l_, (f"Sale {l_['seller']} → {l_.get('buyer') or '?'}", en_name(l_["what"])[:14],
+                                         "undone" if l_.get("undone") else coins_text(int(l_["price"])),
+                                         TEXT_DIM if l_.get("undone") else GOLD_TEXT)))
+
+            def undo_deal(i: int) -> None:
+                kind, dd, _row = rows[i]
+                if dd.get("undone"):
+                    return self.ctx.toast("Already undone", "warn")
+                fn, arg = ("rb_admin_undo_trade", {"trade": dd["id"]}) if kind == "trade" else ("rb_admin_undo_sale", {"listing": dd["id"]})
+                self.ctx.window.confirm("Undo this? Items and coins go back to who had them.",
+                                        lambda: self.do(fn, arg, "Undone"), yes="Undo")
+            lay.addWidget(Table([r[2] for r in rows], self.W, undo_deal) if rows else Label("None", 11, TEXT_DIM))
+        lay.addWidget(heading("Last rounds"))
+        lay.addWidget(Table([(r["game"], en_name(r["item"]) if r.get("item") else coins_text(int(r["bet"])),
+                              "+" + coins_text(int(r["paid"])), "#5BE08A" if int(r["paid"]) > int(r["bet"]) else TEXT_DIM)
+                             for r in (d.get("rounds") or [])[:30]], self.W))
+        lay.addWidget(heading("Coin history"))
+        lay.addWidget(Table([(l_["reason"], str(l_.get("ref") or "")[:18],
+                              ("+" if int(l_["coins"]) >= 0 else "") + coins_text(int(l_["coins"]))
+                              + (f"  {int(l_['keys']):+d} keys" if int(l_.get("keys") or 0) else ""),
+                              "#5BE08A" if int(l_["coins"]) >= 0 else "#FF7A7A") for l_ in (d.get("ledger") or [])[:40]], self.W))
+        self._danger(lay, name, d)
+
+    # -- Give: players, then what, then one button
+    GIVE_KINDS = [("coins", "Coins"), ("keys", "Keys"), ("xp", "XP"), ("case", "Cases"), ("item", "Items")]
+    AMOUNTS = {"coins": [100, 500, 1000, 5000, 10000, 50000, 100000, 1000000], "keys": [1, 2, 3, 5, 10, 20, 50, 100],
+               "xp": [100, 500, 1000, 2500, 5000, 10000, 25000, 100000]}
+
+    def _give(self, lay) -> None:
+        st = self.state("give")
+        lay.addWidget(heading("To"))
+        self.player_chips(lay, st, multi=True)
+        lay.addWidget(heading("What"))
+        kind = st.get("kind") or "case"
+        kc = Chips([n for _k, n in self.GIVE_KINDS], [k for k, _n in self.GIVE_KINDS], kind, per_row=5)
+        kc.toggled.connect(lambda k: (st.__setitem__("kind", k), self.ctx.reload_page("admin")))
+        lay.addWidget(kc)
+        if kind in self.AMOUNTS:
+            take = bool(st.get("take"))
+            mode = Segmented(["Give", "Take away"], 1 if take else 0)
+            mode.changed.connect(lambda i: (st.__setitem__("take", i == 1), self.ctx.reload_page("admin")))
+            lay.addWidget(mode)
+            amts = self.AMOUNTS[kind]
+            amount = st.get(kind + "_n") if st.get(kind + "_n") in amts else amts[2]
+            ac = Chips([coins_text(a) for a in amts], amts, amount, per_row=4)
+            ac.toggled.connect(lambda a: (st.__setitem__(kind + "_n", a), self.ctx.reload_page("admin")))
+            lay.addWidget(ac)
+            what = f"{'−' if take else '+'}{coins_text(amount)} {self.dict_name(kind)}"
+        else:
+            if kind == "case":
+                ids = [c["id"] for c in self.ctx.econ.cases]
+                cg = CaseGrid(ids, self.W, st.get("case") or "")
+                cg.picked.connect(lambda cid: (st.__setitem__("case", cid), self.ctx.reload_page("admin")))
+                lay.addWidget(cg)
+                pass
+                thing = CASE_NAMES.get(st.get("case") or "", "") if st.get("case") else ""
+            else:
+                item_picker(self, lay, st)
+                thing = en_name(st["item"]) if st.get("item") else ""
+            lay.addWidget(heading("How many"))
+            counts = [1, 2, 3, 5, 10, 25, 50, 100]
+            n = st.get("count") if st.get("count") in counts else 1
+            nc = Chips([str(c) for c in counts], counts, n, per_row=8, height=28)
+            nc.toggled.connect(lambda c: (st.__setitem__("count", c), self.ctx.reload_page("admin")))
+            lay.addWidget(nc)
+            what = f"{n} × {thing}" if thing else ""
+        to = list(st.get("to") or [])
+        ready = bool(to and what)
+        label = (f"Give {what} to {', '.join(to) if len(to) <= 3 else str(len(to)) + ' players'}" if ready else
+                 "Pick who, then what")
+        if kind in self.AMOUNTS and st.get("take") and ready:
+            label = f"Take {what.lstrip('−')} from {', '.join(to) if len(to) <= 3 else str(len(to)) + ' players'}"
+        go = Button(label, "primary" if ready else "ghost", 40, icon="gift")
+        go.setEnabled(ready)
+        go.clicked.connect(lambda: self._give_now(st))
+        lay.addWidget(go)
+
+    @staticmethod
+    def dict_name(kind: str) -> str:
+        return {"coins": "coins", "keys": "keys", "xp": "XP"}.get(kind, kind)
+
+    def _give_now(self, st: dict) -> None:
+        kind, to = st.get("kind") or "case", list(st.get("to") or [])
+        jobs = []
+        if kind in self.AMOUNTS:
+            amts = self.AMOUNTS[kind]
+            n = (st.get(kind + "_n") if st.get(kind + "_n") in amts else amts[2]) * (-1 if st.get("take") else 1)
+            for name in to:
+                if kind == "coins":
+                    jobs.append(("rb_admin_grant", {"name": name, "add_coins": n, "add_keys": 0}, name))
+                elif kind == "keys":
+                    jobs.append(("rb_admin_grant", {"name": name, "add_coins": 0, "add_keys": n}, name))
+                else:
+                    jobs.append(("rb_admin_xp", {"name": name, "delta": n, "reason": "admin"}, name))
+            text = "Done"
+        else:
+            what = ("case:" + st["case"]) if kind == "case" else st.get("item")
+            count = st.get("count") or 1
+            for name in to:
+                jobs.append(("rb_admin_give", {"name": name, "what": what, "how_many": count}, name))
+            text = "Given"
+        self.do_many(jobs, text)
+
+    # -- Rig: the next result of one player
+    RIG_KINDS = [("wheel", "Free spin"), ("scratch", "Scratch card"), ("case", "Case"), ("slots", "Slots"),
+                 ("dice", "Dice"), ("flip", "Coinflip vs bot")]
+    WHEEL = ["40 coins", "75 coins", "120 coins", "180 coins", "300 coins", "500 coins", "1 200 coins", "A key",
+             "Golden Wheel", "XP coupon"]
+    SCRATCH = [("standard", "80-160 coins"), ("rare", "220-420 coins"), ("special", "Key + XP coupon"),
+               ("epic", "2 keys + coupon"), ("exotic", "2 500 coins + coupon"), ("golden", "Golden Wheel")]
+    SLOTS = [(("gem",) * 3, "3 gems ×70"), (("seven",) * 3, "3 sevens ×30"), (("bell",) * 3, "3 bells ×15"),
+             (("lemon",) * 3, "3 lemons ×8"), (("cherry",) * 3, "3 cherries ×5"), (("gem", "gem", "lemon"), "2 gems ×4"),
+             (("seven", "cherry", "seven"), "2 sevens ×2"), (("lemon", "bell", "bell"), "2 bells ×2"),
+             (("cherry", "lemon", "bell"), "Lose")]
+
+    def _rig(self, lay) -> None:
+        st = self.state("rig")
+        lay.addWidget(heading("Player"))
+        self.player_chips(lay, st, multi=False)
+        lay.addWidget(heading("Game"))
+        kind = st.get("kind") or "wheel"
+        kc = Chips([n for _k, n in self.RIG_KINDS], [k for k, _n in self.RIG_KINDS], kind, per_row=3)
+        kc.toggled.connect(lambda k: (st.__setitem__("kind", k), st.__setitem__("pick", None), self.ctx.reload_page("admin")))
+        lay.addWidget(kc)
+        lay.addWidget(heading("Next result"))
+        pick = st.get("pick")
+        key, data, what = "", None, ""
+        set_pick = (lambda v: (st.__setitem__("pick", v), self.ctx.reload_page("admin")))
+        if kind == "wheel":
+            ch = Chips(self.WHEEL, list(range(10)), pick, per_row=5)
+            ch.toggled.connect(set_pick)
+            lay.addWidget(ch)
+            if isinstance(pick, int):
+                data, what = {"slot": pick}, self.WHEEL[pick]
+        elif kind == "scratch":
+            ch = Chips([n for _k, n in self.SCRATCH], [k for k, _n in self.SCRATCH], pick, per_row=3)
+            ch.toggled.connect(set_pick)
+            lay.addWidget(ch)
+            if pick in dict(self.SCRATCH):
+                data, what = {"tier": pick}, dict(self.SCRATCH)[pick]
+        elif kind == "case":
+            cases = [c for c in self.ctx.econ.cases]
+            ids = [c["id"] for c in cases]
+            cg = CaseGrid(ids, self.W, st.get("case") or "")
+            cg.picked.connect(lambda cid: (st.__setitem__("case", cid), st.__setitem__("pick", None), self.ctx.reload_page("admin")))
+            lay.addWidget(cg)
+            case = next((c for c in cases if c["id"] == st.get("case")), None)
+            if case is not None:
+                pass
+                key = case["id"]
+                lo, hi = int(case.get("coin_min") or 0), int(case.get("coin_max") or 0)
+                if hi:
+                    coin_opts = sorted({lo, (lo + hi) // 2, hi, hi * 3})
+                    lay.addWidget(Label("Coins", 10.5, TEXT_DIM, bold=True))
+                    cc = Chips([coins_text(v) + (" (lucky ×3)" if v == hi * 3 else "") for v in coin_opts],
+                               [("coins", v) for v in coin_opts], pick if isinstance(pick, tuple) else None, per_row=4)
+                    cc.toggled.connect(set_pick)
+                    lay.addWidget(cc)
+                drops = case_drops(self.ctx.econ, case)
+                drops.sort(key=lambda x: x[1])
+                lay.addWidget(Label("An item it can drop (rarest first)", 10.5, TEXT_DIM, bold=True))
+                ig = ItemGrid(self.ctx, [{"item": it, "text": f"{ch_ * 100:.3g}%", "mark": pick == ("item", it)}
+                                         for it, ch_ in drops[:120]], self.W, 8, 60,
+                              next((i for i, (it, _c) in enumerate(drops[:120]) if pick == ("item", it)), -1))
+                ig.picked.connect(lambda i: set_pick(("item", drops[i][0])))
+                lay.addWidget(ig)
+                if isinstance(pick, tuple):
+                    if pick[0] == "coins":
+                        data, what = {"coins": pick[1]}, f"{coins_text(pick[1])} coins from a {CASE_NAMES.get(key, key)}"
+                    else:
+                        data, what = {"item": pick[1]}, f"{en_name(pick[1])} from a {CASE_NAMES.get(key, key)}"
+        elif kind == "slots":
+            ch = Chips([n for _r, n in self.SLOTS], list(range(len(self.SLOTS))), pick, per_row=3)
+            ch.toggled.connect(set_pick)
+            lay.addWidget(ch)
+            if isinstance(pick, int):
+                data, what = {"reels": list(self.SLOTS[pick][0])}, "Slots: " + self.SLOTS[pick][1]
+        else:
+            ch = Chips(["Win", "Lose"], [True, False], pick, per_row=2)
+            ch.toggled.connect(set_pick)
+            lay.addWidget(ch)
+            if isinstance(pick, bool):
+                data, what = {"win": pick}, ("Dice: " if kind == "dice" else "Coinflip vs bot: ") + ("win" if pick else "lose")
+        to = (st.get("to") or [None])[0]
+        ready = bool(to and data is not None)
+        go = Button(f"Rig {to}'s next: {what}" if ready else "Pick a player and a result", "primary" if ready else "ghost",
+                    40, icon="spark")
+        go.setEnabled(ready)
+        go.clicked.connect(lambda: self.do("rb_admin_rig", {"name": to, "kind": kind, "key": key, "data": data},
+                                           f"Rigged: {to}'s next {what}",
+                                           after=lambda: st.__setitem__("pick", None)))
+        lay.addWidget(go)
+        rigs = self.fetch("rb_admin_rigs", {})
+        lay.addWidget(heading("Waiting rigs · click one to remove it"))
+        if rigs is None:
+            return self._loading(lay)
+        if not rigs:
+            return lay.addWidget(Label("None", 11, TEXT_DIM))
+
+        def describe(r: dict) -> str:
+            k, dd = r.get("kind"), r.get("data") or {}
+            if k == "wheel":
+                return "Free spin: " + self.WHEEL[int(dd.get("slot", 0))]
+            if k == "scratch":
+                return "Scratch: " + dict(self.SCRATCH).get(dd.get("tier"), "?")
+            if k == "case":
+                pass
+                c = CASE_NAMES.get(r.get("key"), r.get("key"))
+                return f"{c}: " + (en_name(dd["item"]) if dd.get("item") else f"{coins_text(int(dd.get('coins') or 0))} coins")
+            if k == "slots":
+                return "Slots: " + next((n for rr, n in self.SLOTS if list(rr) == dd.get("reels")), "/".join(dd.get("reels") or []))
+            if k == "gold":
+                return "Free spin or scratch: Golden Wheel"
+            return ("Dice: " if k == "dice" else "Coinflip: ") + ("win" if dd.get("win") else "lose")
+
+        def remove(i: int) -> None:
+            r = rigs[i]
+            if r.get("kind") == "gold":
+                return self.do("rb_admin_rig_gold", {"name": r["name"], "rig": False}, "Rig removed")
+            self.do("rb_admin_rig", {"name": r["name"], "kind": r["kind"], "key": r.get("key") or "", "data": None}, "Rig removed")
+        lay.addWidget(Table([(r["name"], describe(r)[:40], "remove", "#FF7A7A") for r in rigs], self.W, remove))
+
+    # -- Live: giveaways and sales, set up by clicking
+    def _live(self, lay) -> None:
+        live = self.ctx.econ.live
+        st = self.state("live")
+        mode = st.get("mode") or "giveaway"
+        seg = Segmented(["New giveaway", "New sale"], 0 if mode == "giveaway" else 1)
+        seg.changed.connect(lambda i: (st.__setitem__("mode", "giveaway" if i == 0 else "sale"), self.ctx.reload_page("admin")))
+        lay.addWidget(seg)
+        if mode == "giveaway":
+            self._giveaway_form(lay, self.state("giveaway"))
+        else:
+            self._sale_form(lay, self.state("sale"))
+        lay.addWidget(heading("Giveaways now"))
+        gs = live.get("giveaways") or []
+        if not gs:
+            lay.addWidget(Label("None", 11, TEXT_FAINT))
+        for g in gs:
+            lay.addWidget(Label(f"{g['title']} · {g['state']} · {g.get('entries', 0)} joined · {clock_text(int(g.get('left') or 0))}",
+                                11.5, TEXT, wrap_w=self.W))
+            if g["state"] == "live":
+                l2 = hbox(spacing=6)
+                draw = Button("Draw now", "primary", 28)
+                draw.clicked.connect(lambda _=False, x=g: self.do("rb_admin_giveaway_end", {"giveaway": x["id"], "draw": True}, "Drawn"))
+                stop = Button("Cancel", "ghost", 28)
+                stop.clicked.connect(lambda _=False, x=g: self.do("rb_admin_giveaway_end", {"giveaway": x["id"], "draw": False}, "Cancelled"))
+                l2.addWidget(draw, 1)
+                l2.addWidget(stop, 1)
+                lay.addLayout(l2)
+        lay.addWidget(heading("Sales now"))
+        ss = live.get("sales") or []
+        if not ss:
+            lay.addWidget(Label("None", 11, TEXT_FAINT))
+        for s in ss:
+            l3 = hbox(spacing=6)
+            l3.addWidget(Label(f"-{s['pct']}%  {s['what']}  · {clock_text(int(s.get('left') or 0))}", 11.5, TEXT), 1)
+            end = Button("End", "ghost", 28)
+            end.clicked.connect(lambda _=False, x=s: self.do("rb_admin_sale_end", {"sale": x["id"]}, "Sale ended"))
+            l3.addWidget(end)
+            lay.addLayout(l3)
+
+    def _choice(self, lay, st: dict, key: str, title: str, opts: list, default, fmt=str, per_row: int = 5):
+        lay.addWidget(Label(title, 10.5, TEXT_DIM, bold=True))
+        cur = st.get(key) if st.get(key) in opts else default
+        ch = Chips([fmt(o) for o in opts], opts, cur, per_row=per_row, height=28)
+        ch.toggled.connect(lambda v: (st.__setitem__(key, v), self.ctx.reload_page("admin")))
+        lay.addWidget(ch)
+        return cur
+
+    def _giveaway_form(self, lay, st: dict) -> None:
+        kind = self._choice(lay, st, "kind", "Prize", ["coins", "keys", "case", "item"], "coins",
+                            lambda k: {"coins": "Coins", "keys": "Keys", "case": "A case", "item": "An item"}[k], 4)
+        what, thing = "", ""
+        if kind in ("coins", "keys"):
+            opts = [500, 1000, 5000, 10000, 50000, 100000] if kind == "coins" else [1, 2, 5, 10, 20, 50]
+            amount = self._choice(lay, st, kind + "_n", "Each winner gets", opts, opts[1], coins_text, 6)
+            thing = f"{coins_text(amount)} {kind}"
+        else:
+            if kind == "case":
+                cg = CaseGrid([c["id"] for c in self.ctx.econ.cases], self.W, st.get("case") or "")
+                cg.picked.connect(lambda cid: (st.__setitem__("case", cid), self.ctx.reload_page("admin")))
+                lay.addWidget(cg)
+                what = st.get("case") or ""
+                pass
+                thing = CASE_NAMES.get(what, "")
+            else:
+                item_picker(self, lay, st)
+                what = st.get("item") or ""
+                thing = en_name(what) if what else ""
+            amount = self._choice(lay, st, "count", "Each winner gets", [1, 2, 3, 5, 10], 1, str, 5)
+        winners = self._choice(lay, st, "winners", "Winners", [1, 2, 3, 5, 10, 20], 1, str, 6)
+        minutes = self._choice(lay, st, "minutes", "Lasts", [5, 15, 30, 60, 120, 240], 30, lambda m: f"{m} min", 6)
+        hours = self._choice(lay, st, "hours", "Only for players with at least", [0, 1, 5, 10, 25, 50], 0,
+                             lambda h: "anyone" if h == 0 else f"{h} h", 6)
+        ready = bool(thing)
+        prize = f"{amount} × {thing}" if kind in ("case", "item") else thing
+        go = Button(f"Start: {prize} for {winners} winner{'s' if winners > 1 else ''}, {minutes} min"
+                    if ready else "Pick a prize", "primary" if ready else "ghost", 40, icon="gift")
+        go.setEnabled(ready)
+        go.clicked.connect(lambda: self.do("rb_admin_giveaway", {
+            "title": "Giveaway", "kind": kind, "what": what, "amount": int(amount), "winners": int(winners),
+            "minutes": int(minutes), "min_hours": int(hours)}, "Giveaway live"))
+        lay.addWidget(go)
+
+    def _sale_form(self, lay, st: dict) -> None:
+        cat = self.ctx.econ.catalog
+        scope = self._choice(lay, st, "scope", "On sale", ["all", "one"], "all",
+                             lambda s: "A whole kind or design" if s == "all" else "One exact item", 2)
+        if scope == "all":
+            kinds = [k for k, _n in ITEM_KINDS if k not in ("tag", "coupon")]
+            kind = self._choice(lay, st, "skind", "Kind", kinds, "theme", lambda k: dict(ITEM_KINDS)[k], 4)
+            bases = []
+            for k in sorted(cat, key=lambda k: (-int(cat[k].get("value") or 0), k)):
+                v = cat[k]
+                if v.get("kind") == kind and v.get("price") is not None and (kind, v.get("base")) not in [(kind, b) for b, _ in bases]:
+                    bases.append((v.get("base"), k))
+            lay.addWidget(Label("Every design, or click one design", 10.5, TEXT_DIM, bold=True))
+            base = st.get("sbase") or ""
+            grid = ItemGrid(self.ctx, [{"item": k} for _b, k in bases], self.W, 8, 50,
+                            next((i for i, (b, _k) in enumerate(bases) if b == base), -1), moving=False)
+            grid.picked.connect(lambda i: (st.__setitem__("sbase", "" if bases[i][0] == base else bases[i][0]), self.ctx.reload_page("admin")))
+            lay.addWidget(grid)
+            what = f"{kind}:{base}" if base else kind
+            thing = (en_name(next(k for b, k in bases if b == base)).split(" · ")[0] + " (every colour)") if base else \
+                f"every {dict(ITEM_KINDS)[kind].lower()[:-1]}"
+        else:
+            item_picker(self, lay, st)
+            what = st.get("item") or ""
+            thing = en_name(what) if what else ""
+        pct = self._choice(lay, st, "pct", "Off", [10, 20, 25, 30, 40, 50], 25, lambda p: f"-{p}%", 6)
+        minutes = self._choice(lay, st, "minutes", "Lasts", [30, 60, 120, 240, 480, 1440], 120,
+                               lambda m: f"{m // 60} h" if m >= 60 else f"{m} min", 6)
+        ready = bool(what)
+        go = Button(f"Start: -{pct}% on {thing}" if ready else "Pick what goes on sale", "primary" if ready else "ghost", 40)
+        go.setEnabled(ready)
+        go.clicked.connect(lambda: self.do("rb_admin_sale", {"what": what, "pct": int(pct), "minutes": int(minutes)}, "Sale live"))
+        lay.addWidget(go)
+
+    # -- Coinflips: Rubenium offers, picked by clicking
+    def _flips(self, lay) -> None:
+        st = self.state("flip")
+        lay.addWidget(heading("New Rubenium offer"))
+        how = self._choice(lay, st, "how", "Stake", ["value", "items"], "value",
+                           lambda h: "A value (items picked for it)" if h == "value" else "Items I pick", 2)
+        if how == "value":
+            val = self._choice(lay, st, "val", "Worth about", [1000, 5000, 10000, 25000, 50000, 100000, 500000, 1000000],
+                               10000, coins_text, 4)
+            items = []
+        else:
+            item_picker(self, lay, st, multi=6)
+            items = list(st.get("items") or [])
+            val = 0
+            lay.addWidget(Label(f"{len(items)} of 6 picked: " + ", ".join(en_name(i) for i in items) if items else
+                                "Click up to 6 items", 10.5, GOLD_TEXT if items else TEXT_DIM, wrap_w=self.W))
+        bot = self._choice(lay, st, "bot", "Shown as", ["", "Pixel", "Milo", "Nova", "Juno", "Vega", "Atlas"], "",
+                           lambda b: b or "Random bot", 4)
+        side = self._choice(lay, st, "side", "Side", ["", "black", "white"], "", lambda s: s.capitalize() or "Random", 3)
+        minutes = self._choice(lay, st, "minutes", "Open for", [15, 30, 60, 120, 240, 1440], 60,
+                               lambda m: f"{m // 60} h" if m >= 60 else f"{m} min", 6)
+        ready = bool(items) or how == "value"
+        go = Button("Publish the offer" if ready else "Pick items", "primary" if ready else "ghost", 40, icon="coin")
+        go.setEnabled(ready)
+        go.clicked.connect(lambda: self.do("rb_admin_flip_offer", {"bot": bot, "items": items, "val": int(val),
+                                                                   "side": side or None, "minutes": int(minutes)},
+                                           "Offer published", after=lambda: st.__setitem__("items", [])))
+        lay.addWidget(go)
+        rows = self.fetch("rb_admin_flips", {})
+        if rows is None:
+            return self._loading(lay)
+        if not isinstance(rows, list) or not rows:
+            return lay.addWidget(Label("No bot coinflips right now", 11, TEXT_FAINT))
+        live = [r for r in rows if r.get("state") in ("setup", "open", "joined", "locked")]
+        old = [r for r in rows if r not in live]
+        lay.addWidget(heading(f"Open now · {len(live)}"))
+        for r in live:
+            self._flip_row(lay, r)
+        if old:
+            lay.addWidget(heading("Last 24 hours"))
+            lay.addWidget(Table([((r.get("a") or "?") + " · " + (r.get("b") or "-"), r.get("state") or "",
+                                  (f"won by {r['winner']}" if r.get("winner") else ""), TEXT_DIM) for r in old[:30]], self.W))
 
     def _lockdown_row(self, lay) -> None:
         """4.0: the big LOCKDOWN button (it took the place of the old lock). Everything stops on the server at once:
@@ -30019,11 +30828,11 @@ class AdminPage(Page):
 
         def flip() -> None:
             if on:
-                text = tr("Lift the lockdown? Everything that is not locked on its own opens again for everyone.")
-                return self.ctx.window.confirm(text, lambda: self._lockdown(False), yes=tr("Lift lockdown"))
-            text = tr("LOCKDOWN: stop everything for everyone now? Open trades, coinflips, Mini Golf matches and "
+                text = en("Lift the lockdown? Everything that is not locked on its own opens again for everyone.")
+                return self.ctx.window.confirm(text, lambda: self._lockdown(False), yes=en("Lift lockdown"))
+            text = en("LOCKDOWN: stop everything for everyone now? Open trades, coinflips, Mini Golf matches and "
                       "casino rounds are cancelled and given back. Nobody wins or loses anything.")
-            self.ctx.window.confirm(text, lambda: self._lockdown(True), yes=tr("LOCKDOWN"))
+            self.ctx.window.confirm(text, lambda: self._lockdown(True), yes=en("LOCKDOWN"))
         bar.clicked.connect(flip)
         lay.addWidget(bar)
 
@@ -30031,177 +30840,18 @@ class AdminPage(Page):
         def back(ok: bool, data) -> None:
             if not ok:
                 sfx.play("off")
-                return self.ctx.toast(tr(str(data)), "warn")
+                return self.ctx.toast(en(str(data)), "warn")
             sfx.play("on")
-            self.ctx.toast(tr("Lockdown on: everything is stopped") if lock else tr("Lockdown lifted"),
+            self.ctx.toast(en("Lockdown on: everything is stopped") if lock else en("Lockdown lifted"),
                            "warn" if lock else "ok")
             self.ctx.admin_cache = {}
             self.ctx.econ.take_locks({"lockdown": lock, "locked": [f["name"] for f in (data or {}).get("features") or []
                                                                   if not f.get("on")]})
             self.ctx.econ.poll_live()
-            QTimer.singleShot(200, self.ctx.reload_page)
+            QTimer.singleShot(200, lambda: self.ctx.reload_page("admin"))
         self.ctx.econ.call("rb_admin_lockdown", {"lock": lock}, back)
 
     # -- sections
-    def _overview(self, lay) -> None:
-        st = self.fetch("rb_admin_stats", {})
-        if st is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        lay.addWidget(Numbers([(st["players"], tr("Users")), (st["online"], tr("Online now")), (st["today"], tr("Today")),
-                               (coins_text(st["coins"]), tr("Coins in total")), (st["keys"], tr("Keys in total")),
-                               (st["items"], tr("Items")), (st["listings"], tr("On the market")),
-                               (st["trades"], tr("Trades done")), ("", "")], self.W))
-        lay.addWidget(heading(tr("Games: bets and payouts")))
-        rows = []
-        for g in st.get("games") or []:
-            bet, paid = int(g["bet"]), int(g["paid"])
-            keep = f"{100 - 100 * paid / bet:.1f}%" if bet else "—"
-            rows.append((g["game"], tr("{n} rounds", n=g["rounds"]), tr("house {k}", k=keep),
-                         "#5BE08A" if paid <= bet else "#FF7A7A"))
-        lay.addWidget(Table(rows, self.W))
-        lay.addWidget(heading(tr("Coins in and out (7 days)")))
-        lay.addWidget(Table([(x["reason"], tr("{n} times", n=x["n"]), ("+" if int(x["coins"]) >= 0 else "") + coins_text(int(x["coins"])),
-                              "#5BE08A" if int(x["coins"]) >= 0 else "#FF7A7A") for x in st.get("ledger") or []], self.W))
-
-    def _players(self, lay) -> None:
-        name = getattr(self.ctx, "admin_player", None)
-        if name:
-            return self._player(lay, name)
-        sort = int(getattr(self.ctx, "admin_sort", 0) or 0)
-        seg = Segmented([tr("Last seen"), tr("Coins"), tr("Hours")], sort)
-        seg.changed.connect(lambda i: (setattr(self.ctx, "admin_sort", i), self.ctx.reload_page()))
-        lay.addWidget(seg)
-        find = Button(tr("Find a user"), "ghost", 28)
-        find.clicked.connect(lambda: FormDialog(self.ctx, tr("Find a user"), [("n", tr("Username"), "")], tr("Open"),
-                                                lambda v, d: (d.close(), self._open(v["n"]))))
-        lay.addWidget(find)
-        rows = self.fetch("rb_admin_players", {"search": "", "sort": ["", "coins", "hours"][sort], "page": 0})
-        if rows is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        table = [(("● " if r["online"] else "") + r["username"] + (" · " + tr("blocked") if r["banned"] else ""),
-                  f"{int(r['minutes']) / 60:.1f} h", coins_text(int(r["coins"])), "#5BE08A" if r["online"] else TEXT)
-                 for r in rows]
-        lay.addWidget(Table(table, self.W, lambda i: self._open(rows[i]["username"])))
-
-    def _open(self, name: str) -> None:
-        self.ctx.admin_player = name
-        self.ctx.admin_tab = 1
-        self.ctx.reload_page()
-
-    def _player(self, lay, name: str) -> None:
-        top = hbox(spacing=8)
-        back = IconButton("back", 30, tip=tr("Back"))
-        back.clicked.connect(lambda: (setattr(self.ctx, "admin_player", None), self.ctx.reload_page()))
-        top.addWidget(back)
-        top.addWidget(Label(name, 15, bold=True), 1)
-        lay.addLayout(top)
-        d = self.fetch("rb_admin_player", {"name": name})
-        if d is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        st = d.get("stats") or {}
-        lay.addWidget(Numbers([(coins_text(int(d["coins"])), tr("Coins"), GOLD_TEXT), (d["keys"], tr("Keys")),
-                               (f"{int(d['minutes']) / 60:.1f} h", tr("Played")),
-                               (coins_text(int(st.get("bet") or 0)), tr("Bet")), (coins_text(int(st.get("won") or 0)), tr("Won")),
-                               (st.get("cases", 0), tr("Cases")), (st.get("trades", 0), tr("Trades")),
-                               (tr("Online") if d.get("online") else tr("Offline"), tr("Status")),
-                               (tr("Blocked") if d.get("banned") else tr("OK"), tr("Account"))], self.W))
-        pass
-        acts = [(tr("Coins"), "gem"), (tr("Keys"), "key"), (tr("Give item"), "gift"), (tr("Give case"), "folder"),
-                (tr("Unblock") if d.get("banned") else tr("Block"), "lock"), (tr("Picture"), "trash"),
-                (tr("Undo last"), "refresh"), (tr("Refresh"), "refresh"), (tr("Golden Wheel"), "spark"),
-                (tr("Reset timers"), "timer")]
-        grid = NavTiles(acts, -1, select=False)
-
-        def act(i: int) -> None:
-            ctx = self.ctx
-            if i == 0:
-                ctx._amount = AmountWindow(ctx, tr("Coins for {name}", name=name), [100, 1000, 10000, 100000, -100, -1000, -10000, -100000],
-                                           lambda n: self.do("rb_admin_grant", {"name": name, "add_coins": n, "add_keys": 0},
-                                                             tr("Done: {n} coins", n=("+" if n > 0 else "") + coins_text(n))))
-            elif i == 1:
-                ctx._amount = AmountWindow(ctx, tr("Keys for {name}", name=name), [1, 5, 10, 50, -1, -5, -10, -50],
-                                           lambda n: self.do("rb_admin_grant", {"name": name, "add_coins": 0, "add_keys": n},
-                                                             tr("Done: {n} keys", n=f"{n:+d}")))
-            elif i == 2:
-                self._give_dialog(name)
-            elif i == 3:
-                self._case_dialog(name)
-            elif i == 4:
-                ctx.window.confirm(
-                    tr("Unblock {name}?", name=name) if d.get("banned") else tr("Block {name}? They cannot use anything online.", name=name),
-                    lambda: self.do("rb_admin_ban", {"name": name, "ban": not d.get("banned")}), yes=tr("Yes"))
-            elif i == 5:
-                ctx.window.confirm(tr("Remove {name}'s picture?", name=name),
-                                   lambda: self.do("rb_admin_avatar_clear", {"name": name}, tr("Done")), yes=tr("Remove"))
-            elif i == 6:
-                self._undo_last(name)
-            elif i == 8:                                # test: their next free spin or scratch card lands on GOLD
-                ctx.window.confirm(tr("Make the next free spin or scratch card of {name} land on the Golden Wheel?", name=name),
-                                   lambda: self.do("rb_admin_rig_gold", {"name": name, "rig": True}, tr("Done")), yes=tr("Yes"))
-            elif i == 9:                                # test: free spin and scratch card ready again
-                self.do("rb_admin_reset_timers", {"name": name}, tr("Free spin and scratch card are ready again"))
-            else:
-                self._reload()
-        grid.changed.connect(act)
-        lay.addWidget(grid)
-        self._danger(lay, name, d)
-        stock = d.get("stock") or {}
-        if stock:
-            pass
-            lay.addWidget(Label(tr("Gifted cases waiting: ") + ", ".join(f"{tr(CASE_NAMES.get(k, k))} ×{n}" for k, n in stock.items()),
-                                10.5, TEXT_DIM, wrap_w=self.W))
-        items = d.get("items") or []
-        lay.addWidget(heading(tr("Items ({n}) · click one to take it back", n=len(items))))
-        if items:
-            grid = ItemGrid(self.ctx, [{"item": i["item"], "text": "🔒" if i.get("locked") else ""} for i in items[:80]], self.W, 6, 60)
-
-            def take(i: int) -> None:
-                it = items[i]
-                self.ctx.window.confirm(tr("Take {what} from {name}? (Take all removes every copy.)", what=item_name(it["item"]), name=name),
-                                        lambda: self.do("rb_admin_take", {"item_id": it["id"]}, tr("Taken")), yes=tr("Take one"),
-                                        no=tr("Take all"),
-                                        on_no=lambda: self.do("rb_admin_revoke", {"name": name, "what": it["item"]}, tr("Taken")))
-            grid.picked.connect(take)
-            lay.addWidget(grid)
-        deals = self.fetch("rb_admin_deals", {"name": name})
-        lay.addWidget(heading(tr("Trades and market sales · click one to undo it")))
-        if deals is None:
-            lay.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
-        else:
-            rows = []
-            for t in deals.get("trades") or []:
-                gave = len(t.get("a_items") or []), len(t.get("b_items") or [])
-                rows.append(("trade", t, (tr("Trade") + f" {t['a']} ⇄ {t['b']}",
-                                         f"{gave[0]}+{coins_text(int(t['a_coins']))} / {gave[1]}+{coins_text(int(t['b_coins']))}",
-                                         tr("undone") if t.get("undone") else str(t.get("at", ""))[5:16].replace("T", " "),
-                                         TEXT_DIM if t.get("undone") else TEXT)))
-            for l in deals.get("sales") or []:
-                rows.append(("sale", l, (tr("Sale") + f" {l['seller']} → {l.get('buyer') or '?'}", item_name(l["what"])[:14],
-                                        tr("undone") if l.get("undone") else coins_text(int(l["price"])),
-                                        TEXT_DIM if l.get("undone") else GOLD_TEXT)))
-
-            def undo_deal(i: int) -> None:
-                kind, d, _row = rows[i]
-                if d.get("undone"):
-                    return self.ctx.toast(tr("Already undone"), "warn")
-                fn, arg = ("rb_admin_undo_trade", {"trade": d["id"]}) if kind == "trade" else ("rb_admin_undo_sale", {"listing": d["id"]})
-                self.ctx.window.confirm(tr("Undo this? Items go back to who had them and the coins are returned."),
-                                        lambda: self.do(fn, arg, tr("Undone")), yes=tr("Undo"))
-            if rows:
-                lay.addWidget(Table([r[2] for r in rows], self.W, undo_deal))
-            else:
-                lay.addWidget(Label(tr("None"), 11, TEXT_DIM))
-        lay.addWidget(heading(tr("Games")))
-        lay.addWidget(Table([(g["game"], tr("{n} rounds", n=g["rounds"]), f"{coins_text(int(g['bet']))} → {coins_text(int(g['paid']))}")
-                             for g in d.get("games") or []], self.W))
-        lay.addWidget(heading(tr("Last rounds")))
-        lay.addWidget(Table([(r["game"], item_name(r["item"]) if r.get("item") else coins_text(int(r["bet"])),
-                              "+" + coins_text(int(r["paid"])), "#5BE08A" if int(r["paid"]) > int(r["bet"]) else TEXT_DIM)
-                             for r in (d.get("rounds") or [])[:40]], self.W))
-        lay.addWidget(heading(tr("Coin history")))
-        lay.addWidget(Table([(l["reason"], str(l.get("ref") or "")[:18], ("+" if int(l["coins"]) >= 0 else "") + coins_text(int(l["coins"]))
-                              + (f"  {int(l['keys']):+d}🔑" if int(l.get("keys") or 0) else ""),
-                              "#5BE08A" if int(l["coins"]) >= 0 else "#FF7A7A") for l in (d.get("ledger") or [])[:60]], self.W))
 
     RESETS = [("inventory", "Reset inventory",
                "Deletes EVERY item {name} owns: all badges, balls, lines, fonts, themes, banners and frames. Items on the "
@@ -30215,112 +30865,44 @@ class AdminPage(Page):
     def _danger(self, lay, name: str, d: dict) -> None:
         """Big red reset buttons. Each says exactly what it deletes, asks you to type the name, and can be undone
         from the Log."""
-        lay.addWidget(heading(tr("Danger zone")))
-        lay.addWidget(Label(tr("Every reset is saved in the Log: click it there to undo it."), 10.5, TEXT_DIM, wrap_w=self.W))
+        lay.addWidget(heading("Danger zone · undo from the Log"))
         for what, title, text in self.RESETS:
-            b = Button(tr(title), "danger", 40 if what == "all" else 34, icon="trash")
+            b = Button(en(title), "danger", 40 if what == "all" else 34, icon="trash")
             b.clicked.connect(lambda _c=False, what=what, title=title, text=text: self._reset(name, what, title, text))
             lay.addWidget(b)
 
     def _reset(self, name: str, what: str, title: str, text: str) -> None:
         def go(v, dlg) -> None:
             if v["n"].strip().lower() != name.lower():
-                return dlg.say(tr("Type {name} exactly to confirm", name=name))
+                return dlg.say(en("Type {name} exactly to confirm", name=name))
             dlg.close()
-            self.do("rb_admin_reset", {"name": name, "what": what}, tr("Done. You can undo it in the Log."))
-        FormDialog(self.ctx, tr(title) + f" · {name}", [("n", tr("Type the username to confirm: {name}", name=name), "")],
-                   tr("Reset"), go, note=tr(text, name=name))
-
-    def _case_dialog(self, name: str) -> None:
-        pass
-        cases = [c["id"] for c in self.ctx.econ.cases] or list(CASE_NAMES)
-        FormDialog(self.ctx, tr("Give a case to {name}", name=name),
-                   [("w", tr("Which case: ") + ", ".join(cases), cases[0] if cases else ""),
-                    ("n", tr("How many (1 to 100)"), "1")], tr("Give"),
-                   lambda v, dlg: (dlg.close(), self.do("rb_admin_give", {"name": name, "what": "case:" + v["w"].strip().replace("case:", ""),
-                                                                         "how_many": _int(v["n"], 1)}, tr("Given: it opens for free"))))
+            self.do("rb_admin_reset", {"name": name, "what": what}, en("Done. You can undo it in the Log."))
+        FormDialog(self.ctx, en(title) + f" · {name}", [("n", en("Type the username to confirm: {name}", name=name), "")],
+                   en("Reset"), go, note=en(text, name=name))
 
     def _undo_last(self, name: str) -> None:
         rows = self.fetch("rb_admin_audit", {}) or []
         last = next((r for r in rows if (r.get("target") or "").lower() == name.lower() and r.get("can_undo")), None)
         if last is None:
-            return self.ctx.toast(tr("Nothing to undo for {name}", name=name), "warn")
-        self.ctx.window.confirm(tr("Undo “{what}” on {target}?", what=last["action"], target=name),
-                                lambda: self.do("rb_admin_undo", {"entry": last["id"]}, tr("Undone")), yes=tr("Undo"))
-
-    def _give_dialog(self, name: str) -> None:
-        chosen = getattr(self.ctx, "admin_item", "") or ""
-        FormDialog(self.ctx, tr("Give to {name}", name=name),
-                   [("w", tr("Item or case (pick one in Items, or type e.g. badge:crown:gold, case:vault)"), chosen),
-                    ("n", tr("How many (1 to 100)"), "1")], tr("Give"),
-                   lambda v, dlg: (dlg.close(), self.do("rb_admin_give", {"name": name, "what": v["w"],
-                                                                         "how_many": _int(v["n"], 1)}, tr("Given"))))
-
-    def _items(self, lay) -> None:
-        cat = self.ctx.econ.catalog
-        kind = int(getattr(self.ctx, "admin_kind", 1) or 1)
-        pass
-        pick = GamePicker([tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Banners"), tr("Frames"),
-                           tr("Tags"), tr("Cases")], kind - 1)
-        pick.changed.connect(lambda i: (setattr(self.ctx, "admin_kind", i + 1), setattr(self.ctx, "admin_base", ""), self.ctx.reload_page()))
-        lay.addWidget(pick)
-        chosen = getattr(self.ctx, "admin_item", "") or ""
-        lay.addWidget(Label(tr("Selected: {what}", what=chosen or "—"), 11.5, GOLD_TEXT, bold=True, wrap_w=self.W))
-        lay.addWidget(Label(tr("Pick an item, then open a user and press Give item or case. Or use it for a giveaway or a sale."),
-                            10.5, TEXT_DIM, wrap_w=self.W))
-        if kind == 9:
-            pass
-            ids = [c["id"] for c in self.ctx.econ.cases]
-            lay.addWidget(Table([(tr(CASE_NAMES.get(c, c)), "case:" + c, "") for c in ids], self.W,
-                                lambda i: (setattr(self.ctx, "admin_item", "case:" + ids[i]), self.ctx.reload_page())))
-            return
-        want = ["", "badge", "ball", "line", "font", "theme", "banner", "frame", "tag"][min(kind, 8)]
-        single = want in ("theme", "banner", "frame", "tag")          # one item per design, no colours
-        base = getattr(self.ctx, "admin_base", "") or ""
-        if not base:
-            bases, seen = [], set()
-            for k in sorted(cat, key=lambda k: (-int(cat[k].get("value") or 0) if want == "badge" else 0, k)):
-                info = cat[k]
-                if info.get("kind") == want and info.get("base") not in seen:
-                    seen.add(info.get("base"))
-                    bases.append(k if single else f"{want}:{info['base']}:{'grey' if want != 'badge' or info['base'] not in ('galaxy','phoenix','glitch','crystal','dragon','rubenium') else 'prime'}")
-            grid = ItemGrid(self.ctx, [{"item": b} for b in bases], self.W, 6, 54)
-
-            def go(i: int) -> None:
-                if single:
-                    self.ctx.admin_item = bases[i]
-                else:
-                    self.ctx.admin_base = bases[i].split(":")[1]
-                self.ctx.reload_page()
-            grid.picked.connect(go)
-            return lay.addWidget(grid)
-        back = Button(tr("Back"), "ghost", 26)
-        back.clicked.connect(lambda: (setattr(self.ctx, "admin_base", ""), self.ctx.reload_page()))
-        lay.addWidget(back)
-        ids = sorted((k for k, v in cat.items() if v.get("kind") == want and v.get("base") == base),
-                     key=lambda k: -int(cat[k].get("value") or 0))
-        grid = ItemGrid(self.ctx, [{"item": k, "text": coins_text(int(cat[k].get("value") or 0))} for k in ids], self.W, 6, 64,
-                        ids.index(chosen) if chosen in ids else -1)
-        grid.picked.connect(lambda i: (setattr(self.ctx, "admin_item", ids[i]), self.ctx.reload_page()))
-        lay.addWidget(grid)
+            return self.ctx.toast(en("Nothing to undo for {name}", name=name), "warn")
+        self.ctx.window.confirm(en("Undo “{what}” on {target}?", what=last["action"], target=name),
+                                lambda: self.do("rb_admin_undo", {"entry": last["id"]}, en("Undone")), yes=en("Undo"))
 
     def _cases(self, lay) -> None:
         pass
         st = self.fetch("rb_admin_stats", {})
         if st is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        lay.addWidget(Label(tr("Drop odds out of 10 000: coins, Common, Rare, Epic, Legendary, Mythic. Finish odds out of "
-                               "100 000: Basic, Painted, Shiny, Titanium, Gold. Click a case to change it."), 10.5, TEXT_DIM, wrap_w=self.W))
+            return lay.addWidget(Label(en("Loading…"), 12, TEXT_DIM))
         cases = st.get("cases") or []
 
         def edit(i: int) -> None:
             c = cases[i]
-            FormDialog(self.ctx, tr(CASE_NAMES.get(c["id"], c["id"])),
-                       [("p", tr("Price"), c["price"]), ("o", tr("Drop odds (6 numbers, total 10 000)"), ",".join(map(str, c["odds"]))),
-                        ("v", tr("Finish odds (5 numbers, total 100 000)"), ",".join(map(str, c["variants"]))),
-                        ("a", tr("Coins: lowest"), c["coin_min"]), ("b", tr("Coins: highest"), c["coin_max"])], tr("Save"),
+            FormDialog(self.ctx, en(CASE_NAMES.get(c["id"], c["id"])),
+                       [("p", en("Price"), c["price"]), ("o", en("Drop odds (6 numbers, total 10 000)"), ",".join(map(str, c["odds"]))),
+                        ("v", en("Finish odds (5 numbers, total 100 000)"), ",".join(map(str, c["variants"]))),
+                        ("a", en("Coins: lowest"), c["coin_min"]), ("b", en("Coins: highest"), c["coin_max"])], en("Save"),
                        lambda v, dlg: self._save_case(c["id"], v, dlg))
-        lay.addWidget(Table([(tr(CASE_NAMES.get(c["id"], c["id"])), coins_text(int(c["price"])),
+        lay.addWidget(Table([(en(CASE_NAMES.get(c["id"], c["id"])), coins_text(int(c["price"])),
                               f"L {c['odds'][4] / 100:g}% · M {c['odds'][5] / 100:g}%") for c in cases], self.W, edit))
 
     def _save_case(self, cid: str, v: dict, dlg) -> None:
@@ -30328,105 +30910,29 @@ class AdminPage(Page):
             odds = [int(x) for x in v["o"].split(",")]
             var = [int(x) for x in v["v"].split(",")]
         except ValueError:
-            return dlg.say(tr("Numbers separated by commas"))
+            return dlg.say(en("Numbers separated by commas"))
         if len(odds) != 6 or sum(odds) != 10000 or len(var) != 5 or sum(var) != 100000:
-            return dlg.say(tr("Drop odds: 6 numbers, total 10 000. Finish odds: 5 numbers, total 100 000."))
+            return dlg.say(en("Drop odds: 6 numbers, total 10 000. Finish odds: 5 numbers, total 100 000."))
         dlg.close()
         self.do("rb_admin_case", {"which": cid, "new_price": _int(v["p"], 1), "new_odds": odds, "new_variants": var,
-                                  "new_min": _int(v["a"], 0), "new_max": _int(v["b"], 0)}, tr("Saved"))
-
-    def _live(self, lay) -> None:
-        live = self.ctx.econ.live
-        line = hbox(spacing=6)
-        ga = Button(tr("New giveaway"), "primary", 32, icon="gift")
-        ga.clicked.connect(self._new_giveaway)
-        sale = Button(tr("New special sale"), "primary", 32)
-        sale.clicked.connect(self._new_sale)
-        line.addWidget(ga, 1)
-        line.addWidget(sale, 1)
-        lay.addLayout(line)
-        lay.addWidget(heading(tr("Giveaways")))
-        gs = live.get("giveaways") or []
-        if not gs:
-            lay.addWidget(Label(tr("None right now"), 11, TEXT_FAINT))
-        for g in gs:
-            lay.addWidget(Label(f"{g['title']} · {g['state']} · {tr('{n} joined', n=g.get('entries', 0))} · "
-                                f"{clock_text(int(g.get('left') or 0))}", 11.5, TEXT, wrap_w=self.W))
-            if g["state"] == "live":
-                l2 = hbox(spacing=6)
-                draw = Button(tr("Draw now"), "primary", 26)
-                draw.clicked.connect(lambda _=False, x=g: self.do("rb_admin_giveaway_end", {"giveaway": x["id"], "draw": True}, tr("Drawn")))
-                stop = Button(tr("Cancel"), "ghost", 26)
-                stop.clicked.connect(lambda _=False, x=g: self.do("rb_admin_giveaway_end", {"giveaway": x["id"], "draw": False}, tr("Cancelled")))
-                l2.addWidget(draw, 1)
-                l2.addWidget(stop, 1)
-                lay.addLayout(l2)
-        lay.addWidget(heading(tr("Sales")))
-        ss = live.get("sales") or []
-        if not ss:
-            lay.addWidget(Label(tr("None right now"), 11, TEXT_FAINT))
-        for s in ss:
-            l3 = hbox(spacing=6)
-            l3.addWidget(Label(f"-{s['pct']}%  {s['what']}  · {clock_text(int(s.get('left') or 0))}", 11.5, TEXT), 1)
-            end = Button(tr("End"), "ghost", 26)
-            end.clicked.connect(lambda _=False, x=s: self.do("rb_admin_sale_end", {"sale": x["id"]}, tr("Sale ended")))
-            l3.addWidget(end)
-            lay.addLayout(l3)
-
-    def _new_giveaway(self) -> None:
-        chosen = getattr(self.ctx, "admin_item", "") or ""
-        kind = "case" if chosen.startswith("case:") else ("item" if chosen else "coins")
-        what = chosen[5:] if kind == "case" else chosen
-
-        def send(v: dict, dlg) -> None:
-            k = {"pièces": "coins", "pieces": "coins", "coin": "coins", "clés": "keys", "cles": "keys", "key": "keys",
-                 "objet": "item", "caisse": "case"}.get(v["k"].lower().strip(), v["k"].lower().strip())
-            if k == "item" and v["w"].startswith("case:"):
-                k, v["w"] = "case", v["w"][5:]
-            if k == "case" and v["w"].startswith("case:"):
-                v["w"] = v["w"][5:]
-            if k not in ("coins", "keys", "item", "case"):
-                return dlg.say(tr("Prize type: coins, keys, item or case"))
-            dlg.close()
-            self.do("rb_admin_giveaway", {"title": v["t"][:40] or "Giveaway", "kind": k, "what": v["w"],
-                                          "amount": _int(v["a"], 1), "winners": _int(v["n"], 1),
-                                          "minutes": _int(v["m"], 30), "min_hours": _int(v["h"], 0)}, tr("Giveaway live!"))
-        FormDialog(self.ctx, tr("New giveaway"),
-                   [("t", tr("Title"), tr("Giveaway")), ("k", tr("Prize type: coins, keys, item or case"), kind),
-                    ("w", tr("Item or case id (empty for coins and keys)"), what), ("a", tr("Amount per winner"), "1000" if kind == "coins" else "1"),
-                    ("n", tr("Number of winners (1 to 50)"), "1"), ("m", tr("Lasts (minutes)"), "30"),
-                    ("h", tr("Hours with Rubenium needed to join"), "0")], tr("Start"), send,
-                   tr("Everyone sees a golden Giveaway tab while it runs. Winners are drawn at random by the server."))
-
-    def _new_sale(self) -> None:
-        chosen = getattr(self.ctx, "admin_item", "") or ""
-
-        def send(v: dict, dlg) -> None:
-            dlg.close()
-            self.do("rb_admin_sale", {"what": v["w"], "pct": _int(v["p"], 20), "minutes": _int(v["m"], 60)}, tr("Sale live!"))
-        FormDialog(self.ctx, tr("New special sale"),
-                   [("w", tr("Item (e.g. ball:orbit:blue), a group (ball:orbit = every colour, theme = every theme)"),
-                     chosen if chosen and not chosen.startswith("case:") else "theme"),
-                    ("p", tr("Percent off (1 to 90)"), "25"), ("m", tr("Lasts (minutes)"), "120")], tr("Start"), send,
-                   tr("Shop prices only. The sale shows with sparks at the top of the shop."))
+                                  "new_min": _int(v["a"], 0), "new_max": _int(v["b"], 0)}, en("Saved"))
 
     def _settings(self, lay) -> None:
         st = self.fetch("rb_admin_stats", {})
         if st is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+            return lay.addWidget(Label(en("Loading…"), 12, TEXT_DIM))
         cfg = st.get("config") or {}
         keys = sorted(k for k in cfg if k != "reset_008")
-        force = Button(tr("Everyone must update to my version"), "ghost", 30, icon="refresh")
-        force.setToolTip(tr("Older versions can no longer play online until they update"))
+        force = Button(en("Everyone must update to my version"), "ghost", 30, icon="refresh")
+        force.setToolTip(en("Older versions can no longer play online until they update"))
         force.clicked.connect(lambda: self.ctx.window.confirm(
-            tr("Lock online play for older versions of Rubenium?"), lambda: self.do("rb_admin_force_update", {}, tr("Done")),
-            yes=tr("Yes")))
+            en("Lock online play for older versions of Rubenium?"), lambda: self.do("rb_admin_force_update", {}, en("Done")),
+            yes=en("Yes")))
         lay.addWidget(force)
-        lay.addWidget(Label(tr("Click a setting to change it. Changes are live for everyone."), 10.5, TEXT_DIM, wrap_w=self.W))
 
         def edit(i: int) -> None:
             k = keys[i]
-            FormDialog(self.ctx, k, [("v", tr("New value"), cfg[k])], tr("Save"),
+            FormDialog(self.ctx, k, [("v", en("New value"), cfg[k])], en("Save"),
                        lambda v, dlg: self._save_setting(k, v["v"], dlg))
         lay.addWidget(Table([(k, "", str(cfg[k])) for k in keys], self.W, edit))
 
@@ -30434,37 +30940,37 @@ class AdminPage(Page):
         try:
             value = float(text.replace(",", "."))
         except ValueError:
-            return dlg.say(tr("A number"))
+            return dlg.say(en("A number"))
         dlg.close()
-        self.do("rb_admin_set", {"setting": key, "new_value": value}, tr("Saved"))
+        self.do("rb_admin_set", {"setting": key, "new_value": value}, en("Saved"))
 
     def _log(self, lay) -> None:
         rows = self.fetch("rb_admin_audit", {})
         if rows is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        lay.addWidget(Label(tr("Everything done in the admin panel. Click a line with ↩ to undo it (coins, keys, items, "
-                               "cases, blocks, settings and the lock)."), 10.5, TEXT_DIM, wrap_w=self.W))
+            return lay.addWidget(Label(en("Loading…"), 12, TEXT_DIM))
 
         def undo(i: int) -> None:
             r = rows[i]
             if r.get("undone"):
-                return self.ctx.toast(tr("Already undone"), "warn")
+                return self.ctx.toast(en("Already undone"), "warn")
             if not r.get("can_undo"):
-                return self.ctx.toast(tr("This cannot be undone"), "warn")
-            self.ctx.window.confirm(tr("Undo “{what}” on {target}?", what=r["action"], target=r.get("target") or "-"),
-                                    lambda: self.do("rb_admin_undo", {"entry": r["id"]}, tr("Undone")), yes=tr("Undo"))
+                return self.ctx.toast(en("This cannot be undone"), "warn")
+            self.ctx.window.confirm(en("Undo “{what}” on {target}?", what=r["action"], target=r.get("target") or "-"),
+                                    lambda: self.do("rb_admin_undo", {"entry": r["id"]}, en("Undone")), yes=en("Undo"))
         lay.addWidget(Table([(("↩ " if r.get("can_undo") else ("✓ " if r.get("undone") else "")) + r["action"],
                               str(r.get("target") or "")[:16], str(r["at"])[5:16].replace("T", " "),
                               TEXT_DIM if r.get("undone") else ("#FFC94D" if r.get("can_undo") else TEXT)) for r in rows],
                             self.W, undo))
 
     # -- forgotten passwords: is it really them?
+
     VERDICTS = {"real": ("Looks real: asked from the account's own PC", "#3DDC84"),
                 "fake": ("Looks fake: asked from another user's PC", "#FF5C6C"),
                 "unsure": ("Not sure: a PC we do not know", "#FFC94D"),
                 "no_account": ("No account with this name", "#9AA4AD")}
 
     # -- Bots: fake accounts that live on their own
+
     BOT_FIELDS = [("hours", "Hours played", "40"), ("days", "Account age in days", "30"), ("coins", "Coins", "8000"),
                   ("keys", "Keys", "6"), ("streak", "Login streak (days)", "5"), ("badges", "Badges to own (0 to 60)", "12"),
                   ("active", "How often online, % (0 to 100)", "60"), ("from", "Online from (hour, 0 to 23)", "16"),
@@ -30477,65 +30983,61 @@ class AdminPage(Page):
         for key, (lo, hi) in limits.items():
             n = _int(v.get(key, ""), None)
             if n is None or not lo <= n <= hi:
-                dlg.say(tr("{what}: a number from {a} to {b}", what=tr(dict((k, t) for k, t, _d in self.BOT_FIELDS)[key]),
+                dlg.say(en("{what}: a number from {a} to {b}", what=en(dict((k, t) for k, t, _d in self.BOT_FIELDS)[key]),
                            a=lo, b=hi))
                 return {}
             cfg[key] = n
         return cfg
 
     def _bots(self, lay) -> None:
-        lay.addWidget(Label(tr("Bots are fake accounts that look and live like real users: they come online in their "
-                               "hours, play, earn coins and keys, open cases and keep a login streak. Nobody can see "
-                               "they are bots. You can log into one with its name and the password you chose."),
-                            10.5, TEXT_DIM, wrap_w=self.W))
-        make = Button(tr("Create a bot"), "primary", 34, icon="plus")
+        make = Button(en("Create a bot"), "primary", 34, icon="plus")
         make.clicked.connect(self._bot_new)
         lay.addWidget(make)
         rows = self.fetch("rb_admin_bots", {})
         if rows is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+            return lay.addWidget(Label(en("Loading…"), 12, TEXT_DIM))
         if not isinstance(rows, list) or not rows:
-            return lay.addWidget(Label(tr("No bots yet."), 11, TEXT_FAINT))
+            return lay.addWidget(Label(en("No bots yet."), 11, TEXT_FAINT))
         pick = getattr(self.ctx, "admin_bot", "") or ""
-        lay.addWidget(heading(tr("Bots") + f"  ·  {len(rows)}"))
+        lay.addWidget(heading(en("Bots") + f"  ·  {len(rows)}"))
         lay.addWidget(Table([(("● " if b.get("online") else "○ ") + b["username"],
                               f"{int(b.get('minutes') or 0) // 60} h",
                               coins_text(int(b.get("coins") or 0)), "#3DDC84" if b.get("online") else TEXT_DIM)
                              for b in rows], self.W,
-                            lambda i: (setattr(self.ctx, "admin_bot", rows[i]["username"]), self.ctx.reload_page())))
+                            lambda i: (setattr(self.ctx, "admin_bot", rows[i]["username"]), self.ctx.reload_page("admin"))))
         b = next((r for r in rows if r["username"] == pick), None)
         if b is None:
-            return lay.addWidget(Label(tr("Click a bot to change it."), 10.5, TEXT_FAINT))
+            return
         cfg = b.get("cfg") or {}
         paused = bool(cfg.get("paused"))
-        lay.addWidget(heading(b["username"] + ("  ·  " + tr("Paused") if paused else "")))
-        lay.addWidget(Label(tr("{h} h played · {c} coins · {k} keys · {s}-day streak · {n} badges · online {a}% from {f}:00 to {t}:00",
+        lay.addWidget(heading(b["username"] + ("  ·  " + en("Paused") if paused else "")))
+        lay.addWidget(Label(en("{h} h played · {c} coins · {k} keys · {s}-day streak · {n} badges · online {a}% from {f}:00 to {t}:00",
                                h=int(b.get("minutes") or 0) // 60, c=coins_text(int(b.get("coins") or 0)),
                                k=int(b.get("keys") or 0), s=int(b.get("streak") or 0), n=int(b.get("badges") or 0),
                                a=int(cfg.get("active", 60)), f=int(cfg.get("from", 16)), t=int(cfg.get("to", 23))),
                             10.5, TEXT_DIM, wrap_w=self.W))
         line = hbox(spacing=6)
-        edit = Button(tr("Change"), "primary", 30)
+        edit = Button(en("Change"), "primary", 30)
         edit.clicked.connect(lambda: self._bot_edit(b))
-        stop = Button(tr("Resume") if paused else tr("Pause"), "ghost", 30)
+        stop = Button(en("Resume") if paused else en("Pause"), "ghost", 30)
         stop.clicked.connect(lambda: self.do("rb_admin_bot_set", {"name": b["username"], "cfg": {"paused": not paused}},
-                                             tr("Saved")))
-        gone = Button(tr("Delete"), "danger", 30)
+                                             en("Saved")))
+        gone = Button(en("Delete"), "danger", 30)
         gone.clicked.connect(lambda: self.ctx.window.confirm(
-            tr("Delete the bot {name} for good?", name=b["username"]),
-            lambda: self.do("rb_admin_bot_delete", {"name": b["username"]}, tr("Deleted")), yes=tr("Delete")))
+            en("Delete the bot {name} for good?", name=b["username"]),
+            lambda: self.do("rb_admin_bot_delete", {"name": b["username"]}, en("Deleted")), yes=en("Delete")))
         for w in (edit, stop, gone):
             line.addWidget(w, 1)
         lay.addLayout(line)
         line = hbox(spacing=6)
-        pic = Button(tr("Picture"), "ghost", 30)
+        pic = Button(en("Picture"), "ghost", 30)
         pic.clicked.connect(lambda: self._bot_picture(b["username"]))
-        rnd = Button(tr("Random stats"), "ghost", 30)
+        rnd = Button(en("Random stats"), "ghost", 30)
         rnd.clicked.connect(lambda: self.do("rb_admin_bot_set", {"name": b["username"], "cfg": self._bot_random()},
-                                            tr("Saved")))
-        past = Button(tr("Add history"), "ghost", 30)
+                                            en("Saved")))
+        past = Button(en("Add history"), "ghost", 30)
         past.clicked.connect(lambda: self.do("rb_admin_bot_history", {"name": b["username"], "n": 60},
-                                             tr("60 past cases, bets and spins added")))
+                                             en("60 past cases, bets and spins added")))
         for w in (pic, rnd, past):
             line.addWidget(w, 1)
         lay.addLayout(line)
@@ -30555,12 +31057,12 @@ class AdminPage(Page):
         import base64
         from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
         from PyQt6.QtGui import QImage
-        path = self.ctx.pick_file(tr("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")
+        path = self.ctx.pick_file(en("Choose a picture"), "Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")
         if not path:
             return
         img = QImage(path)
         if img.isNull():
-            return self.ctx.toast(tr("This picture cannot be used"), "warn")
+            return self.ctx.toast(en("This picture cannot be used"), "warn")
         side = min(img.width(), img.height())
         img = img.copy((img.width() - side) // 2, (img.height() - side) // 2, side, side).scaled(
             96, 96, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
@@ -30568,46 +31070,46 @@ class AdminPage(Page):
         dev = QBuffer(buf)
         dev.open(QIODevice.OpenModeFlag.WriteOnly)
         img.save(dev, "JPG", 82)
-        self.do("rb_admin_bot_avatar", {"name": name, "picture": base64.b64encode(bytes(buf)).decode()}, tr("Picture saved"))
+        self.do("rb_admin_bot_avatar", {"name": name, "picture": base64.b64encode(bytes(buf)).decode()}, en("Picture saved"))
 
     def _bot_new(self) -> None:
-        fields = [("name", tr("Username (3 to 10 letters or numbers)"), ""), ("pw", tr("Password (8 characters at least)"), "")]
+        fields = [("name", en("Username (3 to 10 letters or numbers)"), ""), ("pw", en("Password (8 characters at least)"), "")]
         rand = self._bot_random()                      # random, believable numbers to start from
-        fields += [(k, tr(t), str(rand.get(k, d))) for k, t, d in self.BOT_FIELDS]
+        fields += [(k, en(t), str(rand.get(k, d))) for k, t, d in self.BOT_FIELDS]
 
         def go(v: dict, dlg) -> None:
             import re
             name, pw = v["name"], v["pw"]
             if not re.fullmatch(r"[A-Za-z0-9]{3,10}", name):
-                return dlg.say(tr("3 to 10 letters or numbers"))
+                return dlg.say(en("3 to 10 letters or numbers"))
             if len(pw) < 8:
-                return dlg.say(tr("8 characters at least"))
+                return dlg.say(en("8 characters at least"))
             cfg = self._bot_cfg(v, dlg)
             if not cfg:
                 return
-            dlg.say(tr("Creating…"))
+            dlg.say(en("Creating…"))
 
             def ticket(ok: bool, tk) -> None:
                 if not ok:
-                    return dlg.say(tr(str(tk)))
+                    return dlg.say(en(str(tk)))
 
                 def made(ok2: bool, d) -> None:
                     if not ok2:
-                        return dlg.say(tr(str(d)) if "taken" not in str(d).lower() else tr("This username is taken"))
+                        return dlg.say(en(str(d)) if "taken" not in str(d).lower() else en("This username is taken"))
 
                     def set_done(ok3: bool, d3) -> None:
                         if not ok3:
-                            return dlg.say(tr(str(d3)))
+                            return dlg.say(en(str(d3)))
                         dlg.close()
                         sfx.play("on")
-                        self.ctx.toast(tr("Bot {name} created", name=name))
+                        self.ctx.toast(en("Bot {name} created", name=name))
                         self.ctx.admin_bot = name
                         self.ctx.admin_cache = {}
-                        QTimer.singleShot(300, self.ctx.reload_page)
+                        QTimer.singleShot(300, lambda: self.ctx.reload_page("admin"))
                     self.ctx.econ.call("rb_admin_bot_set", {"name": name, "cfg": cfg}, set_done)
                 self.ctx.online.make_bot(name, pw, str(tk), made)
             self.ctx.econ.call("rb_admin_bot_ticket", {}, ticket)
-        FormDialog(self.ctx, tr("Create a bot"), fields, tr("Create"), go)
+        FormDialog(self.ctx, en("Create a bot"), fields, en("Create"), go)
 
     def _bot_edit(self, b: dict) -> None:
         cfg = dict(b.get("cfg") or {})
@@ -30619,41 +31121,39 @@ class AdminPage(Page):
             now["days"] = max(0, (datetime.now(timezone.utc) - since).days)
         except (TypeError, ValueError):
             pass
-        fields = [(k, tr(t), now.get(k, cfg.get(k, d))) for k, t, d in self.BOT_FIELDS]
+        fields = [(k, en(t), now.get(k, cfg.get(k, d))) for k, t, d in self.BOT_FIELDS]
 
         def go(v: dict, dlg) -> None:
             new = self._bot_cfg(v, dlg)
             if new:
                 dlg.close()
-                self.do("rb_admin_bot_set", {"name": b["username"], "cfg": new}, tr("Saved"))
-        FormDialog(self.ctx, tr("Change {name}", name=b["username"]), fields, tr("Save"), go)
+                self.do("rb_admin_bot_set", {"name": b["username"], "cfg": new}, en("Saved"))
+        FormDialog(self.ctx, en("Change {name}", name=b["username"]), fields, en("Save"), go)
 
     # -- Swaps: add Rocket League swaps for everyone
+
     def _swaps(self, lay) -> None:
         pass
-        lay.addWidget(Label(tr("Add a swap for everyone: a 300×300 picture, the swap file and (best) the original game "
-                               "file. It shows in every user's Rocket League tab. Pause or lock a swap that is broken: "
-                               "it is blurred out and cannot be switched on."), 10.5, TEXT_DIM, wrap_w=self.W))
         rows = self.fetch("rb_swaps_list", {})
         if isinstance(rows, list) and rows:
-            lay.addWidget(heading(tr("Swaps you added") + f"  ·  {len(rows)}"))
+            lay.addWidget(heading(en("Swaps you added") + f"  ·  {len(rows)}"))
             names = dict(RL_CATS)
-            lay.addWidget(Table([(r["new"], tr(names.get(r["cat"], r["cat"])),
-                                  tr(ONLINE_STATES.get(r["state"], "Live")),
+            lay.addWidget(Table([(r["new"], en(names.get(r["cat"], r["cat"])),
+                                  en(ONLINE_STATES.get(r["state"], "Live")),
                                   {"live": "#3DDC84", "paused": "#FFC94D"}.get(r["state"], "#FF7A7A")) for r in rows], self.W,
-                                lambda i: (setattr(self.ctx, "admin_swap", rows[i]["id"]), self.ctx.reload_page())))
+                                lambda i: (setattr(self.ctx, "admin_swap", rows[i]["id"]), self.ctx.reload_page("admin"))))
             cur = next((r for r in rows if r["id"] == getattr(self.ctx, "admin_swap", "")), None)
             if cur is not None:
                 lay.addWidget(Label(f"{cur['old']} → {cur['new']}  ·  {cur['file']}", 11, TEXT, bold=True, wrap_w=self.W))
                 line = hbox(spacing=6)
                 for st, text, kind in (("live", "Live", "primary"), ("paused", "Pause", "ghost"), ("locked", "Lock", "ghost"),
                                        ("delete", "Delete", "danger")):
-                    b = Button(tr(text), kind, 30)
+                    b = Button(en(text), kind, 30)
                     b.setEnabled(st != cur["state"])
-                    b.clicked.connect(lambda _c=False, st=st: self.do("rb_admin_swap_state", {"sid": cur["id"], "st": st}, tr("Saved")))
+                    b.clicked.connect(lambda _c=False, st=st: self.do("rb_admin_swap_state", {"sid": cur["id"], "st": st}, en("Saved")))
                     line.addWidget(b, 1)
                 lay.addLayout(line)
-        lay.addWidget(heading(tr("Add a swap")))
+        lay.addWidget(heading(en("Add a swap for everyone")))
         cats = [c for c, _n in RL_CATS]
         ci = cats.index(getattr(self.ctx, "swap_cat", cats[0])) if getattr(self.ctx, "swap_cat", cats[0]) in cats else 0
         from PyQt6.QtWidgets import QGridLayout
@@ -30661,8 +31161,8 @@ class AdminPage(Page):
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(S(4))
         for i, (_c, n) in enumerate(RL_CATS):
-            b = Button(tr(n), "primary" if i == ci else "ghost", 28)
-            b.clicked.connect(lambda _x=False, i=i: (setattr(self.ctx, "swap_cat", cats[i]), self.ctx.reload_page()))
+            b = Button(en(n), "primary" if i == ci else "ghost", 28)
+            b.clicked.connect(lambda _x=False, i=i: (setattr(self.ctx, "swap_cat", cats[i]), self.ctx.reload_page("admin")))
             grid.addWidget(b, i // 3, i % 3)
         lay.addLayout(grid)
         files = getattr(self.ctx, "swap_files", None) or {}
@@ -30672,16 +31172,16 @@ class AdminPage(Page):
                                 ("swap", "Swap file (.upk)", "Rocket League files (*.upk)"),
                                 ("orig", "Original game file (.upk, optional)", "Rocket League files (*.upk)")):
             chosen = files.get(key)
-            b = Button((tr(text) + ": " + os.path.basename(chosen)) if chosen else tr(text), "ghost", 30, icon="folder")
+            b = Button((en(text) + ": " + os.path.basename(chosen)) if chosen else en(text), "ghost", 30, icon="folder")
 
             def choose(_c=False, key=key, text=text, filt=filt) -> None:
-                path = self.ctx.pick_file(tr(text), filt)     # 4.0: the window steps aside (it covered the dialog)
+                path = self.ctx.pick_file(en(text), filt)     # 4.0: the window steps aside (it covered the dialog)
                 if path:
                     self.ctx.swap_files[key] = path
-                    self.ctx.reload_page()
+                    self.ctx.reload_page("admin")
             b.clicked.connect(choose)
             lay.addWidget(b)
-        add = Button(tr("Add the swap"), "primary", 34, icon="plus")
+        add = Button(en("Add the swap"), "primary", 34, icon="plus")
         add.setEnabled(bool(files.get("swap")))
         add.clicked.connect(lambda: self._swap_form(cats[ci]))
         lay.addWidget(add)
@@ -30694,29 +31194,29 @@ class AdminPage(Page):
         swap = files.get("swap", "")
         fname = os.path.basename(swap)
         if not re.fullmatch(r"[A-Za-z0-9_.-]{3,80}", fname) or not fname.lower().endswith(".upk"):
-            return self.ctx.toast(tr("The swap file must be a .upk file with a simple name"), "warn")
+            return self.ctx.toast(en("The swap file must be a .upk file with a simple name"), "warn")
         if files.get("orig") and os.path.basename(files["orig"]).lower() != fname.lower():
-            return self.ctx.toast(tr("The original file must have the same name as the swap file"), "warn")
+            return self.ctx.toast(en("The original file must have the same name as the swap file"), "warn")
 
         def go(v: dict, dlg) -> None:
             old, new = v["old"].strip(), v["new"].strip()
             if not old or not new:
-                return dlg.say(tr("Fill in both names"))
+                return dlg.say(en("Fill in both names"))
             sid = "o_" + (re.sub(r"[^a-z0-9]+", "_", (old + "_" + new).lower()).strip("_"))[:36]
             try:
                 data = open(swap, "rb").read()
                 orig = open(files["orig"], "rb").read() if files.get("orig") else b""
             except OSError:
-                return dlg.say(tr("This file cannot be read"))
+                return dlg.say(en("This file cannot be read"))
             if not data.startswith(b"\xc1\x83\x2a\x9e"):
-                return dlg.say(tr("This is not a Rocket League file"))
+                return dlg.say(en("This is not a Rocket League file"))
             png = b""
             if files.get("img"):
                 from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
                 from PyQt6.QtGui import QImage
                 img = QImage(files["img"])
                 if img.isNull():
-                    return dlg.say(tr("This picture cannot be used"))
+                    return dlg.say(en("This picture cannot be used"))
                 img = img.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
                 img = img.copy((img.width() - 300) // 2, (img.height() - 300) // 2, 300, 300)
                 ba = QByteArray()
@@ -30724,7 +31224,7 @@ class AdminPage(Page):
                 buf.open(QIODevice.OpenModeFlag.WriteOnly)
                 img.save(buf, "PNG")
                 png = bytes(ba)
-            dlg.say(tr("Uploading…"))
+            dlg.say(en("Uploading…"))
             jobs = [(f"swaps/{sid}/{fname}", data, "application/octet-stream")]
             if png:
                 jobs.append((f"swaps/{sid}/preview.png", png, "image/png"))
@@ -30733,30 +31233,31 @@ class AdminPage(Page):
 
             def next_job(ok: bool = True, d=None) -> None:
                 if not ok:
-                    return dlg.say(tr("Upload failed: {why}", why=tr(str(d))))
+                    return dlg.say(en("Upload failed: {why}", why=en(str(d))))
                 if jobs:
                     path, blob, kind = jobs.pop(0)
                     return self.ctx.online.upload(path, blob, kind, next_job)
 
                 def saved(ok2: bool, d2) -> None:
                     if not ok2:
-                        return dlg.say(tr(str(d2)))
+                        return dlg.say(en(str(d2)))
                     dlg.close()
                     sfx.play("on")
-                    self.ctx.toast(tr("Swap added for everyone"))
+                    self.ctx.toast(en("Swap added for everyone"))
                     self.ctx.swap_files = {}
                     self.ctx.admin_cache = {}
                     self.ctx.swaps_at = -999
-                    QTimer.singleShot(300, self.ctx.reload_page)
+                    QTimer.singleShot(300, lambda: self.ctx.reload_page("admin"))
                 self.ctx.econ.call("rb_admin_swap_save", {"sid": sid, "cat": cat, "old": old, "new": new, "file": fname,
                                                           "sha": hashlib.sha256(data).hexdigest(),
                                                           "orig_sha": hashlib.sha256(orig).hexdigest() if orig else "",
                                                           "img": bool(png), "orig": bool(orig)}, saved)
             next_job()
-        FormDialog(self.ctx, tr("Add a swap"), [("old", tr("The item you equip in the game (e.g. Octane)"), ""),
-                                               ("new", tr("What it becomes (the title)"), "")], tr("Upload"), go)
+        FormDialog(self.ctx, en("Add a swap"), [("old", en("The item you equip in the game (e.g. Octane)"), ""),
+                                               ("new", en("What it becomes (the title)"), "")], en("Upload"), go)
 
     # -- 4.0: every part of Rubenium, locked or unlocked live
+
     FEATURES = {"online": ("Online mode", "Everything online: trades, chat, coinflips, Mini Golf"),
                 "trading": ("Trading", "New trades; open trades are cancelled"),
                 "market": ("Market", "Buying, selling and listing"),
@@ -30775,11 +31276,9 @@ class AdminPage(Page):
     def _locks(self, lay) -> None:
         d = self.fetch("rb_admin_features", {})
         if d is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+            return lay.addWidget(Label(en("Loading…"), 12, TEXT_DIM))
         if not d:
-            return lay.addWidget(Label(tr("Run the 4.0 server update first."), 11, TEXT_DIM, wrap_w=self.W))
-        lay.addWidget(Label(tr("Lock one part of Rubenium for everyone, right now. The server refuses it at once, "
-                               "and what was running in it is cancelled and given back."), 10.5, TEXT_DIM, wrap_w=self.W))
+            return lay.addWidget(Label(en("Run the 4.0 server update first."), 11, TEXT_DIM, wrap_w=self.W))
         down = bool(d.get("lockdown"))
         feats = d.get("features") or []
         locked = {f["name"] for f in feats if f.get("locked")}
@@ -30788,31 +31287,31 @@ class AdminPage(Page):
         for f in feats:
             name, note = self.FEATURES.get(f["name"], (f["name"], ""))
             if f.get("locked"):
-                state, why = "locked", tr("Locked by {who} · {at}", who=f.get("by") or "?",
+                state, why = "locked", en("Locked by {who} · {at}", who=f.get("by") or "?",
                                           at=str(f.get("at") or "")[5:16].replace("T", " "))
                 if f.get("note"):
                     why += " · " + f["note"]
             elif down:
-                state, why = "held", tr("Stopped by the lockdown")
+                state, why = "held", en("Stopped by the lockdown")
             elif f.get("parent") in locked:
-                state, why = "held", tr("Stopped because {name} is locked",
-                                        name=tr(self.FEATURES.get(f["parent"], (f["parent"],))[0]))
+                state, why = "held", en("Stopped because {name} is locked",
+                                        name=en(self.FEATURES.get(f["parent"], (f["parent"],))[0]))
             else:
-                state, why = "on", tr(note) if note else tr("Working")
-            row = FeatureRow(tr(name), why, state, False)
-            row.clicked.connect(lambda _c=False, f=f, name=name: self._feature(f["name"], tr(name), not f.get("locked")))
+                state, why = "on", en(note) if note else en("Working")
+            row = FeatureRow(en(name), why, state, False)
+            row.clicked.connect(lambda _c=False, f=f, name=name: self._feature(f["name"], en(name), not f.get("locked")))
             lay.addWidget(row)
         log = d.get("log") or []
         if log:
-            lay.addWidget(heading(tr("Last changes")))
+            lay.addWidget(heading(en("Last changes")))
             rows = []
             for x in log:
                 det = x.get("detail") or {}
-                what = tr("LOCKDOWN") if x.get("action") == "lockdown" else \
-                    tr(self.FEATURES.get(x.get("target") or "", (x.get("target") or "?",))[0])
+                what = en("LOCKDOWN") if x.get("action") == "lockdown" else \
+                    en(self.FEATURES.get(x.get("target") or "", (x.get("target") or "?",))[0])
                 lock = bool(det.get("locked"))
                 stopped = int((det.get("result") or {}).get("stopped") or 0)
-                rows.append((what, (tr("locked") if lock else tr("unlocked")) + (f" · {stopped}" if stopped else ""),
+                rows.append((what, (en("locked") if lock else en("unlocked")) + (f" · {stopped}" if stopped else ""),
                              f"{x.get('who') or '?'} · {str(x.get('at') or '')[5:16].replace('T', ' ')}",
                              "#FF7A7A" if lock else "#5BE08A"))
             lay.addWidget(Table(rows, self.W))
@@ -30821,159 +31320,33 @@ class AdminPage(Page):
         def go(v: dict, dlg) -> None:
             dlg.close()
             self.do("rb_admin_feature", {"name": key, "lock": lock, "note": (v.get("n") or "").strip()},
-                    tr("{name} locked", name=name) if lock else tr("{name} unlocked", name=name))
+                    en("{name} locked", name=name) if lock else en("{name} unlocked", name=name))
         if lock:
-            FormDialog(self.ctx, tr("Lock {name}", name=name), [("n", tr("Reason (players don't see it)"), "")],
-                       tr("Lock"), go, tr("Running games in it are cancelled and given back."))
+            FormDialog(self.ctx, en("Lock {name}", name=name), [("n", en("Reason (players don't see it)"), "")],
+                       en("Lock"), go, en("Running games in it are cancelled and given back."))
         else:
-            self.ctx.window.confirm(tr("Unlock {name} for everyone?", name=name),
-                                    lambda: go({}, type("D", (), {"close": lambda _s: None})()), yes=tr("Unlock"))
+            self.ctx.window.confirm(en("Unlock {name} for everyone?", name=name),
+                                    lambda: go({}, type("D", (), {"close": lambda _s: None})()), yes=en("Unlock"))
 
     # -- 4.0: levels and XP
-    def _levels(self, lay) -> None:
-        pass
-        name = getattr(self.ctx, "admin_xp_name", None)
-        line = hbox(spacing=6)
-        find = Button(tr("Look at a user's XP"), "primary", 30, icon="search")
-        find.clicked.connect(lambda: FormDialog(self.ctx, tr("XP of a user"), [("n", tr("Username"), name or "")], tr("Open"),
-                                                lambda v, d: (d.close(), setattr(self.ctx, "admin_xp_name", v["n"].strip()),
-                                                              self.ctx.reload_page())))
-        line.addWidget(find, 1)
-        if name:
-            close = Button(tr("Close {name}", name=name), "ghost", 30)
-            close.clicked.connect(lambda: (setattr(self.ctx, "admin_xp_name", None), self.ctx.reload_page()))
-            line.addWidget(close, 1)
-        lay.addLayout(line)
-        if name:
-            v = self.fetch("rb_admin_xp_view", {"name": name})
-            if v is None:
-                return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-            if not v:
-                return lay.addWidget(Label(tr("No such user"), 11, TEXT_DIM))
-            info = v.get("info") or {}
-            lv = int(info.get("level") or 0)
-            top = hbox(spacing=10)
-            top.addWidget(LevelBadge(lv, 64))
-            col = vbox(spacing=2)
-            col.addWidget(Label(v.get("name", name), 15, bold=True))
-            col.addWidget(Label(tr("Level {n} · {b}", n=lv, b=tr(badge_name(lv))), 11.5, GOLD_TEXT, bold=True))
-            col.addWidget(Label(tr("{x} XP in total · today {d} / {cap}", x=coins_text(int(info.get("xp") or 0)),
-                                   d=int(info.get("today") or 0), cap=int(info.get("cap") or 0)), 10.5, TEXT_DIM))
-            top.addLayout(col, 1)
-            lay.addLayout(top)
-            src = v.get("sources") or {}
-            if src:
-                lay.addWidget(Label(tr("Today by source: {s}", s=" · ".join(f"{k} {n}" for k, n in sorted(src.items()))),
-                                    10.5, TEXT_DIM, wrap_w=self.W))
-            acts = hbox(spacing=6)
-            for text, sign in ((tr("Give XP"), 1), (tr("Take XP"), -1)):
-                b = Button(text, "ghost", 30)
-                b.clicked.connect(lambda _c=False, sign=sign: self._xp_dialog(v.get("name", name), sign))
-                acts.addWidget(b, 1)
-            lay.addLayout(acts)
-            lay.addWidget(heading(tr("XP log")))
-            lay.addWidget(Table([(f"{'+' if int(x['amount']) >= 0 else ''}{x['amount']} · {x['source']}",
-                                  tr("level {n}", n=x.get("level")), str(x.get("at") or "")[5:16].replace("T", " "),
-                                  "#5BE08A" if int(x["amount"]) >= 0 else "#FF7A7A")
-                                 for x in (v.get("log") or [])[:40]], self.W))
-            return
-        w = self.fetch("rb_admin_xp_watch", {})
-        if w is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        if not w:
-            return lay.addWidget(Label(tr("Run the 4.0 server update first."), 11, TEXT_DIM, wrap_w=self.W))
-        caps = w.get("caps") or {}
-        lay.addWidget(Label(tr("XP a day at most: {n}. By source: {s}", n=caps.get("day"),
-                               s=" · ".join(f"{k} {v}" for k, v in caps.items() if k != "day")), 10.5, TEXT_DIM, wrap_w=self.W))
-        lay.addWidget(heading(tr("Most XP in the last 24 hours")))
-        top_day = w.get("top_day") or []
-        if top_day:
-            lay.addWidget(Table([(x["name"], tr("level {n}", n=x["level"]), f"{x['xp']} XP · {x['events']}",
-                                  "#FFB020" if int(x["xp"]) >= int(caps.get("day") or 1000) else TEXT) for x in top_day],
-                                self.W, lambda i: (setattr(self.ctx, "admin_xp_name", top_day[i]["name"]), self.ctx.reload_page())))
-        else:
-            lay.addWidget(Label(tr("Nobody yet."), 11, TEXT_FAINT))
-        sus = w.get("capped_days") or []
-        lay.addWidget(heading(tr("Suspicious: at the daily cap 3 days or more (14 days)")))
-        if sus:
-            lay.addWidget(Table([(x["name"], tr("{n} days", n=x["days"]), "", "#FF7A7A") for x in sus], self.W,
-                                lambda i: (setattr(self.ctx, "admin_xp_name", sus[i]["name"]), self.ctx.reload_page())))
-        else:
-            lay.addWidget(Label(tr("Nobody: all good."), 11, "#5BE08A"))
-        lay.addWidget(heading(tr("Every level badge (one every 5 levels)")))
-        grid = QWidget()
-        from PyQt6.QtWidgets import QGridLayout
-        gl = QGridLayout(grid)
-        gl.setContentsMargins(0, 0, 0, 0)
-        gl.setSpacing(S(4))
-        for k, lv in enumerate(range(0, 101, 5)):
-            cell = QWidget()
-            cl = vbox(cell, 1)
-            badge = LevelBadge(lv, 52)
-            badge.setToolTip(tr("Level {n} · {b}", n=lv, b=tr(badge_name(lv))))
-            cl.addWidget(badge, 0, Qt.AlignmentFlag.AlignHCenter)
-            cl.addWidget(Label(f"{lv} · {tr(badge_name(lv))}", 9, TEXT_DIM), 0, Qt.AlignmentFlag.AlignHCenter)
-            gl.addWidget(cell, k // 4, k % 4)
-        lay.addWidget(grid)
-        curve = w.get("curve") or []
-        if curve:
-            lay.addWidget(heading(tr("The XP curve")))
-            lay.addWidget(Table([(tr("Level {n}", n=c["level"]), tr("{x} XP in total", x=coins_text(int(c["total"]))),
-                                  tr("next +{n}", n=c["next"]), TEXT) for c in curve], self.W))
-
-    def _xp_dialog(self, name: str, sign: int) -> None:
-        def go(v: dict, dlg) -> None:
-            n = _int(v.get("n"))
-            if not n or n <= 0 or n > 300000:
-                return dlg.say(tr("1 to 300 000"))
-            if not (v.get("r") or "").strip():
-                return dlg.say(tr("Write a reason"))
-            dlg.close()
-            self.do("rb_admin_xp", {"name": name, "delta": sign * n, "reason": v["r"].strip()}, tr("Saved"))
-        FormDialog(self.ctx, tr("Give XP to {name}", name=name) if sign > 0 else tr("Take XP from {name}", name=name),
-                   [("n", tr("XP"), ""), ("r", tr("Reason (kept in the log)"), "")], tr("OK"), go)
-
-    # -- 4.0: Rubenium's own coinflip offers (always shown as RUBENIUM OFFER, the coin is as fair as any other)
-    def _flips(self, lay) -> None:
-        lay.addWidget(Label(tr("Coinflip bots are shown with a BOT tag, and your offers with a RUBENIUM OFFER tag. "
-                               "The coin is the same fair 50/50 for every flip: an offer only sets what is at stake."),
-                            10.5, TEXT_DIM, wrap_w=self.W))
-        make = Button(tr("New Rubenium offer"), "primary", 34, icon="plus")
-        make.clicked.connect(self._flip_new)
-        lay.addWidget(make)
-        rows = self.fetch("rb_admin_flips", {})
-        if rows is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        if not isinstance(rows, list) or not rows:
-            return lay.addWidget(Label(tr("No bot coinflips right now."), 11, TEXT_FAINT))
-        live = [r for r in rows if r.get("state") in ("setup", "open", "joined", "locked")]
-        old = [r for r in rows if r not in live]
-        lay.addWidget(heading(tr("Open now") + f"  ·  {len(live)}"))
-        for r in live:
-            self._flip_row(lay, r)
-        if old:
-            lay.addWidget(heading(tr("Last 24 hours")))
-            lay.addWidget(Table([((r.get("a") or "?") + " · " + (r.get("b") or "-"),
-                                  tr(r.get("state") or ""), (tr("won by {name}", name=r["winner"]) if r.get("winner") else ""),
-                                  TEXT_DIM) for r in old[:30]], self.W))
 
     def _flip_row(self, lay, r: dict) -> None:
         bot = r.get("a") if r.get("a_bot") else r.get("b")
         val = int(r.get("a_value") or 0) if r.get("a_bot") else int(r.get("b_value") or 0)
-        tag = tr("RUBENIUM OFFER") if r.get("admin_offer") else tr("BOT")
+        tag = en("RUBENIUM OFFER") if r.get("admin_offer") else en("BOT")
         exp = r.get("expires")
         line = hbox(spacing=6)
         text = f"{tag} · {bot} · {coins_text(val)}"
         if r.get("b") and not r.get("b_bot") and r.get("a_bot"):
-            text += " · " + tr("vs {name}", name=r["b"])
+            text += " · " + en("vs {name}", name=r["b"])
         if exp is not None:
-            text += " · " + tr("{m} min left", m=max(0, int(exp) // 60))
+            text += " · " + en("{m} min left", m=max(0, int(exp) // 60))
         line.addWidget(Label(text, 11, GOLD_TEXT if r.get("admin_offer") else TEXT, bold=True), 1)
         if r.get("state") in ("setup", "open", "joined"):
-            stop = Button(tr("Cancel"), "ghost", 26)
+            stop = Button(en("Cancel"), "ghost", 26)
             stop.clicked.connect(lambda _c=False, fid=r["id"]: self.ctx.window.confirm(
-                tr("Cancel this coinflip? Any items in it go back to their owner."),
-                lambda: self.do("rb_admin_flip_cancel", {"fid": fid}, tr("Cancelled")), yes=tr("Cancel it")))
+                en("Cancel this coinflip? Any items in it go back to their owner."),
+                lambda: self.do("rb_admin_flip_cancel", {"fid": fid}, en("Cancelled")), yes=en("Cancel it")))
             line.addWidget(stop)
         lay.addLayout(line)
         items = (r.get("a_items") if r.get("a_bot") else r.get("b_items")) or []
@@ -30981,67 +31354,36 @@ class AdminPage(Page):
             lay.addWidget(ItemGrid(self.ctx, [{"item": i["item"], "text": coins_text(int(i.get("worth") or 0))}
                                               for i in items], self.W, 6, 60, moving=False))
 
-    def _flip_new(self) -> None:
-        def go(v: dict, dlg) -> None:
-            items = [x.strip() for x in (v.get("i") or "").replace(";", ",").split(",") if x.strip()]
-            val = _int(v.get("v"), 0)
-            side = (v.get("s") or "").strip().lower()
-            side = {"noir": "black", "blanc": "white"}.get(side, side)
-            if side and side not in ("black", "white"):
-                return dlg.say(tr("Side: black, white or empty"))
-            if not items and (val < 100 or val > 50000000):
-                return dlg.say(tr("Give items, or a value from 100 to 50 000 000"))
-            if len(items) > 6:
-                return dlg.say(tr("6 items at most"))
-            for it in items:
-                if it not in self.ctx.econ.catalog:
-                    return dlg.say(tr("Unknown item: {id}", id=it))
-            minutes = _int(v.get("m"), 60)
-            if not 5 <= minutes <= 1440:
-                return dlg.say(tr("5 to 1440 minutes"))
-            dlg.close()
-            self.do("rb_admin_flip_offer", {"bot": (v.get("b") or "").strip(), "items": items, "val": val,
-                                            "side": side or None, "minutes": minutes}, tr("Offer published"))
-        FormDialog(self.ctx, tr("New Rubenium offer"),
-                   [("b", tr("Name shown (empty: a random bot name)"), ""),
-                    ("i", tr("Items (ids, with commas, or empty)"), ""),
-                    ("v", tr("Value if no items (coins)"), "5000"),
-                    ("s", tr("Side: black, white or empty"), ""),
-                    ("m", tr("Minutes before it ends"), "60")], tr("Publish"), go,
-                   tr("Players see it with a RUBENIUM OFFER tag. Without items, the server picks items worth that much."))
-
     def _help(self, lay) -> None:
         rows = self.fetch("rb_admin_resets", {})
         if rows is None:
-            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        lay.addWidget(Label(tr("Forgotten passwords. Check the details, then give a new password or refuse. The user "
-                               "sees the new password on the PC that asked, and must change it after."), 10.5, TEXT_DIM, wrap_w=self.W))
+            return lay.addWidget(Label(en("Loading…"), 12, TEXT_DIM))
         if not rows:
-            return lay.addWidget(Label(tr("No requests."), 12, TEXT_DIM))
+            return lay.addWidget(Label(en("No requests."), 12, TEXT_DIM))
         for r in rows[:30]:
             text, col = self.VERDICTS.get(r.get("verdict"), ("?", TEXT_DIM))
-            lay.addWidget(heading(f"{r.get('name', '?')}  ·  {str(r.get('at', ''))[5:16].replace('T', ' ')}  ·  {tr(r.get('state', ''))}"))
-            lay.addWidget(Label(tr(text), 11.5, col, bold=True, wrap_w=self.W))
-            facts = [tr("Message: {m}", m=r.get("msg") or "-")]
+            lay.addWidget(heading(f"{r.get('name', '?')}  ·  {str(r.get('at', ''))[5:16].replace('T', ' ')}  ·  {en(r.get('state', ''))}"))
+            lay.addWidget(Label(en(text), 11.5, col, bold=True, wrap_w=self.W))
+            facts = [en("Message: {m}", m=r.get("msg") or "-")]
             if r.get("exists"):
-                facts.append(tr("Account: {h} h played, last seen {t}", h=f"{int(r.get('minutes') or 0) / 60:.1f}",
+                facts.append(en("Account: {h} h played, last seen {t}", h=f"{int(r.get('minutes') or 0) / 60:.1f}",
                                 t=str(r.get("seen") or "-")[:16].replace("T", " ")))
             if r.get("pc_owner"):
-                facts.append(tr("This PC belongs to: {name}", name=r["pc_owner"]))
-            facts.append(tr("Requests from this PC (7 days): {a} · for this name: {b}", a=r.get("pc_asks", 0), b=r.get("name_asks", 0)))
+                facts.append(en("This PC belongs to: {name}", name=r["pc_owner"]))
+            facts.append(en("Requests from this PC (7 days): {a} · for this name: {b}", a=r.get("pc_asks", 0), b=r.get("name_asks", 0)))
             for f in facts:
                 lay.addWidget(Label(f, 10.5, TEXT_DIM, wrap_w=self.W))
             if r.get("state") == "open":
                 line = hbox(spacing=6)
-                yes = Button(tr("Give new password"), "primary", 28)
-                no = Button(tr("Refuse"), "ghost", 28)
+                yes = Button(en("Give new password"), "primary", 28)
+                no = Button(en("Refuse"), "ghost", 28)
                 rid = r["id"]
                 import secrets
                 temp = "Rb-" + secrets.token_hex(4)
                 yes.clicked.connect(lambda _c=False, rid=rid, temp=temp: FormDialog(
-                    self.ctx, tr("New password"), [("p", tr("Temporary password (8 or more)"), temp)], tr("Give"),
-                    lambda v, dlg: (dlg.close(), self.do("rb_admin_reset_do", {"rid": rid, "new_password": v["p"]}, tr("Done")))))
-                no.clicked.connect(lambda _c=False, rid=rid: self.do("rb_admin_reset_do", {"rid": rid, "new_password": None}, tr("Refused")))
+                    self.ctx, en("New password"), [("p", en("Temporary password (8 or more)"), temp)], en("Give"),
+                    lambda v, dlg: (dlg.close(), self.do("rb_admin_reset_do", {"rid": rid, "new_password": v["p"]}, en("Done")))))
+                no.clicked.connect(lambda _c=False, rid=rid: self.do("rb_admin_reset_do", {"rid": rid, "new_password": None}, en("Refused")))
                 line.addWidget(yes, 1)
                 line.addWidget(no, 1)
                 lay.addLayout(line)
@@ -31104,12 +31446,12 @@ class LockdownBar(QAbstractButton):
         p.drawRoundedRect(r, S(11), S(11))
         p.setPen(QColor("#FFFFFF"))
         p.setFont(font(14, QFont.Weight.Black))
-        title = tr("LOCKDOWN ACTIVE") if self.on else tr("LOCKDOWN")
+        title = en("LOCKDOWN ACTIVE") if self.on else en("LOCKDOWN")
         p.drawText(r.adjusted(S(14), 0, -S(14), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft), title)
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.setPen(QColor("#FFD6D6"))
         p.drawText(r.adjusted(S(14), 0, -S(14), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                   tr("Click to lift it") if self.on else tr("Stop everything now"))
+                   en("Click to lift it") if self.on else en("Stop everything now"))
 
 
 class FeatureRow(QAbstractButton):
@@ -31152,7 +31494,7 @@ class FeatureRow(QAbstractButton):
         p.drawRoundedRect(btn, S(8), S(8))
         p.setFont(font(9.5, QFont.Weight.ExtraBold))
         p.setPen(QColor("#FFB3B3") if self.state != "locked" else QColor("#A8F5C8"))
-        p.drawText(btn, int(Qt.AlignmentFlag.AlignCenter), tr("UNLOCK") if self.state == "locked" else tr("LOCK"))
+        p.drawText(btn, int(Qt.AlignmentFlag.AlignCenter), en("UNLOCK") if self.state == "locked" else en("LOCK"))
         tx = dot.x() + S(14)
         tw = btn.left() - tx - S(8)
         p.setFont(font(11.5, QFont.Weight.Bold))
@@ -31163,7 +31505,7 @@ class FeatureRow(QAbstractButton):
         sw = fm.horizontalAdvance(name) + S(8)
         p.setFont(font(8.5, QFont.Weight.ExtraBold))
         p.setPen(QColor(col))
-        p.drawText(QRectF(tx + sw, r.top() + S(5), tw - sw, S(18)), int(Qt.AlignmentFlag.AlignVCenter), tr(word))
+        p.drawText(QRectF(tx + sw, r.top() + S(5), tw - sw, S(18)), int(Qt.AlignmentFlag.AlignVCenter), en(word))
         p.setFont(font(9.5))
         p.setPen(QColor(TEXT_DIM))
         p.drawText(QRectF(tx, r.top() + S(23), tw, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
@@ -31838,6 +32180,11 @@ def go(ctx, action) -> None:
         ctx.casino = True
     elif key == "giveaway":
         target = "giveaway"
+    elif key == "daily":                                   # 4.4: the daily reward, in the Games half
+        target = "games"
+        pass
+        QTimer.singleShot(1500 if not getattr(ctx, "online_mode", False) else 200,
+                          lambda: check_login_reward(ctx, force=True))
     sfx.play("pick")
     if getattr(ctx, "online_mode", False):
         ctx.window.goto(target)
@@ -37722,7 +38069,7 @@ from PyQt6.QtWidgets import QWidget
 
 ONLINE_KEYS = ("games", "themes", "friends", "settings")
 TITLES = {"games": ("dice", "Games"), "themes": ("gem", "Shop"), "friends": ("users", "Social"),
-          "giveaway": ("gift", "Giveaway"), "settings": ("cog", "Settings")}
+          "giveaway": ("gift", "Giveaway"), "settings": ("cog", "Settings"), "admin": ("shield", "Admin")}
 ORDER = ("games", "themes", "friends", "giveaway", "settings")
 SECTIONS = ("games", "themes", "friends", "settings")           # 4.0: the four parts; two are shown side by side
 LEFT = ("games", "themes", "giveaway")          # 4.1: games and shop on the left half only
@@ -37730,7 +38077,7 @@ RIGHT = ("friends", "settings")                 # social (with the leaderboards)
 
 
 def side_of(key: str) -> int:
-    return 1 if key in RIGHT else 0
+    return 1 if key in RIGHT or key == "admin" else 0          # 4.4: the admin panel opens in the right half
 HEAD_H = 64                      # wordmark, XP bar, leaderboards, back arrow
 COL_TITLE_H = 46                 # 4.0: the section switch over each half
 COL_GAP = 16
@@ -38011,8 +38358,9 @@ class PaneSwitch(QWidget):
         pass
         live = ["giveaway"] if "giveaway" in LIVE_TABS else []
         if len(self.win.tab_keys()) < 2:
-            return list(SECTIONS) + live
-        return [k for k in LEFT if k != "giveaway"] + live if self.index == 0 else list(RIGHT)
+            return list(SECTIONS) + live + (["admin"] if "admin" in LIVE_TABS else [])
+        admin = ["admin"] if "admin" in LIVE_TABS else []           # 4.4: admins get their panel here, full size
+        return [k for k in LEFT if k != "giveaway"] + live if self.index == 0 else list(RIGHT) + admin
 
     def _layout(self) -> None:
         keys = self.keys()
@@ -38271,10 +38619,10 @@ def _make_class():
         def panes(self) -> list:
             """4.0: the two parts shown side by side (picked by the player, kept in the settings)."""
             pass
-            ok = list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else [])
+            ok = list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else []) + (["admin"] if "admin" in LIVE_TABS else [])
             want = [k for k in (self.ctx.cfg["online_panes"] or []) if k in ok]
             left = next((k for k in want if k in LEFT), "games")          # 4.1: each part on its own side
-            right = next((k for k in want if k in RIGHT), "friends")
+            right = next((k for k in want if side_of(k) == 1), "friends")
             return [left, right]
 
         def tab_keys(self) -> list:
@@ -38446,7 +38794,7 @@ def _make_class():
                     sw.update()
 
         def goto(self, key: str) -> None:
-            if key in ("games", "themes", "friends", "giveaway", "settings"):
+            if key in ("games", "themes", "friends", "giveaway", "settings", "admin"):
                 if key not in self.tab_keys():                # brought into its own half
                     self.set_pane(side_of(key), key)
                 if not self.expanded:
@@ -40301,8 +40649,6 @@ def _solo(page, lay) -> None:
         old_press(on)
     view._press = press
     lay.addWidget(view)
-    lay.addWidget(Label(tr("Hold to rise, let go to fall. Touch nothing: walls and spikes end the run. "
-                           "It gets narrower and twistier the further you go."), 10.5, TEXT, wrap_w=page.W))
     lay.addWidget(Label(tr("Coins from 30 m: 100 m: {a} · 300 m: {b} · 600 m: {c}. Like the other mini games, what you "
                            "can earn is limited every 2 hours.", a=wave_pay(10000), b=wave_pay(30000), c=wave_pay(60000)),
                         10, TEXT_DIM, wrap_w=page.W))
@@ -40642,8 +40988,6 @@ def _duel_run(page, lay, did: str, leave_screen) -> None:
             ctx.window.confirm(tr("Leave? The other player wins the duel."), go, yes=tr("Leave"))
         quit_.clicked.connect(leave)
         lay.addWidget(quit_)
-    lay.addWidget(Label(tr("Same course for both of you. Hold to rise, let go to fall: the longer run wins."),
-                        10, TEXT_DIM, wrap_w=page.W))
 
 
 # ==================================================================================================
@@ -42465,7 +42809,7 @@ class MainWindow(QWidget):
             self.slide.jump(1.0)
 
     def goto(self, key: str) -> None:
-        if key == "online" or key in ("games", "themes", "friends", "giveaway"):
+        if key == "online" or key in ("games", "themes", "friends", "giveaway", "admin"):   # 4.4: admin opens full size online
             return self.ctx.enter_online(None if key == "online" else key)      # 3.2: they live in the online menu
         if key not in self.tab_keys():
             return
@@ -43369,6 +43713,21 @@ class App(QObject):
         self.updater.failed.connect(self._update_failed)
         self._update_prompted = ""
         extras.Updater.cleanup()
+        pass
+        self._daily_timer = QTimer(self)                 # 4.4: unclaimed daily reward: a reminder every 30 minutes
+        self._daily_timer.setInterval(30 * 60 * 1000)
+        self._daily_timer.timeout.connect(lambda: daily_nag(self))
+        self._daily_timer.start()
+
+        def dots() -> None:                              # and a slow red dot on the online button
+            pass
+            want = daily_unclaimed(self)
+            if want != ("online" in NOTIFY_DOTS):
+                NOTIFY_DOTS.discard("online") if not want else NOTIFY_DOTS.add("online")
+        self._dot_timer = QTimer(self)
+        self._dot_timer.setInterval(2000)
+        self._dot_timer.timeout.connect(dots)
+        self._dot_timer.start()
         self.session = extras.Session()
         self.sensors.sample.connect(self.session.feed)
         self.timer = extras.TimerEngine(self.cfg)
@@ -44365,9 +44724,12 @@ class App(QObject):
             self.tour_pending = False
             self._tour = Tutorial(self, lambda: QTimer.singleShot(300, self.on_opened))
             return
-        if getattr(self, "login_pending", False) and self.online.logged_in():
-            self.login_pending = False
-            check_login_reward(self)
+        if getattr(self, "login_pending", False) and self.online.logged_in() and self.online_mode:
+            today = time.strftime("%Y-%m-%d")             # 4.4: the daily reward opens in online mode, once a day
+            if self.cfg["daily_shown"] != today:
+                self.cfg["daily_shown"] = today
+                self.login_pending = False
+                check_login_reward(self)
 
     def start_tutorial(self) -> None:
         pass
@@ -44396,23 +44758,23 @@ class App(QObject):
         self.tapkey.set_key(self.cfg["hotkey"])
 
     def _update_found(self, info: dict) -> None:
+        """4.4: a new version installs by itself, straight away: no question (an old version can't play online)."""
         self.set_outdated(True)
         if self.window.current == "settings" and self.window.expanded:
             self.window.reload_page()
         self.offer_update()
-        if self.tray is not None and not self.window.expanded:
-            self.tray.showMessage("Rubenium", tr("Update {v} available", v=info["label"]),
-                                  QSystemTrayIcon.MessageIcon.Information, 5000)
 
     def offer_update(self) -> None:
         info = self.updater.latest
-        if not info or self._update_prompted == info["version"] or not self.window.expanded:
-            return
-        if self.window.confirm_w.isVisible() or self.window.busy_w.isVisible():
+        if not info or self._update_prompted == info["version"] or self.updater.busy:
             return
         self._update_prompted = info["version"]
-        self.window.confirm(tr("Update {v} available", v=info["label"]), self.install_update,
-                            yes=tr("Update"), no=tr("Later"))
+        if self.tray is not None and not self.window.expanded:
+            self.tray.showMessage("Rubenium", tr("Updating to {v}…", v=info["label"]),
+                                  QSystemTrayIcon.MessageIcon.Information, 4000)
+        else:
+            self.toast(tr("Updating to {v}…", v=info["label"]))
+        self.install_update()
 
     def install_update(self) -> None:
         if self.updater.install():
@@ -44433,6 +44795,8 @@ class App(QObject):
             self.window.end_busy(lambda: self.toast(tr("Update installed. Restart Rubenium."), "ok"))
 
     def _update_failed(self, key: str) -> None:
+        self._update_prompted = ""                   # 4.4: the next check tries again by itself
+
         def after() -> None:
             if key == "blocked":
                 self.toast(tr("Windows blocked the update. Download it from GitHub."), "error")
@@ -44479,6 +44843,9 @@ class App(QObject):
         self._online_back_open = main.expanded
         if focus in ("games", "themes", "friends", "giveaway"):
             self.cfg["online_tab"] = focus if focus != "giveaway" else self.cfg["online_tab"]
+        if focus == "admin":                       # 4.4: the admin panel opens in the right half, full size
+            left = next((k for k in (self.cfg["online_panes"] or []) if k in ("games", "themes")), "games")
+            self.cfg["online_panes"] = [left, "admin"]
         pass
 
         state = {"dropped": False}
@@ -44507,6 +44874,8 @@ class App(QObject):
                 log.exception("online menu failed to open")
                 return back_home()
             self.econ.poll_live()
+            self.login_pending = True                  # 4.4: the first visit of the day shows the daily reward
+            QTimer.singleShot(1200, self.on_opened)
 
         def fly() -> None:
             try:
