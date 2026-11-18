@@ -1,7 +1,16 @@
-Rubenium 4.4
+Rubenium 4.5
 
-- Updates now install by themselves as soon as they are out
-- The daily reward opens in online mode, the first time each day; while it waits, a slow red dot on the online button and the Daily reward tile, and a reminder every 30 minutes
-- Admin panel rebuilt: opens full size in the online menu, everything is clicked instead of typed (players, items, cases, amounts), every action says whether the server really did it, English only
-- Admin: Give to several players at once, Rig (next free spin, scratch card, case drop, Slots, Dice, coinflip against a bot), giveaways, sales and coinflip offers set up by clicking
-- Shorter texts in Wave Rush and Mini Golf
+- Wave Rush duels: see the other player as a see-through wave, a replay of how the loser crashed (black bars, REPLAY), and watch any duel live from the lobby
+- Wave Rush: more obstacles, harder a little sooner (smooth climb, hardest at 1 100 m), and a difficulty bar with the distances where each level starts
+- Keyboard: Beat Tap (D F J K, Space), Wave Rush (Space, Up, W) and the casino (Space, 2, 3, arrows for the bet) work even while a game has the keyboard
+- Every game shows its controls with key caps and mouse icons; HELP with an arrow to the golden ? shows the steps, the controls and a small moving preview; explaining texts moved there
+- Cases: more coloured badges instead of grey, a little more Shiny, Titanium and Gold, a little more Epic and Legendary in the small cases. Still very rare
+- New looks: 6 themes (Glacier, Jade, Mirage, Nebula, Obsidian, Prism), 5 banners, 4 frames, the Eclipse ball and the Comet line. Inferno redone
+- XP: no daily limit any more; each way of earning has a small limit per hour instead. Casino XP needs a bet of 50 or more, trading XP once per pair every 6 hours
+- Casino bets on a slider, from 10 up to 1 000, or 5% of your coins (5 000 at most). Admin amounts on sliders too
+- Trading is now between friends only
+- Profile picture: click it to change, move/zoom or remove it; choosing a file no longer leaves the online menu blank
+- Settings: Style tab (customise without leaving online mode), hold the show / hide key 3 seconds to restart Rubenium, F8 replaced by Right Alt, clearer Game mode text
+- Deals: click a deal to see the item before buying
+- Admin: only in the online menu, its tab glows, plain icons in the item pickers (no lag), outlined Coins/Keys/XP/Cases/Items tabs, shorter texts
+- Fixes: clicks going through the online menu to the game, blank or half-off-screen menus, Minesweeper flags left after a loss
