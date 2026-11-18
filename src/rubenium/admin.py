@@ -14,7 +14,7 @@ from .cosmetics import item_name, paint_cosmetic
 from .pages import Page
 from .shop import GOLD_TEXT, clock_text
 from .wallet import coins_text, paint_coin
-from .widgets import present, close_embedded, Button, IconButton, Label, Segmented, hbox, heading, vbox
+from .widgets import present, close_embedded, Button, IconButton, Label, Segmented, Toggle, hbox, heading, vbox
 
 
 
@@ -767,6 +767,27 @@ class AdminPage(Page):
              "Golden Wheel", "XP coupon"]
     SCRATCH = [("standard", "80-160 coins"), ("rare", "220-420 coins"), ("special", "Key + XP coupon"),
                ("epic", "2 keys + coupon"), ("exotic", "2 500 coins + coupon"), ("golden", "Golden Wheel")]
+    def _cheats(self, lay) -> None:
+        cfg = self.ctx.cfg
+        lay.addWidget(heading("Cheats (only you)"))
+        row = hbox(spacing=8)
+        row.addWidget(Label("Right click instead of left click to win that move", 11.5, TEXT, bold=True), 1)
+        t = Toggle(bool(cfg.get("cheats")))
+        t.toggled_by_user.connect(lambda v: (cfg.__setitem__("cheats", bool(v)), self.ctx.reload_page("admin")))
+        row.addWidget(t)
+        lay.addLayout(row)
+        if cfg.get("cheats"):
+            lay.addWidget(Table([("Bombs", "right click a tile", "never a bomb", "#3DDC84"),
+                                 ("Tower", "right click a tile", "never the bomb", "#3DDC84"),
+                                 ("Hi-Lo", "right click Higher / Lower", "always right", "#3DDC84"),
+                                 ("Blackjack", "right click Hit", "the best card that doesn't bust", "#3DDC84"),
+                                 ("Dice", "right click Roll", "a win", "#3DDC84"),
+                                 ("Slots", "right click Spin", "3 of a kind (gems, sevens or bells)", "#3DDC84"),
+                                 ("Coinflip", "right click Play against a bot", "you win", "#3DDC84"),
+                                 ("Free spin", "right click Spin", "the gold slot", "#3DDC84"),
+                                 ("Scratch card", "start with a right click", "Exotic or Golden", "#3DDC84")],
+                                self.W))
+
     SLOTS = [(("gem",) * 3, "3 gems ×70"), (("seven",) * 3, "3 sevens ×30"), (("bell",) * 3, "3 bells ×15"),
              (("lemon",) * 3, "3 lemons ×8"), (("cherry",) * 3, "3 cherries ×5"), (("gem", "gem", "lemon"), "2 gems ×4"),
              (("seven", "cherry", "seven"), "2 sevens ×2"), (("lemon", "bell", "bell"), "2 bells ×2"),
@@ -774,6 +795,8 @@ class AdminPage(Page):
 
     def _rig(self, lay) -> None:
         st = self.state("rig")
+        if self.ctx.online.username().lower() == "ruben":      # 4.6: Ruben's cheats, on his account only
+            self._cheats(lay)
         lay.addWidget(heading("Player"))
         self.player_chips(lay, st, multi=False)
         lay.addWidget(heading("Game"))
@@ -815,14 +838,33 @@ class AdminPage(Page):
                                [("coins", v) for v in coin_opts], pick if isinstance(pick, tuple) else None, per_row=4)
                     cc.toggled.connect(set_pick)
                     lay.addWidget(cc)
-                drops = case_drops(self.ctx.econ, case)
+                drops = case_drops(self.ctx.econ, case, exact=True)
                 drops.sort(key=lambda x: x[1])
-                lay.addWidget(Label("Items", 10.5, TEXT_DIM, bold=True))
-                ig = ItemGrid(self.ctx, [{"item": it, "text": f"{ch_ * 100:.3g}%", "mark": pick == ("item", it)}
-                                         for it, ch_ in drops[:120]], self.W, 8, 60,
-                              next((i for i, (it, _c) in enumerate(drops[:120]) if pick == ("item", it)), -1), moving=False)
-                ig.picked.connect(lambda i: set_pick(("item", drops[i][0])))
-                lay.addWidget(ig)
+                # 4.6: every design the case can drop, then every exact version of it (colour, finish)
+                chance = dict(drops)
+                cat = self.ctx.econ.catalog
+                groups: dict = {}
+                for it, _c in drops:
+                    info = cat.get(it) or {}
+                    groups.setdefault((info.get("kind"), info.get("base")), []).append(it)
+                order = sorted(groups, key=lambda g: min(chance[i] for i in groups[g]))
+                firsts = [min(groups[g], key=lambda i: int((cat.get(i) or {}).get("value") or 0)) for g in order]
+                sel = st.get("rig_base")
+                sel = tuple(sel) if isinstance(sel, (list, tuple)) and tuple(sel) in groups else None
+                lay.addWidget(Label(f"Design ({len(order)})", 10.5, TEXT_DIM, bold=True))
+                bg = ItemGrid(self.ctx, [{"item": it, "mark": sel == g} for it, g in zip(firsts, order)], self.W, 8, 56,
+                              order.index(sel) if sel in order else -1, moving=False)
+                bg.picked.connect(lambda i: (st.__setitem__("rig_base", order[i]), st.__setitem__("pick", None),
+                                             self.ctx.reload_page("admin")))
+                lay.addWidget(bg)
+                if sel is not None:
+                    vs = sorted(groups[sel], key=lambda i: chance[i])
+                    lay.addWidget(Label(f"Exact version ({len(vs)})", 10.5, TEXT_DIM, bold=True))
+                    ig = ItemGrid(self.ctx, [{"item": it, "text": f"{chance[it] * 100:.3g}%", "mark": pick == ("item", it)}
+                                             for it in vs], self.W, 8, 60,
+                                  next((i for i, it in enumerate(vs) if pick == ("item", it)), -1), moving=False)
+                    ig.picked.connect(lambda i: set_pick(("item", vs[i])))
+                    lay.addWidget(ig)
                 if isinstance(pick, tuple):
                     if pick[0] == "coins":
                         data, what = {"coins": pick[1]}, f"{coins_text(pick[1])} coins from a {CASE_NAMES.get(key, key)}"
@@ -1024,7 +1066,7 @@ class AdminPage(Page):
             val = 0
             lay.addWidget(Label(f"{len(items)} of 6 picked: " + ", ".join(en_name(i) for i in items) if items else
                                 "", 10.5, GOLD_TEXT if items else TEXT_DIM, wrap_w=self.W))
-        bot = self._choice(lay, st, "bot", "Shown as", ["", "Pixel", "Milo", "Nova", "Juno", "Vega", "Atlas"], "",
+        bot = self._choice(lay, st, "bot", "Shown as", ["", "Pixel", "Milo", "Biscuit", "Tango", "Pebble", "Nova", "Juno", "Orbit", "Kiwi", "Rocket", "Vega", "Atlas", "Titan", "Onyx", "Blaze"], "",
                            lambda b: b or "Random bot", 4)
         side = self._choice(lay, st, "side", "Side", ["", "black", "white"], "", lambda s: s.capitalize() or "Random", 3)
         minutes = self._choice(lay, st, "minutes", "Open for", [15, 30, 60, 120, 240, 1440], 60,

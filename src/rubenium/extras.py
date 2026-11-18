@@ -1227,6 +1227,16 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("4.6", ['Game mode button on the home tab: pick a key, it blocks every click on Rubenium while you play (padlock on the ball). Hold it 5 s to restart',
+             "Trade up: a full row of colours becomes a random Shiny or Titanium you don't have, with a spin",
+             'Sell on the market from your inventory, in a new market stall scene. The pawn shop is easier to deal with and its ban timer is bigger',
+             'Coinflip: chances shown as a bar, your chance while you pick, click any item to see it. Same for trades',
+             'No more pop-ups telling the result before a coin, a case or a duel replay ends',
+             '8 new golf holes, 30 seconds a shot, and Wave Rush gates. Bets are bigger and easier to join in duel lobbies',
+             'Titanium and Gold a little less rare. Online menu in Medium or Large, fixes coming back from online mode, YouTube ads muted better']),
+    ("4.5.1", ['Trades work again: Open and No on a trade request did nothing; requests now show up right away',
+               'Every item can be added to a trade (not only the first 60); coins and keys on sliders',
+               'A trade request notification opens the trade; you hear when yours is accepted; requests are in Profile > Trades too']),
     ("4.5", ['Wave Rush: see the other player in a duel, a replay of how they crashed, watch duels live, more obstacles, a difficulty bar',
              'Beat Tap, Wave Rush and the casino work with the keyboard, and every game shows its keys and mouse buttons',
              'HELP on every game: the steps, the controls and a little moving preview',

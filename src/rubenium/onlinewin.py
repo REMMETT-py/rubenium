@@ -25,7 +25,7 @@ from .core import BD, CARD_W, GLOW, ONLINE_EXTRA, PAD, S, TEXT, TEXT_DIM, TEXT_F
 from .widgets import IconButton, ScrollArea, Tween, align_slider_rows, draw_icon, snapshot
 
 ONLINE_KEYS = ("games", "themes", "friends", "settings")
-TITLES = {"games": ("dice", "Games"), "themes": ("gem", "Shop"), "friends": ("users", "Social"),
+TITLES = {"games": ("dice", "Games"), "themes": ("gem", "Online"), "friends": ("users", "Social"),
           "giveaway": ("gift", "Giveaway"), "settings": ("cog", "Settings"), "admin": ("shield", "Admin")}
 ORDER = ("games", "themes", "friends", "giveaway", "settings")
 SECTIONS = ("games", "themes", "friends", "settings")           # 4.0: the four parts; two are shown side by side
@@ -461,6 +461,8 @@ class OnlineBody(QWidget):
         return QRectF(left + i * (cw + gap), S(HEAD_H), cw, self.height() - S(HEAD_H) - S(BOTTOM))
 
     def resizeEvent(self, _e) -> None:
+        from PyQt6.QtGui import QFontMetrics             # 4.6: the Leave pill always fits its words
+        self.to_ball.setFixedWidth(QFontMetrics(font(11.5, QFont.Weight.Bold)).horizontalAdvance(self.to_ball.text) + S(46))
         x = self.width() - S(PAD)
         for b in (self.to_ball, self.stow):
             x -= b.width()
@@ -1028,7 +1030,7 @@ def _make_class():
 
         def _mouse_guard(self) -> None:
             """4.5: while the banner is open, every click on it is for Rubenium, never for the game behind."""
-            if self.phase in ("shown", "dropping"):
+            if self.phase in ("shown", "dropping") and not getattr(self.ctx, "game_lock", False):
                 if self._through:
                     for w in (self, self.drawer):
                         hwnd = int(w.internalWinId() or 0)

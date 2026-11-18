@@ -2550,11 +2550,13 @@ class GamesPage(Page):
         if not quiet or getattr(ctx, "duel_friends", None) is None:
             ctx.online.ask("rb_friends_list", {}, friends)
 
-    def duel_answer(self, did: str, yes: bool) -> None:
+    def duel_answer(self, did: str, yes: bool, play: dict = None) -> None:
         def done(ok: bool, data) -> None:
             if not ok:
                 return self.ctx.toast(tr(str(data)), "warn")
             sfx.play("on" if yes else "off")
+            if yes and play:                            # 4.6: accept and play in one click
+                return self.duel_play(play)
             self.load_duels()
         self.ctx.econ.call("rb_duel_answer", {"duel": did, "yes": yes}, done)
 

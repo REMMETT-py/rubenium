@@ -1838,3 +1838,124 @@ def build_deals(page, lay) -> None:
     for k, d in enumerate(ans.get("deals") or []):
         grid.addWidget(DealCard(page, d, w), k // 2, k % 2)
     lay.addWidget(holder)
+
+
+class GameModeWindow(FloatWindow):
+    """4.6: the controller button: game mode and how Rubenium opens, in one small window."""
+
+    def __init__(self, ctx) -> None:
+        super().__init__(ctx, 360)
+        from PyQt6.QtWidgets import QGridLayout
+        from .music2 import GM_KEY_CHOICES, KEY_CHOICES
+        from .widgets import SliderRow
+        cfg = ctx.cfg
+        self.lay = lay = vbox(self, 8, (16, 14, 16, 16))
+        top = hbox(spacing=6)
+        top.addWidget(Label(tr("Game mode"), 15, bold=True), 1)
+        close = IconButton("close", 26, tip=tr("Close"))
+        close.clicked.connect(self.close)
+        top.addWidget(close)
+        lay.addLayout(top)
+        on = bool(getattr(ctx, "game_lock", False))
+        state = Button(tr("Game mode is ON: turn it off") if on else tr("Turn game mode on now"),
+                       "primary" if not on else "ghost", 36, icon="lock")
+        state.setEnabled(cfg["gm_key"] != "off" or on)
+        state.clicked.connect(lambda: (ctx.toggle_game_lock(), self.close()))
+        lay.addWidget(state)
+        lay.addWidget(Label(tr("While it is on, Rubenium ignores the mouse completely: nothing in it can be clicked or "
+                               "even hovered, so nothing gets in the way of your game. A padlock on the ball shows it."),
+                            10.5, TEXT_DIM, wrap_w=S(328)))
+        lay.addWidget(Label(tr("GAME MODE KEY"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+        grid = QGridLayout()
+        grid.setSpacing(S(5))
+        keys = [("off", "No key", 0)] + [k for k in GM_KEY_CHOICES if k[0] != cfg["hotkey"]]
+        for i, (k, name, _vk) in enumerate(keys):
+            b = Button(tr(name), "primary" if cfg["gm_key"] == k else "ghost", 28)
+            b.clicked.connect(lambda _c=False, k=k: self._key(k))
+            grid.addWidget(b, i // 3, i % 3)
+        lay.addLayout(grid)
+        lay.addWidget(Label(tr("Press it to turn game mode on or off. It can't be the show / hide key."), 10.5, TEXT_DIM,
+                            wrap_w=S(328)))
+        lay.addWidget(Label(tr("Hold it for 5 seconds: game mode turns off and Rubenium restarts, in case anything is stuck."),
+                            10, "#FFD54A", wrap_w=S(328)))
+        lay.addWidget(Label(tr("OPENING"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+        row = hbox(spacing=6)
+        row.addWidget(Label(tr("Hold to open"), 11.5, TEXT), 1)
+        t = Toggle(cfg["hold_open"])
+        t.toggled_by_user.connect(lambda v: (cfg.__setitem__("hold_open", bool(v)), self._again()))
+        row.addWidget(t)
+        lay.addLayout(row)
+        if cfg["hold_open"]:
+            hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
+                             marks=list(range(200, 1001, 100)))
+            hold.changed.connect(lambda v: cfg.__setitem__("hold_ms", int(v)))
+            lay.addWidget(hold)
+        lay.addWidget(Label(tr("Show / hide key (a tap opens or closes Rubenium)"), 11.5, TEXT))
+        hk_keys = [k for k, _n, _v in KEY_CHOICES]
+        hk = Segmented([tr("No key") if k == "off" else n.replace("Right ", "R ") for k, n, _v in KEY_CHOICES],
+                       hk_keys.index(cfg["hotkey"]) if cfg["hotkey"] in hk_keys else 0)
+
+        def set_hk(i: int) -> None:
+            cfg["hotkey"] = hk_keys[i]
+            ctx.tapkey.set_key(hk_keys[i])
+            if cfg["gm_key"] == hk_keys[i]:                # never the same key for both
+                self._key("off")
+                return
+            self._again()
+        hk.changed.connect(set_hk)
+        lay.addWidget(hk)
+        self.centre()
+
+    def _key(self, k: str) -> None:
+        sfx.play("pick")
+        self.ctx.cfg["gm_key"] = k
+        self.ctx.gmkey.set_key(k)
+        if k == "off" and getattr(self.ctx, "game_lock", False):
+            self.ctx.toggle_game_lock(False)
+        self._again()
+
+    def _again(self) -> None:
+        ctx = self.ctx
+        QTimer.singleShot(0, lambda: (self.close(), setattr(ctx, "_gm_win", GameModeWindow(ctx))))
+
+
+def open_game_mode(ctx) -> None:
+    ctx._gm_win = GameModeWindow(ctx)
+
+
+def install_cheat_clicks(ctx) -> None:
+    """4.6: Ruben's cheats. When they are on (admin > Rig, Ruben's account only), a right click in a casino game, on
+    the coinflip's play-a-bot button or on the free spin / scratch card arms a cheat for that one move and acts as a
+    normal click. Everywhere else a right click stays a right click."""
+    from PyQt6.QtCore import QEvent, QObject
+    from PyQt6.QtGui import QMouseEvent
+    from PyQt6.QtWidgets import QApplication
+
+    class _F(QObject):
+        def eventFilter(self, obj, e) -> bool:
+            t = e.type()
+            if t not in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease, QEvent.Type.MouseButtonDblClick):
+                return False
+            if e.button() != Qt.MouseButton.RightButton or not isinstance(obj, QWidget):
+                return False
+            if not (ctx.cfg.get("cheats") and ctx.econ.admin and ctx.online.username().lower() == "ruben"):
+                return False
+            from .games import Game
+            w, zone = obj, False
+            while w is not None:
+                if isinstance(w, Game) or w.property("cheat"):
+                    zone = True
+                    break
+                w = w.parentWidget()
+            if not zone:
+                return False
+            if t == QEvent.Type.MouseButtonPress:
+                ctx.econ.cheat_armed = time.monotonic()
+            left = QMouseEvent(t if t != QEvent.Type.MouseButtonDblClick else QEvent.Type.MouseButtonPress,
+                               e.position(), e.globalPosition(), Qt.MouseButton.LeftButton,
+                               Qt.MouseButton.LeftButton if t != QEvent.Type.MouseButtonRelease else Qt.MouseButton.NoButton,
+                               e.modifiers())
+            QApplication.sendEvent(obj, left)
+            return True
+    ctx._cheat_filter = _F()
+    QApplication.instance().installEventFilter(ctx._cheat_filter)

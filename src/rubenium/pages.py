@@ -204,6 +204,13 @@ class HomePage(Page):
         self.art.clicked.connect(ctx.open_player)
         top.addWidget(self.title, 1)
         top.addWidget(self.chip)
+        self.b_look = IconButton("gem", 22, tip=tr("Badge size and place"))       # 4.6: up here, away from the volume
+        self.b_look.clicked.connect(lambda: badge_menu(ctx, self._look_changed))
+        top.addWidget(self.b_look)
+        self.b_pad = IconButton("pad", 22, tip=tr("Game mode"))                     # 4.6: the controller
+        from .hub import open_game_mode
+        self.b_pad.clicked.connect(lambda: open_game_mode(ctx))
+        top.addWidget(self.b_pad)
         self.artist = Label("", 12, TEXT_DIM)
         self.artist.setFixedHeight(S(18))
         controls = hbox(spacing=4)
@@ -229,9 +236,6 @@ class HomePage(Page):
         info.addWidget(self.flair)
         info.addLayout(top)
         info.addWidget(self.artist)
-        self.b_look = IconButton("gem", 24, tip=tr("Badge size and place"))
-        self.b_look.clicked.connect(lambda: badge_menu(ctx, self._look_changed))
-        controls.addWidget(self.b_look)
         info.addStretch(1)
         self.ctrl_box = QWidget()                     # 4.1: Compact Music Mode folds this row away smoothly
         self.ctrl_box.setLayout(controls)
@@ -338,7 +342,7 @@ class HomePage(Page):
         on = getattr(self, "_compact", False)
         if not on:                                  # 4.3: unfolding: the buttons are back at once and fade in
             st = self.ctx.state
-            for b in (self.b_prev, self.b_play, self.b_next, self.b_look):
+            for b in (self.b_prev, self.b_play, self.b_next):
                 b.show()
             self.b_shuffle.setVisible(st.shuffle is not None)
             self.b_repeat.setVisible(st.repeat is not None)
@@ -364,7 +368,7 @@ class HomePage(Page):
     def _ctrl_fade(self, o: float) -> None:
         """4.3: the play, skip and other buttons fade with the fold (painted fade: a graphics effect would not draw
         on the see-through menu)."""
-        for b in (self.b_shuffle, self.b_prev, self.b_play, self.b_next, self.b_repeat, self.b_vol, self.b_look):
+        for b in (self.b_shuffle, self.b_prev, self.b_play, self.b_next, self.b_repeat, self.b_vol):
             if abs(b.fade - o) > 0.004:
                 b.fade = o
                 b.update()
@@ -1919,10 +1923,7 @@ class SettingsPage(StylePart, Page):
                 if home is not None:
                     home[1].set_compact(ctx.window.chrome.level)
             toggle(tr("Compact Music Mode"), "compact_music", after=compact_set)
-            lay.addWidget(heading(tr("Games")))
-            toggle(tr("Game mode"), "game_mouse")
-            note(tr("While a fullscreen game is in front and Rubenium is closed, the ball ignores the mouse: clicks and "
-                    "aiming near it go straight to the game. Open Rubenium with the show / hide key."))
+            lay.addWidget(heading(tr("Games")))               # 4.6: game mode moved to the controller button
             speeds = ["slow", "normal", "fast"]                  # 4.0: how fast cases open
             sp = Segmented([tr("Slow") + " 0.75×", tr("Normal") + " 1×", tr("Fast") + " 2.5×"],
                            speeds.index(cfg["chest_speed"]) if cfg["chest_speed"] in speeds else 1)
@@ -1934,6 +1935,14 @@ class SettingsPage(StylePart, Page):
             seg.setFixedWidth(S(170))
             seg.changed.connect(lambda i: ctx.set_language("fr" if i else "en"))
             lay.addWidget(row(tr("Language"), seg))
+            osz = Segmented([tr("Medium"), tr("Large")], 1 if cfg["online_size"] == "large" else 0)
+
+            def set_osz(i: int) -> None:
+                cfg["online_size"] = "large" if i else "medium"
+                if getattr(ctx, "online_mode", False):
+                    ctx.toast(tr("The online menu takes this size next time you open it"))
+            osz.changed.connect(set_osz)
+            lay.addWidget(row(tr("Online menu size"), osz))
             size = SliderRow(tr("Size"), 70, 150, cfg["scale"], 10, 100, lambda v: f"{int(v)}%",
                              marks=list(range(70, 151, 10)))
             size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go

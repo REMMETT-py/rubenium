@@ -19,8 +19,8 @@ from . import win
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "4.5"         # the version people see
-BUILD = "2026.11.18.23"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "4.6"         # the version people see
+BUILD = "2026.11.18.25"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -353,6 +353,9 @@ DEFAULTS: dict = {
     "game": 0,
     "scale_before_games": 0,
     "hold_open": True,
+    "gm_key": "off",
+    "online_size": "medium",
+    "cheats": False,                 # 4.6: Ruben's cheats (admin > Rig, Ruben's account only)         # 4.6: the online menu's size: medium or large (fits the screen either way)                 # 4.6: the key that turns game mode on and off (off = no key)
     "hold_ms": 400,
     "offline_mode": False,
     "timing_help": False,
@@ -439,6 +442,9 @@ class Config(QObject):
 
     def __getitem__(self, k):
         return self.d[k]
+
+    def get(self, k, default=None):
+        return self.d.get(k, default)
 
     def __setitem__(self, k, v):
         self.d[k] = v

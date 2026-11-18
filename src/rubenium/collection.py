@@ -6,7 +6,7 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
 from .badges import item_animated, paint_item, paint_secret
@@ -159,6 +159,12 @@ def item_chances(ec, item: str) -> list:
                     v += var[3]                     # no Titanium for Common and Rare: those turn Shiny
                 if cls == 3 and tier <= 2:
                     v = 0
+                extra = [0, 0.0005, 0.0004, 0.0003, 0.0002][tier]      # 4.6: the extra Gold chance (server's gold_extra)
+                low = (var[0] + (var[1] if len(var) > 1 else 0)) / vs
+                if cls == 4:
+                    v += extra * low * vs
+                elif cls in (0, 1):
+                    v *= (1 - extra)
                 p *= v / vs
             p *= per
         if p > 0:
@@ -494,6 +500,8 @@ class VariantPicker(_Shiny):
         self.ctx.econ.changed.connect(self.restart)
 
     def shiny(self) -> bool:
+        if any((self.up_state(t) or {}).get("full") for t, _vs in self.rows):     # 4.6: a glowing trade-up arrow
+            return True
         return any(self.ctx.econ.owns(badge_item(self.base, v)) and item_animated(badge_item(self.base, v))
                    for _t, vs in self.rows for v in vs)
 
@@ -508,7 +516,45 @@ class VariantPicker(_Shiny):
                     return v
         return ""
 
+    # -- 4.6: trade up (a full Painted row: one Shiny; a full Shiny row: one Titanium)
+    UP = {"Painted": (1, SHINY_IDS), "Shiny": (2, TITANIUM_IDS)}
+
+    def _up_rect(self, row: int) -> QRectF:
+        return QRectF(self.width() - S(34), row * self.row_h + (self.row_h - S(28)) / 2, S(28), S(28))
+
+    def up_state(self, title: str):
+        """(can trade up, why not) for a row."""
+        if title not in self.UP or self.base in EXOTIC_IDS:
+            return None
+        ec = self.ctx.econ
+        cls, target = self.UP[title]
+        row = dict(self.rows)[title]
+        items = [badge_item(self.base, v) for v in row if ec.info(badge_item(self.base, v))]
+        if not items:
+            return None
+        goal = [badge_item(self.base, v) for v in target if ec.info(badge_item(self.base, v))]
+        if not goal:
+            return None
+        free = {i["item"] for i in ec.items if not i.get("locked")}
+        have = sum(1 for it in items if it in free)
+        missing = [g for g in goal if not ec.owns(g)]
+        return {"cls": cls, "full": have == len(items), "have": have, "need": len(items), "left": len(missing)}
+
+    def _up_at(self, pos):
+        for row, (title, _vs) in enumerate(self.rows):
+            if self.up_state(title) is not None and self._up_rect(row).adjusted(-3, -3, 3, 3).contains(pos):
+                return title
+        return None
+
     def mouseMoveEvent(self, e) -> None:
+        up = self._up_at(e.position())
+        if up:
+            st = self.up_state(up)
+            nxt = {"Painted": "Shiny", "Shiny": "Titanium"}[up]
+            self.setToolTip(tr("Trade your whole {a} row for a random {b} you don't have", a=tr(up), b=tr(nxt)) if st["full"] and st["left"]
+                            else tr("You have every {b} already", b=tr(nxt)) if not st["left"]
+                            else tr("Get every {a} colour ({n}/{m}) to trade the row up", a=tr(up), n=st["have"], m=st["need"]))
+            return
         v = self._at(e.position())
         if v != self._hover:
             self._hover = v
@@ -521,6 +567,13 @@ class VariantPicker(_Shiny):
 
     def mousePressEvent(self, e) -> None:
         e.accept()
+        up = self._up_at(e.position())
+        if up and e.button() == Qt.MouseButton.LeftButton:
+            st = self.up_state(up)
+            if st["full"] and st["left"]:
+                return trade_up(self.ctx, self.base, st["cls"], up)
+            sfx.play("off")
+            return
         v = self._at(e.position())
         if v and e.button() == Qt.MouseButton.LeftButton:
             sfx.play("pick")
@@ -554,12 +607,38 @@ class VariantPicker(_Shiny):
                     p.setPen(Qt.PenStyle.NoPen)
                     p.setBrush(ui.accent)
                     p.drawEllipse(QPointF(r.right() - S(3), r.top() + S(3)), S(3), S(3))
-
+            st = self.up_state(title)
+            if st is not None:                               # 4.6: the trade-up arrow
+                ur = self._up_rect(row)
+                ready = st["full"] and st["left"] > 0
+                nxt = QColor(CLASS_COLOURS[st["cls"] + 1])
+                pulse = 0.5 + 0.5 * math.sin(now * 3.2)
+                if ready:
+                    glow = QRadialGradient(ur.center(), ur.width())
+                    glow.setColorAt(0, alpha(nxt, 0.35 + 0.25 * pulse))
+                    glow.setColorAt(1, alpha(nxt, 0.0))
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(glow)
+                    p.drawEllipse(ur.center(), ur.width(), ur.width())
+                p.setPen(QPen(alpha(nxt, 0.95 if ready else 0.25), S(1.4)))
+                p.setBrush(alpha(nxt, 0.18 if ready else 0.04))
+                p.drawRoundedRect(ur, S(8), S(8))
+                c = ur.center()
+                arrow = QPolygonF([QPointF(c.x(), c.y() - S(7)), QPointF(c.x() + S(6), c.y()), QPointF(c.x() + S(2.4), c.y()),
+                                   QPointF(c.x() + S(2.4), c.y() + S(7)), QPointF(c.x() - S(2.4), c.y() + S(7)),
+                                   QPointF(c.x() - S(2.4), c.y()), QPointF(c.x() - S(6), c.y())])
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#FFFFFF") if ready else alpha(nxt, 0.35))
+                p.drawPolygon(arrow)
+                if ready:                                    # a shine running up the arrow
+                    k = (now * 0.8) % 1.0
+                    p.setBrush(alpha("#FFFFFF", 0.5 * (1 - k)))
+                    p.drawEllipse(QPointF(c.x(), c.y() + S(7) - k * S(14)), S(2), S(2))
 
 # --------------------------------------------------------------------------- #
 # Cases
 # --------------------------------------------------------------------------- #
-def case_drops(ec, case: dict) -> list:
+def case_drops(ec, case: dict, exact: bool = False) -> list:
     """3.2: every item a case can give and its exact chance per open: [(item, chance)], best first. Badges are grouped
     by design (any colour and finish). The same maths as the server."""
     odds = list(case.get("odds") or [])
@@ -591,6 +670,11 @@ def case_drops(ec, case: dict) -> list:
         want = TIERS[tier - 1]
         if tier == 5:
             for base in EXOTIC_IDS:
+                if exact:                                # 4.6 (admin Rig): each version of the Mythic
+                    for k, v in cat.items():
+                        if v.get("kind") == "badge" and v.get("base") == base:
+                            out[k] = out.get(k, 0) + pt * (1 if base == "rubenium" else 2) / 11 / 4
+                    continue
                 out["badge:%s:white" % base] = pt * (1 if base == "rubenium" else 2) / 11
             continue
         for cls, share in enumerate(variants):
@@ -601,7 +685,7 @@ def case_drops(ec, case: dict) -> list:
                      and int(v.get("cls") or 0) == c]
             wsum = sum(float(v.get("weight") or 1) for _k, v in group) or 1
             for k, v in group:
-                key = "badge:%s:grey" % v.get("base")
+                key = k if exact else "badge:%s:grey" % v.get("base")
                 out[key] = out.get(key, 0) + pt * share / vs * float(v.get("weight") or 1) / wsum
     return sorted(out.items(), key=lambda x: -x[1])
 
@@ -1400,3 +1484,120 @@ class CaseReel(QWidget):
         p.setFont(font(10.5, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left(), r.top() + S(134), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
                    tag)
+
+
+# --------------------------------------------------------------------------- #
+# 4.6: trade up
+# --------------------------------------------------------------------------- #
+def trade_up(ctx, base: str, cls: int, title: str) -> None:
+    """Ask, then the server takes the row and the strip spins to the new badge."""
+    nxt = {1: "Shiny", 2: "Titanium"}[cls]
+    n = len(PAINTED_IDS) if cls == 1 else len(SHINY_IDS)
+
+    def go() -> None:
+        def done(ok: bool, data) -> None:
+            if not ok or not isinstance(data, dict):
+                sfx.play("off")
+                return ctx.toast(tr(str(data)), "warn")
+            ctx.econ.refresh()
+            ctx.window.embed(TradeUpSpin(ctx, list(data.get("choices") or [data["item"]]), data["item"]))
+        ctx.econ.call("rb_trade_up", {"base": base, "from_cls": cls}, done, hold=True)
+    ctx.window.confirm(tr("Trade in your {n} {a} for one random {b} you don't have yet? The {a} badges are gone for good.",
+                          n=n, a=tr(title), b=tr(nxt)), go, yes=tr("Trade up"), no=tr("Not now"))
+
+
+class TradeUpSpin(QWidget):
+    """A strip of the possible badges races past and slows down on the one you got, like a case."""
+
+    def __init__(self, ctx, choices: list, got: str) -> None:
+        super().__init__()
+        from .widgets import Button, Label, vbox
+        self.ctx, self.got = ctx, got
+        w = ctx.window.page_w()
+        self.setFixedWidth(w)
+        lay = vbox(self, 10)
+        lay.addWidget(Label(tr("TRADE UP"), 16, "#F2C14E", bold=True))
+        self.strip = _UpStrip(choices, got, w)
+        lay.addWidget(self.strip)
+        self.result = Label("", 14, TEXT, bold=True, align=Qt.AlignmentFlag.AlignCenter)
+        lay.addWidget(self.result)
+        self.ok = Button(tr("Great"), "primary", 36)
+        self.ok.clicked.connect(lambda: ctx.window.unembed(self))
+        self.ok.hide()
+        lay.addWidget(self.ok)
+        self.strip.landed.connect(self._landed)
+
+    def _landed(self) -> None:
+        from .cosmetics import item_name
+        sfx.play("on")
+        self.result.set_text(tr("You got {what}!", what=item_name(self.got)))
+        self.ok.show()
+        try:
+            from .onlinewin import shake
+            shake(self.ctx.window, 3.0, 250)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+class _UpStrip(QWidget):
+    landed = pyqtSignal()
+    SPIN_S = 4.2
+
+    def __init__(self, choices: list, got: str, width: int) -> None:
+        super().__init__()
+        import random as _r
+        self.setFixedSize(width, S(120))
+        rnd = _r.Random()
+        self.cells = [rnd.choice(choices) for _ in range(46)]
+        self.stop_at = 40
+        self.cells[self.stop_at] = got
+        self.t0 = time.monotonic()
+        self.done = False
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self._tick)
+        self._t.start()
+
+    def _tick(self) -> None:
+        if not self.done and time.monotonic() - self.t0 >= self.SPIN_S:
+            self.done = True
+            self.landed.emit()
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect())
+        now = time.monotonic()
+        cell = S(84)
+        k = min(1.0, (now - self.t0) / self.SPIN_S)
+        e = 1 - (1 - k) ** 4
+        offset = e * (self.stop_at * cell) + (1 - e) * 0
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#0B0F12"))
+        p.drawRoundedRect(r, S(12), S(12))
+        cx = r.center().x()
+        last = None
+        for i, it in enumerate(self.cells):
+            x = cx + i * cell - offset - cell / 2
+            if x > r.right() or x + cell < r.left():
+                continue
+            box = QRectF(x + S(6), r.top() + S(14), cell - S(12), r.height() - S(28))
+            col = QColor(CLASS_COLOURS[int((ECON.info(it) if ECON is not None else {}).get("cls") or 0)])
+            win = self.done and i == self.stop_at
+            p.setPen(QPen(alpha(col, 0.9 if win else 0.35), S(2) if win else 1))
+            p.setBrush(alpha(col, 0.18 if win else 0.07))
+            p.drawRoundedRect(box, S(10), S(10))
+            paint_item(p, it, box.adjusted(S(10), S(10), -S(10), -S(10)), now, effects=True)
+            last = it
+        del last
+        p.setPen(QPen(QColor("#F2C14E"), S(2.5)))
+        p.drawLine(QPointF(cx, r.top() + S(4)), QPointF(cx, r.bottom() - S(4)))
+        fade = QLinearGradient(r.topLeft(), r.topRight())
+        fade.setColorAt(0, QColor(11, 15, 18, 255))
+        fade.setColorAt(0.18, QColor(11, 15, 18, 0))
+        fade.setColorAt(0.82, QColor(11, 15, 18, 0))
+        fade.setColorAt(1, QColor(11, 15, 18, 255))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(fade)
+        p.drawRoundedRect(r, S(12), S(12))

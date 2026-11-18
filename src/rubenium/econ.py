@@ -22,7 +22,9 @@ RARITY_COLOURS = {"standard": "#9AA4AD", "rare": "#4FA8FF", "special": "#B36BFF"
 ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not for sale",
           "rb_already_owned": "You already have it", "rb_not_yours": "You do not have this",
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
-          "rb_too_soon": "Not ready yet", "rb_bad_bet": "Bet between 10 and 1 000",
+          "rb_too_soon": "Not ready yet", "rb_bad_bet": "This bet is too high or too low",
+          "rb_row_not_full": "You need every colour of that row (not on sale or in a trade)",
+          "rb_have_them_all": "You already have all of those",
           "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
           "rb_nothing_to_collect": "Nothing to collect", "rb_not_done": "Not finished yet",
           "rb_already_claimed": "Already claimed", "rb_trade_locked": "Unlocks after 5 hours with Rubenium",
@@ -535,9 +537,35 @@ class Econ(QObject):
         self.keys = max(0, self.keys + int(keys))
         self.changed.emit()
 
+    # 4.6: Ruben's cheats. A right click (instead of a left click) arms one, the next move uses it.
+    CHEATS = {"rb_mines": ("pick",), "rb_tower": ("pick",), "rb_hilo": ("higher", "lower"), "rb_blackjack": ("hit",),
+              "rb_dice": None, "rb_slots": None, "rb_spin": None, "rb_scratch": None, "rb_flip_vs_bot": None}
+
+    def _cheat_for(self, fn: str, args: dict):
+        """(server function, its arguments) that makes this move go your way, or None."""
+        import time as _t
+        if _t.monotonic() - getattr(self, "cheat_armed", 0.0) > 2.0 or fn not in self.CHEATS:
+            return None
+        acts = self.CHEATS[fn]
+        if acts is not None and str(args.get("action")) not in acts:
+            return None
+        self.cheat_armed = 0.0
+        me = self.online.username()
+        if fn in ("rb_mines", "rb_tower", "rb_hilo", "rb_blackjack"):
+            return "rb_admin_cheat", {"game": {"rb_mines": "mines", "rb_tower": "tower", "rb_hilo": "hilo",
+                                               "rb_blackjack": "blackjack"}[fn]}
+        import random as _r
+        kind, data = {"rb_dice": ("dice", {"win": True}), "rb_flip_vs_bot": ("flip", {"win": True}),
+                      "rb_slots": ("slots", {"reels": [_r.choice(["seven", "gem", "bell"])] * 3}),
+                      "rb_spin": ("wheel", {"slot": 8}), "rb_scratch": ("scratch", {"tier": _r.choice(["exotic", "golden"])})}[fn]
+        return "rb_admin_rig", {"name": me, "kind": kind, "key": "", "data": data}
+
     def call(self, fn: str, args: dict, done=None, once: bool = False, hold: bool = False) -> None:
         """Ask the server to do something. `done(ok, answer or message)` runs on the main thread, after the
         balance in the answer was taken. `once` adds an id so a resend can never be done twice."""
+        cheat = self._cheat_for(fn, args) if self.admin else None
+        if cheat is not None:                          # armed first, then the move itself
+            return self.online.ask(cheat[0], cheat[1], lambda _o, _d: self.call(fn, args, done, once, hold), raw=True)
         if once:
             args = dict(args, req=uuid.uuid4().hex)
 

@@ -127,7 +127,7 @@ class MusicAppPicker(QWidget):
             t.picked.connect(self._pick)
             gl.addWidget(t, i // 2, i % 2)
         lay.addWidget(grid)
-        later = Button(tr("Not now"), "ghost", 32)
+        later = Button(tr("No preference for now"), "ghost", 32)          # 4.6: asked again next time
         later.clicked.connect(self._close)
         lay.addWidget(later)
 
@@ -151,7 +151,8 @@ class MusicAppPicker(QWidget):
 
 
 # ================================================================ adverts
-AD_WORDS = ("advertisement", "advert", "publicité", "publicite", "werbung", "anuncio", "pubblicità", "spotify free")
+AD_WORDS = ("advertisement", "advert", "publicité", "publicite", "werbung", "anuncio", "pubblicità", "spotify free",
+            "ad", "ads", "annonce", "sponsored", "sponsorisé", "sponsorise", "pub")     # 4.6: YouTube's names for ads
 
 
 def is_advert(st) -> bool:
@@ -162,8 +163,10 @@ def is_advert(st) -> bool:
     title = (st.title or "").strip().lower()
     artist = (st.artist or "").strip().lower()
     src = (st.source_id or "").lower()
-    if any(w == title or title.startswith(w + " ") for w in AD_WORDS):
+    if any(w == title or title.startswith(w + " ") for w in AD_WORDS if len(w) > 3):
         return True
+    if title in AD_WORDS or any(title.startswith(w + sep) for w in ("ad", "ads", "annonce", "pub") for sep in (" · ", ": ", " - ", " • ")):
+        return True                                   # 4.6: YouTube in a browser names its ads "Ad", "Annonce"...
     if "spotify" in src:
         if title in ("spotify", "advertisement", "spotify free") or (not artist and title in ("", "spotify")):
             return True

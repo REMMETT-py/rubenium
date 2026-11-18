@@ -4,7 +4,7 @@ import math
 import random
 import time
 
-from PyQt6.QtCore import QObject, QPointF, QRectF, QTimer, Qt, pyqtSignal
+from PyQt6.QtCore import QObject, QPointF, QRectF, QSizeF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QFontMetrics, QColor, QFont, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import QWidget
 
@@ -127,9 +127,10 @@ class ItemGrid(QWidget):
     picked = pyqtSignal(int)
 
     def __init__(self, ctx, entries: list, width: int, cols: int = 5, cell_h: int = 72, selected: int = -1,
-                 moving: bool = True) -> None:
+                 moving: bool = True, tips: bool = False) -> None:
         super().__init__()
         self.ctx, self.entries, self.cols, self.selected = ctx, entries, cols, selected
+        self.tips = tips                                   # 4.6: a click also shows the item's card
         self.cw, self.ch = width / cols, S(cell_h)
         rows = max(1, (len(entries) + cols - 1) // cols)
         self.setFixedSize(width, int(rows * self.ch))
@@ -168,6 +169,10 @@ class ItemGrid(QWidget):
         e.accept()
         i = self._at(e.position())
         if i >= 0 and e.button() == Qt.MouseButton.LeftButton and not self.entries[i].get("empty"):
+            if self.tips:
+                en = self.entries[i]
+                cell = QRectF((i % self.cols) * self.cw, (i // self.cols) * self.ch, self.cw, self.ch)
+                show_item_tip(self.ctx, self, cell, en.get("item", ""), en.get("worth"))
             self.picked.emit(i)
 
     def paintEvent(self, _e) -> None:
@@ -248,6 +253,114 @@ class ItemGrid(QWidget):
                 p.setPen(QColor("#FFFFFF"))
                 p.setFont(font(8.5, QFont.Weight.ExtraBold))
                 p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), f"-{en.get('pct', 0)}%")
+
+
+class ItemTip(QWidget):
+    """4.6: a small card about one item (picture, name, rarity in its colour, worth), shown next to where it was
+    clicked in coinflips and trades. It goes away by itself, when the mouse leaves, or on the next click."""
+
+    W, H = 236, 92
+
+    def __init__(self, host: QWidget) -> None:
+        super().__init__(host)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.item, self.worth, self.anchor, self.ctx = "", 0, None, None
+        self._t0 = 0.0
+        self._timer = QTimer(self)
+        self._timer.setInterval(30)
+        self._timer.timeout.connect(self._step)
+        self.hide()
+
+    def show_for(self, ctx, anchor: QWidget, rect: QRectF, item: str, worth: int = None) -> None:
+        self.ctx, self.anchor, self.item = ctx, anchor, item
+        self.worth = int(worth if worth is not None else ctx.econ.worth(item))
+        w, h = S(self.W), S(self.H)
+        host = self.parentWidget()
+        top_left = anchor.mapTo(host, rect.topLeft().toPoint())
+        view = anchor.parentWidget()                            # stay inside the scrolling page the item is on
+        while view is not None and view is not host and type(view).__name__ != "ScrollArea":
+            view = view.parentWidget()
+        if view is None or view is host:
+            box = QRectF(host.rect())
+        else:
+            box = QRectF(QPointF(view.mapTo(host, view.rect().topLeft())), QSizeF(view.size()))
+        x = top_left.x() + rect.width() / 2 - w / 2
+        y = top_left.y() - h - S(6)
+        if y < box.top() + S(4):                                # no room above: under the item
+            y = top_left.y() + rect.height() + S(6)
+        x = max(box.left() + S(4), min(box.right() - w - S(4), x))
+        y = max(box.top() + S(4), min(box.bottom() - h - S(4), y))
+        self.setGeometry(int(x), int(y), int(w), int(h))
+        self._t0 = time.monotonic()
+        self.raise_()
+        self.show()
+        self._timer.start()
+
+    def _step(self) -> None:
+        a = self.anchor
+        try:
+            gone = a is None or not a.isVisible() or time.monotonic() - self._t0 > 4.0
+            if not gone and time.monotonic() - self._t0 > 0.6:
+                from PyQt6.QtGui import QCursor
+                gone = not a.rect().contains(a.mapFromGlobal(QCursor.pos()))
+        except RuntimeError:
+            gone = True
+        if gone:
+            self._timer.stop()
+            self.hide()
+        else:
+            self.update()
+
+    def paintEvent(self, _e) -> None:
+        if not self.item or self.ctx is None:
+            return
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        k = min(1.0, (time.monotonic() - self._t0) / 0.15)
+        p.setOpacity(k)
+        ec = self.ctx.econ
+        col = QColor(RARITY_COLOURS.get(ec.rarity(self.item), "#9AA4AD"))
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, QColor("#11171A"))
+        g.setColorAt(1, mix(QColor("#11171A"), col, 0.22))
+        p.setPen(QPen(alpha(col, 0.85), S(1.4)))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(12), S(12))
+        pic = QRectF(r.left() + S(10), r.center().y() - S(32), S(64), S(64))
+        paint_cosmetic(p, self.item, pic, time.monotonic(), effects=True)
+        tx = pic.right() + S(10)
+        tw = r.right() - S(10) - tx
+        p.setPen(QColor(TEXT))
+        p.setFont(font(11, QFont.Weight.Bold))
+        p.drawText(QRectF(tx, r.top() + S(8), tw, S(36)), int(Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap),
+                   item_name(self.item))
+        p.setPen(col)
+        p.setFont(font(9.5, QFont.Weight.ExtraBold, 0.4))
+        p.drawText(QRectF(tx, r.bottom() - S(40), tw, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr(RARITY_NAMES.get(ec.rarity(self.item), "")).upper())
+        paint_coin(p, QPointF(tx + S(6), r.bottom() - S(15)), S(5.5))
+        p.setPen(QColor(GOLD_TEXT))
+        p.setFont(font(11, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(tx + S(15), r.bottom() - S(24), tw - S(15), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("Worth about {v}", v=coins_text(self.worth)))
+
+
+def show_item_tip(ctx, anchor: QWidget, rect: QRectF, item: str, worth: int = None) -> None:
+    """4.6: show the item card next to `rect` (in `anchor`'s coordinates). One card per window."""
+    if not item:
+        return
+    host = anchor.window()
+    tip = getattr(host, "_item_tip", None)
+    try:
+        if tip is not None:
+            tip.isVisible()
+    except RuntimeError:
+        tip = None
+    if tip is None:
+        tip = ItemTip(host)
+        host._item_tip = tip
+    tip.show_for(ctx, anchor, rect, item, worth)
 
 
 # --------------------------------------------------------------------------- #
@@ -913,7 +1026,7 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
         b.clicked.connect(wear)
     line.addWidget(b, 1)
     sellable = bool(free) and bool(ec.info(item).get("tradeable"))
-    sell = Button(tr("Market"), "ghost", 32, icon="chip")
+    sell = Button(tr("Sell on the market"), "ghost", 32, icon="chip")      # 4.6: says what it does
     sell.setEnabled(sellable)
     sell.setToolTip(tr("Put it on the market: other users buy it or make you an offer"))
     sell.clicked.connect(lambda: market_sell(ctx, item))
@@ -924,6 +1037,24 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
                         n=coins_text(ec.quick_value(item))))
     quick.clicked.connect(lambda: quick_sell(ctx, [free[-1]["id"]], item_name(item)))
     line.addWidget(quick, 1)
+    import time as _t
+    if getattr(ctx, "pawn_ban_until", 0) > _t.time():          # 4.6: the pawn shop's ban, readable at a glance
+        from .pawn import pawn_clock
+
+        def tick() -> None:
+            try:
+                left = int(ctx.pawn_ban_until - _t.time())
+                if left <= 0:
+                    quick.set_text(tr("Quick sell"))
+                    return clock.stop()
+                quick.set_text(tr("Closed {t}", t=pawn_clock(left)))
+            except RuntimeError:
+                clock.stop()
+        clock = QTimer(quick)
+        clock.setInterval(1000)
+        clock.timeout.connect(tick)
+        clock.start()
+        tick()
     lay.addLayout(line)
     if sellable and len(free) > 1 and ec.quick_value(item) > 0:
         rest = [c["id"] for c in free[1:]]
@@ -1008,39 +1139,9 @@ def build_profile_style(page, lay) -> None:
 
 
 def market_sell(ctx, item: str) -> None:
-    """Sell = put it on the market. Choose a price between the lowest and highest allowed; players buy it at
-    that price or make you an offer."""
-    ec = ctx.econ
-    free = [i for i in ec.items if i["item"] == item and not i.get("locked")]
-    if not free:
-        return ctx.toast(tr("This item is already on the market or in a trade"), "warn")
-    if not ec.can_trade():
-        return ctx.toast(tr("The market opens after 5 hours with Rubenium"), "warn")
-
-    def priced(ok: bool, info) -> None:
-        if not ok or not isinstance(info, dict):
-            return ctx.toast(tr("Something went wrong: try again"), "warn")
-        lo, hi = int(info.get("min") or 1), int(info.get("max") or 1)
-
-        def listed(n: int, dlg) -> None:
-            if n < lo or n > hi:
-                return dlg.say(tr("Between {a} and {b} coins", a=coins_text(lo), b=coins_text(hi)))
-
-            def done(ok2: bool, d) -> None:
-                if not ok2:
-                    return dlg.say(tr(str(d)))
-                dlg.close()
-                sfx.play("on")
-                ctx.toast(tr("On the market for {n} coins", n=coins_text(n)))
-                ec.refresh()
-                ctx.mk_at = 0
-                QTimer.singleShot(600, ctx.reload_page)
-            ec.call("rb_market_list", {"item_id": free[-1]["id"], "price": n}, done)
-        ask_number(ctx, tr("Sell: {name}", name=item_name(item)), tr("Price in coins"), tr("Put on sale"), listed,
-                   tr("Usual price: about {v} coins. Choose between {a} and {b}. Users can buy it at your price or "
-                      "make you an offer. The market keeps 5% when it sells.",
-                      v=coins_text(int(info.get("estimate") or 0)), a=coins_text(lo), b=coins_text(hi)))
-    ec.online.ask("rb_market_price", {"what": item}, priced)
+    """4.6: selling on the market is a place now: the market stall (market.py)."""
+    from .market import open_market_stall
+    open_market_stall(ctx, item)
 
 
 # --------------------------------------------------------------------------- #
@@ -1472,7 +1573,12 @@ class TradeLink(QObject):
                     self._timer.stop()
                     self.changed.emit()
                 return
+            was = self.data.get("state")
             self.data, self.got_at = data, time.monotonic()
+            w = self.ctx.window
+            if was == "asked" and data.get("state") == "open" and not (w.showing("friends") and w.expanded):
+                self.ctx.notifier.push("trade", tr("TRADE"), tr("{name} accepted your trade", name=data.get(
+                    "b" if data.get("me") == "a" else "a", "?")), "trade:" + tid)       # 4.6: you hear about it anywhere
             sig = str([data.get(k) for k in ("state", "version", "a_ready", "b_ready", "a_ok", "b_ok", "a_coins",
                                               "b_coins", "a_keys", "b_keys")]) + str(data.get("wait") is None)
             if data.get("state") in ("done", "cancelled"):
@@ -1770,8 +1876,8 @@ def _trade_pool(page, link, mine: list, offer) -> QWidget:
         lay.addWidget(Label(tr("Nothing more to add."), 11.5, TEXT_DIM))
         return box
     lay.addWidget(Label(tr("Click an item to add it to your offer."), 10.5, TEXT_DIM, wrap_w=page.W))
-    pool = pool[:60]
-    grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(value_of(ctx, i["item"]))} for i in pool], page.W, 6, 64)
+    grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(value_of(ctx, i["item"])), "worth": value_of(ctx, i["item"])}
+                          for i in pool], page.W, 6, 64, moving=False, tips=True)   # 4.6: every item, not only the first 60
 
     def add(i: int) -> None:
         if len(mine) >= 8:
@@ -1798,9 +1904,9 @@ def _trade_peek(page, link, them: str) -> QWidget:
         return box
     lay.addWidget(Label(tr("Look only: ask {name} in the chat to add something.", name=them), 10.5, TEXT_DIM,
                         wrap_w=page.W))
-    grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(int(i.get("worth") or 0)),
-                           "mark": "offered" if i.get("offered") else ""} for i in items[:60]], page.W, 6, 64)
-    grid.picked.connect(lambda _i: ctx.toast(tr("This is {name}'s inventory: you can only look.", name=them)))
+    grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(int(i.get("worth") or 0)), "worth": int(i.get("worth") or 0),
+                           "mark": "offered" if i.get("offered") else ""} for i in items], page.W, 6, 64, moving=False,
+                    tips=True)                       # 4.6: a click shows the item's card
     lay.addWidget(grid)
     return box
 
@@ -1833,8 +1939,9 @@ def _trade_summary(page, lay, link, them: str) -> None:
         head.addWidget(Label(title, 12.5, colour, bold=True), 1)
         lay.addLayout(head)
         if rows:
-            lay.addWidget(ItemGrid(ctx, [{"item": r["item"], "text": sign + coins_text(int(r.get("worth") or 0))}
-                                         for r in rows], page.W, 6, 64, moving=False))
+            lay.addWidget(ItemGrid(ctx, [{"item": r["item"], "text": sign + coins_text(int(r.get("worth") or 0)),
+                                          "worth": int(r.get("worth") or 0)} for r in rows], page.W, 6, 64, moving=False,
+                                   tips=True))
         elif not coins and not keys:
             lay.addWidget(Label(tr("Nothing"), 11, TEXT_FAINT))
         if coins or keys:
@@ -1911,9 +2018,10 @@ def build_trade(page, lay) -> None:
 
     def side(title: str, rows: list, coins: int, total: int, removable: bool, keys: int) -> None:
         lay.addWidget(Label(title, 12, bold=True))
-        entries = [{"item": r["item"], "text": coins_text(int(r.get("estimate") or 0))} for r in rows]
+        entries = [{"item": r["item"], "text": coins_text(int(r.get("estimate") or 0)), "worth": int(r.get("estimate") or 0)}
+                   for r in rows]
         entries += [{"empty": True}] * (8 - len(entries))
-        grid = ItemGrid(ctx, entries, page.W, 8, 60)
+        grid = ItemGrid(ctx, entries, page.W, 8, 60, tips=not removable)
         if removable:
             grid.setToolTip(tr("Click an item to take it back"))
             grid.picked.connect(lambda i: offer([r["id"] for k, r in enumerate(mine) if k != i], None))
@@ -1921,34 +2029,15 @@ def build_trade(page, lay) -> None:
         lay.addWidget(AmountRow(coins, keys, tr("Worth about {v}", v=coins_text(total))))
         if not removable:
             return
-        row = hbox(spacing=6)
-        row.addStretch(1)
-        kb = Button(tr("Keys"), "ghost", 26, icon="key")
-
-        def change_keys() -> None:
-            def got(n: int, dlg) -> None:
-                if n > ec.keys:
-                    return dlg.say(tr("You have {n} keys", n=ec.keys))
-                if n > 99:
-                    return dlg.say(tr("99 at most"))
-                dlg.close()
-                offer([r["id"] for r in mine], None, n)
-            ask_number(ctx, tr("Keys to give"), str(keys), tr("OK"), got, tr("You have {n} keys.", n=ec.keys))
-        kb.clicked.connect(change_keys)
-        row.addWidget(kb)
-        b = Button(tr("Change coins"), "ghost", 26)
-
-        def change() -> None:
-            def got(n: int, dlg) -> None:
-                if n > ec.coins:
-                    return dlg.say(tr("Not enough coins"))
-                dlg.close()
-                offer([r["id"] for r in mine], n)
-            ask_number(ctx, tr("Coins to give"), str(coins), tr("OK"), got,
-                       tr("You have {n} coins.", n=coins_text(ec.coins)))
-        b.clicked.connect(change)
-        row.addWidget(b)
-        lay.addLayout(row)
+        from .widgets import AmountSlider                # 4.6: coins and keys on sliders, nothing to type
+        if ec.coins > 0:
+            cs = AmountSlider(tr("Coins"), 0, int(ec.coins), coins, coins_text, label_w=50)
+            cs.released.connect(lambda v: offer([r["id"] for r in mine], int(v)) if int(v) != coins else None)
+            lay.addWidget(cs)
+        if ec.keys > 0:
+            ks = AmountSlider(tr("Keys"), 0, min(99, int(ec.keys)), keys, str, label_w=50)
+            ks.released.connect(lambda v: offer([r["id"] for r in mine], None, int(v)) if int(v) != keys else None)
+            lay.addWidget(ks)
     side(tr("You give"), mine, my_coins, give, True, my_keys)
     side(tr("{name} gives", name=them), theirs, their_coins, get, False, their_keys)
     if give > max(get * 2, get + 500):

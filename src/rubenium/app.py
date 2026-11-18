@@ -250,6 +250,13 @@ class App(QObject):
         self.tapkey = TapKey(self)                  # tap Right Shift: show or hide Rubenium
         self.tapkey.tapped.connect(self._tap_key)
         self.tapkey.held.connect(self.restart_app)
+        from .hub import install_cheat_clicks
+        install_cheat_clicks(self)                        # 4.6: Ruben's cheats (right click), off unless he turns them on
+        from .music2 import GM_KEY_CHOICES                # 4.6: game mode: a key locks Rubenium away from the mouse
+        self.game_lock = False
+        self.gmkey = TapKey(self, hold_s=5.0, choices=GM_KEY_CHOICES)
+        self.gmkey.tapped.connect(self.toggle_game_lock)
+        self.gmkey.held.connect(self._gm_restart)
         self.outdated = False                       # the server or the updater says: update before playing online
         self._usage = QTimer(self)
         self._usage.setInterval(60000)
@@ -347,6 +354,7 @@ class App(QObject):
         if self.cfg["update_check"] and not selftest:
             self._safe("updates", self.updater.start)
         self._safe("show/hide key", lambda: self.tapkey.set_key(self.cfg["hotkey"]))
+        self._safe("game mode key", lambda: self.gmkey.set_key(self.cfg["gm_key"]))
         self._pin = QTimer(self)
         self._pin.setInterval(2000)
         self._pin.timeout.connect(lambda: self._safe("housekeeping", self._housekeeping))
@@ -553,9 +561,13 @@ class App(QObject):
         st = self.state
         if st.source_id and win.focus_app(source_keywords(st.source_id)):
             return
-        if not st.source_id or "spotify" in st.source_id.lower():
-            if win.open_path("spotify:"):
-                return
+        from .music3 import APP_IDS, ask_music_app, play_with_nothing_open
+        if not st.source_id:                              # 4.6: no music app yet: ask which one (until one is picked)
+            if self.cfg["music_app"] not in APP_IDS:
+                return ask_music_app(self)
+            return play_with_nothing_open(self)
+        if "spotify" in st.source_id.lower() and win.open_path("spotify:"):
+            return
         self.toast(tr("Could not find the music app window"), "warn")
 
     # ------------------------------------------------------------------ glow
@@ -954,6 +966,16 @@ class App(QObject):
             if self.main_window is not self.window:
                 self.main_window.tabs_changed()
         self.window.sync_lock()
+        # 4.6: a trade request (or friend request) shows on the Social page as soon as it comes in, not only after
+        # leaving and coming back to the page: that is why trades could not be accepted
+        import json as _json
+        sig = _json.dumps([self.econ.live.get("trades"), self.econ.live.get("open_trade"), self.econ.live.get("asks")],
+                          sort_keys=True, default=str)
+        if sig != getattr(self, "_social_sig", None):
+            self._social_sig = sig
+            if self.window.showing("friends") and not self.trade.trade_id and not getattr(self, "social_edit", False) \
+                    and int(getattr(self, "social_tab", 0) or 0) in (0, 4) and getattr(self, "friends_profile", None) is None:
+                self.reload_page("friends")
         for key in ("giveaway", "themes"):            # 3.2: the online menu may show both at once
             if not self.window.showing(key) or self.econ.holding:
                 continue
@@ -1030,7 +1052,27 @@ class App(QObject):
         self.cfg["tabs_off"] = off
         self.window.tabs_changed()
 
+    def online_scale(self) -> float:
+        """4.6: the online menu has its own size (Medium or Large), made to fit the screen, so a big or small size
+        for the small menu never makes it cramped or too wide."""
+        from .core import CARD_W, ONLINE_EXTRA, PAD
+        from .onlinewin import BOTTOM, COL_GAP, COL_TITLE_H, HEAD_H
+        from .widgets import ScrollArea
+        try:
+            from .window import work_area
+            wa = work_area(self.main_window.ball.center)
+        except Exception:  # noqa: BLE001
+            return ui.scale
+        unit_w = 2 * (CARD_W - 2 * PAD + ONLINE_EXTRA + ScrollArea.GUTTER) + COL_GAP + 2 * PAD
+        unit_h = HEAD_H + COL_TITLE_H + BOTTOM + 720
+        fit = min(wa.width() * 0.96 / unit_w, wa.height() / unit_h)
+        large = self.cfg.get("online_size") == "large"
+        return max(0.75, min(1.6, fit * (0.97 if large else 0.84)))
+
     def set_scale(self, pct: int) -> None:
+        if self.online_mode:                              # 4.6: the online menu keeps its own size
+            self.cfg["scale"] = pct
+            return
         if pct != self.cfg["scale"]:
             self.cfg["scale"] = pct
             ui.scale = pct / 100
@@ -1186,7 +1228,46 @@ class App(QObject):
         if extras.restart(path):
             QTimer.singleShot(150, self.quit)
 
+    def toggle_game_lock(self, on=None) -> None:
+        """4.6: game mode on: Rubenium ignores the mouse completely (every window lets the mouse through, nothing
+        reacts to it), a small padlock on the ball says so. The game mode key again: back to normal."""
+        on = (not self.game_lock) if on is None else bool(on)
+        if on == self.game_lock:
+            return
+        self.game_lock = on
+        if on:
+            for w in (self.window, self.main_window):
+                try:
+                    if getattr(w, "expanded", False):
+                        w.collapse()
+                except RuntimeError:
+                    pass
+        for w in {self.window, self.main_window}:
+            try:
+                w._mouse_guard()
+                w.ball.update()
+            except (RuntimeError, AttributeError):
+                pass
+        sfx.play("on" if on else "off")
+        self.notifier.push("ready", tr("GAME MODE"), tr("On: Rubenium ignores the mouse") if on else tr("Off: Rubenium is back"))
+
+    def _gm_restart(self) -> None:
+        """Held 5 seconds: game mode off and Rubenium starts again (a way out if anything is stuck)."""
+        self.game_lock = False
+        self.restart_app()
+
     def _tap_key(self) -> None:
+        if self.game_lock:                                # 4.6: the menu can't be used with the mouse while locked
+            from .music2 import GM_KEY_CHOICES
+            name = next((n for k, n, _v in GM_KEY_CHOICES if k == self.cfg["gm_key"]), "?")
+            self.notifier.push("ready", tr("GAME MODE"), tr("Game mode is on: press {key} to use Rubenium", key=tr(name)))
+            for w in {self.window, self.main_window}:
+                try:
+                    w.ball.lock_flash = time.monotonic()
+                    w.ball.update()
+                except (RuntimeError, AttributeError):
+                    pass
+            return
         if self.window.expanded:
             self.window.collapse()
         else:
@@ -1401,6 +1482,16 @@ class App(QObject):
 
         def fly() -> None:
             try:
+                want = self.online_scale()                 # 4.6: one size for the online menu, whatever the menu size
+                if abs(want - ui.scale) > 0.004:
+                    ui.scale = want
+                    if self._online_win is not None:       # built at another size: built again
+                        try:
+                            self._online_win.hide()
+                            self._online_win.deleteLater()
+                        except RuntimeError:
+                            pass
+                        self._online_win = None
                 if self._online_win is None:
                     self._online_win = online_window(self, main)
                 ow = self._online_win
@@ -1485,6 +1576,10 @@ class App(QObject):
             except Exception:  # noqa: BLE001
                 log.exception("ball back failed")
                 main.ball.show()
+            try:                                          # 4.6: the music page, fresh (cover, title, buttons)
+                main.reload_page("home")
+            except Exception:  # noqa: BLE001
+                log.exception("music page refresh failed")
             try:
                 if after is not None:
                     after()
@@ -1499,6 +1594,12 @@ class App(QObject):
             done["gone"] = True
             self.online_mode = False
             self.window = main
+            if abs(ui.scale - self.cfg["scale"] / 100) > 0.004:  # 4.6: back to the small menu's own size
+                ui.scale = self.cfg["scale"] / 100
+                try:
+                    main.rebuild()
+                except Exception:  # noqa: BLE001
+                    log.exception("rebuild after online failed")
             self.cfg["card_open"] = False
             try:
                 ow.hide()

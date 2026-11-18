@@ -522,11 +522,11 @@ class ActivityRow(QWidget):
         if second is not None:
             b2 = Button(second[0], "ghost", 28)
             b2.setFixedWidth(max(S(64), b2.sizeHint().width()))
-            b2.clicked.connect(second[1])
+            b2.clicked.connect(lambda: second[1]())        # 4.6: never pass the click's 'checked' to the action
             lay.addWidget(b2)
         go = Button(action, "primary", 28)
         go.setFixedWidth(max(S(64), go.sizeHint().width()))
-        go.clicked.connect(on_go)
+        go.clicked.connect(lambda: on_go())              # 4.6: this passed False as the trade: Open crashed
         lay.addWidget(go)
 
     def paintEvent(self, _e) -> None:
@@ -660,6 +660,7 @@ class FriendsPage(Page):
         if tab == 3:
             return build_leaders(self, self.lay)
         if tab == 4:
+            build_activity_trades(self, self.lay)          # 4.6: requests and your open trade, above the history
             return build_trade_history(self, self.lay)
         self._users()
 
@@ -900,7 +901,8 @@ class FriendsPage(Page):
         sfx.play("pick")
         self.ctx.friends_profile = None
         self.ctx.trade.open(trade_id)
-        self.ctx.reload_page()
+        self.ctx.window.goto("friends")                  # 4.6: the trade screen opens wherever you were
+        self.ctx.reload_page("friends")
 
     def accept_trade(self, trade_id: str) -> None:
         def done(ok: bool, data) -> None:
@@ -1369,3 +1371,16 @@ class BadgeStrip(QWidget):
             p.drawEllipse(c, d / 2, d / 2)
             g = d * 0.5
             show_item(p, item, QRectF(c.x() - g / 2, c.y() - g / 2, g, g), now)
+
+
+def build_activity_trades(page, lay) -> None:
+    """4.6: in the Trades tab too: trade requests to answer and the trade you have open."""
+    ctx = page.ctx
+    live = ctx.econ.live
+    asks = live.get("trades") or []
+    for ask in asks:
+        lay.addWidget(TradeAsk(page, ask))
+    if live.get("open_trade") and not ctx.trade.trade_id:
+        back = Button(tr("Your trade is waiting") + "  ·  " + tr("Back to it"), "primary", 34, icon="swap")
+        back.clicked.connect(lambda: page.open_trade(live["open_trade"]))
+        lay.addWidget(back)

@@ -86,6 +86,9 @@ class WaveCourse:
             n = rnd(2 + 3 * d // 1000) if d >= 20 else 0
             side = rnd(2)
             spikes = []
+            if n == 1 and 120 <= d <= 650 and rnd(3) == 0:      # 4.6: a gate, a spike above and below at once
+                spikes = [(self.x_end + length // 2, 0), (self.x_end + length // 2, 1)]
+                n = 0
             for i in range(n):
                 spikes.append((self.x_end + length * (i + 1) // (n + 1), side))
                 side = 1 - side
@@ -320,6 +323,10 @@ class WaveView(QWidget):
             except RuntimeError:
                 pass
         self._pending_replay = rp
+        try:
+            self.page.ctx.notifier.hold(wait + 0.5 + (rp["t1"] - rp["t0"]) / WAVE_TPS + 2.0)   # 4.6: no spoiler
+        except AttributeError:
+            pass
         QTimer.singleShot(int(wait * 1000), go)
 
     def mousePressEvent(self, e) -> None:

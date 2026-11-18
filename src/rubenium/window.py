@@ -317,6 +317,22 @@ class BallWindow(QWidget):
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 p.setPen(pen)
                 p.drawArc(ring, 90 * 16, int(-360 * 16 * c))
+        if getattr(self.ctx, "game_lock", False):          # 4.6: game mode: a small padlock on the ball
+            flash = max(0.0, 1.0 - (time.monotonic() - getattr(self, "lock_flash", 0.0)) / 1.2)
+            r = w * 0.2 * (1 + 0.25 * flash)
+            c0 = QPointF(shape.right() - r * 0.7, shape.bottom() - r * 0.7)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#0B0F12"))
+            p.drawEllipse(c0, r * 1.25, r * 1.25)
+            col = mix(QColor("#F2C14E"), QColor("#FF6A5C"), flash)
+            p.setPen(QPen(col, max(1.0, r * 0.22)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawArc(QRectF(c0.x() - r * 0.42, c0.y() - r * 0.95, r * 0.84, r * 0.95), 0, 180 * 16)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col)
+            p.drawRoundedRect(QRectF(c0.x() - r * 0.62, c0.y() - r * 0.45, r * 1.24, r * 0.95), r * 0.18, r * 0.18)
+            if flash > 0:
+                QTimer.singleShot(30, self.update)
 
     # -- mouse: hold (or click) opens, drag moves (kept on screen)
     def enterEvent(self, e) -> None:
@@ -1916,12 +1932,13 @@ class MainWindow(QWidget):
     def _mouse_guard(self) -> None:
         """While a game hides or locks the mouse pointer, every Rubenium window lets clicks through to the
         game: aiming or clicking in a game can never open, drag or press anything in Rubenium."""
-        captured = win.mouse_captured()
+        locked = bool(getattr(self.ctx, "game_lock", False))                        # 4.6: game mode key
+        captured = locked or (win.mouse_captured() and not self.expanded)           # 4.6: an open menu is for you
         # Game mode: while a fullscreen game is in front and the menu is closed, the ball is not there for the
         # mouse at all. Moving, aiming or clicking near it goes to the game. Right Shift still opens the menu.
-        if not captured and self.ctx.cfg["game_mouse"] and not self.expanded:
+        if not captured and self.ctx.cfg["game_mouse"] and not self.expanded and not locked:
             captured = win.fullscreen_in_front()
-        if captured and self.ball._press_pos is not None and self._press_held():
+        if captured and self.ball._press_pos is not None and self._press_held() and not locked:
             captured = False                    # the button is still held on the ball: a game seeing the same
             #                                     click (Rocket League menus do) must not cancel the opening
         if captured:

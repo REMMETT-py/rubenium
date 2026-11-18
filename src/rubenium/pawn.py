@@ -25,12 +25,12 @@ def pawn_chance(ratio: float, anger: float) -> float:
     """The same as the server's rb_pawn_chance."""
     if ratio <= 1:
         return 1.0
-    return max(0.0, max(0.0, 1 - (ratio - 1) / 0.6) ** 1.6 * (1 - min(100.0, anger) / 250.0))
+    return max(0.0, max(0.0, 1 - (ratio - 1) / 0.75) ** 1.15 * (1 - min(100.0, anger) / 300.0))     # 4.6: kinder
 
 
 def pawn_rage(ratio: float) -> float:
     """How much a no adds to his anger (the server's rb_pawn_rage)."""
-    return 20 + 60 * min(1.0, max(0.0, (ratio - 1) / 0.5))
+    return 15 + 50 * min(1.0, max(0.0, (ratio - 1) / 0.5))
 
 
 def pawn_ease(t: float) -> float:
@@ -204,6 +204,7 @@ class PawnShop(QWidget):
         self.loaded = True
         if self.ban_left > 0:
             self.ban_end = time.monotonic() + self.ban_left
+            self.ctx.pawn_ban_until = time.time() + self.ban_left
         elif int(data.get("n") or 0) == 0:
             self.ctx.toast(tr("This cannot be sold"), "warn")
             self.ban_left = -1                                    # nothing to sell: just open back on the menu
@@ -249,6 +250,7 @@ class PawnShop(QWidget):
                 elif res == "banned":
                     self.ban_left = int(data.get("ban_left") or 0)
                     self.ban_end = time.monotonic() + self.ban_left
+                    self.ctx.pawn_ban_until = time.time() + self.ban_left
                     self._controls(False)
                     self._go("ban_close")
                 else:
@@ -340,6 +342,7 @@ class PawnShop(QWidget):
             if t >= 1.5:
                 self._go("slam")
                 self.ban_end = time.monotonic() + 1800
+                self.ctx.pawn_ban_until = time.time() + 1800
         elif ph == "slam" and t >= 0.25 + 1.6:
             self._go("leave_open")
         elif ph == "leave_open" and t >= 0.5:
@@ -505,7 +508,7 @@ class PawnShop(QWidget):
             fm = p.fontMetrics()
             maxw = pn.width() * 0.52
             br = fm.boundingRect(0, 0, int(maxw), 400, int(Qt.TextFlag.TextWordWrap), self.line)
-            bw, bh = br.width() + S(24), br.height() + S(18)
+            bw, bh = br.width() + S(30), br.height() + S(22)      # 4.6: room for every line (no half-hidden words)
             b = QRectF(c.x() - S(46) - bw, c.y() - S(40), bw, bh)
             b.moveLeft(max(pn.left(), b.left()))
             k = pawn_ease_out(age / 0.25)
@@ -521,7 +524,7 @@ class PawnShop(QWidget):
                               QPointF(b.right() - S(4), b.top() + S(24))])
             p.drawPolygon(tail)
             p.setPen(QColor("#B3261E") if a > 0.7 else QColor("#2A1C14"))
-            p.drawText(b.adjusted(S(12), S(9), -S(12), -S(9)), int(Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignCenter),
+            p.drawText(b.adjusted(S(13), S(8), -S(13), -S(8)), int(Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignCenter),
                        self.line)
             p.restore()
 
@@ -742,22 +745,34 @@ class PawnShop(QWidget):
             self._paint_plaque(p, r, now)
 
     def _paint_plaque(self, p, r, now) -> None:
-        left = int(math.ceil(self.ban_end - now))
-        pl = QRectF(r.center().x() - S(170), r.center().y() - S(150), S(340), S(96))
-        p.setPen(QPen(QColor("#2A190D"), S(2)))
-        p.setBrush(QColor("#E9DFC9"))
-        p.drawRoundedRect(pl, S(8), S(8))
+        """4.6: a big plaque with a big countdown, easy to read from across the room."""
+        left = max(0, int(math.ceil(self.ban_end - now)))
+        pl = QRectF(r.center().x() - S(190), r.center().y() - S(190), S(380), S(170))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#000000", 0.45))
+        p.drawRoundedRect(pl.translated(0, S(5)), S(10), S(10))
+        p.setPen(QPen(QColor("#2A190D"), S(3)))
+        p.setBrush(QColor("#EFE5CF"))
+        p.drawRoundedRect(pl, S(10), S(10))
+        p.setPen(QPen(alpha("#8A1C14", 0.5), S(1.5)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRoundedRect(pl.adjusted(S(7), S(7), -S(7), -S(7)), S(6), S(6))
         p.setPen(QColor("#8A1C14"))
-        p.setFont(font(15, QFont.Weight.Black, 1.5))
-        p.drawText(QRectF(pl.left(), pl.top() + S(10), pl.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter),
+        p.setFont(font(16, QFont.Weight.Black, 2.0))
+        p.drawText(QRectF(pl.left(), pl.top() + S(16), pl.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter),
                    tr("CLOSED TO YOU"))
-        p.setPen(QColor("#2A1C14"))
-        p.setFont(font(12, QFont.Weight.Bold))
-        p.drawText(QRectF(pl.left(), pl.top() + S(40), pl.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("You can't come in for {t}", t=pawn_clock(left)))
+        pulse = 0.85 + 0.15 * math.sin(now * 3)
+        p.setPen(QColor(int(178 * pulse), 30, 24))
+        p.setFont(font(40, QFont.Weight.Black))
+        p.drawText(QRectF(pl.left(), pl.top() + S(46), pl.width(), S(62)), int(Qt.AlignmentFlag.AlignCenter),
+                   pawn_clock(left))
+        p.setFont(font(11.5, QFont.Weight.Bold))
+        p.setPen(QColor("#4A3A2A"))
+        p.drawText(QRectF(pl.left(), pl.top() + S(112), pl.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("before you can come back in"))
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.setPen(QColor("#6A5A4A"))
-        p.drawText(QRectF(pl.left(), pl.top() + S(64), pl.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+        p.drawText(QRectF(pl.left(), pl.top() + S(136), pl.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
                    tr("You made him too angry"))
 
 

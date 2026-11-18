@@ -2,7 +2,7 @@
 
 Both players see the same course. They take turns: drag back from anywhere, let go to shoot. Every shot is sent to
 the server with where the ball stopped; the other player sees it roll a moment later. 5 holes, at most 6 strokes a
-hole, 25 seconds a turn. Fewest strokes wins the bet (5% fee); a draw gives both bets back. Anyone can open a lobby
+hole, 30 seconds a turn. Fewest strokes wins the bet (5% fee); a draw gives both bets back. Anyone can open a lobby
 (one at a time); it closes by itself after 5 minutes if nobody joins."""
 import math
 import time
@@ -13,14 +13,14 @@ from PyQt6.QtWidgets import QWidget
 
 from .core import S, sfx, TEXT, TEXT_DIM, alpha, font, tr, ui
 from .wallet import coins_text
-from .widgets import Button, IconButton, Label, Segmented, SliderRow, hbox
+from .widgets import Button, IconButton, Label, Segmented, SliderRow, hbox, vbox
 
 FIELD_H = 0.62                     # the course is 1 wide and 0.62 high
 BALL_R = 0.013
 CUP_R = 0.022
 VMAX = 1.9
 BOUNCE = 0.78
-TURN_S = 25
+TURN_S = 30                                     # 4.6: 30 seconds a shot
 
 # hole number -> name, tee, cup, walls (x1, y1, x2, y2) and round bumpers (x, y, r)
 HOLES = {
@@ -109,11 +109,32 @@ HOLES = {
     40: dict(name="Grand Finale", tee=(0.08, 0.52), cup=(0.92, 0.12), rects=[(0.30, 0.0, 0.34, 0.38)],
              circles=[(0.80, 0.45, 0.04)], water=[(0.50, 0.32, 0.62, 0.62)], ice=[(0.62, 0.0, 0.85, 0.30)],
              boost=[(0.36, 0.04, 0.48, 0.16, 1.6, 0.0)]),
+    # 4.6: eight new holes
+    41: dict(name="Hourglass", tee=(0.08, 0.31), cup=(0.92, 0.31), circles=[],
+             rects=[(0.40, 0.0, 0.60, 0.22), (0.40, 0.40, 0.60, 0.62)], sand=[(0.70, 0.05, 0.85, 0.20)]),
+    42: dict(name="Ice Rink", tee=(0.10, 0.52), cup=(0.88, 0.10), rects=[(0.48, 0.24, 0.52, 0.62)],
+             circles=[(0.70, 0.40, 0.04)], ice=[(0.05, 0.05, 0.95, 0.57)]),
+    43: dict(name="Moat", tee=(0.08, 0.31), cup=(0.50, 0.31), rects=[], circles=[],
+             water=[(0.35, 0.12, 0.65, 0.18), (0.35, 0.44, 0.65, 0.50), (0.35, 0.18, 0.40, 0.26), (0.35, 0.36, 0.40, 0.44),
+                    (0.60, 0.18, 0.65, 0.44)],                # a gap on the left: the way in
+             boost=[(0.20, 0.04, 0.30, 0.10, 1.4, 0.0)]),
+    44: dict(name="Pinball", tee=(0.50, 0.55), cup=(0.50, 0.08), rects=[],
+             circles=[(0.30, 0.20, 0.04), (0.50, 0.30, 0.045), (0.70, 0.20, 0.04), (0.40, 0.42, 0.035), (0.60, 0.42, 0.035)]),
+    45: dict(name="Staircase", tee=(0.06, 0.55), cup=(0.94, 0.07), circles=[],
+             rects=[(0.20, 0.38, 0.24, 0.62), (0.40, 0.24, 0.44, 0.50), (0.60, 0.10, 0.64, 0.36), (0.80, 0.0, 0.84, 0.22)]),
+    46: dict(name="Desert Run", tee=(0.08, 0.10), cup=(0.92, 0.52), rects=[], circles=[(0.50, 0.31, 0.05)],
+             sand=[(0.25, 0.0, 0.40, 0.45), (0.60, 0.17, 0.75, 0.62)], boost=[(0.42, 0.45, 0.58, 0.57, 1.3, 0.0)]),
+    47: dict(name="Crossroads", tee=(0.08, 0.31), cup=(0.92, 0.31), circles=[],
+             rects=[(0.30, 0.0, 0.34, 0.25), (0.30, 0.37, 0.34, 0.62), (0.66, 0.0, 0.70, 0.25), (0.66, 0.37, 0.70, 0.62)],
+             ice=[(0.34, 0.25, 0.66, 0.37)]),
+    48: dict(name="Volcano", tee=(0.08, 0.52), cup=(0.50, 0.31), circles=[(0.50, 0.12, 0.035), (0.50, 0.50, 0.035)],
+             rects=[], water=[(0.40, 0.20, 0.44, 0.42), (0.56, 0.20, 0.60, 0.42)], sand=[(0.20, 0.0, 0.32, 0.62)],
+             boost=[(0.65, 0.04, 0.80, 0.14, -1.3, 0.0)]),
 }
 
 
 def get_hole(hid: int) -> dict:
-    """Hole 1-40; 101-140 is the same hole mirrored left to right."""
+    """Hole 1-48; 101-148 is the same hole mirrored left to right."""
     base = HOLES.get(hid % 100, HOLES[1])
     if hid < 100:
         return base
@@ -646,13 +667,23 @@ class LobbyRow(QWidget):
         name = Label(str(m.get("host", "?")), 12, TEXT, bold=True)
         name.setFixedWidth(name.text_width() + S(8))
         lay.addWidget(name)
-        lay.addWidget(Label((coins_text(bet) + " " + tr("coins")) if bet else tr("No bet"), 10.5, "#E8C26A" if bet else TEXT_DIM), 1)
+        lay.addStretch(1)
+        money = vbox(spacing=0)                          # 4.6: the bet, big and gold, and what the winner takes
+        money.addWidget(Label(coins_text(bet) if bet else tr("No bet"), 13.5 if bet else 10.5, "#E8C26A" if bet else TEXT_DIM,
+                              bold=True, align=Qt.AlignmentFlag.AlignRight).fit(), 0, Qt.AlignmentFlag.AlignRight)
+        if bet:
+            money.addWidget(Label(tr("win {n}", n=coins_text(int(bet * 2 * 0.95))), 8.5, TEXT_DIM,
+                                  align=Qt.AlignmentFlag.AlignRight).fit(), 0, Qt.AlignmentFlag.AlignRight)
+        lay.addLayout(money)
         if m.get("mine"):
             b = Button(tr("Close"), "ghost", 30)
             b.clicked.connect(lambda: golf_cancel(page, m["id"]))
         else:
-            b = Button(tr("Join"), "primary", 30)
+            b = Button(tr("Join"), "primary", 32, icon="play")
+            b.setFixedWidth(max(S(84), b.sizeHint().width()))
             b.clicked.connect(lambda: golf_join(page, m))
+            self.setCursor(Qt.CursorShape.PointingHandCursor)   # 4.6: the whole row joins
+        self.join_btn = b
         lay.addWidget(b)
         self._t0, self._left = time.monotonic(), int(m.get("left") or 0)
         self._tick = QTimer(self)
@@ -660,11 +691,15 @@ class LobbyRow(QWidget):
         self._tick.timeout.connect(self.update)
         self._tick.start()
 
+    def mouseReleaseEvent(self, e) -> None:
+        if not self.m.get("mine") and e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
+            self.join_btn.clicked.emit()
+
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha(ui.accent, 0.5), 1.2) if self.m.get("mine") else Qt.PenStyle.NoPen)
+        p.setPen(QPen(alpha(ui.accent, 0.5), 1.2) if self.m.get("mine") else QPen(alpha("#E8C26A", 0.25), 1))
         p.setBrush(alpha("#FFFFFF", 0.05))
         p.drawRoundedRect(r, S(10), S(10))
         left = max(0, self._left - int(time.monotonic() - self._t0))
@@ -920,7 +955,7 @@ def build_golf(page, lay) -> None:
                                lambda: ctx.online.ask("rb_golf_leave", {"gid": gid}, done), yes=tr("Leave"))
         quit_.clicked.connect(leave)
         lay.addWidget(quit_)
-        lay.addWidget(Label(tr("Drag back anywhere, then let go to shoot. {n} holes, 25 seconds a turn. Fewest strokes wins.",
+        lay.addWidget(Label(tr("Drag back anywhere, then let go to shoot. {n} holes, 30 seconds a turn. Fewest strokes wins.",
                                n=view.n_holes() if view.g else int(float(ctx.econ.cfg.get("golf_holes", 5) or 5))),
                             10, TEXT_DIM, wrap_w=page.W))
         return

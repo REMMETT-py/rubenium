@@ -700,6 +700,7 @@ class ScratchCard(QWidget):
         self.page, self.ctx = page, page.ctx
         self.setFixedSize(page.W, S(170))
         self.setCursor(Qt.CursorShape.CrossCursor)
+        self.setProperty("cheat", True)                    # 4.6: Ruben's right click
         self.prize: dict = {}
         self.asked = False
         self.cleared = 0
@@ -1024,38 +1025,50 @@ def duel_limit(ctx, name: str, page=None) -> int:
 
 
 class DuelRow(QWidget):
-    """One duel: who, which game, the bet, and what can be done now."""
+    """One duel: who, which game, the bet in big gold, and what can be done now (4.6: easier to read and to join)."""
 
     def __init__(self, page, d: dict) -> None:
         super().__init__()
         self.page, self.d = page, d
-        lay = hbox(self, 6)
-        lay.setContentsMargins(S(10), S(6), S(8), S(6))
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setStyleSheet(f"background: {alpha('#FFFFFF', 0.04).name(QColor.NameFormat.HexArgb)}; border-radius: {S(10)}px;")
+        lay = hbox(self, 8)
+        lay.setContentsMargins(S(12), S(8), S(10), S(8))
+        st = d.get("state")
+        self.urgent = (st == "asked" and d.get("asked_me")) or (st == "on" and not d.get("played"))
         bet = int(d.get("bet") or 0)
         title = tr("{game} vs {name}", game=tr(DUEL_GAMES.get(d.get("game"), "")), name=d.get("other", "?"))
-        sub = (tr("Bet {n} coins each", n=coins_text(bet)) if bet else tr("No bet")) + "  ·  " + self._state_text()
-        col = vbox(spacing=0)
+        col = vbox(spacing=1)
         col.addWidget(Label(title, 12, TEXT, bold=True))
-        col.addWidget(Label(sub, 10, TEXT_DIM))
+        col.addWidget(Label(self._state_text(), 10, ui.accent.name() if self.urgent else TEXT_DIM, bold=bool(self.urgent)))
         lay.addLayout(col, 1)
-        st = d.get("state")
+        pot = vbox(spacing=0)
+        pot.addWidget(Label(coins_text(bet) if bet else tr("No bet"), 13 if bet else 10.5, GOLD_TEXT if bet else TEXT_DIM,
+                            bold=True, align=Qt.AlignmentFlag.AlignRight).fit(), 0, Qt.AlignmentFlag.AlignRight)
+        if bet:
+            pot.addWidget(Label(tr("each · pot {n}", n=coins_text(bet * 2)), 8.5, TEXT_DIM, align=Qt.AlignmentFlag.AlignRight).fit(), 0, Qt.AlignmentFlag.AlignRight)
+        lay.addLayout(pot)
         if st == "asked" and d.get("asked_me"):
-            yes = Button(tr("Accept"), "primary", 28)
-            yes.clicked.connect(lambda: page.duel_answer(d["id"], True))
-            no = Button(tr("No"), "ghost", 28)
+            yes = Button(tr("Accept & play"), "primary", 30, icon="play")
+            yes.clicked.connect(lambda: page.duel_answer(d["id"], True, dict(d, state="on")))
+            no = Button(tr("No"), "ghost", 30)
             no.clicked.connect(lambda: page.duel_answer(d["id"], False))
             lay.addWidget(yes)
             lay.addWidget(no)
         elif st == "asked":
-            back = Button(tr("Take back"), "ghost", 28)
+            back = Button(tr("Take back"), "ghost", 30)
             back.clicked.connect(lambda: page.duel_answer(d["id"], False))
             lay.addWidget(back)
         elif st == "on" and not d.get("played"):
-            go = Button(tr("Play"), "primary", 28)
+            go = Button(tr("Play"), "primary", 30, icon="play")
             go.clicked.connect(lambda: page.duel_play(d))
             lay.addWidget(go)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setBrush(alpha(ui.accent, 0.10) if self.urgent else alpha("#FFFFFF", 0.04))
+        p.setPen(QPen(alpha(ui.accent, 0.7), 1.2) if self.urgent else Qt.PenStyle.NoPen)
+        p.drawRoundedRect(r, S(10), S(10))
 
     def _state_text(self) -> str:
         d = self.d
@@ -1085,6 +1098,13 @@ def build_duels(page, lay) -> None:
     top.addWidget(HelpButton(ctx, "duels"))
     lay.addLayout(top)
     lay.addWidget(CoinBar(ctx))
+    duels = getattr(ctx, "duels_data", None)
+    waiting = [d for d in (duels or []) if (d.get("state") == "asked" and d.get("asked_me"))
+               or (d.get("state") == "on" and not d.get("played"))]
+    if waiting:                                       # 4.6: duels waiting for me come first, before the challenge form
+        lay.addWidget(Label(tr("WAITING FOR YOU"), 10, ui.accent.name(), weight=QFont.Weight.Bold))
+        for d in waiting:
+            lay.addWidget(DuelRow(page, d))
     friends = [f for f in (getattr(ctx, "duel_friends", None) or [])]
     lay.addWidget(Label(tr("CHALLENGE A FRIEND"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
     if not friends:
@@ -1152,14 +1172,13 @@ def build_duels(page, lay) -> None:
         lay.addWidget(send)
         lay.addWidget(Label(tr("Same level for both players. Best score wins the pot (5% fee). A draw refunds both bets."),
                             10, TEXT_DIM, wrap_w=page.W))
-    lay.addWidget(Label(tr("YOUR DUELS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
-    duels = getattr(ctx, "duels_data", None)
+    lay.addWidget(Label(tr("YOUR DUELS") if not waiting else tr("OTHER DUELS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
     if duels is None:
         lay.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
     elif not duels:
         lay.addWidget(Label(tr("No duels yet."), 11, TEXT_DIM))
     else:
-        for d in duels[:10]:
+        for d in [d for d in duels if d not in waiting][:10]:
             lay.addWidget(DuelRow(page, d))
     page.load_duels(quiet=True)
 

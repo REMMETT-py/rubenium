@@ -656,9 +656,8 @@ class ShopPage(StylePart, Page):
         self.badge_btn = Button("", "primary", 38)
         self.badge_btn.clicked.connect(self._badge_action)
         lay.addWidget(self.badge_btn)
-        self.sell_btn = Button(tr("Sell on the market"), "ghost", 32)
-        self.sell_btn.clicked.connect(self._sell)
-        lay.addWidget(self.sell_btn)
+        self.sell_btn = Button("", "ghost", 32)          # 4.6: selling is in the Inventory (no button here)
+        self.sell_btn.hide()
         self._variant(self.picker.var)
 
     def open_badge(self, base) -> None:
@@ -701,7 +700,7 @@ class ShopPage(StylePart, Page):
             self.badge_btn.set_text(tr("Only from cases"))
             self.badge_btn.set_kind("ghost")
         self.badge_btn.setEnabled(True)
-        self.sell_btn.setVisible(any(not i.get("locked") for i in ec.items if i["item"] == item))
+        self.sell_btn.setVisible(False)
         self.badge_btn.update()
 
     def _answer(self, ok: bool, data) -> None:

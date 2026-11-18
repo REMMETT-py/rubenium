@@ -173,7 +173,7 @@ class Popup(QWidget):
             p.drawRoundedRect(g, g.height() / 2, g.height() / 2)
             p.setPen(QColor("#052A15"))
             p.setFont(font(10, QFont.Weight.ExtraBold))
-            p.drawText(g, int(Qt.AlignmentFlag.AlignCenter), tr("Go"))
+            p.drawText(g, int(Qt.AlignmentFlag.AlignCenter), tr("See"))          # 4.6: "Go" read as "Avancer"
 
 
 class Notifier(QObject):
@@ -264,12 +264,19 @@ class Notifier(QObject):
         if not self._timer.isActive():
             self._timer.start()
 
+    def hold(self, seconds: float) -> None:
+        """4.6: nothing pops up for a moment (a coin, a case or a replay is still showing its result)."""
+        self.hold_until = max(getattr(self, "hold_until", 0.0), time.monotonic() + seconds)
+
     def _next(self) -> None:
         for w in [w for w in self.shown if w.finished]:
             w.deleteLater()
         self.shown = [w for w in self.shown if not w.finished]
         if not self.queue:
             return self._timer.stop()
+        ec = self.ctx.econ                                       # 4.6: never tell a result before it is shown
+        if time.monotonic() < getattr(self, "hold_until", 0.0) or ec.holding or ec.rounds_held():
+            return
         if len(self.shown) >= 3:
             return
         kind, title, text, action = self.queue.pop(0)
@@ -327,7 +334,8 @@ class Notifier(QObject):
         first, self._first = self._first, False
         for ask in live.get("trades") or []:
             if self._new("trade", ask.get("id")) and not first:
-                self.push("trade", tr("TRADE REQUEST"), tr("{name} wants to trade with you", name=ask.get("from", "?")), "social")
+                self.push("trade", tr("TRADE REQUEST"), tr("{name} wants to trade with you", name=ask.get("from", "?")),
+                          "trade:" + str(ask.get("id")))            # 4.6: See opens the trade itself
         asks = int(live.get("asks") or 0)
         if asks > self.seen.get("asks", 0) and not first:
             self.push("friend", tr("FRIEND REQUEST"), tr("Someone wants to be your friend"), "social")
@@ -407,7 +415,11 @@ class Notifier(QObject):
             else:
                 text = tr("You beat {name} at Wave Rush!", name=who) if data.get("won") else tr("{name} won the Wave Rush duel", name=who)
             self.ctx.wave_lobby = None
-            self.push("duel", tr("WAVE RUSH"), text, "wave")
+            if kind == "wave_end" and self.ctx.window.showing("games") and getattr(self.ctx, "wave_duel", None) == data.get("id"):
+                self._remember("duel", tr("WAVE RUSH"), text, "wave")      # 4.6: on screen already: no pop-up
+                self.history_changed.emit()
+            else:
+                self.push("duel", tr("WAVE RUSH"), text, "wave")
         elif kind in ("duel", "duel_yes", "duel_no", "duel_end"):
             from .games2 import DUEL_GAMES
             game, who = tr(DUEL_GAMES.get(data.get("game"), "")), data.get("from") or data.get("other", "?")
@@ -439,6 +451,8 @@ class Notifier(QObject):
             self.ctx.flip_data = None
             if kind != "flip_end" and data.get("id"):
                 self.ctx.flip_id = data["id"]
+            if kind == "flip_end" and self.ctx.window.showing("games") and getattr(self.ctx, "games_sub", "") == "flip":
+                self.hold(6.5)                                   # 4.6: after the coin has landed, not before
             self.push("duel", tr("COINFLIP"), text, "flip")
         elif kind == "level_up":                                       # 4.0
             lvl, old = int(data.get("level") or 0), int(data.get("from") or 0)
@@ -512,8 +526,16 @@ def go(ctx, action) -> None:
     elif key == "chat":
         ctx.social_tab, ctx.friends_profile, ctx.social_edit = 2, None, False
         ctx.chat_with = arg or None
-    elif key == "trade":
+    elif key == "trade":                                       # 4.6: accept (when asked) and open the trade
         ctx.friends_profile = None
+        if arg:
+            def open_it() -> None:
+                if ctx.trade.trade_id == arg:
+                    return
+                ctx.econ.call("rb_trade_accept", {"trade": arg},
+                              lambda ok, d: (ctx.trade.open(arg), ctx.window.reload_page("friends")) if ok or "rb_trade_gone" not in str(d)
+                              else ctx.toast(tr(str(d)), "warn"))
+            QTimer.singleShot(300 if getattr(ctx, "online_mode", False) else 1800, open_it)
     elif key in ("market", "inventory", "shop", "cases", "levels", "notifications"):
         target = "themes"
         ctx.shop_tab = {"market": 4, "inventory": 5, "shop": 1, "cases": 3, "levels": 5, "notifications": 0}[key]
@@ -613,7 +635,7 @@ class NoticeRow(QWidget):
             p.drawRoundedRect(g, g.height() / 2, g.height() / 2)
             p.setPen(QColor("#052A15"))
             p.setFont(font(9.5, QFont.Weight.ExtraBold))
-            p.drawText(g, int(Qt.AlignmentFlag.AlignCenter), tr("Go"))
+            p.drawText(g, int(Qt.AlignmentFlag.AlignCenter), tr("See"))          # 4.6: "Go" read as "Avancer"
 
 
 def _ago(t: float) -> str:

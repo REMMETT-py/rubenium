@@ -51,7 +51,7 @@ class ItemPicker(QWidget):
             if w > 0:
                 rows.append((it["id"], it["item"], w))
         rows.sort(key=lambda r: -r[2])
-        self.rows = rows[:60]
+        self.rows = rows                                    # 4.6: all of them, not the first 60
         self.picked: list = []
         self.per = 5
         self.th = S(70)
@@ -102,6 +102,8 @@ class ItemPicker(QWidget):
         else:
             self.picked.append(iid)
             sfx.play("pick")
+            from .bazaar import show_item_tip                # 4.6: what was just put in, up close
+            show_item_tip(self.ctx, self, self._tile(i), self.rows[i][1], self.rows[i][2])
         self.update()
         self.changed.emit()
 
@@ -143,10 +145,10 @@ class ItemPicker(QWidget):
 class TotalBar(QWidget):
     """What you put in, and (for a joiner) the range it must be in."""
 
-    def __init__(self, picker: ItemPicker, want=None) -> None:
+    def __init__(self, picker: ItemPicker, want=None, other: int = 0) -> None:
         super().__init__()
-        self.picker, self.want = picker, want
-        self.setFixedHeight(S(38))
+        self.picker, self.want, self.other = picker, want, int(other or 0)   # other: what the creator put in
+        self.setFixedHeight(S(52) if self.other else S(38))
         picker.changed.connect(self.update)
 
     def ok(self) -> bool:
@@ -173,8 +175,22 @@ class TotalBar(QWidget):
             lo, hi = self.want
             p.setPen(QColor(WIN_C) if good else QColor("#FFB16B"))
             p.setFont(font(10, QFont.Weight.DemiBold))
-            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+            top = r.adjusted(0, 0, -S(10), -(S(16) if self.other else 0))
+            p.drawText(top, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        tr("Needs {a} to {b}", a=coins_text(lo), b=coins_text(hi)))
+        if self.other:                                    # 4.6: your chance, as it would be with these items
+            c = t / (t + self.other) if t else 0.0
+            c = min(0.51, max(0.49, c)) if t and self.want and self.want[0] <= t <= self.want[1] else c
+            bar = QRectF(r.left() + S(10), r.bottom() - S(12), r.width() - S(20), S(5))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.08))
+            p.drawRoundedRect(bar, S(2.5), S(2.5))
+            p.setBrush(QColor(ui.accent))
+            p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * c, bar.height()), S(2.5), S(2.5))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left(), r.bottom() - S(30), r.width() - S(10), S(16)),
+                       int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), tr("Your chance {p}", p=pct(c)))
 
 
 # ================================================================ a coinflip in the lobby
@@ -225,11 +241,11 @@ class FlipRow(QWidget):
         p.drawText(QRectF(r.left() + S(44), r.top() + S(8), r.width() * 0.5, S(18)), int(Qt.AlignmentFlag.AlignVCenter), name)
         if f.get("a_bot"):                                # a bot (or an offer made by Rubenium): always marked
             tx = r.left() + S(50) + p.fontMetrics().horizontalAdvance(name)
-            label = tr("RUBENIUM OFFER") if f.get("admin_offer") else tr("BOT")
+            label = tr("BOT")                         # 4.6: Rubenium's own offers look like any bot
             p.setFont(font(8.5, QFont.Weight.Black, 0.6))
             tw = p.fontMetrics().horizontalAdvance(label) + S(10)
             chip = QRectF(tx, r.top() + S(9), tw, S(16))
-            col = QColor("#E8C26A") if f.get("admin_offer") else QColor("#9AA4AD")
+            col = QColor("#9AA4AD")
             p.setPen(QPen(col, 1))
             p.setBrush(alpha(col, 0.15))
             p.drawRoundedRect(chip, S(8), S(8))
@@ -273,6 +289,22 @@ class FlipStage(QWidget):
         self._t.timeout.connect(self.update)
         self._sync_t = time.monotonic()
         self._confetti: list = []
+        self._item_rects: list = []                       # 4.6: (rect, item dict) of the items shown: click one to see it
+        self.setMouseTracking(True)
+
+    def _item_at(self, pos):
+        return next(((rc, it) for rc, it in self._item_rects if rc.contains(pos)), None)
+
+    def mouseMoveEvent(self, e) -> None:
+        self.setCursor(Qt.CursorShape.PointingHandCursor if self._item_at(e.position()) else Qt.CursorShape.ArrowCursor)
+
+    def mouseReleaseEvent(self, e) -> None:
+        hit = self._item_at(e.position())
+        if hit is not None:
+            from .bazaar import show_item_tip
+            rc, it = hit
+            w = it.get("worth")
+            show_item_tip(self.ctx, self, rc, it.get("item", ""), int(w) if w is not None else None)
 
     def showEvent(self, _e) -> None:
         self._t.start()
@@ -288,6 +320,7 @@ class FlipStage(QWidget):
             self._shown_result = f["result"]
             self._spin_t = time.monotonic()               # the coin starts to spin now and lands on the result
             sfx.play("on")
+            self.ctx.notifier.hold(self.SPIN_S + 1.5)     # 4.6: no pop-up telling the result before the coin lands
         elif f.get("state") == "locked" and old.get("state") != "locked":
             sfx.play("pick")
         self.update()
@@ -349,6 +382,7 @@ class FlipStage(QWidget):
         found_left, join_left, count_left = bot_phases(f, elapsed)
         searching = found_left > 0 or (join_left > 0 and not f.get("b") and f.get("vs_bot"))
         self._phase_sound(found_left, join_left, count_left, f)
+        self._item_rects = []
         # the two players
         for i, who in enumerate(("a", "b")):
             box = QRectF(r.left() + S(10) if i == 0 else r.right() - S(10) - r.width() * 0.3, r.top() + S(10),
@@ -385,6 +419,7 @@ class FlipStage(QWidget):
                 d = min(cell.width(), cell.height()) * 0.8
                 show_item(p, it.get("item", ""), QRectF(cell.center().x() - d / 2, cell.center().y() - d / 2, d, d), now,
                           effects=False)
+                self._item_rects.append((cell, it))
             val = int(f.get(who + "_value") or 0)
             p.setPen(QColor(GOLD_TEXT))
             p.setFont(font(11, QFont.Weight.ExtraBold))
@@ -458,6 +493,45 @@ class FlipStage(QWidget):
         elif state == "cancelled":
             p.setPen(QColor(TEXT_DIM))
             p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), tr("Closed: the items went back"))
+        # 4.6: the chances, as one bar split between the two sides
+        ch = f.get("chance_a")
+        bar = QRectF(r.left() + S(16), r.bottom() - S(24), r.width() - S(32), S(10))
+        if ch is not None:
+            ca = float(ch)
+            cols = {"black": QColor("#2A3136"), "white": QColor("#E6ECEF")}
+            a_col = cols.get(f.get("a_side", "black"), cols["black"])
+            b_col = cols.get(f.get("b_side", "white"), cols["white"])
+            split = bar.left() + bar.width() * ca
+            path = QPainterPath()
+            path.addRoundedRect(bar, S(5), S(5))
+            p.save()
+            p.setClipPath(path)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(a_col)
+            p.drawRect(QRectF(bar.left(), bar.top(), split - bar.left(), bar.height()))
+            p.setBrush(b_col)
+            p.drawRect(QRectF(split, bar.top(), bar.right() - split, bar.height()))
+            p.restore()
+            p.setPen(QPen(alpha("#FFFFFF", 0.35), 1))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(bar, S(5), S(5))
+            p.setPen(QPen(QColor(ui.accent), S(2)))
+            p.drawLine(QPointF(split, bar.top() - S(3)), QPointF(split, bar.bottom() + S(3)))
+            p.setFont(font(12, QFont.Weight.Black))
+            lab = QRectF(bar.left(), bar.top() - S(20), bar.width(), S(17))
+            for who, c, al in (("a", ca, Qt.AlignmentFlag.AlignLeft), ("b", 1 - ca, Qt.AlignmentFlag.AlignRight)):
+                me = (who == "a" and f.get("mine")) or (who == "b" and f.get("joiner"))
+                win = landed and winner_side == f.get(who + "_side")
+                p.setPen(QColor(WIN_C) if win else QColor(ui.accent) if me else QColor(TEXT))
+                p.drawText(lab, int(al | Qt.AlignmentFlag.AlignVCenter), (tr("You") + " " if me else "") + pct(c))
+        elif state in ("open", "joined", "setup"):
+            p.setPen(QPen(alpha("#FFFFFF", 0.12), 1, Qt.PenStyle.DashLine))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(bar, S(5), S(5))
+            p.setPen(QColor(TEXT_FAINT))
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(bar.left(), bar.top() - S(20), bar.width(), S(17)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Chances show once both sides are in"))
         # confetti for the winner
         if self._confetti and self._landed is not None:
             age = now - self._landed
@@ -714,7 +788,7 @@ def _build_view(page, lay, fid: str) -> None:
                                   a=coins_text(int(f.get("min") or 0)), b=coins_text(int(f.get("max") or 0))),
                                11, TEXT, wrap_w=page.W))
             picker = ItemPicker(page, limit, (int(f.get("min") or 0), int(f.get("max") or 0)))
-            bar = TotalBar(picker, picker.want)
+            bar = TotalBar(picker, picker.want, int(f.get("a_value") or 0))
             al.addWidget(bar)
             al.addWidget(picker)
             row = hbox(spacing=6)
@@ -740,6 +814,7 @@ def _build_view(page, lay, fid: str) -> None:
                     apply(d)
                 ctx.econ.call("rb_flip_vs_bot", {"fid": fid}, done)
             bot.clicked.connect(vs_bot)
+            bot.setProperty("cheat", True)               # 4.6: Ruben's right click
             al.addWidget(bot)
             close = Button(tr("Close it (items come back)"), "ghost", 34)
 

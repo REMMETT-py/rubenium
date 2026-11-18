@@ -15,6 +15,11 @@ from .widgets import Button, Label, hbox, vbox
 # ================================================================ the show / hide key
 KEY_CHOICES = [("rshift", "Right Shift", 0xA1), ("rctrl", "Right Ctrl", 0xA3), ("insert", "Insert", 0x2D),
                ("home", "Home", 0x24), ("ralt", "Right Alt", 0xA5), ("off", "Off", 0)]
+# 4.6: the game mode key (any of these, but never the show / hide key)
+GM_KEY_CHOICES = [("rshift", "Right Shift", 0xA1), ("rctrl", "Right Ctrl", 0xA3), ("ralt", "Right Alt", 0xA5),
+                  ("insert", "Insert", 0x2D), ("home", "Home", 0x24), ("end", "End", 0x23), ("pgup", "Page Up", 0x21),
+                  ("pgdn", "Page Down", 0x22), ("pause", "Pause", 0x13), ("scroll", "Scroll Lock", 0x91),
+                  ("f9", "F9", 0x78), ("f10", "F10", 0x79), ("f11", "F11", 0x7A), ("f12", "F12", 0x7B)]
 
 
 class TapKey(QObject):
@@ -24,8 +29,10 @@ class TapKey(QObject):
     held = pyqtSignal()                 # 4.5: held for 3 seconds: restart Rubenium
     GAME_KEYS = (0x57, 0x41, 0x53, 0x44, 0x20, 0x25, 0x26, 0x27, 0x28, 0xA0, 0x01, 0x02)  # WASD space arrows LShift mouse (not LCtrl: AltGr sends it)
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent=None, hold_s: float = 3.0, choices=None) -> None:
         super().__init__(parent)
+        self.hold_s = hold_s
+        self.choices = choices or KEY_CHOICES
         self.vk = 0
         self._down_at = 0.0
         self._was = False
@@ -35,7 +42,7 @@ class TapKey(QObject):
         self._t.timeout.connect(self._poll)
 
     def set_key(self, name: str) -> None:
-        self.vk = next((vk for k, _n, vk in KEY_CHOICES if k == name), 0)
+        self.vk = next((vk for k, _n, vk in self.choices if k == name), 0)
         self._was = False
         if self.vk and win.IS_WIN:
             self._t.start()
@@ -50,7 +57,7 @@ class TapKey(QObject):
             self._fired = False
         elif down and not self._fired and any(win.key_down(k) for k in self.GAME_KEYS):
             self._fired = True                          # held while playing (running, aiming...): never a restart
-        elif down and not self._fired and now - self._down_at >= 3.0:
+        elif down and not self._fired and now - self._down_at >= self.hold_s:
             self._fired = True
             self.held.emit()
         elif not down and self._was and now - self._down_at < 0.35:
