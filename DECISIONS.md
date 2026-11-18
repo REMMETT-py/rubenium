@@ -122,3 +122,17 @@ Choices made where the request left room, newest last.
 - Removed swap (Sparkles): its file's fingerprint is in RETIRED, so an installed copy is replaced by the player's own
   original automatically, like the swaps removed in 1.8.
 
+## 4.2
+
+- Coinflip join: nothing is reserved. rb_flip_lock checks the lobby is still open, locks your items and takes the seat
+  in one transaction under the row lock, so two players can never both be in, and the one who loses the race gets
+  rb_flip_taken with nothing touched.
+- VS bot: the server picks the bot, its items and the result at the press, and fixes the times (found 3-7 s, joins
+  3-6 s later, 3-2-1, 15 s). rb_flip_json hides the bot's name until found and its items, worth and chances until it
+  joins, so neither the app nor anyone watching learns anything early. It cannot be cancelled once called.
+- Mythic badges in cases are hidden for everyone (admins included): only the drop you win is shown, once the strip
+  has stopped.
+- The game help reads the few numbers an admin can change (free spin hours, minigame limits, fees) from the live
+  settings; the rest are the fixed numbers of the server functions.
+- Casino: closing or hiding the online menu, going into a game or leaving online mode keeps the casino game; only
+  switching the left half away from Games goes back to the lobby.

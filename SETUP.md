@@ -21,3 +21,4 @@
 18. Then run `022_lock_fix.sql` once. Some older functions were saved with Windows line ends, so 021 could not add the feature-lock check to them; 022 adds it. Safe to run again.
 19. Then run `023_search_path.sql` once (database advisor fixes: pins the search path of five helper functions and indexes nine foreign keys). Safe to run again.
 20. Then run `024_v41.sql` once (4.1: Block Blast replaces 2048, Keno and Limbo can no longer be played, apps older than 4.1 must update). One transaction, safe to run again. `024_down.sql` undoes it.
+21. Then run `025_v42.sql` once (4.2: coinflip VS bot with five bots, joining only on lock-in, Timing fix, advent door 1 = First Frost 2026, apps older than 4.2 must update). One transaction, safe to run again. `025_down.sql` undoes it.

@@ -1,3 +1,17 @@
+Rubenium 4.2
+
+- Coinflip: play a bot. It is searched, found, picks its items, joins, 3-2-1, then the usual 15 second count. Five bots, each with its own worth range: Pixel and Milo (low), Nova and Vega (middle to high), Atlas (high to huge)
+- Coinflip: joining only opens your items; you are in once you lock in. If someone else locks in first you are told, and nothing of yours was taken
+- Coinflip: an eye on every coinflip that is counting down, to watch it flip
+- A golden ? on every game: how to play, the best way to play, and the real payouts and chances
+- Advent door 1: First Frost 2026, a Legendary frame with falling snow and ice, limited, never made again
+- Rocket: the auto cash-out line always shows, levels on the chart, clear hints (what you win and the chance)
+- Timing: speeds up far less; an app slowing Rubenium down is caught (the server judges with its own clock)
+- Cases: every Mythic badge is a ? on the strip and in the reward list, until you win one
+- Style is in the Shop again (it was Settings > Look); the sets are in Games > Quests
+- Fixed: the free spin did not open from the lobby
+- Fixed: hiding the menu or going back into a game lost the casino game you were on
+
 Rubenium 4.1
 
 - New minigame: Block Blast, in place of 2048. Drag the pieces onto the grid, clear rows and columns; Classic 8x8, Relaxed 10x10, Hard 7x7, a leaderboard for each. The server checks every move

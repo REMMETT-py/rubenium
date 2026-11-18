@@ -191,3 +191,13 @@ levels 2 (Cosmic Hunt), 3 (Shiny Hunt), 4 (Epic Vault) and 5 (Mythic Hunt); noth
   step of the streak.
 - Keno and Limbo are removed (their functions can no longer be called). The house edge table above no longer lists them.
 
+## 4.2 (025_v42.sql)
+
+- Coinflip bots: Pixel 50 to 3 000, Milo 500 to 15 000, Nova 5 000 to 150 000, Vega 25 000 to 1 000 000,
+  Atlas 250 000 to 100 000 000 (worth of the lobby). VS bot uses the bot whose range holds your lobby's worth; the
+  bot's items are real catalog items (never limited) within ±10%; the same 49-51% chance and server roll as players.
+  Bots no longer join player lobbies on their own.
+- Timing: acceleration 0.08-0.14 (was 0.35-0.50). The stop time from the app is used only if it is between 40 ms ahead
+  and 400 ms behind the server's clock and the round's clock ran at least 94% of real speed; otherwise the server's
+  time minus 80 ms. Payouts unchanged (×4 / ×1.8 / ×0.9).
+- Advent door 1: frame:firstfrost, Legendary (epic), limited, worth 20 000, never sold or in a case.

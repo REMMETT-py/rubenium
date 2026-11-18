@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "4.1"         # the version people see
-BUILD = "2026.11.18.12"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "4.2"         # the version people see
+BUILD = "2026.11.18.16"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -4584,7 +4584,6 @@ FR = {
     'Send challenge': 'Envoyer le défi',
     'Sent to the admin. Keep Rubenium open: the answer shows here.': "Envoyé à l'admin. Garde Rubenium ouvert : la réponse s'affichera ici.",
     'Set bonus: +{n} coins': 'Bonus de collection : +{n} pièces',
-    'Sets': 'Collections',
     'Settings has backups, the show/hide key and this tour again. Have fun!': 'Les Réglages contiennent les sauvegardes, la touche afficher/cacher et cette visite. Amuse-toi bien !',
     'Settings restored: Rubenium restarts them now': 'Réglages restaurés : Rubenium les applique maintenant',
     'Show / hide key (tap it once)': 'Touche afficher / cacher (un appui)',
@@ -4865,7 +4864,6 @@ FR = {
     'Settings in 6 clear sections; Game mode text no longer goes off the screen': "Réglages en 6 sections claires ; le texte du Mode jeu ne dépasse plus de l'écran",
     'Visualisers removed': 'Visualiseurs retirés',
     'Translations fixed everywhere (users instead of players, one consistent French)': 'Traductions corrigées partout (utilisateurs au lieu de joueurs, un français cohérent)',
-    'Sets': 'Ensembles',
     'Collect full sets for a big bonus.': 'Complète des ensembles pour un gros bonus.',
     'Complete a set to get a big bonus, once. You must still own the badges when you claim.': 'Complète un ensemble pour un gros bonus, une seule fois. Tu dois encore avoir les badges quand tu récupères.',
     'Set bonus: +{n} coins': "Bonus d'ensemble : +{n} pièces",
@@ -5971,6 +5969,160 @@ FR = {
     'RL Swap: Lantern Lift goal explosion (on Big Splash). The Sparkles boost was removed: it crashed the game': 'RL Swap : explosion de but Lantern Lift (sur Big Splash). Le boost Sparkles a été retiré : il faisait planter le jeu',
     'Fixes: Settings > Look no longer crashes, the R always comes back after online mode, the OG scratch card is smooth': 'Corrections : Réglages > Apparence ne plante plus, le R revient toujours après le mode en ligne, le ticket OG se gratte sans lag',
     'Keno, Limbo and the free spin left the casino bar (the free spin stays in the lobby). Every case is now a Case': "Keno, Limbo et le tour gratuit quittent la barre du casino (le tour gratuit reste dans le salon). Chaque caisse s'appelle maintenant Caisse",
+    # 4.2
+    'First Frost 2026': 'Premier Givre 2026',
+    'Searching for a bot…': "Recherche d'un bot…",
+    '{name} is choosing items…': '{name} choisit ses objets…',
+    '{name} joined': '{name} a rejoint',
+    'Someone else locked in first. Nothing of yours was taken.': "Quelqu'un d'autre a validé avant toi. Rien ne t'a été pris.",
+    'Searching…': 'Recherche…',
+    'Put in items worth {a} to {b}, then lock in. You are in once you lock in.': 'Mets des objets valant {a} à {b}, puis valide. Tu es dedans une fois validé.',
+    'Play a bot': 'Jouer contre un bot',
+    'Choosing': 'Choix',
+    'Waiting for a player, or play a bot now. Once someone is in, it cannot be cancelled.': "En attente d'un joueur, ou joue contre un bot maintenant. Une fois quelqu'un dedans, impossible d'annuler.",
+    'A bot is joining your coinflip. It cannot be cancelled now.': "Un bot rejoint ton pile ou face. Impossible d'annuler maintenant.",
+    "Press Deal: you and the dealer get two cards; one of the dealer's stays hidden.": 'Appuie sur Distribuer : le croupier et toi recevez deux cartes ; une de celles du croupier reste cachée.',
+    'Hit takes a card, Stand keeps your hand, Double doubles your bet for exactly one more card.': 'Tirer prend une carte, Rester garde ta main, Doubler double ta mise pour une seule carte de plus.',
+    'Get closer to 21 than the dealer without going over. Aces count 1 or 11, faces count 10.': "Approche-toi plus de 21 que le croupier sans dépasser. L'as vaut 1 ou 11, les figures 10.",
+    'Always stand on 17 or more, always hit on 11 or less.': 'Reste toujours à 17 ou plus, tire toujours à 11 ou moins.',
+    'From 12 to 16: stand when the dealer shows 2 to 6, hit when it shows 7 or more.': "De 12 à 16 : reste si le croupier montre 2 à 6, tire s'il montre 7 ou plus.",
+    'Double on 10 or 11 when the dealer shows a lower card.': 'Double à 10 ou 11 quand le croupier montre une carte plus basse.',
+    'Win: ×2 (your bet back, plus as much).': 'Victoire : ×2 (ta mise récupérée, plus autant).',
+    'Blackjack (21 with your first two cards): ×2.5.': 'Blackjack (21 avec tes deux premières cartes) : ×2,5.',
+    'Same total as the dealer: your bet back.': 'Même total que le croupier : ta mise est rendue.',
+    'The dealer draws until 17. No split.': "Le croupier tire jusqu'à 17. Pas de séparation.",
+    'Pick a risk, then drop the ball: it bounces 10 times, left or right, and lands in a box.': 'Choisis un risque, puis lâche la bille : elle rebondit 10 fois, à gauche ou à droite, et tombe dans une case.',
+    'The middle boxes are by far the most likely: the edges are rare.': 'Les cases du milieu sont de loin les plus probables : les bords sont rares.',
+    'Low risk pays often but small. High risk usually pays very little and now and then a lot.': 'Risque faible : paie souvent mais peu. Risque élevé : paie le plus souvent très peu, et de temps en temps beaucoup.',
+    'Low: ×0.5 in the middle up to ×8.5 at the edges (96.9% comes back on average).': "Faible : ×0,5 au milieu jusqu'à ×8,5 aux bords (96,9 % revient en moyenne).",
+    'Medium: ×0.4 up to ×21 (96.4%).': "Moyen : ×0,4 jusqu'à ×21 (96,4 %).",
+    'High: ×0.2 up to ×70 (95.9%).': "Élevé : ×0,2 jusqu'à ×70 (95,9 %).",
+    'Middle box: 24.6% of drops. Each edge box: 0.1% (1 in 1 024).': 'Case du milieu : 24,6 % des lancers. Chaque case du bord : 0,1 % (1 sur 1 024).',
+    'Choose how many bombs hide among the 25 tiles, then open tiles one by one.': 'Choisis combien de bombes se cachent parmi les 25 cases, puis ouvre les cases une à une.',
+    'Every gem raises the multiplier. Cash out whenever you like: a bomb loses the bet.': 'Chaque gemme augmente le multiplicateur. Encaisse quand tu veux : une bombe fait perdre la mise.',
+    'Few bombs: small, safer steps. Many bombs: big jumps, very risky.': 'Peu de bombes : petits pas, plus sûrs. Beaucoup de bombes : gros sauts, très risqué.',
+    'Decide when you will cash out before you start, and stick to it.': 'Décide quand tu encaisseras avant de commencer, et tiens-toi-y.',
+    'Multiplier = 97% ÷ the chance of finding that many gems (up to ×1 000).': "Multiplicateur = 97 % ÷ la chance de trouver autant de gemmes (jusqu'à ×1 000).",
+    'First gem: ×1.01 with 1 bomb, ×1.10 with 3, ×1.21 with 5, ×1.61 with 10, ×4.85 with 20.': 'Première gemme : ×1,01 avec 1 bombe, ×1,10 avec 3, ×1,21 avec 5, ×1,61 avec 10, ×4,85 avec 20.',
+    '25 slots: 1 gold (0), 12 red (odd numbers) and 12 black (even numbers).': '25 cases : 1 dorée (0), 12 rouges (nombres impairs) et 12 noires (nombres pairs).',
+    'Pick your bet, then spin.': 'Choisis ta mise, puis lance.',
+    'Red, Black, Low and High win almost half the time.': 'Rouge, Noir, Bas et Haut gagnent presque une fois sur deux.',
+    'Gold and single numbers rarely win, but pay a lot.': 'Le doré et les numéros seuls gagnent rarement, mais paient beaucoup.',
+    'Red or Black: ×2, 48% chance.': 'Rouge ou Noir : ×2, 48 % de chance.',
+    'Low (1-12) or High (13-24): ×2, 48% chance.': 'Bas (1-12) ou Haut (13-24) : ×2, 48 % de chance.',
+    'Gold or one number: ×24, 4% chance.': 'Doré ou un numéro : ×24, 4 % de chance.',
+    '96% of what is bet comes back on average.': '96 % de ce qui est misé revient en moyenne.',
+    'Choose your chance to win, from 5% to 95%, then roll.': 'Choisis ta chance de gagner, de 5 % à 95 %, puis lance.',
+    'A number from 0 to 99 is drawn: below your chance wins.': 'Un nombre de 0 à 99 est tiré : en dessous de ta chance, tu gagnes.',
+    'A high chance wins often but pays little. A low chance pays a lot but rarely wins.': 'Une chance élevée gagne souvent mais paie peu. Une chance faible paie beaucoup mais gagne rarement.',
+    'Pays 97 ÷ your chance: 50% pays ×1.94, 25% pays ×3.88, 10% pays ×9.70.': 'Paie 97 ÷ ta chance : 50 % paie ×1,94, 25 % paie ×3,88, 10 % paie ×9,70.',
+    '97% of what is bet comes back on average.': '97 % de ce qui est misé revient en moyenne.',
+    'Press Start: a needle runs along the bar. Press STOP when it is on the target.': 'Appuie sur Démarrer : une aiguille parcourt la barre. Appuie sur STOP quand elle est sur la cible.',
+    'The needle speeds up a little the longer you wait. The target moves every round.': "L'aiguille accélère un peu plus tu attends. La cible change à chaque manche.",
+    'Stop early, while the needle is still slow.': "Arrête tôt, tant que l'aiguille est encore lente.",
+    'Watch one bounce to feel the speed, then press a little before it reaches the target.': 'Regarde un aller-retour pour sentir la vitesse, puis appuie un peu avant la cible.',
+    'Perfect (the centre): ×4.': 'Parfait (le centre) : ×4.',
+    'Good: ×1.8.': 'Bien : ×1,8.',
+    'Close: ×0.9 (most of your bet back).': 'Proche : ×0,9 (presque toute ta mise).',
+    'Miss, or after 9 seconds: nothing.': 'Raté, ou après 9 secondes : rien.',
+    'The server keeps its own clock: slowing Rubenium down does not help.': 'Le serveur garde sa propre horloge : ralentir Rubenium ne sert à rien.',
+    'Launch: the multiplier climbs while the rocket flies.': 'Lance : le multiplicateur monte tant que la fusée vole.',
+    'Press Cash out before it blows up to win your bet times the multiplier.': "Appuie sur Encaisser avant qu'elle explose pour gagner ta mise fois le multiplicateur.",
+    'Or pick an automatic cash-out (×1.5 to ×10): it cashes out by itself if the rocket gets there.': 'Ou choisis un encaissement automatique (×1,5 à ×10) : il encaisse tout seul si la fusée y arrive.',
+    'Low targets win often: ×1.5 is reached 64% of the time.': 'Les petites cibles gagnent souvent : ×1,5 est atteint 64 % du temps.',
+    'The longer you wait, the bigger the win and the bigger the risk.': 'Plus tu attends, plus le gain et le risque sont grands.',
+    'Chance to reach ×m = 96% ÷ m: ×2 48%, ×3 32%, ×5 19%, ×10 9.6%.': "Chance d'atteindre ×m = 96 % ÷ m : ×2 48 %, ×3 32 %, ×5 19 %, ×10 9,6 %.",
+    'Cash out from ×1.20. The rocket never flies past ×100.': 'Encaisse dès ×1,20. La fusée ne dépasse jamais ×100.',
+    'A card is shown. Guess if the next one is higher or lower: the same rank counts as right.': 'Une carte est montrée. Devine si la suivante est plus haute ou plus basse : la même valeur compte comme juste.',
+    'Every right guess raises the multiplier. Cash out whenever you like; a wrong guess loses the bet.': 'Chaque bonne réponse augmente le multiplicateur. Encaisse quand tu veux ; une erreur fait perdre la mise.',
+    'Bet on the side with more cards: higher on a low card, lower on a high card.': 'Mise du côté où il y a le plus de cartes : plus haut sur une petite carte, plus bas sur une grande.',
+    'Guessing against the odds pays more, and loses more often.': 'Parier contre les chances paie plus, et perd plus souvent.',
+    'Each right guess multiplies by 0.985 × 13 ÷ the ranks that win.': 'Chaque bonne réponse multiplie par 0,985 × 13 ÷ les valeurs gagnantes.',
+    'Higher on a 2: ×1.07. Higher on a Queen: ×6.40.': 'Plus haut sur un 2 : ×1,07. Plus haut sur une Dame : ×6,40.',
+    'A round stops at 50 000 coins.': "Une manche s'arrête à 50 000 pièces.",
+    'Climb 8 rows. On each row, pick a tile: a safe one takes you up, a bomb ends the round.': 'Grimpe 8 étages. À chaque étage, choisis une case : une case sûre te fait monter, une bombe termine la manche.',
+    'Cash out whenever you like from the first row on.': 'Encaisse quand tu veux dès le premier étage.',
+    'Easy climbs slowly but safely. Expert pays enormously, but most rounds stop on the first rows.': "Facile monte lentement mais sûrement. Expert paie énormément, mais la plupart des manches s'arrêtent aux premiers étages.",
+    'Easy (4 tiles, 1 bomb): ×1.29 after one row, ×9.69 at the top.': 'Facile (4 cases, 1 bombe) : ×1,29 après un étage, ×9,69 au sommet.',
+    'Medium (3 tiles, 1 bomb): ×1.46, ×24.86 at the top.': 'Moyen (3 cases, 1 bombe) : ×1,46, ×24,86 au sommet.',
+    'Hard (2 tiles, 1 bomb): ×1.94, ×248.32 at the top.': 'Difficile (2 cases, 1 bombe) : ×1,94, ×248,32 au sommet.',
+    'Expert (3 tiles, 2 bombs): ×2.91 after one row.': 'Expert (3 cases, 2 bombes) : ×2,91 après un étage.',
+    'Free every {h} hours: spin the wheel and win what it lands on.': "Gratuit toutes les {h} heures : fais tourner la roue et gagne ce sur quoi elle s'arrête.",
+    'It costs nothing: come back every {h} hours.': 'Ça ne coûte rien : reviens toutes les {h} heures.',
+    '40 coins 19.5% · 75 coins 19.5% · 120 coins 18% · 180 coins 12%': '40 pièces 19,5 % · 75 pièces 19,5 % · 120 pièces 18 % · 180 pièces 12 %',
+    '300 coins 7.5% · 500 coins 4% · 1 200 coins 1.8%': '300 pièces 7,5 % · 500 pièces 4 % · 1 200 pièces 1,8 %',
+    'A key 7.7% · the Golden Wheel 5% · an XP coupon 5%': 'Une clé 7,7 % · la Roue dorée 5 % · un coupon XP 5 %',
+    'One free card every {h} hours. Scratch it (or press Reveal) to see your prize.': 'Une carte gratuite toutes les {h} heures. Gratte-la (ou appuie sur Révéler) pour voir ton prix.',
+    'It is free: scratch every card as soon as it is ready.': "C'est gratuit : gratte chaque carte dès qu'elle est prête.",
+    '80 to 160 coins: 30%': '80 à 160 pièces : 30 %',
+    '220 to 420 coins: 27%': '220 à 420 pièces : 27 %',
+    '1 key + a Common XP coupon: 20%': '1 clé + un coupon XP Commun : 20 %',
+    '2 keys + an Uncommon XP coupon: 14%': '2 clés + un coupon XP Peu commun : 14 %',
+    '2 500 coins + a Rare XP coupon: 6%': '2 500 pièces + un coupon XP Rare : 6 %',
+    'The Golden Wheel + an Epic XP coupon: 3%': 'La Roue dorée + un coupon XP Épique : 3 %',
+    'Notes fall in 4 lanes. Hit them as they cross the line: D F J K on the keyboard, or click.': 'Les notes tombent sur 4 couloirs. Touche-les quand elles passent la ligne : D F J K au clavier, ou clique.',
+    'Rush is much faster, with many more notes.': 'Rush est bien plus rapide, avec beaucoup plus de notes.',
+    'Use the keyboard and keep your eyes on the line, not on the notes up high.': 'Utilise le clavier et garde les yeux sur la ligne, pas sur les notes en haut.',
+    'Combos raise your score: a miss breaks them.': 'Les combos augmentent ton score : un raté les casse.',
+    '15 to 65 coins a round.': '15 à 65 pièces par partie.',
+    'Every minigame pays up to {cap} coins every 2 hours.': "Chaque mini-jeu rapporte jusqu'à {cap} pièces toutes les 2 heures.",
+    'Turn two cards at a time to find the pairs. Each card is checked on the server.': 'Retourne deux cartes à la fois pour trouver les paires. Chaque carte est vérifiée sur le serveur.',
+    'Remember every card you turn, even when it is not a pair.': "Retiens chaque carte retournée, même quand ce n'est pas une paire.",
+    'Clear the board in as few turns as you can.': 'Termine le plateau en un minimum de coups.',
+    'Fewer turns pay more. Medium and Hard pay more than Easy.': 'Moins de coups paie plus. Moyen et Difficile paient plus que Facile.',
+    'Slide the cars along their lane to clear the way, then drive the red car out.': 'Fais glisser les voitures dans leur voie pour libérer le passage, puis fais sortir la voiture rouge.',
+    "First look at what blocks the red car's row, then at what blocks those cars.": "Regarde d'abord ce qui bloque la rangée de la voiture rouge, puis ce qui bloque ces voitures.",
+    'Fewer moves pay more. Harder levels pay more.': 'Moins de coups paie plus. Les niveaux plus durs paient plus.',
+    'Up to {park} coins a day from Parking.': "Jusqu'à {park} pièces par jour au Parking.",
+    'Drag the three pieces onto the grid. A full row or column clears.': 'Glisse les trois pièces sur la grille. Une ligne ou colonne pleine se vide.',
+    'When all three are placed, three more come. The game ends when none of them fits.': "Quand les trois sont posées, trois autres arrivent. La partie s'arrête quand aucune ne rentre.",
+    'Keep the middle open and fill along the edges.': 'Garde le centre libre et remplis le long des bords.',
+    'Place the big pieces while there is room. Clearing several lines at once, or on piece after piece, scores much more.': "Pose les grosses pièces tant qu'il y a de la place. Vider plusieurs lignes d'un coup, ou pièce après pièce, rapporte bien plus.",
+    '1 point a square. Clearing L lines at once: +10 × L × L. Clearing again on the next piece: +20 a step.': "1 point par case. Vider L lignes d'un coup : +10 × L × L. Vider encore à la pièce suivante : +20 par palier.",
+    'Classic: score ÷ 5, up to 300 coins. Relaxed: ÷ 8, up to 200. Hard: ÷ 3, up to 360.': "Classique : score ÷ 5, jusqu'à 300 pièces. Détente : ÷ 8, jusqu'à 200. Difficile : ÷ 3, jusqu'à 360.",
+    'Open every cell without a mine. A number says how many mines touch that cell.': 'Ouvre toutes les cases sans mine. Un nombre indique combien de mines touchent cette case.',
+    'Right-click puts a flag. The first cell is always safe.': 'Le clic droit pose un drapeau. La première case est toujours sûre.',
+    'A 1 touching a single closed cell means that cell is a mine: flag it and open the others.': "Un 1 qui ne touche qu'une case fermée veut dire que c'est une mine : marque-la et ouvre les autres.",
+    'Start in the middle: one click often opens a big area.': 'Commence au milieu : un clic ouvre souvent une grande zone.',
+    'Easy pays 35 to 105 coins, Medium 75 to 225, Hard 140 to 420: the faster, the more.': 'Facile paie 35 à 105 pièces, Moyen 75 à 225, Difficile 140 à 420 : plus tu es rapide, plus ça paie.',
+    'Challenge a friend to a game, with or without a bet. You both play the same round: the best score wins.': 'Défie un ami, avec ou sans mise. Vous jouez la même partie : le meilleur score gagne.',
+    'Pick the game you are best at, and a level you know well.': 'Choisis le jeu où tu es le meilleur, et un niveau que tu connais bien.',
+    'The winner gets both bets minus a {fee}% fee. A draw gives both bets back.': 'Le gagnant remporte les deux mises moins {fee} % de frais. Une égalité rend les deux mises.',
+    'The bet is at most 80% of the lower balance.': 'La mise est au plus 80 % du plus petit solde.',
+    'Drag back from the ball to aim and set the power, then let go to shoot.': 'Tire en arrière depuis la balle pour viser et régler la puissance, puis lâche pour frapper.',
+    '5 holes, 25 seconds a turn. Anyone can join your lobby.': "5 trous, 25 secondes par tour. N'importe qui peut rejoindre ton salon.",
+    'Use the walls: a bank shot is often the shortest way.': 'Utilise les murs : un rebond est souvent le chemin le plus court.',
+    'A short safe shot beats a long risky one.': "Un coup court et sûr vaut mieux qu'un long coup risqué.",
+    'Fewest strokes wins both bets, minus a {golf}% fee. A draw gives both bets back.': 'Le moins de coups remporte les deux mises, moins {golf} % de frais. Une égalité rend les deux mises.',
+    'Nobody joins in 5 minutes: it closes and your bet comes back.': 'Personne en 5 minutes : il se ferme et ta mise revient.',
+    'Create a coinflip: pick black or white and up to 6 items. Someone joins with items worth about the same (±10%), or you play a bot.': "Crée un pile ou face : choisis noir ou blanc et jusqu'à 6 objets. Quelqu'un rejoint avec des objets de même valeur environ (±10 %), ou tu joues contre un bot.",
+    'You are in once you lock in your items. When both sides are in, the coin flips after 15 seconds.': 'Tu es dedans une fois tes objets validés. Quand les deux côtés sont là, la pièce tourne après 15 secondes.',
+    'Press the eye on a coinflip in the lobby to watch it flip.': "Appuie sur l'œil d'un pile ou face du salon pour le regarder.",
+    'Only put in items you are ready to lose.': 'Ne mets que des objets que tu es prêt à perdre.',
+    'The winner takes every item.': 'Le gagnant prend tous les objets.',
+    'Your chance is your share of the total worth, between 49% and 51%.': 'Ta chance est ta part de la valeur totale, entre 49 % et 51 %.',
+    'Bots play by the same rules, with the same coin.': 'Les bots jouent avec les mêmes règles et la même pièce.',
+    'How to play': 'Comment jouer',
+    'HOW TO PLAY': 'COMMENT JOUER',
+    'BEST WAY TO PLAY': 'LA MEILLEURE FAÇON DE JOUER',
+    'PAYOUTS AND CHANCES': 'GAINS ET CHANCES',
+    "Rubenium's clock is being slowed down: this round is judged on the server's clock": "L'horloge de Rubenium est ralentie : cette manche est jugée avec l'horloge du serveur",
+    '2. A needle runs along the bar, a little faster as time goes.': '2. Une aiguille parcourt la barre, un peu plus vite avec le temps.',
+    'Auto cash-out ×{m}': 'Encaissement auto ×{m}',
+    'It cashes out by itself at ×{m}, or press Cash out': 'Il encaisse tout seul à ×{m}, ou appuie sur Encaisser',
+    'Press Cash out before it blows up': "Appuie sur Encaisser avant qu'elle explose",
+    'Wins {n} if it reaches ×{m} ({c}% chance)': 'Gagne {n} si elle atteint ×{m} ({c} % de chance)',
+    'Launch, then cash out (from ×1.20) before it blows up': "Lance, puis encaisse (dès ×1,20) avant qu'elle explose",
+    'Manual': 'Manuel',
+    'Your ball, its glow, your colours, the R and ring styles and the themes.': "Ta boule, sa lueur, tes couleurs, les styles du R et de l'anneau, et les thèmes.",
+    'Style': 'Style',
+    'Sets': 'Collections',
+    'Coinflip: play a bot (searching, found, choosing, 3-2-1, then the coin), five bots each with their own range, an eye to watch a flip, and you are only in once you lock in (nothing is taken if someone beats you)': "Pile ou face : joue contre un bot (recherche, trouvé, choix, 3-2-1, puis la pièce), cinq bots avec chacun leur gamme, un œil pour regarder, et tu n'es dedans qu'une fois validé (rien n'est pris si quelqu'un te devance)",
+    'A golden ? on every game: how to play, the best way to play, payouts and chances': 'Un ? doré sur chaque jeu : comment jouer, la meilleure façon de jouer, gains et chances',
+    'Advent door 1: First Frost 2026, a Legendary frame with snow, limited, never made again': "Porte 1 de l'Avent : Premier Givre 2026, un cadre Légendaire enneigé, limité, jamais refait",
+    'Rocket is clearer and its auto cash-out lines always show; Timing speeds up far less and cannot be slowed down': "Fusée plus claire, ses lignes d'encaissement auto s'affichent toujours ; Timing accélère bien moins et ne peut pas être ralenti",
+    'Mythic badges are a ? inside cases until you win one; the free spin opens again': "Les badges Mythiques sont un ? dans les caisses jusqu'à ce que tu en gagnes un ; le tour gratuit s'ouvre à nouveau",
+    'Style is in the Shop (it was Settings > Look), the sets are in Games > Quests, and the menu keeps your exact casino game when you go back into a game': "Le Style est dans la Boutique (c'était Réglages > Apparence), les collections dans Jeux > Quêtes, et le menu garde ton jeu de casino quand tu retournes en jeu",
 }
 
 
@@ -6252,6 +6404,21 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
     elif kind == "grid":
         for gx, gy in ((-7.5, -7.5), (1.5, -7.5), (-7.5, 1.5), (1.5, 1.5)):
             p.drawRoundedRect(QRectF(gx, gy, 6, 6), 1.5, 1.5)
+    elif kind == "eye":                          # 4.2: watch a coinflip
+        eye = QPainterPath()
+        eye.moveTo(-8.5, 0)
+        eye.quadTo(0, -8.5, 8.5, 0)
+        eye.quadTo(0, 8.5, -8.5, 0)
+        p.drawPath(eye)
+        p.drawEllipse(QPointF(0, 0), 2.8, 2.8)
+    elif kind == "robot":                        # 4.2: play a coinflip bot
+        p.drawRoundedRect(QRectF(-6.5, -4, 13, 10), 2.5, 2.5)
+        p.drawLine(QPointF(0, -4), QPointF(0, -7))
+        p.drawEllipse(QPointF(0, -7.8), 1.0, 1.0)
+        p.drawEllipse(QPointF(-2.6, 0.6), 1.2, 1.2)
+        p.drawEllipse(QPointF(2.6, 0.6), 1.2, 1.2)
+        p.drawLine(QPointF(-8.5, 0), QPointF(-6.5, 0))
+        p.drawLine(QPointF(6.5, 0), QPointF(8.5, 0))
     elif kind == "blocks":                       # 4.1: Block Blast: an L piece and one square
         for gx, gy in ((-8, -8), (-8, -2), (-2, -2)):
             p.drawRoundedRect(QRectF(gx, gy, 5.2, 5.2), 1.3, 1.3)
@@ -9931,6 +10098,12 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("4.2", ['Coinflip: play a bot (searching, found, choosing, 3-2-1, then the coin), five bots each with their own range, an eye to watch a flip, and you are only in once you lock in (nothing is taken if someone beats you)',
+             'A golden ? on every game: how to play, the best way to play, payouts and chances',
+             'Advent door 1: First Frost 2026, a Legendary frame with snow, limited, never made again',
+             'Rocket is clearer and its auto cash-out lines always show; Timing speeds up far less and cannot be slowed down',
+             'Mythic badges are a ? inside cases until you win one; the free spin opens again',
+             'Style is in the Shop (it was Settings > Look), the sets are in Games > Quests, and the menu keeps your exact casino game when you go back into a game']),
     ("4.1", ['New minigame: Block Blast (in place of 2048). Place the pieces, clear rows and columns, three modes and leaderboards',
              'Online menu: wider halves, games and shop on the left, social and settings on the right',
              'The advent calendar is now on the Games tab',
@@ -12751,7 +12924,8 @@ def paint_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: 
 import math
 
 from PyQt6.QtCore import QPointF, QRectF, Qt
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import (QColor, QConicalGradient, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF,
+                         QRadialGradient)
 
 
 SHOP_COLOURS = {"grey": "#9AA4AD", "blue": "#4B6BFF", "green": "#2ECC71", "red": "#FF4B4B", "yellow": "#F4F04A",
@@ -12799,9 +12973,10 @@ FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
           ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine"),
           ("wood", "Wood"), ("pulse", "Pulse"), ("thorns", "Thorns"), ("gears", "Gears"), ("phoenix", "Phoenix"),
-          ("holly", "Holly"), ("snowflake", "Snowflake"), ("northstar", "North Star"), ("yuletide", "Yuletide")]
+          ("holly", "Holly"), ("snowflake", "Snowflake"), ("northstar", "North Star"), ("yuletide", "Yuletide"),
+          ("firstfrost", "First Frost 2026")]
 TAGS = [("og", "OG")]
-MOVING = {"yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
+MOVING = {"firstfrost", "yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
           "phoenix", "snowflake", "holly", "waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
           "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine",
           "honeycomb", "comet", "deepsea", "city", "fireflies", "storm", "vortex"}
@@ -14071,7 +14246,123 @@ _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"
                "wood": ("#B97A4A", "#6B3E1F"), "pulse": ("#3DDC84", "#0F6B3A"), "thorns": ("#3A5A2E", "#C8283D"),
                "gears": ("#D9DEE3", "#8A939C"), "phoenix": ("#FFC14D", "#FF4B1F"), "holly": ("#1F7A4A", "#E8384F"),
                "snowflake": ("#E8F6FF", "#7FC8FF"), "northstar": ("#FFE9A8", "#E8C26A"),
-               "yuletide": ("#FFD36B", "#C8283D")}
+               "yuletide": ("#FFD36B", "#C8283D"), "firstfrost": ("#DFF8FF", "#7FD3FF")}
+
+
+def _snowflake(p: QPainter, at: QPointF, size: float, turn: float, col: QColor) -> None:
+    """A six-armed snowflake with little side branches."""
+    p.save()
+    p.translate(at)
+    p.rotate(turn)
+    pen = QPen(col, max(0.8, size * 0.13))
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    p.setPen(pen)
+    for k in range(6):
+        p.rotate(60)
+        p.drawLine(QPointF(0, 0), QPointF(0, -size))
+        p.drawLine(QPointF(0, -size * 0.55), QPointF(-size * 0.28, -size * 0.78))
+        p.drawLine(QPointF(0, -size * 0.55), QPointF(size * 0.28, -size * 0.78))
+    p.restore()
+
+
+def _paint_firstfrost(p: QPainter, c: QPointF, r: float, wd: float, now: float) -> None:
+    """4.2, advent door 1 of 2026 (Legendary, limited: it will never be made again). A ring of frosted crystal with
+    an aurora sweeping through it, ice shards around it, three snowflakes slowly turning on their orbit, snow falling
+    through and piling up at the bottom, glints that twinkle, and a small 2026 tag."""
+    breathe = 0.6 + 0.4 * math.sin(now * 1.5)
+    p.save()
+    outer = r + wd * 6.0
+    aura = QRadialGradient(c, outer)                            # an icy halo
+    aura.setColorAt(0.0, QColor(0, 0, 0, 0))
+    aura.setColorAt(max(0.01, r / outer - 0.05), QColor(0, 0, 0, 0))
+    aura.setColorAt(r / outer, alpha("#BFF0FF", 0.50 * breathe))
+    aura.setColorAt(min(0.99, r / outer + 0.22), alpha("#6FB8FF", 0.18 * breathe))
+    aura.setColorAt(1.0, QColor(0, 0, 0, 0))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(aura)
+    p.drawEllipse(c, outer, outer)
+    for i in range(12):                                         # ice shards standing out of the ring
+        a = i / 12 * math.tau + math.pi / 12
+        long_ = wd * (2.3 if i % 2 == 0 else 1.5) * (1 + 0.06 * math.sin(now * 2 + i))
+        base = r + wd * 0.2
+        tip = QPointF(c.x() + math.cos(a) * (base + long_), c.y() + math.sin(a) * (base + long_))
+        side = wd * 0.42
+        left = QPointF(c.x() + math.cos(a - 0.09) * base - math.sin(a) * side * 0.2,
+                       c.y() + math.sin(a - 0.09) * base + math.cos(a) * side * 0.2)
+        right = QPointF(c.x() + math.cos(a + 0.09) * base + math.sin(a) * side * 0.2,
+                        c.y() + math.sin(a + 0.09) * base - math.cos(a) * side * 0.2)
+        shard = QPainterPath(left)
+        shard.lineTo(tip)
+        shard.lineTo(right)
+        shard.closeSubpath()
+        sg = QLinearGradient(QPointF(c.x() + math.cos(a) * base, c.y() + math.sin(a) * base), tip)
+        sg.setColorAt(0, alpha("#E9FBFF", 0.95))
+        sg.setColorAt(1, alpha("#7FD3FF", 0.55))
+        p.setBrush(sg)
+        p.drawPath(shard)
+    ring = QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r)          # the crystal band, an aurora running through it
+    sweep = QConicalGradient(c, -now * 40)
+    for k, col in enumerate(("#DFF8FF", "#7FE3FF", "#B9A6FF", "#7FFFD4", "#DFF8FF", "#9CD8FF", "#DFF8FF")):
+        sweep.setColorAt(k / 6, QColor(col))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.setPen(QPen(sweep, wd * 0.95))
+    p.drawEllipse(ring)
+    p.setPen(QPen(alpha("#FFFFFF", 0.85), max(1.0, wd * 0.16)))   # its bright inner edge
+    p.drawEllipse(ring.adjusted(wd * 0.42, wd * 0.42, -wd * 0.42, -wd * 0.42))
+    p.setPen(Qt.PenStyle.NoPen)
+    for i in range(3):                                          # three snowflakes on a slow orbit
+        a = now * 0.35 + i * math.tau / 3
+        at = QPointF(c.x() + math.cos(a) * (r + wd * 1.9), c.y() + math.sin(a) * (r + wd * 1.9))
+        fg = QRadialGradient(at, wd * 1.6)
+        fg.setColorAt(0, alpha("#FFFFFF", 0.45))
+        fg.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(fg)
+        p.drawEllipse(at, wd * 1.6, wd * 1.6)
+        _snowflake(p, at, wd * 1.05, now * 30 + i * 40, QColor("#FFFFFF"))
+    p.setPen(Qt.PenStyle.NoPen)
+    for i in range(14):                                         # snow falling through it
+        k = (now * (0.10 + (i % 4) * 0.025) + i * 0.173) % 1.0
+        x = c.x() + (((i * 0.618) % 1.0) * 2 - 1) * (r + wd * 3.2) + math.sin(now * 1.1 + i) * wd * 0.6
+        y = c.y() - r - wd * 4 + k * (2 * r + wd * 7)
+        size = wd * (0.16 + 0.10 * (i % 3))
+        p.setBrush(alpha("#FFFFFF", 0.85 * math.sin(k * math.pi)))
+        p.drawEllipse(QPointF(x, y), size, size)
+    drift = QPainterPath()                                      # the snow that settled at the bottom of the ring
+    bottom = c.y() + r
+    drift.moveTo(c.x() - r * 0.62, bottom - wd * 0.1)
+    drift.cubicTo(QPointF(c.x() - r * 0.35, bottom - wd * 1.5), QPointF(c.x() - r * 0.05, bottom - wd * 0.9),
+                  QPointF(c.x() + r * 0.1, bottom - wd * 1.35))
+    drift.cubicTo(QPointF(c.x() + r * 0.3, bottom - wd * 1.7), QPointF(c.x() + r * 0.5, bottom - wd * 0.8),
+                  QPointF(c.x() + r * 0.62, bottom - wd * 0.1))
+    drift.cubicTo(QPointF(c.x() + r * 0.3, bottom + wd * 0.9), QPointF(c.x() - r * 0.3, bottom + wd * 0.9),
+                  QPointF(c.x() - r * 0.62, bottom - wd * 0.1))
+    dg = QLinearGradient(QPointF(c.x(), bottom - wd * 1.7), QPointF(c.x(), bottom + wd * 0.9))
+    dg.setColorAt(0, QColor("#FFFFFF"))
+    dg.setColorAt(1, QColor("#BFE6FF"))
+    p.setBrush(dg)
+    p.drawPath(drift)
+    for i in range(5):                                          # glints on the ice
+        tw = max(0.0, math.sin(now * 2.7 + i * 2.1))
+        if tw < 0.05:
+            continue
+        a = i / 5 * math.tau + 0.4
+        gc = QPointF(c.x() + math.cos(a) * (r + wd * 0.1), c.y() + math.sin(a) * (r + wd * 0.1))
+        p.setBrush(alpha("#FFFFFF", 0.95 * tw))
+        s = wd * 0.9 * tw
+        p.drawPolygon(QPolygonF([QPointF(gc.x(), gc.y() - s), QPointF(gc.x() + s * 0.22, gc.y()),
+                                 QPointF(gc.x(), gc.y() + s), QPointF(gc.x() - s * 0.22, gc.y())]))
+        p.drawPolygon(QPolygonF([QPointF(gc.x() - s, gc.y()), QPointF(gc.x(), gc.y() + s * 0.22),
+                                 QPointF(gc.x() + s, gc.y()), QPointF(gc.x(), gc.y() - s * 0.22)]))
+    if r > S(20):                                               # the year, on a little ice tag at the bottom
+        tag = QRectF(c.x() - wd * 2.6, bottom + wd * 0.55, wd * 5.2, wd * 1.9)
+        p.setBrush(alpha("#0B2A44", 0.85))
+        p.setPen(QPen(alpha("#BFF0FF", 0.9), max(0.8, wd * 0.12)))
+        p.drawRoundedRect(tag, wd * 0.9, wd * 0.9)
+        p.setPen(QColor("#E9FBFF"))
+        p.setFont(font(max(5.0, wd * 1.15 / S(1)), QFont.Weight.Black))
+        p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), "2026")
+    p.restore()
 
 
 def _paint_yuletide(p: QPainter, c: QPointF, r: float, wd: float, now: float) -> None:
@@ -14297,6 +14588,8 @@ def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: flo
         p.drawEllipse(top)
     if base in ("wood", "pulse", "thorns", "gears", "phoenix", "holly", "snowflake", "northstar"):
         _paint_frame_32(p, base, c, r, wd, c1, c2, now)
+    if base == "firstfrost":
+        _paint_firstfrost(p, c, r, wd, now)
     if base == "yuletide":
         _paint_yuletide(p, c, r, wd, now)
     if base == "laurel":                                      # leaves up both sides
@@ -16217,8 +16510,8 @@ class BallPreview(QWidget):
 
 
 class StylePart:
-    """4.0: your colours, the R and ring styles you unlock with time and the themes. Shown in Settings > Look
-    (it used to be the Shop's Style part, which only repeated what Social > Edit Profile already shows)."""
+    """Your ball, its effects, your colours, the R and ring styles you unlock with time and the themes. 4.2: the
+    Shop's Style again (in 4.0 and 4.1 it was Settings > Look)."""
     cards: list
     unlocks: list
     c1 = None
@@ -16229,6 +16522,34 @@ class StylePart:
 
     def flair_changed(self) -> None:
         self.ctx.cfg.save()
+
+    def build_style(self, lay) -> None:
+        """4.2: the Shop's Style (it was Settings > Look): the ball, its effects, colours, R and ring styles, themes."""
+        ctx, cfg = self.ctx, self.ctx.cfg
+
+        def toggle(label, key, after=None):
+            t = Toggle(bool(cfg[key]))
+
+            def on(v):
+                cfg[key] = v
+                if after:
+                    after(v)
+            t.toggled_by_user.connect(on)
+            lay.addWidget(row(label, t))
+            return t
+        lay.addWidget(heading(tr("Ball")))
+        self.preview = BallPreview(ctx)
+        lay.addWidget(self.preview)
+        ball = SliderRow(tr("Ball size"), min(BALL_SIZES), max(BALL_SIZES), cfg["ball_size"], 10, 100,
+                         lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
+        ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
+        lay.addWidget(ball)
+        lay.addWidget(heading(tr("Effects")))
+        toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
+        toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
+        toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
+        self._look(lay)
+        ctx.wallet.changed.connect(self._refresh_style)
 
     def _look(self, lay) -> None:
         """Colours, the progression (R and ring styles) and the themes."""
@@ -16383,11 +16704,14 @@ class SettingsPage(StylePart, Page):
 
         pass
         sec = int(getattr(ctx, "settings_tab", 0) or 0)
-        tiles = NavTiles([(tr("General"), "cog"), (tr("Look"), "spark"), (tr("Sounds"), "volume"),
-                          (tr("Account"), "users"), (tr("Backup"), "folder"), (tr("About"), "refresh")], sec, per_row=3)
+        shown = [0, 2, 3, 4, 5]                         # 4.2: Look moved to the Shop (Style)
+        if sec not in shown:
+            sec = ctx.settings_tab = 0
+        tiles = NavTiles([(tr("General"), "cog"), (tr("Sounds"), "volume"), (tr("Account"), "users"),
+                          (tr("Backup"), "folder"), (tr("About"), "refresh")], shown.index(sec), per_row=3)
 
         def pick(i: int) -> None:
-            ctx.settings_tab = i
+            ctx.settings_tab = shown[i]
             ctx.reload_page()
         tiles.changed.connect(pick)
         lay.addWidget(tiles)
@@ -16448,22 +16772,7 @@ class SettingsPage(StylePart, Page):
                              marks=list(range(70, 151, 10)))
             size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
             lay.addWidget(size)
-
-        elif sec == 1:                                  # ---------------------------------------------- Look
-            lay.addWidget(heading(tr("Ball")))
-            self.preview = BallPreview(ctx)
-            lay.addWidget(self.preview)
-            ball = SliderRow(tr("Ball size"), min(BALL_SIZES), max(BALL_SIZES), cfg["ball_size"], 10, 100,
-                             lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
-            ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
-            lay.addWidget(ball)
-            lay.addWidget(heading(tr("Effects")))
-            toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
-            toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
-            toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
-            self._look(lay)                         # 4.0: colours, R and ring styles, themes (was the Shop's Style)
-            ctx.wallet.changed.connect(self._refresh_style)
-            lay.addWidget(heading(tr("Tabs in the menu bar")))
+            lay.addWidget(heading(tr("Tabs in the menu bar")))           # 4.2: moved here from Look
             pass
             for key, _icon, label in TABS:             # Home, Lyrics and Settings always stay
                 if key in LOCKED_TABS or key in ("giveaway", "admin", "online"):      # ONLINE always stays
@@ -17096,15 +17405,17 @@ class ShopPage(StylePart, Page):
     """Six parts: Theme (colours, progression), Shop (balls, lines, fonts, themes), Badges, Cases, Market and
     Inventory."""
     key = "themes"
-    SECTIONS = ["Notifications", "Shop", "Collection", "Cases", "Market", "Inventory", "Sets", "Deals"]
-    ICONS = ["bell", "ball", "shield", "gift", "chip", "folder", "grid", "timer"]
+    SECTIONS = ["Notifications", "Shop", "Collection", "Cases", "Market", "Inventory", "Sets", "Deals", "Style"]
+    ICONS = ["bell", "ball", "shield", "gift", "chip", "folder", "grid", "timer", "spark"]
     GET = [1, 7, 3, 4]                     # getting things: shop, today's deals, cases, market
-    MINE = [5, 2, 6, 0]                    # what is yours: inventory, collection, sets, notifications
+    MINE = [5, 2, 8, 0]                    # what is yours: inventory, collection, style, notifications (4.2: the
+    #                                        sets are in Games > Quests, the style came from Settings)
     NOTES = ["Everything you were told, newest first. Click one to go there.",
              "Balls, lines, fonts, themes, banners and frames. Shop price = worth + 20% tax.",
              "Your collection: click a badge to see every colour.", "Buy cases with coins, open them with a key.",
              "Buy and sell with other users.", "Everything you own. Sell, show or trade it.",
-             "Collect full sets for a big bonus.", "Items cheaper today. New deals every day at midnight."]
+             "Collect full sets for a big bonus.", "Items cheaper today. New deals every day at midnight.",
+             "Your ball, its glow, your colours, the R and ring styles and the themes."]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -17145,6 +17456,8 @@ class ShopPage(StylePart, Page):
         elif tab == 6:
             pass
             build_sets(self, lay)
+        elif tab == 8:
+            self.build_style(lay)
         elif tab == 7:
             pass
             build_deals(self, lay)
@@ -17750,6 +18063,21 @@ def show_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: b
     if is_secret(item):
         return paint_secret(p, rect, now, effects and dim >= 0.6)
     paint_item(p, item, rect, now, effects, dim)
+
+
+def is_mythic(item: str) -> bool:
+    pass
+    parts = (item or "").split(":")
+    return len(parts) >= 2 and parts[0] == "badge" and parts[1] in MYTHICS
+
+
+def show_case_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: bool = True,
+                   reveal: bool = False) -> None:
+    """4.2: inside a case every Mythic badge is a "?" (even one you had, even for the admins), so nothing can be
+    spotted as the strip races by. Only the one you win is shown, once the strip has stopped on it."""
+    if is_mythic(item) and not reveal:
+        return paint_secret(p, rect, now, effects)
+    show_item(p, item, rect, now, effects)
 
 
 def item_chances(ec, item: str) -> list:
@@ -18359,10 +18687,10 @@ class DropList(QWidget):
             p.setBrush(alpha(col, 0.08))
             p.drawRoundedRect(r, S(6), S(6))
             icon = QRectF(r.left() + S(4), r.top() + S(2), r.height() - S(4), r.height() - S(4))
-            show_item(p, item, icon, 0, effects=False)
+            show_case_item(p, item, icon, 0, effects=False)
             name = badge_label(item).replace(" · " + tr("Basic"), "") if item.startswith("badge:") else item_name(item)
             if item.startswith("badge:"):
-                name = tr(BADGE_NAME.get(item.split(":")[1], "?")) if not is_secret(item) else "???"
+                name = "???" if is_mythic(item) else tr(BADGE_NAME.get(item.split(":")[1], "?"))
             pct = chance * 100
             text = (f"{pct:.3f}%" if pct < 0.1 else f"{pct:.2f}%" if pct < 10 else f"{pct:.1f}%")
             if lang() == "fr":
@@ -18822,7 +19150,7 @@ class CaseReel(QWidget):
     def hideEvent(self, _e) -> None:
         self.skip()
 
-    def _card(self, p: QPainter, rect: QRectF, drop: tuple, now: float, flash: float = 0.0) -> None:
+    def _card(self, p: QPainter, rect: QRectF, drop: tuple, now: float, flash: float = 0.0, reveal: bool = False) -> None:
         kind, what = drop
         col = QColor(GOLD_TEXT) if kind == "coins" else rarity_colour(self.ctx, what)
         g = QLinearGradient(rect.topLeft(), rect.bottomLeft())
@@ -18842,8 +19170,8 @@ class CaseReel(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
         else:
             size = rect.width() * 0.5
-            show_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
-                      now, effects=self.state != "spin")
+            show_case_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
+                           now, effects=self.state != "spin", reveal=reveal)
         if flash > 0:
             p.setBrush(QColor(255, 255, 255, int(150 * flash)))
             p.drawRoundedRect(rect, S(8), S(8))
@@ -18925,11 +19253,12 @@ class CaseReel(QWidget):
             if self.state == "landed" and i == self.WIN:
                 flash = max(0.0, 1.0 - (now - self._stop_t) / 0.6) * (0.5 + 0.5 * math.sin((now - self._stop_t) * 30))
             rect = QRectF(cx - self.offset + i * step, top, self.cw, ch)
+            reveal = i == self.WIN and self.state != "spin"       # yours is shown once the strip stops on it
             if speed > 0.25:                              # motion blur while it races
                 p.setOpacity(0.18 * speed)
                 self._card(p, rect.translated(S(10) * speed, 0), self.strip[i], now)
                 p.setOpacity(1.0)
-            self._card(p, rect, self.strip[i], now, flash)
+            self._card(p, rect, self.strip[i], now, flash, reveal)
         fade = QLinearGradient(r.topLeft(), r.topRight())
         for at, a in ((0.0, 250), (0.22, 0), (0.78, 0), (1.0, 250)):
             fade.setColorAt(at, QColor(9, 12, 13, a))
@@ -19475,7 +19804,7 @@ def wear_look(ctx, item: str, on: bool) -> None:
         else:
             ctx.econ.looks_changed.emit()
         ctx.reload_page()
-    if on and item == "frame:yuletide":           # 4.0: the advent frame rings its bells when you put it on
+    if on and item in ("frame:yuletide", "frame:firstfrost"):     # the advent frames ring their bells when put on
         sfx.tune("jingle")
     else:
         sfx.play("pick")
@@ -22098,6 +22427,8 @@ def build_duels(page, lay) -> None:
     back.clicked.connect(lambda: page.open_sub(None))
     top.addWidget(back)
     top.addWidget(Label(tr("Duels"), 16, bold=True), 1)
+    pass
+    top.addWidget(HelpButton(ctx, "duels"))
     lay.addLayout(top)
     lay.addWidget(CoinBar(ctx))
     friends = [f for f in (getattr(ctx, "duel_friends", None) or [])]
@@ -23023,6 +23354,8 @@ def build_golf(page, lay) -> None:
     back.clicked.connect(leave_screen)
     top.addWidget(back)
     top.addWidget(Label(tr("Mini Golf"), 16, bold=True), 1)
+    pass
+    top.addWidget(HelpButton(ctx, "golf"))
     duel = Label(tr("DUEL"), 10, "#3DDC84", bold=True)
     duel.fit()
     top.addWidget(duel)
@@ -24212,8 +24545,10 @@ def timing_pos(seed: dict, ms: float) -> float:
 
 
 class Timing(Game):
-    """Start, then stop the needle as close to the target as you can. It speeds up the longer you wait, and the
-    target moves every round. Perfect x4, good x1.8, close x0.9 (most of the bet back)."""
+    """Start, then stop the needle as close to the target as you can. It speeds up a little the longer you wait
+    (4.2: much less than before), and the target moves every round. Perfect x4, good x1.8, close x0.9.
+    4.2: the round's clock is checked against the PC's real clock; an app that slows Rubenium down is caught here and
+    on the server (which then judges the stop with its own clock)."""
     ZONES = (("perfect", 0.008, 4.0, "#FFD36B"), ("good", 0.025, 1.8, "#3DDC84"), ("close", 0.05, 0.9, "#2E9BFF"))
 
     def __init__(self, page) -> None:
@@ -24245,6 +24580,8 @@ class Timing(Game):
     def _started(self, ans: dict) -> None:
         self.seed = ans.get("seed") or {}
         self.t0 = time.monotonic()
+        self.wall0 = time.time()
+        self.slowed = False
         self.running = True
         self.round_no = getattr(self, "round_no", 0) + 1
         self._frames.start()
@@ -24261,11 +24598,19 @@ class Timing(Game):
         d = abs(pos - c)
         return next((name for name, half, _m, _c in self.ZONES if d <= half), "miss")
 
+    def clock_slowed(self) -> bool:
+        """The round's clock runs clearly slower than the PC's real clock: something is slowing Rubenium down."""
+        mono, wall = time.monotonic() - self.t0, time.time() - getattr(self, "wall0", time.time())
+        return wall > 0.6 and mono < wall * 0.94
+
     def stop(self, force: bool = False) -> None:
         if not self.running or self.waiting:
             return
         if not force and time.monotonic() - self.t0 < 0.35:          # the Start click itself never stops it
             return
+        if self.clock_slowed():
+            self.slowed = True
+            self.ctx.toast(tr("Rubenium's clock is being slowed down: this round is judged on the server's clock"), "warn")
         # 3.2: the needle stops the very moment you press, worked out here from the clock; the server checks the
         # same time in the background and pays.
         ms = int((time.monotonic() - self.t0) * 1000)
@@ -24305,7 +24650,7 @@ class Timing(Game):
                        tr("How to play Timing"))
             p.setFont(font(11, QFont.Weight.DemiBold))
             p.setPen(QColor(TEXT_DIM))
-            lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, faster and faster."),
+            lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, a little faster as time goes."),
                      tr("3. Press STOP when it is on the target."),
                      tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0")]
             y = r.top() + S(48)
@@ -24324,6 +24669,8 @@ class Timing(Game):
             zone = QRectF(bar.left() + bar.width() * (c - half), bar.top(), bar.width() * half * 2, bar.height())
             p.setBrush(alpha(col, 0.55))
             p.drawRoundedRect(zone, S(3), S(3))
+        if self.running and self.seed and self.clock_slowed():
+            QTimer.singleShot(0, lambda: self.stop(force=True))      # a slowed clock ends the round at once
         if self.running and self.seed:
             pos = timing_pos(self.seed, (now - self.t0) * 1000)
         elif self.result is not None:
@@ -24392,7 +24739,7 @@ class Rocket(Game):
         return self.phase == "fly"
 
     def options(self):
-        return [tr("By hand") if t == 0 else f"×{t:g}" for t in self.TARGETS], self.target
+        return [tr("Manual") if t == 0 else f"×{t:g}" for t in self.TARGETS], self.target
 
     def set_option(self, i: int) -> None:
         if not self.busy:
@@ -24486,12 +24833,18 @@ class Rocket(Game):
         m = self.mult_now()
         if flying:
             self.page.sync_labels()
-        area = r.adjusted(S(22), S(54), -S(22), -S(22))
-        p.setPen(QPen(alpha("#FFFFFF", 0.07), 1))
-        for k in range(4):
+        area = r.adjusted(S(44), S(70), -S(22), -S(34))
+        aim = self.aim()
+        # 4.2: the view always reaches the auto cash-out you picked (its line used to be off the top), then grows
+        top = max(2.0, m * 1.15, (aim or 0) * 1.12)
+        p.setFont(font(8.5, QFont.Weight.Bold))
+        for k in range(4):                                   # levels, labelled: ×1 at the bottom
             y = area.bottom() - area.height() * k / 3
+            p.setPen(QPen(alpha("#FFFFFF", 0.07), 1))
             p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
-        top = max(2.0, m * 1.15)                             # the view grows with the multiplier
+            p.setPen(QColor(TEXT_FAINT))
+            p.drawText(QRectF(r.left() + S(4), y - S(8), S(36), S(16)), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                       f"×{1 + (top - 1) * k / 3:.1f}")
         t_end = math.log(max(m, 1.0001)) / self.RATE
         span = max(4.0, t_end * 1.15)
         path = QPainterPath()
@@ -24520,25 +24873,28 @@ class Rocket(Game):
             p.drawEllipse(head, S(9), S(9))
             p.setBrush(QColor("#FFFFFF"))
             p.drawEllipse(head, S(4.2), S(4.2))
-        aim = self.aim()
-        if aim:                                              # the automatic cash-out line
+        if aim:                                              # the automatic cash-out line (always on screen)
             y = area.bottom() - area.height() * (aim - 1.0) / (top - 1.0)
-            if y > area.top():
-                p.setPen(QPen(alpha(GOLD_TEXT, 0.55), 1, Qt.PenStyle.DashLine))
-                p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
-                p.setPen(QColor(GOLD_TEXT))
-                p.setFont(font(9.5, QFont.Weight.Bold))
-                p.drawText(QRectF(area.right() - S(80), y - S(16), S(80), S(14)),
-                           int(Qt.AlignmentFlag.AlignRight), tr("auto ×{m}", m=f"{aim:g}"))
+            p.setPen(QPen(alpha(GOLD_TEXT, 0.75), S(1.4), Qt.PenStyle.DashLine))
+            p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            p.drawText(QRectF(area.right() - S(160), y - S(17), S(160), S(14)),
+                       int(Qt.AlignmentFlag.AlignRight), tr("Auto cash-out ×{m}", m=f"{aim:g}"))
         p.setPen(QColor(LOSE) if (self.crashed and not flying) else QColor(TEXT))
         p.setFont(font(28, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left(), r.top() + S(10), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter), f"×{m:.2f}")
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
-        if not flying:
-            hint = tr("Chance to reach ×{m}: {c}%", m=f"{aim:g}", c=int(96 / aim)) if aim else \
-                tr("Cash out from ×1.20. The higher, the riskier.")
-            p.drawText(QRectF(r.left(), r.top() + S(46), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), hint)
+        if flying:
+            hint = (tr("It cashes out by itself at ×{m}, or press Cash out", m=f"{aim:g}") if aim else
+                    tr("Press Cash out before it blows up"))
+        elif aim:
+            hint = tr("Wins {n} if it reaches ×{m} ({c}% chance)", n=coins_text(int(self.page.bet() * aim)), m=f"{aim:g}",
+                      c=int(96 / aim))
+        else:
+            hint = tr("Launch, then cash out (from ×1.20) before it blows up")
+        p.drawText(QRectF(r.left(), r.top() + S(48), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), hint)
         x = r.left() + S(14)                                  # the last flights
         p.setFont(font(9, QFont.Weight.Bold))
         for c in self.history[:8]:
@@ -25278,6 +25634,8 @@ class GamesPage(Page):
         back = IconButton("back", 32, tip=tr("Back"))
         top.addWidget(back)
         top.addWidget(Label(tr("Beat Tap"), 16, bold=True), 1)
+        pass
+        top.addWidget(HelpButton(self.ctx, "beat"))
         lay.addLayout(top)
         lay.addWidget(CoinBar(self.ctx))
         pass
@@ -25308,17 +25666,20 @@ class GamesPage(Page):
         self.ctx.games_sub = name
         self.ctx.reload_page()
 
-    def _back_bar(self, lay, title: str, on_back=None) -> None:
+    def _back_bar(self, lay, title: str, on_back=None, help_key=None) -> None:
         top = hbox(spacing=8)
         back = IconButton("back", 32, tip=tr("Back"))
         back.clicked.connect(on_back or (lambda: self.open_sub(None)))
         top.addWidget(back)
         top.addWidget(Label(title, 16, bold=True), 1)
+        if help_key:                                     # 4.2: the golden "?" of the game
+            pass
+            top.addWidget(HelpButton(self.ctx, help_key))
         lay.addLayout(top)
         lay.addWidget(CoinBar(self.ctx))
 
     def _memory(self, lay) -> None:
-        self._back_bar(lay, tr("Memory"), lambda: self.open_sub("minigames"))
+        self._back_bar(lay, tr("Memory"), lambda: self.open_sub("minigames"), "memory")
         tier = int(getattr(self.ctx, "mem_tier", 0) or 0)
         seg = Segmented([tr("Easy"), tr("Medium"), tr("Hard")], tier)
         lay.addWidget(seg)
@@ -25336,7 +25697,7 @@ class GamesPage(Page):
         QTimer.singleShot(50, self.mem.start)
 
     def _scratch(self, lay) -> None:
-        self._back_bar(lay, tr("Scratch card"))
+        self._back_bar(lay, tr("Scratch card"), None, "scratch")
         card = ScratchCard(self)
         lay.addWidget(card)
         hours = int(float(self.ctx.econ.cfg.get("scratch_hours", 12) or 12))
@@ -25399,7 +25760,7 @@ class GamesPage(Page):
     def _duel_run(self, lay) -> None:
         run = getattr(self.ctx, "duel_run", None) or {}
         game, data = run.get("game"), run.get("data") or {}
-        self._back_bar(lay, tr("Duel vs {name}", name=run.get("other", "?")), lambda: self.open_sub("duels"))
+        self._back_bar(lay, tr("Duel vs {name}", name=run.get("other", "?")), lambda: self.open_sub("duels"), "duels")
 
         def ended(_res) -> None:
             self.ctx.duels_data = None
@@ -25435,6 +25796,8 @@ class GamesPage(Page):
         back = IconButton("back", 32, tip=tr("Back"))
         top.addWidget(back)
         top.addWidget(Label(tr("Parking"), 16, bold=True), 1)
+        pass
+        top.addWidget(HelpButton(self.ctx, "parking"))
         lay.addLayout(top)
         lay.addWidget(CoinBar(self.ctx))
         tier = int(getattr(self.ctx, "park_tier", 0) or 0)
@@ -25471,6 +25834,12 @@ class GamesPage(Page):
         top.addWidget(Label(tr("Quests"), 16, bold=True), 1)
         lay.addLayout(top)
         lay.addWidget(CoinBar(ctx))
+        view = Segmented([tr("Quests"), tr("Sets")], 1 if getattr(ctx, "quests_sets", False) else 0)   # 4.2
+        view.changed.connect(lambda i: (setattr(ctx, "quests_sets", i == 1), ctx.reload_page("games")))
+        lay.addWidget(view)
+        if getattr(ctx, "quests_sets", False):
+            pass
+            return build_sets(self, lay)
         data = getattr(ctx, "quests_data", None)
         if data is None:
             lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
@@ -25540,9 +25909,12 @@ class GamesPage(Page):
         self.back = back
         top.addWidget(back)
         top.addWidget(CoinBar(ctx, keys=True), 1)
+        pass
+        top.addWidget(HelpButton(ctx, lambda: CASINO_KEYS.get(self.NAMES[self.games.index(self.game)])
+                                 if self.game in getattr(self, "games", []) else None, 36))
         lay.addLayout(top)
         lock_strip(ctx, lay, "casino", self.W)                   # 4.0: paused by the admins
-        which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < self.PICKER else 0
+        which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < len(self.NAMES) else 0     # 4.2: the free spin too
         if getattr(ctx, "casino_pick", None) is not None:           # a tile of the lobby was clicked
             which, ctx.casino_pick = ctx.casino_pick, None
         self.seg = GamePicker([tr(n) for n in self.NAMES[:self.PICKER]], min(which, self.PICKER - 1))
@@ -26560,7 +26932,9 @@ def build_sets(page, lay) -> None:
     def got(ok: bool, rows) -> None:
         if ok and isinstance(rows, list) and rows != getattr(ctx, "sets_data", None):
             ctx.sets_data = rows
-            if ctx.window.showing("themes") and int(getattr(ctx, "shop_tab", 0) or 0) == 6:
+            if ctx.window.showing("games") and getattr(ctx, "quests_open", False) and getattr(ctx, "quests_sets", False):
+                ctx.reload_page("games")                  # 4.2: the sets live in Games > Quests
+            elif ctx.window.showing("themes") and int(getattr(ctx, "shop_tab", 0) or 0) == 6:
                 ctx.reload_page("themes")
     ctx.online.ask("rb_sets", {}, got)
     if data is None:
@@ -33376,8 +33750,8 @@ class FlipRow(QWidget):
             b = Button(tr("Join"), "primary", 30)
             b.clicked.connect(lambda: join_flip(page, f))
             lay.addWidget(b, 0, Qt.AlignmentFlag.AlignBottom)
-        else:
-            b = Button(tr("Watch"), "ghost", 30)
+        elif state in ("locked", "done"):                  # 4.2: the eye: watch it flip
+            b = IconButton("eye", 32, tip=tr("Watch"))
             b.clicked.connect(lambda: open_flip(page, f["id"]))
             lay.addWidget(b, 0, Qt.AlignmentFlag.AlignBottom)
         lay.setContentsMargins(0, 0, S(8), S(8))
@@ -33424,7 +33798,7 @@ class FlipRow(QWidget):
         sub = {"open": tr("Waiting · {t}", t=f"{max(0, left) // 60}:{max(0, left) % 60:02d}"),
                "setup": tr("Choosing items"),
                "joined": tr("{name} is choosing", name=show_name(f, "b")),
-               "locked": tr("Locked in: flipping soon"),
+               "locked": bot_phase_text(f, time.monotonic() - self._t0) or tr("Locked in: flipping soon"),
                "done": tr("{name} won", name=f.get("winner") or "?")}.get(state, "")
         p.drawText(QRectF(r.left() + S(44), r.top() + S(26), r.width() * 0.6, S(14)), int(Qt.AlignmentFlag.AlignVCenter), sub)
         x = r.left() + S(10)
@@ -33472,6 +33846,18 @@ class FlipStage(QWidget):
 
     SPIN_S = 3.2
 
+    def _phase_sound(self, found_left: float, join_left: float, count_left: float, f: dict) -> None:
+        """A sound when the bot is found, when it joins, and on each number of the 3-2-1."""
+        if not f.get("vs_bot") or f.get("state") != "locked":
+            return
+        phase = ("search" if found_left > 0 else "choose" if join_left > 0 else
+                 f"count{math.ceil(count_left)}" if count_left > 0 else "flip")
+        last = getattr(self, "_last_phase", None)
+        if phase != last:
+            self._last_phase = phase
+            if last is not None:
+                sfx.play("on" if phase == "choose" else "pick")
+
     def coin_angle(self, now: float) -> float:
         if self._shown_result is None:
             if self.f.get("state") == "locked":
@@ -33511,6 +33897,10 @@ class FlipStage(QWidget):
         state = f.get("state")
         landed = self._landed is not None
         winner_side = self._shown_result if landed else None
+        elapsed = now - self._sync_t
+        found_left, join_left, count_left = bot_phases(f, elapsed)
+        searching = found_left > 0 or (join_left > 0 and not f.get("b") and f.get("vs_bot"))
+        self._phase_sound(found_left, join_left, count_left, f)
         # the two players
         for i, who in enumerate(("a", "b")):
             box = QRectF(r.left() + S(10) if i == 0 else r.right() - S(10) - r.width() * 0.3, r.top() + S(10),
@@ -33522,6 +33912,20 @@ class FlipStage(QWidget):
             p.drawRoundedRect(box, S(11), S(11))
             paint_flip_coin(p, QPointF(box.left() + S(16), box.top() + S(16)), S(9), 0, side)
             name = show_name(f, who) if f.get(who) else (tr("Waiting…") if who == "b" else "?")
+            if who == "b" and searching:                 # 4.2: a bot is being searched: a spinner in its seat
+                name = tr("Searching…")
+                c0 = QPointF(box.center().x(), box.top() + S(70))
+                for k in range(8):
+                    a = now * 5 + k * math.tau / 8
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(alpha(TEXT, 0.15 + 0.85 * ((k / 8 + now * 0.8) % 1.0)))
+                    p.drawEllipse(QPointF(c0.x() + math.cos(a) * S(14), c0.y() + math.sin(a) * S(14)), S(2.6), S(2.6))
+            elif who == "b" and f.get("vs_bot") and join_left > 0:      # found: it is picking its items
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10, QFont.Weight.DemiBold))
+                dots = "." * (1 + int(now * 2.5) % 3)
+                p.drawText(QRectF(box.left(), box.top() + S(56), box.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
+                           tr("Choosing") + dots)
             p.setPen(QColor(TEXT))
             p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(QRectF(box.left() + S(30), box.top() + S(6), box.width() - S(34), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
@@ -33563,8 +33967,20 @@ class FlipStage(QWidget):
         # what is happening, below the coin
         p.setFont(font(12.5, QFont.Weight.ExtraBold))
         line = QRectF(r.left(), r.top() + S(135), r.width(), S(22))
-        elapsed = now - self._sync_t
-        if state == "open":
+        if state == "locked" and (searching or join_left > 0):
+            p.setPen(QColor("#FFB16B"))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), bot_phase_text(f, elapsed))
+        elif state == "locked" and count_left > 0:          # 4.2: the bot joined: 3, 2, 1
+            k = count_left - math.floor(count_left)
+            p.setPen(QColor(ui.accent))
+            p.setFont(font(26 + 10 * k, QFont.Weight.Black))
+            p.drawText(QRectF(line.left(), line.top() - S(10), line.width(), S(42)), int(Qt.AlignmentFlag.AlignCenter),
+                       str(math.ceil(count_left)))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left(), line.bottom() + S(12), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                       bot_phase_text(f, elapsed))
+        elif state == "open":
             p.setPen(QColor(TEXT_DIM))
             p.drawText(line, int(Qt.AlignmentFlag.AlignCenter), tr("Waiting for a player"))
         elif state == "joined":
@@ -33633,6 +34049,24 @@ def show_name(f: dict, side: str) -> str:
     return name
 
 
+def bot_phases(f: dict, elapsed: float) -> tuple:
+    """4.2 VS bot: seconds left searching, choosing, and in the 3-2-1 (all 0 once the 15 second count runs)."""
+    if not f.get("vs_bot") or f.get("state") != "locked":
+        return 0.0, 0.0, 0.0
+    return tuple(max(0.0, float(f.get(k) or 0) - elapsed) for k in ("found_in", "join_in", "count_in"))
+
+
+def bot_phase_text(f: dict, elapsed: float) -> str:
+    found, join, count = bot_phases(f, elapsed)
+    if found > 0 or (join > 0 and not f.get("b")):
+        return tr("Searching for a bot…")
+    if join > 0:
+        return tr("{name} is choosing items…", name=show_name(f, "b"))
+    if count > 0:
+        return tr("{name} joined", name=show_name(f, "b"))
+    return ""
+
+
 def load_flips(page) -> None:
     ctx = page.ctx
 
@@ -33663,6 +34097,7 @@ def open_flip(page, fid: str) -> None:
 
 
 def join_flip(page, f: dict) -> None:
+    """4.2: joining only opens your items: you are in once you lock in (first to lock in gets the seat)."""
     ctx = page.ctx
 
     def done(ok: bool, data) -> None:
@@ -33670,11 +34105,19 @@ def join_flip(page, f: dict) -> None:
             ctx.flip_data = None
             load_flips(page)
             return ctx.toast(tr(str(data)), "warn")
-        sfx.play("on")
+        sfx.play("pick")
         ctx.flip_id = f["id"]
+        ctx.flip_joining = f["id"]
         ctx.flip_state = data
         ctx.reload_page("games")
     ctx.econ.call("rb_flip_join", {"fid": f["id"]}, done)
+
+
+def leave_view(ctx) -> None:
+    ctx.flip_id = None
+    ctx.flip_joining = None
+    ctx.flip_data = None
+    ctx.reload_page("games")
 
 
 class _Poll(QWidget):
@@ -33704,13 +34147,13 @@ def build_flip(page, lay) -> None:
 
     def leave() -> None:
         if fid:
-            ctx.flip_id = None
-            ctx.flip_data = None
-            return ctx.reload_page("games")
+            return leave_view(ctx)
         page.open_sub(None)
     back.clicked.connect(leave)
     top.addWidget(back)
     top.addWidget(Label(tr("Coinflip"), 16, bold=True), 1)
+    pass
+    top.addWidget(HelpButton(ctx, "coinflip"))
     duel = Label(tr("DUEL"), 10, "#3DDC84", bold=True)
     duel.fit()
     top.addWidget(duel)
@@ -33816,10 +34259,12 @@ def _build_view(page, lay, fid: str) -> None:
             row.addWidget(close, 1)
             al.addLayout(row)
             holder["picker"], holder["bar"] = picker, bar
-        elif state == "joined" and f.get("joiner"):
+        elif (state == "open" and not f.get("mine") and getattr(ctx, "flip_joining", None) == fid) or \
+                (state == "joined" and f.get("joiner")):
             limit = int((getattr(ctx, "flip_data", None) or {}).get("max_items") or 6)
-            al.addWidget(Label(tr("Put in items worth {a} to {b}. You have 30 seconds.", a=coins_text(int(f.get("min") or 0)),
-                                  b=coins_text(int(f.get("max") or 0))), 11, TEXT, wrap_w=page.W))
+            al.addWidget(Label(tr("Put in items worth {a} to {b}, then lock in. You are in once you lock in.",
+                                  a=coins_text(int(f.get("min") or 0)), b=coins_text(int(f.get("max") or 0))),
+                               11, TEXT, wrap_w=page.W))
             picker = ItemPicker(page, limit, (int(f.get("min") or 0), int(f.get("max") or 0)))
             bar = TotalBar(picker, picker.want)
             al.addWidget(bar)
@@ -33828,13 +34273,26 @@ def _build_view(page, lay, fid: str) -> None:
             lock = Button(tr("Lock in"), "primary", 38)
             lock.clicked.connect(lambda: lock_in(f, picker, bar))
             walk = Button(tr("Leave"), "ghost", 38)
-            walk.clicked.connect(lambda: ctx.econ.call("rb_flip_leave", {"fid": fid}, lambda ok, d: (
-                setattr(ctx, "flip_id", None), setattr(ctx, "flip_data", None), ctx.reload_page("games"))))
+            if state == "joined":
+                walk.clicked.connect(lambda: ctx.econ.call("rb_flip_leave", {"fid": fid}, lambda ok, d: leave_view(ctx)))
+            else:
+                walk.clicked.connect(lambda: leave_view(ctx))
             row.addWidget(lock, 2)
             row.addWidget(walk, 1)
             al.addLayout(row)
             holder["picker"], holder["bar"] = picker, bar
         elif state == "open" and f.get("mine"):
+            bot = Button(tr("Play a bot"), "primary", 38, icon="robot")
+
+            def vs_bot() -> None:
+                def done(ok: bool, d) -> None:
+                    if not ok:
+                        return ctx.toast(tr(str(d)), "warn")
+                    sfx.play("pick")
+                    apply(d)
+                ctx.econ.call("rb_flip_vs_bot", {"fid": fid}, done)
+            bot.clicked.connect(vs_bot)
+            al.addWidget(bot)
             close = Button(tr("Close it (items come back)"), "ghost", 34)
 
             def do_close() -> None:
@@ -33849,17 +34307,19 @@ def _build_view(page, lay, fid: str) -> None:
                 ctx.econ.call("rb_flip_cancel", {"fid": fid}, done)
             close.clicked.connect(do_close)
             al.addWidget(close)
-            al.addWidget(Label(tr("Waiting for someone to join. Once they lock in their items, it cannot be cancelled."),
+            al.addWidget(Label(tr("Waiting for a player, or play a bot now. Once someone is in, it cannot be cancelled."),
                                10.5, TEXT_DIM, wrap_w=page.W))
         elif state == "joined":
             al.addWidget(Label(tr("{name} joined and is choosing items.", name=show_name(f, "b")), 11, TEXT, wrap_w=page.W))
+        elif state == "locked" and f.get("vs_bot") and f.get("mine"):
+            al.addWidget(Label(tr("A bot is joining your coinflip. It cannot be cancelled now."), 10.5, TEXT_DIM,
+                               wrap_w=page.W))
         elif state == "locked":
             al.addWidget(Label(tr("Both sides are locked in. Nothing can stop it now: the coin flips when the count ends."),
                                10.5, TEXT_DIM, wrap_w=page.W))
         elif state in ("done", "cancelled"):
             again = Button(tr("Back to the lobby"), "primary", 36)
-            again.clicked.connect(lambda: (setattr(ctx, "flip_id", None), setattr(ctx, "flip_data", None),
-                                           ctx.reload_page("games")))
+            again.clicked.connect(lambda: leave_view(ctx))
             al.addWidget(again)
 
     def lock_in(f: dict, picker, bar) -> None:
@@ -33869,15 +34329,27 @@ def _build_view(page, lay, fid: str) -> None:
 
         def done(ok: bool, d) -> None:
             if not ok:
+                if "rb_flip_taken" in str(d) or "first" in str(d).lower():
+                    return kicked()
                 return ctx.toast(tr(str(d)), "warn")
             sfx.play("on")
+            ctx.flip_joining = None
             ctx.econ.refresh()
             apply(d)
         ctx.econ.call("rb_flip_lock", {"fid": fid, "items": picker.ids()}, done)
 
+    def kicked() -> None:
+        """Someone else locked in first: you were never in, nothing of yours moved."""
+        sfx.play("off")
+        ctx.toast(tr("Someone else locked in first. Nothing of yours was taken."), "warn")
+        ctx.econ.refresh()
+        leave_view(ctx)
+
     def apply(f: dict) -> None:
         try:
             new, old = f.get("state"), holder["state"]
+            if getattr(ctx, "flip_joining", None) == fid and new != "open" and not f.get("joiner"):
+                return kicked()
             if new != old and not (old == "locked" and new == "done"):
                 ctx.flip_state = f                     # another state: the page is built again for it
                 return ctx.reload_page("games")
@@ -33895,13 +34367,300 @@ def _build_view(page, lay, fid: str) -> None:
             if ok and isinstance(d, dict):
                 apply(d)
             elif not ok and "over" in str(d).lower():
-                ctx.flip_id = None
-                ctx.reload_page("games")
+                leave_view(ctx)
         ctx.online.ask("rb_flip_state", {"fid": fid}, got)
     lay.addWidget(_Poll(900, poll))
     if isinstance(first, dict) and first.get("id") == fid:
         build_controls(first)
         holder["state"] = first.get("state")
+
+
+# ==================================================================================================
+# SECTION: gamehelp
+# ==================================================================================================
+import math
+import time
+
+from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
+from PyQt6.QtWidgets import QWidget
+
+
+HELP_GOLD = "#F2C14E"
+
+
+def _cfg(ctx, key: str, default: float) -> float:
+    try:
+        return float(ctx.econ.cfg.get(key, default) or default)
+    except (TypeError, ValueError, AttributeError):
+        return default
+
+
+def _mg_cap(ctx) -> int:
+    lvl = int(getattr(ctx.econ, "level", 0) or 0)
+    return int(_cfg(ctx, "game_window_cap", 300) * (1 + 0.004 * lvl))
+
+
+# title, how to play, best way to play, payouts and chances. {x} values are filled from the live settings.
+HELP = {
+    "blackjack": ("Blackjack", [
+        "Press Deal: you and the dealer get two cards; one of the dealer's stays hidden.",
+        "Hit takes a card, Stand keeps your hand, Double doubles your bet for exactly one more card.",
+        "Get closer to 21 than the dealer without going over. Aces count 1 or 11, faces count 10."], [
+        "Always stand on 17 or more, always hit on 11 or less.",
+        "From 12 to 16: stand when the dealer shows 2 to 6, hit when it shows 7 or more.",
+        "Double on 10 or 11 when the dealer shows a lower card."], [
+        "Win: ×2 (your bet back, plus as much).",
+        "Blackjack (21 with your first two cards): ×2.5.",
+        "Same total as the dealer: your bet back.",
+        "The dealer draws until 17. No split."]),
+    "plinko": ("Plinko", [
+        "Pick a risk, then drop the ball: it bounces 10 times, left or right, and lands in a box."], [
+        "The middle boxes are by far the most likely: the edges are rare.",
+        "Low risk pays often but small. High risk usually pays very little and now and then a lot."], [
+        "Low: ×0.5 in the middle up to ×8.5 at the edges (96.9% comes back on average).",
+        "Medium: ×0.4 up to ×21 (96.4%).",
+        "High: ×0.2 up to ×70 (95.9%).",
+        "Middle box: 24.6% of drops. Each edge box: 0.1% (1 in 1 024)."]),
+    "bombs": ("Bombs", [
+        "Choose how many bombs hide among the 25 tiles, then open tiles one by one.",
+        "Every gem raises the multiplier. Cash out whenever you like: a bomb loses the bet."], [
+        "Few bombs: small, safer steps. Many bombs: big jumps, very risky.",
+        "Decide when you will cash out before you start, and stick to it."], [
+        "Multiplier = 97% ÷ the chance of finding that many gems (up to ×1 000).",
+        "First gem: ×1.01 with 1 bomb, ×1.10 with 3, ×1.21 with 5, ×1.61 with 10, ×4.85 with 20."]),
+    "roulette": ("Roulette", [
+        "25 slots: 1 gold (0), 12 red (odd numbers) and 12 black (even numbers).",
+        "Pick your bet, then spin."], [
+        "Red, Black, Low and High win almost half the time.",
+        "Gold and single numbers rarely win, but pay a lot."], [
+        "Red or Black: ×2, 48% chance.",
+        "Low (1-12) or High (13-24): ×2, 48% chance.",
+        "Gold or one number: ×24, 4% chance.",
+        "96% of what is bet comes back on average."]),
+    "dice": ("Dice", [
+        "Choose your chance to win, from 5% to 95%, then roll.",
+        "A number from 0 to 99 is drawn: below your chance wins."], [
+        "A high chance wins often but pays little. A low chance pays a lot but rarely wins."], [
+        "Pays 97 ÷ your chance: 50% pays ×1.94, 25% pays ×3.88, 10% pays ×9.70.",
+        "97% of what is bet comes back on average."]),
+    "timing": ("Timing", [
+        "Press Start: a needle runs along the bar. Press STOP when it is on the target.",
+        "The needle speeds up a little the longer you wait. The target moves every round."], [
+        "Stop early, while the needle is still slow.",
+        "Watch one bounce to feel the speed, then press a little before it reaches the target."], [
+        "Perfect (the centre): ×4.",
+        "Good: ×1.8.",
+        "Close: ×0.9 (most of your bet back).",
+        "Miss, or after 9 seconds: nothing.",
+        "The server keeps its own clock: slowing Rubenium down does not help."]),
+    "rocket": ("Rocket", [
+        "Launch: the multiplier climbs while the rocket flies.",
+        "Press Cash out before it blows up to win your bet times the multiplier.",
+        "Or pick an automatic cash-out (×1.5 to ×10): it cashes out by itself if the rocket gets there."], [
+        "Low targets win often: ×1.5 is reached 64% of the time.",
+        "The longer you wait, the bigger the win and the bigger the risk."], [
+        "Chance to reach ×m = 96% ÷ m: ×2 48%, ×3 32%, ×5 19%, ×10 9.6%.",
+        "Cash out from ×1.20. The rocket never flies past ×100."]),
+    "hilo": ("Hi-Lo", [
+        "A card is shown. Guess if the next one is higher or lower: the same rank counts as right.",
+        "Every right guess raises the multiplier. Cash out whenever you like; a wrong guess loses the bet."], [
+        "Bet on the side with more cards: higher on a low card, lower on a high card.",
+        "Guessing against the odds pays more, and loses more often."], [
+        "Each right guess multiplies by 0.985 × 13 ÷ the ranks that win.",
+        "Higher on a 2: ×1.07. Higher on a Queen: ×6.40.",
+        "A round stops at 50 000 coins."]),
+    "tower": ("Tower", [
+        "Climb 8 rows. On each row, pick a tile: a safe one takes you up, a bomb ends the round.",
+        "Cash out whenever you like from the first row on."], [
+        "Easy climbs slowly but safely. Expert pays enormously, but most rounds stop on the first rows."], [
+        "Easy (4 tiles, 1 bomb): ×1.29 after one row, ×9.69 at the top.",
+        "Medium (3 tiles, 1 bomb): ×1.46, ×24.86 at the top.",
+        "Hard (2 tiles, 1 bomb): ×1.94, ×248.32 at the top.",
+        "Expert (3 tiles, 2 bombs): ×2.91 after one row.",
+        "A round stops at 50 000 coins."]),
+    "spin": ("Free spin", [
+        "Free every {h} hours: spin the wheel and win what it lands on."], [
+        "It costs nothing: come back every {h} hours."], [
+        "40 coins 19.5% · 75 coins 19.5% · 120 coins 18% · 180 coins 12%",
+        "300 coins 7.5% · 500 coins 4% · 1 200 coins 1.8%",
+        "A key 7.7% · the Golden Wheel 5% · an XP coupon 5%"]),
+    "scratch": ("Scratch card", [
+        "One free card every {h} hours. Scratch it (or press Reveal) to see your prize."], [
+        "It is free: scratch every card as soon as it is ready."], [
+        "80 to 160 coins: 30%",
+        "220 to 420 coins: 27%",
+        "1 key + a Common XP coupon: 20%",
+        "2 keys + an Uncommon XP coupon: 14%",
+        "2 500 coins + a Rare XP coupon: 6%",
+        "The Golden Wheel + an Epic XP coupon: 3%"]),
+    "beat": ("Beat Tap", [
+        "Notes fall in 4 lanes. Hit them as they cross the line: D F J K on the keyboard, or click.",
+        "Rush is much faster, with many more notes."], [
+        "Use the keyboard and keep your eyes on the line, not on the notes up high.",
+        "Combos raise your score: a miss breaks them."], [
+        "15 to 65 coins a round.",
+        "Every minigame pays up to {cap} coins every 2 hours."]),
+    "memory": ("Memory", [
+        "Turn two cards at a time to find the pairs. Each card is checked on the server."], [
+        "Remember every card you turn, even when it is not a pair.",
+        "Clear the board in as few turns as you can."], [
+        "Fewer turns pay more. Medium and Hard pay more than Easy.",
+        "Every minigame pays up to {cap} coins every 2 hours."]),
+    "parking": ("Parking", [
+        "Slide the cars along their lane to clear the way, then drive the red car out."], [
+        "First look at what blocks the red car's row, then at what blocks those cars."], [
+        "Fewer moves pay more. Harder levels pay more.",
+        "Up to {park} coins a day from Parking."]),
+    "blocks": ("Block Blast", [
+        "Drag the three pieces onto the grid. A full row or column clears.",
+        "When all three are placed, three more come. The game ends when none of them fits."], [
+        "Keep the middle open and fill along the edges.",
+        "Place the big pieces while there is room. Clearing several lines at once, or on piece after piece, "
+        "scores much more."], [
+        "1 point a square. Clearing L lines at once: +10 × L × L. Clearing again on the next piece: +20 a step.",
+        "Classic: score ÷ 5, up to 300 coins. Relaxed: ÷ 8, up to 200. Hard: ÷ 3, up to 360.",
+        "Every minigame pays up to {cap} coins every 2 hours."]),
+    "sweeper": ("Minesweeper", [
+        "Open every cell without a mine. A number says how many mines touch that cell.",
+        "Right-click puts a flag. The first cell is always safe."], [
+        "A 1 touching a single closed cell means that cell is a mine: flag it and open the others.",
+        "Start in the middle: one click often opens a big area."], [
+        "Easy pays 35 to 105 coins, Medium 75 to 225, Hard 140 to 420: the faster, the more.",
+        "Every minigame pays up to {cap} coins every 2 hours."]),
+    "duels": ("Duels", [
+        "Challenge a friend to a game, with or without a bet. You both play the same round: the best score wins."], [
+        "Pick the game you are best at, and a level you know well."], [
+        "The winner gets both bets minus a {fee}% fee. A draw gives both bets back.",
+        "The bet is at most 80% of the lower balance."]),
+    "golf": ("Mini Golf", [
+        "Drag back from the ball to aim and set the power, then let go to shoot.",
+        "5 holes, 25 seconds a turn. Anyone can join your lobby."], [
+        "Use the walls: a bank shot is often the shortest way.",
+        "A short safe shot beats a long risky one."], [
+        "Fewest strokes wins both bets, minus a {golf}% fee. A draw gives both bets back.",
+        "Nobody joins in 5 minutes: it closes and your bet comes back."]),
+    "coinflip": ("Coinflip", [
+        "Create a coinflip: pick black or white and up to 6 items. Someone joins with items worth about the same "
+        "(±10%), or you play a bot.",
+        "You are in once you lock in your items. When both sides are in, the coin flips after 15 seconds.",
+        "Press the eye on a coinflip in the lobby to watch it flip."], [
+        "Only put in items you are ready to lose."], [
+        "The winner takes every item.",
+        "Your chance is your share of the total worth, between 49% and 51%.",
+        "Bots play by the same rules, with the same coin."]),
+}
+
+CASINO_KEYS = {"Blackjack": "blackjack", "Plinko": "plinko", "Bombs": "bombs", "Roulette": "roulette", "Dice": "dice",
+               "Timing": "timing", "Rocket": "rocket", "Hi-Lo": "hilo", "Tower": "tower", "Free spin": "spin"}
+
+
+def help_lines(ctx, key: str) -> tuple:
+    title, how, best, pay = HELP[key]
+    vals = {"h": int(_cfg(ctx, "spin_hours", 2)) if key == "spin" else int(_cfg(ctx, "scratch_hours", 12)),
+            "cap": _mg_cap(ctx), "park": int(_cfg(ctx, "park_day_cap", 300)),
+            "fee": int(round(_cfg(ctx, "duel_fee", 0.05) * 100)), "golf": int(round(_cfg(ctx, "golf_fee", 0.05) * 100))}
+
+    def fill(lines):
+        out = []
+        for text in lines:
+            t = tr(text)
+            try:
+                t = t.format(**vals)
+            except (KeyError, IndexError, ValueError):
+                pass
+            out.append(t)
+        return out
+    return tr(title), fill(how), fill(best), fill(pay)
+
+
+class HelpButton(QWidget):
+    """A round golden "?" that glows softly. Click: the help of its game."""
+    clicked = pyqtSignal()
+
+    def __init__(self, ctx, key, size: int = 32) -> None:
+        super().__init__()
+        self.ctx, self.key = ctx, key                      # key: a HELP key, or a function giving one
+        self.setFixedSize(S(size), S(size))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip(tr("How to play"))
+        self._hover = 0.0
+        self._t = QTimer(self)
+        self._t.setInterval(50)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def enterEvent(self, _e) -> None:
+        self._hover = 1.0
+
+    def leaveEvent(self, _e) -> None:
+        self._hover = 0.0
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
+            key = self.key() if callable(self.key) else self.key
+            if key in HELP:
+                sfx.play("pick")
+                open_help(self.ctx, key)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect())
+        c = r.center()
+        rad = r.width() / 2 - S(3)
+        pulse = 0.5 + 0.5 * math.sin(time.monotonic() * 2.6)
+        glow = QRadialGradient(c, r.width() / 2)
+        glow.setColorAt(0.55, alpha(HELP_GOLD, 0.35 + 0.25 * pulse + 0.2 * self._hover))
+        glow.setColorAt(1.0, alpha(HELP_GOLD, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, r.width() / 2, r.width() / 2)
+        body = QRadialGradient(QPointF(c.x() - rad * 0.3, c.y() - rad * 0.4), rad * 1.6)
+        body.setColorAt(0, QColor("#FFF1B8"))
+        body.setColorAt(0.45, QColor(HELP_GOLD))
+        body.setColorAt(1, QColor("#B07A12"))
+        p.setBrush(body)
+        p.setPen(QPen(QColor("#FFE7A0"), S(1)))
+        p.drawEllipse(c, rad, rad)
+        p.setPen(QColor("#3A2600"))
+        p.setFont(font(rad / S(1) * 0.95, QFont.Weight.Black))
+        p.drawText(QRectF(c.x() - rad, c.y() - rad, rad * 2, rad * 2), int(Qt.AlignmentFlag.AlignCenter), "?")
+
+
+class HelpSheet(QWidget):
+    """The help of one game, shown inside the menu until it is closed."""
+
+    def __init__(self, ctx, key: str) -> None:
+        super().__init__()
+        self.ctx = ctx
+        w = ctx.window.page_w()
+        self.setFixedWidth(w)
+        lay = vbox(self, 8)
+        title, how, best, pay = help_lines(ctx, key)
+        lay.addWidget(Label(title, 17, HELP_GOLD, bold=True))
+        for head, lines in ((tr("HOW TO PLAY"), how), (tr("BEST WAY TO PLAY"), best), (tr("PAYOUTS AND CHANCES"), pay)):
+            if not lines:
+                continue
+            lay.addWidget(Label(head, 10, TEXT_DIM, weight=QFont.Weight.Bold))
+            for text in lines:
+                lay.addWidget(Label("•  " + text, 11, TEXT, wrap_w=w))
+        close = Button(tr("Got it"), "primary", 36)
+        close.clicked.connect(lambda: ctx.window.unembed(self))
+        lay.addSpacing(S(4))
+        lay.addWidget(close)
+
+
+def open_help(ctx, key: str) -> None:
+    ctx.window.embed(HelpSheet(ctx, key))
 
 
 # ==================================================================================================
@@ -35040,7 +35799,7 @@ class SweeperBoard(QWidget):
 
 # ================================================================ the pages (inside Games)
 def _top(page, lay, title: str, game: str) -> None:
-    page._back_bar(lay, title, lambda: page.open_sub("minigames"))
+    page._back_bar(lay, title, lambda: page.open_sub("minigames"), game)
     line = hbox(spacing=6)
     seg = Segmented([tr(m) for m in MODES[game]], int(getattr(page.ctx, game + "_mode", 0) or 0))
     seg.changed.connect(lambda i: page.mg_mode(game, i))
@@ -40645,12 +41404,21 @@ class App(QObject):
             self.reload_page()
 
     def game_zoom(self) -> None:
-        """Leaving the Games tab (or closing the menu) while in the casino goes back to the lobby and your size.
-        A round that is still running finishes first."""
+        """Switching the left half of the online menu away from Games while in the casino goes back to the lobby (a
+        running round finishes first). 4.2: closing the menu, hiding it, going into a game or leaving online mode
+        keeps the casino game you were on: it is there again next time."""
         w = self.window
         if not self.casino or w.morph.busy or w.slide.busy or w.zoom.busy or w.fade.busy or self.welcome is not None:
             return
-        if w.expanded and w.showing("games"):
+        before = self.cfg["scale_before_games"]
+        if not self.online_mode:                       # the casino lives in the online menu: it waits there
+            if before:                                 # (a size left by an older version is put back once)
+                self.cfg["scale"] = before
+                self.cfg["scale_before_games"] = 0
+                ui.scale = before / 100
+                self.rebuild_ui()
+            return
+        if "games" in w.tab_keys():
             return
         entry = w.pages.get("games")
         page = entry[1] if entry else None
@@ -40658,14 +41426,7 @@ class App(QObject):
             page.wrap_up()
             return
         self.casino = False
-        before = self.cfg["scale_before_games"]
-        if before:
-            self.cfg["scale"] = before
-            self.cfg["scale_before_games"] = 0
-            ui.scale = before / 100
-            self.rebuild_ui()
-        else:
-            w._drop_page("games")
+        w._drop_page("games")
 
     def usage_hours(self) -> float:
         return self.cfg["usage_s"] / 3600
