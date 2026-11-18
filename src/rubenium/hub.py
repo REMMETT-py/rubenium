@@ -230,25 +230,61 @@ def wrap_lines(fm: QFontMetrics, text: str, width: int) -> list:
     return out or [""]
 
 
+REACTIONS = [("fire", "🔥"), ("heart", "❤️"), ("cry", "😢"), ("laugh", "😂"), ("happy", "😊")]
+
+
 class Bubbles(QWidget):
-    """The messages of one chat, newest at the bottom. Every message wraps inside its bubble."""
+    """The messages of one chat, newest at the bottom. Every message wraps inside its bubble.
+    4.0: hover a message to react (🔥 ❤️ 😢 😂 😊); reactions show under it, yours outlined."""
+    reacted = pyqtSignal(int, str)
 
     def __init__(self, width: int) -> None:
         super().__init__()
         self.rows: list = []
         self.setFixedWidth(width)
         self.setFixedHeight(S(300))
+        self.setMouseTracking(True)
         self.scroll = 0.0
         self._cache: dict = {}
+        self.hover = None                     # the id of the message under the mouse
+        self._bubbles: list = []              # (rect, id)
+        self._buttons: list = []              # (rect, id, emoji)
 
     def set_rows(self, rows: list) -> None:
+        keep = self.scroll if [m.get("id") for m in rows] == [m.get("id") for m in self.rows] else 0.0
         self.rows = rows
-        self.scroll = 0.0
+        self.scroll = keep
+        self.update()
+
+    def set_reacts(self, mid: int, reacts: dict) -> None:
+        for m in self.rows:
+            if m.get("id") == mid:
+                m["reacts"] = reacts
         self.update()
 
     def wheelEvent(self, e) -> None:
         self.scroll = max(0.0, self.scroll + e.angleDelta().y() / 120 * S(40))
         self.update()
+
+    def mouseMoveEvent(self, e) -> None:
+        pos = e.position()
+        over = next((mid for r, mid in self._bubbles if r.adjusted(-S(120), -S(4), S(120), S(4)).contains(pos)), None)
+        if over != self.hover:
+            self.hover = over
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = None
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        for r, mid, emoji in self._buttons:
+            if r.contains(e.position()):
+                self.reacted.emit(int(mid), emoji)
+                return
 
     def _lines(self, fm: QFontMetrics, text: str, width: int) -> list:
         key = (text, width)
@@ -266,22 +302,27 @@ class Bubbles(QWidget):
         p.setFont(f)
         p.setClipRect(self.rect())
         y = self.height() + self.scroll
-        maxw = int(self.width() * 0.78)                     # a bubble never takes the whole width
+        maxw = int(self.width() * 0.74)                     # a bubble never takes the whole width
         inner = maxw - S(22)
         lh = fm.height()
+        self._bubbles, self._buttons = [], []
         if not self.rows:
             p.setPen(QColor(TEXT_DIM))
             p.drawText(QRectF(self.rect()), int(Qt.AlignmentFlag.AlignCenter), tr("No messages yet: say hi!"))
             return
+        emo = font(12)
         for m in reversed(self.rows):
             lines = self._lines(fm, str(m.get("text", "")), inner)
             w = min(maxw, max(fm.horizontalAdvance(ln) for ln in lines) + S(22))
             h = lh * len(lines) + S(14)
-            y -= h + S(6)
-            if y + h < 0:
+            reacts = m.get("reacts") or {}
+            extra = S(22) if reacts else 0
+            y -= h + S(6) + extra
+            if y + h + extra < 0:
                 break
             mine = bool(m.get("mine"))
             r = QRectF(self.width() - w - S(2) if mine else S(2), y, w, h)
+            p.setFont(f)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(ui.accent, 0.85) if mine else QColor("#232A33"))
             p.drawRoundedRect(r, S(10), S(10))
@@ -289,6 +330,46 @@ class Bubbles(QWidget):
             for k, ln in enumerate(lines):
                 p.drawText(QRectF(r.left() + S(11), r.top() + S(7) + k * lh, r.width() - S(22), lh),
                            int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft), ln)
+            mid = m.get("id")
+            if mid is not None:
+                self._bubbles.append((r, mid))
+            if reacts:                                     # the reactions under the bubble
+                x = r.right() if mine else r.left()
+                chips = [(e, ch) for e, ch in REACTIONS if e in reacts]
+                p.setFont(emo)
+                for e, ch in (reversed(chips) if mine else chips):
+                    info = reacts[e]
+                    label = f"{ch} {int(info.get('n') or 1)}"
+                    cw = QFontMetrics(emo).horizontalAdvance(label) + S(12)
+                    cx = x - cw if mine else x
+                    chip = QRectF(cx, r.bottom() + S(3), cw, S(18))
+                    p.setPen(QPen(ui.accent, S(1.4)) if info.get("mine") else QPen(alpha("#FFFFFF", 0.12), 1))
+                    p.setBrush(alpha("#FFFFFF", 0.07))
+                    p.drawRoundedRect(chip, S(9), S(9))
+                    p.setPen(QColor(TEXT))
+                    p.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), label)
+                    if mid is not None:
+                        self._buttons.append((chip, mid, e))
+                    x = cx - S(4) if mine else cx + cw + S(4)
+            if mid is not None and mid == self.hover:      # the five reactions, next to the bubble
+                bw = S(22)
+                bar_w = bw * len(REACTIONS) + S(8)
+                bx = r.left() - bar_w - S(4) if mine else r.right() + S(4)
+                bx = max(S(2), min(self.width() - bar_w - S(2), bx))
+                bar = QRectF(bx, r.top() + (min(h, S(30)) - S(26)) / 2, bar_w, S(26))
+                p.setPen(QPen(alpha("#FFFFFF", 0.15), 1))
+                p.setBrush(QColor(16, 20, 24, 245))
+                p.drawRoundedRect(bar, S(13), S(13))
+                p.setFont(emo)
+                for i, (e, ch) in enumerate(REACTIONS):
+                    cell = QRectF(bar.left() + S(4) + i * bw, bar.top() + S(2), bw, S(22))
+                    if (reacts.get(e) or {}).get("mine"):
+                        p.setPen(Qt.PenStyle.NoPen)
+                        p.setBrush(alpha(ui.accent, 0.35))
+                        p.drawEllipse(cell.center(), S(10), S(10))
+                    p.setPen(QColor(TEXT))
+                    p.drawText(cell, int(Qt.AlignmentFlag.AlignCenter), ch)
+                    self._buttons.append((cell, mid, e))
 
 
 class ChatWindow(FloatWindow):
@@ -313,6 +394,7 @@ class ChatWindow(FloatWindow):
         lay.addLayout(top)
         self.bubbles = Bubbles(S(298))
         self.bubbles.setFixedHeight(S(240))
+        self.bubbles.reacted.connect(self._react)
         lay.addWidget(self.bubbles)
         line = hbox(spacing=6)
         self.edit = QLineEdit()
@@ -347,9 +429,19 @@ class ChatWindow(FloatWindow):
     def load(self) -> None:
         def got(ok: bool, data) -> None:
             if ok and isinstance(data, list):
-                if [m.get("id") for m in data] != [m.get("id") for m in self.bubbles.rows]:
+                if [(m.get("id"), m.get("reacts")) for m in data] != [(m.get("id"), m.get("reacts")) for m in self.bubbles.rows]:
                     self.bubbles.set_rows(data)
         self.ctx.online.ask("rb_msg_get", {"name": self.name}, got)
+
+    def _react(self, mid: int, emoji: str) -> None:
+        """4.0: one of the five reactions on a message (again to take it back)."""
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, dict):
+                self.bubbles.set_reacts(mid, data)
+            elif not ok:
+                self.ctx.toast(tr(str(data)), "warn")
+        sfx.play("pick")
+        self.ctx.econ.call("rb_msg_react", {"mid": mid, "emoji": emoji}, got)
 
     MAX = 300
 
@@ -491,11 +583,13 @@ def build_messages(page, lay) -> None:
 
 
 # ================================================================ leaderboards
-BOARDS = [("coins", "Richest"), ("worth", "Worth"), ("badges", "Badges"), ("hours", "Hours"),
-          ("streak", "Streak"), ("tap", "Beat Tap"), ("park", "Parking"), ("memory", "Memory")]
+BOARDS = [("coins", "Richest"), ("worth", "Worth"), ("level", "Level"), ("badges", "Badges"), ("hours", "Hours"),
+          ("streak", "Streak"), ("tap", "Beat Tap"), ("park", "Parking"), ("memory", "Memory"), ("g2048", "2048"),
+          ("sweeper", "Minesweeper")]
 BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are worth", "badges": "Different badges owned",
                "hours": "Hours with Rubenium", "streak": "Days in a row of daily rewards", "tap": "Best Beat Tap score (%)",
-               "park": "Parking puzzles solved", "memory": "Memory games finished"}
+               "park": "Parking puzzles solved", "memory": "Memory games finished", "level": "Highest level (by XP)",
+               "g2048": "Best 2048 score", "sweeper": "Fastest Minesweeper clear"}
 
 
 class LeaderRow(QWidget):
@@ -537,6 +631,23 @@ class LeaderRow(QWidget):
             from .cosmetics import paint_tag
             paint_tag(p, r.left() + S(40) + p.fontMetrics().horizontalAdvance(name), r.center().y(), tag, 0.0, 8)
         v = int(row.get("value") or 0)
+        if self.kind == "level":                              # 4.0: the level (from the XP), with its badge
+            from .levels import paint_level_badge
+            lv = int(row.get("level") or 0)
+            if not lv:
+                from .levels import level_of_xp
+                lv = level_of_xp(v)
+            paint_level_badge(p, QPointF(r.right() - S(70), r.center().y()), S(26), lv, 0.0, aura=False)
+            p.setPen(QColor(TEXT))
+            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       tr("Lv {n}", n=lv))
+            return
+        if self.kind == "sweeper":
+            secs = row.get("secs")
+            p.setPen(QColor(TEXT))
+            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       f"{float(secs):.1f} s" if secs is not None else "-")
+            return
         text = coins_text(v) if self.kind in ("coins", "worth") else (f"{v}%" if self.kind == "tap" else
                                                                        (tr("{n} days", n=v) if self.kind == "streak" else
                                                                         (f"{v} h" if self.kind == "hours" else str(v))))
@@ -557,8 +668,14 @@ def build_leaders(page, lay) -> None:
     pick = GamePicker([tr(n) for _k, n in BOARDS], k)
     pick.changed.connect(lambda i: (setattr(ctx, "board_kind", i), setattr(ctx, "board_data", None), ctx.reload_page()))
     lay.addWidget(pick)
-    kind = BOARDS[k][0]
-    key = (kind, friends)
+    kind = BOARDS[min(k, len(BOARDS) - 1)][0]
+    mode = int(getattr(ctx, "board_mode", 0) or 0)
+    if kind in ("g2048", "sweeper"):                       # 4.0: the new minigames, one board per mode
+        from .games5 import MODES
+        mseg = Segmented([tr(m) for m in MODES[kind]], mode)
+        mseg.changed.connect(lambda i: (setattr(ctx, "board_mode", i), setattr(ctx, "board_data", None), ctx.reload_page()))
+        lay.addWidget(mseg)
+    key = (kind, friends, mode)
     data = getattr(ctx, "board_data", None)
 
     def got(ok: bool, rows) -> None:
@@ -567,7 +684,10 @@ def build_leaders(page, lay) -> None:
                 ctx.board_data = (key, rows)
                 if ctx.window.showing("friends") and int(getattr(ctx, "social_tab", 0) or 0) == 3:
                     ctx.reload_page("friends")
-    ctx.online.ask("rb_leaders", {"kind": kind, "friends": friends}, got)
+    if kind in ("g2048", "sweeper"):
+        ctx.online.ask("rb_mg_board", {"game": kind, "mode": mode, "friends": friends}, got)
+    else:
+        ctx.online.ask("rb_leaders", {"kind": kind, "friends": friends}, got)
     if not data or data[0] != key:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     rows = data[1]
@@ -650,7 +770,10 @@ def build_trade_history(page, lay) -> None:
 SETS = {"row_standard": "Every Common badge (12)", "row_rare": "Every Rare badge (12)",
         "row_special": "Every Epic badge (12)", "row_epic": "Every Legendary badge (12)",
         "row_exotic": "Every Mythic badge (6)", "rainbow": "All 8 Painted colours of one badge",
-        "shiny5": "5 Shiny badges", "titanium3": "3 Titanium badges", "gold1": "A Gold badge"}
+        "shiny5": "5 Shiny badges", "titanium3": "3 Titanium badges", "gold1": "A Gold badge",
+        "banners6": "6 banners", "frames5": "5 profile frames", "themes4": "4 themes",       # 4.0: more sets
+        "balls12": "12 different balls", "lines12": "12 different song lines", "fonts5": "Every font (5)",
+        "winter4": "4 limited items (advent, Winter Case…)"}
 
 
 class SetRow(QWidget):
@@ -1469,7 +1592,7 @@ class StreakRow(QWidget):
         self.setFixedHeight(S(44))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._t = QTimer(self)
-        self._t.setInterval(40)
+        self._t.setInterval(80)                # 4.0: a calm flame, fewer repaints
         self._t.timeout.connect(self.update)
 
     def showEvent(self, _e) -> None:

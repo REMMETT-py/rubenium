@@ -5,8 +5,8 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen
-from PyQt6.QtWidgets import QLineEdit, QWidget
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF
+from PyQt6.QtWidgets import QAbstractButton, QLineEdit, QWidget
 
 from .bazaar import ItemGrid, KINDS
 from .core import DANGER, S, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, sfx, tr, ui
@@ -170,8 +170,9 @@ class Table(QWidget):
 
 class AdminPage(Page):
     key = "admin"
-    SECTIONS = ["Overview", "Users", "Items", "Cases", "Live", "Settings", "Log", "Help", "Bots", "Swaps"]
-    ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key", "spark", "rocket"]
+    SECTIONS = ["Overview", "Users", "Items", "Cases", "Live", "Settings", "Log", "Help", "Bots", "Swaps", "Locks",
+                "Levels", "Coinflips"]
+    ICONS = ["perf", "users", "gem", "gift", "timer", "cog", "refresh", "key", "spark", "rocket", "lock", "trophy", "coin"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -190,9 +191,9 @@ class AdminPage(Page):
         pick = NavTiles([(tr(s), i) for s, i in zip(self.SECTIONS, self.ICONS)], tab, per_row=5)   # 2 full rows
         pick.changed.connect(self._section)
         lay.addWidget(pick)
-        self._lock_row(lay)
+        self._lockdown_row(lay)
         [self._overview, self._players, self._items, self._cases, self._live, self._settings, self._log, self._help,
-         self._bots, self._swaps][min(tab, 9)](lay)
+         self._bots, self._swaps, self._locks, self._levels, self._flips][min(tab, 12)](lay)
 
     # -- helpers
     def _reload(self) -> None:
@@ -243,19 +244,36 @@ class AdminPage(Page):
             QTimer.singleShot(300, self.ctx.reload_page)
         self.ctx.econ.call(fn, args, back)
 
-    def _lock_row(self, lay) -> None:
-        locked = bool(self.ctx.econ.live.get("app_locked"))
-        b = Button(tr("Unlock the app for everyone") if locked else tr("Lock the app for everyone"),
-                   "primary" if locked else "ghost", 32, icon="lock")
+    def _lockdown_row(self, lay) -> None:
+        """4.0: the big LOCKDOWN button (it took the place of the old lock). Everything stops on the server at once:
+        open trades, coinflips, golf matches and casino rounds are cancelled with no winner and no loser."""
+        on = bool(self.ctx.econ.locks.get("lockdown"))
+        bar = LockdownBar(on)
 
         def flip() -> None:
-            text = tr("Unlock games, cases, trades and the market for everyone?") if locked else \
-                tr("Lock games, cases, trades and the market for everyone (not you)? Time still counts.")
-            self.ctx.window.confirm(text, lambda: self.do("rb_admin_lock", {"lock": not locked},
-                                                          tr("App unlocked") if locked else tr("App locked")),
-                                    yes=tr("Unlock") if locked else tr("Lock"))
-        b.clicked.connect(flip)
-        lay.addWidget(b)
+            if on:
+                text = tr("Lift the lockdown? Everything that is not locked on its own opens again for everyone.")
+                return self.ctx.window.confirm(text, lambda: self._lockdown(False), yes=tr("Lift lockdown"))
+            text = tr("LOCKDOWN: stop everything for everyone now? Open trades, coinflips, Mini Golf matches and "
+                      "casino rounds are cancelled and given back. Nobody wins or loses anything.")
+            self.ctx.window.confirm(text, lambda: self._lockdown(True), yes=tr("LOCKDOWN"))
+        bar.clicked.connect(flip)
+        lay.addWidget(bar)
+
+    def _lockdown(self, lock: bool) -> None:
+        def back(ok: bool, data) -> None:
+            if not ok:
+                sfx.play("off")
+                return self.ctx.toast(tr(str(data)), "warn")
+            sfx.play("on")
+            self.ctx.toast(tr("Lockdown on: everything is stopped") if lock else tr("Lockdown lifted"),
+                           "warn" if lock else "ok")
+            self.ctx.admin_cache = {}
+            self.ctx.econ.take_locks({"lockdown": lock, "locked": [f["name"] for f in (data or {}).get("features") or []
+                                                                  if not f.get("on")]})
+            self.ctx.econ.poll_live()
+            QTimer.singleShot(200, self.ctx.reload_page)
+        self.ctx.econ.call("rb_admin_lockdown", {"lock": lock}, back)
 
     # -- sections
     def _overview(self, lay) -> None:
@@ -890,8 +908,7 @@ class AdminPage(Page):
             b = Button((tr(text) + ": " + os.path.basename(chosen)) if chosen else tr(text), "ghost", 30, icon="folder")
 
             def choose(_c=False, key=key, text=text, filt=filt) -> None:
-                from PyQt6.QtWidgets import QFileDialog
-                path, _f = QFileDialog.getOpenFileName(None, tr(text), "", filt)
+                path = self.ctx.pick_file(tr(text), filt)     # 4.0: the window steps aside (it covered the dialog)
                 if path:
                     self.ctx.swap_files[key] = path
                     self.ctx.reload_page()
@@ -972,6 +989,260 @@ class AdminPage(Page):
         FormDialog(self.ctx, tr("Add a swap"), [("old", tr("The item you equip in the game (e.g. Octane)"), ""),
                                                ("new", tr("What it becomes (the title)"), "")], tr("Upload"), go)
 
+    # -- 4.0: every part of Rubenium, locked or unlocked live
+    FEATURES = {"online": ("Online mode", "Everything online: trades, chat, coinflips, Mini Golf"),
+                "trading": ("Trading", "New trades; open trades are cancelled"),
+                "market": ("Market", "Buying, selling and listing"),
+                "coinflip": ("Coinflip", "Open coinflips are cancelled, items go back"),
+                "roulette": ("Roulette", ""),
+                "casino": ("Other casino games", "Blackjack, Plinko, Bombs, Dice, Timing, Rocket, Hi-Lo, Tower, Keno, Limbo"),
+                "minigames": ("Mini games", "Beat Tap, Memory, 2048, Minesweeper and the others"),
+                "golf": ("Mini Golf", "Running matches are cancelled and bets given back"),
+                "wheel": ("Free spin wheel", ""), "scratch": ("Scratch cards", ""), "advent": ("Advent calendar", ""),
+                "notifications": ("Notifications", "Gift and system messages"),
+                "cases": ("Cases", "Buying and opening"), "shop": ("Shop", "Buying in the shop and Bon Plan"),
+                "chat": ("Chat", "Messages and reactions"), "giveaways": ("Giveaways", "Joining"),
+                "quests": ("Quests", "Claiming rewards"), "coupons": ("XP coupons", "Using coupons"),
+                "gifts": ("Gifts", "Sending items to friends")}
+
+    def _locks(self, lay) -> None:
+        d = self.fetch("rb_admin_features", {})
+        if d is None:
+            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+        if not d:
+            return lay.addWidget(Label(tr("Run the 4.0 server update first."), 11, TEXT_DIM, wrap_w=self.W))
+        lay.addWidget(Label(tr("Lock one part of Rubenium for everyone, right now. The server refuses it at once, "
+                               "and what was running in it is cancelled and given back."), 10.5, TEXT_DIM, wrap_w=self.W))
+        down = bool(d.get("lockdown"))
+        feats = d.get("features") or []
+        locked = {f["name"] for f in feats if f.get("locked")}
+        order = list(self.FEATURES)
+        feats.sort(key=lambda f: order.index(f["name"]) if f["name"] in order else len(order))
+        for f in feats:
+            name, note = self.FEATURES.get(f["name"], (f["name"], ""))
+            if f.get("locked"):
+                state, why = "locked", tr("Locked by {who} · {at}", who=f.get("by") or "?",
+                                          at=str(f.get("at") or "")[5:16].replace("T", " "))
+                if f.get("note"):
+                    why += " · " + f["note"]
+            elif down:
+                state, why = "held", tr("Stopped by the lockdown")
+            elif f.get("parent") in locked:
+                state, why = "held", tr("Stopped because {name} is locked",
+                                        name=tr(self.FEATURES.get(f["parent"], (f["parent"],))[0]))
+            else:
+                state, why = "on", tr(note) if note else tr("Working")
+            row = FeatureRow(tr(name), why, state, False)
+            row.clicked.connect(lambda _c=False, f=f, name=name: self._feature(f["name"], tr(name), not f.get("locked")))
+            lay.addWidget(row)
+        log = d.get("log") or []
+        if log:
+            lay.addWidget(heading(tr("Last changes")))
+            rows = []
+            for x in log:
+                det = x.get("detail") or {}
+                what = tr("LOCKDOWN") if x.get("action") == "lockdown" else \
+                    tr(self.FEATURES.get(x.get("target") or "", (x.get("target") or "?",))[0])
+                lock = bool(det.get("locked"))
+                stopped = int((det.get("result") or {}).get("stopped") or 0)
+                rows.append((what, (tr("locked") if lock else tr("unlocked")) + (f" · {stopped}" if stopped else ""),
+                             f"{x.get('who') or '?'} · {str(x.get('at') or '')[5:16].replace('T', ' ')}",
+                             "#FF7A7A" if lock else "#5BE08A"))
+            lay.addWidget(Table(rows, self.W))
+
+    def _feature(self, key: str, name: str, lock: bool) -> None:
+        def go(v: dict, dlg) -> None:
+            dlg.close()
+            self.do("rb_admin_feature", {"name": key, "lock": lock, "note": (v.get("n") or "").strip()},
+                    tr("{name} locked", name=name) if lock else tr("{name} unlocked", name=name))
+        if lock:
+            FormDialog(self.ctx, tr("Lock {name}", name=name), [("n", tr("Reason (players don't see it)"), "")],
+                       tr("Lock"), go, tr("Running games in it are cancelled and given back."))
+        else:
+            self.ctx.window.confirm(tr("Unlock {name} for everyone?", name=name),
+                                    lambda: go({}, type("D", (), {"close": lambda _s: None})()), yes=tr("Unlock"))
+
+    # -- 4.0: levels and XP
+    def _levels(self, lay) -> None:
+        from .levels import LevelBadge, badge_name, tier_of
+        name = getattr(self.ctx, "admin_xp_name", None)
+        line = hbox(spacing=6)
+        find = Button(tr("Look at a user's XP"), "primary", 30, icon="search")
+        find.clicked.connect(lambda: FormDialog(self.ctx, tr("XP of a user"), [("n", tr("Username"), name or "")], tr("Open"),
+                                                lambda v, d: (d.close(), setattr(self.ctx, "admin_xp_name", v["n"].strip()),
+                                                              self.ctx.reload_page())))
+        line.addWidget(find, 1)
+        if name:
+            close = Button(tr("Close {name}", name=name), "ghost", 30)
+            close.clicked.connect(lambda: (setattr(self.ctx, "admin_xp_name", None), self.ctx.reload_page()))
+            line.addWidget(close, 1)
+        lay.addLayout(line)
+        if name:
+            v = self.fetch("rb_admin_xp_view", {"name": name})
+            if v is None:
+                return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+            if not v:
+                return lay.addWidget(Label(tr("No such user"), 11, TEXT_DIM))
+            info = v.get("info") or {}
+            lv = int(info.get("level") or 0)
+            top = hbox(spacing=10)
+            top.addWidget(LevelBadge(lv, 64))
+            col = vbox(spacing=2)
+            col.addWidget(Label(v.get("name", name), 15, bold=True))
+            col.addWidget(Label(tr("Level {n} · {b}", n=lv, b=tr(badge_name(lv))), 11.5, GOLD_TEXT, bold=True))
+            col.addWidget(Label(tr("{x} XP in total · today {d} / {cap}", x=coins_text(int(info.get("xp") or 0)),
+                                   d=int(info.get("today") or 0), cap=int(info.get("cap") or 0)), 10.5, TEXT_DIM))
+            top.addLayout(col, 1)
+            lay.addLayout(top)
+            src = v.get("sources") or {}
+            if src:
+                lay.addWidget(Label(tr("Today by source: {s}", s=" · ".join(f"{k} {n}" for k, n in sorted(src.items()))),
+                                    10.5, TEXT_DIM, wrap_w=self.W))
+            acts = hbox(spacing=6)
+            for text, sign in ((tr("Give XP"), 1), (tr("Take XP"), -1)):
+                b = Button(text, "ghost", 30)
+                b.clicked.connect(lambda _c=False, sign=sign: self._xp_dialog(v.get("name", name), sign))
+                acts.addWidget(b, 1)
+            lay.addLayout(acts)
+            lay.addWidget(heading(tr("XP log")))
+            lay.addWidget(Table([(f"{'+' if int(x['amount']) >= 0 else ''}{x['amount']} · {x['source']}",
+                                  tr("level {n}", n=x.get("level")), str(x.get("at") or "")[5:16].replace("T", " "),
+                                  "#5BE08A" if int(x["amount"]) >= 0 else "#FF7A7A")
+                                 for x in (v.get("log") or [])[:40]], self.W))
+            return
+        w = self.fetch("rb_admin_xp_watch", {})
+        if w is None:
+            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+        if not w:
+            return lay.addWidget(Label(tr("Run the 4.0 server update first."), 11, TEXT_DIM, wrap_w=self.W))
+        caps = w.get("caps") or {}
+        lay.addWidget(Label(tr("XP a day at most: {n}. By source: {s}", n=caps.get("day"),
+                               s=" · ".join(f"{k} {v}" for k, v in caps.items() if k != "day")), 10.5, TEXT_DIM, wrap_w=self.W))
+        lay.addWidget(heading(tr("Most XP in the last 24 hours")))
+        top_day = w.get("top_day") or []
+        if top_day:
+            lay.addWidget(Table([(x["name"], tr("level {n}", n=x["level"]), f"{x['xp']} XP · {x['events']}",
+                                  "#FFB020" if int(x["xp"]) >= int(caps.get("day") or 2500) else TEXT) for x in top_day],
+                                self.W, lambda i: (setattr(self.ctx, "admin_xp_name", top_day[i]["name"]), self.ctx.reload_page())))
+        else:
+            lay.addWidget(Label(tr("Nobody yet."), 11, TEXT_FAINT))
+        sus = w.get("capped_days") or []
+        lay.addWidget(heading(tr("Suspicious: at the daily cap 3 days or more (14 days)")))
+        if sus:
+            lay.addWidget(Table([(x["name"], tr("{n} days", n=x["days"]), "", "#FF7A7A") for x in sus], self.W,
+                                lambda i: (setattr(self.ctx, "admin_xp_name", sus[i]["name"]), self.ctx.reload_page())))
+        else:
+            lay.addWidget(Label(tr("Nobody: all good."), 11, "#5BE08A"))
+        lay.addWidget(heading(tr("Every level badge (one every 5 levels)")))
+        grid = QWidget()
+        from PyQt6.QtWidgets import QGridLayout
+        gl = QGridLayout(grid)
+        gl.setContentsMargins(0, 0, 0, 0)
+        gl.setSpacing(S(4))
+        for k, lv in enumerate(range(0, 101, 5)):
+            cell = QWidget()
+            cl = vbox(cell, 1)
+            badge = LevelBadge(lv, 52)
+            badge.setToolTip(tr("Level {n} · {b}", n=lv, b=tr(badge_name(lv))))
+            cl.addWidget(badge, 0, Qt.AlignmentFlag.AlignHCenter)
+            cl.addWidget(Label(f"{lv} · {tr(badge_name(lv))}", 9, TEXT_DIM), 0, Qt.AlignmentFlag.AlignHCenter)
+            gl.addWidget(cell, k // 4, k % 4)
+        lay.addWidget(grid)
+        curve = w.get("curve") or []
+        if curve:
+            lay.addWidget(heading(tr("The XP curve")))
+            lay.addWidget(Table([(tr("Level {n}", n=c["level"]), tr("{x} XP in total", x=coins_text(int(c["total"]))),
+                                  tr("next +{n}", n=c["next"]), TEXT) for c in curve], self.W))
+
+    def _xp_dialog(self, name: str, sign: int) -> None:
+        def go(v: dict, dlg) -> None:
+            n = _int(v.get("n"))
+            if not n or n <= 0 or n > 300000:
+                return dlg.say(tr("1 to 300 000"))
+            if not (v.get("r") or "").strip():
+                return dlg.say(tr("Write a reason"))
+            dlg.close()
+            self.do("rb_admin_xp", {"name": name, "delta": sign * n, "reason": v["r"].strip()}, tr("Saved"))
+        FormDialog(self.ctx, tr("Give XP to {name}", name=name) if sign > 0 else tr("Take XP from {name}", name=name),
+                   [("n", tr("XP"), ""), ("r", tr("Reason (kept in the log)"), "")], tr("OK"), go)
+
+    # -- 4.0: Rubenium's own coinflip offers (always shown as RUBENIUM OFFER, the coin is as fair as any other)
+    def _flips(self, lay) -> None:
+        lay.addWidget(Label(tr("Coinflip bots are shown with a BOT tag, and your offers with a RUBENIUM OFFER tag. "
+                               "The coin is the same fair 50/50 for every flip: an offer only sets what is at stake."),
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        make = Button(tr("New Rubenium offer"), "primary", 34, icon="plus")
+        make.clicked.connect(self._flip_new)
+        lay.addWidget(make)
+        rows = self.fetch("rb_admin_flips", {})
+        if rows is None:
+            return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+        if not isinstance(rows, list) or not rows:
+            return lay.addWidget(Label(tr("No bot coinflips right now."), 11, TEXT_FAINT))
+        live = [r for r in rows if r.get("state") in ("setup", "open", "joined", "locked")]
+        old = [r for r in rows if r not in live]
+        lay.addWidget(heading(tr("Open now") + f"  ·  {len(live)}"))
+        for r in live:
+            self._flip_row(lay, r)
+        if old:
+            lay.addWidget(heading(tr("Last 24 hours")))
+            lay.addWidget(Table([((r.get("a") or "?") + " · " + (r.get("b") or "-"),
+                                  tr(r.get("state") or ""), (tr("won by {name}", name=r["winner"]) if r.get("winner") else ""),
+                                  TEXT_DIM) for r in old[:30]], self.W))
+
+    def _flip_row(self, lay, r: dict) -> None:
+        bot = r.get("a") if r.get("a_bot") else r.get("b")
+        val = int(r.get("a_value") or 0) if r.get("a_bot") else int(r.get("b_value") or 0)
+        tag = tr("RUBENIUM OFFER") if r.get("admin_offer") else tr("BOT")
+        exp = r.get("expires")
+        line = hbox(spacing=6)
+        text = f"{tag} · {bot} · {coins_text(val)}"
+        if r.get("b") and not r.get("b_bot") and r.get("a_bot"):
+            text += " · " + tr("vs {name}", name=r["b"])
+        if exp is not None:
+            text += " · " + tr("{m} min left", m=max(0, int(exp) // 60))
+        line.addWidget(Label(text, 11, GOLD_TEXT if r.get("admin_offer") else TEXT, bold=True), 1)
+        if r.get("state") in ("setup", "open", "joined"):
+            stop = Button(tr("Cancel"), "ghost", 26)
+            stop.clicked.connect(lambda _c=False, fid=r["id"]: self.ctx.window.confirm(
+                tr("Cancel this coinflip? Any items in it go back to their owner."),
+                lambda: self.do("rb_admin_flip_cancel", {"fid": fid}, tr("Cancelled")), yes=tr("Cancel it")))
+            line.addWidget(stop)
+        lay.addLayout(line)
+        items = (r.get("a_items") if r.get("a_bot") else r.get("b_items")) or []
+        if items:
+            lay.addWidget(ItemGrid(self.ctx, [{"item": i["item"], "text": coins_text(int(i.get("worth") or 0))}
+                                              for i in items], self.W, 6, 60, moving=False))
+
+    def _flip_new(self) -> None:
+        def go(v: dict, dlg) -> None:
+            items = [x.strip() for x in (v.get("i") or "").replace(";", ",").split(",") if x.strip()]
+            val = _int(v.get("v"), 0)
+            side = (v.get("s") or "").strip().lower()
+            side = {"noir": "black", "blanc": "white"}.get(side, side)
+            if side and side not in ("black", "white"):
+                return dlg.say(tr("Side: black, white or empty"))
+            if not items and (val < 100 or val > 50000000):
+                return dlg.say(tr("Give items, or a value from 100 to 50 000 000"))
+            if len(items) > 6:
+                return dlg.say(tr("6 items at most"))
+            for it in items:
+                if it not in self.ctx.econ.catalog:
+                    return dlg.say(tr("Unknown item: {id}", id=it))
+            minutes = _int(v.get("m"), 60)
+            if not 5 <= minutes <= 1440:
+                return dlg.say(tr("5 to 1440 minutes"))
+            dlg.close()
+            self.do("rb_admin_flip_offer", {"bot": (v.get("b") or "").strip(), "items": items, "val": val,
+                                            "side": side or None, "minutes": minutes}, tr("Offer published"))
+        FormDialog(self.ctx, tr("New Rubenium offer"),
+                   [("b", tr("Name shown (empty: a random bot name)"), ""),
+                    ("i", tr("Items (ids, with commas, or empty)"), ""),
+                    ("v", tr("Value if no items (coins)"), "5000"),
+                    ("s", tr("Side: black, white or empty"), ""),
+                    ("m", tr("Minutes before it ends"), "60")], tr("Publish"), go,
+                   tr("Players see it with a RUBENIUM OFFER tag. Without items, the server picks items worth that much."))
+
     def _help(self, lay) -> None:
         rows = self.fetch("rb_admin_resets", {})
         if rows is None:
@@ -1007,6 +1278,129 @@ class AdminPage(Page):
                 line.addWidget(yes, 1)
                 line.addWidget(no, 1)
                 lay.addLayout(line)
+
+
+# --------------------------------------------------------------------------- #
+# 4.0: the LOCKDOWN button and a row of the live locks
+# --------------------------------------------------------------------------- #
+class LockdownBar(QAbstractButton):
+    """Off: a red bar with hazard stripes. On: it pulses, and says how to lift it."""
+
+    def __init__(self, on: bool) -> None:
+        super().__init__()
+        self.on = on
+        self.setFixedHeight(S(44))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._hover = 0.0
+        self._timer = QTimer(self)
+        self._timer.setInterval(40)
+        self._timer.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        if self.on:
+            self._timer.start()
+
+    def hideEvent(self, _e) -> None:
+        self._timer.stop()
+
+    def enterEvent(self, _e) -> None:
+        self._hover = 1.0
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self._hover = 0.0
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(S(1), S(1), -S(1), -S(1))
+        path = QPainterPath()
+        path.addRoundedRect(r, S(11), S(11))
+        p.setClipPath(path)
+        if self.on:
+            pulse = 0.5 + 0.5 * math.sin(time.monotonic() * 4.0)
+            p.fillRect(r, QColor.fromHsvF(0.0, 0.85, 0.55 + 0.25 * pulse))
+        else:
+            p.fillRect(r, QColor("#3A0D12" if not self._hover else "#521219"))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 60, 60, 46 if not self._hover else 70))
+            step = S(18)
+            x = -r.height()
+            while x < r.width() + r.height():
+                p.drawPolygon(QPolygonF([QPointF(x, r.bottom()), QPointF(x + r.height(), r.top()),
+                                         QPointF(x + r.height() + step / 2, r.top()), QPointF(x + step / 2, r.bottom())]))
+                x += step
+        p.setClipping(False)
+        p.setPen(QPen(QColor("#FF5C5C"), S(1.6)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRoundedRect(r, S(11), S(11))
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(14, QFont.Weight.Black))
+        title = tr("LOCKDOWN ACTIVE") if self.on else tr("LOCKDOWN")
+        p.drawText(r.adjusted(S(14), 0, -S(14), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft), title)
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        p.setPen(QColor("#FFD6D6"))
+        p.drawText(r.adjusted(S(14), 0, -S(14), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   tr("Click to lift it") if self.on else tr("Stop everything now"))
+
+
+class FeatureRow(QAbstractButton):
+    """One part of Rubenium: a status light, its name, why, and LOCK / UNLOCK on the right."""
+    STATES = {"on": ("#3DDC84", "ON"), "locked": ("#FF5C5C", "LOCKED"), "held": ("#FFB020", "STOPPED")}
+
+    def __init__(self, name: str, why: str, state: str, child: bool) -> None:
+        super().__init__()
+        self.name, self.why, self.state, self.child = name, why, state, child
+        self.setFixedHeight(S(46))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._hover = False
+
+    def enterEvent(self, _e) -> None:
+        self._hover = True
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self._hover = False
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        col, word = self.STATES.get(self.state, self.STATES["on"])
+        r = QRectF(self.rect()).adjusted(S(16) if self.child else S(1), S(2), -S(1), -S(2))
+        p.setPen(QPen(alpha(col, 0.55 if self.state != "on" else 0.22), S(1.2)))
+        p.setBrush(QColor("#151A1D" if self._hover else "#101416"))
+        p.drawRoundedRect(r, S(9), S(9))
+        dot = QPointF(r.left() + S(14), r.center().y())
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha(col, 0.25))
+        p.drawEllipse(dot, S(7), S(7))
+        p.setBrush(QColor(col))
+        p.drawEllipse(dot, S(4), S(4))
+        bw = S(74)
+        btn = QRectF(r.right() - bw - S(6), r.center().y() - S(13), bw, S(26))
+        p.setBrush(QColor("#2A1013") if self.state != "locked" else QColor("#0F2A1A"))
+        p.setPen(QPen(QColor("#FF5C5C") if self.state != "locked" else QColor("#3DDC84"), S(1.2)))
+        p.drawRoundedRect(btn, S(8), S(8))
+        p.setFont(font(9.5, QFont.Weight.ExtraBold))
+        p.setPen(QColor("#FFB3B3") if self.state != "locked" else QColor("#A8F5C8"))
+        p.drawText(btn, int(Qt.AlignmentFlag.AlignCenter), tr("UNLOCK") if self.state == "locked" else tr("LOCK"))
+        tx = dot.x() + S(14)
+        tw = btn.left() - tx - S(8)
+        p.setFont(font(11.5, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT))
+        fm = p.fontMetrics()
+        name = fm.elidedText(self.name, Qt.TextElideMode.ElideRight, int(tw * 0.62))
+        p.drawText(QRectF(tx, r.top() + S(5), tw, S(18)), int(Qt.AlignmentFlag.AlignVCenter), name)
+        sw = fm.horizontalAdvance(name) + S(8)
+        p.setFont(font(8.5, QFont.Weight.ExtraBold))
+        p.setPen(QColor(col))
+        p.drawText(QRectF(tx + sw, r.top() + S(5), tw - sw, S(18)), int(Qt.AlignmentFlag.AlignVCenter), tr(word))
+        p.setFont(font(9.5))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(tx, r.top() + S(23), tw, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                   p.fontMetrics().elidedText(self.why, Qt.TextElideMode.ElideRight, int(tw)))
 
 
 # --------------------------------------------------------------------------- #

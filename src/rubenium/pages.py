@@ -278,7 +278,7 @@ class HomePage(Page):
         return win.AppVolume.matcher(st.source_id, source_keywords(st.source_id)) if st.source_id else None
 
     def _vol_poll(self) -> None:
-        if self.vol._drag:
+        if self.vol._drag or getattr(self, "_compact", False):
             return
         res = self.ctx.appvol.get(self._vol_match()) if self.ctx.state.source_id else None
         show = res is not None
@@ -307,10 +307,32 @@ class HomePage(Page):
             self.b_vol.set_kind("muted" if self._muted else "volume")
 
     def set_compact(self, level: float) -> None:
-        """The menu bar is hiding: the music app name fades with it."""
+        """The menu bar is hiding: the music app name fades with it. 4.0, Compact Music Mode: while you play a game
+        (or the menu is tucked away), only the track, its time and a bigger title stay."""
         self.chip.fade = max(0.0, min(1.0, (level - 0.2) / 0.8))
         self.chip.update()
         self._place_flair()
+        win = self.ctx.window
+        want = bool(self.ctx.cfg["compact_music"]) and (getattr(win, "game_state", 0) > 0 or level < 0.5)
+        if want != getattr(self, "_compact", False):
+            self._compact = want
+            self._apply_compact()
+
+    def _apply_compact(self) -> None:
+        on = getattr(self, "_compact", False)
+        for b in (self.b_prev, self.b_play, self.b_next, self.b_look):
+            b.setVisible(not on)
+        st = self.ctx.state
+        self.b_shuffle.setVisible(not on and st.shuffle is not None)
+        self.b_repeat.setVisible(not on and st.repeat is not None)
+        if on:
+            self.b_vol.hide()
+            self.vol.hide()
+        else:
+            QTimer.singleShot(0, self._vol_poll)
+        self.title.set_size(19 if on else 15)
+        self.title.setFixedHeight(S(28 if on else 22))
+        self.artist.set_size(13 if on else 12)
 
     def _place_flair(self) -> None:
         """The badges sit on their own line above the song title (or under the artist): they never cover it."""
@@ -398,8 +420,9 @@ class HomePage(Page):
         self.chip.set_text(text)
         self.chip.setFixedWidth(QFontMetrics(font(12, QFont.Weight.DemiBold)).horizontalAdvance(text) + S(16))
 
-        self.b_shuffle.setVisible(st.shuffle is not None)        # never a dead control
-        self.b_repeat.setVisible(st.repeat is not None)
+        compact = getattr(self, "_compact", False)
+        self.b_shuffle.setVisible(st.shuffle is not None and not compact)        # never a dead control
+        self.b_repeat.setVisible(st.repeat is not None and not compact)
         self.b_shuffle.set_active(bool(st.shuffle))
         self.b_repeat.set_active(bool(st.repeat))
         self.b_repeat.set_kind("repeat1" if st.repeat == 1 else "repeat")
@@ -614,6 +637,8 @@ class CrosshairPreview(QWidget):
         p.fillRect(QRectF(0, 0, half, r.height()), g)
         p.fillRect(QRectF(half, 0, half, r.height()), QColor("#0D1112"))
         c = self.cfg["crosshair"]
+        if c.get("style") == "image":                       # 4.0: a big picture is shown smaller here, never cut
+            c = dict(c, image_px=min(int(c.get("image_px", 48)), int(self.height() - S(16))))
         ext = engines.crosshair_extent(c)
         k = max(1, min(4, int((self.height() / 2 - 6) // max(1, ext))))
         for cx in (half / 2, half * 1.5):
@@ -634,8 +659,11 @@ def clean_crosshair(data) -> dict:
     if not isinstance(data, dict):
         return dict(CROSSHAIR)
     out = {**CROSSHAIR, **{k: v for k, v in data.items() if k in CROSSHAIR and isinstance(v, type(CROSSHAIR[k]))}}
-    if out["style"] not in ("cross", "tee", "dot", "circle"):
+    if out["style"] not in ("cross", "tee", "dot", "circle", "image"):
         out["style"] = "cross"
+    if out["style"] == "image" and engines.crosshair_image(out.get("image", "")) is None:
+        out["style"] = "cross"                   # the picture is gone (or this is someone else's code)
+    out["image_px"] = max(8, min(256, int(out.get("image_px") or 48)))
     if not QColor(out["color"]).isValid():
         out["color"] = CROSSHAIR["color"]
     out["size"] = 100
@@ -700,7 +728,9 @@ class SlotTile(QAbstractButton):
 XH_COLORS = ["#FFFFFF", "#00FF66", "#00E5FF", "#FFE600", "#FF3B3B", "#FF4DD2", "#FF8A00", "#7C4DFF"]
 
 
-STYLES = ["cross", "tee", "dot", "circle"]
+STYLES = ["cross", "tee", "dot", "circle", "image"]
+XH_IMAGE_MAX_BYTES = 4 * 1024 * 1024          # 4.0: your own crosshair picture: 4 MB file at most,
+XH_IMAGE_MAX_SIDE = 4096                      # 4096 px a side at most, saved at 256 px (sharp at every size used)
 
 
 class CrosshairPage(Page):
@@ -737,10 +767,12 @@ class CrosshairPage(Page):
         lay.addLayout(acts)
 
         lay.addWidget(heading(tr("Style")))
-        self.style = Segmented([tr("Cross"), tr("T"), tr("Dot"), tr("Circle")],
+        self.style = Segmented([tr("Cross"), tr("T"), tr("Dot"), tr("Circle"), tr("Image")],
                                STYLES.index(c["style"]) if c["style"] in STYLES else 0)
-        self.style.changed.connect(lambda i: self._set("style", STYLES[i]))
+        self.style.changed.connect(self._style)
         lay.addWidget(self.style)
+        if c["style"] == "image":                           # 4.0: your own picture
+            self._image_part(lay, c)
         self.sw = Swatches(XH_COLORS, c["color"])
         self.sw.picked.connect(lambda col: self._set("color", col))
         lay.addWidget(self.sw)
@@ -803,6 +835,82 @@ class CrosshairPage(Page):
     def on_show(self) -> None:
         self.t_on.set_checked(self.ctx.cfg["crosshair_on"])
 
+    # -- 4.0: a picture of your own as the crosshair
+    def _image_part(self, lay, c: dict) -> None:
+        has = engines.crosshair_image(c.get("image", "")) is not None
+        line = hbox(spacing=6)
+        imp = Button(tr("Change image") if has else tr("Import an image"), "primary", 30, icon="folder")
+        imp.clicked.connect(self._import_image)
+        line.addWidget(imp, 2)
+        back = Button(tr("Default crosshair"), "ghost", 30)
+        back.clicked.connect(self._default_crosshair)
+        line.addWidget(back, 1)
+        lay.addLayout(line)
+        size = SliderRow(tr("Image size"), 8, 256, int(c.get("image_px", 48)), 2, 48, lambda v: f"{int(v)} px",
+                         marks=[16, 32, 64, 128, 256])
+        size.changed.connect(lambda v: self._set("image_px", int(v)))
+        size.setEnabled(has)
+        lay.addWidget(size)
+        lay.addWidget(Label(tr("PNG (best with a see-through background), JPG, BMP or WEBP, 4 MB at most. Move it with "
+                               "Position below; Opacity works too."), 10, TEXT_DIM, wrap_w=self.W))
+
+    def _style(self, i: int) -> None:
+        if STYLES[i] == "image" and engines.crosshair_image(self.ctx.cfg["crosshair"].get("image", "")) is None:
+            self.ctx.cfg["crosshair"]["style"] = "image"         # show the import button straight away
+            self.ctx.reload_page()
+            return QTimer.singleShot(150, self._import_image)
+        was = self.ctx.cfg["crosshair"]["style"]
+        self._set("style", STYLES[i])
+        if (was == "image") != (STYLES[i] == "image"):
+            self.ctx.reload_page()
+
+    def _import_image(self) -> None:
+        import hashlib
+        path = self.ctx.pick_file(tr("Choose a crosshair image"), "Images (*.png *.jpg *.jpeg *.bmp *.webp)")
+        if not path:
+            if engines.crosshair_image(self.ctx.cfg["crosshair"].get("image", "")) is None:
+                self.ctx.cfg["crosshair"]["style"] = "cross"
+                self.ctx.reload_page()
+            return
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            return self.ctx.toast(tr("This file cannot be read"), "warn")
+        if size > XH_IMAGE_MAX_BYTES:
+            return self.ctx.toast(tr("This picture is too big (4 MB at most)"), "warn")
+        from PyQt6.QtGui import QImage, QImageReader
+        reader = QImageReader(path)
+        dim = reader.size()
+        if not dim.isValid() or dim.width() > XH_IMAGE_MAX_SIDE or dim.height() > XH_IMAGE_MAX_SIDE:
+            return self.ctx.toast(tr("This picture is too large (4096 px a side at most)"), "warn")
+        img = reader.read()
+        if img.isNull() or img.width() < 4 or img.height() < 4:
+            return self.ctx.toast(tr("This is not a picture Rubenium can use"), "warn")
+        img = img.convertToFormat(QImage.Format.Format_ARGB32)
+        if max(img.width(), img.height()) > 256:
+            img = img.scaled(256, 256, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        CROSSHAIR_DIR.mkdir(parents=True, exist_ok=True)
+        from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
+        ba = QByteArray()
+        buf = QBuffer(ba)
+        buf.open(QIODevice.OpenModeFlag.WriteOnly)
+        img.save(buf, "PNG")
+        name = "custom_" + hashlib.sha1(bytes(ba)).hexdigest()[:12] + ".png"
+        try:
+            (CROSSHAIR_DIR / name).write_bytes(bytes(ba))
+        except OSError:
+            return self.ctx.toast(tr("The picture could not be saved"), "warn")
+        c = self.ctx.cfg["crosshair"]
+        c["image"], c["style"] = name, "image"
+        self.ctx.toast(tr("Crosshair image ready"))
+        self._replace(c)
+
+    def _default_crosshair(self) -> None:
+        """Back to the normal crosshair (the picture stays in your folder: choose Image to use it again)."""
+        c = self.ctx.cfg["crosshair"]
+        c["style"] = "cross"
+        self._replace(c)
+
     def _sync(self) -> None:
         c = self.ctx.cfg["crosshair"]
         st = c["style"]
@@ -813,6 +921,13 @@ class CrosshairPage(Page):
         self.rows["radius"].setEnabled(st == "circle")
         self.rows["dot_size"].setEnabled(st == "dot" or c["dot"])
         self.rows["outline_w"].setEnabled(c["outline"])
+        if st == "image":                           # 4.0: a picture keeps its own colours and shape
+            for key in ("length", "gap", "thickness", "radius", "dot_size", "outline_w"):
+                self.rows[key].setEnabled(False)
+            self.t_dot.setEnabled(False)
+            self.t_out.setEnabled(False)
+        self.sw.setEnabled(st != "image")
+        self.hue.setEnabled(st != "image")
         sel = self.ctx.cfg["crosshair_slot"]
         for tile in self.tiles:
             tile.selected = tile.number == sel and tile.data is not None
@@ -1501,7 +1616,148 @@ class BallPreview(QWidget):
         paint_edge(p, self.ctx, shape, d / 2, level)
 
 
-class SettingsPage(Page):
+class StylePart:
+    """4.0: your colours, the R and ring styles you unlock with time and the themes. Shown in Settings > Look
+    (it used to be the Shop's Style part, which only repeated what Social > Edit Profile already shows)."""
+    cards: list
+    unlocks: list
+    c1 = None
+
+    def buy(self, ident: str) -> None:
+        hours = self.ctx.wallet.hours_for(ident)
+        self.ctx.toast(tr("Unlocks after {n} h with Rubenium", n=f"{hours:g}"), "warn")
+
+    def flair_changed(self) -> None:
+        self.ctx.cfg.save()
+
+    def _look(self, lay) -> None:
+        """Colours, the progression (R and ring styles) and the themes."""
+        from PyQt6.QtWidgets import QGridLayout
+        from .shop import ColourRow, ThemeCard, UnlockBar, UnlockTile
+        ctx, wallet = self.ctx, self.ctx.wallet
+        lay.addWidget(heading(tr("Colour")))
+        self.t_music = Toggle(bool(ctx.cfg["accent_from_art"]) and wallet.owns("music"))
+        self.t_music.toggled_by_user.connect(self._music)
+        self.music_wait = Label("", 10.5, TEXT_DIM)
+        music = QWidget()
+        ml = hbox(music, 8)
+        texts = QWidget()
+        tl = vbox(texts, 0)
+        tl.addWidget(Label(tr("Use the colours of the music"), 12.5))
+        tl.addWidget(self.music_wait)
+        ml.addWidget(texts, 1)
+        ml.addWidget(self.t_music, 0, Qt.AlignmentFlag.AlignVCenter)
+        lay.addWidget(music)
+        self.t_screen = Toggle(bool(ctx.cfg["accent_from_screen"]) and not self.t_music.isChecked())
+        self.t_screen.toggled_by_user.connect(self._screen)
+        lay.addWidget(row(tr("Use screen colours"), self.t_screen))
+        self._music_text()
+        lay.addWidget(Label(tr("Colour 1"), 12.5))
+        self.c1 = ColourRow(self, "c1", "custom_accent")
+        lay.addWidget(self.c1)
+        lay.addWidget(Label(tr("Themes from the shop bring their own second colour."), 10.5, TEXT_DIM, wrap_w=self.W))
+
+        lay.addWidget(heading(tr("Progression")))
+        lay.addWidget(UnlockBar(self))
+        for kind, styles, key in (("r", extras.R_STYLES, "ball_style"), ("ring", extras.RING_STYLES, "ring_style")):
+            line = hbox(spacing=0)
+            for n, st in enumerate(styles):
+                tile = UnlockTile(kind, st, key, self)
+                tile.clicked.connect(lambda _=False, t=tile: self._unlock_pick(t))
+                line.addWidget(tile)
+                if n < len(styles) - 1:
+                    line.addStretch(1)
+                self.unlocks.append(tile)
+            lay.addLayout(line)
+
+        lay.addWidget(heading(tr("Themes")))
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(S(2))
+        from .cosmetics import THEME_LOOKS, shop_theme
+        every = list(extras.THEMES) + [shop_theme("theme:" + t[0]) for t in THEME_LOOKS]   # 3.0.0: shop themes too
+        for i, th in enumerate(t for t in every if t):
+            card = ThemeCard(th, self)
+            card.clicked.connect(lambda _=False, t=th: self._pick(t))
+            grid.addWidget(card, i // 2, i % 2)
+            self.cards.append(card)
+        lay.addLayout(grid)
+        self._tick = QTimer(self)                      # the music colours count down to their hour
+        self._tick.setInterval(15000)
+        self._tick.timeout.connect(self._music_text)
+        self._tick.start()
+        self._refresh()
+
+    def _music_text(self) -> None:
+        wait = self.ctx.wallet.music_wait()
+        done = max(0.0, (3600 - wait) / 3600)
+        hours = f"{min(0.9, done):.1f}"
+        self.music_wait.set_text("" if not wait else tr("{x} / 1 hour to unlock",
+                                                        x=hours.replace(".", ",") if lang() == "fr" else hours))
+        self.music_wait.setVisible(bool(wait))
+        self.t_music.setEnabled(not wait)
+
+    # -- colours
+    def set_colour(self, kind: str, col: str) -> None:
+        self.ctx.cfg["custom_accent"] = col
+        self.ctx.refresh_accent()
+        self._rows()
+
+    def _music(self, on: bool) -> None:
+        if on and not self.ctx.wallet.owns("music"):
+            self.t_music.set_checked(False)
+            return self._music_text()
+        self.ctx.set_colour_source("music" if on else "")
+        if on:
+            self.t_screen.set_checked(False)
+        self._rows()
+
+    def _screen(self, on: bool) -> None:
+        """Only one of the two at a time: no fighting colours."""
+        self.ctx.set_colour_source("screen" if on else "")
+        if on:
+            self.t_music.set_checked(False)
+        self._rows()
+
+    def _rows(self) -> None:
+        """With the music's (or the screen's) colours on, your own colour is greyed out."""
+        if self.c1 is None:
+            return
+        wallet = self.ctx.wallet
+        auto = (bool(self.ctx.cfg["accent_from_art"]) and wallet.owns("music")) or bool(self.ctx.cfg["accent_from_screen"])
+        self.c1.set_state(auto, False)
+
+    # -- ball styles and themes
+    def _unlock_pick(self, tile) -> None:
+        if not self.ctx.wallet.owns(tile.ident):
+            return self.buy(tile.ident)
+        if self.ctx.cfg[tile.key] != tile.style["id"]:
+            sfx.play("pick")
+        self.ctx.cfg[tile.key] = tile.style["id"]
+        self.ctx.window.ball.update()
+        for t in self.unlocks:
+            t.update()
+
+    def _pick(self, th: dict) -> None:
+        drawer = self.ctx.window.drawer
+        if self.ctx.wallet.owns(f"theme:{th['id']}"):
+            drawer.close_now()
+            if self.ctx.cfg["theme"] != th["id"]:
+                sfx.play("pick")
+            self.ctx.set_theme(th["id"])
+        elif drawer.is_open() and drawer.theme is th:
+            drawer.close_drawer()
+        else:
+            drawer.open_for(th)
+        self._refresh()
+
+    def _refresh_style(self) -> None:
+        self._rows()
+        for w in self.cards + self.unlocks + [x for x in (self.c1,) if x is not None]:
+            w.update()
+
+
+class SettingsPage(StylePart, Page):
     def _log_out(self) -> None:
         self.ctx.online.log_out()
         self.ctx.quit()
@@ -1511,6 +1767,7 @@ class SettingsPage(Page):
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
         cfg = ctx.cfg
+        self.cards, self.unlocks, self.c1 = [], [], None
         lay = vbox(self, 6)
 
         def toggle(label, key, after=None):
@@ -1568,9 +1825,24 @@ class SettingsPage(Page):
             lay.addWidget(row(tr("Play opens"), app_btn))
             toggle(tr("Mute adverts"), "ad_mute", after=lambda v: (None if v else ctx.admute.release()))
             note(tr("While the music app plays an advert, its sound is muted, then comes back with the music."))
+
+            def compact_set(_v) -> None:
+                home = ctx.window.pages.get("home")
+                if home is not None:
+                    home[1].set_compact(ctx.window.chrome.level)
+            toggle(tr("Compact Music Mode"), "compact_music", after=compact_set)
+            note(tr("While you play a game (or the menu bar is hidden), the music card keeps only the track, its "
+                    "time and a bigger title. Turn it off to keep every button."))
             lay.addWidget(heading(tr("Games")))
             toggle(tr("Game mode"), "game_mouse")
             note(tr("In fullscreen games the mouse goes through Rubenium, so it never gets in the way."))
+            speeds = ["slow", "normal", "fast"]                  # 4.0: how fast cases open
+            sp = Segmented([tr("Slow") + " 0.75×", tr("Normal") + " 1×", tr("Fast") + " 2.5×"],
+                           speeds.index(cfg["chest_speed"]) if cfg["chest_speed"] in speeds else 1)
+            sp.changed.connect(lambda i: cfg.__setitem__("chest_speed", speeds[i]))
+            lay.addWidget(Label(tr("Case opening speed"), 12))
+            lay.addWidget(sp)
+            note(tr("Only the animation changes: what you win is decided by the server before it starts."))
             lay.addWidget(heading(tr("Language and size")))
             seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
             seg.setFixedWidth(S(170))
@@ -1593,6 +1865,8 @@ class SettingsPage(Page):
             toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
             toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
             toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
+            self._look(lay)                         # 4.0: colours, R and ring styles, themes (was the Shop's Style)
+            ctx.wallet.changed.connect(self._refresh_style)
             lay.addWidget(heading(tr("Tabs in the menu bar")))
             from .pages2 import TABS
             for key, _icon, label in TABS:             # Home, Lyrics and Settings always stay

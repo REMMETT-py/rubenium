@@ -16,7 +16,7 @@ import math
 import random
 import time
 
-from PyQt6.QtCore import QEasingCurve, QEvent, QObject, QPoint, QPointF, QRect, QRectF, QTimer, Qt
+from PyQt6.QtCore import QEasingCurve, QEvent, QObject, QPoint, QPointF, QRect, QRectF, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
@@ -24,12 +24,13 @@ from . import extras, win
 from .core import BD, CARD_W, GLOW, PAD, S, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, sfx, tr, ui
 from .widgets import IconButton, ScrollArea, Tween, align_slider_rows, draw_icon, snapshot
 
-ONLINE_KEYS = ("games", "themes", "friends")
+ONLINE_KEYS = ("games", "themes", "friends", "settings")
 TITLES = {"games": ("dice", "Games"), "themes": ("gem", "Shop"), "friends": ("users", "Social"),
           "giveaway": ("gift", "Giveaway"), "settings": ("cog", "Settings")}
 ORDER = ("games", "themes", "friends", "giveaway", "settings")
-HEAD_H = 56                      # wordmark, cog and back arrow
-COL_TITLE_H = 34                 # the name of each column
+SECTIONS = ("games", "themes", "friends", "settings")           # 4.0: the four parts; two are shown side by side
+HEAD_H = 64                      # wordmark, XP bar, leaderboards, back arrow
+COL_TITLE_H = 46                 # 4.0: the section switch over each half
 COL_GAP = 16
 BOTTOM = 14
 
@@ -188,23 +189,179 @@ class _NoTabs:
     def set_locked(self, *_a) -> None: ...
 
 
+class GoldButton(QWidget):
+    """4.0: the Leaderboards button: gold, a trophy, easy to find."""
+    clicked = pyqtSignal()
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFixedHeight(S(32))
+        self.hover = 0.0
+        self.text = "🏆  " + tr("Leaderboards")
+        f = font(11.5, QFont.Weight.ExtraBold)
+        from PyQt6.QtGui import QFontMetrics
+        self.setFixedWidth(QFontMetrics(f).horizontalAdvance(self.text) + S(28))
+        self.setToolTip(tr("Leaderboards: coins, worth, levels, games"))
+
+    def enterEvent(self, _e) -> None:
+        self.hover = 1.0
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = 0.0
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.rect().contains(e.position().toPoint()):
+            sfx.play("pick")
+            self.clicked.emit()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1.5, 1.5, -1.5, -1.5)
+        now = time.monotonic()
+        g = QLinearGradient(r.topLeft(), r.bottomLeft())
+        g.setColorAt(0, QColor("#FFE38A") if self.hover else QColor("#F2CC5A"))
+        g.setColorAt(1, QColor("#C8902A"))
+        p.setPen(QPen(QColor("#FFF2C2"), S(1.2)))
+        p.setBrush(g)
+        p.drawRoundedRect(r, r.height() / 2, r.height() / 2)
+        sweep = (now * 0.4) % 2.2 - 0.6                       # a soft shine passing over it
+        sg = QLinearGradient(QPointF(r.left() + sweep * r.width(), 0), QPointF(r.left() + sweep * r.width() + S(30), 0))
+        sg.setColorAt(0, alpha("#FFFFFF", 0))
+        sg.setColorAt(0.5, alpha("#FFFFFF", 0.35))
+        sg.setColorAt(1, alpha("#FFFFFF", 0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(sg)
+        p.drawRoundedRect(r, r.height() / 2, r.height() / 2)
+        p.setPen(QColor("#3A2606"))
+        p.setFont(font(11.5, QFont.Weight.ExtraBold))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), self.text)
+
+
+class PaneSwitch(QWidget):
+    """4.0: over each half of the online menu: Games, Shop, Social, Settings (and the live Giveaway). The other half's
+    choice is marked with a dot; picking it swaps the two halves."""
+    picked = pyqtSignal(str)
+
+    def __init__(self, win, index: int, parent=None) -> None:
+        super().__init__(parent)
+        self.win, self.index = win, index
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.rects: list = []
+        self.hover = None
+        self.setMouseTracking(True)
+
+    def keys(self) -> list:
+        from .pages2 import LIVE_TABS
+        return list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else [])
+
+    def _layout(self) -> None:
+        keys = self.keys()
+        r = QRectF(self.rect()).adjusted(0, S(4), -S(ScrollArea.GUTTER), -S(4))
+        w = (r.width() - S(4) * (len(keys) - 1)) / len(keys)
+        self.rects = [(QRectF(r.left() + i * (w + S(4)), r.top(), w, r.height()), k) for i, k in enumerate(keys)]
+
+    def mouseMoveEvent(self, e) -> None:
+        self._layout()
+        h = next((k for rr, k in self.rects if rr.contains(e.position())), None)
+        if h != self.hover:
+            self.hover = h
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = None
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        self._layout()
+        for rr, k in self.rects:
+            if rr.contains(e.position()):
+                self.picked.emit(k)
+                return
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self._layout()
+        panes = self.win.tab_keys()
+        mine = panes[self.index] if self.index < len(panes) else None
+        focused = self.win.current == mine
+        for rr, k in self.rects:
+            on = k == mine
+            other = k in panes and not on
+            hov = self.hover == k
+            p.setPen(QPen(ui.accent if on else alpha("#FFFFFF", 0.14 if hov else 0.07), S(1.6) if on else 1))
+            if on:
+                g = QLinearGradient(rr.topLeft(), rr.bottomLeft())
+                g.setColorAt(0, alpha(ui.accent, 0.34 if focused else 0.22))
+                g.setColorAt(1, alpha(ui.accent, 0.12))
+                p.setBrush(g)
+            else:
+                p.setBrush(alpha("#FFFFFF", 0.07 if hov else 0.03))
+            p.drawRoundedRect(rr, S(10), S(10))
+            icon, title = TITLES.get(k, ("spark", k))
+            text = tr(title)
+            p.setFont(font(11.5, QFont.Weight.Bold if on else QFont.Weight.DemiBold))
+            fm = p.fontMetrics()
+            iw = S(15)
+            show_text = fm.horizontalAdvance(text) + iw + S(14) <= rr.width()
+            if not show_text:                            # too narrow: shrink the text, then keep the icon only
+                p.setFont(font(10, QFont.Weight.Bold if on else QFont.Weight.DemiBold))
+                fm = p.fontMetrics()
+                show_text = fm.horizontalAdvance(text) + iw + S(12) <= rr.width()
+            total = iw + (S(6) + fm.horizontalAdvance(text) if show_text else 0)
+            x = rr.center().x() - total / 2
+            p.save()
+            p.translate(x + iw / 2, rr.center().y())
+            p.scale(iw / 20, iw / 20)
+            draw_icon(p, icon, ui.accent if on else QColor(TEXT if hov else TEXT_DIM))
+            p.restore()
+            if show_text:
+                p.setPen(QColor(TEXT) if on else QColor(TEXT_DIM))
+                p.drawText(QRectF(x + iw + S(6), rr.top(), rr.right() - x - iw - S(6), rr.height()),
+                           int(Qt.AlignmentFlag.AlignVCenter), text)
+            if other:                                    # shown in the other half
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha(ui.accent, 0.8))
+                p.drawEllipse(QPointF(rr.right() - S(7), rr.top() + S(7)), S(2.6), S(2.6))
+            if k == "giveaway":
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#E8C26A"))
+                p.drawEllipse(QPointF(rr.left() + S(7), rr.top() + S(7)), S(2.6), S(2.6))
+
+
 class OnlineBody(QWidget):
-    """The banner's chrome: wordmark and ONLINE, the cog and the back arrow, a title over every column."""
+    """The banner's chrome: wordmark, the XP bar, Leaderboards, the back arrow; a section switch over each half."""
 
     def __init__(self, window) -> None:
         super().__init__(window)
+        from .levels import XPBar
         from .window import LockCover
         self.win = window
         self.tabbar = _NoTabs()
         self.to_ball = IconButton("back", 30, tip=tr("Leave online mode"), parent=self)
-        self.cog = IconButton("cog", 30, tip=tr("Settings"), parent=self)
-        self.stow = IconButton("rball", 30, tip=tr("Hide for now (the ball waits at the top)"), parent=self)
+        self.stow = IconButton("rball", 30, tip=tr("Hide for now (click the R to bring it back)"), parent=self)
+        self.top = GoldButton(self)
+        self.xp = XPBar(window.ctx, self)
+        self.xp.clicked.connect(window.open_levels)
+        self.switches = [PaneSwitch(window, i, self) for i in range(2)]
+        for sw in self.switches:
+            sw.picked.connect(lambda key, sw=sw: window.set_pane(sw.index, key))
         self.host = QWidget(self)
         self.cover = LockCover(self.host)
         self.cover.hide()
         self.to_ball.clicked.connect(window.ask_leave)
-        self.cog.clicked.connect(window.toggle_settings)
         self.stow.clicked.connect(window.collapse)
+        self.top.clicked.connect(window.open_leaders)
         self._press = None
 
     # what MainWindow expects from its body
@@ -223,16 +380,32 @@ class OnlineBody(QWidget):
     def release_drag(self) -> None: ...
 
     def col_rect(self, i: int) -> QRectF:
-        """Where column i sits inside the body (title included)."""
+        """Where half i sits inside the body (switch included)."""
+        n = max(1, len(self.win.tab_keys()))
         cw = col_width()
-        return QRectF(S(PAD) + i * (cw + S(COL_GAP)), S(HEAD_H), cw, self.height() - S(HEAD_H) - S(BOTTOM))
+        gap = S(COL_GAP)
+        total = n * cw + (n - 1) * gap
+        left = (self.width() - total) / 2
+        return QRectF(left + i * (cw + gap), S(HEAD_H), cw, self.height() - S(HEAD_H) - S(BOTTOM))
 
     def resizeEvent(self, _e) -> None:
-        y = (S(HEAD_H) - self.to_ball.height()) // 2 + S(2)
+        y = (S(HEAD_H) - self.to_ball.height()) // 2
         x = self.width() - S(PAD) - self.to_ball.width()
-        for b in (self.to_ball, self.stow, self.cog):
+        for b in (self.to_ball, self.stow):
             b.move(x, y)
             x -= b.width() + S(6)
+        self.top.move(x - self.top.width() + S(2), (S(HEAD_H) - self.top.height()) // 2)
+        xw = min(S(380), max(S(200), self.width() - S(PAD) * 2 - S(250) - (self.width() - self.top.x())))
+        self.xp.setGeometry(int(self.width() / 2 - xw / 2), (S(HEAD_H) - self.xp.height()) // 2, int(xw), self.xp.height())
+        if self.xp.geometry().right() > self.top.x() - S(10):          # a narrow banner: the bar moves left
+            self.xp.move(self.top.x() - S(10) - xw, self.xp.y())
+        n = len(self.win.tab_keys())
+        for i, sw in enumerate(self.switches):
+            sw.setVisible(i < n)
+            if i < n:
+                r = self.col_rect(i)
+                sw.setGeometry(int(r.left()), int(r.top()), int(r.width()), S(COL_TITLE_H) - S(4))
+                sw.update()
         top = S(HEAD_H) + S(COL_TITLE_H)
         self.host.setGeometry(0, top, self.width(), max(1, self.height() - top - S(BOTTOM)))
         self.win.place_columns()
@@ -241,12 +414,6 @@ class OnlineBody(QWidget):
 
     def mousePressEvent(self, e) -> None:
         e.accept()
-        pos = e.position()
-        for i, key in enumerate(self.win.tab_keys()):
-            r = self.col_rect(i)
-            if QRectF(r.left(), r.top(), r.width(), S(COL_TITLE_H)).contains(pos):
-                self.win.focus(key)
-                return
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -255,10 +422,10 @@ class OnlineBody(QWidget):
         from .media import Status
         playing = st.status is Status.PLAYING
         now = time.monotonic()
-        # wordmark, exactly as on the small menu, then a live ONLINE pill
+        # wordmark, exactly as on the small menu, then a live dot (online)
         p.setFont(font(20, QFont.Weight.ExtraBold, 0.4))
         fm = p.fontMetrics()
-        x, base = S(PAD), QRectF(S(PAD), S(10), self.width(), S(HEAD_H) - S(16))
+        x, base = S(PAD), QRectF(S(PAD), S(10), self.width(), S(HEAD_H) - S(20))
         word = "Rubenium"
         full = fm.horizontalAdvance(word)
         split = x + full - fm.horizontalAdvance("ium")
@@ -270,69 +437,27 @@ class OnlineBody(QWidget):
         p.setPen(ui.accent)
         p.drawText(base, int(Qt.AlignmentFlag.AlignVCenter), word)
         p.restore()
-        x += full + S(12)
+        x += full + S(10)
         pulse = 0.5 + 0.5 * math.sin(now * 3)
-        p.setFont(font(11, QFont.Weight.Black, 1.2))
-        label = tr("ONLINE")
-        tw = p.fontMetrics().horizontalAdvance(label) + S(30)
-        pill = QRectF(x, base.center().y() - S(12), tw, S(24))
-        p.setPen(QPen(alpha("#3DDC84", 0.55 + 0.35 * pulse), S(1.3)))
-        p.setBrush(alpha("#3DDC84", 0.12 + 0.06 * pulse))
-        p.drawRoundedRect(pill, S(12), S(12))
+        off = self.win.ctx.online.offline
+        col = alpha("#FFFFFF", 0.35) if off else QColor("#3DDC84")
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor("#3DDC84"))
-        p.drawEllipse(QPointF(pill.left() + S(12), pill.center().y()), S(3.4), S(3.4))
-        p.setPen(QColor("#3DDC84"))
-        p.drawText(pill.adjusted(S(20), 0, -S(6), 0), int(Qt.AlignmentFlag.AlignVCenter), label)
-        x = pill.right() + S(12)
+        p.setBrush(alpha(col, 0.25 + 0.2 * pulse))
+        p.drawEllipse(QPointF(x + S(5), base.center().y()), S(6), S(6))
+        p.setBrush(col)
+        p.drawEllipse(QPointF(x + S(5), base.center().y()), S(3.4), S(3.4))
+        x += S(16)
         for i in range(3):                                   # the music dots, as on the small menu
             lift = math.sin(now * 5.0 - i * 0.9) * S(2.6) if playing else 0.0
             p.setBrush(alpha(ui.accent, 1.0 if playing else 0.3))
-            p.setPen(Qt.PenStyle.NoPen)
             p.drawEllipse(QPointF(x + i * S(6), base.center().y() + S(4) - lift), S(1.7), S(1.7))
-        name = self.win.ctx.online.username()
-        if name:
-            p.setFont(font(11, QFont.Weight.DemiBold))
-            nw = p.fontMetrics().horizontalAdvance(name) + S(24)
-            right = self.cog.x() - S(12)
-            pill = QRectF(right - nw, base.center().y() - S(11), nw, S(22))
-            if pill.left() > x + S(30):
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(alpha("#FFFFFF", 0.06))
-                p.drawRoundedRect(pill, S(11), S(11))
-                p.setBrush(QColor("#3DDC84") if not self.win.ctx.online.offline else alpha("#FFFFFF", 0.3))
-                p.drawEllipse(QPointF(pill.left() + S(10), pill.center().y()), S(3), S(3))
-                p.setPen(QColor(TEXT_DIM))
-                p.drawText(pill.adjusted(S(18), 0, -S(6), 0), int(Qt.AlignmentFlag.AlignVCenter), name)
-        # column titles
-        for i, key in enumerate(self.win.tab_keys()):
-            r = self.col_rect(i)
-            head = QRectF(r.left(), r.top(), r.width() - S(ScrollArea.GUTTER), S(COL_TITLE_H) - S(6))
-            on = key == self.win.current
-            p.setPen(Qt.PenStyle.NoPen)
-            g = QLinearGradient(head.topLeft(), head.topRight())
-            g.setColorAt(0, alpha(ui.accent, 0.20 if on else 0.07))
-            g.setColorAt(1, alpha(ui.accent, 0.0))
-            p.setBrush(g)
-            p.drawRoundedRect(head, S(9), S(9))
-            icon, title = TITLES.get(key, ("spark", key))
-            p.save()
-            p.translate(head.left() + S(16), head.center().y())
-            p.scale(S(15) / 20, S(15) / 20)
-            draw_icon(p, icon, ui.accent if on else QColor(TEXT_DIM))
-            p.restore()
-            p.setPen(QColor(TEXT) if on else QColor(TEXT_DIM))
-            p.setFont(font(13, QFont.Weight.Bold))
-            p.drawText(head.adjusted(S(32), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), tr(title))
-            if key == "giveaway":
-                p.setPen(QColor("#E8C26A"))
-                p.setFont(font(9, QFont.Weight.Black, 0.8))
-                p.drawText(head.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                           tr("LIVE"))
-            if i:                                           # a thin line between columns
-                xx = r.left() - S(COL_GAP) / 2
-                p.setPen(QPen(alpha("#FFFFFF", 0.06), 1))
-                p.drawLine(QPointF(xx, r.top() + S(4)), QPointF(xx, r.bottom() - S(4)))
+        # a thin line between the halves
+        keys = self.win.tab_keys()
+        if len(keys) > 1:
+            r0, r1 = self.col_rect(0), self.col_rect(1)
+            xx = (r0.right() + r1.left()) / 2
+            p.setPen(QPen(alpha("#FFFFFF", 0.07), 1))
+            p.drawLine(QPointF(xx, r0.top() + S(8)), QPointF(xx, r0.bottom() - S(4)))
 
 
 class _Focus(QObject):
@@ -356,6 +481,7 @@ def _make_class():
         def __init__(self, ctx, main) -> None:
             self.main = main
             self.settings_open = False
+            self._was_down = False
             self.phase = "hidden"                  # hidden / dropping / shown / stowed / leaving
             self._filters: dict = {}
             super().__init__(ctx)
@@ -367,7 +493,8 @@ def _make_class():
             for w in (self.toast_w, self.confirm_w, self.busy_w):
                 w.raise_()
             want = ctx.cfg["online_tab"]
-            self.current = want if want in ONLINE_KEYS else "games"
+            panes = list(ctx.cfg["online_panes"] or ["games", "friends"])
+            self.current = want if want in panes else (panes[0] if panes else "games")
             self.drop = Tween(self, 0.0, self._on_drop, QEasingCurve.Type.OutBack)
             self.drop.finished.connect(self._drop_done)
             self.suck = Tween(self, 0.0, self.update, QEasingCurve.Type.InCubic)
@@ -375,6 +502,9 @@ def _make_class():
             self._pm = None
             self._leave_then = None
             self.ball.save_position = lambda: None
+            self._watch = QTimer(self)
+            self._watch.setInterval(60)
+            self._watch.timeout.connect(self._watch_outside)
 
         # -------------------------------------------------------------- what is shown
         def max_cols(self) -> int:
@@ -382,22 +512,64 @@ def _make_class():
             cw, gap = col_width(), S(COL_GAP)
             return max(1, int((wa.width() * 0.96 - 2 * S(PAD) + gap) // (cw + gap)))
 
-        def tab_keys(self) -> list:
+        def panes(self) -> list:
+            """4.0: the two parts shown side by side (picked by the player, kept in the settings)."""
             from .pages2 import LIVE_TABS
-            keys = list(ONLINE_KEYS)
-            if "giveaway" in LIVE_TABS:
-                keys.append("giveaway")
-            if getattr(self, "settings_open", False):
-                keys.append("settings")
-            room = self.max_cols() if hasattr(self, "main") else len(keys)
-            if len(keys) > room:                      # a small screen: settings and the focused column come first
-                cur = getattr(self, "current", "games")
-                keep = [k for k in ("settings",) if k in keys] + ([cur] if cur in keys and cur != "settings" else [])
-                for k in ("games", "themes", "friends", "giveaway"):
-                    if k in keys and k not in keep:
-                        keep.append(k)
-                keys = keep[:room]
-            return [k for k in ORDER if k in keys]
+            ok = list(SECTIONS) + (["giveaway"] if "giveaway" in LIVE_TABS else [])
+            want = [k for k in (self.ctx.cfg["online_panes"] or []) if k in ok]
+            for k in ("games", "friends", "themes", "settings"):
+                if len(want) >= 2:
+                    break
+                if k not in want:
+                    want.append(k)
+            return want[:2]
+
+        def tab_keys(self) -> list:
+            keys = self.panes()
+            room = self.max_cols() if hasattr(self, "main") else 2
+            if room < 2:                                   # a small screen: one half, the one in use
+                cur = getattr(self, "current", keys[0])
+                return [cur if cur in keys else keys[0]]
+            return keys
+
+        def set_pane(self, index: int, key: str) -> None:
+            """Show `key` in half `index`. Already in the other half: the two swap."""
+            panes = self.panes()
+            if len(self.tab_keys()) == 1:
+                index = 0
+                panes = [key, panes[1] if panes[1] != key else panes[0]]
+            elif key in panes:
+                if panes.index(key) == index:
+                    return self.focus(key)
+                panes = [panes[1], panes[0]]
+            else:
+                panes[index] = key
+            self.ctx.cfg["online_panes"] = list(panes)
+            sfx.play("pick")
+            self.current = key
+            self.relayout()
+            self.body.resizeEvent(None)
+            for sw in self.body.switches:
+                sw.update()
+
+        def open_leaders(self) -> None:
+            """The gold button: the leaderboards, in the Social half (brought in if it is not shown)."""
+            self.ctx.social_tab = 3
+            self.ctx.friends_profile = None
+            self.ctx.social_edit = False
+            if "friends" not in self.tab_keys():
+                self.set_pane(1 if len(self.tab_keys()) > 1 else 0, "friends")
+            self.focus("friends", quiet=True)
+            self.reload_page("friends")
+
+        def open_levels(self) -> None:
+            """The XP bar: Inventory > Levels, in the Shop half."""
+            self.ctx.shop_tab = 5
+            self.ctx.inv_tab = "levels"
+            if "themes" not in self.tab_keys():
+                self.set_pane(1 if len(self.tab_keys()) > 1 else 0, "themes")
+            self.focus("themes", quiet=True)
+            self.reload_page("themes")
 
         def showing(self, key: str) -> bool:
             return self.expanded and key in self.pages and key in self.tab_keys()
@@ -516,32 +688,24 @@ def _make_class():
                 if not quiet:
                     sfx.play("pick")
                 self.body.update()
+                for sw in self.body.switches:
+                    sw.update()
 
         def goto(self, key: str) -> None:
-            if key == "settings":
-                if not self.settings_open:
-                    self.toggle_settings()
-                return self.focus("settings")
-            if key in ("games", "themes", "friends", "giveaway"):
-                if key in self.tab_keys():
-                    if not self.expanded:
-                        self.current = key
-                        return self.expand()
-                    return self.focus(key)
-                return
+            if key in ("games", "themes", "friends", "giveaway", "settings"):
+                if key not in self.tab_keys():                # brought into the half in use
+                    keys = self.tab_keys()
+                    idx = keys.index(self.current) if self.current in keys else 0
+                    self.set_pane(idx, key)
+                if not self.expanded:
+                    self.current = key
+                    return self.expand()
+                return self.focus(key)
             # a part of the small menu (Home, Lyrics, Screen...): leave online mode, then open it there
             self.ctx.leave_online(after=lambda: self.main.goto(key))
 
         def toggle_settings(self) -> None:
-            self.settings_open = not self.settings_open
-            sfx.play("pick")
-            if not self.settings_open and "settings" in self.pages:
-                if self.current == "settings":
-                    self.current = self.ctx.cfg["online_tab"] if self.ctx.cfg["online_tab"] in ONLINE_KEYS else "games"
-                self._drop_page("settings")
-            elif self.settings_open:
-                self.current = "settings"
-            self.relayout()
+            self.goto("settings")
 
         def reload_page(self, key: str = None) -> None:
             key = key or self.current
@@ -594,6 +758,7 @@ def _make_class():
             cover = self.body.cover
             mode = ("offmode" if ctx.cfg["offline_mode"] and ctx.online.logged_in() else
                     "locked" if ctx.econ.live.get("locked") else
+                    "lockdown" if ctx.econ.lockdown_cover() else
                     "update" if getattr(ctx, "outdated", False) else
                     "offline" if ctx.online.logged_in() and ctx.online.offline else "")
             on = bool(mode) and self.expanded and self.phase == "shown"
@@ -690,6 +855,8 @@ def _make_class():
                 self.body.resizeEvent(None)
                 self._idle.stop()
                 QTimer.singleShot(0, self.sync_lock)
+                self._was_down = True
+                self._watch.start()
                 sfx.play("on")
                 shake(self, 5.0, 300)
                 fx = getattr(self.ctx, "_fx", None)
@@ -711,22 +878,27 @@ def _make_class():
                 self.open()
 
         def collapse(self) -> None:
-            """Hide the banner for now: it slides up and the ball waits at the top of the screen."""
+            """4.0: hide for now. The banner shoots up into a wide black hole at the top of the screen, which closes
+            on the R; click the R to bring the banner back down. Also when you click outside it (on the desktop or a
+            game)."""
             if self.phase != "shown":
                 return
             self._close_sheet()
             self.toast_w.hide()
             self.confirm_w.hide()
             self.drawer.close_now()
+            self._watch.stop()
             self._pm = snapshot(self.body)
             self.body.hide()
             self.expanded = False
             self.ctx.cfg["card_open"] = False
             self.phase = "stowing"
-            self.drop.setEasingCurve(QEasingCurve.Type.InCubic)
-            self.drop.to(0.0, 380)
+            self.suck.setEasingCurve(QEasingCurve.Type.Linear)
+            self.suck.jump(0.0)
+            self.suck.to(1.0, 560)
             for page in self.each_page():
                 page.on_hide()
+            sfx.play("off")
             self.ctx.on_visibility()
 
         def _show_stowed_ball(self) -> None:
@@ -734,10 +906,24 @@ def _make_class():
             d = BD()
             self.ball.set_center(QPoint(wa.center().x(), wa.top() + d // 2 + S(10)))
             self.ball.show()
-            self.ball.appear.jump(0.0)
-            self.ball.appear.to(1.0, 420)
+            self.ball.appear.jump(0.6)
+            self.ball.appear.to(1.0, 260)
             if win.IS_WIN:
                 win.set_topmost(int(self.ball.winId()))
+
+        def _watch_outside(self) -> None:
+            """A click anywhere outside the banner (the desktop, a game) sends it up into the R."""
+            if self.phase != "shown":
+                return
+            down = win.key_down(0x01) if win.IS_WIN else False
+            if down and not self._was_down:
+                from PyQt6.QtGui import QCursor
+                from PyQt6.QtWidgets import QApplication
+                pos = QCursor.pos()
+                inside = self.frameGeometry().contains(pos) or QApplication.topLevelAt(pos) is not None
+                if not inside and getattr(self, "sheet", None) is None and not self.confirm_w.isVisible():
+                    self.collapse()
+            self._was_down = down
 
         def toggle(self) -> None:
             if self.phase == "shown":
@@ -749,13 +935,14 @@ def _make_class():
             self.ctx.leave_online()
 
         def start_leaving(self, then) -> None:
-            """The black hole: the banner is pulled into it, up and away."""
+            """4.0: leaving is calm: the banner lifts away and fades in one smooth move, then the R floats down."""
             self._leave_then = then
             self._close_sheet()
             self.toast_w.hide()
             self.confirm_w.hide()
             self.busy_w.hide()
             self.drawer.close_now()
+            self._watch.stop()
             if self.phase == "stowed":
                 self.ball.hide()
                 self.phase = "leaving"
@@ -766,12 +953,17 @@ def _make_class():
             self.body.hide()
             self.phase = "leaving"
             self.expanded = False
+            self.suck.setEasingCurve(QEasingCurve.Type.InOutCubic)
             self.suck.jump(0.0)
-            self.suck.to(1.0, 820)
-            shake(self, 4.0, 260)
+            self.suck.to(1.0, 420)
             sfx.play("off")
 
         def _suck_done(self) -> None:
+            if self.phase == "stowing":
+                self.phase = "stowed"
+                self.hide()
+                self._pm = None
+                return self._show_stowed_ball()
             if self.phase != "leaving":
                 return
             self.phase = "hidden"
@@ -784,9 +976,6 @@ def _make_class():
             if then is not None:
                 then()
 
-        def vortex_point(self) -> QPointF:
-            m = self._max_l
-            return QPointF(m.center().x(), m.top() + S(26))
 
         # -------------------------------------------------------------- painting
         def paintEvent(self, _e) -> None:
@@ -796,7 +985,9 @@ def _make_class():
             p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
             now = time.monotonic()
             if self.phase == "leaving":
-                return self._paint_vortex(p, now)
+                return self._paint_leave(p)
+            if self.phase == "stowing":
+                return self._paint_stow(p, now)
             shape, radius = self._shape()
             level = self.ctx.glow_level()
             path = paint_shape(p, self.ctx, shape, radius, level, self.devicePixelRatioF())
@@ -819,55 +1010,91 @@ def _make_class():
                 p.restore()
             paint_edge(p, self.ctx, shape, radius, level)
 
-        def _paint_vortex(self, p: QPainter, now: float) -> None:
-            """A small black hole at the top: it opens, swallows the banner (spinning, shrinking, pulled up) and closes."""
+        def _banner(self, p: QPainter, m: QRectF, opacity: float) -> None:
             from .window import paint_shape
-            k = self.suck.level
-            c = self.vortex_point()
-            size = S(70) * math.sin(min(1.0, k * 1.15) * math.pi) ** 0.6 + S(4) * (1 - k)
-            # the banner, pulled in
-            if self._pm is not None and k < 0.98:
-                m = self._max_l
-                s = max(0.0, 1.0 - k ** 1.4)
+            p.setOpacity(max(0.0, opacity))
+            path = paint_shape(p, self.ctx, m, S(ui.radius), self.ctx.glow_level() * opacity, self.devicePixelRatioF())
+            if self._pm is not None:
                 p.save()
-                p.translate(c)
-                p.rotate(-k * k * 220)
-                p.scale(s, s * (1 - 0.25 * k))
-                p.translate(-c.x(), -c.y() + k * S(20))
-                p.setOpacity(max(0.0, 1.0 - k * 0.9))
-                path = paint_shape(p, self.ctx, m, S(ui.radius), self.ctx.glow_level() * (1 - k), self.devicePixelRatioF())
                 p.setClipPath(path)
-                p.drawPixmap(m.topLeft(), self._pm)
+                p.drawPixmap(m, self._pm, QRectF(self._pm.rect()))
                 p.restore()
-            # the hole: an accent ring of matter spinning around a black core
-            p.setPen(Qt.PenStyle.NoPen)
-            halo = QRadialGradient(c, size * 2.4)
-            halo.setColorAt(0.0, alpha(ui.accent, 0.0))
-            halo.setColorAt(0.35, alpha(ui.accent, 0.55))
-            halo.setColorAt(1.0, alpha(ui.accent, 0.0))
-            p.setBrush(halo)
-            p.drawEllipse(c, size * 2.4, size * 1.3)
-            rnd = random.Random(7)
-            for i in range(60):
-                a0 = rnd.uniform(0, math.tau)
-                rad = rnd.uniform(1.05, 2.3) * size
-                ang = a0 + now * (3.2 + 2.4 / max(0.3, rad / max(1.0, size)))
-                pc = mix(ui.accent, QColor("#FFFFFF"), rnd.uniform(0.0, 0.6))
-                pc.setAlphaF(0.75)
-                p.setBrush(pc)
-                p.drawEllipse(QPointF(c.x() + math.cos(ang) * rad, c.y() + math.sin(ang) * rad * 0.45), S(1.6), S(1.6))
-            core = QRadialGradient(c, size)
-            core.setColorAt(0.0, QColor(0, 0, 0, 255))
-            core.setColorAt(0.75, QColor(0, 0, 0, 240))
-            core.setColorAt(1.0, QColor(0, 0, 0, 0))
-            p.setBrush(core)
-            p.drawEllipse(c, size, size * 0.62)
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.setPen(QPen(alpha(mix(ui.accent, QColor("#FFFFFF"), 0.4), 0.9), S(2)))
-            p.drawEllipse(c, size * 1.02, size * 0.64)
+            p.setOpacity(1.0)
+
+        def _paint_leave(self, p: QPainter) -> None:
+            """Lifts, shrinks very slightly and fades: no spinning."""
+            k = self.suck.level
+            m = self._max_l
+            s = 1.0 - 0.04 * k
+            lift = S(70) * k * k
+            w, h = m.width() * s, m.height() * s
+            box = QRectF(m.center().x() - w / 2, m.top() - lift + (m.height() - h) * 0.15, w, h)
+            self._banner(p, box, 1.0 - k)
+
+        def _paint_stow(self, p: QPainter, now: float) -> None:
+            """Shoots up into a wide black hole (an accretion band across the top), which closes on the R."""
+            k = self.suck.level
+            m = self._max_l
+            hole = QPointF(m.center().x(), m.top() + S(30))
+            e = min(1.0, k / 0.55) ** 2                               # fast: most of the move in the first half
+            if e < 1.0:
+                h = m.height() * (1 - 0.88 * e)
+                w = m.width() * (1 - 0.15 * e)
+                box = QRectF(m.center().x() - w / 2, m.top() - (m.height() * 0.15) * e, w, h)
+                self._banner(p, box, 1.0 - e * 0.8)
+            # the wide black hole: opens fast, holds, closes onto the R
+            open_k = math.sin(min(1.0, k / 0.9) * math.pi) ** 0.7
+            hw, hh = m.width() * 0.46 * open_k, S(22) * open_k
+            if hw > 1:
+                p.setPen(Qt.PenStyle.NoPen)
+                halo = QRadialGradient(hole, hw)
+                halo.setColorAt(0, alpha(ui.accent, 0.0))
+                halo.setColorAt(0.55, alpha(ui.accent, 0.38 * open_k))
+                halo.setColorAt(1, alpha(ui.accent, 0.0))
+                p.save()
+                p.translate(hole)
+                p.scale(1.0, max(0.05, hh * 2.6 / max(1.0, hw)))
+                p.setBrush(halo)
+                p.drawEllipse(QPointF(0, 0), hw, hw)
+                p.restore()
+                rnd = random.Random(11)                               # matter streaming along the band
+                for i in range(70):
+                    a0 = rnd.uniform(0, math.tau)
+                    rad = rnd.uniform(0.35, 1.0)
+                    ang = a0 + now * (4.0 / max(0.4, rad))
+                    pc = mix(ui.accent, QColor("#FFFFFF"), rnd.uniform(0.0, 0.7))
+                    pc.setAlphaF(0.8 * open_k)
+                    p.setBrush(pc)
+                    p.drawEllipse(QPointF(hole.x() + math.cos(ang) * hw * rad, hole.y() + math.sin(ang) * hh * rad * 1.6),
+                                  S(1.5), S(1.5))
+                core = QRadialGradient(hole, hw * 0.55)
+                core.setColorAt(0, QColor(0, 0, 0, 255))
+                core.setColorAt(0.8, QColor(0, 0, 0, 230))
+                core.setColorAt(1, QColor(0, 0, 0, 0))
+                p.save()
+                p.translate(hole)
+                p.scale(1.0, max(0.05, hh / max(1.0, hw * 0.55)))
+                p.setBrush(core)
+                p.drawEllipse(QPointF(0, 0), hw * 0.55, hw * 0.55)
+                p.restore()
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.setPen(QPen(alpha(mix(ui.accent, QColor("#FFFFFF"), 0.45), 0.85 * open_k), S(1.6)))
+                p.drawEllipse(hole, hw * 0.56, hh * 1.02)
+            # the R appears in the middle as the hole closes
+            if k > 0.55:
+                from .window import paint_ball_face, paint_edge, paint_shape
+                r_k = min(1.0, (k - 0.55) / 0.45)
+                d = BD() * (0.4 + 0.6 * r_k)
+                shape = QRectF(hole.x() - d / 2, hole.y() - d / 2, d, d)
+                p.setOpacity(r_k)
+                level = self.ctx.glow_level(0.6)
+                paint_shape(p, self.ctx, shape, d / 2, level, self.devicePixelRatioF())
+                paint_ball_face(p, self.ctx, shape, 1.0)
+                paint_edge(p, self.ctx, shape, d / 2, level)
+                p.setOpacity(1.0)
 
         def _tick(self) -> None:
-            if self.phase == "leaving" or self.drop.busy:
+            if self.phase in ("leaving", "stowing") or self.drop.busy:
                 return self.update()
             super()._tick()
 

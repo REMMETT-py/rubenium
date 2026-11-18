@@ -15,7 +15,7 @@ from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
 from .pages import Page
 from .shop import CoinBar, GOLD_TEXT, clock_text
 from .wallet import coins_text, paint_coin
-from .widgets import Button, IconButton, Label, Segmented, Tween, draw_icon, hbox, heading, vbox
+from .widgets import Button, IconButton, Label, LockStrip, Segmented, Tween, draw_icon, hbox, heading, lock_strip, vbox
 from .games2 import (BeatRush, BigCard, MemoryGame, MEM_THEMES, ScratchCard, ScratchRow, TAP_MODES, build_duels,
                      build_minigames)
 
@@ -105,6 +105,8 @@ class Game(QWidget):
             return False
         self.stake = bet
         self.busy = True
+        self._srv_coins = None
+        self.econ.hold_round(True)                 # 4.0: no balance from a poll lands in the middle of the round
         self.econ.adjust(-bet)
         self.page.sync()
         return True
@@ -118,6 +120,8 @@ class Game(QWidget):
             try:
                 self.waiting = False
                 if ok:
+                    if isinstance(data, dict) and data.get("coins") is not None:
+                        self._srv_coins = int(data["coins"])      # the real balance after this move
                     on_ok(data)
                 else:
                     if refund:
@@ -130,12 +134,19 @@ class Game(QWidget):
 
     def failed(self, message: str) -> None:
         self.busy = False
+        self.econ.hold_round(False)
         self.ctx.toast(tr(message), "warn")
 
     def finish(self, payout: int) -> None:
-        """End of the round: pay what was won (0 = lost) and show it."""
+        """End of the round: pay what was won (0 = lost) and show it. 4.0: the balance shown is then set to the
+        server's own number, so quick rounds one after another can never drift from the real balance."""
         payout = int(payout)
-        if payout > 0:
+        srv = getattr(self, "_srv_coins", None)
+        self.econ.hold_round(False)
+        if srv is not None and not self.econ.rounds_held():
+            self.econ.coins = max(0, srv)
+            self.econ.changed.emit()
+        elif payout > 0:
             self.econ.adjust(payout)
         gain = payout - self.stake
         if gain > 0:
@@ -796,8 +807,8 @@ class Daily(Game):
     PRIZES = [(40, 0), (75, 0), (120, 0), (180, 0), (300, 0), (500, 0), (1200, 0), (0, 1)]      # as the server numbers them
 
     def prizes(self) -> list:
-        """3.1: a 9th slice, GOLD (the Golden Wheel), once the server has it."""
-        return self.PRIZES + [(0, -1)] if "gold_wheel_pct" in self.econ.cfg else self.PRIZES
+        """3.1: a 9th slice, GOLD (the Golden Wheel). 4.0: a 10th, an XP coupon (keys = -3)."""
+        return self.PRIZES + [(0, -1), (0, -3)]
 
     def __init__(self, page) -> None:
         super().__init__(page)
@@ -833,7 +844,9 @@ class Daily(Game):
 
     def _rolled(self, ans: dict) -> None:
         self.result = int(ans.get("slot", 0))
-        self._prize = (int(ans.get("won", 0)), -1 if ans.get("gold") else int(ans.get("won_keys", 0)))
+        self._prize = (int(ans.get("won", 0)), -1 if ans.get("gold") else (-3 if ans.get("coupon") else int(ans.get("won_keys", 0))))
+        self._ans = ans
+        self.econ.hold_round(True)                    # 4.0: paid by the server already; shown when the wheel stops
         self.wallet.spin_used()
         seg = 360.0 / len(self.prizes())
         self._from = self.angle % 360.0
@@ -843,10 +856,29 @@ class Daily(Game):
         QTimer.singleShot(4700, self._done)
 
     def _done(self) -> None:
+        """4.0: the prize is already yours (paid by the server when the wheel was spun): no Collect button."""
         self.angle = self._to % 360.0
-        self.collect = self._prize                       # shown, and kept by the server until collected
-        sfx.play("on")
         self.busy = False
+        self.econ.hold_round(False)
+        ans = getattr(self, "_ans", None) or {}
+        if not ans.get("collected"):                     # an older server: keep the old way
+            self.collect = self._prize
+            sfx.play("on")
+            return self.page.sync()
+        self.econ.absorb(ans)
+        self.econ.changed.emit()
+        coins, keys = self._prize
+        sfx.play("on")
+        if keys == -1:
+            from .goldwheel import open_gold_wheel
+            open_gold_wheel(self.ctx)
+        elif keys == -3:
+            from .levels import COUPONS
+            self.flash("+ " + tr("XP coupon"), WIN)
+            self.ctx.toast(tr("{name} added to your Inventory > Levels", name=tr(COUPONS.get(ans.get("coupon"), ("XP coupon",))[0])))
+            self.econ.refresh()
+        else:
+            self.flash("+" + (coins_text(coins) if coins else f"{keys} " + (tr("key") if keys == 1 else tr("keys"))), WIN)
         self.page.sync()
 
     def take_prize(self) -> None:
@@ -890,11 +922,13 @@ class Daily(Game):
         p.setOpacity(1.0 if ready else 0.35)
         for i, (coins, keys) in enumerate(self.prizes()):
             start = 90.0 - (i * seg - self.angle)
-            worth = coins if coins else max(1, keys) * 400         # a key is shown about as rich as 400 coins
+            worth = coins if coins else max(1, keys) * 400 if keys > 0 else 400         # a key is shown about as rich as 400 coins
             col = mix(QColor("#182024"), QColor("#E8C26A"), 0.15 + 0.75 * (math.log(worth) - math.log(50)) / (math.log(1200) - math.log(50)))
             if keys > 0:
                 col = mix(QColor("#182024"), ui.accent, 0.55 + 0.15 * keys)
-            if keys < 0:                                    # GOLD
+            if keys == -3:
+                col = QColor("#7A3FD1")
+            elif keys < 0:                                    # GOLD
                 gg = QRadialGradient(c, radius)
                 gg.setColorAt(0, QColor("#FFF1B8"))
                 gg.setColorAt(1, QColor("#C9922A"))
@@ -906,7 +940,11 @@ class Daily(Game):
             tp = QPointF(c.x() + radius * 0.72 * math.cos(mid), c.y() - radius * 0.72 * math.sin(mid))
             p.setPen(QColor("#FFFFFF"))
             p.setFont(font(9.5, QFont.Weight.Bold))
-            if keys < 0:
+            if keys == -3:                                  # an XP coupon
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(9, QFont.Weight.Black))
+                p.drawText(QRectF(tp.x() - S(22), tp.y() - S(9), S(44), S(18)), int(Qt.AlignmentFlag.AlignCenter), "XP")
+            elif keys < 0:
                 p.setPen(QColor("#3A2606"))
                 p.setFont(font(9, QFont.Weight.Black))
                 p.drawText(QRectF(tp.x() - S(22), tp.y() - S(9), S(44), S(18)), int(Qt.AlignmentFlag.AlignCenter), "GOLD")
@@ -1759,6 +1797,15 @@ class KeyCard(QWidget):
         p.drawText(QRectF(bar.left(), bar.bottom() + S(2), bar.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter), text)
 
 
+def game_feature(name: str) -> str:
+    """4.0: the part of Rubenium a casino game belongs to (what the admins can pause)."""
+    return {"Roulette": "roulette", "Free spin": "wheel"}.get(name, "casino")
+
+
+SUB_FEATURES = {"minigames": "minigames", "memory": "minigames", "g2048": "minigames", "sweeper": "minigames",
+                "duels": "golf", "duel_run": "golf", "flip": "coinflip", "advent": "advent", "scratch": "scratch"}
+
+
 class GameTile(QWidget):
     """One game in the lobby: a small picture and its name. Click to go straight to it."""
 
@@ -1863,6 +1910,27 @@ class GameTile(QWidget):
             p.setPen(QPen(QColor("#FFFFFF"), S(1.6)))
             p.drawLine(QPointF(art.x(), art.y() - S(14)), QPointF(art.x(), art.y() + S(14)))
             p.setPen(Qt.PenStyle.NoPen)
+        elif self.name == "Tower":                             # a stack of tiles, one lit
+            for row in range(4):
+                for col in range(3):
+                    lit = (row, col) in ((0, 1), (1, 0), (2, 2))
+                    p.setBrush(alpha(ui.accent, 0.9) if lit else QColor("#1A2125"))
+                    p.drawRoundedRect(QRectF(art.x() - S(16) + col * S(11), art.y() + S(10) - row * S(8), S(9), S(6)), S(1.5), S(1.5))
+        elif self.name == "Keno":                              # a grid of balls, some drawn
+            for i in range(12):
+                on = i in (1, 4, 6, 11)
+                p.setBrush(QColor("#E8C26A") if on else QColor("#1A2125"))
+                p.drawEllipse(QPointF(art.x() - S(15) + (i % 4) * S(10), art.y() - S(10) + (i // 4) * S(10)), S(4), S(4))
+        elif self.name == "Limbo":                             # a ring and a rising number
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(alpha("#FFFFFF", 0.15), S(3)))
+            p.drawEllipse(art, S(14), S(14))
+            p.setPen(QPen(ui.accent, S(3), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawArc(QRectF(art.x() - S(14), art.y() - S(14), S(28), S(28)), 90 * 16, -250 * 16)
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(font(8, QFont.Weight.Black))
+            p.drawText(QRectF(art.x() - S(14), art.y() - S(8), S(28), S(16)), int(Qt.AlignmentFlag.AlignCenter), "×2")
+            p.setPen(Qt.PenStyle.NoPen)
         else:                                                  # Hi-Lo: two cards and an arrow
             for k, (dx, txt) in enumerate(((-S(8), "7"), (S(8), "?"))):
                 p.setBrush(QColor("#F4F5F6") if k == 0 else alpha(ui.accent, 0.55))
@@ -1875,6 +1943,15 @@ class GameTile(QWidget):
         p.setFont(font(12.5, QFont.Weight.Bold))
         p.drawText(QRectF(r.left() + S(64), r.top(), r.width() - S(70), r.height()), int(Qt.AlignmentFlag.AlignVCenter),
                    tr(self.name))
+        if self.page.ctx.econ.is_locked(game_feature(self.name)):           # 4.0: paused by the admins
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(8, 10, 12, 170))
+            p.drawRoundedRect(r, S(11), S(11))
+            p.save()
+            p.translate(r.right() - S(18), r.top() + S(18))
+            p.scale(S(14) / 20, S(14) / 20)
+            draw_icon(p, "lock", QColor("#FFB27A"))
+            p.restore()
 
 
 class DailyRow(QWidget):
@@ -1989,7 +2066,8 @@ class QuestRow(QWidget):
 class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
-    NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Free spin"]
+    NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Tower", "Keno", "Limbo",
+             "Free spin"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -1999,13 +2077,20 @@ class GamesPage(Page):
         if not ctx.casino:
             if getattr(ctx, "casino_ask", None) is not None and not ctx.wallet.warned():
                 return self._warning(lay)
+            sub = getattr(ctx, "games_sub", None)
+            feature = ("quests" if getattr(ctx, "quests_open", False) else
+                       "minigames" if getattr(ctx, "mini_open", False) or getattr(ctx, "park_open", False) else
+                       SUB_FEATURES.get(sub))
+            if feature:
+                lock_strip(ctx, lay, feature, self.W)              # 4.0: paused by the admins
+            else:
+                self._paused(lay)
             if getattr(ctx, "quests_open", False):
                 return self._quests(lay)
             if getattr(ctx, "mini_open", False):
                 return self._mini(lay)
             if getattr(ctx, "park_open", False):
                 return self._park(lay)
-            sub = getattr(ctx, "games_sub", None)
             if sub in ("memory", "duel_run", "scratch"):
                 from .hub import server_wait
                 if ctx.econ.server_old:
@@ -2029,8 +2114,27 @@ class GamesPage(Page):
                 return build_advent(self, lay)
             if sub == "scratch":
                 return self._scratch(lay)
+            if sub == "g2048":                                       # 4.0: the new minigames
+                from .games5 import build_2048
+                return build_2048(self, lay)
+            if sub == "sweeper":
+                from .games5 import build_sweeper
+                return build_sweeper(self, lay)
             return self._lobby(lay)
         self._casino(lay)
+
+    def _paused(self, lay) -> None:
+        """4.0: the lobby says which games the admins paused (their tiles are dimmed too)."""
+        ec = self.ctx.econ
+        if ec.locks.get("lockdown"):
+            return lock_strip(self.ctx, lay, "casino", self.W)
+        names = [n for k, n in (("casino", "Casino games"), ("roulette", "Roulette"), ("minigames", "Mini games"),
+                                ("golf", "Mini Golf"), ("coinflip", "Coinflip"), ("wheel", "Free spin"),
+                                ("scratch", "Scratch cards"), ("advent", "Advent calendar"), ("quests", "Quests"))
+                 if ec.is_locked(k)]
+        if names:
+            lay.addWidget(LockStrip(tr("Paused for a moment: {list}. Nothing you own is lost.",
+                                       list=", ".join(tr(n) for n in names)), self.W))
 
     # -- the lobby
     def _lobby(self, lay) -> None:
@@ -2091,7 +2195,10 @@ class GamesPage(Page):
         lay.addWidget(modes)
         lay.addWidget(Label(tr(TAP_MODES[mode][2]), 10.5, TEXT_DIM))
         self.beat = BeatRush(self, lambda _r: (self.beat_btn.setEnabled(True), self.beat_btn.set_text(tr("Play again"))))
-        back.clicked.connect(lambda: (self.beat.abort(), self._show_mini(False)))
+        back.clicked.connect(lambda: (self.beat.abort(), self.ctx.window.allow_keys(False), self._show_mini(False)))
+        lay.addWidget(Label("⌨  " + tr("Recommended: Use your keyboard for the best Beat Tap experience."), 10.5,
+                            GOLD_TEXT, bold=True, wrap_w=self.W))
+        self.ctx.window.allow_keys(True)              # 4.0: D F J K reach the game (the menu takes the keyboard)
         lay.addWidget(self.beat)
         self.beat_btn = Button(tr("Start"), "primary", 38)
         self.beat_btn.clicked.connect(lambda: (self.beat_btn.setEnabled(False), self.beat.start()))
@@ -2138,7 +2245,21 @@ class GamesPage(Page):
         self._back_bar(lay, tr("Scratch card"))
         card = ScratchCard(self)
         lay.addWidget(card)
-        lay.addWidget(Label(tr("One card every 12 hours. Common and Rare: coins. Epic: 1 key. Legendary: 2 keys. Mythic: 2 500 coins."), 10.5, TEXT_DIM, wrap_w=self.W))
+        hours = int(float(self.ctx.econ.cfg.get("scratch_hours", 12) or 12))
+        lay.addWidget(Label(tr("One card every {h} hours. The prize is yours as soon as the card is revealed.", h=hours),
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        odds = getattr(self.ctx, "scratch_odds", None)            # 4.0: the server's own odds, never a copy
+        if odds is None:
+            def got(ok: bool, data) -> None:
+                if ok and isinstance(data, list):
+                    self.ctx.scratch_odds = data
+                    if self.ctx.window.showing("games") and getattr(self.ctx, "games_sub", None) == "scratch":
+                        self.ctx.reload_page("games")
+            self.ctx.online.ask("rb_scratch_odds", {}, got)
+        elif odds:
+            from .games2 import ScratchOdds
+            lay.addWidget(heading(tr("Chances")))
+            lay.addWidget(ScratchOdds(odds, self.W))
 
     def load_duels(self, quiet: bool = False) -> None:
         ctx = self.ctx
@@ -2326,6 +2447,7 @@ class GamesPage(Page):
         top.addWidget(back)
         top.addWidget(CoinBar(ctx, keys=True), 1)
         lay.addLayout(top)
+        lock_strip(ctx, lay, "casino", self.W)                   # 4.0: paused by the admins
         which = ctx.cfg["game"] if 0 <= ctx.cfg["game"] < len(self.NAMES) else 0
         if getattr(ctx, "casino_pick", None) is not None:           # a tile of the lobby was clicked
             which, ctx.casino_pick = ctx.casino_pick, None
@@ -2333,8 +2455,9 @@ class GamesPage(Page):
         self.seg.changed.connect(self._choose)
         lay.addWidget(self.seg)
         from .games3 import HiLo, Roulette
+        from .games4 import Keno, Limbo, Tower
         self.games = [Blackjack(self), Plinko(self), Bombs(self), Roulette(self), Dice(self), Timing(self), Rocket(self),
-                      HiLo(self), Daily(self)]
+                      HiLo(self), Tower(self), Keno(self), Limbo(self), Daily(self)]
         for g in self.games:
             g.setVisible(False)
             lay.addWidget(g)
@@ -2355,15 +2478,22 @@ class GamesPage(Page):
         self.bet_row.setFixedHeight(S(34))
         br = hbox(self.bet_row, 6)
         self.b_less, self.b_more, self.b_max = Button("−", "ghost", 34), Button("+", "ghost", 34), Button(tr("Max"), "ghost", 34)
-        for b, w in ((self.b_less, 44), (self.b_more, 44), (self.b_max, 62)):
+        self.b_half, self.b_double = Button("½", "ghost", 34), Button("×2", "ghost", 34)        # 4.0: quicker bets
+        for b, w in ((self.b_half, 36), (self.b_less, 36), (self.b_more, 36), (self.b_double, 40), (self.b_max, 52)):
             b.setFixedWidth(S(w))
         self.bet_box = BetBox(self)
         self.b_less.clicked.connect(lambda: self._step(-1))
         self.b_more.clicked.connect(lambda: self._step(1))
         self.b_max.clicked.connect(self._max)
+        self.b_half.clicked.connect(lambda: self._scale_bet(0.5))
+        self.b_double.clicked.connect(lambda: self._scale_bet(2.0))
+        self.b_half.setToolTip(tr("Half the bet"))
+        self.b_double.setToolTip(tr("Double the bet"))
+        br.addWidget(self.b_half)
         br.addWidget(self.b_less)
         br.addWidget(self.bet_box, 1)
         br.addWidget(self.b_more)
+        br.addWidget(self.b_double)
         br.addWidget(self.b_max)
         cl.addStretch(1)
         cl.addWidget(self.bet_row)
@@ -2395,6 +2525,21 @@ class GamesPage(Page):
             sfx.play("pick")
         self.sync()
 
+    def _scale_bet(self, k: float) -> None:
+        """Half or double: the nearest bet below half, or the first bet above double (never above the balance)."""
+        bal = self.ctx.wallet.balance()
+        want = BETS[self._bet] * k
+        if k < 1:
+            i = max([j for j, b in enumerate(BETS) if b <= want], default=0)
+        else:
+            i = min([j for j, b in enumerate(BETS) if b >= want], default=len(BETS) - 1)
+        while i > 0 and BETS[i] > bal:
+            i -= 1
+        if i != self._bet:
+            self._bet = i
+            sfx.play("pick")
+        self.sync()
+
     def _max(self) -> None:
         bal = self.ctx.wallet.balance()
         self._bet = max([i for i, b in enumerate(BETS) if b <= bal], default=0)
@@ -2419,7 +2564,7 @@ class GamesPage(Page):
         if self.game is None:
             return
         busy = self.game.busy
-        for b in (self.b_less, self.b_more, self.b_max):
+        for b in (self.b_less, self.b_more, self.b_max, self.b_half, self.b_double):
             b.setEnabled(not busy)
         self.seg.setEnabled(not busy)
         self.back.setEnabled(not busy)
@@ -2472,3 +2617,18 @@ class GamesPage(Page):
 
     def on_show(self) -> None:
         self.sync()
+
+    def on_hide(self) -> None:
+        if getattr(self.ctx, "games_sub", None) in ("g2048", "duel_run") or getattr(self.ctx, "mini_open", False):
+            QTimer.singleShot(0, self._keys_back)       # (not on a rebuild of the same screen)
+
+    def _keys_back(self) -> None:
+        """The keyboard goes back to the game you play once no keyboard game is on screen."""
+        ctx = self.ctx
+        still = ctx.window.showing("games") and (getattr(ctx, "games_sub", None) in ("g2048", "duel_run")
+                                                 or getattr(ctx, "mini_open", False))
+        if not still:
+            ctx.window.allow_keys(False)
+
+
+from . import games5  # noqa: E402,F401  (adds the 2048 and Minesweeper actions to GamesPage)

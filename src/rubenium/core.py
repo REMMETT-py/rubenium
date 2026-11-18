@@ -19,8 +19,8 @@ from . import win
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "3.2"         # the version people see
-BUILD = "2026.11.17.20"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "4.0"         # the version people see
+BUILD = "2026.11.18.00"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -165,10 +165,60 @@ class Sfx:
         "pick": (494.0, 466.0, 0.09, 0.030),
     }
 
+    # 4.0: a few small tunes, note by note (Hz, start s, length s); still soft and short
+    TUNES = {
+        "levelup": [(523.3, 0.00, 0.14), (659.3, 0.10, 0.14), (784.0, 0.20, 0.16), (1046.5, 0.32, 0.42)],
+        "jingle": [(1318.5, 0.00, 0.12), (1318.5, 0.14, 0.12), (1318.5, 0.28, 0.26), (1318.5, 0.58, 0.12),
+                   (1318.5, 0.72, 0.12), (1318.5, 0.86, 0.26), (1318.5, 1.16, 0.12), (1568.0, 1.30, 0.12),
+                   (1046.5, 1.44, 0.18), (1174.7, 1.62, 0.10), (1318.5, 1.74, 0.40)],
+        "coupon": [(784.0, 0.00, 0.10), (987.8, 0.08, 0.10), (1174.7, 0.16, 0.10), (1568.0, 0.24, 0.30)],
+        "unlock": [(392.0, 0.00, 0.12), (587.3, 0.10, 0.22)],
+    }
+
     def __init__(self) -> None:
         self.enabled = True
         self._files: dict = {}
         self._last = 0.0
+
+    def _make_tune(self, name: str) -> str:
+        import math
+        import struct
+        import wave
+        notes = self.TUNES[name]
+        path = DATA_DIR / "sounds" / f"tune_{name}_1.wav"
+        if not path.is_file():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            total = max(s + ln for _f, s, ln in notes) + 0.05
+            n = int(self.RATE * total)
+            buf = [0.0] * n
+            for f, start, ln in notes:
+                a, b = int(start * self.RATE), min(n, int((start + ln) * self.RATE))
+                for i in range(a, b):
+                    t = (i - a) / self.RATE
+                    k = t / ln
+                    env = min(1.0, t / 0.008) * math.exp(-4.0 * k)
+                    buf[i] += (math.sin(2 * math.pi * f * t) + 0.3 * math.sin(4 * math.pi * f * t)) * env
+            frames = bytearray()
+            for v in buf:
+                frames += struct.pack("<h", int(max(-1.0, min(1.0, v * 0.06)) * 32767))
+            tmp = path.with_suffix(".tmp")
+            with wave.open(str(tmp), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(self.RATE)
+                w.writeframes(bytes(frames))
+            os.replace(tmp, path)
+        return str(path)
+
+    def tune(self, name: str) -> None:
+        if not self.enabled or name not in self.TUNES or not win.IS_WIN:
+            return
+        try:
+            if name not in self._files:
+                self._files[name] = self._make_tune(name)
+            win.play_sound(self._files[name])
+        except OSError as exc:
+            log.debug("tune %s failed: %s", name, exc)
 
     def _make(self, name: str) -> str:
         import math
@@ -246,7 +296,7 @@ DISPLAY_PROFILE = {"brightness": 0, "contrast": 0, "gamma": 100, "shadow": 0,
                    "saturation": 100, "hue": 0, "vibrance": -1}       # -1: keep the PC's own vibrance
 CROSSHAIR = {"style": "cross", "color": "#FFFFFF", "opacity": 100, "size": 100, "length": 5, "thickness": 2,
              "gap": 3, "dot": False, "dot_size": 2, "outline": True, "outline_w": 1,
-             "radius": 10, "image": "", "image_scale": 100, "monitor": 0, "off_x": 0, "off_y": 0}
+             "radius": 10, "image": "", "image_scale": 100, "image_px": 48, "monitor": 0, "off_x": 0, "off_y": 0}
 
 DEFAULTS: dict = {
     "schema": 3,
@@ -291,6 +341,12 @@ DEFAULTS: dict = {
     "ad_mute": True,                     # 3.2: mute the music app while an advert plays
     "online_tab": "games",               # 3.2: the last part of the online menu that was open
     "hilo_help": False,
+    "online_panes": ["games", "friends"],  # 4.0: the two parts of the online menu shown side by side
+    "compact_music": True,               # 4.0: while gaming, the minimised music card keeps only the track and its time
+    "chest_speed": "normal",             # 4.0: slow (0.75x), normal (1x) or fast (2.5x) case openings
+    "xp_intro": False,                   # 4.0: the levels were explained once
+    "notify_all": True,                  # 4.0: every notification on or off at once
+    "level_seen": -1,                    # 4.0: the last level whose cutscene was shown
     "share_songs": True,
     "unlock_all": False,
     "card_open": False,

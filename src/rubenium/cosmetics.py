@@ -54,9 +54,9 @@ FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
           ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine"),
           ("wood", "Wood"), ("pulse", "Pulse"), ("thorns", "Thorns"), ("gears", "Gears"), ("phoenix", "Phoenix"),
-          ("holly", "Holly"), ("snowflake", "Snowflake"), ("northstar", "North Star")]
+          ("holly", "Holly"), ("snowflake", "Snowflake"), ("northstar", "North Star"), ("yuletide", "Yuletide")]
 TAGS = [("og", "OG")]
-MOVING = {"tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
+MOVING = {"yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
           "phoenix", "snowflake", "holly", "waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
           "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine",
           "honeycomb", "comet", "deepsea", "city", "fireflies", "storm", "vortex"}
@@ -1325,7 +1325,89 @@ _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"
                "frost": ("#E8F6FF", "#7FC8FF"), "vine": ("#7BE07B", "#2E8B3E"), "star": ("#FFE9A8", "#FFC94D"), "halo": ("#FFFFFF", "#C9B6FF"),
                "wood": ("#B97A4A", "#6B3E1F"), "pulse": ("#3DDC84", "#0F6B3A"), "thorns": ("#3A5A2E", "#C8283D"),
                "gears": ("#D9DEE3", "#8A939C"), "phoenix": ("#FFC14D", "#FF4B1F"), "holly": ("#1F7A4A", "#E8384F"),
-               "snowflake": ("#E8F6FF", "#7FC8FF"), "northstar": ("#FFE9A8", "#E8C26A")}
+               "snowflake": ("#E8F6FF", "#7FC8FF"), "northstar": ("#FFE9A8", "#E8C26A"),
+               "yuletide": ("#FFD36B", "#C8283D")}
+
+
+def _paint_yuletide(p: QPainter, c: QPointF, r: float, wd: float, now: float) -> None:
+    """4.0, advent door 1 (Legendary): a warm gold and red aura that breathes, a holly wreath with berries, fairy
+    lights that twinkle around it, a star on top and snow drifting through the glow."""
+    breathe = 0.65 + 0.35 * math.sin(now * 1.8)
+    p.save()
+    aura = QRadialGradient(c, r + wd * 5.5)                   # the aura
+    aura.setColorAt(0.0, QColor(0, 0, 0, 0))
+    aura.setColorAt(max(0.01, r / (r + wd * 5.5) - 0.04), QColor(0, 0, 0, 0))
+    aura.setColorAt(r / (r + wd * 5.5), alpha("#FFC94D", 0.42 * breathe))
+    aura.setColorAt(min(0.99, r / (r + wd * 5.5) + 0.18), alpha("#E8384F", 0.20 * breathe))
+    aura.setColorAt(1.0, QColor(0, 0, 0, 0))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(aura)
+    p.drawEllipse(c, r + wd * 5.5, r + wd * 5.5)
+    ring = QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r)          # gold band under the wreath
+    g = QLinearGradient(ring.topLeft(), ring.bottomRight())
+    g.setColorAt(0.0, QColor("#FFF1C2"))
+    g.setColorAt(0.5, QColor("#C8962E"))
+    g.setColorAt(1.0, QColor("#FFE08A"))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.setPen(QPen(g, wd * 0.75))
+    p.drawEllipse(ring)
+    p.setPen(Qt.PenStyle.NoPen)
+    for i in range(16):                                         # holly leaves, gently swaying
+        a = i / 16 * math.tau
+        lc = QPointF(c.x() + math.cos(a) * (r + wd * 0.2), c.y() + math.sin(a) * (r + wd * 0.2))
+        p.save()
+        p.translate(lc)
+        p.rotate(math.degrees(a) + (60 if i % 2 else -60) + math.sin(now * 1.6 + i) * 6)
+        leaf = QPainterPath(QPointF(-wd * 1.1, 0))
+        leaf.cubicTo(QPointF(-wd * 0.5, -wd * 0.75), QPointF(wd * 0.5, -wd * 0.75), QPointF(wd * 1.1, 0))
+        leaf.cubicTo(QPointF(wd * 0.5, wd * 0.75), QPointF(-wd * 0.5, wd * 0.75), QPointF(-wd * 1.1, 0))
+        p.setBrush(QColor("#1F7A4A") if i % 2 else QColor("#2E9E5E"))
+        p.drawPath(leaf)
+        p.restore()
+    for i in range(8):                                          # berries
+        a = i / 8 * math.tau + math.pi / 8
+        bc = QPointF(c.x() + math.cos(a) * r, c.y() + math.sin(a) * r)
+        p.setBrush(QColor("#E8384F"))
+        p.drawEllipse(bc, wd * 0.42, wd * 0.42)
+        p.setBrush(alpha("#FFFFFF", 0.7))
+        p.drawEllipse(QPointF(bc.x() - wd * 0.13, bc.y() - wd * 0.13), wd * 0.12, wd * 0.12)
+    lights = ("#FF4B5C", "#FFC94D", "#3DDC84", "#4FC3FF", "#FF7AD9")
+    for i in range(12):                                         # fairy lights, twinkling in turn
+        a = i / 12 * math.tau + now * 0.25
+        lc = QPointF(c.x() + math.cos(a) * (r + wd * 1.35), c.y() + math.sin(a) * (r + wd * 1.35))
+        tw = 0.35 + 0.65 * max(0.0, math.sin(now * 3.2 + i * 1.7))
+        col = QColor(lights[i % len(lights)])
+        lg = QRadialGradient(lc, wd * 1.0)
+        lg.setColorAt(0, alpha(col, 0.45 * tw))
+        lg.setColorAt(1, alpha(col, 0.0))
+        p.setBrush(lg)
+        p.drawEllipse(lc, wd * 1.0, wd * 1.0)
+        p.setBrush(mix(col, QColor("#FFFFFF"), 0.35 * tw))
+        p.drawEllipse(lc, wd * 0.34, wd * 0.34)
+    top = QPointF(c.x(), c.y() - r - wd * 0.9)                  # the star on top
+    sg = QRadialGradient(top, wd * 2.4)
+    sg.setColorAt(0, alpha("#FFE9A8", 0.55 * breathe))
+    sg.setColorAt(1, alpha("#FFE9A8", 0.0))
+    p.setBrush(sg)
+    p.drawEllipse(top, wd * 2.4, wd * 2.4)
+    pts = []
+    for k in range(10):
+        rr = wd * (1.35 if k % 2 == 0 else 0.55)
+        b = k / 10 * math.tau - math.pi / 2
+        pts.append(QPointF(top.x() + math.cos(b) * rr, top.y() + math.sin(b) * rr))
+    star = QPainterPath(pts[0])
+    for q in pts[1:]:
+        star.lineTo(q)
+    star.closeSubpath()
+    p.setBrush(QColor("#FFE08A"))
+    p.drawPath(star)
+    for i in range(7):                                          # snow drifting through the glow
+        k = ((now * 0.18 + i * 0.37) % 1.0)
+        x = c.x() + math.sin(i * 2.3 + now * 0.7) * (r + wd * 2.2)
+        y = c.y() - r - wd * 3 + k * (2 * r + wd * 6)
+        p.setBrush(alpha("#FFFFFF", 0.75 * math.sin(k * math.pi)))
+        p.drawEllipse(QPointF(x, y), wd * 0.22, wd * 0.22)
+    p.restore()
 
 
 def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: float = 1.0) -> None:
@@ -1470,6 +1552,8 @@ def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: flo
         p.drawEllipse(top)
     if base in ("wood", "pulse", "thorns", "gears", "phoenix", "holly", "snowflake", "northstar"):
         _paint_frame_32(p, base, c, r, wd, c1, c2, now)
+    if base == "yuletide":
+        _paint_yuletide(p, c, r, wd, now)
     if base == "laurel":                                      # leaves up both sides
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor("#E8C26A"))

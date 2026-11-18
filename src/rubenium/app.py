@@ -165,6 +165,12 @@ class App(QObject):
         self.trade = TradeLink(self)                 # the trade being made, kept in step with the server
         self.trade.changed.connect(self._trade_changed)
         self.econ.live_changed.connect(self._live_changed)
+        self.econ.locks_changed.connect(self._locks_changed)     # 4.0: the admin locked or unlocked something
+        self.econ.xp_changed.connect(self._xp_first)              # 4.0: the levels are explained once
+        self._xp_watch = QTimer(self)                             # (and again when the menu opens later)
+        self._xp_watch.setInterval(3000)
+        self._xp_watch.timeout.connect(lambda: self.econ.xp and self._xp_first())
+        self._xp_watch.start()
         threading.Thread(target=cleanup_files, daemon=True).start()
         self.casino = False                          # inside the casino (Games tab, shown bigger)
         self.casino_ask = None                       # the gambling warning is being shown
@@ -838,15 +844,67 @@ class App(QObject):
             self.window.ball.update()
 
     def faces_changed(self) -> None:
-        for key in ("friends", "admin"):
-            if self.window.expanded and key in self.window.pages:
-                page = self.window.pages[key][1]
-                for w in [page] + page.findChildren(QWidget):
+        """A picture arrived: repaint every page that is on screen (4.0: also Games, Shop and dialogs, which
+        show faces too)."""
+        if not self.window.expanded:
+            return
+        for key, entry in list(self.window.pages.items()):
+            page = entry[1]
+            if not page.isVisible():
+                continue
+            page.update()
+            for w in page.findChildren(QWidget):
+                if w.isVisible():
                     w.update()
 
     def _trade_changed(self) -> None:
         if self.window.showing("friends") and self.window.expanded:
             self.reload_page("friends")
+
+    def _xp_first(self) -> None:
+        """The first time levels reach this PC: explain them once, then the OG coupon (if any) opens."""
+        if getattr(self, "_xp_intro_on", False):
+            return
+        if self.cfg["xp_intro"]:
+            return self.offer_og_coupon()
+        if not self.online.logged_in() or not self.window.expanded or getattr(self.window, "sheet", None) is not None:
+            return                                   # asked again at the next XP update
+        self._xp_intro_on = True
+
+        def show() -> None:
+            from .levels import LevelIntro
+            if self.cfg["xp_intro"] or not self.window.expanded:
+                self._xp_intro_on = False
+                return
+            intro = LevelIntro(self)
+            intro.destroyed.connect(lambda *_a: setattr(self, "_xp_intro_on", False))
+            self.window.embed(intro)
+        QTimer.singleShot(1200, show)
+
+    def offer_og_coupon(self) -> None:
+        """OG players: their one-time XP coupon (to level 5) opens like a scratch card, once per session at most
+        until it is used. It stays in Inventory > Levels if they close it."""
+        if getattr(self, "_og_offered", False) or not self.window.expanded:
+            return
+        og = next((it for it in self.econ.items if it.get("item") == "coupon:og" and not it.get("locked")), None)
+        if og is None:
+            if self.econ.ready and self.econ.items:
+                self._xp_watch.stop()                # nothing more to offer: the watch is over
+            return
+        self._og_offered = True
+        from .levels import open_coupon
+        QTimer.singleShot(600, lambda: open_coupon(self, og["id"], "coupon:og"))
+
+    def _locks_changed(self) -> None:
+        """Show what is paused right away (the server already refuses it). A game being played is not rebuilt: its
+        next move gets the server's answer."""
+        self.window.sync_lock()
+        for key in ("games", "themes", "friends"):
+            if key == "games" and (self.casino or getattr(self, "games_sub", None) in ("g2048", "sweeper", "memory",
+                                                                                     "duel_run")):
+                continue
+            if self.window.showing(key):
+                self.reload_page(key)
 
     def _live_changed(self) -> None:
         """Giveaways, the admin tab, the lock: from the server's latest news."""
@@ -911,7 +969,8 @@ class App(QObject):
             text = tr("You received: {what}", what=", ".join(got) or "?")
         sfx.play("on")
         self.toast(text)
-        self.notifier.push("gift", tr("GIFT") if kind == "gift" else (tr("GIVEAWAY") if kind == "giveaway" else "RUBENIUM"), text)
+        self.notifier.push("gift", tr("GIFT") if kind == "gift" else (tr("GIVEAWAY") if kind == "giveaway" else "RUBENIUM"), text,
+                           "cases" if kind == "gift" else "inventory")
 
     def refresh_look(self) -> None:
         self.window._retime()

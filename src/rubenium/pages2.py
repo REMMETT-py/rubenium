@@ -774,8 +774,8 @@ PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": ScreenPage, "rl": 
 # Fixed order: music first, then what you use in a game, then the PC, then fun and looks, settings last.
 # 3.2: Games, Shop and Social (and the Giveaway) live in the online menu: one ONLINE button opens it.
 TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", "display", "Screen"),
-        ("rl", "rocket", "RL SWAP"), ("perf", "perf", "PC"), ("online", "globe", "ONLINE"),
-        ("new", "spark", "Updates"), ("settings", "cog", "Settings"), ("admin", "shield", "Admin")]
+        ("rl", "rocket", "RL SWAP"), ("perf", "perf", "PC"), ("new", "spark", "Updates"), ("settings", "cog", "Settings"),
+        ("admin", "shield", "Admin"), ("online", "globe", "")]           # 4.0: ONLINE is the globe alone, far right
 ONLINE_PAGES = ("games", "themes", "friends", "giveaway")
 LIVE_TABS: set = set()      # Giveaway (while one is live) and Admin (the admin account only)
 LOCK_PAGES = {"games", "themes", "friends", "giveaway"}     # covered while the admin has locked the app

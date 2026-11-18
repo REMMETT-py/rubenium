@@ -448,7 +448,7 @@ def badge_path(ident: str, rect: QRectF) -> QPainterPath:
 
 def animated(var: str) -> bool:
     """Does this colour move (and need repainting)?"""
-    return VARIANT.get(var, ("", "", "basic"))[2] in ("very", "super")
+    return VARIANT.get(var, ("", "", "basic"))[2] in ("rare", "very", "super")     # 4.0: Shiny glows and twinkles
 
 
 def _sparkle(p: QPainter, c: QPointF, r: float, colour: QColor) -> None:
@@ -476,6 +476,17 @@ def paint_badge(p: QPainter, ident: str, rect: QRectF, var: str = "grey", now: f
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     p.setOpacity(p.opacity() * dim)
     p.setPen(Qt.PenStyle.NoPen)
+    if effects and rarity == "rare" and dim >= 1.0:          # 4.0: Shiny (glowing) colours: a coloured glow that breathes
+        halo = QColor(main)
+        beat = 0.5 + 0.5 * math.sin(now * 2.0 + len(ident))
+        for w, a in ((u * 0.5, 0.06 + 0.04 * beat), (u * 0.26, 0.13 + 0.06 * beat)):
+            halo.setAlphaF(a)
+            pen = QPen(halo, w)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            p.setPen(pen)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
     if effects and rarity in ("very", "super") and dim >= 1.0:          # glow behind: a little for Titanium, a lot for Gold
         halo = QColor(main if rarity == "super" else "#DCEBFF")
         beat = 0.5 + 0.5 * math.sin(now * 2.4)
@@ -531,7 +542,7 @@ def paint_badge(p: QPainter, ident: str, rect: QRectF, var: str = "grey", now: f
         p.setClipPath(path)
         p.fillRect(box.adjusted(-2, -2, 2, 2), band)
         p.restore()
-    if rarity == "rare" and dim >= 1.0:                       # Shiny: a bright highlight, no glow
+    if rarity == "rare" and dim >= 1.0:                       # Shiny: a bright highlight and a light rim
         p.save()
         p.setClipPath(path)
         gl = QLinearGradient(box.topLeft(), QPointF(box.left() + box.width() * 0.7, box.center().y()))
@@ -539,6 +550,24 @@ def paint_badge(p: QPainter, ident: str, rect: QRectF, var: str = "grey", now: f
         gl.setColorAt(1.0, QColor(255, 255, 255, 0))
         p.fillRect(QRectF(box.left(), box.top(), box.width(), box.height() * 0.55), gl)
         p.restore()
+        rim = QColor(light)                                  # 4.0: seen even on the smallest badges
+        rim.setAlphaF(0.85)
+        p.setPen(QPen(rim, max(0.8, u * 0.05)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        if effects:                                          # two small twinkles, one at a time
+            seed = sum(ord(ch) for ch in ident)
+            for k in range(2):
+                phase = (now * 0.55 + k * 0.5 + seed * 0.017) % 1.0
+                tw = max(0.0, math.sin(phase * math.pi)) ** 2
+                if tw < 0.02:
+                    continue
+                ang = math.radians(seed * 53 + k * 160)
+                c = QPointF(rect.center().x() + u * 0.62 * math.cos(ang), rect.center().y() + u * 0.62 * math.sin(ang))
+                col = QColor("#FFFFFF")
+                col.setAlphaF(0.9 * tw)
+                _sparkle(p, c, u * 0.17 * (0.5 + 0.5 * tw), col)
     if effects and rarity == "super" and dim >= 1.0:          # twinkling stars around it
         seed = sum(ord(ch) for ch in ident)
         for k in range(7):

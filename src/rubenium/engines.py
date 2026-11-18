@@ -262,6 +262,8 @@ def crosshair_image(name: str):
 
 def crosshair_extent(c: dict) -> int:
     """Half-size in pixels needed to draw the crosshair."""
+    if c.get("style") == "image" and crosshair_image(c.get("image", "")) is not None:     # 4.0: your own picture
+        return int(c.get("image_px", 48)) // 2 + 3
     o = c["outline_w"] if c["outline"] else 0
     f = c.get("size", 100) / 100
     reach = (c["gap"] + c["length"]) * f
@@ -274,6 +276,17 @@ def crosshair_extent(c: dict) -> int:
 
 def paint_crosshair(p: QPainter, c: dict, cx: float, cy: float, k: int = 1) -> None:
     """Draw the crosshair centred on (cx, cy); k is an integer zoom used by the preview."""
+    if c.get("style") == "image":                   # 4.0: a picture of your own, at its size and opacity
+        pm = crosshair_image(c.get("image", ""))
+        if pm is not None:
+            side = max(4, int(c.get("image_px", 48))) * k
+            p.save()
+            p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+            p.setOpacity(p.opacity() * max(0.1, c["opacity"] / 100))
+            sc = pm.scaled(side, side, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            p.drawPixmap(int(cx - sc.width() / 2), int(cy - sc.height() / 2), sc)
+            p.restore()
+            return
     col = QColor(c["color"])
     col.setAlphaF(max(0.05, c["opacity"] / 100))
     black = QColor(0, 0, 0, int(col.alpha() * 0.9))

@@ -8,7 +8,7 @@ from PyQt6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPaint
 from PyQt6.QtWidgets import QWidget
 
 from .bazaar import AskDialog, build_trade
-from .hub import build_leaders, build_messages, build_trade_history, open_chat
+from .hub import NavTiles, build_leaders, build_messages, build_trade_history, open_chat
 from .core import DATA_DIR, S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, lang, mix, tr, ui
 from .pages import Page
 from .widgets import Button, IconButton, Label, Segmented, hbox, heading, vbox
@@ -53,75 +53,112 @@ def ago_text(stamp) -> str:
 # --------------------------------------------------------------------------- #
 
 class Faces:
+    """4.0, the root causes of pictures that came and went: (1) only the first 40 names asked were ever sent, the
+    others waited forever; (2) a list showing an older version than the one already loaded asked again and again,
+    and so did a player without a picture: every repaint sent a request, the requests piled up and other pictures
+    failed in turn; (3) places that did not know the version showed no picture at all. Now: every name is sent
+    (in batches), a picture at least as new as the one asked counts, "no picture" is remembered for that version,
+    failures wait before trying again, and the last picture known is shown while a newer one loads."""
+    BATCH = 100                                   # the server takes 200 names a call
+    RETRY_S = 20.0                                # after a failed call
+    UNKNOWN_S = 120.0                             # version unknown: ask at most every two minutes
+
     def __init__(self, ctx) -> None:
         self.ctx = ctx
         self.pix: dict = {}                       # lower name -> (version, QPixmap or None)
-        self._asking: set = set()
+        self._asking: dict = {}                   # lower name -> version wanted (0 = not known)
+        self._sent: set = set()
+        self._wait: dict = {}                     # lower name -> monotonic time before which we do not ask again
+        self._timer_on = False
         self.folder = DATA_DIR / "faces"
 
     def get(self, name: str, version: int):
         key = (name or "").lower()
-        if key and key == self.ctx.online.username().lower():          # yours: the newest version known
-            version = max(int(version or 0), int(self.ctx.econ.avatar_v or 0))
+        if not key:
+            return None
+        version = int(version or 0)
+        if key == self.ctx.online.username().lower():          # yours: the newest version known
+            version = max(version, int(self.ctx.econ.avatar_v or 0))
         have = self.pix.get(key)
-        if have is not None and have[0] == version:
-            return have[1]
-        if not version:                                  # version not known yet: the last picture saved on this PC
-            if have is not None and have[1] is not None:
-                return have[1]
-            saved = sorted(self.folder.glob(f"{key}_*.jpg")) if self.folder.is_dir() and key else []
+        if have is not None and version and have[0] >= version:
+            return have[1]                         # this version, or a newer one than the list knows
+        if have is None:                           # first look: the last picture saved on this PC
+            saved = sorted(self.folder.glob(f"{key}_*.jpg"), key=lambda f: _face_version(f.stem)) \
+                if self.folder.is_dir() else []
             if saved:
+                v = _face_version(saved[-1].stem)
                 pm = QPixmap(str(saved[-1]))
                 if not pm.isNull():
-                    self.pix[key] = (-2, pm)
-                    return pm
-            return None
-        disk = self.folder / f"{key}_{version}.jpg"
-        if disk.is_file():
-            pm = QPixmap(str(disk))
-            self.pix[key] = (version, pm if not pm.isNull() else None)
-            try:
-                disk.touch()
-            except OSError:
-                pass
-            return self.pix[key][1]
-        self._fetch(key)
-        return have[1] if have else None
+                    have = self.pix[key] = (v, pm)
+                    if not version or v >= version:
+                        return pm
+        if not version:
+            if have is None or have[0] < 0:
+                self._fetch(key, 0, self.UNKNOWN_S)
+            return have[1] if have else None
+        self._fetch(key, version, self.RETRY_S)
+        return have[1] if have else None           # the older picture stays until the new one is here
 
-    def _fetch(self, key: str) -> None:
-        if key in self._asking or not self.ctx.online.logged_in():
+    def _fetch(self, key: str, version: int, wait: float) -> None:
+        if key in self._asking or key in self._sent or not self.ctx.online.logged_in():
             return
-        self._asking.add(key)
-        QTimer.singleShot(150, self._send)
+        if time.monotonic() < self._wait.get(key, 0.0):
+            return
+        self._asking[key] = version
+        self._wait[key] = time.monotonic() + wait
+        if not self._timer_on:
+            self._timer_on = True
+            QTimer.singleShot(150, self._send)
 
     def _send(self) -> None:
-        names = sorted(self._asking)[:40]
+        self._timer_on = False
+        names = sorted(self._asking)[:self.BATCH]
         if not names:
             return
+        wanted = {n: self._asking.pop(n) for n in names}
+        self._sent.update(names)
+        if self._asking:                           # more than one batch: the rest go right after
+            self._timer_on = True
+            QTimer.singleShot(250, self._send)
 
         def got(ok: bool, data) -> None:
-            self._asking.difference_update(names)
+            self._sent.difference_update(names)
             if not ok or not isinstance(data, dict):
-                return
-            self.folder.mkdir(parents=True, exist_ok=True)
+                return                             # asked again after RETRY_S, never in a loop
+            changed = False
+            try:
+                self.folder.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                pass
             for name in names:
                 info = data.get(name)
-                if not info:
-                    self.pix[name] = (-1, None)
+                want = wanted.get(name, 0)
+                if not info:                       # no picture: remembered for this version
+                    old = self.pix.get(name)
+                    if old is None or old[1] is not None or old[0] < want:
+                        self.pix[name] = (max(want, 0) or -1, None)
+                        changed = True
                     continue
+                v = int(info.get("v") or 0)
                 try:
                     raw = base64.b64decode(info.get("data") or "")
-                    img = QImage.fromData(raw, "JPG")
-                    if img.isNull() or img.width() > 256 or img.height() > 256:
-                        continue
-                    v = int(info.get("v") or 0)
+                except ValueError:
+                    raw = b""
+                img = QImage.fromData(raw, "JPG") if raw else QImage()
+                if img.isNull() or img.width() > 512 or img.height() > 512:
+                    self.pix[name] = (max(v, want), None)          # broken picture: the letter, no loop
+                    changed = True
+                    continue
+                self.pix[name] = (v, QPixmap.fromImage(img))
+                changed = True
+                try:
                     for old in self.folder.glob(f"{name}_*.jpg"):
                         old.unlink(missing_ok=True)
                     (self.folder / f"{name}_{v}.jpg").write_bytes(raw)
-                    self.pix[name] = (v, QPixmap.fromImage(img))
-                except (ValueError, OSError):
-                    continue
-            self.ctx.faces_changed()
+                except OSError:
+                    pass                           # the picture still shows; only the copy on disk is missing
+            if changed:
+                self.ctx.faces_changed()
         self.ctx.online.ask("rb_avatars_get", {"names": names}, got)
 
     def upload(self, path: str, done) -> None:
@@ -156,11 +193,18 @@ class Faces:
         self.ctx.econ.call("rb_avatar_set", {"picture": text}, back)
 
 
+def _face_version(stem: str) -> int:
+    try:
+        return int(stem.rsplit("_", 1)[1])
+    except (IndexError, ValueError):
+        return 0
+
+
 def paint_face(p: QPainter, rect: QRectF, ctx, name: str, version: int, online=None, frame=None, now: float = -1.0) -> None:
     """A round profile picture (or the first letter), with their frame and a small online dot."""
     if frame is None:
         frame = ctx.econ.look_of(name).get("frame", "")
-    pm = ctx.faces.get(name, version) if version else None
+    pm = ctx.faces.get(name, version)              # 4.0: also when the version is not known here
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
@@ -225,7 +269,7 @@ def paint_name_tags(p: QPainter, x: float, cy: float, ctx, name: str, admin: boo
 class Ticker(QTimer):
     """Redraws a widget a few times a second while it shows something that moves (a frame, a tag, a banner)."""
 
-    def __init__(self, widget, ms: int = 60) -> None:
+    def __init__(self, widget, ms: int = 80) -> None:
         super().__init__(widget)
         self.setInterval(ms)
         self.timeout.connect(widget.update)
@@ -449,6 +493,80 @@ class PerkRow(QWidget):
         p.drawText(QRectF(S(130), 0, self.width() - S(130), self.height()), int(Qt.AlignmentFlag.AlignVCenter), self.text)
 
 
+class ActivityRow(QWidget):
+    """One thing waiting for you: a coloured mark, the text, a green button (and sometimes a second one)."""
+
+    def __init__(self, colour: str, text: str, action: str, on_go, second=None, width: int = 0) -> None:
+        super().__init__()
+        self.colour = QColor(colour)
+        self.setFixedHeight(S(40))
+        lay = hbox(self, 6, (14, 0, 6, 0))
+        lay.addWidget(Label(text, 11.5, TEXT, bold=True, shrink=9), 1)
+        if second is not None:
+            b2 = Button(second[0], "ghost", 28)
+            b2.setFixedWidth(max(S(64), b2.sizeHint().width()))
+            b2.clicked.connect(second[1])
+            lay.addWidget(b2)
+        go = Button(action, "primary", 28)
+        go.setFixedWidth(max(S(64), go.sizeHint().width()))
+        go.clicked.connect(on_go)
+        lay.addWidget(go)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 1.5, -0.5, -1.5)
+        p.setPen(QPen(alpha(self.colour, 0.45), 1.1))
+        p.setBrush(alpha(self.colour, 0.07))
+        p.drawRoundedRect(r, S(10), S(10))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(self.colour)
+        p.drawRoundedRect(QRectF(r.left() + S(5), r.top() + S(9), S(3), r.height() - S(18)), S(1.5), S(1.5))
+
+
+def build_activity(page, lay) -> None:
+    """4.0: Online Activity: requests to answer, games to join, unread messages, your open trade. One place."""
+    from .core import TEXT_FAINT
+    ctx = page.ctx
+    live = ctx.econ.live
+    act = live.get("activity") or {}
+    rows = []
+    for ask in live.get("trades") or []:
+        rows.append(("#E8C26A", tr("{name} wants to trade", name=ask.get("from", "?")), tr("Open"),
+                     lambda a=ask: page.accept_trade(a["id"]),
+                     (tr("No"), lambda a=ask: ctx.econ.call("rb_trade_cancel", {"trade": a["id"]},
+                                                            lambda _o, _d: ctx.econ.poll_live()))))
+    if live.get("open_trade") and not ctx.trade.trade_id:
+        rows.append(("#E8C26A", tr("Your trade is waiting"), tr("Back to it"), lambda: page.open_trade(live["open_trade"]), None))
+    asks = int(live.get("asks") or 0)
+    if asks:
+        rows.append(("#3DDC84", tr("{n} friend requests", n=asks) if asks > 1 else tr("1 friend request"), tr("See"),
+                     lambda: (setattr(ctx, "social_tab", 0), ctx.reload_page()), None))
+    unread = int(act.get("unread") or getattr(ctx, "msg_unread", 0) or 0)
+    if unread:
+        rows.append(("#2EE6D6", tr("{n} unread messages", n=unread) if unread > 1 else tr("1 unread message"), tr("Read"),
+                     lambda: (setattr(ctx, "social_tab", 2), ctx.reload_page()), None))
+    golf, flip = int(act.get("golf_open") or 0), int(act.get("flip_open") or 0)
+    from .notify import go
+    if golf:
+        rows.append(("#3DDC84", tr("{n} Mini Golf matches to join", n=golf) if golf > 1 else tr("1 Mini Golf match to join"),
+                     tr("Join"), lambda: go(ctx, "golf"), None))
+    if flip:
+        rows.append(("#FF8A3D", tr("{n} coinflips to join", n=flip) if flip > 1 else tr("1 coinflip to join"),
+                     tr("Join"), lambda: go(ctx, "flip"), None))
+    for g in live.get("giveaways") or []:
+        if g.get("state") == "live" and not g.get("joined"):
+            rows.append(("#FF5CC8", tr("Live giveaway: {title}", title=g.get("title", "")), tr("Open"), lambda: go(ctx, "giveaway"), None))
+            break
+    lay.addWidget(Label(tr("ONLINE ACTIVITY"), 9.5, TEXT_FAINT, weight=QFont.Weight.Bold))
+    if not rows:
+        lay.addWidget(ActivityRow("#5A626B", tr("All quiet. Start a game others can join:"), tr("Play"),
+                                  lambda: go(ctx, "flip"), (tr("Mini Golf"), lambda: go(ctx, "golf"))))
+        return
+    for colour, text, action, fn, second in rows[:6]:
+        lay.addWidget(ActivityRow(colour, text, action, fn, second))
+
+
 class FriendsPage(Page):
     """The Social tab."""
     key = "friends"
@@ -489,46 +607,44 @@ class FriendsPage(Page):
         card = StatsCard(ctx, me, self.W)
         card.picture.connect(self._picture)
         self.lay.addWidget(card)
-        line = hbox(spacing=6)
-        rename = Button(tr("Change Name"), "ghost", 28)
-        rename.clicked.connect(self._rename)
-        songs = Button(tr("Song History"), "ghost", 28, icon="note")
-
-        def open_songs() -> None:
-            from .hub import HistoryWindow
-            ctx._hist = HistoryWindow(ctx)
-        songs.clicked.connect(open_songs)
-        edit = Button(tr("Edit Profile"), "primary", 28)
+        line = hbox(spacing=6)                       # 4.0: one row, the three things you do with your profile
+        edit = Button(tr("Edit Profile"), "primary", 30, icon="spark")
 
         def open_edit() -> None:
             ctx.social_edit = True
             ctx.reload_page()
         edit.clicked.connect(open_edit)
+        stats = Button(tr("My Stats"), "ghost", 30, icon="perf")
+        stats.clicked.connect(lambda: self.open_profile(ctx.online.username()))
+        songs = Button(tr("Songs"), "ghost", 30, icon="note")
+
+        def open_songs() -> None:
+            from .hub import HistoryWindow
+            ctx._hist = HistoryWindow(ctx)
+        songs.clicked.connect(open_songs)
         line.addWidget(edit, 1)
+        line.addWidget(stats, 1)
         line.addWidget(songs, 1)
         self.lay.addLayout(line)
-        line = hbox(spacing=6)
-        stats = Button(tr("My Stats"), "ghost", 28)
-        stats.clicked.connect(lambda: self.open_profile(ctx.online.username()))
-        line.addWidget(stats, 1)
-        line.addWidget(rename, 1)
-        self.lay.addLayout(line)
-        live = ctx.econ.live
-        if live.get("open_trade") and not ctx.trade.trade_id:
-            b = Button(tr("Back to Your Trade"), "primary", 32)
-            b.clicked.connect(lambda: self.open_trade(live["open_trade"]))
-            self.lay.addWidget(b)
-        for ask in live.get("trades") or []:
-            self.lay.addWidget(TradeAsk(self, ask))
+        build_activity(self, self.lay)               # 4.0: everything waiting for you, in one place
         tab = int(getattr(ctx, "social_tab", 0) or 0)
         unread = int(getattr(ctx, "msg_unread", 0) or 0)
-        seg = Segmented([tr("Friends"), tr("Users"), tr("Chat") + (f" {unread}" if unread else ""), tr("Top"), tr("Trades")], tab)
+        asks_n = int(ctx.econ.live.get("asks") or 0)
+        nav = NavTiles([(tr("Friends"), "users"), (tr("Users"), "search"), (tr("Chat"), "chat"), (tr("Trades"), "swap")],
+                       {0: 0, 1: 1, 2: 2, 4: 3}.get(tab, -1), per_row=4, badges={0: asks_n, 2: unread})
 
         def switch(i: int) -> None:
-            ctx.social_tab = i
+            ctx.social_tab = [0, 1, 2, 4][i]
             ctx.reload_page()
-        seg.changed.connect(switch)
-        self.lay.addWidget(seg)
+        nav.changed.connect(switch)
+        self.lay.addWidget(nav)
+        if tab == 3:
+            top = hbox(spacing=8)
+            back = IconButton("back", 28, tip=tr("Back"))
+            back.clicked.connect(lambda: (setattr(ctx, "social_tab", 0), ctx.reload_page()))
+            top.addWidget(back)
+            top.addWidget(Label("🏆  " + tr("Leaderboards"), 15, "#E8C26A", bold=True), 1)
+            self.lay.addLayout(top)
         if tab == 2:
             return build_messages(self, self.lay)
         if tab == 3:
@@ -631,9 +747,15 @@ class FriendsPage(Page):
         top.addWidget(back)
         top.addWidget(Label(tr("Edit Profile"), 16, bold=True), 1)
         self.lay.addLayout(top)
-        pic = Button(tr("Change your picture (PNG or JPG)"), "ghost", 30)
+        line = hbox(spacing=6)
+        pic = Button(tr("Change Picture"), "ghost", 30)
+        pic.setToolTip(tr("PNG or JPG"))
         pic.clicked.connect(self._picture)
-        self.lay.addWidget(pic)
+        rename = Button(tr("Change Name"), "ghost", 30)
+        rename.clicked.connect(self._rename)
+        line.addWidget(pic, 1)
+        line.addWidget(rename, 1)
+        self.lay.addLayout(line)
         build_profile_style(self, self.lay)
 
     def _picture(self) -> None:
@@ -904,6 +1026,8 @@ class FriendsPage(Page):
     def on_hide(self) -> None:
         self._poll.stop()
         self._anim.stop()
+        if self.ctx.trade.finished():            # 4.0: a trade summary closes when you leave it (not on a rebuild)
+            QTimer.singleShot(0, self.ctx.trade.close_if_left)
 
 
 class ProfileCard(QWidget):
@@ -964,6 +1088,23 @@ class ProfileCard(QWidget):
         if eq.get("tag"):
             from .cosmetics import paint_tag
             paint_tag(p, nx, top.bottom() - S(17), eq["tag"], now, 9)
+        lv = prof.get("level")                              # 4.0: their level badge, on the banner
+        if isinstance(lv, dict):
+            from .levels import paint_level_badge
+            n = int(lv.get("level") or 0)
+            c = QPointF(top.right() - S(30), top.top() + S(30))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(0, 0, 0, 110))
+            p.drawEllipse(c, S(24), S(24))
+            paint_level_badge(p, c, S(38), int(lv.get("badge") or 0), now)
+            text = tr("Level {n}", n=n)
+            p.setFont(font(9, QFont.Weight.ExtraBold))
+            tw = p.fontMetrics().horizontalAdvance(text) + S(12)
+            pill = QRectF(c.x() - tw / 2, c.y() + S(20), tw, S(15))
+            p.setBrush(QColor(0, 0, 0, 170))
+            p.drawRoundedRect(pill, S(7), S(7))
+            p.setPen(QColor("#FFE7A8"))
+            p.drawText(pill, int(Qt.AlignmentFlag.AlignCenter), text)
         cells = ((tr("Online") if prof.get("online") else (tr("Offline") if known else "—"), tr("Status")),
                  (played_text(int(prof.get("minutes", 0))), tr("Played")), (date_text(prof.get("since")), tr("Member Since")))
         left = face.right() + S(6)

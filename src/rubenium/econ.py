@@ -50,7 +50,8 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_same_message": "You just sent that: try saying something new", "rb_no_key": "You need a key to open it",
           "rb_case_none": "Buy the case first", "rb_one_lobby": "You already have one going: finish or close it first",
           "rb_flip_range": "Your items must be worth about the same", "rb_flip_locked": "Too late: it is locked in",
-          "rb_not_your_turn": "Not your turn"}
+          "rb_not_your_turn": "Not your turn", "rb_lockdown": "Rubenium is in lockdown for a moment: everything is safe",
+          "rb_feature_locked": "This is switched off for a moment", "rb_level_needed": "Unlocks at a higher level"}
 
 
 def server_missing(data) -> bool:
@@ -65,6 +66,8 @@ class Econ(QObject):
     loaded = pyqtSignal()           # the first full answer from the server arrived
     live_changed = pyqtSignal()     # giveaways, sales or trade requests changed
     looks_changed = pyqtSignal()    # someone changed their banner, frame or tag
+    xp_changed = pyqtSignal()       # 4.0: XP or level moved
+    locks_changed = pyqtSignal()    # 4.0: the admin locked or unlocked a part of Rubenium (or a lockdown)
 
     def __init__(self, ctx) -> None:
         super().__init__()
@@ -78,6 +81,7 @@ class Econ(QObject):
         self.imported = True
         self.admin = False
         self.holding = False
+        self._held_rounds: list = []             # 4.0: casino rounds still turning (balance from polls waits)
         self.avatar_v = 0
         self.stock: dict = {}                    # case id -> gifted cases waiting
         self.scratch_in = 0                      # seconds until the next scratch card
@@ -86,6 +90,8 @@ class Econ(QObject):
         self.looks: dict = {}                    # username -> {tag, frame, banner} for everyone (2.6)
         self._looks_at = 0.0
         self.gold_keys = 0                       # OG event keys (3.0.0)
+        self.xp: dict = {}                       # 4.0: {xp, level, into, need, badge, today, cap}
+        self.locks: dict = {"lockdown": False, "locked": []}
         self.wear_data: dict = {}                   # your banners: item -> {minutes, level, steps} (3.0.0 gold banners)
         self.live: dict = {}                     # giveaways, sales, trade requests (asked every 20 s)
         self._live_sig = ""
@@ -389,6 +395,7 @@ class Econ(QObject):
         self.streak_day = data.get("streak_day")
         self.items = list(data.get("items") or [])
         self.seen = set(data.get("seen") or [])
+        self.take_xp(data.get("xp"))
         self._index()
         self.absorb(data)
         self.fetch_gold_keys()
@@ -418,6 +425,8 @@ class Econ(QObject):
             notes = data.pop("notices", None) or []
             before = (self.coins, self.keys)
             self.absorb(data)
+            self.take_xp(data.get("xp"))
+            self.take_locks(data.get("locks"))
             sig = json.dumps([data.get("giveaways"), data.get("sales"), data.get("trades"), data.get("asks"),
                               data.get("open_trade")], sort_keys=True, default=str)
             self.live = data
@@ -436,6 +445,53 @@ class Econ(QObject):
         self.online.ask("rb_live", {}, got, raw=True)
         self.fetch_looks()
 
+    # -- 4.0: levels and locks
+    def take_xp(self, x) -> None:
+        if not isinstance(x, dict) or "xp" not in x:
+            return
+        old = self.xp
+        self.xp = dict(x)
+        if old.get("xp") != x.get("xp") or old.get("badge") != x.get("badge"):
+            self.xp_changed.emit()
+
+    @property
+    def level(self) -> int:
+        return int(self.xp.get("level") or 0)
+
+    def take_locks(self, lk) -> None:
+        if not isinstance(lk, dict):
+            return
+        new = {"lockdown": bool(lk.get("lockdown")), "locked": sorted(lk.get("locked") or [])}
+        if new != self.locks:
+            self.locks = new
+            self.locks_changed.emit()
+
+    def lockdown_cover(self) -> bool:
+        """Lockdown (or online mode locked): the online tabs are covered, except for the admins who must be able to
+        lift it (the server still refuses them everything that is locked)."""
+        return not self.admin and (bool(self.locks.get("lockdown")) or "online" in (self.locks.get("locked") or []))
+
+    def is_locked(self, feature: str) -> bool:
+        """The admin switched this part off (or Rubenium is in lockdown). The server refuses it anyway."""
+        return bool(self.locks.get("lockdown")) or feature in (self.locks.get("locked") or [])
+
+    def hold_round(self, on: bool) -> None:
+        import time
+        if on:
+            self._held_rounds.append(time.monotonic())
+        elif self._held_rounds:
+            self._held_rounds.pop(0)
+
+    def rounds_held(self) -> bool:
+        """A round still turning (never more than 30 s: a round that never ends cannot freeze the balance)."""
+        import time
+        now = time.monotonic()
+        self._held_rounds = [t for t in self._held_rounds if now - t < 30]
+        return bool(self._held_rounds)
+
+    def fetch_xp(self) -> None:
+        self.online.ask("rb_xp_me", {}, lambda ok, d: self.take_xp(d) if ok else None)
+
     def _index(self) -> None:
         self._owned = {}
         for it in self.items:
@@ -446,7 +502,7 @@ class Econ(QObject):
         if not isinstance(ans, dict):
             return
         for key in ("coins", "keys", "coin_min", "key_min", "minutes"):
-            if self.holding and key in ("coins", "keys"):          # a case strip is still turning: no spoilers
+            if (self.holding or self.rounds_held()) and key in ("coins", "keys"):   # a strip or a wheel still turning
                 continue
             if ans.get(key) is not None:
                 setattr(self, key, int(ans[key]))

@@ -1101,6 +1101,18 @@ def close_app(exe: str) -> bool:
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines])
+    ("4.0", ['Levels 0 to 100 with XP from everything you play, a badge every 5 levels, a level-up scene and Inventory > Levels',
+             'XP coupons in cases, the wheel and scratch cards. OG players get a free coupon to level 5',
+             'Online menu: pick the two sections you want side by side, gold Leaderboards button, XP bar on top',
+             "Trades: look at your friend's inventory, READY lights for both players and a summary at the end",
+             'New games: Tower, Keno and Limbo. Roulette numbers. New minigames: 2048 and Minesweeper, with leaderboards',
+             'Mini Golf: 16 new holes (40 in all) and smoother, better synced matches',
+             'Coinflip: create, put in your items, confirm. BOT and RUBENIUM OFFER flips with the same fair coin',
+             'Economy: fairer prices for every item, better quick sell; market listings came back to their owners',
+             'Cases renamed with honest descriptions and a clear chance overview; opening speed in Settings',
+             'Advent calendar: Christmas look, door 1 is a Legendary frame for everyone',
+             'Market search, notification history, chat reactions, Online Activity, your own crosshair image',
+             'Compact Music Mode while gaming, Beat Tap keyboard fix, profile pictures load every time, less lag online']),
     ("3.2", ['ONLINE: one button instead of Games, Shop and Social. The menu flies up and a big online menu drops down',
              'Coinflip: put in up to 6 items, pick black or white. Winner takes everything (49% to 51% chance)',
              'Mini Golf and Coinflip use open lobbies: open one, anyone can join. No more invitations',

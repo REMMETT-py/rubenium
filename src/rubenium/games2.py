@@ -85,15 +85,19 @@ class BeatRush(QWidget):
         self.combo = self.best = 0
         self.result = {}
         self.state = "play"
-        self.setFocus()
+        self.ctx.window.allow_keys(True)              # 4.0: the keys D F J K must reach this window
+        self.setFocus(Qt.FocusReason.OtherFocusReason)
+        self.grabKeyboard()                           # nothing else takes a key while notes fall
         self._frames.start()
 
     def abort(self) -> None:
         self._frames.stop()
         self.state = "idle"
+        self.releaseKeyboard()
 
     def hideEvent(self, _e) -> None:
         self._frames.stop()
+        self.releaseKeyboard()
 
     def _ms(self) -> float:
         return (time.monotonic() - self.t0) * 1000
@@ -125,6 +129,7 @@ class BeatRush(QWidget):
 
     def _send(self) -> None:
         self.state = "send"
+        self.releaseKeyboard()
         for lane, i in list(self.holding.items()):
             self.hits[i]["u"] = int(self._ms())
         self.holding = {}
@@ -784,11 +789,19 @@ class ScratchCard(QWidget):
         self.ctx.econ.changed.emit()
         sfx.play("on")
         c, k = int(self.prize.get("coins_won") or 0), int(self.prize.get("keys_won") or 0)
+        cp = self.prize.get("coupon")
+        if cp:                                                   # 4.0: an XP coupon too (already in your items)
+            from .levels import COUPONS
+            self.ctx.econ.refresh()
+            QTimer.singleShot(600, lambda: sfx.tune("coupon"))
         if self.prize.get("gold_wheel"):                         # 3.1: the Golden Wheel opens
             from .goldwheel import open_gold_wheel
             QTimer.singleShot(900, lambda: open_gold_wheel(self.ctx))
             return
-        self.ctx.toast(("+" + coins_text(c)) if c else tr("+{n} key(s)", n=k))
+        text = ("+" + coins_text(c)) if c else tr("+{n} key(s)", n=k)
+        if cp:
+            text += "  ·  " + tr("+ {what}", what=tr(COUPONS.get(cp, ("XP coupon",))[0]))
+        self.ctx.toast(text)
 
     def reset(self) -> None:
         self.prize, self.asked, self.cleared, self.done, self.last = {}, False, 0, False, None
@@ -836,6 +849,11 @@ class ScratchCard(QWidget):
             p.drawText(QRectF(r.left(), r.center().y() - S(20), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("Golden Wheel!") if rar == "golden" else
                        coins_text(c) + " " + tr("coins") if c else tr("{n} key(s)", n=k))
+            if self.prize.get("coupon"):                          # 4.0: and an XP coupon
+                from .levels import COUPONS
+                p.setFont(font(11, QFont.Weight.Bold))
+                p.drawText(QRectF(r.left(), r.bottom() - S(34), r.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                           "+ " + tr(COUPONS.get(self.prize["coupon"], ("XP coupon",))[0]))
         if self.cover is None:
             self._make_cover()
         if not self.done:
@@ -844,6 +862,43 @@ class ScratchCard(QWidget):
             p.setOpacity(1 - (time.monotonic() - self.done_at) / 0.4)
             p.drawImage(r.topLeft(), self.cover)
             p.setOpacity(1.0)
+
+
+class ScratchOdds(QWidget):
+    """4.0: the scratch card's real odds, as the server sends them (the same numbers it rolls with)."""
+    COLOURS = {"golden": "#E8B23A"}
+
+    def __init__(self, rows: list, width: int) -> None:
+        super().__init__()
+        self.rows = rows
+        self.setFixedSize(width, S(25) * len(rows) + S(2))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        for k, row in enumerate(reversed(self.rows)):
+            tier = row.get("tier", "standard")
+            col = QColor(self.COLOURS.get(tier) or RARITY_COLOURS.get(tier, "#9AA4AD"))
+            r = QRectF(0, k * S(25), self.width(), S(23))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.09))
+            p.drawRoundedRect(r, S(6), S(6))
+            p.setBrush(col)
+            p.drawEllipse(QPointF(r.left() + S(12), r.center().y()), S(4), S(4))
+            p.setPen(col)
+            p.setFont(font(11, QFont.Weight.Bold))
+            name = tr("Golden") if tier == "golden" else tr(RARITY_NAMES.get(tier, tier))
+            p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
+            nw = p.fontMetrics().horizontalAdvance(name) + S(34)
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left() + nw, r.top(), r.width() - nw - S(56), r.height()), int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(tr(str(row.get("prize", ""))), Qt.TextElideMode.ElideRight,
+                                                  int(r.width() - nw - S(56))))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(11, QFont.Weight.Bold))
+            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       f"{row.get('pct', 0)}%")
 
 
 class ScratchRow(QWidget):
@@ -1132,7 +1187,9 @@ class BigCard(QWidget):
 def build_minigames(page, lay) -> None:
     """Earn coins: the free mini games, each with what it pays."""
     page._back_bar(lay, tr("Earn coins"))
-    lay.addWidget(Label(tr("Each game pays up to 200 coins every 2 hours."), 10.5, TEXT_DIM, wrap_w=page.W))
+    cap = int(float(page.ctx.econ.cfg.get("game_window_cap", 300) or 300) * (1 + 0.004 * page.ctx.econ.level))
+    lay.addWidget(Label(tr("Each game pays up to {n} coins every 2 hours. Higher levels pay a little more.", n=cap), 10.5,
+                        TEXT_DIM, wrap_w=page.W))
     games = [
         ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
          ("#FF5C8A", "#7A1FFF"), "12-50", lambda: page._show_mini(True)),
@@ -1140,6 +1197,10 @@ def build_minigames(page, lay) -> None:
          ("#FF8A3D", "#C2271F"), "12-50", lambda: page._show_park(True)),
         ("Memory", tr("Find the pairs in as few flips as you can. 3 sizes, 3 card styles."), "gem",
          ("#4FC3FF", "#2E5BFF"), "12-55", lambda: page.open_sub("memory")),
+        ("2048", tr("Slide and merge the tiles. Classic, Relaxed or Hard. Leaderboard for each."), "grid",
+         ("#E8C26A", "#E8503A"), "5-360", lambda: page.open_sub("g2048")),
+        ("Minesweeper", tr("Open every safe cell, as fast as you can. Easy, Medium, Hard. Leaderboard for each."), "flag",
+         ("#3DDC84", "#0F6B3A"), "35-420", lambda: page.open_sub("sweeper")),
     ]
     for name, sub, icon, cols, pay, go in games:
         card = BigCard(tr(name), sub, icon, cols, go, 78)

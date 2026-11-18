@@ -9,6 +9,7 @@ from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
 from PyQt6.QtGui import QColor, QFont, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
+from . import win
 from .core import S, sfx, alpha, font, tr
 from .widgets import Button
 
@@ -28,7 +29,7 @@ def open_gold_wheel(ctx) -> None:
         ctx.econ.absorb(data)
         ctx._gold_scene = GoldWheelScene(ctx, data)
         ctx._gold_scene.show()
-        ctx._gold_scene.raise_()
+        ctx._gold_scene.keep_on_top()
     ctx.econ.call("rb_gold_wheel", {}, got, hold=True)
 
 
@@ -99,7 +100,19 @@ class GoldWheelScene(QWidget):
         u = max(0.0, min(1.0, (t - 1.0) / SPIN_S))
         return self.target * (1 - (1 - u) ** 4)
 
+    def keep_on_top(self) -> None:
+        """4.0: above everything, the online menu included (it is a top-most window too): raised again and again."""
+        self.raise_()
+        if win.IS_WIN:
+            try:
+                win.set_topmost(int(self.winId()))
+            except Exception:  # noqa: BLE001
+                pass
+
     def _tick(self) -> None:
+        if self._ticks % 30 == 0 or int((time.monotonic() - self.t0) * 2) != getattr(self, "_last_raise", -1):
+            self._last_raise = int((time.monotonic() - self.t0) * 2)
+            self.keep_on_top()
         t = time.monotonic() - self.t0
         seg = 360.0 / len(WHEEL_SLOTS)
         n = int(self.angle(t) / seg)

@@ -27,72 +27,115 @@ def pocket_colour(slot: int) -> str:
 
 
 class Roulette(Game):
-    """Pick a colour, the strip spins and stops on a pocket. 12 red and 12 black (x2), 1 gold (x24): 96% back."""
-    PICKS = ["red", "black", "gold"]
-    MULT = {"red": 2, "black": 2, "gold": 24}
+    """A betting board under a spinning strip of 25 pockets. Red or black, 1-12 or 13-24 pay x2; the gold pocket or
+    one number pays x24 (96% back on every bet). The pick stays until you change it: press Spin again to repeat."""
     CELL = 46
 
     def __init__(self, page) -> None:
         super().__init__(page)
-        self.choice = 0
+        self.pick_id = "red"
         self.history: list = []
         self.slot = 0
         self.offset = 0.0
         self._from = self._to = 0.0
         self._t0 = 0.0
         self.won = None
+        self._spin_until = 0.0
+        self.hits: list = []                                      # (rect, pick) of the board, for clicks
         self.order = [(k * 7) % 25 for k in range(25)]            # the pockets around the wheel, mixed
 
-    def options(self):
-        return [tr("Red ×2"), tr("Black ×2"), tr("Gold ×24")], self.choice
+    @staticmethod
+    def mult(pick: str) -> int:
+        return 24 if pick == "gold" or pick.startswith("n:") else 2
 
-    def set_option(self, i: int) -> None:
-        if not self.busy:
-            self.choice = i
-            self.update()
+    @staticmethod
+    def chance(pick: str) -> int:
+        return 1 if pick == "gold" or pick.startswith("n:") else 12
 
-    def pick(self) -> str:
-        return self.PICKS[self.choice]
+    def pick_name(self, pick: str) -> str:
+        if pick.startswith("n:"):
+            return tr("Number {n}", n=pick[2:])
+        return {"red": tr("Red"), "black": tr("Black"), "gold": tr("Gold"), "low": "1-12", "high": "13-24"}[pick]
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.busy:
+            return
+        pos = e.position()
+        for rect, pick in self.hits:
+            if rect.contains(pos):
+                if pick != self.pick_id:
+                    self.pick_id = pick
+                    sfx.play("pick")
+                    self.page.sync()
+                    self.update()
+                return
 
     def play(self) -> None:
         if self.busy or self.waiting or not self.take():
             return
         self.won = None
-        self.ask("rb_roulette", {"bet": self.stake, "pick": self.pick()}, self._rolled, once=True, refund=self.stake)
+        self.ask("rb_roulette", {"bet": self.stake, "pick": self.pick_id}, self._rolled, once=True, refund=self.stake)
 
     def _rolled(self, ans: dict) -> None:
         self.slot = int(ans.get("slot", 0))
         self._paid = int(ans.get("paid", 0))
         self._win = bool(ans.get("win"))
         idx = self.order.index(self.slot)
-        laps = 4
         self._from = self.offset % (25 * self.CELL)
-        self._to = (laps * 25 + idx) * self.CELL + RNG.uniform(-0.32, 0.32) * self.CELL
+        self._to = (4 * 25 + idx) * self.CELL + RNG.uniform(-0.32, 0.32) * self.CELL
         self._t0 = time.monotonic()
         self._last_cell = -1
-        self.animate(5.0)
+        self.animate(4.6)
         QTimer.singleShot(4300, self._done)
 
     def _done(self) -> None:
         self.offset = self._to
+        self._t0 = 0.0
         self.won = self._win
-        self.history.insert(0, pocket_colour(self.slot))
+        self.history.insert(0, self.slot)
         del self.history[14:]
         self.finish(self._paid)
 
     def buttons(self) -> list:
-        return [(tr("Spin"), "primary", self.play, not self.busy)]
+        return [(tr("Spin") + "  ·  " + self.pick_name(self.pick_id), "primary", self.play, not self.busy)]
+
+    def _chip(self, p: QPainter, box: QRectF, text: str, colour: str, pick: str, sub: str = "") -> None:
+        on = pick == self.pick_id
+        p.setPen(QPen(QColor(GOLD_TEXT) if on else alpha("#FFFFFF", 0.10), S(2) if on else 1))
+        g = QLinearGradient(box.topLeft(), box.bottomLeft())
+        g.setColorAt(0, mix(QColor(colour), QColor("#FFFFFF"), 0.16 if on else 0.05))
+        g.setColorAt(1, mix(QColor(colour), QColor("#000000"), 0.30 if on else 0.45))
+        p.setBrush(g)
+        p.drawRoundedRect(box, S(6), S(6))
+        p.setPen(QColor("#2A1B04") if colour == POCKET["gold"] else QColor("#FFFFFF"))
+        p.setFont(font(10.5 if box.height() > S(22) else 9, QFont.Weight.ExtraBold))
+        if sub:
+            p.drawText(box.adjusted(S(6), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft), text)
+            p.setFont(font(9, QFont.Weight.Bold))
+            p.drawText(box.adjusted(0, 0, -S(6), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), sub)
+        else:
+            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), text)
+        self.hits.append((box, pick))
 
     def draw(self, p: QPainter, r: QRectF, now: float) -> None:
-        cell = S(self.CELL)
-        if self._t0 and now - self._t0 < 4.3:
+        cell = S(self.CELL) * 0.86
+        spinning = bool(self._t0) and now - self._t0 < 4.3
+        if spinning:
             t = ease_out((now - self._t0) / 4.2, 4)
             self.offset = self._from + (self._to - self._from) * t
             cur = int(self.offset // self.CELL)
             if cur != getattr(self, "_last_cell", -1):
                 self._last_cell = cur
                 sfx.play("pick")
-        strip = QRectF(r.left(), r.top() + S(58), r.width(), S(70))
+        # what is on: the pick, its chance and the prize
+        pick = self.pick_id
+        bet = self.stake if self.busy else self.page.bet()
+        p.setFont(font(11, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT))
+        pct = f"{self.chance(pick) / 25 * 100:.0f}%"
+        p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("{pick} · chance {c} · wins {n}", pick=self.pick_name(pick), c=pct, n=coins_text(bet * self.mult(pick))))
+        strip = QRectF(r.left(), r.top() + S(28), r.width(), S(52))
         cx = strip.center().x()
         off = self.offset / self.CELL * cell
         first = int((off - cx) // cell) - 1
@@ -108,53 +151,56 @@ class Roulette(Game):
             p.setBrush(g)
             p.drawRoundedRect(box, S(7), S(7))
             p.setPen(QColor("#2A1B04") if slot == 0 else QColor("#FFFFFF"))
-            p.setFont(font(13, QFont.Weight.ExtraBold))
+            p.setFont(font(12, QFont.Weight.ExtraBold))
             p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "★" if slot == 0 else str(slot))
         fade = QLinearGradient(strip.topLeft(), strip.topRight())
         for at, a in ((0.0, 245), (0.2, 0), (0.8, 0), (1.0, 245)):
             fade.setColorAt(at, QColor(9, 12, 13, a))
         p.fillRect(strip.adjusted(-1, -1, 1, 1), fade)
         p.setPen(QPen(QColor(GOLD_TEXT), S(2.4)))
-        p.drawLine(QPointF(cx, strip.top() - S(8)), QPointF(cx, strip.bottom() + S(8)))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(GOLD_TEXT))
-        for y, d in ((strip.top() - S(10), 1), (strip.bottom() + S(10), -1)):
-            tri = QPainterPath()
-            tri.moveTo(cx - S(7), y)
-            tri.lineTo(cx + S(7), y)
-            tri.lineTo(cx, y + d * S(9))
-            tri.closeSubpath()
-            p.drawPath(tri)
-        # the pick and what it pays
-        pick = self.pick()
-        bet = self.stake if self.busy else self.page.bet()
-        p.setFont(font(12, QFont.Weight.Bold))
-        p.setPen(QColor(TEXT))
-        title = {"red": tr("Red"), "black": tr("Black"), "gold": tr("Gold")}[pick]
-        p.drawText(QRectF(r.left(), r.top() + S(12), r.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("Your pick: {c}", c=title) + "  ·  " + tr("Win {n}", n=coins_text(bet * self.MULT[pick])))
-        p.setFont(font(10, QFont.Weight.DemiBold))
-        p.setPen(QColor(TEXT_DIM))
-        chance = "1/25 (4%)" if pick == "gold" else "12/25 (48%)"
-        p.drawText(QRectF(r.left(), r.top() + S(32), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("Chance {c}", c=chance.replace(".", ",") if lang() == "fr" else chance))
-        if self.won is not None and not self.busy:
-            col = POCKET[pocket_colour(self.slot)]
+        p.drawLine(QPointF(cx, strip.top() - S(5)), QPointF(cx, strip.bottom() + S(5)))
+        if self.won is not None and not self.busy:                      # the result, on the strip
+            box = QRectF(cx + cell * 0.6, strip.top() + S(12), r.right() - cx - cell * 0.6 - S(8), strip.height() - S(24))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(6, 8, 9, 220))
+            p.drawRoundedRect(box, S(8), S(8))
             p.setPen(QColor(WIN if self.won else LOSE))
-            p.setFont(font(14, QFont.Weight.ExtraBold))
-            p.drawText(QRectF(r.left(), strip.bottom() + S(14), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
-                       tr("You win!") if self.won else tr("Not this time"))
-            del col
-        x = r.left() + S(14)                                    # the last pockets, newest first
-        for c in self.history[:13]:
+            p.setFont(font(11.5, QFont.Weight.ExtraBold))
+            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), tr("You win!") if self.won else tr("Not this time"))
+        # the betting board
+        self.hits = []
+        top = strip.bottom() + S(12)
+        w = r.width() - S(20)
+        x0 = r.left() + S(10)
+        third = (w - S(8)) / 3
+        self._chip(p, QRectF(x0, top, third, S(28)), tr("Red"), POCKET["red"], "red", "×2")
+        self._chip(p, QRectF(x0 + third + S(4), top, third, S(28)), tr("Black"), "#2A3238", "black", "×2")
+        self._chip(p, QRectF(x0 + 2 * (third + S(4)), top, third, S(28)), "★ " + tr("Gold"), POCKET["gold"], "gold", "×24")
+        half = (w - S(4)) / 2
+        y = top + S(32)
+        self._chip(p, QRectF(x0, y, half, S(24)), "1 – 12", "#3A4650", "low", "×2")
+        self._chip(p, QRectF(x0 + half + S(4), y, half, S(24)), "13 – 24", "#3A4650", "high", "×2")
+        y += S(28)
+        cw = (w - S(2) * 11) / 12
+        for n in range(1, 25):
+            row, col = (n - 1) // 12, (n - 1) % 12
+            box = QRectF(x0 + col * (cw + S(2)), y + row * S(24), cw, S(22))
+            self._chip(p, box, str(n), POCKET[pocket_colour(n)] if pocket_colour(n) == "red" else "#2A3238", f"n:{n}")
+        p.setFont(font(9, QFont.Weight.DemiBold))
+        p.setPen(QColor(TEXT_FAINT))
+        p.drawText(QRectF(x0, y + S(48), w, S(14)), int(Qt.AlignmentFlag.AlignCenter), tr("One number pays ×24"))
+        x = r.left() + S(12)                                    # the last pockets, newest first
+        for slot in self.history[:14]:
+            c = pocket_colour(slot)
+            cc = QPointF(x + S(9), r.bottom() - S(14))
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor(POCKET[c]))
-            p.drawEllipse(QPointF(x + S(8), r.bottom() - S(20)), S(8), S(8))
-            if c == "black":
-                p.setPen(QPen(alpha("#FFFFFF", 0.3), 1))
-                p.setBrush(Qt.BrushStyle.NoBrush)
-                p.drawEllipse(QPointF(x + S(8), r.bottom() - S(20)), S(8), S(8))
-            x += S(22)
+            p.drawEllipse(cc, S(9), S(9))
+            p.setPen(QColor("#2A1B04") if c == "gold" else QColor("#FFFFFF"))
+            p.setFont(font(7.5, QFont.Weight.Bold))
+            p.drawText(QRectF(cc.x() - S(9), cc.y() - S(9), S(18), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       "★" if slot == 0 else str(slot))
+            x += S(21)
 
 
 # --------------------------------------------------------------------------- #

@@ -42,36 +42,155 @@ class ApiError(Exception):
         self.key, self.status = key, status
 
 
+# 4.0: online lag came from how requests were made, not from the server: every call built a new SSL context
+# (reading the whole certificate bundle), opened a new connection with a full TLS handshake and started a new
+# thread. With the live poll, Mini Golf every 0.6 s, trades and coinflips, that meant several handshakes a second,
+# CPU spikes and answers arriving out of order. Now the SSL context is made once, each network thread keeps its
+# connection open (keep-alive), and a small fixed pool of threads does the calls.
+_SSL = None
+_SSL_LOCK = threading.Lock()
+_NET = threading.local()
+_IDLE_S = 25.0                    # a connection unused this long is replaced (servers close idle ones)
+
+
+def _net_ssl():
+    global _SSL
+    with _SSL_LOCK:
+        if _SSL is None:
+            import ssl
+            try:
+                import certifi
+                _SSL = ssl.create_default_context(cafile=certifi.where())
+            except Exception:  # noqa: BLE001
+                _SSL = ssl.create_default_context()
+        return _SSL
+
+
+def _connection(timeout: float):
+    """This thread's open connection to the server (made when needed)."""
+    import http.client
+    from urllib.parse import urlsplit
+    conn = getattr(_NET, "conn", None)
+    if conn is not None and (getattr(_NET, "url", "") != API_URL or time.monotonic() - getattr(_NET, "used", 0.0) > _IDLE_S):
+        conn.close()
+        conn = None
+    if conn is None:
+        import urllib.request
+        u = urlsplit(API_URL)
+        port = u.port or (443 if u.scheme == "https" else 80)
+        proxy = urllib.request.getproxies().get(u.scheme)            # the same proxy settings urllib used
+        if proxy and urllib.request.proxy_bypass(u.hostname or ""):
+            proxy = None
+        if proxy:
+            pu = urlsplit(proxy if "://" in proxy else "http://" + proxy)
+            head = {}
+            if pu.username:
+                from urllib.parse import unquote
+                auth = base64.b64encode(f"{unquote(pu.username)}:{unquote(pu.password or '')}".encode()).decode()
+                head["Proxy-Authorization"] = "Basic " + auth
+            if u.scheme == "https":
+                conn = http.client.HTTPSConnection(pu.hostname, pu.port or 8080, timeout=timeout, context=_net_ssl())
+            else:
+                conn = http.client.HTTPConnection(pu.hostname, pu.port or 8080, timeout=timeout)
+            conn.set_tunnel(u.hostname, port, headers=head)
+        elif u.scheme == "https":
+            conn = http.client.HTTPSConnection(u.hostname, port, timeout=timeout, context=_net_ssl())
+        else:
+            conn = http.client.HTTPConnection(u.hostname, port, timeout=timeout)
+        _NET.conn, _NET.url, _NET.fresh = conn, API_URL, True
+        _NET.base = u.path.rstrip("/")
+    else:
+        _NET.fresh = False
+    conn.timeout = timeout
+    if conn.sock is not None:
+        conn.sock.settimeout(timeout)
+    return conn
+
+
+def _drop_connection() -> None:
+    conn = getattr(_NET, "conn", None)
+    if conn is not None:
+        conn.close()
+    _NET.conn = None
+
+
 def _request(path: str, body=None, token: str = "", method: str = "POST", timeout: float = 12.0):
     """One call to the server. Returns the decoded answer; raises ApiError('offline' | a server message)."""
+    import http.client
     if Net.blocked:                                   # offline mode: nothing leaves the PC
         raise ApiError("offline")
-    import ssl
-    import urllib.error
-    import urllib.request
-    try:
-        import certifi
-        ctx = ssl.create_default_context(cafile=certifi.where())
-    except Exception:  # noqa: BLE001
-        ctx = ssl.create_default_context()
-    headers = {"apikey": API_KEY, "Content-Type": "application/json", "User-Agent": "Rubenium"}
+    headers = {"apikey": API_KEY, "Content-Type": "application/json", "User-Agent": "Rubenium",
+               "Connection": "keep-alive"}
     if token:
         headers["Authorization"] = "Bearer " + token
     data = None if body is None else json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(API_URL + path, data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=timeout, context=ctx if API_URL.startswith("https") else None) as r:  # noqa: S310
-            raw = r.read()
-            return json.loads(raw.decode("utf-8")) if raw else None
-    except urllib.error.HTTPError as exc:
+    for attempt in (0, 1):
         try:
-            info = json.loads(exc.read().decode("utf-8"))
-        except Exception:  # noqa: BLE001
-            info = {}
-        text = " ".join(str(info.get(k, "")) for k in ("error_code", "code", "msg", "message", "error_description"))
-        raise ApiError(text.strip() or f"http {exc.code}", exc.code) from None
-    except Exception as exc:  # noqa: BLE001  (no internet, DNS, timeout...)
-        raise ApiError("offline") from exc
+            conn = _connection(timeout)
+            reused = not _NET.fresh
+            conn.request(method, _NET.base + path, body=data, headers=headers)
+            r = conn.getresponse()
+            raw = r.read()
+            status = r.status
+            _NET.used = time.monotonic()
+            if r.getheader("Connection", "").lower() == "close":
+                _drop_connection()
+        except (http.client.RemoteDisconnected, BrokenPipeError, ConnectionResetError) as exc:
+            _drop_connection()
+            # A kept-alive connection the server had already closed: the request never reached it, so it is
+            # safe to send it once more on a new connection. Anything else is reported, never sent twice.
+            if attempt == 0 and reused:
+                continue
+            raise ApiError("offline") from exc
+        except Exception as exc:  # noqa: BLE001  (no internet, DNS, timeout...)
+            _drop_connection()
+            raise ApiError("offline") from exc
+        if status >= 400:
+            try:
+                info = json.loads(raw.decode("utf-8"))
+            except Exception:  # noqa: BLE001
+                info = {}
+            if not isinstance(info, dict):
+                info = {}
+            text = " ".join(str(info.get(k, "")) for k in ("error_code", "code", "msg", "message", "error_description"))
+            raise ApiError(text.strip() or f"http {status}", status)
+        try:
+            return json.loads(raw.decode("utf-8")) if raw else None
+        except ValueError as exc:
+            raise ApiError("offline") from exc
+    raise ApiError("offline")
+
+
+class _NetPool:
+    """A few daemon threads that do the server calls in order of arrival (daemon: closing Rubenium never waits
+    for a slow network)."""
+
+    def __init__(self, n: int) -> None:
+        import queue
+        self.q = queue.Queue()
+        for i in range(n):
+            threading.Thread(target=self._run, name=f"rb-net-{i}", daemon=True).start()
+
+    def _run(self) -> None:
+        while True:
+            job = self.q.get()
+            try:
+                job()
+            except Exception:  # noqa: BLE001
+                log.exception("network job failed")
+
+    def submit(self, job) -> None:
+        self.q.put(job)
+
+
+_POOL = None
+
+
+def net_pool() -> _NetPool:
+    global _POOL
+    if _POOL is None:
+        _POOL = _NetPool(6)
+    return _POOL
 
 
 def public_file(path: str) -> str:
@@ -436,7 +555,7 @@ class Online(QObject):
             except Exception:  # noqa: BLE001
                 log.exception("%s failed", fn)
                 emit(lambda: done(False, "Something went wrong: try again"))
-        threading.Thread(target=work, daemon=True).start()
+        net_pool().submit(work)
 
     def _in_use(self) -> bool:
         try:

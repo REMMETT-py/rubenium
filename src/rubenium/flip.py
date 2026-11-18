@@ -219,8 +219,20 @@ class FlipRow(QWidget):
         paint_flip_coin(p, QPointF(r.left() + S(24), r.top() + S(24)), S(12), 0.0, f.get("a_side", "black"))
         p.setPen(QColor(TEXT))
         p.setFont(font(12, QFont.Weight.Bold))
-        p.drawText(QRectF(r.left() + S(44), r.top() + S(8), r.width() * 0.5, S(18)), int(Qt.AlignmentFlag.AlignVCenter),
-                   str(f.get("a") or "?"))
+        name = str(f.get("a") or "?")
+        p.drawText(QRectF(r.left() + S(44), r.top() + S(8), r.width() * 0.5, S(18)), int(Qt.AlignmentFlag.AlignVCenter), name)
+        if f.get("a_bot"):                                # a bot (or an offer made by Rubenium): always marked
+            tx = r.left() + S(50) + p.fontMetrics().horizontalAdvance(name)
+            label = tr("RUBENIUM OFFER") if f.get("admin_offer") else tr("BOT")
+            p.setFont(font(8.5, QFont.Weight.Black, 0.6))
+            tw = p.fontMetrics().horizontalAdvance(label) + S(10)
+            chip = QRectF(tx, r.top() + S(9), tw, S(16))
+            col = QColor("#E8C26A") if f.get("admin_offer") else QColor("#9AA4AD")
+            p.setPen(QPen(col, 1))
+            p.setBrush(alpha(col, 0.15))
+            p.drawRoundedRect(chip, S(8), S(8))
+            p.setPen(col)
+            p.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), label)
         p.setPen(QColor(GOLD_TEXT))
         p.setFont(font(11.5, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left(), r.top() + S(8), r.width() - S(12), S(18)),
@@ -230,7 +242,8 @@ class FlipRow(QWidget):
         state = f.get("state")
         left = int(f.get("expires") or 0) - int(time.monotonic() - self._t0)
         sub = {"open": tr("Waiting · {t}", t=f"{max(0, left) // 60}:{max(0, left) % 60:02d}"),
-               "joined": tr("{name} is choosing", name=f.get("b") or "?"),
+               "setup": tr("Choosing items"),
+               "joined": tr("{name} is choosing", name=show_name(f, "b")),
                "locked": tr("Locked in: flipping soon"),
                "done": tr("{name} won", name=f.get("winner") or "?")}.get(state, "")
         p.drawText(QRectF(r.left() + S(44), r.top() + S(26), r.width() * 0.6, S(14)), int(Qt.AlignmentFlag.AlignVCenter), sub)
@@ -328,7 +341,7 @@ class FlipStage(QWidget):
             p.setBrush(alpha(WIN_C, 0.10) if win else alpha("#FFFFFF", 0.03))
             p.drawRoundedRect(box, S(11), S(11))
             paint_flip_coin(p, QPointF(box.left() + S(16), box.top() + S(16)), S(9), 0, side)
-            name = f.get(who) or (tr("Waiting…") if who == "b" else "?")
+            name = show_name(f, who) if f.get(who) else (tr("Waiting…") if who == "b" else "?")
             p.setPen(QColor(TEXT))
             p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(QRectF(box.left() + S(30), box.top() + S(6), box.width() - S(34), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
@@ -419,6 +432,27 @@ class FlipStage(QWidget):
 
 
 # ================================================================ talking to the server
+VOLATILE = ("expires", "pick_left", "flip_in")
+
+
+def flips_sig(data) -> str:
+    """What matters for the page (who, what, which state): the seconds counting down are left out, so the lobby is
+    not rebuilt every two seconds."""
+    import json as _json
+    if not isinstance(data, dict):
+        return ""
+    flips = [{k: v for k, v in f.items() if k not in VOLATILE} for f in (data.get("flips") or [])]
+    return _json.dumps([flips, data.get("history"), data.get("mine"), data.get("locked")], sort_keys=True, default=str)
+
+
+def show_name(f: dict, side: str) -> str:
+    """A player's name, or a bot's with BOT after it (bots never look like players)."""
+    name = str(f.get(side) or "?")
+    if f.get(side + "_bot"):
+        return name + " · " + tr("BOT")
+    return name
+
+
 def load_flips(page) -> None:
     ctx = page.ctx
 
@@ -432,7 +466,7 @@ def load_flips(page) -> None:
         if mine and not getattr(ctx, "flip_id", None):
             ctx.flip_id = mine                         # you are in one: it opens
         old = getattr(ctx, "flip_data", None)
-        if data != old:
+        if flips_sig(data) != flips_sig(old):
             ctx.flip_data = data
             if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "flip" and not getattr(ctx, "flip_id", None):
                 ctx.reload_page("games")
@@ -512,35 +546,31 @@ def build_flip(page, lay) -> None:
         return
     limit = int(data.get("max_items") or 6)
     rng = float(data.get("range") or 0.1)
-    lay.addWidget(Label(tr("OPEN A COINFLIP"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    lay.addWidget(Label(tr("CREATE A COINFLIP"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    lay.addWidget(Label(tr("1. Create it and pick your side  ·  2. Put in your items and confirm  ·  3. Someone joins and "
+                           "matches them  ·  4. The coin flips"), 10, TEXT_DIM, wrap_w=page.W))
+    row = hbox(spacing=6)
     side = Segmented([tr("Black"), tr("White")], int(getattr(ctx, "flip_side", 0) or 0))
     side.changed.connect(lambda i: setattr(ctx, "flip_side", i))
-    lay.addWidget(side)
-    picker = ItemPicker(page, limit)
-    bar = TotalBar(picker)
-    lay.addWidget(bar)
-    lay.addWidget(picker)
-    make = Button(tr("Open the coinflip"), "primary", 38, icon="coin")
+    row.addWidget(side, 1)
+    make = Button(tr("Create"), "primary", 34, icon="coin")
+    make.setFixedWidth(max(S(110), make.sizeHint().width()))
 
     def create() -> None:
-        if not picker.picked:
-            return ctx.toast(tr("Pick 1 to {n} items first", n=limit), "warn")
-
         def done(ok: bool, d) -> None:
             if not ok:
                 return ctx.toast(tr(str(d)), "warn")
             sfx.play("on")
-            ctx.econ.refresh()
             ctx.flip_id = d.get("id")
             ctx.flip_state = d
             ctx.reload_page("games")
-        ctx.econ.call("rb_flip_create", {"side": "black" if side.index() == 0 else "white", "items": picker.ids()}, done)
+        ctx.econ.call("rb_flip_create", {"side": "black" if side.index() == 0 else "white", "items": None}, done)
     make.clicked.connect(create)
-    lay.addWidget(make)
-    lay.addWidget(Label(tr("Up to {n} items. The other player must put in about the same worth (within {r}%). It stays open "
-                           "5 minutes; nobody joins and your items come back. The winner takes everything. Your chance is your "
-                           "share of the pot, between 49% and 51%.", n=limit, r=int(round(rng * 100))),
-                        10, TEXT_DIM, wrap_w=page.W))
+    row.addWidget(make)
+    lay.addLayout(row)
+    lay.addWidget(Label(tr("Up to {n} items. The other player must put in about the same worth (within {r}%). The winner "
+                           "takes everything. Your chance is your share of the pot, between 49% and 51%. Bots play by the "
+                           "same rules and odds.", n=limit, r=int(round(rng * 100))), 10, TEXT_DIM, wrap_w=page.W))
     flips = [f for f in (data.get("flips") or []) if not f.get("mine")]
     lay.addWidget(Label(tr("OPEN COINFLIPS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
     if not any(f.get("state") == "open" for f in flips):
@@ -579,7 +609,37 @@ def _build_view(page, lay, fid: str) -> None:
                 w.deleteLater()
         holder["picker"] = holder["bar"] = None
         state = f.get("state")
-        if state == "joined" and f.get("joiner"):
+        if state == "setup" and f.get("mine"):           # 4.0: your lobby: now put in your items
+            limit = int((getattr(ctx, "flip_data", None) or {}).get("max_items") or 6)
+            al.addWidget(Label(tr("Put in 1 to {n} items, then confirm. Nobody sees your lobby until you confirm.", n=limit),
+                               11, TEXT, wrap_w=page.W))
+            picker = ItemPicker(page, limit)
+            bar = TotalBar(picker)
+            al.addWidget(bar)
+            al.addWidget(picker)
+            row = hbox(spacing=6)
+            ok_btn = Button(tr("Confirm items"), "primary", 38)
+
+            def confirm() -> None:
+                if not picker.picked:
+                    return ctx.toast(tr("Pick 1 to {n} items first", n=limit), "warn")
+
+                def done(ok: bool, d) -> None:
+                    if not ok:
+                        return ctx.toast(tr(str(d)), "warn")
+                    sfx.play("on")
+                    ctx.econ.refresh()
+                    apply(d)
+                ctx.econ.call("rb_flip_put", {"fid": fid, "items": picker.ids()}, done)
+            ok_btn.clicked.connect(confirm)
+            close = Button(tr("Cancel"), "ghost", 38)
+            close.clicked.connect(lambda: ctx.econ.call("rb_flip_cancel", {"fid": fid}, lambda ok, d: (
+                setattr(ctx, "flip_id", None), setattr(ctx, "flip_data", None), ctx.reload_page("games"))))
+            row.addWidget(ok_btn, 2)
+            row.addWidget(close, 1)
+            al.addLayout(row)
+            holder["picker"], holder["bar"] = picker, bar
+        elif state == "joined" and f.get("joiner"):
             limit = int((getattr(ctx, "flip_data", None) or {}).get("max_items") or 6)
             al.addWidget(Label(tr("Put in items worth {a} to {b}. You have 30 seconds.", a=coins_text(int(f.get("min") or 0)),
                                   b=coins_text(int(f.get("max") or 0))), 11, TEXT, wrap_w=page.W))
@@ -615,7 +675,7 @@ def _build_view(page, lay, fid: str) -> None:
             al.addWidget(Label(tr("Waiting for someone to join. Once they lock in their items, it cannot be cancelled."),
                                10.5, TEXT_DIM, wrap_w=page.W))
         elif state == "joined":
-            al.addWidget(Label(tr("{name} joined and is choosing items.", name=f.get("b") or "?"), 11, TEXT, wrap_w=page.W))
+            al.addWidget(Label(tr("{name} joined and is choosing items.", name=show_name(f, "b")), 11, TEXT, wrap_w=page.W))
         elif state == "locked":
             al.addWidget(Label(tr("Both sides are locked in. Nothing can stop it now: the coin flips when the count ends."),
                                10.5, TEXT_DIM, wrap_w=page.W))

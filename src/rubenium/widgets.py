@@ -7,7 +7,7 @@ from collections import deque
 from typing import Callable, Optional
 
 from PyQt6.QtCore import QEasingCurve, QPointF, QRectF, QTimer, QVariantAnimation, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap, QTransform
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap, QTransform
 from PyQt6.QtWidgets import QAbstractButton, QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
 from . import win
@@ -229,6 +229,38 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
         p.drawPath(_poly((-8, 0), (8, 0)))
         p.drawPath(_poly((-6.8, -4.2), (6.8, -4.2)))
         p.drawPath(_poly((-6.8, 4.2), (6.8, 4.2)))
+    elif kind == "bell":                                  # 4.0: notifications
+        bell = QPainterPath(QPointF(-6.5, 5))
+        bell.cubicTo(-5, 3.5, -5.5, -2, -5, -3.5)
+        bell.cubicTo(-4, -7.5, 4, -7.5, 5, -3.5)
+        bell.cubicTo(5.5, -2, 5, 3.5, 6.5, 5)
+        bell.closeSubpath()
+        p.drawPath(bell)
+        p.drawArc(QRectF(-2.2, 4.2, 4.4, 4.4), 180 * 16, 180 * 16)
+        p.drawPath(_poly((0, -9), (0, -7.4)))
+    elif kind == "search":                                # 4.0: users, market search
+        p.drawEllipse(QPointF(-2, -2), 5.5, 5.5)
+        p.drawPath(_poly((2.2, 2.2), (7.5, 7.5)))
+    elif kind == "chat":                                  # 4.0: chat
+        bub = QPainterPath()
+        bub.addRoundedRect(QRectF(-8, -7, 16, 11.5), 3.5, 3.5)
+        p.drawPath(bub)
+        p.drawPath(_poly((-3.5, 4.5), (-5, 8.5), (0.5, 4.5)))
+    elif kind == "swap":                                  # 4.0: trades
+        p.drawPath(_poly((-7.5, -3), (6.5, -3)))
+        p.drawPath(_poly((3.5, -6.5), (7, -3), (3.5, 0.5)))
+        p.drawPath(_poly((7.5, 3.5), (-6.5, 3.5)))
+        p.drawPath(_poly((-3.5, 0), (-7, 3.5), (-3.5, 7)))
+    elif kind == "trophy":                                # 4.0: leaderboards
+        cup = QPainterPath(QPointF(-5.5, -7.5))
+        cup.lineTo(5.5, -7.5)
+        cup.cubicTo(5.5, 0, 3, 2.5, 0, 2.5)
+        cup.cubicTo(-3, 2.5, -5.5, 0, -5.5, -7.5)
+        p.drawPath(cup)
+        p.drawArc(QRectF(-9, -6.5, 4.5, 6), 90 * 16, 180 * 16)
+        p.drawArc(QRectF(4.5, -6.5, 4.5, 6), 90 * 16, -180 * 16)
+        p.drawPath(_poly((0, 2.5), (0, 6)))
+        p.drawPath(_poly((-4, 8), (4, 8)))
     elif kind == "coin":                                  # 3.2: coinflip
         p.drawEllipse(QPointF(0, 0), 8, 8)
         p.drawEllipse(QPointF(0, 0), 5, 5)
@@ -854,6 +886,16 @@ class Label(QWidget):
         self._color = QColor(color)
         self.update()
 
+    def set_size(self, px: float) -> None:
+        """4.0: a new text size (single-line labels keep their height in step)."""
+        if px == self._px:
+            return
+        self._px = px
+        self._font = font(px, self._weight)
+        if not self._wrap_w:
+            self.setFixedHeight(S(px * 1.5))
+        self.update()
+
     def setFixedWidth(self, w: int) -> None:          # a fixed-width label must claim its space in layouts
         super().setFixedWidth(w)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -1183,6 +1225,13 @@ class ScrollArea(QWidget):
             self._target = self.max_offset()
             self._pos.jump(self._target)
 
+    def set_content_height(self, h: int) -> None:
+        """4.0: the page grew or shrank without being rebuilt (a part of it filled in later)."""
+        if h != self._content_h:
+            self._content_h = h
+            self.resizeEvent(None)
+            self._overlay.update()
+
     def wheelEvent(self, e) -> None:
         if self.max_offset() > 0:
             self._target = max(0.0, min(self.max_offset(), self._target - e.angleDelta().y() / 120 * S(70)))
@@ -1260,7 +1309,7 @@ class TabBar(QWidget):
             self._hover_i = i
             if i >= 0:
                 self._h[i].to(1.0, 140)
-                self.setToolTip(self._tabs[i][2])
+                self.setToolTip(self._tabs[i][2] or tr("Online: games, shop, friends"))
 
     def leaveEvent(self, _e) -> None:
         if self._hover_i >= 0:
@@ -1363,6 +1412,69 @@ def hbox(parent=None, spacing: float = 8, margins=(0, 0, 0, 0)) -> QHBoxLayout:
     lay.setContentsMargins(*[S(m) for m in margins])
     lay.setSpacing(S(spacing))
     return lay
+
+
+# 4.0: what players see when the admins paused a part of Rubenium
+LOCK_NAMES = {"trading": "Trading", "market": "The Market", "coinflip": "Coinflip", "roulette": "Roulette",
+              "casino": "The casino", "minigames": "Mini games", "golf": "Mini Golf", "wheel": "The free spin",
+              "scratch": "Scratch cards", "advent": "The advent calendar", "cases": "Cases", "shop": "The shop",
+              "chat": "The chat", "giveaways": "Giveaways", "quests": "Quests", "coupons": "XP coupons",
+              "gifts": "Gifts", "online": "Online mode", "notifications": "Notifications"}
+
+
+class LockStrip(QWidget):
+    """A padlock and a sentence: this part is paused for a moment."""
+
+    def __init__(self, text: str, width: int) -> None:
+        super().__init__()
+        self.text = text
+        f = font(10.5, QFont.Weight.DemiBold)
+        lines = max(1, math.ceil(QFontMetrics(f).horizontalAdvance(text) / max(1, width - S(52))))
+        self.setFixedHeight(S(16) + lines * QFontMetrics(f).lineSpacing())
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(S(1), S(1), -S(1), -S(1))
+        p.setPen(QPen(QColor("#FF8A4C"), S(1.2)))
+        p.setBrush(QColor("#2A160C"))
+        p.drawRoundedRect(r, S(9), S(9))
+        p.save()
+        p.translate(r.left() + S(18), r.center().y())
+        p.scale(S(16) / 20, S(16) / 20)
+        draw_icon(p, "lock", QColor("#FFB27A"))
+        p.restore()
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.setPen(QColor("#FFD9C2"))
+        p.drawText(r.adjusted(S(36), S(6), -S(10), -S(6)),
+                   int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap), self.text)
+
+
+def lock_strip(ctx, lay, features, width: int) -> bool:
+    """If one of `features` is paused, say so at the top of the screen. True when it is."""
+    if isinstance(features, str):
+        features = [features]
+    ec = ctx.econ
+    if ec.locks.get("lockdown"):
+        text = tr("Rubenium is paused for a moment by its team. Nothing you own is lost: open trades and games "
+                  "were given back.")
+    else:
+        off = [f for f in features if ec.is_locked(f)]
+        if not off:
+            return False
+        text = tr("{what} is paused for a moment by the Rubenium team. Nothing you own is lost.",
+                  what=tr(LOCK_NAMES.get(off[0], off[0])))
+    lay.addWidget(LockStrip(text, width))
+    return True
+
+
+def refit_scroll(w: QWidget) -> None:
+    """4.0: a widget changed its height after its page was built: tell the scroll area holding the page."""
+    sa = w.parentWidget() if w is not None else None
+    while sa is not None and not isinstance(sa, ScrollArea):
+        sa = sa.parentWidget()
+    if sa is not None and hasattr(sa.content, "content_height"):
+        sa.set_content_height(sa.content.content_height())
 
 
 def heading(text: str) -> Label:

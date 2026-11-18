@@ -1401,6 +1401,8 @@ class LockCover(QWidget):
             "offline": (tr("You are offline"), tr("No internet connection. Music, saved lyrics and tools still work. "
                                                  "Rubenium reconnects automatically.")),
             "offmode": (tr("Offline mode"), tr("Online features are paused. Music, saved lyrics and tools still work.")),
+            "lockdown": (tr("Paused for a moment"), tr("The Rubenium team paused online features for a moment. Nothing you "
+                                                       "own is lost: open trades and games were given back.")),
         }.get(self.mode, (tr("Temporarily locked"), tr("Online features are under maintenance. Your time still counts.")))
         p.setPen(QColor(TEXT))
         p.setFont(font(15, QFont.Weight.Bold))
@@ -1931,6 +1933,7 @@ class MainWindow(QWidget):
         ctx = self.ctx
         mode = ("offmode" if ctx.cfg["offline_mode"] and ctx.online.logged_in() else
                 "locked" if ctx.econ.live.get("locked") else
+                "lockdown" if ctx.econ.lockdown_cover() else
                 "update" if getattr(ctx, "outdated", False) else
                 "offline" if ctx.online.logged_in() and ctx.online.offline else "")
         on = bool(mode) and self.expanded and self.current in LOCK_PAGES
@@ -2271,6 +2274,9 @@ class MainWindow(QWidget):
         if state != self.game_state:
             self.game_state = state
             self._retime()
+            page = self.page()                     # 4.0: Compact Music Mode follows the game
+            if page is not None and hasattr(page, "set_compact"):
+                page.set_compact(self.chrome.level)
 
     def _retime(self) -> None:
         """Animation clock. The glow only needs to be smooth when it follows music: 60 fps on the open card while
@@ -2377,7 +2383,7 @@ class MainWindow(QWidget):
                                       ui.scale, S(BAND))
             if pm is not None:
                 p.drawPixmap(m.topLeft(), pm)
-            if self._sparks:
+            if self._sparks and not (self.expanded and self.current == "rl"):    # 4.0: the swaps stay clean
                 extras.paint_sparkles(p, self._sparks, m.left(), m.top(), ui.accent, time.monotonic(), ui.scale)
             p.restore()
         if t < 0.4:

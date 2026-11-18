@@ -15,7 +15,7 @@ from .cosmetics import (BALLS, BANNERS, COLOUR_NAMES, COLOUR_ORDER, FONTS, FRAME
 from .econ import CLASS_NAMES, RARITY_COLOURS, RARITY_NAMES
 from .shop import GOLD_TEXT, clock_text, paint_price
 from .wallet import coins_text, paint_coin
-from .widgets import present, close_embedded, Button, IconButton, Label, Segmented, draw_icon, hbox, heading, vbox
+from .widgets import present, close_embedded, lock_strip, refit_scroll, Tween, Button, IconButton, Label, Segmented, draw_icon, hbox, heading, vbox
 
 KINDS = ["", "badge", "ball", "line", "font", "theme", "banner", "frame"]
 LOOKS = ("banner", "frame", "tag")             # profile looks: worn on the server, seen by everyone
@@ -230,6 +230,16 @@ class ItemGrid(QWidget):
                 p.scale(S(10) / 20, S(10) / 20)
                 draw_icon(p, "lock", QColor(TEXT_DIM))
                 p.restore()
+            elif mark == "offered":                                    # 4.0: in the trade offer already
+                c = QPointF(cell.left() + S(10), cell.top() + S(10))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#5BE08A"))
+                p.drawEllipse(c, S(7), S(7))
+                pen = QPen(QColor("#0B2614"), S(1.8))
+                pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                p.setPen(pen)
+                p.drawPolyline([QPointF(c.x() - S(3.2), c.y()), QPointF(c.x() - S(0.8), c.y() + S(2.6)),
+                                QPointF(c.x() + S(3.4), c.y() - S(2.6))])
             elif mark == "sale":
                 tag = QRectF(cell.left() + S(3), cell.top() + S(3), S(30), S(14))
                 p.setPen(Qt.PenStyle.NoPen)
@@ -437,7 +447,10 @@ def wear_look(ctx, item: str, on: bool) -> None:
         else:
             ctx.econ.looks_changed.emit()
         ctx.reload_page()
-    sfx.play("pick")
+    if on and item == "frame:yuletide":           # 4.0: the advent frame rings its bells when you put it on
+        sfx.tune("jingle")
+    else:
+        sfx.play("pick")
     ctx.econ.wear(kind, item if on else "", done)
 
 
@@ -891,9 +904,11 @@ def build_inventory(page, lay) -> None:
     lay.addWidget(AdventBanner(ctx, page.W))
     if not ec.ready:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see your items"), 12, TEXT_DIM))
-    tab = int(getattr(ctx, "inv_tab", 0) or 0)
+    raw = getattr(ctx, "inv_tab", 0)
+    tab = 8 if raw == "levels" else int(raw or 0)
+    ctx.inv_tab = tab
     picker = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Profile"),
-                         tr("Coins")], tab)
+                         tr("Coins"), tr("Levels")], tab)
 
     def switch(i: int) -> None:
         ctx.inv_tab, ctx.inv_pick = i, ""
@@ -901,6 +916,9 @@ def build_inventory(page, lay) -> None:
     picker.changed.connect(switch)
     lay.addWidget(picker)
     lay.addWidget(WalletRow(page))                       # 3.2: keys and cases are yours too
+    if tab == 8:                                         # 4.0: your level, badges and XP coupons
+        from .levels import build_levels
+        return build_levels(page, lay)
     if tab == 7:
         rows = getattr(ctx, "ledger_rows", None)
         if rows is None or time.monotonic() - getattr(ctx, "ledger_at", 0) > 8:
@@ -922,6 +940,8 @@ def build_inventory(page, lay) -> None:
     groups: dict = {}
     for it in ec.items:
         k = it["item"].split(":")[0]
+        if k == "coupon":                                 # XP coupons live in Levels
+            continue
         if not want or k == want or (want == "look" and k in LOOKS):
             groups.setdefault(it["item"], []).append(it)
     order = sorted(groups, key=lambda k: (-value_of(ctx, k), k))
@@ -1240,9 +1260,17 @@ def build_market(page, lay) -> None:
     lay.addWidget(seg)
     if tab == 2:
         return _offers(page, lay)
-    fn, args = ("rb_market_mine", {}) if tab else \
-        ("rb_market_browse", {"kind": "",
-                              "sort": "cheap" if getattr(ctx, "mk_sort", 0) else "new", "page": 0})
+    if tab:
+        fn, args = "rb_market_mine", {}
+    else:                                                    # 4.0: search by name, type, rarity and finish
+        flt = market_filters(ctx)
+        if not _market_search_bar(page, lay, flt):
+            return
+        ids = market_ids(ctx, flt["q"]) if flt["q"] else None
+        if ids is not None and not ids:
+            return lay.addWidget(Label(tr("No item is called “{q}”.", q=flt["q"]), 12, TEXT_DIM, wrap_w=page.W))
+        fn, args = "rb_market_search", {"ids": ids, "kind": flt["kind"], "rarity": flt["rarity"],
+                                        "cls": flt["cls"], "sort": flt["sort"], "page": 0}
     key = (fn, str(args))
     rows = getattr(ctx, "mk_rows", None) if getattr(ctx, "mk_key", None) == key else None
     if rows is None or time.monotonic() - getattr(ctx, "mk_at", 0) > 10:
@@ -1256,19 +1284,12 @@ def build_market(page, lay) -> None:
             if changed and ctx.window.showing("themes") and getattr(ctx, "shop_tab", 0) == 4:
                 ctx.reload_page("themes")
         ec.online.ask(fn, args, got)
-    if not tab:
-        cheap = bool(getattr(ctx, "mk_sort", 0))
-        sort = Button(tr("Sort: Cheapest first") if cheap else tr("Sort: Newest first"), "ghost", 30, icon="refresh")
-
-        def flip_sort() -> None:
-            ctx.mk_sort, ctx.mk_at = 0 if cheap else 1, 0
-            ctx.reload_page()
-        sort.clicked.connect(flip_sort)
-        lay.addWidget(sort)
     if rows is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     if not rows:
+        searching = not tab and market_filters(ctx) != MARKET_FILTERS
         lay.addWidget(Label(tr("Nothing on sale. List an item from your Inventory.") if tab else
+                            tr("Nothing on sale matches this search.") if searching else
                             tr("Nothing on sale right now. Be the first: put an item on sale from your Inventory."),
                             12, TEXT_DIM, wrap_w=page.W))
     for row in rows[:40]:
@@ -1280,6 +1301,131 @@ def build_market(page, lay) -> None:
     if not tab:
         lay.addWidget(Label(tr("Fixed price set by the seller. 5% market fee."), 10.5, TEXT_DIM,
                             wrap_w=page.W))
+
+
+MARKET_FILTERS = {"q": "", "kind": "", "rarity": "", "cls": None, "sort": "new"}
+MARKET_SORTS = [("new", "Newest"), ("cheap", "Cheapest"), ("dear", "Priciest"), ("deal", "Best deals")]
+MARKET_KINDS = [("", "All"), ("badge", "Badges"), ("banner", "Banners"), ("frame", "Frames"), ("ball", "Balls"),
+                ("line", "Lines"), ("theme", "Themes"), ("font", "Fonts")]
+
+
+def market_filters(ctx) -> dict:
+    f = getattr(ctx, "mk_filters", None)
+    if not isinstance(f, dict):
+        f = ctx.mk_filters = dict(MARKET_FILTERS)
+    return f
+
+
+def market_ids(ctx, query: str) -> list:
+    """Every item whose name, type, rarity or finish holds all the words typed (English or French)."""
+    words = [w for w in query.lower().replace(",", " ").split() if w]
+    from .cosmetics import KIND_NAMES
+    out = []
+    for iid, info in ctx.econ.catalog.items():
+        if not info.get("tradeable") or info.get("kind") in ("prog", "tag", "coupon"):
+            continue
+        kind = info.get("kind", "")
+        hay = [item_name(iid), iid, KIND_NAMES.get(kind, kind), RARITY_NAMES.get(info.get("rarity", ""), "")]
+        if kind == "badge":
+            hay.append(CLASS_NAMES[min(int(info.get("cls") or 0), len(CLASS_NAMES) - 1)])
+        text = " ".join(hay + [tr(h) for h in hay]).lower()
+        if all(w in text for w in words):
+            out.append(iid)
+    return out
+
+
+def _market_search_bar(page, lay, flt: dict) -> bool:
+    """The search bar and its filters. False if nothing more should be shown (never, for now)."""
+    ctx = page.ctx
+
+    def apply(**kw) -> None:
+        flt.update(kw)
+        ctx.mk_at = 0
+        ctx.reload_page()
+
+    def ask() -> None:
+        def got(text: str, dlg) -> None:
+            dlg.close()
+            apply(q=text.strip()[:40])
+        AskDialog(ctx, tr("Search the market"), tr("Name, type, rarity or finish"), tr("Search"), got, 40,
+                  tr("For example: dragon, titanium, mythic banner."))
+    bar = SearchBar(flt["q"], page.W)
+    bar.clicked.connect(ask)
+    bar.cleared.connect(lambda: apply(**MARKET_FILTERS))
+    lay.addWidget(bar)
+    kinds = Segmented([tr(n) for _k, n in MARKET_KINDS], [k for k, _n in MARKET_KINDS].index(flt["kind"])
+                      if flt["kind"] in [k for k, _n in MARKET_KINDS] else 0)
+    kinds.changed.connect(lambda i: apply(kind=MARKET_KINDS[i][0], cls=None if MARKET_KINDS[i][0] != "badge" else flt["cls"]))
+    lay.addWidget(kinds)
+    rar = ["", "standard", "rare", "special", "epic", "exotic"]
+    rs = Segmented([tr("Any rarity")] + [tr(RARITY_NAMES[r]) for r in rar[1:]], rar.index(flt["rarity"]) if flt["rarity"] in rar else 0)
+    rs.changed.connect(lambda i: apply(rarity=rar[i]))
+    lay.addWidget(rs)
+    if flt["kind"] == "badge":
+        cls = [None, 0, 1, 2, 3, 4]
+        cs = Segmented([tr("Any finish")] + [tr(CLASS_NAMES[c]) for c in cls[1:]],
+                       cls.index(flt["cls"]) if flt["cls"] in cls else 0)
+        cs.changed.connect(lambda i: apply(cls=cls[i]))
+        lay.addWidget(cs)
+    srt = [k for k, _n in MARKET_SORTS]
+    ss = Segmented([tr(n) for _k, n in MARKET_SORTS], srt.index(flt["sort"]) if flt["sort"] in srt else 0)
+    ss.changed.connect(lambda i: apply(sort=srt[i]))
+    lay.addWidget(ss)
+    return True
+
+
+class SearchBar(QWidget):
+    """A search field drawn like one: click to type (the keyboard stays with your game until then)."""
+    clicked = pyqtSignal()
+    cleared = pyqtSignal()
+
+    def __init__(self, query: str, width: int) -> None:
+        super().__init__()
+        self.query = query
+        self.setFixedSize(width, S(38))
+        self.setCursor(Qt.CursorShape.IBeamCursor)
+        self._hover = False
+
+    def enterEvent(self, _e) -> None:
+        self._hover = True
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self._hover = False
+        self.update()
+
+    def _x_rect(self) -> QRectF:
+        return QRectF(self.width() - S(34), 0, S(34), self.height())
+
+    def mouseReleaseEvent(self, e) -> None:
+        if e.button() != Qt.MouseButton.LeftButton:
+            return
+        if self.query and self._x_rect().contains(e.position()):
+            sfx.play("pick")
+            return self.cleared.emit()
+        self.clicked.emit()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.setPen(QPen(alpha(ui.accent, 0.7) if self.query else alpha("#FFFFFF", 0.22 if self._hover else 0.12), S(1.2)))
+        p.setBrush(alpha("#FFFFFF", 0.07 if self._hover else 0.05))
+        p.drawRoundedRect(r, S(10), S(10))
+        p.save()
+        p.translate(r.left() + S(18), r.center().y())
+        p.scale(S(15) / 20, S(15) / 20)
+        draw_icon(p, "search", QColor(TEXT_DIM))
+        p.restore()
+        p.setFont(font(12, QFont.Weight.DemiBold if self.query else QFont.Weight.Normal))
+        p.setPen(QColor(TEXT) if self.query else QColor(TEXT_DIM))
+        p.drawText(r.adjusted(S(34), 0, -S(36), 0), int(Qt.AlignmentFlag.AlignVCenter),
+                   self.query or tr("Search the market: name, type, rarity, finish…"))
+        if self.query:
+            c = self._x_rect().center()
+            p.setPen(QPen(QColor(TEXT_DIM), S(1.6)))
+            p.drawLine(QPointF(c.x() - S(4), c.y() - S(4)), QPointF(c.x() + S(4), c.y() + S(4)))
+            p.drawLine(QPointF(c.x() + S(4), c.y() - S(4)), QPointF(c.x() - S(4), c.y() + S(4)))
 
 
 def _market_click(page, row: dict, mine: bool) -> None:
@@ -1414,6 +1560,10 @@ class TradeLink(QObject):
         self.ctx = ctx
         self.trade_id = ""
         self.data: dict = {}
+        self.peek: dict = {}            # 4.0: the other player's tradeable items (look only)
+        self.summary: dict = {}         # 4.0: what the server recorded once the trade is done
+        self.view = 0                   # 4.0: 0 = your inventory, 1 = theirs
+        self.shown_ready, self.shown_trade = (), ""
         self.got_at = 0.0
         self.busy = False
         self._sig = ""
@@ -1424,12 +1574,23 @@ class TradeLink(QObject):
     def open(self, trade_id: str) -> None:
         if trade_id and trade_id != self.trade_id:
             self.trade_id, self.data, self._sig = trade_id, {}, ""
+            self.peek, self.summary, self.view = {}, {}, 0
         self._timer.start()
         self.poll()
 
     def close(self) -> None:
         self._timer.stop()
         self.trade_id, self.data, self._sig = "", {}, ""
+        self.peek, self.summary, self.view = {}, {}, 0
+
+    def close_if_left(self) -> None:
+        w = self.ctx.window
+        if self.finished() and not (w.showing("friends") and w.expanded):
+            self.close()
+
+    def finished(self) -> bool:
+        """The trade is over (done or cancelled): only its summary is left to show."""
+        return bool(self.trade_id) and self.data.get("state") in ("done", "cancelled")
 
     def poll(self) -> None:
         if not self.trade_id:
@@ -1515,6 +1676,314 @@ class Countdown(QWidget):
                    tr("Look one last time… {n}", n=int(math.ceil(left))) if left > 0 else tr("You can confirm now"))
 
 
+# --------------------------------------------------------------------------- #
+# 4.0: the trade screen: who is ready, both inventories (yours to add from, theirs to look at), and a summary
+# --------------------------------------------------------------------------- #
+READY_GREEN = "#5BE08A"
+LOSS_RED = "#FF7A7A"
+
+
+def paint_key(p: QPainter, c: QPointF, size: float, colour) -> None:
+    """The key icon, `size` pixels tall, centred on c."""
+    p.save()
+    p.translate(c)
+    p.scale(size / 20, size / 20)
+    draw_icon(p, "key", QColor(colour))
+    p.restore()
+
+
+class ReadyPill(QWidget):
+    """One player's state in the trade: NOT READY (dark), READY (green) or CONFIRMED (bright green). It flashes when
+    the state has just changed, so a change on the other side is never missed."""
+
+    def __init__(self, name: str, ready: bool, ok: bool, flash: bool) -> None:
+        super().__init__()
+        self.name, self.ready, self.ok = name, ready, ok
+        self.setFixedHeight(S(32))
+        self.setMinimumWidth(S(120))
+        self._flash = Tween(self, 1.0 if flash else 0.0, self.update)
+        if flash:
+            QTimer.singleShot(30, lambda: self._flash.to(0.0, 900))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(S(1), S(1), -S(1), -S(1))
+        on = self.ready or self.ok
+        green = QColor(READY_GREEN)
+        f = self._flash.level
+        if on:
+            p.setPen(QPen(mix(green, QColor("#FFFFFF"), 0.4 * f), S(1.6)))
+            p.setBrush(mix(QColor("#123A24"), green, 0.25 + (0.25 if self.ok else 0.0) + 0.3 * f))
+        else:
+            p.setPen(QPen(mix(QColor("#2A3238"), QColor("#FFFFFF"), 0.35 * f), S(1.2)))
+            p.setBrush(QColor("#12171A"))
+        p.drawRoundedRect(r, r.height() / 2, r.height() / 2)
+        dot = QPointF(r.left() + S(14), r.center().y())
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FFFFFF") if on else QColor("#46505A"))
+        p.drawEllipse(dot, S(4), S(4))
+        state = tr("CONFIRMED") if self.ok else tr("READY") if self.ready else tr("NOT READY")
+        sf = font(10, QFont.Weight.ExtraBold)
+        sw = QFontMetrics(sf).horizontalAdvance(state) + S(4)
+        p.setFont(sf)
+        p.setPen(QColor("#FFFFFF") if on else QColor(TEXT_FAINT))
+        sr = QRectF(r.right() - sw - S(12), r.top(), sw, r.height())
+        p.drawText(sr, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), state)
+        nf = font(11, QFont.Weight.Bold)
+        p.setFont(nf)
+        p.setPen(QColor(TEXT) if on else QColor(TEXT_DIM))
+        nr = QRectF(dot.x() + S(10), r.top(), sr.left() - dot.x() - S(16), r.height())
+        p.drawText(nr, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+                   QFontMetrics(nf).elidedText(self.name, Qt.TextElideMode.ElideRight, int(nr.width())))
+
+
+class AmountRow(QWidget):
+    """Coins and keys with their icons (never covered by a button), and the value on the right."""
+
+    def __init__(self, coins: int, keys: int, worth: str = "", sign: str = "", colour: str = "",
+                 skip_zero: bool = False) -> None:
+        super().__init__()
+        self.coins, self.keys, self.worth, self.sign, self.colour = coins, keys, worth, sign, colour
+        self.skip_zero = skip_zero              # the trade summary: only what moved
+        self.setFixedHeight(S(24))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        h = self.height()
+        f = font(11.5, QFont.Weight.Bold)
+        p.setFont(f)
+        fm = QFontMetrics(f)
+        x = S(2)
+        if self.coins or not self.skip_zero:
+            paint_coin(p, QPointF(x + S(8), h / 2), S(7.5))
+            x += S(20)
+            text = self.sign + coins_text(self.coins)
+            p.setPen(QColor(self.colour or GOLD_TEXT))
+            p.drawText(QRectF(x, 0, fm.horizontalAdvance(text) + S(4), h), int(Qt.AlignmentFlag.AlignVCenter), text)
+            x += fm.horizontalAdvance(text) + S(16)
+        if self.keys or not self.skip_zero:
+            paint_key(p, QPointF(x + S(8), h / 2), S(16), self.colour or ui.accent)
+            x += S(20)
+            text = self.sign + str(self.keys)
+            p.setPen(QColor(self.colour) if self.colour else ui.accent)
+            p.drawText(QRectF(x, 0, fm.horizontalAdvance(text) + S(4), h), int(Qt.AlignmentFlag.AlignVCenter), text)
+            x += fm.horizontalAdvance(text) + S(10)
+        if self.worth:
+            wf = font(10.5)
+            p.setFont(wf)
+            p.setPen(QColor(TEXT_DIM))
+            wr = QRectF(x, 0, self.width() - x - S(2), h)
+            p.drawText(wr, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       QFontMetrics(wf).elidedText(self.worth, Qt.TextElideMode.ElideLeft, int(wr.width())))
+
+
+class InvSwitch(QWidget):
+    """YOUR INVENTORY | NAME'S INVENTORY: a two-way switch. The side shown is lit, the other is dark."""
+    changed = pyqtSignal(int)
+
+    def __init__(self, labels: list, index: int) -> None:
+        super().__init__()
+        self.labels, self.index = labels, index
+        self.setFixedHeight(S(36))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pos = Tween(self, float(index), self.update)
+        self._hover = -1
+        self.setMouseTracking(True)
+
+    def mouseMoveEvent(self, e) -> None:
+        i = 0 if e.position().x() < self.width() / 2 else 1
+        if i != self._hover:
+            self._hover = i
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self._hover = -1
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        i = 0 if e.position().x() < self.width() / 2 else 1
+        if i != self.index:
+            sfx.play("pick")
+            self.index = i
+            self._pos.to(float(i), 280)
+            self.changed.emit(i)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(S(1), S(1), -S(1), -S(1))
+        p.setPen(QPen(QColor("#252C31"), S(1.2)))
+        p.setBrush(QColor("#0B0F11"))
+        p.drawRoundedRect(r, S(10), S(10))
+        half = r.width() / 2
+        knob = QRectF(r.left() + S(3) + self._pos.level * half, r.top() + S(3), half - S(6), r.height() - S(6))
+        g = QLinearGradient(knob.topLeft(), knob.bottomLeft())
+        g.setColorAt(0.0, mix(ui.accent, QColor("#FFFFFF"), 0.18))
+        g.setColorAt(1.0, ui.accent)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRoundedRect(knob, S(8), S(8))
+        f = font(10.5, QFont.Weight.ExtraBold)
+        p.setFont(f)
+        fm = QFontMetrics(f)
+        on_text = QColor("#0B0E10") if ui.accent.lightnessF() > 0.55 else QColor("#FFFFFF")
+        for i, text in enumerate(self.labels):
+            cell = QRectF(r.left() + i * half + S(6), r.top(), half - S(12), r.height())
+            near = max(0.0, 1.0 - abs(self._pos.level - i))         # 1 = this side is lit
+            dark = QColor("#4A535B") if i != self._hover else QColor("#7A848C")
+            p.setPen(mix(dark, on_text, near))
+            p.drawText(cell, int(Qt.AlignmentFlag.AlignCenter),
+                       fm.elidedText(text, Qt.TextElideMode.ElideRight, int(cell.width())))
+
+
+class SlideBox(QWidget):
+    """Holds one page of content; a new one slides in from the side while the old one slides out."""
+
+    def __init__(self, width: int) -> None:
+        super().__init__()
+        self.setFixedWidth(width)
+        self.cur = self.old = None
+        self._dir = 1
+        self._t = Tween(self, 1.0, self._place)
+
+    def put(self, w: QWidget, direction: int = 0) -> None:
+        w.setParent(self)
+        w.setFixedWidth(self.width())
+        if w.layout() is not None:
+            w.layout().activate()
+            w.setFixedHeight(w.layout().sizeHint().height())
+        self._t.stop()
+        if self.old is not None:                     # a slide still running: finish it at once
+            self.old.deleteLater()
+            self.old = None
+        self.old, self.cur = self.cur, w
+        w.show()
+        if self.old is None or not direction:
+            if self.old is not None:
+                self.old.deleteLater()
+                self.old = None
+            w.move(0, 0)
+            self._height(w.height())
+            return
+        self._dir = direction
+        self._height(max(w.height(), self.old.height()))
+        self._t._value = 0.0
+        self._place()
+        self._t.to(1.0, 300)
+
+    def _height(self, h: int) -> None:
+        if h != self.height():
+            self.setFixedHeight(h)
+            refit_scroll(self)
+
+    def _place(self) -> None:
+        if self.cur is None:
+            return
+        v = self._t.level
+        self.cur.move(int((1.0 - v) * self._dir * self.width()), 0)
+        if self.old is not None:
+            self.old.move(int(-v * self._dir * self.width()), 0)
+            if v >= 1.0:
+                self.old.deleteLater()
+                self.old = None
+                self._height(self.cur.height())
+
+
+def _trade_pool(page, link, mine: list, offer) -> QWidget:
+    """Your side of the switch: your tradeable items, click one to add it."""
+    ctx, ec = page.ctx, page.ctx.econ
+    box = QWidget()
+    lay = vbox(box, 6)
+    offered = {r["id"] for r in mine}
+    pool = [i for i in ec.items if not i.get("locked") and i["id"] not in offered
+            and ec.info(i["item"]).get("tradeable") and ec.info(i["item"]).get("kind") != "coupon"]
+    pool.sort(key=lambda i: (-value_of(ctx, i["item"]), i["item"]))
+    if not pool:
+        lay.addWidget(Label(tr("Nothing more to add."), 11.5, TEXT_DIM))
+        return box
+    lay.addWidget(Label(tr("Click an item to add it to your offer."), 10.5, TEXT_DIM, wrap_w=page.W))
+    pool = pool[:60]
+    grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(value_of(ctx, i["item"]))} for i in pool], page.W, 6, 64)
+
+    def add(i: int) -> None:
+        if len(mine) >= 8:
+            return ctx.toast(tr("8 items at most"), "warn")
+        sfx.play("pick")
+        offer([r["id"] for r in mine] + [pool[i]["id"]], None)
+    grid.picked.connect(add)
+    lay.addWidget(grid)
+    return box
+
+
+def _trade_peek(page, link, them: str) -> QWidget:
+    """Their side of the switch: what they could trade. Only to look at, nothing here can be changed."""
+    ctx = page.ctx
+    box = QWidget()
+    lay = vbox(box, 6)
+    pk = link.peek if link.peek.get("trade") == link.trade_id else {}
+    if "items" not in pk:
+        lay.addWidget(Label(tr("Loading {name}'s items…", name=them), 11.5, TEXT_DIM))
+        return box
+    items = pk["items"]
+    if not items:
+        lay.addWidget(Label(tr("{name} has nothing to trade.", name=them), 11.5, TEXT_DIM, wrap_w=page.W))
+        return box
+    lay.addWidget(Label(tr("Look only: ask {name} in the chat to add something.", name=them), 10.5, TEXT_DIM,
+                        wrap_w=page.W))
+    grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(int(i.get("worth") or 0)),
+                           "mark": "offered" if i.get("offered") else ""} for i in items[:60]], page.W, 6, 64)
+    grid.picked.connect(lambda _i: ctx.toast(tr("This is {name}'s inventory: you can only look.", name=them)))
+    lay.addWidget(grid)
+    return box
+
+
+def _trade_summary(page, lay, link, them: str) -> None:
+    """After the trade: what you got and what you gave, as the server recorded it."""
+    ctx = page.ctx
+    sm = link.summary if link.summary.get("id") == link.trade_id else None
+    if sm is None:
+        lay.addWidget(Label(tr("Trade done! Loading the summary…"), 13, READY_GREEN, bold=True, wrap_w=page.W))
+        tid = link.trade_id
+
+        def got(ok: bool, data) -> None:
+            if tid != link.trade_id:
+                return
+            link.summary = data if ok and isinstance(data, dict) else {"id": tid, "failed": True}
+            link.summary["id"] = tid
+            ctx.reload_page("friends")
+        ctx.online.ask("rb_trade_summary", {"trade": tid}, got, raw=True)
+        return
+    lay.addWidget(Label(tr("Trade complete ✓"), 17, READY_GREEN, bold=True))
+    if sm.get("failed"):
+        lay.addWidget(Label(tr("The items are in your Inventory."), 12, TEXT_DIM, wrap_w=page.W))
+        return
+    worth_got = sum(int(i.get("worth") or 0) for i in sm.get("got") or []) + int(sm.get("coins_got") or 0)
+    worth_gave = sum(int(i.get("worth") or 0) for i in sm.get("gave") or []) + int(sm.get("coins_gave") or 0)
+
+    def part(title: str, rows: list, coins: int, keys: int, sign: str, colour: str) -> None:
+        head = hbox(spacing=6)
+        head.addWidget(Label(title, 12.5, colour, bold=True), 1)
+        lay.addLayout(head)
+        if rows:
+            lay.addWidget(ItemGrid(ctx, [{"item": r["item"], "text": sign + coins_text(int(r.get("worth") or 0))}
+                                         for r in rows], page.W, 6, 64, moving=False))
+        elif not coins and not keys:
+            lay.addWidget(Label(tr("Nothing"), 11, TEXT_FAINT))
+        if coins or keys:
+            lay.addWidget(AmountRow(coins, keys, sign=sign, colour=colour, skip_zero=True))
+    part(tr("You received from {name}", name=sm.get("other") or them), sm.get("got") or [],
+         int(sm.get("coins_got") or 0), int(sm.get("keys_got") or 0), "+", READY_GREEN)
+    part(tr("You gave"), sm.get("gave") or [], int(sm.get("coins_gave") or 0), int(sm.get("keys_gave") or 0),
+         "−", LOSS_RED)
+    net = worth_got - worth_gave
+    lay.addWidget(Label(tr("Value change: about {v}", v=("+" if net >= 0 else "−") + coins_text(abs(net))), 11.5,
+                        READY_GREEN if net >= 0 else LOSS_RED, bold=True))
+    lay.addWidget(Label(tr("Everything is already in your Inventory. This summary closes when you leave."), 10.5,
+                        TEXT_DIM, wrap_w=page.W))
+
+
 def build_trade(page, lay) -> None:
     """The trade screen (inside the Social tab)."""
     ctx, ec, link = page.ctx, page.ctx.econ, page.ctx.trade
@@ -1538,12 +2007,13 @@ def build_trade(page, lay) -> None:
     leave.clicked.connect(stop)
     top.addWidget(leave)
     lay.addLayout(top)
+    if state in ("asked", "open"):
+        lock_strip(ctx, lay, "trading", page.W)                     # 4.0: paused by the admins
     if state == "asked":
         lay.addWidget(Label(tr("Waiting for {name} to accept… (5 minutes at most)", name=them), 12, TEXT_DIM, wrap_w=page.W))
         return
     if state == "done":
-        lay.addWidget(Label(tr("Trade done! The items are in your Inventory."), 13, "#5BE08A", bold=True, wrap_w=page.W))
-        return
+        return _trade_summary(page, lay, link, them)
     if state == "cancelled":
         why = {"expired": "The trade ended: a user left or took too long.", "failed": "The trade could not be done: nothing was exchanged."
                }.get(d.get("why"), "The trade was cancelled. Nothing was exchanged.")
@@ -1560,52 +2030,61 @@ def build_trade(page, lay) -> None:
     get = sum(int(i.get("estimate") or 0) for i in theirs) + their_coins
     version = int(d.get("version") or 0)
 
-    def offer(ids: list, coins: int, keys: int = None) -> None:
-        link.act("rb_trade_offer", {"items": ids, "coins": coins, "keys": my_keys if keys is None else keys})
+    def offer(ids: list, coins, keys: int = None) -> None:
+        link.act("rb_trade_offer", {"items": ids, "coins": my_coins if coins is None else coins,
+                                    "keys": my_keys if keys is None else keys})
 
-    def side(title: str, rows: list, coins: int, total: int, ready: bool, removable: bool, keys: int = 0) -> None:
-        head = hbox(spacing=6)
-        head.addWidget(Label(title, 12, bold=True), 1)
-        head.addWidget(Label(tr("Ready") if ready else tr("Not ready"), 10.5, "#5BE08A" if ready else TEXT_FAINT, bold=True))
-        lay.addLayout(head)
+    # who is ready: both players, side by side, flashing when it just changed
+    now = (my_ready, my_ok, their_ready, their_ok)
+    was = link.shown_ready if link.shown_trade == link.trade_id else now
+    link.shown_ready, link.shown_trade = now, link.trade_id
+    pills = hbox(spacing=8)
+    pills.addWidget(ReadyPill(tr("You"), my_ready, my_ok, was[:2] != now[:2]), 1)
+    pills.addWidget(ReadyPill(them, their_ready, their_ok, was[2:] != now[2:]), 1)
+    lay.addLayout(pills)
+
+    def side(title: str, rows: list, coins: int, total: int, removable: bool, keys: int) -> None:
+        lay.addWidget(Label(title, 12, bold=True))
         entries = [{"item": r["item"], "text": coins_text(int(r.get("estimate") or 0))} for r in rows]
         entries += [{"empty": True}] * (8 - len(entries))
-        grid = ItemGrid(ctx, entries, page.W, 8, 56)
+        grid = ItemGrid(ctx, entries, page.W, 8, 60)
         if removable:
-            grid.picked.connect(lambda i: offer([r["id"] for k, r in enumerate(mine) if k != i], my_coins))
+            grid.setToolTip(tr("Click an item to take it back"))
+            grid.picked.connect(lambda i: offer([r["id"] for k, r in enumerate(mine) if k != i], None))
         lay.addWidget(grid)
-        foot = hbox(spacing=6)
-        foot.addWidget(Label(tr("Coins: {n}", n=coins_text(coins)), 11.5, GOLD_TEXT, bold=True).fit())
-        foot.addWidget(Label(tr("Keys: {n}", n=keys), 11.5, ui.accent.name(), bold=True).fit())
-        foot.addWidget(Label(tr("Worth about {v}", v=coins_text(total)), 10.5, TEXT_DIM), 1)
-        if removable:
-            kb = Button(tr("Keys"), "ghost", 24, icon="key")
+        lay.addWidget(AmountRow(coins, keys, tr("Worth about {v}", v=coins_text(total))))
+        if not removable:
+            return
+        row = hbox(spacing=6)
+        row.addStretch(1)
+        kb = Button(tr("Keys"), "ghost", 26, icon="key")
 
-            def change_keys() -> None:
-                def got(n: int, dlg) -> None:
-                    if n > ec.keys:
-                        return dlg.say(tr("You have {n} keys", n=ec.keys))
-                    if n > 99:
-                        return dlg.say(tr("99 at most"))
-                    dlg.close()
-                    offer([r["id"] for r in mine], coins, n)
-                ask_number(ctx, tr("Keys to give"), "0", tr("OK"), got, tr("You have {n} keys.", n=ec.keys))
-            kb.clicked.connect(change_keys)
-            foot.addWidget(kb)
-            b = Button(tr("Change coins"), "ghost", 24)
+        def change_keys() -> None:
+            def got(n: int, dlg) -> None:
+                if n > ec.keys:
+                    return dlg.say(tr("You have {n} keys", n=ec.keys))
+                if n > 99:
+                    return dlg.say(tr("99 at most"))
+                dlg.close()
+                offer([r["id"] for r in mine], None, n)
+            ask_number(ctx, tr("Keys to give"), str(keys), tr("OK"), got, tr("You have {n} keys.", n=ec.keys))
+        kb.clicked.connect(change_keys)
+        row.addWidget(kb)
+        b = Button(tr("Change coins"), "ghost", 26)
 
-            def change() -> None:
-                def got(n: int, dlg) -> None:
-                    if n > ec.coins:
-                        return dlg.say(tr("Not enough coins"))
-                    dlg.close()
-                    offer([r["id"] for r in mine], n)
-                ask_number(ctx, tr("Coins to give"), "0", tr("OK"), got, tr("You have {n} coins.", n=coins_text(ec.coins)))
-            b.clicked.connect(change)
-            foot.addWidget(b)
-        lay.addLayout(foot)
-    side(tr("You give"), mine, my_coins, give, my_ready, True, my_keys)
-    side(tr("You get"), theirs, their_coins, get, their_ready, False, their_keys)
+        def change() -> None:
+            def got(n: int, dlg) -> None:
+                if n > ec.coins:
+                    return dlg.say(tr("Not enough coins"))
+                dlg.close()
+                offer([r["id"] for r in mine], n)
+            ask_number(ctx, tr("Coins to give"), str(coins), tr("OK"), got,
+                       tr("You have {n} coins.", n=coins_text(ec.coins)))
+        b.clicked.connect(change)
+        row.addWidget(b)
+        lay.addLayout(row)
+    side(tr("You give"), mine, my_coins, give, True, my_keys)
+    side(tr("{name} gives", name=them), theirs, their_coins, get, False, their_keys)
     if give > max(get * 2, get + 500):
         lay.addWidget(Label(tr("Uneven trade: you give much more than you get."), 11.5, "#FFB020",
                             bold=True, wrap_w=page.W))
@@ -1623,28 +2102,46 @@ def build_trade(page, lay) -> None:
         line.addWidget(go, 2)
         lay.addLayout(line)
         if their_ok and not my_ok:
-            lay.addWidget(Label(tr("{name} confirmed. Your turn.", name=them), 11, "#5BE08A"))
-        return
-    ready = Button(tr("Not ready") if my_ready else tr("Ready"), "ghost" if my_ready else "primary", 36)
-    ready.clicked.connect(lambda: link.act("rb_trade_ready", {"ready": not my_ready, "seen_version": version}))
-    lay.addWidget(ready)
-    lay.addWidget(Label(tr("Any change resets both confirmations."), 10.5,
+            lay.addWidget(Label(tr("{name} confirmed. Your turn.", name=them), 11, READY_GREEN))
+    else:
+        ready = Button(tr("Not ready") if my_ready else tr("Ready"), "ghost" if my_ready else "primary", 36)
+        ready.clicked.connect(lambda: link.act("rb_trade_ready", {"ready": not my_ready, "seen_version": version}))
+        lay.addWidget(ready)
+    lay.addWidget(Label(tr("Any change to the offer sets both players back to Not ready."), 10.5,
                         TEXT_DIM, wrap_w=page.W))
-    offered = {r["id"] for r in mine}
-    pool = [i for i in ec.items if not i.get("locked") and i["id"] not in offered
-            and ec.info(i["item"]).get("tradeable")]
-    pool.sort(key=lambda i: (-value_of(ctx, i["item"]), i["item"]))
-    lay.addWidget(heading(tr("Your items (click to add)")))
-    if not pool:
-        lay.addWidget(Label(tr("Nothing more to add."), 11.5, TEXT_DIM))
-        return
-    pool = pool[:60]
-    grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(value_of(ctx, i["item"]))} for i in pool], page.W, 6, 62)
 
-    def add(i: int) -> None:
-        if len(mine) >= 8:
-            return ctx.toast(tr("8 items at most"), "warn")
-        sfx.play("pick")
-        offer([r["id"] for r in mine] + [pool[i]["id"]], my_coins)
-    grid.picked.connect(add)
-    lay.addWidget(grid)
+    # the two inventories
+    switch = InvSwitch([tr("YOUR INVENTORY"), tr("{name}'S INVENTORY", name=them.upper())], 1 if link.view else 0)
+    lay.addWidget(switch)
+    box = SlideBox(page.W)
+    lay.addWidget(box)
+
+    def fill(direction: int = 0) -> None:
+        try:
+            box.put(_trade_peek(page, link, them) if link.view else _trade_pool(page, link, mine, offer), direction)
+        except RuntimeError:                         # the page was rebuilt meanwhile
+            pass
+
+    def fetch() -> None:
+        pk = link.peek
+        if pk.get("trade") == link.trade_id and pk.get("version") == version and "items" in pk:
+            return
+        tid = link.trade_id
+
+        def got(ok: bool, data) -> None:
+            if tid != link.trade_id or not ok or not isinstance(data, dict):
+                return
+            link.peek = {"trade": tid, "version": version, "items": data.get("items") or []}
+            if link.view:
+                fill()
+        ctx.online.ask("rb_trade_inventory", {"trade": tid}, got, raw=True)
+
+    def flip(i: int) -> None:
+        link.view = i
+        fill(1 if i else -1)
+        if i:
+            fetch()
+    switch.changed.connect(flip)
+    fill()
+    if link.view:
+        fetch()

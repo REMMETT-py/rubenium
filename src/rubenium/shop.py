@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QAbstractButton, QGridLayout, QWidget
 
 from . import extras
 from .core import lang, S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, mix, tr, ui
-from .pages import Page
+from .pages import Page, StylePart
 from .wallet import COLOURS, COLOUR_HEX, coins_text, paint_coin
 from .widgets import Button, IconButton, Label, Segmented, Toggle, Tween, draw_icon, hbox, heading, row, vbox
 
@@ -543,19 +543,19 @@ class ColourRow(QWidget):
             p.restore()
 
 
-class ShopPage(Page):
+class ShopPage(StylePart, Page):
     """Six parts: Theme (colours, progression), Shop (balls, lines, fonts, themes), Badges, Cases, Market and
     Inventory."""
     key = "themes"
-    SECTIONS = ["Style", "Shop", "Collection", "Cases", "Market", "Inventory", "Sets", "Deals"]
-    ICONS = ["spark", "ball", "shield", "gift", "chip", "folder", "grid", "timer"]
+    SECTIONS = ["Notifications", "Shop", "Collection", "Cases", "Market", "Inventory", "Sets", "Deals"]
+    ICONS = ["bell", "ball", "shield", "gift", "chip", "folder", "grid", "timer"]
     GET = [1, 7, 3, 4]                     # getting things: shop, today's deals, cases, market
-    MINE = [5, 2, 6, 0]                    # what is yours: inventory, collection, sets, your style
-    NOTES = ["Your profile, your colours and the looks you unlock with time.",
+    MINE = [5, 2, 6, 0]                    # what is yours: inventory, collection, sets, notifications
+    NOTES = ["Everything you were told, newest first. Click one to go there.",
              "Balls, lines, fonts, themes, banners and frames. Shop price = worth + 20% tax.",
              "Your collection: click a badge to see every colour.", "Buy cases with coins, open them with a key.",
              "Buy and sell with other users.", "Everything you own. Sell, show or trade it.",
-             "Collect full sets for a big bonus.", "4 items cheaper today. New deals every day at midnight."]
+             "Collect full sets for a big bonus.", "Items cheaper today. New deals every day at midnight."]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -563,7 +563,7 @@ class ShopPage(Page):
         self.cards, self.unlocks, self.c1 = [], [], None
         lay = vbox(self, 8)
         lay.addWidget(CoinBar(ctx, keys=True))
-        tab = getattr(ctx, "shop_tab", 0)
+        tab = getattr(ctx, "shop_tab", 1)
         from .bazaar import build_cosmetics, build_inventory, build_market
         from .hub import NavTiles
         gifts = sum(int(v or 0) for v in ctx.econ.stock.values())
@@ -579,6 +579,10 @@ class ShopPage(Page):
         self.navs = rows
         note = Label(tr(self.NOTES[tab]), 10.5, TEXT_DIM, wrap_w=self.W)
         lay.addWidget(note)
+        feature = {1: "shop", 3: "cases", 4: "market", 7: "shop"}.get(tab)
+        if feature:
+            from .widgets import lock_strip
+            lock_strip(ctx, lay, feature, self.W)                  # 4.0: paused by the admins
         if tab == 1:
             build_cosmetics(self, lay)
         elif tab == 2:
@@ -596,7 +600,8 @@ class ShopPage(Page):
             from .hub import build_deals
             build_deals(self, lay)
         else:
-            self._look(lay)
+            from .notify import build_history
+            build_history(self, lay)
         ctx.wallet.changed.connect(self._refresh)
 
     def _section(self, i: int) -> None:
@@ -610,73 +615,6 @@ class ShopPage(Page):
         self.ctx.stop_preview()
         self.ctx.window.drawer.close_now()
         self.ctx.reload_page()
-
-    # -- Look
-    def _look(self, lay) -> None:
-        ctx, wallet = self.ctx, self.ctx.wallet
-        from .bazaar import build_profile_style
-        build_profile_style(self, lay)
-        lay.addWidget(heading(tr("Colour")))
-        self.t_music = Toggle(bool(ctx.cfg["accent_from_art"]) and wallet.owns("music"))
-        self.t_music.toggled_by_user.connect(self._music)
-        self.music_wait = Label("", 10.5, TEXT_DIM)
-        music = QWidget()
-        ml = hbox(music, 8)
-        texts = QWidget()
-        tl = vbox(texts, 0)
-        tl.addWidget(Label(tr("Use the colours of the music"), 12.5))
-        tl.addWidget(self.music_wait)
-        ml.addWidget(texts, 1)
-        ml.addWidget(self.t_music, 0, Qt.AlignmentFlag.AlignVCenter)
-        lay.addWidget(music)
-        self.t_screen = Toggle(bool(ctx.cfg["accent_from_screen"]) and not self.t_music.isChecked())
-        self.t_screen.toggled_by_user.connect(self._screen)
-        lay.addWidget(row(tr("Use screen colours"), self.t_screen))
-        self._music_text()
-        lay.addWidget(Label(tr("Colour 1"), 12.5))
-        self.c1 = ColourRow(self, "c1", "custom_accent")
-        lay.addWidget(self.c1)
-        lay.addWidget(Label(tr("Themes from the shop bring their own second colour."), 10.5, TEXT_DIM, wrap_w=self.W))
-
-        lay.addWidget(heading(tr("Progression")))
-        lay.addWidget(UnlockBar(self))
-        for kind, styles, key in (("r", extras.R_STYLES, "ball_style"), ("ring", extras.RING_STYLES, "ring_style")):
-            line = hbox(spacing=0)
-            for n, st in enumerate(styles):
-                tile = UnlockTile(kind, st, key, self)
-                tile.clicked.connect(lambda _=False, t=tile: self._unlock_pick(t))
-                line.addWidget(tile)
-                if n < len(styles) - 1:
-                    line.addStretch(1)
-                self.unlocks.append(tile)
-            lay.addLayout(line)
-
-        lay.addWidget(heading(tr("Themes")))
-        grid = QGridLayout()
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setSpacing(S(2))
-        from .cosmetics import THEME_LOOKS, shop_theme
-        every = list(extras.THEMES) + [shop_theme("theme:" + t[0]) for t in THEME_LOOKS]   # 3.0.0: shop themes too
-        for i, th in enumerate(t for t in every if t):
-            card = ThemeCard(th, self)
-            card.clicked.connect(lambda _=False, t=th: self._pick(t))
-            grid.addWidget(card, i // 2, i % 2)
-            self.cards.append(card)
-        lay.addLayout(grid)
-        self._tick = QTimer(self)                      # the music colours count down to their hour
-        self._tick.setInterval(15000)
-        self._tick.timeout.connect(self._music_text)
-        self._tick.start()
-        self._refresh()
-
-    def _music_text(self) -> None:
-        wait = self.ctx.wallet.music_wait()
-        done = max(0.0, (3600 - wait) / 3600)
-        hours = f"{min(0.9, done):.1f}"
-        self.music_wait.set_text("" if not wait else tr("{x} / 1 hour to unlock",
-                                                        x=hours.replace(".", ",") if lang() == "fr" else hours))
-        self.music_wait.setVisible(bool(wait))
-        self.t_music.setEnabled(not wait)
 
     # -- Badges
     def _badges(self, lay) -> None:
@@ -906,7 +844,13 @@ class ShopPage(Page):
             self.open_btn.clicked.connect(lambda: self._open(case))
             row_.addWidget(self.open_btn, 3)
             self.buy_btn = None
-            if not case.get("limited"):
+            need = int(case.get("min_level") or 0)
+            if need > ec.level and not case.get("limited"):      # 4.0: unlocks with the first levels
+                self.buy_btn = Button(tr("Unlocks at level {n}", n=need), "ghost", 40, icon="lock")
+                self.buy_btn.setEnabled(False)
+                self.buy_btn.level_locked = True
+                row_.addWidget(self.buy_btn, 3)
+            elif not case.get("limited"):
                 self.buy_btn = Button(tr("Buy {n}", n=coins_text(case["price"])), "ghost", 40)
                 self.buy_btn.clicked.connect(lambda: self._buy(case, 1))
                 row_.addWidget(self.buy_btn, 2)
@@ -926,13 +870,22 @@ class ShopPage(Page):
                 gift.clicked.connect(lambda: self._gift(case))
                 lay.addWidget(gift)
         if cid != "daily":
+            from .collection import CaseOverview, DropList      # 4.0: an overview first, the full pool on demand
             lay.addWidget(heading(tr("Chances")))
+            lay.addWidget(CaseOverview(ctx, case, self.W))
             lay.addWidget(OddsTable(case, self.W))
-            from .collection import DropList
             drops = DropList(self, case)
             if drops.rows:
-                lay.addWidget(heading(tr("Every item and its chance")))
-                lay.addWidget(drops)
+                open_pool = getattr(ctx, "case_pool", "") == case["id"]
+                more = Button(tr("Hide the rewards") if open_pool else tr("See all {n} rewards", n=len(drops.rows)),
+                              "ghost", 30, icon="search")
+                more.clicked.connect(lambda: (setattr(ctx, "case_pool", "" if open_pool else case["id"]), ctx.reload_page()))
+                lay.addWidget(more)
+                if open_pool:
+                    lay.addWidget(heading(tr("Every reward and its chance")))
+                    lay.addWidget(drops)
+                else:
+                    drops.deleteLater()
         else:
             lay.addWidget(Label(tr("Once a day: coins, a key or a badge."),
                                 10.5, TEXT_DIM, wrap_w=self.W))
@@ -1045,7 +998,12 @@ class ShopPage(Page):
             if case is not None and case.get("mode") != "jackpot" and won > int(case.get("coin_max") or 0) > 0:
                 sfx.play("on")
                 self.ctx.toast(tr("Lucky drop: ×3! +{n} coins", n=coins_text(won)))
-            from .collection import case_kind
+            if data.get("coupon"):                            # 4.0: a bonus XP coupon on top of the drop
+                from .levels import COUPONS
+                cp = data["coupon"]
+                QTimer.singleShot(700, lambda: (sfx.tune("coupon"), self.ctx.toast(
+                    tr("Bonus: {what}! It is in Inventory > Levels.", what=tr(COUPONS.get(cp, ("XP coupon",))[0])))))
+                ec.refresh()
             self._case_texts()
         QTimer.singleShot(900, lambda: self._lock(False))
 
@@ -1075,81 +1033,18 @@ class ShopPage(Page):
     def _lock(self, on: bool) -> None:
         try:
             for wdg in (self.open_btn, self.case_back, getattr(self, "buy_btn", None), *getattr(self, "navs", [])):
-                if wdg is not None:
+                if wdg is not None and not getattr(wdg, "level_locked", False):
                     wdg.setEnabled(not on)
         except RuntimeError:
             pass
 
     # -- progression: nothing is bought, it opens with time played
-    def buy(self, ident: str) -> None:
-        hours = self.ctx.wallet.hours_for(ident)
-        self.ctx.toast(tr("Unlocks after {n} h with Rubenium", n=f"{hours:g}"), "warn")
-
     def claim_set(self, which: str) -> None:
         from .hub import claim_set
         claim_set(self.ctx, which)
 
-    def flair_changed(self) -> None:
-        self.ctx.cfg.save()
-
-    # -- colours
-    def set_colour(self, kind: str, col: str) -> None:
-        self.ctx.cfg["custom_accent"] = col
-        self.ctx.refresh_accent()
-        self._rows()
-
-    def _music(self, on: bool) -> None:
-        if on and not self.ctx.wallet.owns("music"):
-            self.t_music.set_checked(False)
-            return self._music_text()
-        self.ctx.set_colour_source("music" if on else "")
-        if on:
-            self.t_screen.set_checked(False)
-        self._rows()
-
-    def _screen(self, on: bool) -> None:
-        """Only one of the two at a time: no fighting colours."""
-        self.ctx.set_colour_source("screen" if on else "")
-        if on:
-            self.t_music.set_checked(False)
-        self._rows()
-
-    def _rows(self) -> None:
-        """With the music's (or the screen's) colours on, your own colour is greyed out."""
-        if self.c1 is None:
-            return
-        wallet = self.ctx.wallet
-        auto = (bool(self.ctx.cfg["accent_from_art"]) and wallet.owns("music")) or bool(self.ctx.cfg["accent_from_screen"])
-        self.c1.set_state(auto, False)
-
-    # -- ball styles and themes
-    def _unlock_pick(self, tile) -> None:
-        if not self.ctx.wallet.owns(tile.ident):
-            return self.buy(tile.ident)
-        if self.ctx.cfg[tile.key] != tile.style["id"]:
-            sfx.play("pick")
-        self.ctx.cfg[tile.key] = tile.style["id"]
-        self.ctx.window.ball.update()
-        for t in self.unlocks:
-            t.update()
-
-    def _pick(self, th: dict) -> None:
-        drawer = self.ctx.window.drawer
-        if self.ctx.wallet.owns(f"theme:{th['id']}"):
-            drawer.close_now()
-            if self.ctx.cfg["theme"] != th["id"]:
-                sfx.play("pick")
-            self.ctx.set_theme(th["id"])
-        elif drawer.is_open() and drawer.theme is th:
-            drawer.close_drawer()
-        else:
-            drawer.open_for(th)
-        self._refresh()
-
     def _refresh(self) -> None:
-        self._rows()
-        for w in self.cards + self.unlocks + [x for x in (self.c1,) if x is not None]:
-            w.update()
+        self._refresh_style()
 
     def on_show(self) -> None:
         self._refresh()
