@@ -929,6 +929,7 @@ do $$
 declare src text; n1 integer; n2 integer;
 begin
     src := replace(pg_get_functiondef('public.rb_quest_rows(uuid)'::regprocedure), chr(13), '');
+    if src like '%golf_solo%' then return; end if;                -- already done (safe to run again)
     n1 := (length(src) - length(replace(src, $q$game in ('mini', 'park', 'memory')$q$, ''))) / length($q$game in ('mini', 'park', 'memory')$q$);
     src := replace(src, $q$game in ('mini', 'park', 'memory')$q$, $q$game in ('mini', 'park', 'memory', 'blocks', 'sweeper', 'golf_solo', 'wave')$q$);
     n2 := (length(src) - length(replace(src, $q$('timing'), ('roulette'), ('hilo'))$q$, ''))) / length($q$('timing'), ('roulette'), ('hilo'))$q$);
