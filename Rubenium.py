@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "4.6"         # the version people see
-BUILD = "2026.11.18.25"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "4.7"         # the version people see
+BUILD = "2026.11.18.26"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1818,7 +1818,6 @@ DEFAULTS: dict = {
     "hold_open": True,
     "gm_key": "off",
     "online_size": "medium",
-    "cheats": False,                 # 4.6: Ruben's cheats (admin > Rig, Ruben's account only)         # 4.6: the online menu's size: medium or large (fits the screen either way)                 # 4.6: the key that turns game mode on and off (off = no key)
     "hold_ms": 400,
     "offline_mode": False,
     "timing_help": False,
@@ -2716,6 +2715,7 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_already_owned": "You already have it", "rb_not_yours": "You do not have this",
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
           "rb_too_soon": "Not ready yet", "rb_bad_bet": "This bet is too high or too low",
+          "rb_pawn_no_deal": "He never agreed to that price: ask him again",
           "rb_row_not_full": "You need every colour of that row (not on sale or in a trade)",
           "rb_have_them_all": "You already have all of those",
           "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
@@ -3230,35 +3230,9 @@ class Econ(QObject):
         self.keys = max(0, self.keys + int(keys))
         self.changed.emit()
 
-    # 4.6: Ruben's cheats. A right click (instead of a left click) arms one, the next move uses it.
-    CHEATS = {"rb_mines": ("pick",), "rb_tower": ("pick",), "rb_hilo": ("higher", "lower"), "rb_blackjack": ("hit",),
-              "rb_dice": None, "rb_slots": None, "rb_spin": None, "rb_scratch": None, "rb_flip_vs_bot": None}
-
-    def _cheat_for(self, fn: str, args: dict):
-        """(server function, its arguments) that makes this move go your way, or None."""
-        import time as _t
-        if _t.monotonic() - getattr(self, "cheat_armed", 0.0) > 2.0 or fn not in self.CHEATS:
-            return None
-        acts = self.CHEATS[fn]
-        if acts is not None and str(args.get("action")) not in acts:
-            return None
-        self.cheat_armed = 0.0
-        me = self.online.username()
-        if fn in ("rb_mines", "rb_tower", "rb_hilo", "rb_blackjack"):
-            return "rb_admin_cheat", {"game": {"rb_mines": "mines", "rb_tower": "tower", "rb_hilo": "hilo",
-                                               "rb_blackjack": "blackjack"}[fn]}
-        import random as _r
-        kind, data = {"rb_dice": ("dice", {"win": True}), "rb_flip_vs_bot": ("flip", {"win": True}),
-                      "rb_slots": ("slots", {"reels": [_r.choice(["seven", "gem", "bell"])] * 3}),
-                      "rb_spin": ("wheel", {"slot": 8}), "rb_scratch": ("scratch", {"tier": _r.choice(["exotic", "golden"])})}[fn]
-        return "rb_admin_rig", {"name": me, "kind": kind, "key": "", "data": data}
-
     def call(self, fn: str, args: dict, done=None, once: bool = False, hold: bool = False) -> None:
         """Ask the server to do something. `done(ok, answer or message)` runs on the main thread, after the
         balance in the answer was taken. `once` adds an id so a resend can never be done twice."""
-        cheat = self._cheat_for(fn, args) if self.admin else None
-        if cheat is not None:                          # armed first, then the move itself
-            return self.online.ask(cheat[0], cheat[1], lambda _o, _d: self.call(fn, args, done, once, hold), raw=True)
         if once:
             args = dict(args, req=uuid.uuid4().hex)
 
@@ -6458,6 +6432,59 @@ FR = {
     'No more pop-ups telling the result before a coin, a case or a duel replay ends': "Plus de notifications qui révèlent le résultat avant la fin d'une pièce, d'une caisse ou d'un replay de duel",
     '8 new golf holes, 30 seconds a shot, and Wave Rush gates. Bets are bigger and easier to join in duel lobbies': '8 nouveaux trous de golf, 30 secondes par coup, et des portes dans Wave Rush. Les mises sont plus visibles et les duels plus faciles à rejoindre',
     'Titanium and Gold a little less rare. Online menu in Medium or Large, fixes coming back from online mode, YouTube ads muted better': 'Titanium et Gold un peu moins rares. Menu en ligne en Moyen ou Grand, corrections au retour du mode en ligne, pubs YouTube mieux coupées',
+    '{name} gifted you {n} cases: {case}': '{name} t’a offert {n} caisses : {case}',
+    'The cheapest case: mostly coins, sometimes a Basic or Painted badge.': 'La caisse la moins chère : surtout des pièces, parfois un badge Basique ou Peint.',
+    'Mostly coins, Basic and Painted badges, and a small Shiny chance.': 'Surtout des pièces, des badges Basiques et Peints, et une petite chance de Brillant.',
+    'Mostly coins back, Basic and Painted badges, and a small Shiny chance.': 'Surtout des pièces rendues, des badges Basiques et Peints, et une petite chance de Brillant.',
+    'Coins, Common to Special badges, and a tiny chance of Gold.': 'Des pièces, des badges Commun à Spécial, et une toute petite chance d’Or.',
+    'Better badges than the Standard Case, up to Shiny and Gold.': 'De meilleurs badges que la Caisse Standard, jusqu’au Brillant et à l’Or.',
+    'Every finish, Titanium and Gold included, up to Epic Gold.': 'Toutes les finitions, Titane et Or compris, jusqu’à l’Or Épique.',
+    'Every rarity in every finish, Epic Gold included.': 'Toutes les raretés dans toutes les finitions, Or Épique compris.',
+    'For high rollers: no Common badges, every finish up to Epic Gold, and rare huge coin drops.': 'Pour les gros joueurs : aucun badge Commun, toutes les finitions jusqu’à l’Or Épique, et de rares énormes gains en pièces.',
+    'High risk: mostly a few coins, otherwise Rare or Special, up to Titanium and Gold.': 'Gros risque : surtout quelques pièces, sinon du Rare ou du Spécial, jusqu’au Titane et à l’Or.',
+    'Never Basic: Painted, Shiny, Titanium and Gold.': 'Jamais de Basique : Peint, Brillant, Titane et Or.',
+    'No Common badges: Rare to Epic in every finish.': 'Aucun badge Commun : du Rare à l’Épique dans toutes les finitions.',
+    'Special and Epic badges only, with the best Mythic odds.': 'Seulement des badges Spéciaux et Épiques, avec les meilleures chances de Mythique.',
+    'He never agreed to that price: ask him again': 'Il n’a jamais accepté ce prix : redemande-lui',
+    'DEALER': 'CROUPIER',
+    'YOU': 'TOI',
+    'Blackjack pays 3 to 2 · the dealer draws to 17 · double on your first two cards': 'Le blackjack paie 3 pour 2 · le croupier tire jusqu’à 17 · double sur tes deux premières cartes',
+    'Multiplier': 'Multiplicateur',
+    'Next gem': 'Gemme suivante',
+    'Gems · Bombs': 'Gemmes · Bombes',
+    'Right in a row': 'Bons d’affilée',
+    "Every slot is a big prize. Spin when you're ready.": 'Chaque case est un gros lot. Lance quand tu es prêt.',
+    'You have a Golden Wheel to spin!': 'Tu as une Roue dorée à lancer !',
+    'Coins: 10K 26% · 20K 20% · 40K 12% · 100K 4% · 250K 1%': 'Pièces : 10K 26 % · 20K 20 % · 40K 12 % · 100K 4 % · 250K 1 %',
+    'Cases with a key: Elite 14% · Vault 10% · Top Tier 8% · Royal 5%': 'Caisses avec une clé : Élite 14 % · Coffre-fort 10 % · Haut de gamme 8 % · Royale 5 %',
+    'Spin again ({n} left)': 'Relancer ({n} restante(s))',
+    'No Golden Wheel left to spin': 'Plus de Roue dorée à lancer',
+    '1 left': '1 restant',
+    'One at this price per day.': 'Un seul à ce prix par jour.',
+    'While it is on, Rubenium stays exactly as it is (open or closed) but ignores the mouse completely: nothing in it can be clicked or even hovered, and the pointer never shows up over it, so nothing gets in the way of your game. A padlock on the ball shows it.': 'Tant qu’il est activé, Rubenium reste tel quel (ouvert ou fermé) mais ignore complètement la souris : rien ne peut y être cliqué ni même survolé, et le pointeur n’y apparaît jamais, donc rien ne gêne ton jeu. Un cadenas sur la boule l’indique.',
+    'Sold out': 'Épuisé',
+    'Sold out until tomorrow': 'Épuisé jusqu’à demain',
+    'Hold to open, keys and game mode': 'Maintenir pour ouvrir, touches et mode jeu',
+    'Sell for {n}': 'Vendre pour {n}',
+    'Suit yourself.': 'Comme tu veux.',
+    'His price always sells. Asking for more only asks: if he says yes, you still choose to sell. Every no makes him angrier (he calms down over time); if his patience runs out, he throws you out for 30 minutes.': 'Son prix vend toujours. Demander plus ne fait que demander : s’il dit oui, c’est toi qui choisis de vendre. Chaque refus l’énerve (il se calme avec le temps) ; si sa patience est à bout, il te met dehors pendant 30 minutes.',
+    'Market price: about {n} coins (selling there takes longer, 5% fee)': 'Prix du marché : environ {n} pièces (plus long à vendre, 5 % de frais)',
+    'He agreed to {n} coins: press Sell to sell it': 'Il accepte {n} pièces : appuie sur Vendre pour vendre',
+    'Fine. {n} coins, if you want it.': 'D’accord. {n} pièces, si tu veux.',
+    "It goes straight to your friend's cases; they open it with a key.": 'Elle va directement dans les caisses de ton ami ; il l’ouvre avec une clé.',
+    'TO': 'POUR',
+    'HOW MANY': 'COMBIEN',
+    'You have {n} coins': 'Tu as {n} pièces',
+    'Send to {name} for {n}': 'Envoyer à {name} pour {n}',
+    'Pick a friend': 'Choisis un ami',
+    'Add friends on the Social page to send them gifts.': 'Ajoute des amis dans Social pour leur envoyer des cadeaux.',
+    'Gifts left today: {n}': 'Cadeaux restants aujourd’hui : {n}',
+    'Cases: new odds for every badge. No badge is rarer than 1 in 250 (Basic), 1 000 (Painted), 10 000 (Shiny), 50 000 (Titanium) or 100 000 (Gold); cheap cases hold the lower rarities, big cases everything. Mythic drops unchanged': 'Caisses : nouvelles chances pour chaque badge. Aucun badge n’est plus rare que 1 sur 250 (Basique), 1 000 (Peint), 10 000 (Brillant), 50 000 (Titane) ou 100 000 (Or) ; les petites caisses ont les raretés basses, les grandes tout. Mythiques inchangés',
+    'The Golden Wheel now spins inside the menu (no more flashing in online mode) and pays far more: 10 000 to 250 000 coins or a big case': 'La Roue dorée tourne maintenant dans le menu (fini le clignotement en mode en ligne) et paie bien plus : 10 000 à 250 000 pièces ou une grosse caisse',
+    'Pawn shop: the slider starts on his price (100%), asking for more no longer sells by itself (press Sell once he agrees), and the market price is shown': 'Prêteur sur gages : le curseur part de son prix (100 %), demander plus ne vend plus tout seul (appuie sur Vendre quand il accepte), et le prix du marché est affiché',
+    'Game mode no longer closes Rubenium: it only stops the mouse reaching it. Hold to open moved to the game mode window': 'Le mode jeu ne ferme plus Rubenium : il empêche seulement la souris de l’atteindre. Maintenir pour ouvrir est dans la fenêtre du mode jeu',
+    'Gift a case by tapping a friend, up to 3 at once. Deals: one of each per day': 'Offre une caisse en touchant un ami, jusqu’à 3 d’un coup. Bons plans : un de chaque par jour',
+    'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
 
@@ -10815,6 +10842,12 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("4.7", ['Cases: new odds for every badge. No badge is rarer than 1 in 250 (Basic), 1 000 (Painted), 10 000 (Shiny), 50 000 (Titanium) or 100 000 (Gold); cheap cases hold the lower rarities, big cases everything. Mythic drops unchanged',
+             'The Golden Wheel now spins inside the menu (no more flashing in online mode) and pays far more: 10 000 to 250 000 coins or a big case',
+             'Pawn shop: the slider starts on his price (100%), asking for more no longer sells by itself (press Sell once he agrees), and the market price is shown',
+             'Game mode no longer closes Rubenium: it only stops the mouse reaching it. Hold to open moved to the game mode window',
+             'Gift a case by tapping a friend, up to 3 at once. Deals: one of each per day',
+             'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam']),
     ("4.6", ['Game mode button on the home tab: pick a key, it blocks every click on Rubenium while you play (padlock on the ball). Hold it 5 s to restart',
              "Trade up: a full row of colours becomes a random Shiny or Titanium you don't have, with a spin",
              'Sell on the market from your inventory, in a new market stall scene. The pawn shop is easier to deal with and its ban timer is bigger',
@@ -17723,30 +17756,11 @@ class SettingsPage(StylePart, Page):
             lay.addWidget(Label(text, 10, TEXT_DIM, wrap_w=self.W))
 
         if sec == 0:                                    # ---------------------------------------------- General
-            lay.addWidget(heading(tr("Opening")))
-            toggle(tr("Hold to open"), "hold_open", after=lambda v: ctx.reload_page())
-            if cfg["hold_open"]:                       # the time only matters while hold to open is on
-                hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
-                                 marks=list(range(200, 1001, 100)))
-
-                def hold_set(v) -> None:
-                    cfg["hold_ms"] = int(v)
-                hold.changed.connect(hold_set)
-                lay.addWidget(hold)
+            lay.addWidget(heading(tr("Opening")))           # 4.7: hold to open and the keys live in the game mode window
+            gm_btn = Button(tr("Open"), "ghost", 30, icon="pad")
             pass
-            keys = [k for k, _n, _v in KEY_CHOICES]
-            hk = Segmented([tr("No key") if k == "off" else n.replace("Right ", "R ") for k, n, _v in KEY_CHOICES],
-                           keys.index(cfg["hotkey"]) if cfg["hotkey"] in keys else 0)
-
-            def set_key(i: int) -> None:
-                cfg["hotkey"] = keys[i]
-                ctx.tapkey.set_key(keys[i])
-            hk.changed.connect(set_key)
-            lay.addWidget(Label(tr("Show / hide key"), 11.5, TEXT))
-            lay.addWidget(hk)
-            note(tr("Tap it once to open or close Rubenium, even in a game."))
-            lay.addWidget(Label(tr("Holding this key down for 3 seconds restarts Rubenium, in case you are stuck or run into a problem."),
-                                10, "#FFD54A", wrap_w=self.W))
+            gm_btn.clicked.connect(lambda: open_game_mode(ctx))
+            lay.addWidget(row(tr("Hold to open, keys and game mode"), gm_btn))
             lay.addWidget(heading(tr("Music")))                 # 3.2
             pass
             app_btn = Button(app_name(cfg["music_app"]) or tr("Ask me"), "ghost", 30)
@@ -17772,6 +17786,7 @@ class SettingsPage(StylePart, Page):
             seg.changed.connect(lambda i: ctx.set_language("fr" if i else "en"))
             lay.addWidget(row(tr("Language"), seg))
             osz = Segmented([tr("Medium"), tr("Large")], 1 if cfg["online_size"] == "large" else 0)
+            osz.setFixedWidth(S(190))                   # 4.7: it had no width in the row, so it never showed
 
             def set_osz(i: int) -> None:
                 cfg["online_size"] = "large" if i else "medium"
@@ -18623,7 +18638,7 @@ class ShopPage(StylePart, Page):
         market_sell(self.ctx, self._item())
 
     # -- Cases
-    DAILY = {"id": "daily", "price": 0, "odds": [7500, 2000, 450, 50, 0, 0], "coin_min": 30, "coin_max": 120,
+    DAILY = {"id": "daily", "price": 0, "odds": [7459, 1867, 674, 0, 0, 0], "coin_min": 40, "coin_max": 150,
              "exotics": False, "pity_tier": 1, "pity_after": 0}
 
     def daily_wait(self):
@@ -18877,27 +18892,10 @@ class ShopPage(StylePart, Page):
         QTimer.singleShot(900, lambda: self._lock(False))
 
     def _gift(self, case: dict) -> None:
-        pass
-        pass
-        ctx, ec = self.ctx, self.ctx.econ
-        if not ec.can_trade():
-            return ctx.toast(tr("Gifts unlock after 5 hours with Rubenium"), "warn")
-
-        def send(name: str, dlg) -> None:
-            if case["price"] > ec.coins:
-                return dlg.say(tr("Not enough coins"))
-
-            def done(ok: bool, data) -> None:
-                if not ok:
-                    return dlg.say(tr(str(data)))
-                dlg.close()
-                sfx.play("on")
-                ctx.toast(tr("Gift sent to {name}!", name=name))
-            ec.call("rb_case_gift", {"name": name, "which": case["id"]}, done, once=True)
-        ctx._ask = AskDialog(ctx, tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), tr("Friend's username"),
-                             tr("Gift for {n}", n=coins_text(case["price"])), send, 10,
-                             tr("It costs {n} coins (no key). It goes to your friend's cases; they open it with a key. "
-                                "3 gifts a day at most.", n=coins_text(case["price"])))
+        """4.7: pick a friend and how many, in a sheet inside the menu (no more typing a username)."""
+        if not self.ctx.econ.can_trade():
+            return self.ctx.toast(tr("Gifts unlock after 5 hours with Rubenium"), "warn")
+        self.ctx.window.embed(GiftSheet(self.ctx, case))
 
     def _lock(self, on: bool) -> None:
         try:
@@ -18976,6 +18974,148 @@ class UnlockBar(QWidget):
         p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * frac), bar.height()), S(3), S(3))
 
 
+class _FriendChip(QWidget):
+    """A friend to pick: picture, name, online dot."""
+    picked = pyqtSignal(str)
+
+    def __init__(self, ctx, info: dict, w: int) -> None:
+        super().__init__()
+        self.ctx, self.info, self.on = ctx, info, False
+        self.setFixedSize(w, S(44))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mouseReleaseEvent(self, e) -> None:
+        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
+            self.picked.emit(self.info["username"])
+
+    def paintEvent(self, _e) -> None:
+        pass
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.setPen(QPen(QColor(ui.accent), S(1.6)) if self.on else QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(alpha(ui.accent, 0.14) if self.on else alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(r, S(10), S(10))
+        name = self.info["username"]
+        paint_face(p, QRectF(r.left() + S(6), r.center().y() - S(15), S(30), S(30)), self.ctx, name,
+                   int(self.info.get("avatar_v") or 0), bool(self.info.get("online")))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.drawText(r.adjusted(S(44), 0, -S(6), 0), int(Qt.AlignmentFlag.AlignVCenter),
+                   p.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight, int(r.width() - S(50))))
+
+
+class GiftSheet(QWidget):
+    """4.7: gift a case. Your friends as cards (tap one), how many (up to what's left today), the price, Send."""
+
+    def __init__(self, ctx, case: dict) -> None:
+        super().__init__()
+        pass
+        self.ctx, self.case = ctx, case
+        self.to, self.n, self.left, self.busy = "", 1, None, False
+        self.W = ctx.window.page_w()
+        self.setFixedWidth(self.W)
+        lay = vbox(self, 10)
+        top = hbox(spacing=8)
+        back = IconButton("back", 30, tip=tr("Back"))
+        back.clicked.connect(self.close_sheet)
+        top.addWidget(back)
+        top.addWidget(Label(tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), 15, TEXT, bold=True), 1)
+        lay.addLayout(top)
+        lay.addWidget(Label(tr("It goes straight to your friend's cases; they open it with a key."), 10.5, TEXT_DIM,
+                            wrap_w=self.W))
+        lay.addWidget(Label(tr("TO"), 10, TEXT_DIM, bold=True))
+        self.grid_box = QWidget()
+        self.grid = QGridLayout(self.grid_box)
+        self.grid.setContentsMargins(0, 0, 0, 0)
+        self.grid.setSpacing(S(6))
+        lay.addWidget(self.grid_box)
+        self.empty = Label(tr("Loading…"), 11, TEXT_DIM)
+        lay.addWidget(self.empty)
+        lay.addWidget(Label(tr("HOW MANY"), 10, TEXT_DIM, bold=True))
+        self.count = Segmented(["1", "2", "3"], 0)
+        self.count.changed.connect(self._count)
+        lay.addWidget(self.count)
+        self.info = Label("", 10.5, TEXT_DIM, wrap_w=self.W)
+        lay.addWidget(self.info)
+        self.send = Button("", "primary", 40, icon="gift")
+        self.send.clicked.connect(self._send)
+        lay.addWidget(self.send)
+        self.chips: list = []
+        self._texts()
+        ctx.online.ask("rb_friends_list", {}, self._friends)
+        ctx.econ.call("rb_gift_left", {}, self._left)
+
+    def _friends(self, ok: bool, data) -> None:
+        try:
+            friends = [f for f in (data or []) if f.get("state") == "friend"] if ok and isinstance(data, list) else []
+            self.empty.setVisible(not friends)
+            self.empty.set_text(tr("Add friends on the Social page to send them gifts.") if ok else tr(str(data)))
+            cols = 3
+            cw = int((self.W - S(6) * (cols - 1)) / cols)
+            for k, f in enumerate(friends[:30]):
+                chip = _FriendChip(self.ctx, f, cw)
+                chip.picked.connect(self._pick)
+                self.grid.addWidget(chip, k // cols, k % cols)
+                self.chips.append(chip)
+            if len(friends) == 1:
+                self._pick(friends[0]["username"])
+        except RuntimeError:
+            pass
+
+    def _left(self, ok: bool, data) -> None:
+        if ok:
+            try:
+                self.left = int(data or 0)
+                self._texts()
+            except (RuntimeError, ValueError, TypeError):
+                pass
+
+    def _pick(self, name: str) -> None:
+        sfx.play("pick")
+        self.to = name
+        for c in self.chips:
+            c.on = c.info["username"] == name
+            c.update()
+        self._texts()
+
+    def _count(self, i: int) -> None:
+        self.n = i + 1
+        self._texts()
+
+    def _texts(self) -> None:
+        price = int(self.case["price"]) * self.n
+        left = self.left
+        self.info.set_text((tr("Gifts left today: {n}", n=left) + "  ·  " if left is not None else "")
+                           + tr("You have {n} coins", n=coins_text(self.ctx.econ.coins)))
+        self.send.set_text(tr("Send to {name} for {n}", name=self.to, n=coins_text(price)) if self.to
+                           else tr("Pick a friend"))
+        self.send.setEnabled(bool(self.to) and not self.busy and price <= self.ctx.econ.coins
+                             and (left is None or self.n <= left))
+
+    def _send(self) -> None:
+        if not self.to or self.busy:
+            return
+        self.busy = True
+        self._texts()
+
+        def done(ok: bool, data) -> None:
+            self.busy = False
+            try:
+                if not ok:
+                    self.ctx.toast(tr(str(data)), "warn")
+                    return self._texts()
+                sfx.play("on")
+                self.ctx.toast(tr("Gift sent to {name}!", name=self.to))
+                self.close_sheet()
+            except RuntimeError:
+                pass
+        self.ctx.econ.call("rb_case_gift_n", {"name": self.to, "which": self.case["id"], "n": self.n}, done, once=True)
+
+    def close_sheet(self) -> None:
+        self.ctx.window.unembed(self)
+
+
 # ==================================================================================================
 # SECTION: collection
 # ==================================================================================================
@@ -19012,21 +19152,21 @@ CASE_FRONT = {"lucky": ("clover", "dice", "clover"), "frames": ("crown", "star",
               "pocket": ("clover", "heart", "note"), "elite": ("bolt", "crown", "comet"), "royal": ("crown", "trophy", "crown"),
               "shiny": ("drop", "comet", "drop"), "banners": ("flame", "crown", "feather")}
 CASE_NOTES = {                    # 4.0: checked against the real odds of every case (the numbers are shown below)
-    "pocket": "The cheapest case: mostly small coins.",
-    "starter": "Mostly coins, sometimes a Common badge.",
-    "lucky": "Mostly coins: the safest way to get coins back. Badges are rare.",
-    "standard": "Mostly coins, with a chance of a Rare badge.",
-    "premium": "Bigger coin drops and better badge odds than the Standard Case.",
+    "pocket": "The cheapest case: mostly coins, sometimes a Basic or Painted badge.",
+    "starter": "Mostly coins, Basic and Painted badges, and a small Shiny chance.",
+    "lucky": "Mostly coins back, Basic and Painted badges, and a small Shiny chance.",
+    "standard": "Coins, Common to Special badges, and a tiny chance of Gold.",
+    "premium": "Better badges than the Standard Case, up to Shiny and Gold.",
     "jackpot": "Coins only, never a badge. Most opens pay less than the price; a few pay up to 32 times it.",
-    "titan": "Bigger coin drops, and Epic or Legendary badges now and then.",
-    "elite": "Big coin drops and better odds for Epic and Legendary badges.",
-    "royal": "For high rollers: the biggest coin drops, and no Common badges.",
-    "gamble": "High risk: often a few coins, otherwise a Rare badge or better.",
-    "painter": "Nearly every badge is Painted, never Basic.",
-    "vault": "No Common badges: Rare or better.",
+    "titan": "Every finish, Titanium and Gold included, up to Epic Gold.",
+    "elite": "Every rarity in every finish, Epic Gold included.",
+    "royal": "For high rollers: no Common badges, every finish up to Epic Gold, and rare huge coin drops.",
+    "gamble": "High risk: mostly a few coins, otherwise Rare or Special, up to Titanium and Gold.",
+    "painter": "Never Basic: Painted, Shiny, Titanium and Gold.",
+    "vault": "No Common badges: Rare to Epic in every finish.",
     "cosmos": "No Common badges, and a real chance of a Mythic badge.",
     "shiny": "No Basic finishes: the best odds for Shiny, Titanium and Gold.",
-    "mythic": "Epic badges or better only, with the best Mythic odds.",
+    "mythic": "Special and Epic badges only, with the best Mythic odds.",
     "winter": "Limited: Christmas looks you cannot buy anywhere else, or coins.",
     "giftbox": "Limited: a present full of coins, sometimes a badge.",
     "style": "Balls, song lines and fonts, or coins.",
@@ -19091,6 +19231,43 @@ def show_case_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
     show_item(p, item, rect, now, effects)
 
 
+# 4.7: every badge case has a grid, the chance (in billionths) of each rarity (Common..Epic) x finish (Basic..Gold).
+# Every badge a case can give is at least 1 in: Basic 250, Painted 1 000, Shiny 10 000, Titanium 50 000, Gold 100 000.
+DAILY_GRID = [60764128, 125987522, 7731341, 0, 0, 59604508, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+GRID_SCALE = 1e9
+
+
+def case_grid(case: dict):
+    """The case's 20 chances (rarity-major) as fractions of one open, or None for a case without a grid."""
+    if case.get("id") == "daily":
+        return [x / GRID_SCALE for x in DAILY_GRID]
+    g = case.get("grid")
+    if not g or str(case.get("mode") or ""):
+        return None
+    return [float(x or 0) / GRID_SCALE for x in g]
+
+
+def case_mythic(case: dict) -> float:
+    odds = list(case.get("odds") or [])
+    return odds[5] / (sum(odds) or 1) if len(odds) > 5 else 0.0
+
+
+def case_coin_share(case: dict) -> float:
+    """The chance an open pays coins."""
+    if case.get("id") == "daily":
+        return 0.5959                                     # the rest of the daily case is a key (15%)
+    g = case_grid(case)
+    if g is None:
+        odds = list(case.get("odds") or [])
+        return odds[0] / (sum(odds) or 1) if odds else 0.0
+    return max(0.0, 1 - sum(g) - case_mythic(case))
+
+
+def _group(ec, rarity: str, cls: int) -> list:
+    return [(k, float(v.get("weight") or 1)) for k, v in ec.catalog.items() if v.get("kind") == "badge"
+            and v.get("rarity") == rarity and int(v.get("cls") or 0) == cls and not v.get("limited")]
+
+
 def item_chances(ec, item: str) -> list:
     """The exact chance of this one badge (this design, colour and finish) per open, in every case that can give it,
     best first: [(case id, chance)]. Same maths as the server."""
@@ -19103,41 +19280,22 @@ def item_chances(ec, item: str) -> list:
     base = item.split(":")[1] if item.count(":") >= 2 else ""
     if tier == 5:
         share = (1 if base == "rubenium" else 2) / 11
-        per = {3: 0.943 / 2, 5: 0.053, 4: 0.004}.get(cls, 0) * share          # 4.5
+        per = {3: 0.943 / 2, 5: 0.053, 4: 0.004}.get(cls, 0) * share          # 4.5 (Mythic: unchanged)
     else:                                       # 3.2: inside its group, an item drops in proportion to its weight
-        group = [float(v.get("weight") or 1) for k, v in ec.catalog.items() if v.get("kind") == "badge"
-                 and v.get("rarity") == info.get("rarity") and int(v.get("cls") or 0) == cls and not v.get("limited")]
-        per = float(info.get("weight") or 1) / max(1e-9, sum(group) or 1)
+        group = _group(ec, info.get("rarity"), cls)
+        per = float(info.get("weight") or 1) / max(1e-9, sum(w for _k, w in group) or 1)
     out = []
     for c in list(ec.cases) + [{"id": "daily"}]:
         mode = str(c.get("mode") or "")
-        if mode.startswith("kinds:") or mode.startswith("items:") or mode == "jackpot":
+        if mode:
             continue                            # 4.0: style, limited and coin-only cases never give badges
-        if c["id"] == "daily":
-            if tier > 4 or cls > 2:
-                continue
-            p = 0.35 * [0, 7800, 1900, 270, 30][tier] / 10000 * [7600, 2350, 50][cls] / 10000 * per
+        if tier == 5:
+            p = case_mythic(c) * per
         else:
-            odds = list(c.get("odds") or [])
-            if len(odds) <= tier or not sum(odds):
+            g = case_grid(c)
+            if g is None:
                 continue
-            p = odds[tier] / sum(odds)
-            if tier <= 4:
-                var = list(c.get("variants") or [1])
-                vs = sum(var) or 1
-                v = var[cls] if cls < len(var) else 0
-                if cls == 2 and tier <= 2 and len(var) > 3:
-                    v += var[3]                     # no Titanium for Common and Rare: those turn Shiny
-                if cls == 3 and tier <= 2:
-                    v = 0
-                extra = [0, 0.0005, 0.0004, 0.0003, 0.0002][tier]      # 4.6: the extra Gold chance (server's gold_extra)
-                low = (var[0] + (var[1] if len(var) > 1 else 0)) / vs
-                if cls == 4:
-                    v += extra * low * vs
-                elif cls in (0, 1):
-                    v *= (1 - extra)
-                p *= v / vs
-            p *= per
+            p = g[(tier - 1) * 5 + cls] * per
         if p > 0:
             out.append((c["id"], p))
     return sorted(out, key=lambda x: -x[1])
@@ -19632,6 +19790,27 @@ def case_drops(ec, case: dict, exact: bool = False) -> list:
             for k, w in pool:
                 out[k] = out.get(k, 0) + odds[tier] / total * w / wsum
         return sorted(out.items(), key=lambda x: -x[1])
+    g = case_grid(case)
+    if g is not None:                                   # 4.7: straight from the grid
+        for i, pg in enumerate(g):
+            if pg <= 0:
+                continue
+            tier, cls = i // 5 + 1, i % 5
+            group = _group(ec, TIERS[tier - 1], cls)
+            wsum = sum(w for _k, w in group) or 1
+            for k, w in group:
+                key = k if exact else "badge:%s:grey" % cat[k].get("base")
+                out[key] = out.get(key, 0) + pg * w / wsum
+        pt = case_mythic(case)
+        if pt:
+            for base in EXOTIC_IDS:
+                if exact:
+                    for k, v in cat.items():
+                        if v.get("kind") == "badge" and v.get("base") == base:
+                            out[k] = out.get(k, 0) + pt * (1 if base == "rubenium" else 2) / 11 / 4
+                    continue
+                out["badge:%s:white" % base] = pt * (1 if base == "rubenium" else 2) / 11
+        return sorted(out.items(), key=lambda x: -x[1])
     variants = list(case.get("variants") or [1])
     vs = sum(variants) or 1
     for tier in range(1, min(6, len(odds))):
@@ -19678,9 +19857,7 @@ class CaseOverview(QWidget):
     def __init__(self, ctx, case: dict, width: int) -> None:
         super().__init__()
         self.ctx, self.case = ctx, case
-        odds = list(case.get("odds") or [])
-        total = sum(odds) or 1
-        self.coins = odds[0] / total if odds else 0.0
+        self.coins = case_coin_share(case)
         self.drops = case_drops(ctx.econ, case)
         self.jackpot = case.get("mode") == "jackpot"
         self.setFixedSize(width, S(150) if self.jackpot else S(118))
@@ -19735,7 +19912,11 @@ class CaseOverview(QWidget):
             p.setFont(font(9.5, QFont.Weight.DemiBold))
             p.drawText(QRectF(r.left(), r.top() + S(46), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
                        chance_text(val) if val else "")
-        tiers = [TIERS[i - 1] for i, o in enumerate(self.case.get("odds") or []) if i and o]
+        g = case_grid(self.case)
+        if g is not None:
+            tiers = [TIERS[t] for t in range(4) if sum(g[t * 5:t * 5 + 5]) > 0] + (["exotic"] if case_mythic(self.case) else [])
+        else:
+            tiers = [TIERS[i - 1] for i, o in enumerate(self.case.get("odds") or []) if i and o]
         line = QRectF(0, S(78), w, S(18))
         paint_coin(p, QPointF(S(7), line.center().y()), S(5.5))
         p.setPen(QColor(GOLD_TEXT))
@@ -20021,11 +20202,20 @@ class OddsTable(QWidget):
     def __init__(self, case: dict, width: int) -> None:
         super().__init__()
         self.case = case
-        self.rows = [("tier", i, share) for i, share in enumerate(case["odds"]) if share > 0][::-1]
-        variants = list(case.get("variants") or [])
-        if any(t for _k, t, _s in self.rows) and variants and not str(case.get("mode", "")).startswith("kinds:"):
+        g = case_grid(case)
+        if g is not None:                               # 4.7: exact, from the grid (shares are fractions of one open)
+            tiers = [case_coin_share(case)] + [sum(g[t * 5:t * 5 + 5]) for t in range(4)] + [case_mythic(case)]
+            badges = sum(g) or 1
+            finishes = [sum(g[t * 5 + k] for t in range(4)) / badges for k in range(5)]
+        else:
+            odds = list(case["odds"])
+            tiers = [x / (sum(odds) or 1) for x in odds]
+            variants = list(case.get("variants") or [])
+            finishes = [x / (sum(variants) or 1) for x in variants]
+        self.rows = [("tier", i, share) for i, share in enumerate(tiers) if share > 0][::-1]
+        if any(t for _k, t, _s in self.rows) and finishes and not str(case.get("mode", "")).startswith("kinds:"):
             self.rows.append(("head", 0, 0))
-            self.rows += [("cls", i, share) for i, share in enumerate(variants) if share > 0][::-1]
+            self.rows += [("cls", i, share) for i, share in enumerate(finishes) if share > 0][::-1]
         self.row_h = S(24)
         self.setFixedSize(width, int(self.row_h * len(self.rows) + S(4)))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -20065,8 +20255,7 @@ class OddsTable(QWidget):
             p.setPen(col)
             p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
-            group = case.get("variants") if kind == "cls" else case.get("odds")
-            pct = share * 100 / max(1, sum(group or [1]))         # finishes are out of 100 000, drops out of 10 000
+            pct = share * 100
             text = f"{pct:.3f}%" if pct < 0.1 else f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
             p.setPen(QColor(TEXT))
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
@@ -20128,6 +20317,19 @@ class CaseReel(QWidget):
     def _filler(self, rnd) -> tuple:
         """A drop for the strip, picked with the case's real odds (so the strip looks like the case: rare things
         are as rare here as in the case itself)."""
+        g = case_grid(self.case)
+        if g is not None:                                # 4.7: the strip follows the grid too
+            r = rnd.random()
+            if r < case_mythic(self.case):
+                return ("item", badge_item(rnd.choice(self._badges_of(5)), rnd.choice(["black", "white"])))
+            r -= case_mythic(self.case)
+            for i, pg in enumerate(g):
+                if r < pg:
+                    tier, cls = i // 5 + 1, i % 5
+                    var = rnd.choice([["grey"], PAINTED_IDS, SHINY_IDS, TITANIUM_IDS, GOLD_IDS][cls])
+                    return ("item", badge_item(rnd.choice(self._badges_of(tier)), var))
+                r -= pg
+            return ("coins", rnd.randint(self.case["coin_min"], max(self.case["coin_min"], self.case["coin_max"])))
         roll, tier = rnd.randrange(max(1, sum(self.case["odds"]))), 0
         for i, share in enumerate(self.case["odds"]):
             if roll < share:
@@ -23368,7 +23570,6 @@ class ScratchCard(QWidget):
         self.page, self.ctx = page, page.ctx
         self.setFixedSize(page.W, S(170))
         self.setCursor(Qt.CursorShape.CrossCursor)
-        self.setProperty("cheat", True)                    # 4.6: Ruben's right click
         self.prize: dict = {}
         self.asked = False
         self.cleared = 0
@@ -25150,6 +25351,36 @@ SUITS = "♠♥♦♣"
 RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 
 
+def paint_stat(p: QPainter, rect: QRectF, label: str, value: str, colour=None) -> None:
+    """4.7: one small labelled number (the same box in every casino game): LABEL on top, the value under it."""
+    p.save()
+    p.setPen(QPen(alpha("#FFFFFF", 0.07), 1))
+    p.setBrush(alpha("#FFFFFF", 0.035))
+    p.drawRoundedRect(rect, S(8), S(8))
+    p.setPen(QColor(TEXT_DIM))
+    p.setFont(font(8, QFont.Weight.ExtraBold, 0.6))
+    p.drawText(QRectF(rect.left(), rect.top() + S(4), rect.width(), S(13)), int(Qt.AlignmentFlag.AlignCenter),
+               p.fontMetrics().elidedText(label.upper(), Qt.TextElideMode.ElideRight, int(rect.width() - S(6))))
+    p.setPen(QColor(colour) if colour is not None else QColor(TEXT))
+    p.setFont(font(12.5, QFont.Weight.ExtraBold))
+    p.drawText(QRectF(rect.left(), rect.top() + S(16), rect.width(), rect.height() - S(18)), int(Qt.AlignmentFlag.AlignCenter),
+               p.fontMetrics().elidedText(value, Qt.TextElideMode.ElideRight, int(rect.width() - S(6))))
+    p.restore()
+
+
+def paint_slot(p: QPainter, rect: QRectF, text: str = "") -> None:
+    """4.7: an empty dashed place where something will go (a card before the deal)."""
+    p.save()
+    p.setPen(QPen(alpha("#FFFFFF", 0.16), S(1.2), Qt.PenStyle.DashLine))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.drawRoundedRect(rect, S(6), S(6))
+    if text:
+        p.setPen(alpha(TEXT_DIM, 0.7))
+        p.setFont(font(9, QFont.Weight.Bold))
+        p.drawText(rect, int(Qt.AlignmentFlag.AlignCenter), text)
+    p.restore()
+
+
 def hand_total(cards: list) -> int:
     total, aces = 0, 0
     for c in cards:
@@ -25309,6 +25540,20 @@ class Blackjack(Game):
 
     def draw(self, p: QPainter, r: QRectF, now: float) -> None:
         deck = QPointF(r.right() - S(54), r.top() + S(10))
+        p.setFont(font(8.5, QFont.Weight.ExtraBold, 0.8))                 # 4.7: whose cards are whose
+        p.setPen(QColor(TEXT_FAINT))
+        p.drawText(QRectF(r.left() + S(12), r.top() + S(4), S(120), S(16)), int(Qt.AlignmentFlag.AlignVCenter), tr("DEALER"))
+        p.drawText(QRectF(r.left() + S(12), r.bottom() - S(102), S(120), S(16)), int(Qt.AlignmentFlag.AlignVCenter), tr("YOU"))
+        if not self.player:                                               # before the deal: the places and the rules
+            for y in (r.top() + S(22), r.bottom() - S(84)):
+                x0 = r.center().x() - S(48)
+                paint_slot(p, QRectF(x0, y, S(44), S(62)))
+                paint_slot(p, QRectF(x0 + S(52), y, S(44), S(62)))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left(), r.center().y() - S(9), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Blackjack pays 3 to 2 · the dealer draws to 17 · double on your first two cards"))
+            return
         for cards, y, mine in ((self.dealer, r.top() + S(22), False), (self.player, r.bottom() - S(84), True)):
             n = len(cards)
             step = min(S(52), (r.width() - S(120)) / max(1, n))
@@ -25325,10 +25570,6 @@ class Blackjack(Game):
                 p.drawRoundedRect(pill, S(11), S(11))
                 p.setPen(QColor(TEXT))
                 p.drawText(pill, int(Qt.AlignmentFlag.AlignCenter), total)
-        if not self.player:
-            p.setPen(alpha(TEXT_DIM, 0.6))
-            p.setFont(font(34, QFont.Weight.ExtraBold))
-            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), "21")
 
 
 # --------------------------------------------------------------------------- #
@@ -25691,29 +25932,16 @@ class Bombs(Game):
         found = self.found()
         now_mult = bombs_mult(found, self.bombs())
         next_mult = bombs_mult(found + 1, self.bombs()) if found < self.N - self.bombs() else now_mult
-        p.setPen(QColor(GOLD_TEXT if found else TEXT))
-        p.setFont(font(20, QFont.Weight.ExtraBold))
-        p.drawText(QRectF(side.left(), side.top() + S(18), side.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
-                   f"×{now_mult:g}")
-        p.setPen(QColor(TEXT_DIM))
-        p.setFont(font(10.5, QFont.Weight.DemiBold))
-        p.drawText(QRectF(side.left(), side.top() + S(50), side.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                   f"→ ×{next_mult:g}")
-        y = side.bottom() - S(44)                       # gems found and bombs on the board
-        p.save()
-        p.translate(side.center().x() - S(26), y)
-        self._gem(p, S(6.5))
-        p.restore()
-        p.save()
-        p.translate(side.center().x() - S(26), y + S(24))
-        self._bomb(p, S(6.5), 1.0, False)
-        p.restore()
-        p.setPen(QColor(TEXT))
-        p.setFont(font(12, QFont.Weight.Bold))
-        p.drawText(QRectF(side.center().x() - S(12), y - S(10), S(50), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
-                   str(found))
-        p.drawText(QRectF(side.center().x() - S(12), y + S(14), S(50), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
-                   str(self.bombs()))
+        gap_y = S(6)                                    # 4.7: four labelled boxes instead of loose numbers
+        bh = (side.height() - 3 * gap_y) / 4
+        playing = self.phase == "play"
+        stake = int(self.stake or 0)
+        boxes = [(tr("Multiplier"), f"×{now_mult:g}", GOLD_TEXT if found else None),
+                 (tr("Next gem"), f"×{next_mult:g}", None),
+                 (tr("Cash out"), coins_text(int(stake * now_mult)) if playing and found else "—", WIN if playing and found else None),
+                 (tr("Gems · Bombs"), f"{found} · {self.bombs()}", None)]
+        for k, (label, value, col) in enumerate(boxes):
+            paint_stat(p, QRectF(side.left(), side.top() + k * (bh + gap_y), side.width(), bh), label, value, col)
 
     def _gem(self, p: QPainter, u: float) -> None:
         """The R gem: a cut gem in your colour with an R on it."""
@@ -29571,6 +29799,7 @@ class DealCard(QWidget):
         self.setFixedSize(width, S(150))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.owned = not d["item"].startswith("badge:") and self.ctx.econ.owns(d["item"])
+        self.sold = bool(d.get("bought"))                  # 4.7: one of each deal a day
         self._t = QTimer(self)
         self._t.setInterval(50)
         self._t.timeout.connect(self.update)
@@ -29585,7 +29814,7 @@ class DealCard(QWidget):
         if not self.rect().contains(e.position().toPoint()):
             return
         sfx.play("pick")
-        self.ctx.window.embed(DealSheet(self.ctx, self.d, self.owned))       # 4.5: see it before you buy it
+        self.ctx.window.embed(DealSheet(self.ctx, self.d, self.owned, self.sold))   # 4.5: see it before you buy it
 
 
     def paintEvent(self, _e) -> None:
@@ -29622,16 +29851,21 @@ class DealCard(QWidget):
         w = QFontMetrics(font(10)).horizontalAdvance(old)
         p.setPen(QPen(alpha(TEXT_FAINT, 0.9), 1))
         p.drawLine(QPointF(rect.center().x() - w / 2 - 2, rect.center().y()), QPointF(rect.center().x() + w / 2 + 2, rect.center().y()))
-        p.setPen(QColor(GOLD_TEXT if not self.owned else TEXT_DIM))
+        p.setPen(QColor(GOLD_TEXT if not (self.owned or self.sold) else TEXT_DIM))
         p.setFont(font(14, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left(), r.top() + S(110), r.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("Owned") if self.owned else coins_text(int(self.d["now"])))
+                   tr("Owned") if self.owned else tr("Sold out") if self.sold else coins_text(int(self.d["now"])))
+        if not (self.owned or self.sold):
+            p.setPen(QColor(TEXT_FAINT))
+            p.setFont(font(8.5, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left() + S(8), r.top() + S(8), S(60), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                       tr("1 left"))
 
 
 class DealSheet(QWidget):
     """4.5: a deal, up close: the item shown big (a theme is tried on the menu), then Buy or Back."""
 
-    def __init__(self, ctx, d: dict, owned: bool) -> None:
+    def __init__(self, ctx, d: dict, owned: bool, sold: bool = False) -> None:
         super().__init__()
         pass
         pass
@@ -29654,9 +29888,10 @@ class DealSheet(QWidget):
         price = Label(tr("{a} → {b} coins", a=coins_text(int(d.get("was") or d.get("price") or 0)), b=coins_text(int(d["now"]))),
                       13, GOLD_TEXT, bold=True)
         lay.addWidget(price)
-        buy = Button(tr("You already have it") if owned else tr("Buy for {n} coins", n=coins_text(int(d["now"]))),
-                     "ghost" if owned else "primary", 38)
-        buy.setEnabled(not owned)
+        buy = Button(tr("You already have it") if owned else tr("Sold out until tomorrow") if sold
+                     else tr("Buy for {n} coins", n=coins_text(int(d["now"]))), "ghost" if owned or sold else "primary", 38)
+        buy.setEnabled(not owned and not sold)
+        lay.addWidget(Label(tr("One at this price per day."), 10, TEXT_DIM))
         buy.clicked.connect(self._buy)
         lay.addWidget(buy)
 
@@ -29678,6 +29913,8 @@ class DealSheet(QWidget):
                 return ctx.toast(tr(str(data)), "warn")
             sfx.play("on")
             ctx.toast(tr("Bought: {what}", what=item_name(d["item"])))
+            d["bought"] = True                               # 4.7: sold out for you until tomorrow
+            ctx.deals_data = None
             self._close()
         ec.buy(d["item"], bought)
 
@@ -29733,8 +29970,9 @@ class GameModeWindow(FloatWindow):
         state.setEnabled(cfg["gm_key"] != "off" or on)
         state.clicked.connect(lambda: (ctx.toggle_game_lock(), self.close()))
         lay.addWidget(state)
-        lay.addWidget(Label(tr("While it is on, Rubenium ignores the mouse completely: nothing in it can be clicked or "
-                               "even hovered, so nothing gets in the way of your game. A padlock on the ball shows it."),
+        lay.addWidget(Label(tr("While it is on, Rubenium stays exactly as it is (open or closed) but ignores the mouse "
+                               "completely: nothing in it can be clicked or even hovered, and the pointer never shows up "
+                               "over it, so nothing gets in the way of your game. A padlock on the ball shows it."),
                             10.5, TEXT_DIM, wrap_w=S(328)))
         lay.addWidget(Label(tr("GAME MODE KEY"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
         grid = QGridLayout()
@@ -29775,6 +30013,8 @@ class GameModeWindow(FloatWindow):
             self._again()
         hk.changed.connect(set_hk)
         lay.addWidget(hk)
+        lay.addWidget(Label(tr("Holding this key down for 3 seconds restarts Rubenium, in case you are stuck or run into a problem."),
+                            10, "#FFD54A", wrap_w=S(328)))
         self.centre()
 
     def _key(self, k: str) -> None:
@@ -29792,44 +30032,6 @@ class GameModeWindow(FloatWindow):
 
 def open_game_mode(ctx) -> None:
     ctx._gm_win = GameModeWindow(ctx)
-
-
-def install_cheat_clicks(ctx) -> None:
-    """4.6: Ruben's cheats. When they are on (admin > Rig, Ruben's account only), a right click in a casino game, on
-    the coinflip's play-a-bot button or on the free spin / scratch card arms a cheat for that one move and acts as a
-    normal click. Everywhere else a right click stays a right click."""
-    from PyQt6.QtCore import QEvent, QObject
-    from PyQt6.QtGui import QMouseEvent
-    from PyQt6.QtWidgets import QApplication
-
-    class _F(QObject):
-        def eventFilter(self, obj, e) -> bool:
-            t = e.type()
-            if t not in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease, QEvent.Type.MouseButtonDblClick):
-                return False
-            if e.button() != Qt.MouseButton.RightButton or not isinstance(obj, QWidget):
-                return False
-            if not (ctx.cfg.get("cheats") and ctx.econ.admin and ctx.online.username().lower() == "ruben"):
-                return False
-            pass
-            w, zone = obj, False
-            while w is not None:
-                if isinstance(w, Game) or w.property("cheat"):
-                    zone = True
-                    break
-                w = w.parentWidget()
-            if not zone:
-                return False
-            if t == QEvent.Type.MouseButtonPress:
-                ctx.econ.cheat_armed = time.monotonic()
-            left = QMouseEvent(t if t != QEvent.Type.MouseButtonDblClick else QEvent.Type.MouseButtonPress,
-                               e.position(), e.globalPosition(), Qt.MouseButton.LeftButton,
-                               Qt.MouseButton.LeftButton if t != QEvent.Type.MouseButtonRelease else Qt.MouseButton.NoButton,
-                               e.modifiers())
-            QApplication.sendEvent(obj, left)
-            return True
-    ctx._cheat_filter = _F()
-    QApplication.instance().installEventFilter(ctx._cheat_filter)
 
 
 # ==================================================================================================
@@ -31979,27 +32181,6 @@ class AdminPage(Page):
              "Golden Wheel", "XP coupon"]
     SCRATCH = [("standard", "80-160 coins"), ("rare", "220-420 coins"), ("special", "Key + XP coupon"),
                ("epic", "2 keys + coupon"), ("exotic", "2 500 coins + coupon"), ("golden", "Golden Wheel")]
-    def _cheats(self, lay) -> None:
-        cfg = self.ctx.cfg
-        lay.addWidget(heading("Cheats (only you)"))
-        row = hbox(spacing=8)
-        row.addWidget(Label("Right click instead of left click to win that move", 11.5, TEXT, bold=True), 1)
-        t = Toggle(bool(cfg.get("cheats")))
-        t.toggled_by_user.connect(lambda v: (cfg.__setitem__("cheats", bool(v)), self.ctx.reload_page("admin")))
-        row.addWidget(t)
-        lay.addLayout(row)
-        if cfg.get("cheats"):
-            lay.addWidget(Table([("Bombs", "right click a tile", "never a bomb", "#3DDC84"),
-                                 ("Tower", "right click a tile", "never the bomb", "#3DDC84"),
-                                 ("Hi-Lo", "right click Higher / Lower", "always right", "#3DDC84"),
-                                 ("Blackjack", "right click Hit", "the best card that doesn't bust", "#3DDC84"),
-                                 ("Dice", "right click Roll", "a win", "#3DDC84"),
-                                 ("Slots", "right click Spin", "3 of a kind (gems, sevens or bells)", "#3DDC84"),
-                                 ("Coinflip", "right click Play against a bot", "you win", "#3DDC84"),
-                                 ("Free spin", "right click Spin", "the gold slot", "#3DDC84"),
-                                 ("Scratch card", "start with a right click", "Exotic or Golden", "#3DDC84")],
-                                self.W))
-
     SLOTS = [(("gem",) * 3, "3 gems ×70"), (("seven",) * 3, "3 sevens ×30"), (("bell",) * 3, "3 bells ×15"),
              (("lemon",) * 3, "3 lemons ×8"), (("cherry",) * 3, "3 cherries ×5"), (("gem", "gem", "lemon"), "2 gems ×4"),
              (("seven", "cherry", "seven"), "2 sevens ×2"), (("lemon", "bell", "bell"), "2 bells ×2"),
@@ -32007,8 +32188,6 @@ class AdminPage(Page):
 
     def _rig(self, lay) -> None:
         st = self.state("rig")
-        if self.ctx.online.username().lower() == "ruben":      # 4.6: Ruben's cheats, on his account only
-            self._cheats(lay)
         lay.addWidget(heading("Player"))
         self.player_chips(lay, st, multi=False)
         lay.addWidget(heading("Game"))
@@ -32382,18 +32561,21 @@ class AdminPage(Page):
 
         def edit(i: int) -> None:
             c = cases[i]
-            FormDialog(self.ctx, en(CASE_NAMES.get(c["id"], c["id"])),
-                       [("p", en("Price"), c["price"]), ("o", en("Drop odds (6 numbers, total 10 000)"), ",".join(map(str, c["odds"]))),
-                        ("v", en("Finish odds (5 numbers, total 100 000)"), ",".join(map(str, c["variants"]))),
-                        ("a", en("Coins: lowest"), c["coin_min"]), ("b", en("Coins: highest"), c["coin_max"])], en("Save"),
-                       lambda v, dlg: self._save_case(c["id"], v, dlg))
+            fields = [("p", en("Price"), c["price"])]
+            if not c.get("grid"):                         # 4.7: badge cases follow the fixed odds table
+                fields += [("o", en("Drop odds (6 numbers, total 10 000)"), ",".join(map(str, c["odds"]))),
+                           ("v", en("Finish odds (5 numbers, total 100 000)"), ",".join(map(str, c["variants"])))]
+            fields += [("a", en("Coins: lowest"), c["coin_min"]), ("b", en("Coins: highest"), c["coin_max"])]
+            FormDialog(self.ctx, en(CASE_NAMES.get(c["id"], c["id"])), fields, en("Save"),
+                       lambda v, dlg: self._save_case(c, v, dlg))
         lay.addWidget(Table([(en(CASE_NAMES.get(c["id"], c["id"])), coins_text(int(c["price"])),
                               f"L {c['odds'][4] / 100:g}% · M {c['odds'][5] / 100:g}%") for c in cases], self.W, edit))
 
-    def _save_case(self, cid: str, v: dict, dlg) -> None:
+    def _save_case(self, c: dict, v: dict, dlg) -> None:
+        cid = c["id"]
         try:
-            odds = [int(x) for x in v["o"].split(",")]
-            var = [int(x) for x in v["v"].split(",")]
+            odds = [int(x) for x in v["o"].split(",")] if "o" in v else list(c["odds"])
+            var = [int(x) for x in v["v"].split(",")] if "v" in v else list(c["variants"])
         except ValueError:
             return dlg.say(en("Numbers separated by commas"))
         if len(odds) != 6 or sum(odds) != 10000 or len(var) != 5 or sum(var) != 100000:
@@ -33685,6 +33867,9 @@ def go(ctx, action) -> None:
         pass
         ctx.casino_pick = GamesPage.NAMES.index("Free spin")
         ctx.casino = True
+    elif key == "gold_wheel":                              # 4.7: the Golden Wheel, inside the menu
+        pass
+        return QTimer.singleShot(200, lambda: open_gold_wheel(ctx))
     elif key == "giveaway":
         target = "giveaway"
     elif key == "daily":                                   # 4.4: the daily reward, in the Games half
@@ -34180,36 +34365,15 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
 
 WHEEL_GOLD = "#E8C26A"
-WHEEL_SLOTS = ["2500", "5000", "10000", "25000", "premium", "titan", "vault", "mythic"]
-SPIN_S = 6.5
-
-
-def open_gold_wheel(ctx) -> None:
-    """Ask the server for the prize, then show the wheel. Nothing happens if there is no wheel to spin."""
-    if getattr(ctx, "_gold_scene", None) is not None:
-        return
-
-    def got(ok: bool, data) -> None:
-        if not ok or not isinstance(data, dict):
-            return ctx.toast(tr(str(data)), "warn") if ok is False and "collect" not in str(data).lower() else None
-        ctx.econ.absorb(data)
-        ctx._gold_scene = GoldWheelScene(ctx, data)
-        ctx._gold_scene.show()
-        ctx._gold_scene.keep_on_top()
-    ctx.econ.call("rb_gold_wheel", {}, got, hold=True)
-
-
-def check_gold_wheels(ctx) -> None:
-    """At login: a Golden Wheel won earlier and not spun yet opens now."""
-    def got(ok: bool, data) -> None:
-        if ok and isinstance(data, int) and data > 0 and ctx.welcome is None:
-            open_gold_wheel(ctx)
-    ctx.online.ask("rb_gold_wheels", {}, got)
+# 4.7: the server's slots, in the same order (rb_gold_wheel)
+WHEEL_SLOTS = ["10000", "elite", "20000", "vault", "40000", "mythic", "100000", "royal", "250000"]
+WHEEL_ODDS = [26, 14, 20, 10, 12, 8, 4, 5, 1]
+SPIN_S = 5.5
 
 
 def slot_text(slot: str) -> str:
@@ -34220,177 +34384,259 @@ def slot_text(slot: str) -> str:
     return tr(CASE_NAMES.get(slot, "Case")) + " + " + tr("1 key")
 
 
-class GoldWheelScene(QWidget):
-    def __init__(self, ctx, data: dict) -> None:
+def open_gold_wheel(ctx) -> None:
+    """Show the wheel inside the menu. Nothing is spent until Spin is pressed."""
+    old = getattr(ctx, "_gold_panel", None)
+    try:
+        if old is not None and old.isVisible():
+            return
+    except RuntimeError:
+        pass
+    ctx._gold_panel = GoldWheelPanel(ctx)
+    ctx.window.embed(ctx._gold_panel)
+    try:
+        ctx.window.expand()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def check_gold_wheels(ctx) -> None:
+    """At login: a Golden Wheel won earlier and not spun yet: a notification that opens it."""
+    def got(ok: bool, data) -> None:
+        if ok and isinstance(data, int) and data > 0 and ctx.welcome is None:
+            ctx.gold_wheels_left = data
+            ctx.notifier.push("gift", tr("GOLDEN WHEEL"), tr("You have a Golden Wheel to spin!"), "gold_wheel")
+    ctx.online.ask("rb_gold_wheels", {}, got)
+
+
+class _Wheel(QWidget):
+    """The golden wheel itself, drawn like the free wheel."""
+
+    def __init__(self, panel) -> None:
         super().__init__()
-        self.ctx, self.data = ctx, data
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        screen = QGuiApplication.primaryScreen()
-        if screen is not None:
-            self.setGeometry(screen.geometry())
-        self.slot = max(0, min(len(WHEEL_SLOTS) - 1, int(data.get("slot") or 0)))
-        seg = 360.0 / len(WHEEL_SLOTS)
-        self.target = 360.0 * 7 + (self.slot + 0.5) * seg + random.uniform(-0.3, 0.3) * seg
-        self.t0 = time.monotonic()
-        self.done = False
-        self._ticks = 0
-        self._sparks = [(random.uniform(0, 6.28), random.uniform(0.3, 1.0), random.uniform(0.5, 1.5)) for _ in range(90)]
-        self.collect = Button(tr("Collect"), "primary", 46, parent=self)
-        self.collect.setFixedWidth(S(220))
-        self.collect.hide()
-        self.collect.clicked.connect(self._finish)
+        self.panel = panel
+        self.angle = 0.0
+        self._from = self._to = 0.0
+        self._t0 = 0.0
+        self.spinning = False
+        self.landed_at = 0.0
+        self._last_seg = 0
+        self._sparks = [(random.uniform(0, 6.28), random.uniform(0.2, 1.0), random.uniform(0.4, 1.4)) for _ in range(60)]
+        self.setMinimumHeight(S(330))
         self._t = QTimer(self)
         self._t.setInterval(16)
         self._t.timeout.connect(self._tick)
         self._t.start()
-        sfx.play("on")
 
-    def keyPressEvent(self, e) -> None:
-        e.accept()
-
-    def closeEvent(self, e) -> None:
-        if not self.done:
-            e.ignore()
-            return
-        super().closeEvent(e)
-
-    def _finish(self) -> None:
-        self.done = True
-        self._t.stop()
-        self.ctx._gold_scene = None
-        try:
-            self.ctx.econ.refresh()
-            self.ctx.econ.changed.emit()
-        except Exception:  # noqa: BLE001
-            pass
-        self.close()
-
-    def angle(self, t: float) -> float:
-        u = max(0.0, min(1.0, (t - 1.0) / SPIN_S))
-        return self.target * (1 - (1 - u) ** 4)
-
-    def keep_on_top(self) -> None:
-        """4.0: above everything, the online menu included (it is a top-most window too): raised again and again."""
-        self.raise_()
-        if win.IS_WIN:
-            try:
-                win.set_topmost(int(self.winId()))
-            except Exception:  # noqa: BLE001
-                pass
+    def spin_to(self, slot: int) -> None:
+        seg = 360.0 / len(WHEEL_SLOTS)
+        self._from = self.angle % 360.0
+        self._to = self._from + 360.0 * 6 + ((slot + 0.5) * seg - self._from % 360.0) % 360.0 \
+            + random.uniform(-0.32, 0.32) * seg
+        self._t0 = time.monotonic()
+        self.spinning = True
 
     def _tick(self) -> None:
-        if self._ticks % 30 == 0 or int((time.monotonic() - self.t0) * 2) != getattr(self, "_last_raise", -1):
-            self._last_raise = int((time.monotonic() - self.t0) * 2)
-            self.keep_on_top()
-        t = time.monotonic() - self.t0
-        seg = 360.0 / len(WHEEL_SLOTS)
-        n = int(self.angle(t) / seg)
-        if n != self._ticks and t < 1.0 + SPIN_S:
-            self._ticks = n
-            sfx.play("pick")
-        if t > 1.0 + SPIN_S and not self.collect.isVisible():
-            sfx.play("on")
-            self.collect.move(int(self.width() / 2 - self.collect.width() / 2), int(self.height() * 0.9))
-            self.collect.show()
-            self.collect.raise_()
+        if self.spinning:
+            u = min(1.0, (time.monotonic() - self._t0) / SPIN_S)
+            self.angle = self._from + (self._to - self._from) * (1 - (1 - u) ** 4)
+            seg = int(self.angle / (360.0 / len(WHEEL_SLOTS)))
+            if seg != self._last_seg:
+                self._last_seg = seg
+                sfx.play("pick")
+            if u >= 1.0:
+                self.spinning = False
+                self.landed_at = time.monotonic()
+                self.panel.landed()
+        if not self.isVisible():
+            return
         self.update()
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        t = time.monotonic() - self.t0
-        W, H = self.width(), self.height()
-        fade = min(1.0, t / 0.6)
-        p.fillRect(self.rect(), QColor(10, 7, 2, int(240 * fade)))
-        p.setOpacity(fade)
-        c = QPointF(W / 2, H * 0.47)
-        R = min(W, H) * 0.25
-        landed = t > 1.0 + SPIN_S
-        for k in range(16):                                   # turning rays
-            ang = k * math.pi / 8 + t * (0.25 if not landed else 0.6)
-            ray = QPainterPath(c)
-            ray.lineTo(QPointF(c.x() + math.cos(ang - 0.07) * W, c.y() + math.sin(ang - 0.07) * W))
-            ray.lineTo(QPointF(c.x() + math.cos(ang + 0.07) * W, c.y() + math.sin(ang + 0.07) * W))
-            ray.closeSubpath()
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(alpha(WHEEL_GOLD, 0.07 if not landed else 0.13))
-            p.drawPath(ray)
-        glow = QRadialGradient(c, R * 1.5)
-        glow.setColorAt(0, alpha("#FFD36B", 0.35))
+        now = time.monotonic()
+        r = QRectF(self.rect())
+        radius = min(r.width(), r.height()) / 2 - S(22)
+        c = QPointF(r.center().x(), r.center().y() + S(6))
+        landed = self.landed_at and not self.spinning
+        glow = QRadialGradient(c, radius * 1.45)
+        glow.setColorAt(0, alpha("#FFD36B", 0.28 if not landed else 0.42))
         glow.setColorAt(1, alpha("#FFD36B", 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(glow)
-        p.drawEllipse(c, R * 1.5, R * 1.5)
-        for a0, dist, sp in self._sparks:                     # sparks spinning around the wheel
-            a = a0 + t * sp
-            pt = QPointF(c.x() + math.cos(a) * R * (1.1 + 0.4 * dist), c.y() + math.sin(a) * R * (1.1 + 0.4 * dist))
-            b = max(0.0, math.sin(t * 3 * sp + a0)) ** 2
-            p.setBrush(alpha("#FFF1C2", 0.8 * b))
-            p.drawEllipse(pt, S(2.2) * b + 0.5, S(2.2) * b + 0.5)
-        # the wheel
-        rot = self.angle(t)
-        seg = 360.0 / len(WHEEL_SLOTS)
-        box = QRectF(c.x() - R, c.y() - R, 2 * R, 2 * R)
+        p.drawEllipse(c, radius * 1.45, radius * 1.45)
+        for a0, dist, sp in self._sparks:                     # sparks turning around the wheel
+            a = a0 + now * sp * 0.6
+            pt = QPointF(c.x() + math.cos(a) * radius * (1.06 + 0.3 * dist), c.y() + math.sin(a) * radius * (1.06 + 0.3 * dist))
+            b = max(0.0, math.sin(now * 3 * sp + a0)) ** 2
+            p.setBrush(alpha("#FFF1C2", 0.75 * b))
+            p.drawEllipse(pt, S(1.8) * b + 0.4, S(1.8) * b + 0.4)
+        n = len(WHEEL_SLOTS)
+        seg = 360.0 / n
+        box = QRectF(c.x() - radius, c.y() - radius, 2 * radius, 2 * radius)
+        win = self.panel.slot if landed else -1
         for i, slot in enumerate(WHEEL_SLOTS):
-            start = 90.0 - (i * seg - rot)
-            g = QRadialGradient(c, R)
+            start = 90.0 - (i * seg - self.angle)
+            g = QRadialGradient(c, radius)
             if slot.isdigit():
-                g.setColorAt(0, QColor("#FFF1B8"))
-                g.setColorAt(1, QColor("#C9922A") if i % 2 else QColor("#A8741C"))
+                big = int(slot) >= 100000
+                g.setColorAt(0, QColor("#FFF6D8" if big else "#FFF1B8"))
+                g.setColorAt(1, QColor("#E0A93A" if big else ("#C9922A" if i % 2 else "#A8741C")))
             else:
                 g.setColorAt(0, QColor("#E2C6FF"))
                 g.setColorAt(1, QColor("#6B2FB8") if i % 2 else QColor("#4A1C8A"))
-            p.setPen(QPen(QColor("#3A2606"), S(2)))
+            p.setPen(QPen(QColor("#3A2606"), S(1.6)))
             p.setBrush(g)
             p.drawPie(box, int(start * 16), int(-seg * 16))
+            if i == win:                                     # the prize slot shines
+                k = 0.5 + 0.5 * math.sin(now * 8)
+                p.setBrush(alpha("#FFFFFF", 0.18 + 0.2 * k))
+                p.drawPie(box, int(start * 16), int(-seg * 16))
             mid = math.radians(start - seg / 2)
-            tp = QPointF(c.x() + R * 0.66 * math.cos(mid), c.y() - R * 0.66 * math.sin(mid))
+            tp = QPointF(c.x() + radius * 0.66 * math.cos(mid), c.y() - radius * 0.66 * math.sin(mid))
             p.save()
             p.translate(tp)
             p.rotate(-math.degrees(mid) + 90)
-            p.setPen(QColor("#2A1A04") if slot.isdigit() else QColor("#FFFFFF"))
-            p.setFont(font(12, QFont.Weight.Black))
-            label = f"{int(slot):,}".replace(",", " ") if slot.isdigit() else tr(slot.capitalize())
-            p.drawText(QRectF(-S(50), -S(10), S(100), S(20)), int(Qt.AlignmentFlag.AlignCenter), label)
+            if slot.isdigit():
+                v = int(slot)
+                label = f"{v // 1000}K" if v >= 1000 else str(v)
+                p.setPen(QColor("#2A1A04"))
+                p.setFont(font(12.5 if v >= 100000 else 11.5, QFont.Weight.Black))
+            else:
+                pass
+                label = tr(CASE_NAMES.get(slot, slot)).replace(tr("Case"), "").strip().upper()
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(8.5 if len(label) <= 7 else 7, QFont.Weight.Black))
+            p.drawText(QRectF(-S(42), -S(9), S(84), S(18)), int(Qt.AlignmentFlag.AlignCenter), label)
             p.restore()
-        rim = QPen(QColor(WHEEL_GOLD), S(8))
-        p.setPen(rim)
+        p.setPen(QPen(QColor(WHEEL_GOLD), S(6)))
         p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawEllipse(c, R, R)
+        p.drawEllipse(c, radius, radius)
         for k in range(24):                                   # bulbs on the rim
             a = k * math.pi / 12
-            on = (k + int(t * 8)) % 2 == 0
+            on = (k + int(now * (14 if self.spinning else 5))) % 2 == 0
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor("#FFF6D8") if on else QColor("#8A5A14"))
-            p.drawEllipse(QPointF(c.x() + math.cos(a) * R, c.y() + math.sin(a) * R), S(5), S(5))
-        hub = QRadialGradient(c, R * 0.2)
+            p.drawEllipse(QPointF(c.x() + math.cos(a) * radius, c.y() + math.sin(a) * radius), S(3.6), S(3.6))
+        hub = QRadialGradient(c, radius * 0.22)
         hub.setColorAt(0, QColor("#FFF6D8"))
         hub.setColorAt(1, QColor("#B8862B"))
         p.setBrush(hub)
-        p.drawEllipse(c, R * 0.18, R * 0.18)
-        p.setBrush(QColor("#FFFFFF"))                          # the pointer
-        tip = QPainterPath(QPointF(c.x(), c.y() - R + S(14)))
-        tip.lineTo(QPointF(c.x() - S(16), c.y() - R - S(18)))
-        tip.lineTo(QPointF(c.x() + S(16), c.y() - R - S(18)))
-        tip.closeSubpath()
-        p.drawPath(tip)
-        # title and prize
-        title = QLinearGradient(0, H * 0.05, 0, H * 0.12)
-        title.setColorAt(0, QColor("#FFF1B8"))
-        title.setColorAt(1, QColor("#C9922A"))
-        p.setPen(QPen(title, 1))
-        p.setFont(font(34, QFont.Weight.Black))
-        p.drawText(QRectF(0, H * 0.04, W, S(52)), int(Qt.AlignmentFlag.AlignCenter), tr("GOLDEN WHEEL"))
-        if landed:
-            k = min(1.0, (t - 1.0 - SPIN_S) / 0.5)
-            p.setOpacity(k)
-            if t - 1.0 - SPIN_S < 0.35:
-                p.fillRect(self.rect(), alpha("#FFF6D8", 0.5 * (1 - (t - 1.0 - SPIN_S) / 0.35)))
-            p.setPen(QColor("#FFFFFF"))
-            p.setFont(font(26, QFont.Weight.Black))
-            p.drawText(QRectF(0, c.y() + R + S(26), W, S(40)), int(Qt.AlignmentFlag.AlignCenter),
-                       "+ " + slot_text(WHEEL_SLOTS[self.slot]))
+        p.drawEllipse(c, radius * 0.2, radius * 0.2)
+        p.setPen(QColor("#3A2606"))
+        p.setFont(font(9, QFont.Weight.Black))
+        p.drawText(QRectF(c.x() - radius * 0.2, c.y() - S(9), radius * 0.4, S(18)), int(Qt.AlignmentFlag.AlignCenter), "GOLD")
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawPolygon(QPolygonF([QPointF(c.x() - S(9), c.y() - radius - S(12)), QPointF(c.x() + S(9), c.y() - radius - S(12)),
+                                 QPointF(c.x(), c.y() - radius + S(8))]))
+        if landed and now - self.landed_at < 0.4:            # a flash as it lands
+            p.setBrush(alpha("#FFF6D8", 0.45 * (1 - (now - self.landed_at) / 0.4)))
+            path = QPainterPath()
+            path.addEllipse(c, radius * 1.1, radius * 1.1)
+            p.drawPath(path)
+
+
+class GoldWheelPanel(QWidget):
+    """Inside the menu: title, the wheel, what it can give, and Spin / Collect."""
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        pass
+        self.ctx = ctx
+        self.slot = -1
+        self.prize = None
+        self.waiting = False
+        self.setFixedWidth(ctx.window.page_w())
+        lay = vbox(self, 8)
+        lay.addWidget(Label(tr("GOLDEN WHEEL"), 18, WHEEL_GOLD, bold=True, align=Qt.AlignmentFlag.AlignCenter))
+        self.sub = Label(tr("Every slot is a big prize. Spin when you're ready."), 10.5, TEXT_DIM,
+                         align=Qt.AlignmentFlag.AlignCenter)
+        lay.addWidget(self.sub)
+        self.wheel = _Wheel(self)
+        lay.addWidget(self.wheel)
+        self.result = Label("", 16, TEXT, bold=True, align=Qt.AlignmentFlag.AlignCenter)
+        lay.addWidget(self.result)
+        row = hbox(spacing=8)
+        self.go = Button(tr("Spin"), "primary", 40, icon="play")
+        self.go.clicked.connect(self.spin)
+        self.later = Button(tr("Later"), "ghost", 40)
+        self.later.clicked.connect(self.close_panel)
+        row.addStretch(1)
+        row.addWidget(self.later)
+        row.addWidget(self.go)
+        row.addStretch(1)
+        lay.addLayout(row)
+        for line in (tr("Coins: 10K 26% · 20K 20% · 40K 12% · 100K 4% · 250K 1%"),
+                     tr("Cases with a key: Elite 14% · Vault 10% · Top Tier 8% · Royal 5%")):
+            lay.addWidget(Label(line, 9, TEXT_DIM, align=Qt.AlignmentFlag.AlignCenter, wrap_w=self.width()))
+
+    def spin(self) -> None:
+        if self.waiting or self.wheel.spinning:
+            return
+        if self.prize is not None:                          # spin again (another wheel waiting)
+            self.prize, self.slot = None, -1
+            self.result.set_text("")
+        self.waiting = True
+        self.go.setEnabled(False)
+        self.later.setEnabled(False)
+
+        def got(ok: bool, data) -> None:
+            self.waiting = False
+            if not ok or not isinstance(data, dict):
+                self.go.setEnabled(True)
+                self.later.setEnabled(True)
+                if "collect" in str(data).lower():
+                    self.result.set_text(tr("No Golden Wheel left to spin"))
+                    self.go.hide()
+                    self.later.set_text(tr("Close"))
+                    return
+                return self.ctx.toast(tr(str(data)), "warn")
+            self.prize = data
+            self.slot = max(0, min(len(WHEEL_SLOTS) - 1, int(data.get("slot") or 0)))
+            self.ctx.notifier.hold(SPIN_S + 1.5)               # no spoiler before it lands
+            self.wheel.spin_to(self.slot)
+            sfx.play("on")
+        self.ctx.econ.call("rb_gold_wheel", {}, got, hold=True)
+
+    def landed(self) -> None:
+        if self.prize is None:
+            return
+        self.ctx.econ.absorb(self.prize)
+        try:
+            self.ctx.econ.refresh()
+            self.ctx.econ.changed.emit()
+        except Exception:  # noqa: BLE001
+            pass
+        sfx.play("on")
+        try:
+            pass
+            shake(self.ctx.window, 3.0, 250)
+        except Exception:  # noqa: BLE001
+            pass
+        self.result.set_text("+ " + slot_text(WHEEL_SLOTS[self.slot]))
+        left = int(self.prize.get("left") or 0)
+        self.later.setEnabled(True)
+        self.later.set_text(tr("Collect"))
+        if left > 0:
+            self.go.setEnabled(True)
+            self.go.set_text(tr("Spin again ({n} left)", n=left))
+        else:
+            self.go.hide()
+
+    def close_panel(self) -> None:
+        if self.wheel.spinning or self.waiting:
+            return
+        self.ctx._gold_panel = None
+        self.ctx.window.unembed(self)
+
+    def on_closed(self) -> None:
+        """The menu closed the panel (tab changed) while the wheel was turning: say what was won."""
+        self.ctx._gold_panel = None
+        if self.prize is not None and self.wheel.spinning:
+            self.ctx.econ.absorb(self.prize)
+            self.ctx.toast("+ " + slot_text(WHEEL_SLOTS[self.slot]), "good")
 
 
 # ==================================================================================================
@@ -36022,7 +36268,7 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
 
@@ -36820,7 +37066,6 @@ def _build_view(page, lay, fid: str) -> None:
                     apply(d)
                 ctx.econ.call("rb_flip_vs_bot", {"fid": fid}, done)
             bot.clicked.connect(vs_bot)
-            bot.setProperty("cheat", True)               # 4.6: Ruben's right click
             al.addWidget(bot)
             close = Button(tr("Close it (items come back)"), "ghost", 34)
 
@@ -37826,12 +38071,13 @@ class HiLo(Game):
             return
         cw, ch = S(78), S(110)
         c = QPointF(r.center().x(), r.top() + S(18) + ch / 2)
+        self._stats(p, r)                                    # 4.7: the same labelled boxes as the other games
         if not self.cards:
             self._card(p, QRectF(c.x() - cw / 2, c.y() - ch / 2, cw, ch), 0, face=False)
             p.setPen(QColor(TEXT_DIM))
             p.setFont(font(11, QFont.Weight.DemiBold))
             p.drawText(QRectF(r.left(), c.y() + ch / 2 + S(10), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                       tr("Press Deal to start"))
+                       tr("Press Deal to start") + "  ·  " + tr("A is the lowest card, K the highest."))
             return
         k = min(1.0, (now - self._flip_t) / 0.35) if self._flip_t else 1.0
         sx = abs(math.cos(k * math.pi)) if k < 1 else 1.0         # the card turns over
@@ -37847,21 +38093,23 @@ class HiLo(Game):
         for card in self.cards[-6:-1][::-1]:
             self._card(p, QRectF(x, r.top() + S(14), S(28), S(40)), card)
             x += S(32)
-        # multiplier and chances
-        p.setFont(font(18, QFont.Weight.ExtraBold))
-        p.setPen(QColor(LOSE) if self.lost else (QColor(WIN) if self.hits else QColor(TEXT)))
-        p.drawText(QRectF(r.right() - S(110), r.top() + S(16), S(100), S(26)), int(Qt.AlignmentFlag.AlignRight),
-                   f"×{self.mult:.2f}")
         hi, lo = self.chances()
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.setPen(QColor(TEXT_DIM))
         line = tr("Higher or same {a}%  ·  Lower or same {b}%", a=round(hi * 100), b=round(lo * 100))
         p.drawText(QRectF(r.left(), c.y() + ch / 2 + S(10), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), line)
-        if self.busy and self.hits:
-            p.setPen(QColor(GOLD_TEXT))
-            p.setFont(font(11, QFont.Weight.Bold))
-            p.drawText(QRectF(r.left(), c.y() + ch / 2 + S(30), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                       tr("{n} right in a row", n=self.hits))
+
+    def _stats(self, p: QPainter, r: QRectF) -> None:
+        pass
+        pass
+        col = QRectF(r.right() - S(112), r.top() + S(12), S(100), S(40))
+        playing = bool(self.cards) and self.busy and not self.lost
+        rows = [(tr("Multiplier"), f"×{self.mult:.2f}", LOSE if self.lost else (WIN if self.hits else None)),
+                (tr("Right in a row"), str(self.hits), GOLD_TEXT if self.hits else None),
+                (tr("Cash out"), coins_text(int((self.stake or 0) * self.mult)) if playing and self.hits else "—",
+                 WIN if playing and self.hits else None)]
+        for k, (label, value, c) in enumerate(rows):
+            paint_stat(p, col.translated(0, k * S(46)), label, value, c)
 
 
 # --------------------------------------------------------------------------- #
@@ -41414,8 +41662,10 @@ def _make_class():
             super()._mouse_guard()
 
         def _watch_outside(self) -> None:
-            """A click anywhere outside the banner (the desktop, a game) sends it up into the R."""
-            if self.phase != "shown" or getattr(self, "modal", False):
+            """A click anywhere outside the banner (the desktop, a game) sends it up into the R. 4.7: not in game
+            mode, where every click is for the game and the banner just stays as it is."""
+            if self.phase != "shown" or getattr(self, "modal", False) or getattr(self.ctx, "game_lock", False):
+                self._was_down = False
                 return
             down = win.key_down(0x01) if win.IS_WIN else False
             if down and not self._was_down:
@@ -41760,6 +42010,8 @@ class PawnShop(QWidget):
         self.shown_anger = 0.0                      # the bar moves to the new level smoothly
         self.ask_mode = False
         self.ask = 0
+        self.deal = 0                               # 4.7: the price he agreed to (not sold yet)
+        self.market = 0                             # 4.7: what it goes for on the market, to compare
         self.busy = False
         self.line = tr("Let's see what you've got.")
         self.line_at = time.monotonic()
@@ -41830,6 +42082,16 @@ class PawnShop(QWidget):
         r3.addWidget(self.back, 2)
         r2.addWidget(btns)
         lay.addWidget(self.row_ask)
+        self.row_deal = QWidget()                   # 4.7: he said yes to your price: nothing is sold until you press Sell
+        r4 = hbox(self.row_deal, 8)
+        self.sell_deal = Button("", "primary", 40, icon="check")
+        self.sell_deal.clicked.connect(lambda: self._sell(self.deal))
+        self.no_deal = Button(tr("Not now"), "ghost", 40)
+        self.no_deal.clicked.connect(self._drop_deal)
+        r4.addWidget(self.sell_deal, 3)
+        r4.addWidget(self.no_deal, 2)
+        lay.addWidget(self.row_deal)
+        self.row_deal.hide()
         self.leave_btn = Button(tr("Leave the shop"), "ghost", 32, icon="back", parent=self)
         self.leave_btn.clicked.connect(self.leave)
         self.box.hide()
@@ -41838,7 +42100,7 @@ class PawnShop(QWidget):
 
     def _layout_controls(self) -> None:
         pn = self._panel()
-        top = self._counter_y() + S(124)
+        top = self._counter_y() + S(150)
         h = S(40) + S(8) + S(26) + S(8) + S(40)
         self.box.setGeometry(int(pn.left()), int(top), int(pn.width()), int(h))
         self.leave_btn.adjustSize()
@@ -41852,12 +42114,24 @@ class PawnShop(QWidget):
             self._refresh_texts()
 
     def _refresh_texts(self) -> None:
-        self.take.set_text(tr("Accept {n}", n=coins_text(self.base)))
-        self.row_offer.setVisible(not self.ask_mode)
-        self.row_ask.setVisible(self.ask_mode)
-        self.offer.set_text(tr("Ask {n}", n=coins_text(self.ask)))
-        for b in (self.take, self.more, self.offer, self.back, self.leave_btn):
+        self.take.set_text(tr("Sell for {n}", n=coins_text(self.base)))
+        self.row_offer.setVisible(not self.ask_mode and not self.deal)
+        self.row_ask.setVisible(self.ask_mode and not self.deal)
+        self.row_deal.setVisible(bool(self.deal))
+        self.sell_deal.set_text(tr("Sell for {n}", n=coins_text(self.deal)))
+        at_his = self.ask <= self.base
+        self.offer.set_text(tr("Sell for {n}", n=coins_text(self.ask)) if at_his else tr("Ask {n}", n=coins_text(self.ask)))
+        for b in (self.take, self.more, self.offer, self.back, self.leave_btn, self.sell_deal, self.no_deal):
             b.setEnabled(not self.busy)
+
+    def _drop_deal(self) -> None:
+        if self.busy:
+            return
+        sfx.play("pick")
+        self.deal = 0
+        self.line, self.line_at = tr("Suit yourself."), time.monotonic()
+        self._refresh_texts()
+        self.update()
 
     def _set_ask(self, on: bool) -> None:
         if self.busy:
@@ -41868,7 +42142,7 @@ class PawnShop(QWidget):
             lo, hi = self._ask_range()
             step = max(1, (hi - lo) // 100)
             self.slider.deleteLater()
-            self.slider = Slider(lo, hi, lo + (hi - lo) // 3, step)
+            self.slider = Slider(lo, hi, lo, step)            # 4.7: starts on his price (100%), far left
             self.slider.changed.connect(self._slid)
             self.row_ask.layout().insertWidget(0, self.slider)
             self.ask = int(self.slider.value())
@@ -41876,7 +42150,7 @@ class PawnShop(QWidget):
         self.update()
 
     def _ask_range(self):
-        lo = self.base + max(1, self.base // 100)
+        lo = self.base
         hi = max(lo, int(math.floor(self.base * self.max_ratio)))
         return lo, hi
 
@@ -41904,7 +42178,20 @@ class PawnShop(QWidget):
         self.line = tr("I'll give you {n} coins for {what}.", n=coins_text(self.base), what=self.what)
         self.line_at = time.monotonic()
 
+        def priced(ok2: bool, d2) -> None:                    # 4.7: the market price, to compare
+            if ok2 and isinstance(d2, dict):
+                self.market = int(d2.get("estimate") or 0) * max(1, len(self.ids))
+                try:
+                    self.update()
+                except RuntimeError:
+                    pass
+        if self.item and self.ban_left == 0:
+            self.ctx.econ.call("rb_market_price", {"what": self.item}, priced)
+
     def _sell(self, ask) -> None:
+        """Sell now: at his price (ask None or not above it), or at a price he already agreed to."""
+        if ask is not None and ask > self.base and ask != self.deal:
+            return self._ask(ask)
         if self.busy or self.phase != "shop":
             return
         self.busy = True
@@ -41956,7 +42243,53 @@ class PawnShop(QWidget):
                     self._refresh_texts()
             except RuntimeError:
                 pass
-        self.ctx.econ.call("rb_pawn_sell", {"ids": self.ids, "ask": ask}, done, once=True)
+        self.ctx.econ.call("rb_pawn_sell", {"ids": self.ids, "ask": ask if ask and ask > self.base else None}, done, once=True)
+
+    def _ask(self, ask: int) -> None:
+        """4.7: only asks. A yes keeps the price for you; the item stays yours until you press Sell."""
+        if self.busy or self.phase != "shop":
+            return
+        self.busy = True
+        self._refresh_texts()
+        sfx.play("pick")
+
+        def done(ok: bool, data) -> None:
+            self.busy = False
+            try:
+                if not ok or not isinstance(data, dict):
+                    self.ctx.toast(tr(str(data)), "warn")
+                    return self._refresh_texts()
+                res = data.get("result")
+                self.anger = float(data.get("anger") or 0)
+                if res == "yes":
+                    sfx.play("on")
+                    self.deal = int(data.get("price") or ask)
+                    self.ask_mode = False
+                    self.line, self.line_at = tr("Fine. {n} coins, if you want it.", n=coins_text(self.deal)), time.monotonic()
+                    self._refresh_texts()
+                elif res == "kicked":
+                    self.anger = 100.0
+                    self.line, self.line_at = tr("That's it. GET OUT!"), time.monotonic()
+                    self.after = lambda: self.ctx.toast(tr("Thrown out of the pawn shop for 30 minutes"), "warn")
+                    self._controls(False)
+                    sfx.play("off")
+                    QTimer.singleShot(500, self._crack)
+                elif res == "banned":
+                    self.ban_left = int(data.get("ban_left") or 0)
+                    self.ban_end = time.monotonic() + self.ban_left
+                    self.ctx.pawn_ban_until = time.time() + self.ban_left
+                    self._controls(False)
+                    self._go("ban_close")
+                else:
+                    sfx.play("off")
+                    self.line = (tr("No way.") if self.anger < 45 else tr("You're pushing it.") if self.anger < 75
+                                 else tr("One more and you're out."))
+                    self.line_at = time.monotonic()
+                    self._refresh_texts()
+                self.update()
+            except RuntimeError:
+                pass
+        self.ctx.econ.call("rb_pawn_ask", {"ids": self.ids, "ask": ask}, done, once=True)
 
     # -- phases
     def _go(self, phase: str) -> None:
@@ -42374,6 +42707,10 @@ class PawnShop(QWidget):
             p.setPen(QColor("#3DDC84"))
             p.drawText(QRectF(pn.left(), y + S(32), pn.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("Sold for {n} coins", n=coins_text(getattr(self, "paid", 0))))
+        elif self.deal:
+            p.setPen(QColor("#3DDC84"))
+            p.drawText(QRectF(pn.left(), y + S(32), pn.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("He agreed to {n} coins: press Sell to sell it", n=coins_text(self.deal)))
         elif self.ask_mode and self.base:
             ch = pawn_chance(self.ask / self.base, self.anger)
             col = QColor("#3DDC84") if ch >= 0.6 else QColor("#F2C94C") if ch >= 0.3 else QColor("#FF6B5C")
@@ -42392,13 +42729,19 @@ class PawnShop(QWidget):
             p.setFont(font(10.5, QFont.Weight.DemiBold))
             p.drawText(QRectF(pn.left(), y + S(56), pn.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("Take it, or ask for more (up to +50%)"))
+        if self.market and not self.sold_at:                   # 4.7: to compare with the market
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10.5, QFont.Weight.Bold))
+            p.drawText(QRectF(pn.left(), y + S(78), pn.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Market price: about {n} coins (selling there takes longer, 5% fee)", n=coins_text(self.market)))
         # how it works, under the buttons
         foot = QRectF(pn.left(), self.box.geometry().bottom() + S(14), pn.width(), S(60))
         p.setPen(alpha(TEXT_DIM, 0.85))
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.drawText(foot, int(Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop),
-                   tr("The more you ask, the less likely he says yes. Every no makes him angrier (he calms down over "
-                      "time). If his patience runs out, he throws you out for 30 minutes."))
+                   tr("His price always sells. Asking for more only asks: if he says yes, you still choose to sell. "
+                      "Every no makes him angrier (he calms down over time); if his patience runs out, he throws you out "
+                      "for 30 minutes."))
 
     # the doors
     def _paint_doors(self, p, r, d, now) -> None:
@@ -46647,12 +46990,13 @@ class App(QObject):
         self.tapkey.tapped.connect(self._tap_key)
         self.tapkey.held.connect(self.restart_app)
         pass
-        install_cheat_clicks(self)                        # 4.6: Ruben's cheats (right click), off unless he turns them on
-        pass
         self.game_lock = False
         self.gmkey = TapKey(self, hold_s=5.0, choices=GM_KEY_CHOICES)
         self.gmkey.tapped.connect(self.toggle_game_lock)
         self.gmkey.held.connect(self._gm_restart)
+        self._gm_timer = QTimer(self)                     # 4.7: windows that appear while game mode is on
+        self._gm_timer.setInterval(150)
+        self._gm_timer.timeout.connect(self._apply_game_lock)
         self.outdated = False                       # the server or the updater says: update before playing online
         self._usage = QTimer(self)
         self._usage.setInterval(60000)
@@ -47389,7 +47733,9 @@ class App(QObject):
         pass
         pass
         if kind == "gift":
-            text = tr("{name} gifted you a case: {case}", name=data.get("from", "?"), case=tr(CASE_NAMES.get(data.get("case"), "?")))
+            n = int(data.get("n") or 1)
+            text = (tr("{name} gifted you {n} cases: {case}", name=data.get("from", "?"), n=n, case=tr(CASE_NAMES.get(data.get("case"), "?")))
+                    if n > 1 else tr("{name} gifted you a case: {case}", name=data.get("from", "?"), case=tr(CASE_NAMES.get(data.get("case"), "?"))))
         elif kind == "giveaway":
             text = tr("You won the giveaway: {title}!", title=data.get("title", ""))
         elif data.get("item"):
@@ -47626,18 +47972,17 @@ class App(QObject):
 
     def toggle_game_lock(self, on=None) -> None:
         """4.6: game mode on: Rubenium ignores the mouse completely (every window lets the mouse through, nothing
-        reacts to it), a small padlock on the ball says so. The game mode key again: back to normal."""
+        reacts to it, the pointer never shows up over it), a small padlock on the ball says so. 4.7: the menu stays
+        exactly as it is (open or closed); only the mouse stops reaching it. The game mode key again: back to normal."""
         on = (not self.game_lock) if on is None else bool(on)
         if on == self.game_lock:
             return
         self.game_lock = on
+        self._apply_game_lock()
         if on:
-            for w in (self.window, self.main_window):
-                try:
-                    if getattr(w, "expanded", False):
-                        w.collapse()
-                except RuntimeError:
-                    pass
+            self._gm_timer.start()
+        else:
+            self._gm_timer.stop()
         for w in {self.window, self.main_window}:
             try:
                 w._mouse_guard()
@@ -47647,23 +47992,48 @@ class App(QObject):
         sfx.play("on" if on else "off")
         self.notifier.push("ready", tr("GAME MODE"), tr("On: Rubenium ignores the mouse") if on else tr("Off: Rubenium is back"))
 
+    def _apply_game_lock(self) -> None:
+        """Every visible Rubenium window (menus, notifications, little windows, tooltips) lets the mouse through while
+        game mode is on, so hovering it never wakes it up or shows the pointer over a game. Off: put them back."""
+        from PyQt6.QtWidgets import QApplication
+        pass
+        on = bool(self.game_lock)
+        for w in QApplication.topLevelWidgets():
+            try:
+                if not w.isVisible():
+                    continue
+                hwnd = int(w.winId() or 0) if w.isWindow() else 0
+                if on and not getattr(w, "_gm_through", False):
+                    w._gm_through = True
+                    w._gm_was = w.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+                    if not w._gm_was:
+                        w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+                    if hwnd:
+                        win.set_click_through(hwnd, True)
+                elif not on and getattr(w, "_gm_through", False):
+                    w._gm_through = False
+                    if not getattr(w, "_gm_was", False):       # only what game mode changed goes back
+                        w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+                        if hwnd and w not in (self.window, self.main_window):
+                            win.set_click_through(hwnd, False)
+            except RuntimeError:
+                continue
+        if on:
+            QApplication.restoreOverrideCursor()
+
     def _gm_restart(self) -> None:
         """Held 5 seconds: game mode off and Rubenium starts again (a way out if anything is stuck)."""
         self.game_lock = False
         self.restart_app()
 
     def _tap_key(self) -> None:
-        if self.game_lock:                                # 4.6: the menu can't be used with the mouse while locked
-            pass
-            name = next((n for k, n, _v in GM_KEY_CHOICES if k == self.cfg["gm_key"]), "?")
-            self.notifier.push("ready", tr("GAME MODE"), tr("Game mode is on: press {key} to use Rubenium", key=tr(name)))
+        if self.game_lock:                                # 4.7: the key still opens and closes the menu, to look at it
             for w in {self.window, self.main_window}:
                 try:
                     w.ball.lock_flash = time.monotonic()
                     w.ball.update()
                 except (RuntimeError, AttributeError):
                     pass
-            return
         if self.window.expanded:
             self.window.collapse()
         else:

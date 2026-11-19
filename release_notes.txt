@@ -1,14 +1,12 @@
-Rubenium 4.6
+Rubenium 4.7
 
-- Game mode: a controller button on the home tab opens a small window. Pick a key: it turns game mode on and off. While it is on, Rubenium ignores the mouse completely (a padlock shows on the ball). Hold the key 5 seconds to turn it off and restart Rubenium. Hold to open and the show / hide key are set there too (no longer in Settings)
-- Trade up: in the collection, a full row of Painted colours can be traded for a random Shiny you don't have, and a full Shiny row for a random Titanium, with a spin. Never from Basic, never to Gold, never a duplicate
-- Sell on the market from your inventory, at a new market stall (price slider, usual price, what you get after the 5% fee). "Sell on the market" is gone from the collection
-- Pawn shop: more tolerant on price, the speech bubble isn't cut any more, and the ban countdown is big and also shown on the Quick sell button
-- Coinflip: the chances are shown as a bar, your chance shows while you pick your items, and a click on any item shows its name, rarity and worth (also in trades). Rubenium's own offers are marked BOT like the other bots, and there are 9 new bot names
-- No more notifications giving away the result before a coin lands, a case opens or a duel replay ends
-- Mini Golf: 8 new holes (48 in all), 30 seconds a shot. Wave Rush: gates (a spike above and below at once)
-- Duel lobbies: the bet is big and gold with what the winner takes, and the whole row joins
-- Titanium and Gold a little less rare, and Gold a touch easier for lower rarities. Still very rare
-- Online menu: one size, Medium or Large (Settings). The top tab is called Online. Leaving online mode no longer breaks the music cover or the menu, and the Leave button fits
-- First time you press play: pick your music app (or "No preference for now"). YouTube ads are muted more reliably
-- The accessory button moved away from the volume slider
+- Cases: every badge has new odds. No badge you can get from a case is rarer than 1 in 250 for Basic, 1 in 1 000 for Painted, 1 in 10 000 for Shiny, 1 in 50 000 for Titanium and 1 in 100 000 for Gold, and lower rarities are a bit easier. Cheap cases hold the lower rarities, big cases go up to Epic Gold. What a case pays on average stays the same; Mythic drops are not changed. Every chance shown in the case and on each badge comes from the new table
+- Golden Wheel: it now spins inside the menu like the free wheel (no more flashing over online mode) and pays about 3.7 times more: 10 000, 20 000, 40 000, 100 000 or 250 000 coins, or an Elite, Vault, Top Tier or Royal case with a key
+- Pawn shop: the price slider starts on his own price (100% yes). Asking for more only asks: when he agrees, press Sell to sell. The item's market price is shown so you can compare
+- Game mode no longer closes Rubenium: the menu stays as it is and only stops reacting to the mouse (no hover, no pointer over it). Hold to open and the show / hide key are only in the game mode window now
+- Gifting a case: tap a friend and choose 1 to 3, no more typing a username
+- Deals: each deal is one per day at its price (it was unlimited)
+- Blackjack, Bombs and Hi-Lo: clearer boards with labelled numbers (multiplier, next gem, cash out, streak)
+- Fixed: the coinflip chance bar didn't draw; the Medium / Large online menu switch was invisible
+- Limits against spam on trades, the market, coinflips, duels, messages and gifts
+- Ruben's cheats are gone
