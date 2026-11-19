@@ -67,6 +67,8 @@ class PawnShop(QWidget):
         self.shown_anger = 0.0                      # the bar moves to the new level smoothly
         self.ask_mode = False
         self.ask = 0
+        self.deal = 0                               # 4.7: the price he agreed to (not sold yet)
+        self.market = 0                             # 4.7: what it goes for on the market, to compare
         self.busy = False
         self.line = tr("Let's see what you've got.")
         self.line_at = time.monotonic()
@@ -137,6 +139,16 @@ class PawnShop(QWidget):
         r3.addWidget(self.back, 2)
         r2.addWidget(btns)
         lay.addWidget(self.row_ask)
+        self.row_deal = QWidget()                   # 4.7: he said yes to your price: nothing is sold until you press Sell
+        r4 = hbox(self.row_deal, 8)
+        self.sell_deal = Button("", "primary", 40, icon="check")
+        self.sell_deal.clicked.connect(lambda: self._sell(self.deal))
+        self.no_deal = Button(tr("Not now"), "ghost", 40)
+        self.no_deal.clicked.connect(self._drop_deal)
+        r4.addWidget(self.sell_deal, 3)
+        r4.addWidget(self.no_deal, 2)
+        lay.addWidget(self.row_deal)
+        self.row_deal.hide()
         self.leave_btn = Button(tr("Leave the shop"), "ghost", 32, icon="back", parent=self)
         self.leave_btn.clicked.connect(self.leave)
         self.box.hide()
@@ -145,7 +157,7 @@ class PawnShop(QWidget):
 
     def _layout_controls(self) -> None:
         pn = self._panel()
-        top = self._counter_y() + S(124)
+        top = self._counter_y() + S(150)
         h = S(40) + S(8) + S(26) + S(8) + S(40)
         self.box.setGeometry(int(pn.left()), int(top), int(pn.width()), int(h))
         self.leave_btn.adjustSize()
@@ -159,12 +171,24 @@ class PawnShop(QWidget):
             self._refresh_texts()
 
     def _refresh_texts(self) -> None:
-        self.take.set_text(tr("Accept {n}", n=coins_text(self.base)))
-        self.row_offer.setVisible(not self.ask_mode)
-        self.row_ask.setVisible(self.ask_mode)
-        self.offer.set_text(tr("Ask {n}", n=coins_text(self.ask)))
-        for b in (self.take, self.more, self.offer, self.back, self.leave_btn):
+        self.take.set_text(tr("Sell for {n}", n=coins_text(self.base)))
+        self.row_offer.setVisible(not self.ask_mode and not self.deal)
+        self.row_ask.setVisible(self.ask_mode and not self.deal)
+        self.row_deal.setVisible(bool(self.deal))
+        self.sell_deal.set_text(tr("Sell for {n}", n=coins_text(self.deal)))
+        at_his = self.ask <= self.base
+        self.offer.set_text(tr("Sell for {n}", n=coins_text(self.ask)) if at_his else tr("Ask {n}", n=coins_text(self.ask)))
+        for b in (self.take, self.more, self.offer, self.back, self.leave_btn, self.sell_deal, self.no_deal):
             b.setEnabled(not self.busy)
+
+    def _drop_deal(self) -> None:
+        if self.busy:
+            return
+        sfx.play("pick")
+        self.deal = 0
+        self.line, self.line_at = tr("Suit yourself."), time.monotonic()
+        self._refresh_texts()
+        self.update()
 
     def _set_ask(self, on: bool) -> None:
         if self.busy:
@@ -175,7 +199,7 @@ class PawnShop(QWidget):
             lo, hi = self._ask_range()
             step = max(1, (hi - lo) // 100)
             self.slider.deleteLater()
-            self.slider = Slider(lo, hi, lo + (hi - lo) // 3, step)
+            self.slider = Slider(lo, hi, lo, step)            # 4.7: starts on his price (100%), far left
             self.slider.changed.connect(self._slid)
             self.row_ask.layout().insertWidget(0, self.slider)
             self.ask = int(self.slider.value())
@@ -183,7 +207,7 @@ class PawnShop(QWidget):
         self.update()
 
     def _ask_range(self):
-        lo = self.base + max(1, self.base // 100)
+        lo = self.base
         hi = max(lo, int(math.floor(self.base * self.max_ratio)))
         return lo, hi
 
@@ -211,7 +235,20 @@ class PawnShop(QWidget):
         self.line = tr("I'll give you {n} coins for {what}.", n=coins_text(self.base), what=self.what)
         self.line_at = time.monotonic()
 
+        def priced(ok2: bool, d2) -> None:                    # 4.7: the market price, to compare
+            if ok2 and isinstance(d2, dict):
+                self.market = int(d2.get("estimate") or 0) * max(1, len(self.ids))
+                try:
+                    self.update()
+                except RuntimeError:
+                    pass
+        if self.item and self.ban_left == 0:
+            self.ctx.econ.call("rb_market_price", {"what": self.item}, priced)
+
     def _sell(self, ask) -> None:
+        """Sell now: at his price (ask None or not above it), or at a price he already agreed to."""
+        if ask is not None and ask > self.base and ask != self.deal:
+            return self._ask(ask)
         if self.busy or self.phase != "shop":
             return
         self.busy = True
@@ -263,7 +300,53 @@ class PawnShop(QWidget):
                     self._refresh_texts()
             except RuntimeError:
                 pass
-        self.ctx.econ.call("rb_pawn_sell", {"ids": self.ids, "ask": ask}, done, once=True)
+        self.ctx.econ.call("rb_pawn_sell", {"ids": self.ids, "ask": ask if ask and ask > self.base else None}, done, once=True)
+
+    def _ask(self, ask: int) -> None:
+        """4.7: only asks. A yes keeps the price for you; the item stays yours until you press Sell."""
+        if self.busy or self.phase != "shop":
+            return
+        self.busy = True
+        self._refresh_texts()
+        sfx.play("pick")
+
+        def done(ok: bool, data) -> None:
+            self.busy = False
+            try:
+                if not ok or not isinstance(data, dict):
+                    self.ctx.toast(tr(str(data)), "warn")
+                    return self._refresh_texts()
+                res = data.get("result")
+                self.anger = float(data.get("anger") or 0)
+                if res == "yes":
+                    sfx.play("on")
+                    self.deal = int(data.get("price") or ask)
+                    self.ask_mode = False
+                    self.line, self.line_at = tr("Fine. {n} coins, if you want it.", n=coins_text(self.deal)), time.monotonic()
+                    self._refresh_texts()
+                elif res == "kicked":
+                    self.anger = 100.0
+                    self.line, self.line_at = tr("That's it. GET OUT!"), time.monotonic()
+                    self.after = lambda: self.ctx.toast(tr("Thrown out of the pawn shop for 30 minutes"), "warn")
+                    self._controls(False)
+                    sfx.play("off")
+                    QTimer.singleShot(500, self._crack)
+                elif res == "banned":
+                    self.ban_left = int(data.get("ban_left") or 0)
+                    self.ban_end = time.monotonic() + self.ban_left
+                    self.ctx.pawn_ban_until = time.time() + self.ban_left
+                    self._controls(False)
+                    self._go("ban_close")
+                else:
+                    sfx.play("off")
+                    self.line = (tr("No way.") if self.anger < 45 else tr("You're pushing it.") if self.anger < 75
+                                 else tr("One more and you're out."))
+                    self.line_at = time.monotonic()
+                    self._refresh_texts()
+                self.update()
+            except RuntimeError:
+                pass
+        self.ctx.econ.call("rb_pawn_ask", {"ids": self.ids, "ask": ask}, done, once=True)
 
     # -- phases
     def _go(self, phase: str) -> None:
@@ -681,6 +764,10 @@ class PawnShop(QWidget):
             p.setPen(QColor("#3DDC84"))
             p.drawText(QRectF(pn.left(), y + S(32), pn.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("Sold for {n} coins", n=coins_text(getattr(self, "paid", 0))))
+        elif self.deal:
+            p.setPen(QColor("#3DDC84"))
+            p.drawText(QRectF(pn.left(), y + S(32), pn.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("He agreed to {n} coins: press Sell to sell it", n=coins_text(self.deal)))
         elif self.ask_mode and self.base:
             ch = pawn_chance(self.ask / self.base, self.anger)
             col = QColor("#3DDC84") if ch >= 0.6 else QColor("#F2C94C") if ch >= 0.3 else QColor("#FF6B5C")
@@ -699,13 +786,19 @@ class PawnShop(QWidget):
             p.setFont(font(10.5, QFont.Weight.DemiBold))
             p.drawText(QRectF(pn.left(), y + S(56), pn.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("Take it, or ask for more (up to +50%)"))
+        if self.market and not self.sold_at:                   # 4.7: to compare with the market
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10.5, QFont.Weight.Bold))
+            p.drawText(QRectF(pn.left(), y + S(78), pn.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Market price: about {n} coins (selling there takes longer, 5% fee)", n=coins_text(self.market)))
         # how it works, under the buttons
         foot = QRectF(pn.left(), self.box.geometry().bottom() + S(14), pn.width(), S(60))
         p.setPen(alpha(TEXT_DIM, 0.85))
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.drawText(foot, int(Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop),
-                   tr("The more you ask, the less likely he says yes. Every no makes him angrier (he calms down over "
-                      "time). If his patience runs out, he throws you out for 30 minutes."))
+                   tr("His price always sells. Asking for more only asks: if he says yes, you still choose to sell. "
+                      "Every no makes him angrier (he calms down over time); if his patience runs out, he throws you out "
+                      "for 30 minutes."))
 
     # the doors
     def _paint_doors(self, p, r, d, now) -> None:

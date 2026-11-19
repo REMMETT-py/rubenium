@@ -700,7 +700,6 @@ class ScratchCard(QWidget):
         self.page, self.ctx = page, page.ctx
         self.setFixedSize(page.W, S(170))
         self.setCursor(Qt.CursorShape.CrossCursor)
-        self.setProperty("cheat", True)                    # 4.6: Ruben's right click
         self.prize: dict = {}
         self.asked = False
         self.cleared = 0

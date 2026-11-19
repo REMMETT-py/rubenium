@@ -752,7 +752,7 @@ class ShopPage(StylePart, Page):
         market_sell(self.ctx, self._item())
 
     # -- Cases
-    DAILY = {"id": "daily", "price": 0, "odds": [7500, 2000, 450, 50, 0, 0], "coin_min": 30, "coin_max": 120,
+    DAILY = {"id": "daily", "price": 0, "odds": [7459, 1867, 674, 0, 0, 0], "coin_min": 40, "coin_max": 150,
              "exotics": False, "pity_tier": 1, "pity_after": 0}
 
     def daily_wait(self):
@@ -1006,27 +1006,10 @@ class ShopPage(StylePart, Page):
         QTimer.singleShot(900, lambda: self._lock(False))
 
     def _gift(self, case: dict) -> None:
-        from .bazaar import AskDialog
-        from .collection import CASE_NAMES
-        ctx, ec = self.ctx, self.ctx.econ
-        if not ec.can_trade():
-            return ctx.toast(tr("Gifts unlock after 5 hours with Rubenium"), "warn")
-
-        def send(name: str, dlg) -> None:
-            if case["price"] > ec.coins:
-                return dlg.say(tr("Not enough coins"))
-
-            def done(ok: bool, data) -> None:
-                if not ok:
-                    return dlg.say(tr(str(data)))
-                dlg.close()
-                sfx.play("on")
-                ctx.toast(tr("Gift sent to {name}!", name=name))
-            ec.call("rb_case_gift", {"name": name, "which": case["id"]}, done, once=True)
-        ctx._ask = AskDialog(ctx, tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), tr("Friend's username"),
-                             tr("Gift for {n}", n=coins_text(case["price"])), send, 10,
-                             tr("It costs {n} coins (no key). It goes to your friend's cases; they open it with a key. "
-                                "3 gifts a day at most.", n=coins_text(case["price"])))
+        """4.7: pick a friend and how many, in a sheet inside the menu (no more typing a username)."""
+        if not self.ctx.econ.can_trade():
+            return self.ctx.toast(tr("Gifts unlock after 5 hours with Rubenium"), "warn")
+        self.ctx.window.embed(GiftSheet(self.ctx, case))
 
     def _lock(self, on: bool) -> None:
         try:
@@ -1103,3 +1086,146 @@ class UnlockBar(QWidget):
         frac = 1.0 if nxt is None else max(0.0, min(1.0, (hours - prev) / max(0.01, nxt - prev)))
         p.setBrush(ui.accent)
         p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * frac), bar.height()), S(3), S(3))
+
+
+class _FriendChip(QWidget):
+    """A friend to pick: picture, name, online dot."""
+    picked = pyqtSignal(str)
+
+    def __init__(self, ctx, info: dict, w: int) -> None:
+        super().__init__()
+        self.ctx, self.info, self.on = ctx, info, False
+        self.setFixedSize(w, S(44))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mouseReleaseEvent(self, e) -> None:
+        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
+            self.picked.emit(self.info["username"])
+
+    def paintEvent(self, _e) -> None:
+        from .friends import paint_face
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.setPen(QPen(QColor(ui.accent), S(1.6)) if self.on else QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(alpha(ui.accent, 0.14) if self.on else alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(r, S(10), S(10))
+        name = self.info["username"]
+        paint_face(p, QRectF(r.left() + S(6), r.center().y() - S(15), S(30), S(30)), self.ctx, name,
+                   int(self.info.get("avatar_v") or 0), bool(self.info.get("online")))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.drawText(r.adjusted(S(44), 0, -S(6), 0), int(Qt.AlignmentFlag.AlignVCenter),
+                   p.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight, int(r.width() - S(50))))
+
+
+class GiftSheet(QWidget):
+    """4.7: gift a case. Your friends as cards (tap one), how many (up to what's left today), the price, Send."""
+
+    def __init__(self, ctx, case: dict) -> None:
+        super().__init__()
+        from .collection import CASE_NAMES
+        self.ctx, self.case = ctx, case
+        self.to, self.n, self.left, self.busy = "", 1, None, False
+        self.W = ctx.window.page_w()
+        self.setFixedWidth(self.W)
+        lay = vbox(self, 10)
+        top = hbox(spacing=8)
+        back = IconButton("back", 30, tip=tr("Back"))
+        back.clicked.connect(self.close_sheet)
+        top.addWidget(back)
+        top.addWidget(Label(tr("Gift: {case}", case=tr(CASE_NAMES.get(case["id"], ""))), 15, TEXT, bold=True), 1)
+        lay.addLayout(top)
+        lay.addWidget(Label(tr("It goes straight to your friend's cases; they open it with a key."), 10.5, TEXT_DIM,
+                            wrap_w=self.W))
+        lay.addWidget(Label(tr("TO"), 10, TEXT_DIM, bold=True))
+        self.grid_box = QWidget()
+        self.grid = QGridLayout(self.grid_box)
+        self.grid.setContentsMargins(0, 0, 0, 0)
+        self.grid.setSpacing(S(6))
+        lay.addWidget(self.grid_box)
+        self.empty = Label(tr("Loading…"), 11, TEXT_DIM)
+        lay.addWidget(self.empty)
+        lay.addWidget(Label(tr("HOW MANY"), 10, TEXT_DIM, bold=True))
+        self.count = Segmented(["1", "2", "3"], 0)
+        self.count.changed.connect(self._count)
+        lay.addWidget(self.count)
+        self.info = Label("", 10.5, TEXT_DIM, wrap_w=self.W)
+        lay.addWidget(self.info)
+        self.send = Button("", "primary", 40, icon="gift")
+        self.send.clicked.connect(self._send)
+        lay.addWidget(self.send)
+        self.chips: list = []
+        self._texts()
+        ctx.online.ask("rb_friends_list", {}, self._friends)
+        ctx.econ.call("rb_gift_left", {}, self._left)
+
+    def _friends(self, ok: bool, data) -> None:
+        try:
+            friends = [f for f in (data or []) if f.get("state") == "friend"] if ok and isinstance(data, list) else []
+            self.empty.setVisible(not friends)
+            self.empty.set_text(tr("Add friends on the Social page to send them gifts.") if ok else tr(str(data)))
+            cols = 3
+            cw = int((self.W - S(6) * (cols - 1)) / cols)
+            for k, f in enumerate(friends[:30]):
+                chip = _FriendChip(self.ctx, f, cw)
+                chip.picked.connect(self._pick)
+                self.grid.addWidget(chip, k // cols, k % cols)
+                self.chips.append(chip)
+            if len(friends) == 1:
+                self._pick(friends[0]["username"])
+        except RuntimeError:
+            pass
+
+    def _left(self, ok: bool, data) -> None:
+        if ok:
+            try:
+                self.left = int(data or 0)
+                self._texts()
+            except (RuntimeError, ValueError, TypeError):
+                pass
+
+    def _pick(self, name: str) -> None:
+        sfx.play("pick")
+        self.to = name
+        for c in self.chips:
+            c.on = c.info["username"] == name
+            c.update()
+        self._texts()
+
+    def _count(self, i: int) -> None:
+        self.n = i + 1
+        self._texts()
+
+    def _texts(self) -> None:
+        price = int(self.case["price"]) * self.n
+        left = self.left
+        self.info.set_text((tr("Gifts left today: {n}", n=left) + "  ·  " if left is not None else "")
+                           + tr("You have {n} coins", n=coins_text(self.ctx.econ.coins)))
+        self.send.set_text(tr("Send to {name} for {n}", name=self.to, n=coins_text(price)) if self.to
+                           else tr("Pick a friend"))
+        self.send.setEnabled(bool(self.to) and not self.busy and price <= self.ctx.econ.coins
+                             and (left is None or self.n <= left))
+
+    def _send(self) -> None:
+        if not self.to or self.busy:
+            return
+        self.busy = True
+        self._texts()
+
+        def done(ok: bool, data) -> None:
+            self.busy = False
+            try:
+                if not ok:
+                    self.ctx.toast(tr(str(data)), "warn")
+                    return self._texts()
+                sfx.play("on")
+                self.ctx.toast(tr("Gift sent to {name}!", name=self.to))
+                self.close_sheet()
+            except RuntimeError:
+                pass
+        self.ctx.econ.call("rb_case_gift_n", {"name": self.to, "which": self.case["id"], "n": self.n}, done, once=True)
+
+    def close_sheet(self) -> None:
+        self.ctx.window.unembed(self)
+

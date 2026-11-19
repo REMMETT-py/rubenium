@@ -1227,6 +1227,12 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("4.7", ['Cases: new odds for every badge. No badge is rarer than 1 in 250 (Basic), 1 000 (Painted), 10 000 (Shiny), 50 000 (Titanium) or 100 000 (Gold); cheap cases hold the lower rarities, big cases everything. Mythic drops unchanged',
+             'The Golden Wheel now spins inside the menu (no more flashing in online mode) and pays far more: 10 000 to 250 000 coins or a big case',
+             'Pawn shop: the slider starts on his price (100%), asking for more no longer sells by itself (press Sell once he agrees), and the market price is shown',
+             'Game mode no longer closes Rubenium: it only stops the mouse reaching it. Hold to open moved to the game mode window',
+             'Gift a case by tapping a friend, up to 3 at once. Deals: one of each per day',
+             'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam']),
     ("4.6", ['Game mode button on the home tab: pick a key, it blocks every click on Rubenium while you play (padlock on the ball). Hold it 5 s to restart',
              "Trade up: a full row of colours becomes a random Shiny or Titanium you don't have, with a spin",
              'Sell on the market from your inventory, in a new market stall scene. The pawn shop is easier to deal with and its ban timer is bigger',

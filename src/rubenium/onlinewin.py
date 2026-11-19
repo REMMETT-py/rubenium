@@ -1041,8 +1041,10 @@ def _make_class():
             super()._mouse_guard()
 
         def _watch_outside(self) -> None:
-            """A click anywhere outside the banner (the desktop, a game) sends it up into the R."""
-            if self.phase != "shown" or getattr(self, "modal", False):
+            """A click anywhere outside the banner (the desktop, a game) sends it up into the R. 4.7: not in game
+            mode, where every click is for the game and the banner just stays as it is."""
+            if self.phase != "shown" or getattr(self, "modal", False) or getattr(self.ctx, "game_lock", False):
+                self._was_down = False
                 return
             down = win.key_down(0x01) if win.IS_WIN else False
             if down and not self._was_down:

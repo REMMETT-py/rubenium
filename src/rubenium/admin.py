@@ -14,7 +14,7 @@ from .cosmetics import item_name, paint_cosmetic
 from .pages import Page
 from .shop import GOLD_TEXT, clock_text
 from .wallet import coins_text, paint_coin
-from .widgets import present, close_embedded, Button, IconButton, Label, Segmented, Toggle, hbox, heading, vbox
+from .widgets import present, close_embedded, Button, IconButton, Label, Segmented, hbox, heading, vbox
 
 
 
@@ -767,27 +767,6 @@ class AdminPage(Page):
              "Golden Wheel", "XP coupon"]
     SCRATCH = [("standard", "80-160 coins"), ("rare", "220-420 coins"), ("special", "Key + XP coupon"),
                ("epic", "2 keys + coupon"), ("exotic", "2 500 coins + coupon"), ("golden", "Golden Wheel")]
-    def _cheats(self, lay) -> None:
-        cfg = self.ctx.cfg
-        lay.addWidget(heading("Cheats (only you)"))
-        row = hbox(spacing=8)
-        row.addWidget(Label("Right click instead of left click to win that move", 11.5, TEXT, bold=True), 1)
-        t = Toggle(bool(cfg.get("cheats")))
-        t.toggled_by_user.connect(lambda v: (cfg.__setitem__("cheats", bool(v)), self.ctx.reload_page("admin")))
-        row.addWidget(t)
-        lay.addLayout(row)
-        if cfg.get("cheats"):
-            lay.addWidget(Table([("Bombs", "right click a tile", "never a bomb", "#3DDC84"),
-                                 ("Tower", "right click a tile", "never the bomb", "#3DDC84"),
-                                 ("Hi-Lo", "right click Higher / Lower", "always right", "#3DDC84"),
-                                 ("Blackjack", "right click Hit", "the best card that doesn't bust", "#3DDC84"),
-                                 ("Dice", "right click Roll", "a win", "#3DDC84"),
-                                 ("Slots", "right click Spin", "3 of a kind (gems, sevens or bells)", "#3DDC84"),
-                                 ("Coinflip", "right click Play against a bot", "you win", "#3DDC84"),
-                                 ("Free spin", "right click Spin", "the gold slot", "#3DDC84"),
-                                 ("Scratch card", "start with a right click", "Exotic or Golden", "#3DDC84")],
-                                self.W))
-
     SLOTS = [(("gem",) * 3, "3 gems ×70"), (("seven",) * 3, "3 sevens ×30"), (("bell",) * 3, "3 bells ×15"),
              (("lemon",) * 3, "3 lemons ×8"), (("cherry",) * 3, "3 cherries ×5"), (("gem", "gem", "lemon"), "2 gems ×4"),
              (("seven", "cherry", "seven"), "2 sevens ×2"), (("lemon", "bell", "bell"), "2 bells ×2"),
@@ -795,8 +774,6 @@ class AdminPage(Page):
 
     def _rig(self, lay) -> None:
         st = self.state("rig")
-        if self.ctx.online.username().lower() == "ruben":      # 4.6: Ruben's cheats, on his account only
-            self._cheats(lay)
         lay.addWidget(heading("Player"))
         self.player_chips(lay, st, multi=False)
         lay.addWidget(heading("Game"))
@@ -1170,18 +1147,21 @@ class AdminPage(Page):
 
         def edit(i: int) -> None:
             c = cases[i]
-            FormDialog(self.ctx, en(CASE_NAMES.get(c["id"], c["id"])),
-                       [("p", en("Price"), c["price"]), ("o", en("Drop odds (6 numbers, total 10 000)"), ",".join(map(str, c["odds"]))),
-                        ("v", en("Finish odds (5 numbers, total 100 000)"), ",".join(map(str, c["variants"]))),
-                        ("a", en("Coins: lowest"), c["coin_min"]), ("b", en("Coins: highest"), c["coin_max"])], en("Save"),
-                       lambda v, dlg: self._save_case(c["id"], v, dlg))
+            fields = [("p", en("Price"), c["price"])]
+            if not c.get("grid"):                         # 4.7: badge cases follow the fixed odds table
+                fields += [("o", en("Drop odds (6 numbers, total 10 000)"), ",".join(map(str, c["odds"]))),
+                           ("v", en("Finish odds (5 numbers, total 100 000)"), ",".join(map(str, c["variants"])))]
+            fields += [("a", en("Coins: lowest"), c["coin_min"]), ("b", en("Coins: highest"), c["coin_max"])]
+            FormDialog(self.ctx, en(CASE_NAMES.get(c["id"], c["id"])), fields, en("Save"),
+                       lambda v, dlg: self._save_case(c, v, dlg))
         lay.addWidget(Table([(en(CASE_NAMES.get(c["id"], c["id"])), coins_text(int(c["price"])),
                               f"L {c['odds'][4] / 100:g}% · M {c['odds'][5] / 100:g}%") for c in cases], self.W, edit))
 
-    def _save_case(self, cid: str, v: dict, dlg) -> None:
+    def _save_case(self, c: dict, v: dict, dlg) -> None:
+        cid = c["id"]
         try:
-            odds = [int(x) for x in v["o"].split(",")]
-            var = [int(x) for x in v["v"].split(",")]
+            odds = [int(x) for x in v["o"].split(",")] if "o" in v else list(c["odds"])
+            var = [int(x) for x in v["v"].split(",")] if "v" in v else list(c["variants"])
         except ValueError:
             return dlg.say(en("Numbers separated by commas"))
         if len(odds) != 6 or sum(odds) != 10000 or len(var) != 5 or sum(var) != 100000:

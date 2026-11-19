@@ -1700,6 +1700,7 @@ class DealCard(QWidget):
         self.setFixedSize(width, S(150))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.owned = not d["item"].startswith("badge:") and self.ctx.econ.owns(d["item"])
+        self.sold = bool(d.get("bought"))                  # 4.7: one of each deal a day
         self._t = QTimer(self)
         self._t.setInterval(50)
         self._t.timeout.connect(self.update)
@@ -1714,7 +1715,7 @@ class DealCard(QWidget):
         if not self.rect().contains(e.position().toPoint()):
             return
         sfx.play("pick")
-        self.ctx.window.embed(DealSheet(self.ctx, self.d, self.owned))       # 4.5: see it before you buy it
+        self.ctx.window.embed(DealSheet(self.ctx, self.d, self.owned, self.sold))   # 4.5: see it before you buy it
 
 
     def paintEvent(self, _e) -> None:
@@ -1751,16 +1752,21 @@ class DealCard(QWidget):
         w = QFontMetrics(font(10)).horizontalAdvance(old)
         p.setPen(QPen(alpha(TEXT_FAINT, 0.9), 1))
         p.drawLine(QPointF(rect.center().x() - w / 2 - 2, rect.center().y()), QPointF(rect.center().x() + w / 2 + 2, rect.center().y()))
-        p.setPen(QColor(GOLD_TEXT if not self.owned else TEXT_DIM))
+        p.setPen(QColor(GOLD_TEXT if not (self.owned or self.sold) else TEXT_DIM))
         p.setFont(font(14, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left(), r.top() + S(110), r.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("Owned") if self.owned else coins_text(int(self.d["now"])))
+                   tr("Owned") if self.owned else tr("Sold out") if self.sold else coins_text(int(self.d["now"])))
+        if not (self.owned or self.sold):
+            p.setPen(QColor(TEXT_FAINT))
+            p.setFont(font(8.5, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left() + S(8), r.top() + S(8), S(60), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                       tr("1 left"))
 
 
 class DealSheet(QWidget):
     """4.5: a deal, up close: the item shown big (a theme is tried on the menu), then Buy or Back."""
 
-    def __init__(self, ctx, d: dict, owned: bool) -> None:
+    def __init__(self, ctx, d: dict, owned: bool, sold: bool = False) -> None:
         super().__init__()
         from .bazaar import LookPreview, Preview
         from .cosmetics import item_name
@@ -1783,9 +1789,10 @@ class DealSheet(QWidget):
         price = Label(tr("{a} → {b} coins", a=coins_text(int(d.get("was") or d.get("price") or 0)), b=coins_text(int(d["now"]))),
                       13, GOLD_TEXT, bold=True)
         lay.addWidget(price)
-        buy = Button(tr("You already have it") if owned else tr("Buy for {n} coins", n=coins_text(int(d["now"]))),
-                     "ghost" if owned else "primary", 38)
-        buy.setEnabled(not owned)
+        buy = Button(tr("You already have it") if owned else tr("Sold out until tomorrow") if sold
+                     else tr("Buy for {n} coins", n=coins_text(int(d["now"]))), "ghost" if owned or sold else "primary", 38)
+        buy.setEnabled(not owned and not sold)
+        lay.addWidget(Label(tr("One at this price per day."), 10, TEXT_DIM))
         buy.clicked.connect(self._buy)
         lay.addWidget(buy)
 
@@ -1807,6 +1814,8 @@ class DealSheet(QWidget):
                 return ctx.toast(tr(str(data)), "warn")
             sfx.play("on")
             ctx.toast(tr("Bought: {what}", what=item_name(d["item"])))
+            d["bought"] = True                               # 4.7: sold out for you until tomorrow
+            ctx.deals_data = None
             self._close()
         ec.buy(d["item"], bought)
 
@@ -1862,8 +1871,9 @@ class GameModeWindow(FloatWindow):
         state.setEnabled(cfg["gm_key"] != "off" or on)
         state.clicked.connect(lambda: (ctx.toggle_game_lock(), self.close()))
         lay.addWidget(state)
-        lay.addWidget(Label(tr("While it is on, Rubenium ignores the mouse completely: nothing in it can be clicked or "
-                               "even hovered, so nothing gets in the way of your game. A padlock on the ball shows it."),
+        lay.addWidget(Label(tr("While it is on, Rubenium stays exactly as it is (open or closed) but ignores the mouse "
+                               "completely: nothing in it can be clicked or even hovered, and the pointer never shows up "
+                               "over it, so nothing gets in the way of your game. A padlock on the ball shows it."),
                             10.5, TEXT_DIM, wrap_w=S(328)))
         lay.addWidget(Label(tr("GAME MODE KEY"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
         grid = QGridLayout()
@@ -1904,6 +1914,8 @@ class GameModeWindow(FloatWindow):
             self._again()
         hk.changed.connect(set_hk)
         lay.addWidget(hk)
+        lay.addWidget(Label(tr("Holding this key down for 3 seconds restarts Rubenium, in case you are stuck or run into a problem."),
+                            10, "#FFD54A", wrap_w=S(328)))
         self.centre()
 
     def _key(self, k: str) -> None:
@@ -1921,41 +1933,3 @@ class GameModeWindow(FloatWindow):
 
 def open_game_mode(ctx) -> None:
     ctx._gm_win = GameModeWindow(ctx)
-
-
-def install_cheat_clicks(ctx) -> None:
-    """4.6: Ruben's cheats. When they are on (admin > Rig, Ruben's account only), a right click in a casino game, on
-    the coinflip's play-a-bot button or on the free spin / scratch card arms a cheat for that one move and acts as a
-    normal click. Everywhere else a right click stays a right click."""
-    from PyQt6.QtCore import QEvent, QObject
-    from PyQt6.QtGui import QMouseEvent
-    from PyQt6.QtWidgets import QApplication
-
-    class _F(QObject):
-        def eventFilter(self, obj, e) -> bool:
-            t = e.type()
-            if t not in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease, QEvent.Type.MouseButtonDblClick):
-                return False
-            if e.button() != Qt.MouseButton.RightButton or not isinstance(obj, QWidget):
-                return False
-            if not (ctx.cfg.get("cheats") and ctx.econ.admin and ctx.online.username().lower() == "ruben"):
-                return False
-            from .games import Game
-            w, zone = obj, False
-            while w is not None:
-                if isinstance(w, Game) or w.property("cheat"):
-                    zone = True
-                    break
-                w = w.parentWidget()
-            if not zone:
-                return False
-            if t == QEvent.Type.MouseButtonPress:
-                ctx.econ.cheat_armed = time.monotonic()
-            left = QMouseEvent(t if t != QEvent.Type.MouseButtonDblClick else QEvent.Type.MouseButtonPress,
-                               e.position(), e.globalPosition(), Qt.MouseButton.LeftButton,
-                               Qt.MouseButton.LeftButton if t != QEvent.Type.MouseButtonRelease else Qt.MouseButton.NoButton,
-                               e.modifiers())
-            QApplication.sendEvent(obj, left)
-            return True
-    ctx._cheat_filter = _F()
-    QApplication.instance().installEventFilter(ctx._cheat_filter)

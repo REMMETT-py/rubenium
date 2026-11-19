@@ -250,13 +250,14 @@ class App(QObject):
         self.tapkey = TapKey(self)                  # tap Right Shift: show or hide Rubenium
         self.tapkey.tapped.connect(self._tap_key)
         self.tapkey.held.connect(self.restart_app)
-        from .hub import install_cheat_clicks
-        install_cheat_clicks(self)                        # 4.6: Ruben's cheats (right click), off unless he turns them on
         from .music2 import GM_KEY_CHOICES                # 4.6: game mode: a key locks Rubenium away from the mouse
         self.game_lock = False
         self.gmkey = TapKey(self, hold_s=5.0, choices=GM_KEY_CHOICES)
         self.gmkey.tapped.connect(self.toggle_game_lock)
         self.gmkey.held.connect(self._gm_restart)
+        self._gm_timer = QTimer(self)                     # 4.7: windows that appear while game mode is on
+        self._gm_timer.setInterval(150)
+        self._gm_timer.timeout.connect(self._apply_game_lock)
         self.outdated = False                       # the server or the updater says: update before playing online
         self._usage = QTimer(self)
         self._usage.setInterval(60000)
@@ -993,7 +994,9 @@ class App(QObject):
         from .cosmetics import item_name
         from .wallet import coins_text
         if kind == "gift":
-            text = tr("{name} gifted you a case: {case}", name=data.get("from", "?"), case=tr(CASE_NAMES.get(data.get("case"), "?")))
+            n = int(data.get("n") or 1)
+            text = (tr("{name} gifted you {n} cases: {case}", name=data.get("from", "?"), n=n, case=tr(CASE_NAMES.get(data.get("case"), "?")))
+                    if n > 1 else tr("{name} gifted you a case: {case}", name=data.get("from", "?"), case=tr(CASE_NAMES.get(data.get("case"), "?"))))
         elif kind == "giveaway":
             text = tr("You won the giveaway: {title}!", title=data.get("title", ""))
         elif data.get("item"):
@@ -1230,18 +1233,17 @@ class App(QObject):
 
     def toggle_game_lock(self, on=None) -> None:
         """4.6: game mode on: Rubenium ignores the mouse completely (every window lets the mouse through, nothing
-        reacts to it), a small padlock on the ball says so. The game mode key again: back to normal."""
+        reacts to it, the pointer never shows up over it), a small padlock on the ball says so. 4.7: the menu stays
+        exactly as it is (open or closed); only the mouse stops reaching it. The game mode key again: back to normal."""
         on = (not self.game_lock) if on is None else bool(on)
         if on == self.game_lock:
             return
         self.game_lock = on
+        self._apply_game_lock()
         if on:
-            for w in (self.window, self.main_window):
-                try:
-                    if getattr(w, "expanded", False):
-                        w.collapse()
-                except RuntimeError:
-                    pass
+            self._gm_timer.start()
+        else:
+            self._gm_timer.stop()
         for w in {self.window, self.main_window}:
             try:
                 w._mouse_guard()
@@ -1251,23 +1253,48 @@ class App(QObject):
         sfx.play("on" if on else "off")
         self.notifier.push("ready", tr("GAME MODE"), tr("On: Rubenium ignores the mouse") if on else tr("Off: Rubenium is back"))
 
+    def _apply_game_lock(self) -> None:
+        """Every visible Rubenium window (menus, notifications, little windows, tooltips) lets the mouse through while
+        game mode is on, so hovering it never wakes it up or shows the pointer over a game. Off: put them back."""
+        from PyQt6.QtWidgets import QApplication
+        from . import win
+        on = bool(self.game_lock)
+        for w in QApplication.topLevelWidgets():
+            try:
+                if not w.isVisible():
+                    continue
+                hwnd = int(w.winId() or 0) if w.isWindow() else 0
+                if on and not getattr(w, "_gm_through", False):
+                    w._gm_through = True
+                    w._gm_was = w.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+                    if not w._gm_was:
+                        w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+                    if hwnd:
+                        win.set_click_through(hwnd, True)
+                elif not on and getattr(w, "_gm_through", False):
+                    w._gm_through = False
+                    if not getattr(w, "_gm_was", False):       # only what game mode changed goes back
+                        w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+                        if hwnd and w not in (self.window, self.main_window):
+                            win.set_click_through(hwnd, False)
+            except RuntimeError:
+                continue
+        if on:
+            QApplication.restoreOverrideCursor()
+
     def _gm_restart(self) -> None:
         """Held 5 seconds: game mode off and Rubenium starts again (a way out if anything is stuck)."""
         self.game_lock = False
         self.restart_app()
 
     def _tap_key(self) -> None:
-        if self.game_lock:                                # 4.6: the menu can't be used with the mouse while locked
-            from .music2 import GM_KEY_CHOICES
-            name = next((n for k, n, _v in GM_KEY_CHOICES if k == self.cfg["gm_key"]), "?")
-            self.notifier.push("ready", tr("GAME MODE"), tr("Game mode is on: press {key} to use Rubenium", key=tr(name)))
+        if self.game_lock:                                # 4.7: the key still opens and closes the menu, to look at it
             for w in {self.window, self.main_window}:
                 try:
                     w.ball.lock_flash = time.monotonic()
                     w.ball.update()
                 except (RuntimeError, AttributeError):
                     pass
-            return
         if self.window.expanded:
             self.window.collapse()
         else:

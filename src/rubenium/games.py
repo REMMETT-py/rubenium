@@ -197,6 +197,36 @@ SUITS = "♠♥♦♣"
 RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 
 
+def paint_stat(p: QPainter, rect: QRectF, label: str, value: str, colour=None) -> None:
+    """4.7: one small labelled number (the same box in every casino game): LABEL on top, the value under it."""
+    p.save()
+    p.setPen(QPen(alpha("#FFFFFF", 0.07), 1))
+    p.setBrush(alpha("#FFFFFF", 0.035))
+    p.drawRoundedRect(rect, S(8), S(8))
+    p.setPen(QColor(TEXT_DIM))
+    p.setFont(font(8, QFont.Weight.ExtraBold, 0.6))
+    p.drawText(QRectF(rect.left(), rect.top() + S(4), rect.width(), S(13)), int(Qt.AlignmentFlag.AlignCenter),
+               p.fontMetrics().elidedText(label.upper(), Qt.TextElideMode.ElideRight, int(rect.width() - S(6))))
+    p.setPen(QColor(colour) if colour is not None else QColor(TEXT))
+    p.setFont(font(12.5, QFont.Weight.ExtraBold))
+    p.drawText(QRectF(rect.left(), rect.top() + S(16), rect.width(), rect.height() - S(18)), int(Qt.AlignmentFlag.AlignCenter),
+               p.fontMetrics().elidedText(value, Qt.TextElideMode.ElideRight, int(rect.width() - S(6))))
+    p.restore()
+
+
+def paint_slot(p: QPainter, rect: QRectF, text: str = "") -> None:
+    """4.7: an empty dashed place where something will go (a card before the deal)."""
+    p.save()
+    p.setPen(QPen(alpha("#FFFFFF", 0.16), S(1.2), Qt.PenStyle.DashLine))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.drawRoundedRect(rect, S(6), S(6))
+    if text:
+        p.setPen(alpha(TEXT_DIM, 0.7))
+        p.setFont(font(9, QFont.Weight.Bold))
+        p.drawText(rect, int(Qt.AlignmentFlag.AlignCenter), text)
+    p.restore()
+
+
 def hand_total(cards: list) -> int:
     total, aces = 0, 0
     for c in cards:
@@ -356,6 +386,20 @@ class Blackjack(Game):
 
     def draw(self, p: QPainter, r: QRectF, now: float) -> None:
         deck = QPointF(r.right() - S(54), r.top() + S(10))
+        p.setFont(font(8.5, QFont.Weight.ExtraBold, 0.8))                 # 4.7: whose cards are whose
+        p.setPen(QColor(TEXT_FAINT))
+        p.drawText(QRectF(r.left() + S(12), r.top() + S(4), S(120), S(16)), int(Qt.AlignmentFlag.AlignVCenter), tr("DEALER"))
+        p.drawText(QRectF(r.left() + S(12), r.bottom() - S(102), S(120), S(16)), int(Qt.AlignmentFlag.AlignVCenter), tr("YOU"))
+        if not self.player:                                               # before the deal: the places and the rules
+            for y in (r.top() + S(22), r.bottom() - S(84)):
+                x0 = r.center().x() - S(48)
+                paint_slot(p, QRectF(x0, y, S(44), S(62)))
+                paint_slot(p, QRectF(x0 + S(52), y, S(44), S(62)))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left(), r.center().y() - S(9), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Blackjack pays 3 to 2 · the dealer draws to 17 · double on your first two cards"))
+            return
         for cards, y, mine in ((self.dealer, r.top() + S(22), False), (self.player, r.bottom() - S(84), True)):
             n = len(cards)
             step = min(S(52), (r.width() - S(120)) / max(1, n))
@@ -372,10 +416,6 @@ class Blackjack(Game):
                 p.drawRoundedRect(pill, S(11), S(11))
                 p.setPen(QColor(TEXT))
                 p.drawText(pill, int(Qt.AlignmentFlag.AlignCenter), total)
-        if not self.player:
-            p.setPen(alpha(TEXT_DIM, 0.6))
-            p.setFont(font(34, QFont.Weight.ExtraBold))
-            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), "21")
 
 
 # --------------------------------------------------------------------------- #
@@ -738,29 +778,16 @@ class Bombs(Game):
         found = self.found()
         now_mult = bombs_mult(found, self.bombs())
         next_mult = bombs_mult(found + 1, self.bombs()) if found < self.N - self.bombs() else now_mult
-        p.setPen(QColor(GOLD_TEXT if found else TEXT))
-        p.setFont(font(20, QFont.Weight.ExtraBold))
-        p.drawText(QRectF(side.left(), side.top() + S(18), side.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
-                   f"×{now_mult:g}")
-        p.setPen(QColor(TEXT_DIM))
-        p.setFont(font(10.5, QFont.Weight.DemiBold))
-        p.drawText(QRectF(side.left(), side.top() + S(50), side.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                   f"→ ×{next_mult:g}")
-        y = side.bottom() - S(44)                       # gems found and bombs on the board
-        p.save()
-        p.translate(side.center().x() - S(26), y)
-        self._gem(p, S(6.5))
-        p.restore()
-        p.save()
-        p.translate(side.center().x() - S(26), y + S(24))
-        self._bomb(p, S(6.5), 1.0, False)
-        p.restore()
-        p.setPen(QColor(TEXT))
-        p.setFont(font(12, QFont.Weight.Bold))
-        p.drawText(QRectF(side.center().x() - S(12), y - S(10), S(50), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
-                   str(found))
-        p.drawText(QRectF(side.center().x() - S(12), y + S(14), S(50), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
-                   str(self.bombs()))
+        gap_y = S(6)                                    # 4.7: four labelled boxes instead of loose numbers
+        bh = (side.height() - 3 * gap_y) / 4
+        playing = self.phase == "play"
+        stake = int(self.stake or 0)
+        boxes = [(tr("Multiplier"), f"×{now_mult:g}", GOLD_TEXT if found else None),
+                 (tr("Next gem"), f"×{next_mult:g}", None),
+                 (tr("Cash out"), coins_text(int(stake * now_mult)) if playing and found else "—", WIN if playing and found else None),
+                 (tr("Gems · Bombs"), f"{found} · {self.bombs()}", None)]
+        for k, (label, value, col) in enumerate(boxes):
+            paint_stat(p, QRectF(side.left(), side.top() + k * (bh + gap_y), side.width(), bh), label, value, col)
 
     def _gem(self, p: QPainter, u: float) -> None:
         """The R gem: a cut gem in your colour with an R on it."""

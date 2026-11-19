@@ -552,6 +552,9 @@ def go(ctx, action) -> None:
         from .games import GamesPage
         ctx.casino_pick = GamesPage.NAMES.index("Free spin")
         ctx.casino = True
+    elif key == "gold_wheel":                              # 4.7: the Golden Wheel, inside the menu
+        from .goldwheel import open_gold_wheel
+        return QTimer.singleShot(200, lambda: open_gold_wheel(ctx))
     elif key == "giveaway":
         target = "giveaway"
     elif key == "daily":                                   # 4.4: the daily reward, in the Games half

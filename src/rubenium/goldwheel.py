@@ -1,44 +1,23 @@
-"""3.1: the Golden Wheel. 5% of free spins and 5% of scratch cards unlock it. A golden wheel spins on a dark screen with
-light rays and sparks, and always lands on a good prize: coins (2 500 to 25 000), or a free case with a key.
-The server picks the prize before the wheel spins."""
+"""The Golden Wheel. 5% of free spins and 5% of scratch cards unlock it.
+4.7: it lives inside the menu like the free wheel (no more full-screen window that flashed over online mode), and it
+pays a lot more: 10 000 to 250 000 coins, or an Elite, Vault, Top Tier or Royal case with a key.
+Nothing is spent until you press Spin; the server picks the prize, then the wheel turns to it."""
 import math
 import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
-from . import win
-from .core import S, sfx, alpha, font, tr
-from .widgets import Button
+from .core import S, TEXT, TEXT_DIM, alpha, font, sfx, tr
+from .widgets import Button, hbox, vbox
 
 WHEEL_GOLD = "#E8C26A"
-WHEEL_SLOTS = ["2500", "5000", "10000", "25000", "premium", "titan", "vault", "mythic"]
-SPIN_S = 6.5
-
-
-def open_gold_wheel(ctx) -> None:
-    """Ask the server for the prize, then show the wheel. Nothing happens if there is no wheel to spin."""
-    if getattr(ctx, "_gold_scene", None) is not None:
-        return
-
-    def got(ok: bool, data) -> None:
-        if not ok or not isinstance(data, dict):
-            return ctx.toast(tr(str(data)), "warn") if ok is False and "collect" not in str(data).lower() else None
-        ctx.econ.absorb(data)
-        ctx._gold_scene = GoldWheelScene(ctx, data)
-        ctx._gold_scene.show()
-        ctx._gold_scene.keep_on_top()
-    ctx.econ.call("rb_gold_wheel", {}, got, hold=True)
-
-
-def check_gold_wheels(ctx) -> None:
-    """At login: a Golden Wheel won earlier and not spun yet opens now."""
-    def got(ok: bool, data) -> None:
-        if ok and isinstance(data, int) and data > 0 and ctx.welcome is None:
-            open_gold_wheel(ctx)
-    ctx.online.ask("rb_gold_wheels", {}, got)
+# 4.7: the server's slots, in the same order (rb_gold_wheel)
+WHEEL_SLOTS = ["10000", "elite", "20000", "vault", "40000", "mythic", "100000", "royal", "250000"]
+WHEEL_ODDS = [26, 14, 20, 10, 12, 8, 4, 5, 1]
+SPIN_S = 5.5
 
 
 def slot_text(slot: str) -> str:
@@ -49,174 +28,256 @@ def slot_text(slot: str) -> str:
     return tr(CASE_NAMES.get(slot, "Case")) + " + " + tr("1 key")
 
 
-class GoldWheelScene(QWidget):
-    def __init__(self, ctx, data: dict) -> None:
+def open_gold_wheel(ctx) -> None:
+    """Show the wheel inside the menu. Nothing is spent until Spin is pressed."""
+    old = getattr(ctx, "_gold_panel", None)
+    try:
+        if old is not None and old.isVisible():
+            return
+    except RuntimeError:
+        pass
+    ctx._gold_panel = GoldWheelPanel(ctx)
+    ctx.window.embed(ctx._gold_panel)
+    try:
+        ctx.window.expand()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def check_gold_wheels(ctx) -> None:
+    """At login: a Golden Wheel won earlier and not spun yet: a notification that opens it."""
+    def got(ok: bool, data) -> None:
+        if ok and isinstance(data, int) and data > 0 and ctx.welcome is None:
+            ctx.gold_wheels_left = data
+            ctx.notifier.push("gift", tr("GOLDEN WHEEL"), tr("You have a Golden Wheel to spin!"), "gold_wheel")
+    ctx.online.ask("rb_gold_wheels", {}, got)
+
+
+class _Wheel(QWidget):
+    """The golden wheel itself, drawn like the free wheel."""
+
+    def __init__(self, panel) -> None:
         super().__init__()
-        self.ctx, self.data = ctx, data
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        screen = QGuiApplication.primaryScreen()
-        if screen is not None:
-            self.setGeometry(screen.geometry())
-        self.slot = max(0, min(len(WHEEL_SLOTS) - 1, int(data.get("slot") or 0)))
-        seg = 360.0 / len(WHEEL_SLOTS)
-        self.target = 360.0 * 7 + (self.slot + 0.5) * seg + random.uniform(-0.3, 0.3) * seg
-        self.t0 = time.monotonic()
-        self.done = False
-        self._ticks = 0
-        self._sparks = [(random.uniform(0, 6.28), random.uniform(0.3, 1.0), random.uniform(0.5, 1.5)) for _ in range(90)]
-        self.collect = Button(tr("Collect"), "primary", 46, parent=self)
-        self.collect.setFixedWidth(S(220))
-        self.collect.hide()
-        self.collect.clicked.connect(self._finish)
+        self.panel = panel
+        self.angle = 0.0
+        self._from = self._to = 0.0
+        self._t0 = 0.0
+        self.spinning = False
+        self.landed_at = 0.0
+        self._last_seg = 0
+        self._sparks = [(random.uniform(0, 6.28), random.uniform(0.2, 1.0), random.uniform(0.4, 1.4)) for _ in range(60)]
+        self.setMinimumHeight(S(330))
         self._t = QTimer(self)
         self._t.setInterval(16)
         self._t.timeout.connect(self._tick)
         self._t.start()
-        sfx.play("on")
 
-    def keyPressEvent(self, e) -> None:
-        e.accept()
-
-    def closeEvent(self, e) -> None:
-        if not self.done:
-            e.ignore()
-            return
-        super().closeEvent(e)
-
-    def _finish(self) -> None:
-        self.done = True
-        self._t.stop()
-        self.ctx._gold_scene = None
-        try:
-            self.ctx.econ.refresh()
-            self.ctx.econ.changed.emit()
-        except Exception:  # noqa: BLE001
-            pass
-        self.close()
-
-    def angle(self, t: float) -> float:
-        u = max(0.0, min(1.0, (t - 1.0) / SPIN_S))
-        return self.target * (1 - (1 - u) ** 4)
-
-    def keep_on_top(self) -> None:
-        """4.0: above everything, the online menu included (it is a top-most window too): raised again and again."""
-        self.raise_()
-        if win.IS_WIN:
-            try:
-                win.set_topmost(int(self.winId()))
-            except Exception:  # noqa: BLE001
-                pass
+    def spin_to(self, slot: int) -> None:
+        seg = 360.0 / len(WHEEL_SLOTS)
+        self._from = self.angle % 360.0
+        self._to = self._from + 360.0 * 6 + ((slot + 0.5) * seg - self._from % 360.0) % 360.0 \
+            + random.uniform(-0.32, 0.32) * seg
+        self._t0 = time.monotonic()
+        self.spinning = True
 
     def _tick(self) -> None:
-        if self._ticks % 30 == 0 or int((time.monotonic() - self.t0) * 2) != getattr(self, "_last_raise", -1):
-            self._last_raise = int((time.monotonic() - self.t0) * 2)
-            self.keep_on_top()
-        t = time.monotonic() - self.t0
-        seg = 360.0 / len(WHEEL_SLOTS)
-        n = int(self.angle(t) / seg)
-        if n != self._ticks and t < 1.0 + SPIN_S:
-            self._ticks = n
-            sfx.play("pick")
-        if t > 1.0 + SPIN_S and not self.collect.isVisible():
-            sfx.play("on")
-            self.collect.move(int(self.width() / 2 - self.collect.width() / 2), int(self.height() * 0.9))
-            self.collect.show()
-            self.collect.raise_()
+        if self.spinning:
+            u = min(1.0, (time.monotonic() - self._t0) / SPIN_S)
+            self.angle = self._from + (self._to - self._from) * (1 - (1 - u) ** 4)
+            seg = int(self.angle / (360.0 / len(WHEEL_SLOTS)))
+            if seg != self._last_seg:
+                self._last_seg = seg
+                sfx.play("pick")
+            if u >= 1.0:
+                self.spinning = False
+                self.landed_at = time.monotonic()
+                self.panel.landed()
+        if not self.isVisible():
+            return
         self.update()
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        t = time.monotonic() - self.t0
-        W, H = self.width(), self.height()
-        fade = min(1.0, t / 0.6)
-        p.fillRect(self.rect(), QColor(10, 7, 2, int(240 * fade)))
-        p.setOpacity(fade)
-        c = QPointF(W / 2, H * 0.47)
-        R = min(W, H) * 0.25
-        landed = t > 1.0 + SPIN_S
-        for k in range(16):                                   # turning rays
-            ang = k * math.pi / 8 + t * (0.25 if not landed else 0.6)
-            ray = QPainterPath(c)
-            ray.lineTo(QPointF(c.x() + math.cos(ang - 0.07) * W, c.y() + math.sin(ang - 0.07) * W))
-            ray.lineTo(QPointF(c.x() + math.cos(ang + 0.07) * W, c.y() + math.sin(ang + 0.07) * W))
-            ray.closeSubpath()
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(alpha(WHEEL_GOLD, 0.07 if not landed else 0.13))
-            p.drawPath(ray)
-        glow = QRadialGradient(c, R * 1.5)
-        glow.setColorAt(0, alpha("#FFD36B", 0.35))
+        now = time.monotonic()
+        r = QRectF(self.rect())
+        radius = min(r.width(), r.height()) / 2 - S(22)
+        c = QPointF(r.center().x(), r.center().y() + S(6))
+        landed = self.landed_at and not self.spinning
+        glow = QRadialGradient(c, radius * 1.45)
+        glow.setColorAt(0, alpha("#FFD36B", 0.28 if not landed else 0.42))
         glow.setColorAt(1, alpha("#FFD36B", 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(glow)
-        p.drawEllipse(c, R * 1.5, R * 1.5)
-        for a0, dist, sp in self._sparks:                     # sparks spinning around the wheel
-            a = a0 + t * sp
-            pt = QPointF(c.x() + math.cos(a) * R * (1.1 + 0.4 * dist), c.y() + math.sin(a) * R * (1.1 + 0.4 * dist))
-            b = max(0.0, math.sin(t * 3 * sp + a0)) ** 2
-            p.setBrush(alpha("#FFF1C2", 0.8 * b))
-            p.drawEllipse(pt, S(2.2) * b + 0.5, S(2.2) * b + 0.5)
-        # the wheel
-        rot = self.angle(t)
-        seg = 360.0 / len(WHEEL_SLOTS)
-        box = QRectF(c.x() - R, c.y() - R, 2 * R, 2 * R)
+        p.drawEllipse(c, radius * 1.45, radius * 1.45)
+        for a0, dist, sp in self._sparks:                     # sparks turning around the wheel
+            a = a0 + now * sp * 0.6
+            pt = QPointF(c.x() + math.cos(a) * radius * (1.06 + 0.3 * dist), c.y() + math.sin(a) * radius * (1.06 + 0.3 * dist))
+            b = max(0.0, math.sin(now * 3 * sp + a0)) ** 2
+            p.setBrush(alpha("#FFF1C2", 0.75 * b))
+            p.drawEllipse(pt, S(1.8) * b + 0.4, S(1.8) * b + 0.4)
+        n = len(WHEEL_SLOTS)
+        seg = 360.0 / n
+        box = QRectF(c.x() - radius, c.y() - radius, 2 * radius, 2 * radius)
+        win = self.panel.slot if landed else -1
         for i, slot in enumerate(WHEEL_SLOTS):
-            start = 90.0 - (i * seg - rot)
-            g = QRadialGradient(c, R)
+            start = 90.0 - (i * seg - self.angle)
+            g = QRadialGradient(c, radius)
             if slot.isdigit():
-                g.setColorAt(0, QColor("#FFF1B8"))
-                g.setColorAt(1, QColor("#C9922A") if i % 2 else QColor("#A8741C"))
+                big = int(slot) >= 100000
+                g.setColorAt(0, QColor("#FFF6D8" if big else "#FFF1B8"))
+                g.setColorAt(1, QColor("#E0A93A" if big else ("#C9922A" if i % 2 else "#A8741C")))
             else:
                 g.setColorAt(0, QColor("#E2C6FF"))
                 g.setColorAt(1, QColor("#6B2FB8") if i % 2 else QColor("#4A1C8A"))
-            p.setPen(QPen(QColor("#3A2606"), S(2)))
+            p.setPen(QPen(QColor("#3A2606"), S(1.6)))
             p.setBrush(g)
             p.drawPie(box, int(start * 16), int(-seg * 16))
+            if i == win:                                     # the prize slot shines
+                k = 0.5 + 0.5 * math.sin(now * 8)
+                p.setBrush(alpha("#FFFFFF", 0.18 + 0.2 * k))
+                p.drawPie(box, int(start * 16), int(-seg * 16))
             mid = math.radians(start - seg / 2)
-            tp = QPointF(c.x() + R * 0.66 * math.cos(mid), c.y() - R * 0.66 * math.sin(mid))
+            tp = QPointF(c.x() + radius * 0.66 * math.cos(mid), c.y() - radius * 0.66 * math.sin(mid))
             p.save()
             p.translate(tp)
             p.rotate(-math.degrees(mid) + 90)
-            p.setPen(QColor("#2A1A04") if slot.isdigit() else QColor("#FFFFFF"))
-            p.setFont(font(12, QFont.Weight.Black))
-            label = f"{int(slot):,}".replace(",", " ") if slot.isdigit() else tr(slot.capitalize())
-            p.drawText(QRectF(-S(50), -S(10), S(100), S(20)), int(Qt.AlignmentFlag.AlignCenter), label)
+            if slot.isdigit():
+                v = int(slot)
+                label = f"{v // 1000}K" if v >= 1000 else str(v)
+                p.setPen(QColor("#2A1A04"))
+                p.setFont(font(12.5 if v >= 100000 else 11.5, QFont.Weight.Black))
+            else:
+                from .collection import CASE_NAMES
+                label = tr(CASE_NAMES.get(slot, slot)).replace(tr("Case"), "").strip().upper()
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(8.5 if len(label) <= 7 else 7, QFont.Weight.Black))
+            p.drawText(QRectF(-S(42), -S(9), S(84), S(18)), int(Qt.AlignmentFlag.AlignCenter), label)
             p.restore()
-        rim = QPen(QColor(WHEEL_GOLD), S(8))
-        p.setPen(rim)
+        p.setPen(QPen(QColor(WHEEL_GOLD), S(6)))
         p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawEllipse(c, R, R)
+        p.drawEllipse(c, radius, radius)
         for k in range(24):                                   # bulbs on the rim
             a = k * math.pi / 12
-            on = (k + int(t * 8)) % 2 == 0
+            on = (k + int(now * (14 if self.spinning else 5))) % 2 == 0
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor("#FFF6D8") if on else QColor("#8A5A14"))
-            p.drawEllipse(QPointF(c.x() + math.cos(a) * R, c.y() + math.sin(a) * R), S(5), S(5))
-        hub = QRadialGradient(c, R * 0.2)
+            p.drawEllipse(QPointF(c.x() + math.cos(a) * radius, c.y() + math.sin(a) * radius), S(3.6), S(3.6))
+        hub = QRadialGradient(c, radius * 0.22)
         hub.setColorAt(0, QColor("#FFF6D8"))
         hub.setColorAt(1, QColor("#B8862B"))
         p.setBrush(hub)
-        p.drawEllipse(c, R * 0.18, R * 0.18)
-        p.setBrush(QColor("#FFFFFF"))                          # the pointer
-        tip = QPainterPath(QPointF(c.x(), c.y() - R + S(14)))
-        tip.lineTo(QPointF(c.x() - S(16), c.y() - R - S(18)))
-        tip.lineTo(QPointF(c.x() + S(16), c.y() - R - S(18)))
-        tip.closeSubpath()
-        p.drawPath(tip)
-        # title and prize
-        title = QLinearGradient(0, H * 0.05, 0, H * 0.12)
-        title.setColorAt(0, QColor("#FFF1B8"))
-        title.setColorAt(1, QColor("#C9922A"))
-        p.setPen(QPen(title, 1))
-        p.setFont(font(34, QFont.Weight.Black))
-        p.drawText(QRectF(0, H * 0.04, W, S(52)), int(Qt.AlignmentFlag.AlignCenter), tr("GOLDEN WHEEL"))
-        if landed:
-            k = min(1.0, (t - 1.0 - SPIN_S) / 0.5)
-            p.setOpacity(k)
-            if t - 1.0 - SPIN_S < 0.35:
-                p.fillRect(self.rect(), alpha("#FFF6D8", 0.5 * (1 - (t - 1.0 - SPIN_S) / 0.35)))
-            p.setPen(QColor("#FFFFFF"))
-            p.setFont(font(26, QFont.Weight.Black))
-            p.drawText(QRectF(0, c.y() + R + S(26), W, S(40)), int(Qt.AlignmentFlag.AlignCenter),
-                       "+ " + slot_text(WHEEL_SLOTS[self.slot]))
+        p.drawEllipse(c, radius * 0.2, radius * 0.2)
+        p.setPen(QColor("#3A2606"))
+        p.setFont(font(9, QFont.Weight.Black))
+        p.drawText(QRectF(c.x() - radius * 0.2, c.y() - S(9), radius * 0.4, S(18)), int(Qt.AlignmentFlag.AlignCenter), "GOLD")
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawPolygon(QPolygonF([QPointF(c.x() - S(9), c.y() - radius - S(12)), QPointF(c.x() + S(9), c.y() - radius - S(12)),
+                                 QPointF(c.x(), c.y() - radius + S(8))]))
+        if landed and now - self.landed_at < 0.4:            # a flash as it lands
+            p.setBrush(alpha("#FFF6D8", 0.45 * (1 - (now - self.landed_at) / 0.4)))
+            path = QPainterPath()
+            path.addEllipse(c, radius * 1.1, radius * 1.1)
+            p.drawPath(path)
+
+
+class GoldWheelPanel(QWidget):
+    """Inside the menu: title, the wheel, what it can give, and Spin / Collect."""
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        from .widgets import Label
+        self.ctx = ctx
+        self.slot = -1
+        self.prize = None
+        self.waiting = False
+        self.setFixedWidth(ctx.window.page_w())
+        lay = vbox(self, 8)
+        lay.addWidget(Label(tr("GOLDEN WHEEL"), 18, WHEEL_GOLD, bold=True, align=Qt.AlignmentFlag.AlignCenter))
+        self.sub = Label(tr("Every slot is a big prize. Spin when you're ready."), 10.5, TEXT_DIM,
+                         align=Qt.AlignmentFlag.AlignCenter)
+        lay.addWidget(self.sub)
+        self.wheel = _Wheel(self)
+        lay.addWidget(self.wheel)
+        self.result = Label("", 16, TEXT, bold=True, align=Qt.AlignmentFlag.AlignCenter)
+        lay.addWidget(self.result)
+        row = hbox(spacing=8)
+        self.go = Button(tr("Spin"), "primary", 40, icon="play")
+        self.go.clicked.connect(self.spin)
+        self.later = Button(tr("Later"), "ghost", 40)
+        self.later.clicked.connect(self.close_panel)
+        row.addStretch(1)
+        row.addWidget(self.later)
+        row.addWidget(self.go)
+        row.addStretch(1)
+        lay.addLayout(row)
+        for line in (tr("Coins: 10K 26% · 20K 20% · 40K 12% · 100K 4% · 250K 1%"),
+                     tr("Cases with a key: Elite 14% · Vault 10% · Top Tier 8% · Royal 5%")):
+            lay.addWidget(Label(line, 9, TEXT_DIM, align=Qt.AlignmentFlag.AlignCenter, wrap_w=self.width()))
+
+    def spin(self) -> None:
+        if self.waiting or self.wheel.spinning:
+            return
+        if self.prize is not None:                          # spin again (another wheel waiting)
+            self.prize, self.slot = None, -1
+            self.result.set_text("")
+        self.waiting = True
+        self.go.setEnabled(False)
+        self.later.setEnabled(False)
+
+        def got(ok: bool, data) -> None:
+            self.waiting = False
+            if not ok or not isinstance(data, dict):
+                self.go.setEnabled(True)
+                self.later.setEnabled(True)
+                if "collect" in str(data).lower():
+                    self.result.set_text(tr("No Golden Wheel left to spin"))
+                    self.go.hide()
+                    self.later.set_text(tr("Close"))
+                    return
+                return self.ctx.toast(tr(str(data)), "warn")
+            self.prize = data
+            self.slot = max(0, min(len(WHEEL_SLOTS) - 1, int(data.get("slot") or 0)))
+            self.ctx.notifier.hold(SPIN_S + 1.5)               # no spoiler before it lands
+            self.wheel.spin_to(self.slot)
+            sfx.play("on")
+        self.ctx.econ.call("rb_gold_wheel", {}, got, hold=True)
+
+    def landed(self) -> None:
+        if self.prize is None:
+            return
+        self.ctx.econ.absorb(self.prize)
+        try:
+            self.ctx.econ.refresh()
+            self.ctx.econ.changed.emit()
+        except Exception:  # noqa: BLE001
+            pass
+        sfx.play("on")
+        try:
+            from .onlinewin import shake
+            shake(self.ctx.window, 3.0, 250)
+        except Exception:  # noqa: BLE001
+            pass
+        self.result.set_text("+ " + slot_text(WHEEL_SLOTS[self.slot]))
+        left = int(self.prize.get("left") or 0)
+        self.later.setEnabled(True)
+        self.later.set_text(tr("Collect"))
+        if left > 0:
+            self.go.setEnabled(True)
+            self.go.set_text(tr("Spin again ({n} left)", n=left))
+        else:
+            self.go.hide()
+
+    def close_panel(self) -> None:
+        if self.wheel.spinning or self.waiting:
+            return
+        self.ctx._gold_panel = None
+        self.ctx.window.unembed(self)
+
+    def on_closed(self) -> None:
+        """The menu closed the panel (tab changed) while the wheel was turning: say what was won."""
+        self.ctx._gold_panel = None
+        if self.prize is not None and self.wheel.spinning:
+            self.ctx.econ.absorb(self.prize)
+            self.ctx.toast("+ " + slot_text(WHEEL_SLOTS[self.slot]), "good")

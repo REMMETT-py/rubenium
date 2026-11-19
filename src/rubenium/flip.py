@@ -12,7 +12,7 @@ import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
 from .core import S, sfx, TEXT, TEXT_DIM, TEXT_FAINT, alpha, font, lang, mix, tr, ui
@@ -814,7 +814,6 @@ def _build_view(page, lay, fid: str) -> None:
                     apply(d)
                 ctx.econ.call("rb_flip_vs_bot", {"fid": fid}, done)
             bot.clicked.connect(vs_bot)
-            bot.setProperty("cheat", True)               # 4.6: Ruben's right click
             al.addWidget(bot)
             close = Button(tr("Close it (items come back)"), "ghost", 34)
 

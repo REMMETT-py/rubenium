@@ -41,21 +41,21 @@ CASE_FRONT = {"lucky": ("clover", "dice", "clover"), "frames": ("crown", "star",
               "pocket": ("clover", "heart", "note"), "elite": ("bolt", "crown", "comet"), "royal": ("crown", "trophy", "crown"),
               "shiny": ("drop", "comet", "drop"), "banners": ("flame", "crown", "feather")}
 CASE_NOTES = {                    # 4.0: checked against the real odds of every case (the numbers are shown below)
-    "pocket": "The cheapest case: mostly small coins.",
-    "starter": "Mostly coins, sometimes a Common badge.",
-    "lucky": "Mostly coins: the safest way to get coins back. Badges are rare.",
-    "standard": "Mostly coins, with a chance of a Rare badge.",
-    "premium": "Bigger coin drops and better badge odds than the Standard Case.",
+    "pocket": "The cheapest case: mostly coins, sometimes a Basic or Painted badge.",
+    "starter": "Mostly coins, Basic and Painted badges, and a small Shiny chance.",
+    "lucky": "Mostly coins back, Basic and Painted badges, and a small Shiny chance.",
+    "standard": "Coins, Common to Special badges, and a tiny chance of Gold.",
+    "premium": "Better badges than the Standard Case, up to Shiny and Gold.",
     "jackpot": "Coins only, never a badge. Most opens pay less than the price; a few pay up to 32 times it.",
-    "titan": "Bigger coin drops, and Epic or Legendary badges now and then.",
-    "elite": "Big coin drops and better odds for Epic and Legendary badges.",
-    "royal": "For high rollers: the biggest coin drops, and no Common badges.",
-    "gamble": "High risk: often a few coins, otherwise a Rare badge or better.",
-    "painter": "Nearly every badge is Painted, never Basic.",
-    "vault": "No Common badges: Rare or better.",
+    "titan": "Every finish, Titanium and Gold included, up to Epic Gold.",
+    "elite": "Every rarity in every finish, Epic Gold included.",
+    "royal": "For high rollers: no Common badges, every finish up to Epic Gold, and rare huge coin drops.",
+    "gamble": "High risk: mostly a few coins, otherwise Rare or Special, up to Titanium and Gold.",
+    "painter": "Never Basic: Painted, Shiny, Titanium and Gold.",
+    "vault": "No Common badges: Rare to Epic in every finish.",
     "cosmos": "No Common badges, and a real chance of a Mythic badge.",
     "shiny": "No Basic finishes: the best odds for Shiny, Titanium and Gold.",
-    "mythic": "Epic badges or better only, with the best Mythic odds.",
+    "mythic": "Special and Epic badges only, with the best Mythic odds.",
     "winter": "Limited: Christmas looks you cannot buy anywhere else, or coins.",
     "giftbox": "Limited: a present full of coins, sometimes a badge.",
     "style": "Balls, song lines and fonts, or coins.",
@@ -120,6 +120,43 @@ def show_case_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
     show_item(p, item, rect, now, effects)
 
 
+# 4.7: every badge case has a grid, the chance (in billionths) of each rarity (Common..Epic) x finish (Basic..Gold).
+# Every badge a case can give is at least 1 in: Basic 250, Painted 1 000, Shiny 10 000, Titanium 50 000, Gold 100 000.
+DAILY_GRID = [60764128, 125987522, 7731341, 0, 0, 59604508, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+GRID_SCALE = 1e9
+
+
+def case_grid(case: dict):
+    """The case's 20 chances (rarity-major) as fractions of one open, or None for a case without a grid."""
+    if case.get("id") == "daily":
+        return [x / GRID_SCALE for x in DAILY_GRID]
+    g = case.get("grid")
+    if not g or str(case.get("mode") or ""):
+        return None
+    return [float(x or 0) / GRID_SCALE for x in g]
+
+
+def case_mythic(case: dict) -> float:
+    odds = list(case.get("odds") or [])
+    return odds[5] / (sum(odds) or 1) if len(odds) > 5 else 0.0
+
+
+def case_coin_share(case: dict) -> float:
+    """The chance an open pays coins."""
+    if case.get("id") == "daily":
+        return 0.5959                                     # the rest of the daily case is a key (15%)
+    g = case_grid(case)
+    if g is None:
+        odds = list(case.get("odds") or [])
+        return odds[0] / (sum(odds) or 1) if odds else 0.0
+    return max(0.0, 1 - sum(g) - case_mythic(case))
+
+
+def _group(ec, rarity: str, cls: int) -> list:
+    return [(k, float(v.get("weight") or 1)) for k, v in ec.catalog.items() if v.get("kind") == "badge"
+            and v.get("rarity") == rarity and int(v.get("cls") or 0) == cls and not v.get("limited")]
+
+
 def item_chances(ec, item: str) -> list:
     """The exact chance of this one badge (this design, colour and finish) per open, in every case that can give it,
     best first: [(case id, chance)]. Same maths as the server."""
@@ -132,41 +169,22 @@ def item_chances(ec, item: str) -> list:
     base = item.split(":")[1] if item.count(":") >= 2 else ""
     if tier == 5:
         share = (1 if base == "rubenium" else 2) / 11
-        per = {3: 0.943 / 2, 5: 0.053, 4: 0.004}.get(cls, 0) * share          # 4.5
+        per = {3: 0.943 / 2, 5: 0.053, 4: 0.004}.get(cls, 0) * share          # 4.5 (Mythic: unchanged)
     else:                                       # 3.2: inside its group, an item drops in proportion to its weight
-        group = [float(v.get("weight") or 1) for k, v in ec.catalog.items() if v.get("kind") == "badge"
-                 and v.get("rarity") == info.get("rarity") and int(v.get("cls") or 0) == cls and not v.get("limited")]
-        per = float(info.get("weight") or 1) / max(1e-9, sum(group) or 1)
+        group = _group(ec, info.get("rarity"), cls)
+        per = float(info.get("weight") or 1) / max(1e-9, sum(w for _k, w in group) or 1)
     out = []
     for c in list(ec.cases) + [{"id": "daily"}]:
         mode = str(c.get("mode") or "")
-        if mode.startswith("kinds:") or mode.startswith("items:") or mode == "jackpot":
+        if mode:
             continue                            # 4.0: style, limited and coin-only cases never give badges
-        if c["id"] == "daily":
-            if tier > 4 or cls > 2:
-                continue
-            p = 0.35 * [0, 7800, 1900, 270, 30][tier] / 10000 * [7600, 2350, 50][cls] / 10000 * per
+        if tier == 5:
+            p = case_mythic(c) * per
         else:
-            odds = list(c.get("odds") or [])
-            if len(odds) <= tier or not sum(odds):
+            g = case_grid(c)
+            if g is None:
                 continue
-            p = odds[tier] / sum(odds)
-            if tier <= 4:
-                var = list(c.get("variants") or [1])
-                vs = sum(var) or 1
-                v = var[cls] if cls < len(var) else 0
-                if cls == 2 and tier <= 2 and len(var) > 3:
-                    v += var[3]                     # no Titanium for Common and Rare: those turn Shiny
-                if cls == 3 and tier <= 2:
-                    v = 0
-                extra = [0, 0.0005, 0.0004, 0.0003, 0.0002][tier]      # 4.6: the extra Gold chance (server's gold_extra)
-                low = (var[0] + (var[1] if len(var) > 1 else 0)) / vs
-                if cls == 4:
-                    v += extra * low * vs
-                elif cls in (0, 1):
-                    v *= (1 - extra)
-                p *= v / vs
-            p *= per
+            p = g[(tier - 1) * 5 + cls] * per
         if p > 0:
             out.append((c["id"], p))
     return sorted(out, key=lambda x: -x[1])
@@ -661,6 +679,27 @@ def case_drops(ec, case: dict, exact: bool = False) -> list:
             for k, w in pool:
                 out[k] = out.get(k, 0) + odds[tier] / total * w / wsum
         return sorted(out.items(), key=lambda x: -x[1])
+    g = case_grid(case)
+    if g is not None:                                   # 4.7: straight from the grid
+        for i, pg in enumerate(g):
+            if pg <= 0:
+                continue
+            tier, cls = i // 5 + 1, i % 5
+            group = _group(ec, TIERS[tier - 1], cls)
+            wsum = sum(w for _k, w in group) or 1
+            for k, w in group:
+                key = k if exact else "badge:%s:grey" % cat[k].get("base")
+                out[key] = out.get(key, 0) + pg * w / wsum
+        pt = case_mythic(case)
+        if pt:
+            for base in EXOTIC_IDS:
+                if exact:
+                    for k, v in cat.items():
+                        if v.get("kind") == "badge" and v.get("base") == base:
+                            out[k] = out.get(k, 0) + pt * (1 if base == "rubenium" else 2) / 11 / 4
+                    continue
+                out["badge:%s:white" % base] = pt * (1 if base == "rubenium" else 2) / 11
+        return sorted(out.items(), key=lambda x: -x[1])
     variants = list(case.get("variants") or [1])
     vs = sum(variants) or 1
     for tier in range(1, min(6, len(odds))):
@@ -707,9 +746,7 @@ class CaseOverview(QWidget):
     def __init__(self, ctx, case: dict, width: int) -> None:
         super().__init__()
         self.ctx, self.case = ctx, case
-        odds = list(case.get("odds") or [])
-        total = sum(odds) or 1
-        self.coins = odds[0] / total if odds else 0.0
+        self.coins = case_coin_share(case)
         self.drops = case_drops(ctx.econ, case)
         self.jackpot = case.get("mode") == "jackpot"
         self.setFixedSize(width, S(150) if self.jackpot else S(118))
@@ -764,7 +801,11 @@ class CaseOverview(QWidget):
             p.setFont(font(9.5, QFont.Weight.DemiBold))
             p.drawText(QRectF(r.left(), r.top() + S(46), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
                        chance_text(val) if val else "")
-        tiers = [TIERS[i - 1] for i, o in enumerate(self.case.get("odds") or []) if i and o]
+        g = case_grid(self.case)
+        if g is not None:
+            tiers = [TIERS[t] for t in range(4) if sum(g[t * 5:t * 5 + 5]) > 0] + (["exotic"] if case_mythic(self.case) else [])
+        else:
+            tiers = [TIERS[i - 1] for i, o in enumerate(self.case.get("odds") or []) if i and o]
         line = QRectF(0, S(78), w, S(18))
         paint_coin(p, QPointF(S(7), line.center().y()), S(5.5))
         p.setPen(QColor(GOLD_TEXT))
@@ -1050,11 +1091,20 @@ class OddsTable(QWidget):
     def __init__(self, case: dict, width: int) -> None:
         super().__init__()
         self.case = case
-        self.rows = [("tier", i, share) for i, share in enumerate(case["odds"]) if share > 0][::-1]
-        variants = list(case.get("variants") or [])
-        if any(t for _k, t, _s in self.rows) and variants and not str(case.get("mode", "")).startswith("kinds:"):
+        g = case_grid(case)
+        if g is not None:                               # 4.7: exact, from the grid (shares are fractions of one open)
+            tiers = [case_coin_share(case)] + [sum(g[t * 5:t * 5 + 5]) for t in range(4)] + [case_mythic(case)]
+            badges = sum(g) or 1
+            finishes = [sum(g[t * 5 + k] for t in range(4)) / badges for k in range(5)]
+        else:
+            odds = list(case["odds"])
+            tiers = [x / (sum(odds) or 1) for x in odds]
+            variants = list(case.get("variants") or [])
+            finishes = [x / (sum(variants) or 1) for x in variants]
+        self.rows = [("tier", i, share) for i, share in enumerate(tiers) if share > 0][::-1]
+        if any(t for _k, t, _s in self.rows) and finishes and not str(case.get("mode", "")).startswith("kinds:"):
             self.rows.append(("head", 0, 0))
-            self.rows += [("cls", i, share) for i, share in enumerate(variants) if share > 0][::-1]
+            self.rows += [("cls", i, share) for i, share in enumerate(finishes) if share > 0][::-1]
         self.row_h = S(24)
         self.setFixedSize(width, int(self.row_h * len(self.rows) + S(4)))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -1094,8 +1144,7 @@ class OddsTable(QWidget):
             p.setPen(col)
             p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
-            group = case.get("variants") if kind == "cls" else case.get("odds")
-            pct = share * 100 / max(1, sum(group or [1]))         # finishes are out of 100 000, drops out of 10 000
+            pct = share * 100
             text = f"{pct:.3f}%" if pct < 0.1 else f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
             p.setPen(QColor(TEXT))
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
@@ -1157,6 +1206,19 @@ class CaseReel(QWidget):
     def _filler(self, rnd) -> tuple:
         """A drop for the strip, picked with the case's real odds (so the strip looks like the case: rare things
         are as rare here as in the case itself)."""
+        g = case_grid(self.case)
+        if g is not None:                                # 4.7: the strip follows the grid too
+            r = rnd.random()
+            if r < case_mythic(self.case):
+                return ("item", badge_item(rnd.choice(self._badges_of(5)), rnd.choice(["black", "white"])))
+            r -= case_mythic(self.case)
+            for i, pg in enumerate(g):
+                if r < pg:
+                    tier, cls = i // 5 + 1, i % 5
+                    var = rnd.choice([["grey"], PAINTED_IDS, SHINY_IDS, TITANIUM_IDS, GOLD_IDS][cls])
+                    return ("item", badge_item(rnd.choice(self._badges_of(tier)), var))
+                r -= pg
+            return ("coins", rnd.randint(self.case["coin_min"], max(self.case["coin_min"], self.case["coin_max"])))
         roll, tier = rnd.randrange(max(1, sum(self.case["odds"]))), 0
         for i, share in enumerate(self.case["odds"]):
             if roll < share:

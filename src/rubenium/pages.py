@@ -1887,30 +1887,11 @@ class SettingsPage(StylePart, Page):
             lay.addWidget(Label(text, 10, TEXT_DIM, wrap_w=self.W))
 
         if sec == 0:                                    # ---------------------------------------------- General
-            lay.addWidget(heading(tr("Opening")))
-            toggle(tr("Hold to open"), "hold_open", after=lambda v: ctx.reload_page())
-            if cfg["hold_open"]:                       # the time only matters while hold to open is on
-                hold = SliderRow(tr("Hold time"), 200, 1000, cfg["hold_ms"], 100, 400, lambda v: f"{v / 1000:.1f} s",
-                                 marks=list(range(200, 1001, 100)))
-
-                def hold_set(v) -> None:
-                    cfg["hold_ms"] = int(v)
-                hold.changed.connect(hold_set)
-                lay.addWidget(hold)
-            from .music2 import KEY_CHOICES
-            keys = [k for k, _n, _v in KEY_CHOICES]
-            hk = Segmented([tr("No key") if k == "off" else n.replace("Right ", "R ") for k, n, _v in KEY_CHOICES],
-                           keys.index(cfg["hotkey"]) if cfg["hotkey"] in keys else 0)
-
-            def set_key(i: int) -> None:
-                cfg["hotkey"] = keys[i]
-                ctx.tapkey.set_key(keys[i])
-            hk.changed.connect(set_key)
-            lay.addWidget(Label(tr("Show / hide key"), 11.5, TEXT))
-            lay.addWidget(hk)
-            note(tr("Tap it once to open or close Rubenium, even in a game."))
-            lay.addWidget(Label(tr("Holding this key down for 3 seconds restarts Rubenium, in case you are stuck or run into a problem."),
-                                10, "#FFD54A", wrap_w=self.W))
+            lay.addWidget(heading(tr("Opening")))           # 4.7: hold to open and the keys live in the game mode window
+            gm_btn = Button(tr("Open"), "ghost", 30, icon="pad")
+            from .hub import open_game_mode
+            gm_btn.clicked.connect(lambda: open_game_mode(ctx))
+            lay.addWidget(row(tr("Hold to open, keys and game mode"), gm_btn))
             lay.addWidget(heading(tr("Music")))                 # 3.2
             from .music3 import app_name, ask_music_app
             app_btn = Button(app_name(cfg["music_app"]) or tr("Ask me"), "ghost", 30)
@@ -1936,6 +1917,7 @@ class SettingsPage(StylePart, Page):
             seg.changed.connect(lambda i: ctx.set_language("fr" if i else "en"))
             lay.addWidget(row(tr("Language"), seg))
             osz = Segmented([tr("Medium"), tr("Large")], 1 if cfg["online_size"] == "large" else 0)
+            osz.setFixedWidth(S(190))                   # 4.7: it had no width in the row, so it never showed
 
             def set_osz(i: int) -> None:
                 cfg["online_size"] = "large" if i else "medium"

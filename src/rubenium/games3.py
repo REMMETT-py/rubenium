@@ -367,12 +367,13 @@ class HiLo(Game):
             return
         cw, ch = S(78), S(110)
         c = QPointF(r.center().x(), r.top() + S(18) + ch / 2)
+        self._stats(p, r)                                    # 4.7: the same labelled boxes as the other games
         if not self.cards:
             self._card(p, QRectF(c.x() - cw / 2, c.y() - ch / 2, cw, ch), 0, face=False)
             p.setPen(QColor(TEXT_DIM))
             p.setFont(font(11, QFont.Weight.DemiBold))
             p.drawText(QRectF(r.left(), c.y() + ch / 2 + S(10), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                       tr("Press Deal to start"))
+                       tr("Press Deal to start") + "  ·  " + tr("A is the lowest card, K the highest."))
             return
         k = min(1.0, (now - self._flip_t) / 0.35) if self._flip_t else 1.0
         sx = abs(math.cos(k * math.pi)) if k < 1 else 1.0         # the card turns over
@@ -388,21 +389,23 @@ class HiLo(Game):
         for card in self.cards[-6:-1][::-1]:
             self._card(p, QRectF(x, r.top() + S(14), S(28), S(40)), card)
             x += S(32)
-        # multiplier and chances
-        p.setFont(font(18, QFont.Weight.ExtraBold))
-        p.setPen(QColor(LOSE) if self.lost else (QColor(WIN) if self.hits else QColor(TEXT)))
-        p.drawText(QRectF(r.right() - S(110), r.top() + S(16), S(100), S(26)), int(Qt.AlignmentFlag.AlignRight),
-                   f"×{self.mult:.2f}")
         hi, lo = self.chances()
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.setPen(QColor(TEXT_DIM))
         line = tr("Higher or same {a}%  ·  Lower or same {b}%", a=round(hi * 100), b=round(lo * 100))
         p.drawText(QRectF(r.left(), c.y() + ch / 2 + S(10), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), line)
-        if self.busy and self.hits:
-            p.setPen(QColor(GOLD_TEXT))
-            p.setFont(font(11, QFont.Weight.Bold))
-            p.drawText(QRectF(r.left(), c.y() + ch / 2 + S(30), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                       tr("{n} right in a row", n=self.hits))
+
+    def _stats(self, p: QPainter, r: QRectF) -> None:
+        from .games import paint_stat
+        from .wallet import coins_text
+        col = QRectF(r.right() - S(112), r.top() + S(12), S(100), S(40))
+        playing = bool(self.cards) and self.busy and not self.lost
+        rows = [(tr("Multiplier"), f"×{self.mult:.2f}", LOSE if self.lost else (WIN if self.hits else None)),
+                (tr("Right in a row"), str(self.hits), GOLD_TEXT if self.hits else None),
+                (tr("Cash out"), coins_text(int((self.stake or 0) * self.mult)) if playing and self.hits else "—",
+                 WIN if playing and self.hits else None)]
+        for k, (label, value, c) in enumerate(rows):
+            paint_stat(p, col.translated(0, k * S(46)), label, value, c)
 
 
 # --------------------------------------------------------------------------- #
