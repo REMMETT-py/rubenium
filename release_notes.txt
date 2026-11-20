@@ -1,11 +1,8 @@
-Rubenium 5.1
+Rubenium 5.2
 
-- Wave Rush: the first 2.5 seconds you slide along the walls (no instant crash), spikes are never stacked in tight spaces, and a practice bot (on or off) plays a perfect run ahead of you
-- Sort and filter your items (price, rarity, recent, collection) in the inventory, coinflips and trades. In a coinflip, Lock in / Confirm and Cancel are at the top
-- Market: a price stop between every two for more precise prices. Every scroll bar can be dragged with the mouse
-- Profiles show the theme the player wears. 20 more coinflip bots, each with a bot picture, open from 30 minutes to 6 hours
-- A trash can for items you never want again (asked twice). Collection sets can be claimed again. Quest texts no longer overlap
-- Gifting a case shows every friend. Log out restarts Rubenium on the login screen
-- Shop: banners, frames and themes cost 5 times more, balls and lines 2 times
+- NEW: JACKPOT, at the top of Games. Every 15 minutes, 2 minutes to put in up to 3 items; your chance is your share of the total. Then bots fill the empty seats, the wheel spins for 10 seconds and the winner gets their items back and picks half of everyone else's
+- Leaderboard titles: be top 3 of a leaderboard to wear "#1 RICH" in gold, #2 in silver, #3 in bronze. They follow the leaderboards live. Wear up to 3 titles with your OG tag (Style > Your profile, or Inventory > Profile)
+- Coinflip: when the last 15 seconds start, the screen fades into a face-off: you on top, them below, the coin in the middle and a glowing countdown
+- Mini Golf: aim with the mouse while the power bar swings by itself; click or press Space at the right moment. Your ball and whose turn it is are much easier to see
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

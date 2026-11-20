@@ -303,4 +303,5 @@ grant execute on function public.rb_jackpot_pick(uuid, text[]) to authenticated;
 revoke all on function public.rb_jackpot_make(timestamptz), public.rb_jackpot_advance(uuid), public.rb_jackpot_finish(uuid, text[]),
     public.rb_jackpot_pool(public.rb_jackpots), public.rb_jackpot_json(public.rb_jackpots, uuid) from public, anon, authenticated;
 
+update public.rb_config set value = greatest(value, 2026112004) where key = 'min_build';
 commit;

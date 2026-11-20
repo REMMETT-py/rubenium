@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.1"         # the version people see
-BUILD = "2026.11.20.3"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.2"         # the version people see
+BUILD = "2026.11.20.4"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6547,6 +6547,38 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({                                   # 5.2
+    '3 titles at most: take one off first': '3 titres maximum : enlève-en un d’abord',
+    'Aim with the mouse · click or Space': 'Vise avec la souris · clic ou Espace',
+    "If you don't pick within {t}, the best ones are picked for you.": 'Si tu ne choisis pas dans {t}, les meilleurs sont choisis pour toi.',
+    'JACKPOT IS OPEN': 'LE JACKPOT EST OUVERT', 'JACKPOT': 'JACKPOT',
+    'Jackpot claimed! The items are in your inventory.': 'Jackpot récupéré ! Les objets sont dans ton inventaire.',
+    'Jackpot is paused for a moment. Nothing you own is lost.': 'Le jackpot est en pause pour un moment. Tu ne perds rien.',
+    'Join in the next {t}: Games > Jackpot': 'Rejoins-le dans les {t} : Jeux > Jackpot',
+    'Join the jackpot': 'Rejoindre le jackpot', 'Last jackpot': 'Dernier jackpot',
+    'Locked! Filling the seats…': 'Verrouillé ! Les places se remplissent…', 'Next jackpot in {t}': 'Prochain jackpot dans {t}',
+    'Nobody yet: be the first (the first player has a 100% chance until others join).': 'Personne encore : sois le premier (le premier a 100 % de chances tant que personne ne le rejoint).',
+    'OPEN · join in the next {t}': 'OUVERT · rejoins dans les {t}',
+    'Pick 1 to 3 items (at least {n} in all)': 'Choisis 1 à 3 objets (au moins {n} en tout)',
+    'Players ({n}/6)': 'Joueurs ({n}/6)', 'SPINNING': 'ÇA TOURNE',
+    'The next jackpot opens in {t}': 'Le prochain jackpot ouvre dans {t}',
+    'The next jackpot opens in {t}. Every 15 minutes, 2 minutes to join.': 'Le prochain jackpot ouvre dans {t}. Toutes les 15 minutes, 2 minutes pour entrer.',
+    'The wheel is spinning: watch it': 'La roue tourne : regarde',
+    'This jackpot is full (6 players). Watch it spin!': 'Ce jackpot est complet (6 joueurs). Regarde-le tourner !',
+    'Titles': 'Titres', 'Too small: at least {n} to join': 'Trop petit : au moins {n} pour entrer',
+    'Up to 3 · gold, silver and bronze while you are top 3': 'Jusqu’à 3 · or, argent et bronze tant que tu es dans le top 3',
+    'WINNER': 'GAGNANT', 'Watching. The jackpot locks when the timer runs out.': 'Tu regardes. Le jackpot se ferme à la fin du compte à rebours.',
+    'YOU WON THE JACKPOT!': 'TU AS GAGNÉ LE JACKPOT !', 'YOUR TURN': 'À TOI', 'YOU': 'TOI',
+    'You can take {n}: tap one you picked to swap it': 'Tu peux en prendre {n} : touche-en un choisi pour l’échanger',
+    'You won the jackpot! Pick your items.': 'Tu as gagné le jackpot ! Choisis tes objets.',
+    "You're in! Watch the others join. Good luck.": 'Tu es dedans ! Regarde les autres arriver. Bonne chance.',
+    "Your chance is your share of everything put in. The winner gets their own items back and picks half of everyone else's; the rest leaves the game. After 2 minutes the lobby locks and bots fill the empty seats.": 'Ta chance est ta part de tout ce qui est misé. Le gagnant récupère ses objets et choisit la moitié de ceux des autres ; le reste quitte le jeu. Après 2 minutes le salon se ferme et des bots prennent les places libres.',
+    'Your chance: {p}': 'Ta chance : {p}',
+    'Your own items come back for free. Now pick {n} of the {m} items the others put in.': 'Tes objets te reviennent. Choisis maintenant {n} des {m} objets misés par les autres.',
+    '{a} / {b} picked': '{a} / {b} choisis', '{name} won the jackpot': '{name} a gagné le jackpot', "{name}'s turn": 'Au tour de {name}',
+    'RICH': 'RICHE', 'VALUE': 'VALEUR', 'LEVEL': 'NIVEAU', 'HOURS': 'HEURES', 'BADGES': 'BADGES', 'STREAK': 'SÉRIE',
+    'BLOCKBLAST': 'BLOCKBLAST', 'WAVE': 'WAVE', 'BEAT TAP': 'BEAT TAP', 'PARKING': 'PARKING', 'MEMORY': 'MÉMOIRE',
+})
 FR.update({                                   # 5.1
     'Delete for good': 'Supprimer pour de bon', 'Keep it': 'Le garder', 'Delete': 'Supprimer',
     'Log out? Rubenium restarts on the login screen.': 'Se déconnecter ? Rubenium redémarre sur l’écran de connexion.',
@@ -11043,6 +11075,10 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.2", ['NEW: JACKPOT at the top of Games. Every 15 minutes, 2 minutes to put in up to 3 items, your chance is your share. Bots fill the empty seats, the wheel spins and the winner picks half of everyone else\'s items',
+             'Leaderboard titles: be top 3 of a leaderboard to wear "#1 RICH" in gold, #2 silver, #3 bronze. Up to 3 titles with your OG tag (Style > Your profile)',
+             'Coinflip: when the last 15 seconds start, the screen fades into a face-off: you on top, them below, a glowing countdown',
+             'Mini Golf: aim with the mouse, the power bar swings by itself: click or press Space at the right moment. Your ball and whose turn it is are easy to see']),
     ("5.1", ['Wave Rush: the first 2.5 seconds you slide along the walls (no instant crash), spikes are never stacked in tight spaces, and a practice bot plays ahead of you',
              'Sort and filter your items (price, rarity, recent, collection) in the inventory, coinflips and trades. Coinflip Lock in / Cancel are at the top',
              'Market: a price stop between every two for more precise prices. The scroll bar can be dragged',
