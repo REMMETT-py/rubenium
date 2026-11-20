@@ -1,4 +1,4 @@
--- ================================================================ Rubenium 5.1: Wave Rush
+-- ================================================================ Rubenium 5.1 (build 2026.11.20.3)
 -- The first 150 ticks (2.5 s) slide along the walls instead of crashing, and two spikes on a flat piece are never
 -- closer than 130 (they could close the whole gap on the hardest levels). The app (WAVE_SLIDE, WAVE_SPACE) does the
 -- same maths. Apps older than 5.1 must update. Safe to run again.
@@ -295,5 +295,5 @@ begin
 end $$;
 
 
-update public.rb_config set value = greatest(value, 2026112100) where key = 'min_build';
+update public.rb_config set value = greatest(value, 2026112003) where key = 'min_build';
 commit;

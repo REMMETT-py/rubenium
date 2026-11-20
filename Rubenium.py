@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.0.1"         # the version people see
-BUILD = "2026.11.20.2"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.1"         # the version people see
+BUILD = "2026.11.20.3"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6536,6 +6536,14 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({                                   # 5.1
+    'Delete for good': 'Supprimer pour de bon', 'Keep it': 'Le garder', 'Delete': 'Supprimer',
+    'Log out? Rubenium restarts on the login screen.': 'Se déconnecter ? Rubenium redémarre sur l’écran de connexion.',
+    'Really delete {name}? It cannot be undone, sold or given back.': 'Vraiment supprimer {name} ? Impossible d’annuler, de le vendre ou de le récupérer.',
+    'Throw {name} in the trash? It will be gone forever.': 'Jeter {name} à la poubelle ? Il disparaîtra pour toujours.',
+    '{name} was deleted': '{name} a été supprimé', 'Rarity': 'Rareté', 'Recent': 'Récent', 'Price': 'Prix',
+    'Collection': 'Collection', 'All': 'Tout',
+})
 FR.update({                                   # 5.0.1
     'Welcome to Rubenium 5.0': 'Bienvenue dans Rubenium 5.0',
     'Everyone starts fresh with the full release. This quick guide shows the main parts and lets you set Rubenium up your way.': 'Tout le monde repart de zéro avec la version complète. Ce petit guide montre les parties principales et te laisse régler Rubenium à ta façon.',
@@ -11024,6 +11032,13 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.1", ['Wave Rush: the first 2.5 seconds you slide along the walls (no instant crash), spikes are never stacked in tight spaces, and a practice bot plays ahead of you',
+             'Sort and filter your items (price, rarity, recent, collection) in the inventory, coinflips and trades. Coinflip Lock in / Cancel are at the top',
+             'Market: a price stop between every two for more precise prices. The scroll bar can be dragged',
+             'Profiles show the theme the player wears. 20 more coinflip bots with a bot picture, open from 30 minutes to 6 hours',
+             'A trash can for items you never want again (asked twice). Collection sets can be claimed again. Quests no longer overlap in French',
+             'Gifting a case shows every friend. Log out restarts on the login screen',
+             'Shop: banners, frames and themes cost 5 times more, balls and lines 2 times']),
     ("5.0.1", ['A new guide for everyone: its own window in the middle of the screen, a moving picture for each part, and your settings chosen as you go (the old tour shrank and broke)',
                'Updates now install by themselves within a minute of their release: Rubenium closes, updates and starts again',
                'The OG coupon only arrives once you are on 5.0 or newer',
