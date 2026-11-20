@@ -2898,6 +2898,8 @@ class Econ(QObject):
         """The tag, frame and banner someone shows. Yours comes from what you wear right now."""
         if name and self.ready and name.lower() == (self.online.username() or "").lower():
             mine = {k: self.worn(k) for k in ("tag", "frame", "banner") if self.worn(k) and self.can_wear(self.worn(k))}
+            if isinstance(self.equip.get("titles"), list):                 # 5.2
+                mine["titles"] = list(self.equip["titles"])
             if mine.get("banner") and self.gold_of(mine["banner"]):
                 mine["gold"] = self.gold_of(mine["banner"])
             return mine
@@ -3134,6 +3136,15 @@ class Econ(QObject):
     def poll_live(self) -> None:
         if not self.online.logged_in():
             return
+        import time as _t
+        if _t.monotonic() - getattr(self, "_ranks_at", -99.0) > 20:     # 5.2: who is #1, #2, #3 of each leaderboard
+            self._ranks_at = _t.monotonic()
+
+            def got_ranks(ok: bool, data) -> None:
+                if ok and isinstance(data, dict) and data != getattr(self, "ranks", {}):
+                    self.ranks = data
+                    self.looks_changed.emit()
+            self.online.ask("rb_ranks", {}, got_ranks)
 
         def got(ok: bool, data) -> None:
             if not ok or not isinstance(data, dict):
@@ -22292,6 +22303,9 @@ def build_inventory(page, lay) -> None:
     total = sum(value_of(ctx, k) * len(v) for k, v in groups.items())
     count = sum(len(v) for v in groups.values())
     lay.addWidget(Label(tr("{n} items · worth about {v} coins", n=count, v=coins_text(total)), 11, TEXT_DIM))
+    if want == "look":                                   # 5.2: your titles first (grey until you are top 3)
+        lay.addWidget(heading(tr("Titles")))
+        lay.addWidget(TitleChips(ctx, page.W))
     lay.addWidget(sort_bar(ctx, lambda: ctx.reload_page()))        # 5.1: sort and filter
     order = sort_items(ctx, list(groups))
     extras = [i["id"] for k in order for i in [c for c in groups[k] if not c.get("locked")][1:]
@@ -22525,9 +22539,13 @@ def build_profile_style(page, lay) -> None:
     lay.addWidget(LookPreview(ctx, "", page.W, tr("This is what other users see")))
     if not any(k.startswith("banner:") for k in ec.catalog):
         return lay.addWidget(Label(tr("Banners and frames: coming very soon"), 11, TEXT_DIM))
+    head0 = hbox(spacing=8)                              # 5.2: titles (OG and leaderboard ranks), 3 at most
+    head0.addWidget(Label(tr("Titles"), 12.5, bold=True), 1)
+    head0.addWidget(Label(tr("Up to 3 · gold, silver and bronze while you are top 3"), 10, TEXT_DIM))
+    lay.addLayout(head0)
+    lay.addWidget(TitleChips(ctx, page.W))
     for kind, title, empty in (("banner", tr("Banner"), tr("No banner yet: buy one in the Shop or on the Market.")),
-                               ("frame", tr("Frame"), tr("No frame yet: buy one in the Shop or on the Market.")),
-                               ("tag", tr("Tag"), tr("No tag yet."))):
+                               ("frame", tr("Frame"), tr("No frame yet: buy one in the Shop or on the Market."))):
         mine = sorted({i["item"] for i in ec.items if i["item"].startswith(kind + ":")},
                       key=lambda k: (-ec.worth(k), k))
         if kind == "tag" and not mine:
@@ -31057,11 +31075,133 @@ def paint_name_tags(p: QPainter, x: float, cy: float, ctx, name: str, admin: boo
     w = 0.0
     if admin:
         w += paint_admin_tag(p, x, cy) + S(5)
-    tag = ctx.econ.look_of(name).get("tag")
-    if tag:
-        pass
-        w += paint_tag(p, x + w, cy, tag, time.monotonic(), size) + S(5)
+    look = ctx.econ.look_of(name)
+    titles = look.get("titles") if isinstance(look.get("titles"), list) else ([look["tag"]] if look.get("tag") else [])
+    ranks = (getattr(ctx.econ, "ranks", {}) or {}).get(name) or {}
+    for t in titles[:3]:                                     # 5.2: up to 3 titles: OG and leaderboard ranks
+        t = str(t)
+        if t.startswith("rank:"):
+            kind = t[5:]
+            w += paint_rank_tag(p, x + w, cy, kind, ranks.get(kind), size) + S(5)
+        elif t.startswith("tag:"):
+            w += paint_tag(p, x + w, cy, t, time.monotonic(), size) + S(5)
     return w
+
+
+TITLE_NAMES = {"coins": "RICH", "worth": "VALUE", "level": "LEVEL", "hours": "HOURS", "badges": "BADGES",
+               "streak": "STREAK", "blocks": "BLOCKBLAST", "wave": "WAVE", "tap": "BEAT TAP", "park": "PARKING",
+               "memory": "MEMORY"}
+RANK_COLOURS = {1: ("#FFE9A8", "#E8B13A", "#B87A16"), 2: ("#FFFFFF", "#C9D2DC", "#8E9AA8"),
+                3: ("#FFD2A8", "#C8783A", "#8A4A1E")}
+
+
+def paint_rank_tag(p: QPainter, x: float, cy: float, kind: str, rank, size: float = 8.5) -> float:
+    """5.2: a leaderboard title: "#1 RICH" in gold, #2 silver, #3 bronze, or plain grey "RICH" outside the top 3."""
+    name = tr(TITLE_NAMES.get(kind, kind.upper()))
+    rank = int(rank) if rank else 0
+    text = f"#{rank} {name}" if rank in (1, 2, 3) else name
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    f = font(size, QFont.Weight.Black, 0.8)
+    p.setFont(f)
+    hgt = f.pixelSize() * 1.75
+    w = p.fontMetrics().horizontalAdvance(text) + hgt * 0.75
+    box = QRectF(x, cy - hgt / 2, w, hgt)
+    if rank in RANK_COLOURS:
+        a, b, c = RANK_COLOURS[rank]
+        g = QLinearGradient(box.topLeft(), box.bottomRight())
+        g.setColorAt(0.0, QColor(a))
+        g.setColorAt(0.5, QColor(b))
+        g.setColorAt(1.0, QColor(c))
+        p.setPen(QPen(QColor(a), 0.8))
+        p.setBrush(g)
+        p.drawRoundedRect(box, hgt * 0.28, hgt * 0.28)
+        p.setPen(QColor("#1A1206") if rank != 2 else QColor("#1B1F24"))
+    else:
+        p.setPen(QPen(alpha("#FFFFFF", 0.25), 0.8))
+        p.setBrush(QColor("#2A2E33"))
+        p.drawRoundedRect(box, hgt * 0.28, hgt * 0.28)
+        p.setPen(QColor("#9AA4AD"))
+    p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), text)
+    p.restore()
+    return w
+
+
+class TitleChips(QWidget):
+    """5.2: every title (OG if you have it, and one per leaderboard): click to wear or take off, 3 at most."""
+
+    def __init__(self, ctx, width: int) -> None:
+        super().__init__()
+        self.ctx = ctx
+        ec = ctx.econ
+        self.ids = (["tag:og"] if ec.owns("tag:og") else []) + ["rank:" + k for k in TITLE_NAMES]
+        self.per = 3
+        self.rh = S(34)
+        n = (len(self.ids) + self.per - 1) // self.per
+        self.setFixedSize(width, n * self.rh)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def worn(self) -> list:
+        t = self.ctx.econ.equip.get("titles")
+        if isinstance(t, list):
+            return [str(x) for x in t]
+        tag = self.ctx.econ.equip.get("tag")
+        return [tag] if tag else []
+
+    def _cell(self, i: int) -> QRectF:
+        w = self.width() / self.per
+        r, c = divmod(i, self.per)
+        return QRectF(c * w, r * self.rh, w, self.rh)
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        i = next((k for k in range(len(self.ids)) if self._cell(k).contains(e.position())), -1)
+        if i < 0:
+            return
+        worn, t = self.worn(), self.ids[i]
+        if t in worn:
+            worn.remove(t)
+        elif len(worn) >= 3:
+            return self.ctx.toast(tr("3 titles at most: take one off first"), "warn")
+        else:
+            worn.append(t)
+        sfx.play("pick")
+        ec = self.ctx.econ
+        ec.equip["titles"] = worn                       # right away; the server follows
+
+        def done(ok: bool, data) -> None:
+            if ok and isinstance(data, dict):
+                ec.equip = dict(data)
+            elif not ok:
+                self.ctx.toast(tr(str(data)), "warn")
+            ec.looks_changed.emit()
+            self.update()
+        ec.call("rb_titles_set", {"ids": worn}, done)
+        ec.looks_changed.emit()
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        worn = self.worn()
+        me = self.ctx.online.username() or ""
+        ranks = (getattr(self.ctx.econ, "ranks", {}) or {}).get(me) or {}
+        for i, t in enumerate(self.ids):
+            r = self._cell(i).adjusted(S(2), S(2), -S(2), -S(2))
+            on = t in worn
+            p.setPen(QPen(ui.accent, S(1.6)) if on else QPen(alpha("#FFFFFF", 0.08), 1))
+            p.setBrush(alpha(ui.accent, 0.12) if on else alpha("#FFFFFF", 0.03))
+            p.drawRoundedRect(r, S(8), S(8))
+            if t.startswith("rank:"):
+                paint_rank_tag(p, r.left() + S(8), r.center().y(), t[5:], ranks.get(t[5:]), 8)
+            else:
+                paint_tag(p, r.left() + S(8), r.center().y(), t, time.monotonic(), 8)
+            if on:
+                p.setPen(ui.accent)
+                p.setFont(font(10, QFont.Weight.Black))
+                p.drawText(r.adjusted(0, 0, -S(8), 0), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), "✓")
 
 
 class Ticker(QTimer):
