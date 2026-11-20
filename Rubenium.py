@@ -25114,6 +25114,10 @@ class GolfView(QWidget):
         self._frame.setInterval(16)
         self._frame.timeout.connect(self._step)
         self.setCursor(Qt.CursorShape.CrossCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)   # 5.1: Space shoots
+        self.setMouseTracking(True)                       # 5.1: the aim follows the mouse
+        self._pw_t0 = time.monotonic()
+        self._was_mine = False
         self.ask()
 
     # -- server
@@ -25216,24 +25220,42 @@ class GolfView(QWidget):
         f = self.field()
         return ((pt.x() - f.left()) / f.width(), (pt.y() - f.top()) / f.width())
 
+    # 5.1: aim with the mouse (the ball points at it), the power bar swings up and down on its own: click or press
+    # Space at the right moment. Timing is the skill.
+    POWER_PERIOD = 1.6
+
+    def power(self) -> float:
+        t = (time.monotonic() - getattr(self, "_pw_t0", 0.0)) % self.POWER_PERIOD
+        half = self.POWER_PERIOD / 2
+        ping = t / half if t < half else 2 - t / half
+        return 0.06 + 0.94 * ping
+
     def mousePressEvent(self, e) -> None:
+        self.setFocus()
         if e.button() == Qt.MouseButton.LeftButton and self.my_turn():
-            p = self.to_field(e.position())
-            self.aim = (p, p)
-            self.update()
+            self.aim = (self.to_field(e.position()), None)
+            self._fire()
 
     def mouseMoveEvent(self, e) -> None:
-        if self.aim is not None:
-            self.aim = (self.aim[0], self.to_field(e.position()))
+        if self.my_turn():
+            self.aim = (self.to_field(e.position()), None)
             self.update()
 
+    def keyPressEvent(self, e) -> None:
+        if e.key() == Qt.Key.Key_Space and not e.isAutoRepeat() and self.my_turn():
+            return self._fire()
+        super().keyPressEvent(e)
+
     def _shot(self):
-        (px, py), (qx, qy) = self.aim
-        dx, dy = px - qx, py - qy                            # pull back: the ball goes the other way
-        pw = min(1.0, math.hypot(dx, dy) / 0.32)
-        return math.atan2(dy, dx), pw
+        me = self.g.get("me")
+        ball = self.balls.get(me) or (0.5, 0.3)
+        (qx, qy), _ = self.aim
+        return math.atan2(qy - ball[1], qx - ball[0]), self.power()
 
     def mouseReleaseEvent(self, e) -> None:
+        pass
+
+    def _fire(self) -> None:
         if self.aim is None:
             return
         ang, pw = self._shot()
@@ -25292,7 +25314,7 @@ class GolfView(QWidget):
         # the hole banner and the turn clock still repaint when they change.
         now = time.monotonic()
         clock = int(now * 4)
-        if self.aim is not None or now - self._banner_at < 2.5 or clock != getattr(self, "_clock", -1):
+        if self.aim is not None or self.my_turn() or now - self._banner_at < 2.5 or clock != getattr(self, "_clock", -1):
             self._clock = clock
             self.update()
 
@@ -25377,13 +25399,45 @@ class GolfView(QWidget):
         p.setBrush(alpha("#FFFFFF", 0.12))
         p.drawRoundedRect(QRectF(P(tx - 0.03, ty - 0.05), P(tx + 0.03, ty + 0.05)), S(4), S(4))
         me = g.get("me", "a")
-        if self.aim is not None and self.balls.get(me):        # aim line and power
-            ang, pw = self._shot()
+        mine_now = self.my_turn()
+        if mine_now and not self._was_mine:
+            self._pw_t0 = time.monotonic()                   # the swing starts from the bottom each turn
+        self._was_mine = mine_now
+        if g.get("state") == "live" and not self.solo:       # 5.1: a strip saying whose turn it is
+            pulse = 0.5 + 0.5 * math.sin(now * 4)
+            whose = g.get("turn")
+            strip = QRectF(f.left(), f.top(), f.width(), S(22))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#3DDC84" if whose == me else "#000000", (0.55 + 0.25 * pulse) if whose == me else 0.45))
+            p.drawRect(strip)
+            p.setPen(QColor("#06110A") if whose == me else QColor("#FFFFFF"))
+            p.setFont(font(10.5, QFont.Weight.Black, 1.5))
+            p.drawText(strip, int(Qt.AlignmentFlag.AlignCenter),
+                       tr("YOUR TURN") if whose == me else tr("{name}'s turn", name=str(g.get(whose) or "?")))
+        if self.my_turn() and self.balls.get(me):             # 5.1: aim line toward the mouse, the swinging power bar
+            pw = self.power()
             bx, by = self.balls[me]
+            ang = self._shot()[0] if self.aim is not None else 0.0
             end = P(bx + math.cos(ang) * (0.05 + 0.25 * pw), by + math.sin(ang) * (0.05 + 0.25 * pw))
             col = QColor.fromHsvF(max(0.0, 0.33 - 0.33 * pw), 0.85, 1.0)
-            p.setPen(QPen(col, S(3), Qt.PenStyle.DashLine, Qt.PenCapStyle.RoundCap))
-            p.drawLine(P(bx, by), end)
+            if self.aim is not None:
+                p.setPen(QPen(col, S(3), Qt.PenStyle.DashLine, Qt.PenCapStyle.RoundCap))
+                p.drawLine(P(bx, by), end)
+            bar = QRectF(f.right() - S(22), f.top() + S(12), S(10), f.height() - S(24))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#000000", 0.45))
+            p.drawRoundedRect(bar.adjusted(-S(3), -S(3), S(3), S(3)), S(6), S(6))
+            fill = QRectF(bar.left(), bar.bottom() - bar.height() * pw, bar.width(), bar.height() * pw)
+            p.setBrush(col)
+            p.drawRoundedRect(fill, S(4), S(4))
+            for k in (0.25, 0.5, 0.75):                      # marks to time the shot
+                y_ = bar.bottom() - bar.height() * k
+                p.setPen(QPen(alpha("#FFFFFF", 0.5), 1))
+                p.drawLine(QPointF(bar.left() - S(3), y_), QPointF(bar.right() + S(3), y_))
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(font(9, QFont.Weight.Black))
+            p.drawText(QRectF(f.left(), f.bottom() - S(20), f.width() - S(30), S(16)),
+                       int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), tr("Aim with the mouse · click or Space"))
         for side in ("a", "b"):
             pos = self.balls.get(side)
             if pos is None:
@@ -25393,9 +25447,20 @@ class GolfView(QWidget):
             p.setBrush(alpha("#000000", 0.3))
             p.drawEllipse(c + QPointF(S(1.5), S(2)), BALL_R * u, BALL_R * u)
             ring = ui.accent if side == me else QColor("#FFB627")
+            if side == me:                                  # 5.1: your ball is easy to find
+                pulse = 0.5 + 0.5 * math.sin(now * 4)
+                p.setPen(QPen(alpha(ring, 0.35 + 0.35 * pulse), S(2)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(c, BALL_R * u * (2.0 + 0.4 * pulse), BALL_R * u * (2.0 + 0.4 * pulse))
             p.setBrush(QColor("#FFFFFF"))
             p.setPen(QPen(ring, S(2.5)))
             p.drawEllipse(c, BALL_R * u, BALL_R * u)
+            p.setPen(ring)
+            p.setFont(font(8.5, QFont.Weight.Black))
+            label = tr("YOU") if side == me else str(g.get(side) or g.get(side + "_name") or "")
+            if label:
+                p.drawText(QRectF(c.x() - S(50), c.y() - BALL_R * u - S(18), S(100), S(14)), int(Qt.AlignmentFlag.AlignCenter),
+                           label)
         if self._banner and now - self._banner_at < 2.0:
             a = min(1.0, 2.0 - (now - self._banner_at))
             p.setOpacity(a)
@@ -25446,6 +25511,12 @@ class GolfView(QWidget):
             box = QRectF(r.left() + (0 if i == 0 else 2 * w), r.top(), w, r.height())
             strokes = list(g.get(side + "_strokes") or [0])
             active = g.get("state") == "live" and g.get("turn") == side
+            if active:                                    # 5.1: whose turn it is, at a glance
+                pulse = 0.5 + 0.5 * math.sin(time.monotonic() * 4)
+                hl = ui.accent if side == me else QColor("#FFB627")
+                p.setPen(QPen(alpha(hl, 0.5 + 0.4 * pulse), S(2)))
+                p.setBrush(alpha(hl, 0.12 + 0.08 * pulse))
+                p.drawRoundedRect(box.adjusted(S(2), S(2), -S(2), -S(2)), S(8), S(8))
             p.setPen(ui.accent if side == me else QColor("#FFB627"))
             p.setFont(font(11, QFont.Weight.Bold))
             name = str(g.get(side) or "?")
