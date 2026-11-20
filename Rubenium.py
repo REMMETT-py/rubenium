@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "4.7"         # the version people see
-BUILD = "2026.11.18.26"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.0"         # the version people see
+BUILD = "2026.11.20.1"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1835,6 +1835,8 @@ DEFAULTS: dict = {
     "unlock_all": False,
     "card_open": False,
     "seen_version": "",
+    "v5_fresh": False,                   # 5.0: the full release starts everyone at the first opening (settings kept)
+    "online_door_v5": False,             # 5.0: the online garage doors were seen once
     "tabs_off": {},
     "halo": True,
     "autohide": True,
@@ -1937,6 +1939,12 @@ class Config(QObject):
         d = self.d
         d["scale"] = int(min(150, max(70, round(d["scale"] / 10) * 10)))
         d["opacity"] = 100
+        if not d["v5_fresh"]:                            # 5.0: back to the very first opening, settings kept
+            for k in ("tutorial_done", "daily_shown", "news_tab", "welcome", "xp_intro", "level_seen", "timing_help",
+                      "hilo_help", "casino_warned", "badges", "online_panes", "online_tab", "page", "card_open",
+                      "seen_version", "online_door_v5"):
+                d[k] = copy.deepcopy(DEFAULTS[k])
+            d["v5_fresh"] = True
         if d["crosshair"]["style"] not in ("cross", "tee", "dot", "circle"):
             d["crosshair"]["style"] = "cross"
         d["crosshair"]["size"] = 100
@@ -34358,6 +34366,711 @@ class OgCutscene(QWidget):
 
 
 # ==================================================================================================
+# SECTION: stage (5.0: the online garage doors and the OG Prismatic Chest)
+# ==================================================================================================
+import math
+import random
+import time
+import uuid
+
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
+from PyQt6.QtGui import (QColor, QConicalGradient, QFont, QLinearGradient, QPainter, QPainterPath, QPen,
+                         QPixmap, QRadialGradient)
+from PyQt6.QtWidgets import QWidget
+
+STEEL_A, STEEL_B = "#2B3138", "#14171B"
+HAZARD = "#F5C518"
+SWITCH_GREEN = "#3DFF7A"
+TITANIUM = "#F4F7FA"
+DOOR_OPEN_S = (0.55, 1.05, 2.45)            # warning lights, bolts slide, doors fully open
+REEL_ENDS = (8.4, 9.2, 10.0)               # each wheel stops, seconds after the explosion
+OG_REWARDS = (("keys", "25", "KEYS"), ("coins", "10K", "COINS"), ("coupon", "1000", "XP COUPON"))
+
+
+def prism(h: float, s: float = 0.55, v: float = 1.0, a: float = 1.0) -> QColor:
+    c = QColor.fromHsvF(h % 1.0, max(0.0, min(1.0, s)), max(0.0, min(1.0, v)))
+    c.setAlphaF(max(0.0, min(1.0, a)))
+    return c
+
+
+def ease_io(k: float) -> float:
+    k = max(0.0, min(1.0, k))
+    return 4 * k ** 3 if k < 0.5 else 1 - (-2 * k + 2) ** 3 / 2
+
+
+def paint_door_half(p: QPainter, r: QRectF, left: bool, accent: QColor, glow: float = 0.0, lights: float = 0.0) -> None:
+    """One half of the garage door: steel slats, rivets, a hazard edge and half of the R."""
+    p.save()
+    p.setClipRect(r)
+    g = QLinearGradient(r.topLeft(), r.bottomLeft())
+    g.setColorAt(0, QColor(STEEL_A))
+    g.setColorAt(1, QColor(STEEL_B))
+    p.fillRect(r, g)
+    slats = 9
+    sh = r.height() / slats
+    for i in range(slats):                                # ribbed slats, lit from above
+        y = r.top() + i * sh
+        p.fillRect(QRectF(r.left(), y, r.width(), max(1.0, sh * 0.08)), QColor(255, 255, 255, 22))
+        p.fillRect(QRectF(r.left(), y + sh * 0.92, r.width(), max(1.0, sh * 0.08)), QColor(0, 0, 0, 90))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(255, 255, 255, 34))
+        for x in (r.left() + S(14), r.right() - S(14)):
+            p.drawEllipse(QPointF(x, y + sh * 0.5), S(2.2), S(2.2))
+    edge = S(16)                                          # the hazard stripe on the inner edge
+    er = QRectF(r.right() - edge, r.top(), edge, r.height()) if left else QRectF(r.left(), r.top(), edge, r.height())
+    p.fillRect(er, QColor("#1A1A1A"))
+    p.save()
+    p.setClipRect(er)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(HAZARD))
+    step = S(18)
+    y = r.top() - step
+    while y < r.bottom() + step:
+        band = QPainterPath()
+        band.moveTo(er.left(), y)
+        band.lineTo(er.right(), y + step * 0.6)
+        band.lineTo(er.right(), y + step * 1.1)
+        band.lineTo(er.left(), y + step * 0.5)
+        band.closeSubpath()
+        p.drawPath(band)
+        y += step * 1.2
+    p.restore()
+    # half of the big R, cut by the seam
+    whole = QRectF(0, 0, r.height() * 0.42, r.height() * 0.42)
+    seam_x = r.right() if left else r.left()
+    whole.moveCenter(QPointF(seam_x, r.center().y()))
+    p.setPen(QPen(alpha(accent, 0.35 + 0.4 * glow), S(3)))
+    p.setBrush(QColor(0, 0, 0, 70))
+    p.drawEllipse(whole)
+    p.setPen(alpha(accent, 0.55 + 0.45 * glow))
+    p.setFont(font(max(10.0, whole.height() / max(0.1, ui.scale) * 0.62), QFont.Weight.Black))
+    p.drawText(whole, int(Qt.AlignmentFlag.AlignCenter), "R")
+    # warning lights at the top
+    lx = r.left() + r.width() * (0.18 if left else 0.82)
+    on = lights > 0 and int(lights * 7) % 2 == 0
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor("#FFB020") if on else QColor("#4A3A18"))
+    p.drawEllipse(QPointF(lx, r.top() + S(18)), S(6), S(6))
+    if on:
+        halo = QRadialGradient(QPointF(lx, r.top() + S(18)), S(40))
+        halo.setColorAt(0, QColor(255, 176, 32, 120))
+        halo.setColorAt(1, QColor(255, 176, 32, 0))
+        p.setBrush(halo)
+        p.drawEllipse(QPointF(lx, r.top() + S(18)), S(40), S(40))
+    p.restore()
+
+
+def paint_doors(p: QPainter, r: QRectF, k_open: float, accent: QColor, seam: float = 0.0, lights: float = 0.0) -> None:
+    """Both halves; k_open 0 (shut) to 1 (gone into the sides)."""
+    half = r.width() / 2
+    shift = half * ease_io(k_open) * 1.04
+    paint_door_half(p, QRectF(r.left() - shift, r.top(), half, r.height()), True, accent, seam, lights)
+    paint_door_half(p, QRectF(r.center().x() + shift, r.top(), half, r.height()), False, accent, seam, lights)
+    if seam > 0 and k_open < 0.98:                        # light pushing through the gap
+        gap = max(S(2), shift * 2)
+        g = QLinearGradient(r.center().x() - gap, 0, r.center().x() + gap, 0)
+        g.setColorAt(0, alpha(accent, 0.0))
+        g.setColorAt(0.5, alpha(mix(accent, QColor("#FFFFFF"), 0.6), 0.9 * seam * (1 - k_open)))
+        g.setColorAt(1, alpha(accent, 0.0))
+        p.fillRect(QRectF(r.center().x() - gap * 3, r.top(), gap * 6, r.height()), g)
+
+
+def door_pixmap(size, accent: QColor) -> QPixmap:
+    """The shut doors as a picture: what the online menu shows while it drops (nothing inside can be seen)."""
+    dpr = 2.0
+    pm = QPixmap(max(1, int(size.width() * dpr)), max(1, int(size.height() * dpr)))
+    pm.setDevicePixelRatio(dpr)
+    pm.fill(QColor("#08090B"))
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    paint_doors(p, QRectF(0, 0, size.width(), size.height()), 0.0, accent)
+    p.end()
+    return pm
+
+
+class DoorStage(QWidget):
+    """5.0: covers the online menu once it has dropped. 'doors': the garage doors open on the menu. 'og': they open on a
+    dark room with the OG Prismatic Chest; nothing is given until Claim, so a crash or a closed app plays it again."""
+
+    def __init__(self, win, mode: str) -> None:
+        super().__init__(win)
+        self.win, self.ctx, self.mode = win, win.ctx, mode
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
+        self.setMouseTracking(True)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.t0 = time.monotonic()
+        self.state = "doors"                   # doors, dark, charge, flash, lit, boom, wheels, claim, done, out
+        self.st_at = self.t0
+        self.rnd = random.Random()
+        self.req = uuid.uuid4().hex             # one id for every try: the server gives the chest once
+        self.sparks: list = []                  # [x, y, vx, vy, life, hue]
+        self.dust = [(self.rnd.random(), self.rnd.random(), self.rnd.uniform(0.4, 1.0)) for _ in range(46)]
+        self.flicker = 0.3
+        self.error = ""
+        self.claimed = None
+        self._sfx_marks: set = set()
+        self.claim_btn = Button(tr("Claim rewards"), "primary", 46, parent=self)
+        self.claim_btn.setFixedWidth(S(240))
+        self.claim_btn.clicked.connect(self._claim)
+        self.claim_btn.hide()
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self._tick)
+        self._t.start()
+        sfx.play("on")
+
+    # -------------------------------------------------------------- what may happen
+    @property
+    def blocking(self) -> bool:
+        """Leaving online mode waits while the doors open and while the chest has not been claimed (unless the
+        server could not be reached: then the player may leave and try again later)."""
+        if self.mode == "doors":
+            return self.state == "doors"
+        return self.state != "out" and not self.error
+
+    def keyPressEvent(self, e) -> None:                     # nothing skips the scene
+        if self.state == "claim" and e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space) \
+                and self.claim_btn.isVisible() and self.claim_btn.isEnabled():
+            self._claim()
+        e.accept()
+
+    def _go(self, state: str) -> None:
+        self.state, self.st_at = state, time.monotonic()
+
+    def _since(self) -> float:
+        return time.monotonic() - self.st_at
+
+    # -------------------------------------------------------------- places (for clicks and paint)
+    def floor_y(self) -> float:
+        return self.height() * 0.76
+
+    def chest_rect(self) -> QRectF:
+        w = min(self.width() * 0.26, self.height() * 0.34)
+        h = w * 0.78
+        return QRectF(self.width() / 2 - w / 2, self.floor_y() - h, w, h)
+
+    def pole_x(self) -> float:
+        return self.width() / 2 + min(self.width() * 0.24, self.height() * 0.4)
+
+    def lamp_at(self) -> QPointF:
+        return QPointF(self.width() / 2 + S(10), self.height() * 0.17)
+
+    def switch_rect(self) -> QRectF:
+        s = S(30)
+        return QRectF(self.pole_x() + S(8), self.floor_y() - self.height() * 0.2, s, s * 1.3)
+
+    def mouseMoveEvent(self, e) -> None:
+        pos = e.position()
+        hot = (self.state == "dark" and self.switch_rect().adjusted(-S(10), -S(10), S(10), S(10)).contains(pos)) or \
+              (self.state == "lit" and self._since() > 1.2 and self.chest_rect().adjusted(-S(20), -S(20), S(20), S(20)).contains(pos))
+        self.setCursor(Qt.CursorShape.PointingHandCursor if hot else Qt.CursorShape.ArrowCursor)
+
+    def mousePressEvent(self, e) -> None:
+        pos = e.position()
+        if e.button() != Qt.MouseButton.LeftButton:
+            return
+        if self.state == "dark" and self.switch_rect().adjusted(-S(10), -S(10), S(10), S(10)).contains(pos):
+            sfx.play("pick")
+            self._go("charge")
+        elif self.state == "lit" and self._since() > 1.2 and \
+                self.chest_rect().adjusted(-S(20), -S(20), S(20), S(20)).contains(pos):
+            sfx.play("on")
+            self._go("boom")
+            self._burst(self.chest_rect().center(), 120, prismatic=True, power=2.2)
+        e.accept()
+
+    # -------------------------------------------------------------- the server
+    def _claim(self) -> None:
+        if self.state != "claim" or not self.claim_btn.isEnabled():
+            return
+        self.claim_btn.setEnabled(False)
+        self.claim_btn.set_text(tr("Claiming…"))
+        self.error = ""
+
+        def back(ok: bool, data) -> None:
+            try:
+                if not self.isVisible() and self.state == "out":
+                    return
+            except RuntimeError:
+                return
+            if ok and isinstance(data, dict) and data.get("claimed"):
+                self.claimed = data
+                self.ctx.og_chest = {"due": False, "claimed": True}
+                self.claim_btn.hide()
+                self._go("done")
+                sfx.tune("coupon")
+                for k in range(3):
+                    self._burst(self._reel_rect(k).center(), 46, prismatic=True, power=1.2)
+                try:
+                    self.ctx.econ.refresh()
+                except Exception:  # noqa: BLE001
+                    pass
+            else:
+                self.error = str(data or tr("Something went wrong: try again"))
+                self.claim_btn.setEnabled(True)
+                self.claim_btn.set_text(tr("Try again"))
+        self.ctx.econ.call("rb_og_chest_claim", {"req": self.req}, back)
+
+    # -------------------------------------------------------------- particles
+    def _burst(self, at: QPointF, n: int, prismatic: bool = False, power: float = 1.0, colour: QColor = None) -> None:
+        for _ in range(n):
+            ang = self.rnd.uniform(0, math.tau)
+            sp = self.rnd.uniform(1.5, 7.5) * power * ui.scale
+            self.sparks.append([at.x(), at.y(), math.cos(ang) * sp, math.sin(ang) * sp - 1.5 * ui.scale,
+                                self.rnd.uniform(0.6, 1.4), self.rnd.random() if prismatic else -1,
+                                colour or QColor("#FFD27A")])
+
+    def _tick(self) -> None:
+        now = time.monotonic()
+        t = self._since()
+        # sparks move
+        keep = []
+        for s in self.sparks:
+            s[0] += s[2]
+            s[1] += s[3]
+            s[3] += 0.22 * ui.scale
+            s[4] -= 0.016
+            if s[4] > 0 and s[1] < self.height() + S(20):
+                keep.append(s)
+        self.sparks = keep[-700:]
+        if self.state == "doors":
+            if t > DOOR_OPEN_S[0] and "bolt" not in self._sfx_marks:
+                self._sfx_marks.add("bolt")
+                sfx.play("off")
+                shake(self.win, 3.0, 240)
+            if t > DOOR_OPEN_S[1] and "open" not in self._sfx_marks:
+                self._sfx_marks.add("open")
+                sfx.play("on")
+                for y in range(6):
+                    self._burst(QPointF(self.width() / 2, self.height() * (0.1 + y * 0.16)), 8)
+            if t >= DOOR_OPEN_S[2]:
+                if self.mode == "og":
+                    self._go("dark")
+                else:
+                    self._go("out")
+        elif self.state == "dark":
+            if self.rnd.random() < 0.09:                       # the broken lamp: flickers and drops sparks
+                self.flicker = self.rnd.choice((0.05, 0.12, 0.35, 0.6))
+                if self.rnd.random() < 0.6:
+                    self._burst(self.lamp_at() + QPointF(0, S(14)), self.rnd.randint(3, 9), power=0.6)
+        elif self.state == "charge":
+            if t > 1.9:
+                self._go("flash")
+                sfx.play("on")
+        elif self.state == "flash":
+            if t > 1.0:
+                self._go("lit")
+                self._burst(self.chest_rect().center(), 60, prismatic=True, power=1.1)
+        elif self.state == "lit":
+            if self.rnd.random() < 0.25:
+                c = self.chest_rect()
+                self.sparks.append([self.rnd.uniform(c.left(), c.right()), self.rnd.uniform(c.top(), c.bottom()),
+                                    self.rnd.uniform(-0.4, 0.4) * ui.scale, -self.rnd.uniform(0.4, 1.4) * ui.scale,
+                                    self.rnd.uniform(0.6, 1.1), self.rnd.random(), None])
+        elif self.state == "boom":
+            if t > 1.0:
+                self._go("wheels")
+        elif self.state == "wheels":
+            for k, end in enumerate(REEL_ENDS):
+                if t > end and f"reel{k}" not in self._sfx_marks:
+                    self._sfx_marks.add(f"reel{k}")
+                    sfx.play("on")
+                    self._burst(self._reel_rect(k).center(), 36, prismatic=True)
+            tick = int(t * (14 - t))                                       # clicks that slow down with the wheels
+            if t < REEL_ENDS[-1] and tick != getattr(self, "_last_click", -1):
+                self._last_click = tick
+                sfx.play("pick")
+            if t > REEL_ENDS[-1] + 0.9:
+                self._go("claim")
+                self.claim_btn.show()
+                self.claim_btn.raise_()
+                self.setFocus()
+        elif self.state == "done":
+            if t > 2.6:
+                self._go("out")
+        elif self.state == "out":
+            if t > 0.6:
+                self._t.stop()
+                self.hide()
+                try:
+                    if getattr(self.win, "stage", None) is self:
+                        self.win.stage = None
+                except RuntimeError:
+                    pass
+                self.deleteLater()
+                return
+        self.claim_btn.move(int(self.width() / 2 - self.claim_btn.width() / 2), int(self.height() * 0.84))
+        self.update()
+
+    # -------------------------------------------------------------- paint
+    def _reel_rect(self, k: int) -> QRectF:
+        w = min(self.width() * 0.22, self.height() * 0.36)
+        gap = S(22)
+        total = 3 * w + 2 * gap
+        x = self.width() / 2 - total / 2 + k * (w + gap)
+        return QRectF(x, self.height() * 0.2, w, self.height() * 0.5)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect())
+        now = time.monotonic()
+        t = self._since()
+        st = self.state
+        if st == "out":
+            fade = max(0.0, 1 - t / 0.6)
+            p.setOpacity(fade)
+            if self.mode == "og":
+                self._paint_final(p, r, now, 99.0)
+            else:
+                paint_doors(p, r, 1.0, ui.accent)
+            return
+        if self.mode == "og" and st != "doors":
+            self._paint_room(p, r, now, t)
+        if st == "doors":
+            if self.mode == "og":
+                self._paint_room(p, r, now, 0.0)
+            else:
+                p.fillRect(r, QColor(0, 0, 0, int(255 * max(0.0, 1 - max(0.0, t - DOOR_OPEN_S[1]) / 1.0))))
+            k = max(0.0, (t - DOOR_OPEN_S[1]) / (DOOR_OPEN_S[2] - DOOR_OPEN_S[1]))
+            seam = min(1.0, t / DOOR_OPEN_S[1])
+            paint_doors(p, r, k, ui.accent, seam, t if t < DOOR_OPEN_S[1] else 0.0)
+            if self.mode == "doors" and k > 0:                  # dust rolls out as they part
+                p.setPen(Qt.PenStyle.NoPen)
+                for dx, dy, s in self.dust:
+                    a = (1 - k) * 0.5 * s
+                    p.setBrush(QColor(200, 210, 220, int(255 * a)))
+                    p.drawEllipse(QPointF(r.center().x() + (dx - 0.5) * r.width() * k, r.top() + dy * r.height()),
+                                  S(1.6) * s, S(1.6) * s)
+        self._paint_sparks(p, now)
+
+    def _paint_sparks(self, p: QPainter, now: float) -> None:
+        p.setPen(Qt.PenStyle.NoPen)
+        for x, y, _vx, _vy, life, hue, col in self.sparks:
+            a = max(0.0, min(1.0, life))
+            if hue >= 0:
+                c = prism(hue + now * 0.3, 0.6, 1.0, a)
+            else:
+                c = QColor(col or "#FFD27A")
+                c.setAlphaF(a)
+            p.setBrush(c)
+            rr = S(2.2) * (0.5 + a)
+            p.drawEllipse(QPointF(x, y), rr, rr)
+
+    # the dark room, the lamp, the switch, the chest
+    def _paint_room(self, p: QPainter, r: QRectF, now: float, t: float) -> None:
+        st = self.state
+        if st in ("wheels", "claim", "done"):
+            return self._paint_final(p, r, now, t)
+        bg = QLinearGradient(r.topLeft(), r.bottomLeft())
+        bg.setColorAt(0, QColor("#020203"))
+        bg.setColorAt(1, QColor("#08090C"))
+        p.fillRect(r, bg)
+        fy = self.floor_y()
+        p.setPen(QPen(QColor(255, 255, 255, 14), 1))                      # the floor, in perspective
+        for i in range(1, 9):
+            y = fy + (r.bottom() - fy) * (i / 8) ** 1.6
+            p.drawLine(QPointF(r.left(), y), QPointF(r.right(), y))
+        for i in range(-8, 9):
+            p.drawLine(QPointF(r.center().x() + i * S(20), fy), QPointF(r.center().x() + i * S(120), r.bottom()))
+        lit = 0.0                                                         # how much the white light is on
+        if st == "flash":
+            lit = 1.0 if int(t * 18) % 2 == 0 else 0.15
+        elif st in ("lit", "boom"):
+            lit = 1.0
+        lamp = self.lamp_at()
+        px = self.pole_x()
+        # the light cone and the pool of light
+        if lit > 0 or st == "dark":
+            strength = lit if lit > 0 else self.flicker * 0.35
+            cone = QPainterPath(QPointF(lamp.x() - S(16), lamp.y() + S(12)))
+            cone.lineTo(QPointF(lamp.x() + S(16), lamp.y() + S(12)))
+            cone.lineTo(QPointF(lamp.x() + r.width() * 0.2, fy))
+            cone.lineTo(QPointF(lamp.x() - r.width() * 0.2, fy))
+            cone.closeSubpath()
+            g = QLinearGradient(lamp, QPointF(lamp.x(), fy))
+            g.setColorAt(0, alpha(TITANIUM, 0.42 * strength))
+            g.setColorAt(1, alpha(TITANIUM, 0.06 * strength))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(g)
+            p.drawPath(cone)
+            pool = QRadialGradient(QPointF(lamp.x(), fy), r.width() * 0.26)
+            pool.setColorAt(0, alpha(TITANIUM, 0.30 * strength))
+            pool.setColorAt(1, alpha(TITANIUM, 0.0))
+            p.setBrush(pool)
+            p.drawEllipse(QPointF(lamp.x(), fy), r.width() * 0.26, S(46))
+        if st == "flash":
+            p.fillRect(r, alpha(TITANIUM, 0.18 * lit))
+        # the post, its arm and the lamp head
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#1C2026"))
+        p.drawRect(QRectF(px - S(5), lamp.y() - S(18), S(10), fy - lamp.y() + S(18)))
+        p.drawRect(QRectF(lamp.x(), lamp.y() - S(18), px - lamp.x(), S(8)))
+        p.drawRect(QRectF(px - S(14), fy - S(8), S(28), S(8)))
+        head = QPainterPath(QPointF(lamp.x() - S(26), lamp.y() + S(10)))
+        head.lineTo(QPointF(lamp.x() - S(12), lamp.y() - S(12)))
+        head.lineTo(QPointF(lamp.x() + S(12), lamp.y() - S(12)))
+        head.lineTo(QPointF(lamp.x() + S(26), lamp.y() + S(10)))
+        head.closeSubpath()
+        p.setBrush(QColor("#2A3038"))
+        p.drawPath(head)
+        bulb = lit if lit > 0 else (self.flicker if st == "dark" else 0.1)
+        if st == "charge":
+            bulb = 0.05
+        p.setBrush(alpha(TITANIUM if lit > 0 else "#FFE7A8", 0.25 + 0.75 * bulb))
+        p.drawEllipse(QPointF(lamp.x(), lamp.y() + S(10)), S(11), S(6))
+        if bulb > 0.2:
+            halo = QRadialGradient(QPointF(lamp.x(), lamp.y() + S(10)), S(70))
+            halo.setColorAt(0, alpha(TITANIUM if lit > 0 else "#FFE7A8", 0.45 * bulb))
+            halo.setColorAt(1, alpha(TITANIUM, 0.0))
+            p.setBrush(halo)
+            p.drawEllipse(QPointF(lamp.x(), lamp.y() + S(10)), S(70), S(70))
+        # the green switch on the post
+        sw = self.switch_rect()
+        p.setBrush(QColor("#22262C"))
+        p.drawRoundedRect(sw, S(5), S(5))
+        on = st == "dark"
+        pulse = 0.55 + 0.45 * math.sin(now * 4)
+        led = QRectF(sw.center().x() - S(7), sw.center().y() - S(7), S(14), S(14))
+        p.setBrush(alpha(SWITCH_GREEN, (0.5 + 0.5 * pulse) if on else 0.35))
+        p.drawRoundedRect(led, S(3), S(3))
+        if on:
+            halo = QRadialGradient(led.center(), S(38))
+            halo.setColorAt(0, alpha(SWITCH_GREEN, 0.45 * pulse))
+            halo.setColorAt(1, alpha(SWITCH_GREEN, 0.0))
+            p.setBrush(halo)
+            p.drawEllipse(led.center(), S(38), S(38))
+        # electricity climbing the post to the lamp
+        if st == "charge":
+            k = min(1.0, t / 1.6)
+            path_pts = [QPointF(px, sw.top()), QPointF(px, lamp.y() - S(14)), QPointF(lamp.x(), lamp.y() - S(14))]
+            total = (sw.top() - (lamp.y() - S(14))) + (px - lamp.x())
+            reach = total * k
+            pts = [path_pts[0]]
+            up = sw.top() - (lamp.y() - S(14))
+            n = 26
+            for i in range(1, n + 1):
+                d = reach * i / n
+                if d <= up:
+                    base = QPointF(px, sw.top() - d)
+                    jit = QPointF(self.rnd.uniform(-S(7), S(7)), 0)
+                else:
+                    base = QPointF(px - (d - up), lamp.y() - S(14))
+                    jit = QPointF(0, self.rnd.uniform(-S(6), S(6)))
+                pts.append(base + jit)
+            for width, col in ((S(10), alpha("#7FE8FF", 0.18)), (S(4), alpha("#BFF6FF", 0.6)), (S(1.6), QColor("#FFFFFF"))):
+                p.setPen(QPen(col, width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+                for a, b in zip(pts, pts[1:]):
+                    p.drawLine(a, b)
+            if self.rnd.random() < 0.6:
+                self._burst(pts[-1], 3, power=0.5, colour=QColor("#BFF6FF"))
+        # the chest
+        c = self.chest_rect()
+        if st in ("lit", "boom"):
+            k = min(1.0, t / 1.2) if st == "lit" else 1.0
+            self._paint_chest(p, c, now, k, shake_=(st == "lit"))
+            # PRISMATIC CHEST rising out of the floor
+            if st == "lit":
+                rise = min(1.0, max(0.0, (t - 0.6) / 1.0))
+                p.save()
+                p.setClipRect(QRectF(r.left(), fy + S(6), r.width(), r.bottom() - fy))
+                ty = fy + S(64) - rise * S(46)
+                self._prism_text(p, QRectF(0, ty, r.width(), S(46)), tr("PRISMATIC CHEST"), 30, now)
+                p.restore()
+                if t > 1.6:
+                    p.setPen(alpha("#FFFFFF", 0.65 + 0.35 * math.sin(now * 3)))
+                    p.setFont(font(16, QFont.Weight.Bold))
+                    p.drawText(QRectF(0, r.height() * 0.06, r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter),
+                               tr("Click the chest to open it"))
+        else:
+            self._paint_chest(p, c, now, 0.0, shake_=False)
+        if st == "dark" and t > 1.6:
+            p.setPen(alpha("#FFFFFF", 0.6 + 0.3 * math.sin(now * 3)))
+            p.setFont(font(16, QFont.Weight.Bold))
+            p.drawText(QRectF(0, r.height() * 0.06, r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Something is waiting in the dark… press the green switch"))
+        if st == "boom":                                    # the prismatic explosion takes the whole screen
+            k = min(1.0, t / 1.0)
+            cc = c.center()
+            for i in range(7):
+                rad = (k * 1.6 - i * 0.08) * max(r.width(), r.height())
+                if rad <= 0:
+                    continue
+                p.setPen(QPen(prism(i / 7 + now * 0.5, 0.7, 1.0, max(0.0, 1 - k) * 0.9), S(18)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(cc, rad, rad)
+            p.fillRect(r, alpha("#FFFFFF", min(1.0, k * 1.4) * (1 - max(0.0, k - 0.7) / 0.3 * 0.6)))
+        # the room's edges stay in shadow
+        vig = QRadialGradient(r.center(), max(r.width(), r.height()) * 0.7)
+        vig.setColorAt(0.55, QColor(0, 0, 0, 0))
+        vig.setColorAt(1, QColor(0, 0, 0, 200))
+        p.fillRect(r, vig)
+
+    def _paint_chest(self, p: QPainter, c: QRectF, now: float, k: float, shake_: bool) -> None:
+        """k = 0: a shape in the shadow; k = 1: the glowing Prismatic Chest."""
+        p.save()
+        if shake_ and k > 0.5:
+            p.translate(math.sin(now * 38) * S(2.2) * k, math.cos(now * 29) * S(1.2) * k)
+        if k > 0:                                              # the aura
+            aura = QRadialGradient(c.center(), c.width() * 1.15)
+            aura.setColorAt(0, prism(now * 0.2, 0.5, 1.0, 0.55 * k))
+            aura.setColorAt(0.5, prism(now * 0.2 + 0.33, 0.6, 1.0, 0.22 * k))
+            aura.setColorAt(1, prism(0, 0, 1, 0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(aura)
+            p.drawEllipse(c.center(), c.width() * 1.15, c.width() * 1.15)
+        body = QRectF(c.left(), c.top() + c.height() * 0.38, c.width(), c.height() * 0.62)
+        lid = QRectF(c.left() - c.width() * 0.03, c.top() + c.height() * 0.06, c.width() * 1.06, c.height() * 0.38)
+        dark = QColor("#101216")
+        for part in (body, lid):
+            if k <= 0:
+                p.setBrush(dark)
+                p.setPen(QPen(QColor(255, 255, 255, 26), S(1.4)))
+            else:
+                g = QConicalGradient(part.center(), (now * 60) % 360)
+                for i in range(7):
+                    g.setColorAt(i / 6, mix(dark, prism(i / 6, 0.55, 1.0), k))
+                p.setBrush(g)
+                p.setPen(QPen(mix(QColor(255, 255, 255, 30), QColor(TITANIUM), k), S(2.2)))
+            p.drawRoundedRect(part, S(10), S(10))
+        band = QRectF(c.center().x() - c.width() * 0.06, lid.top(), c.width() * 0.12, body.bottom() - lid.top())
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(mix(QColor("#1A1D22"), QColor(TITANIUM), k))
+        p.drawRect(band)
+        lock = QRectF(c.center().x() - c.width() * 0.09, body.top() - c.height() * 0.06, c.width() * 0.18, c.height() * 0.22)
+        p.drawRoundedRect(lock, S(5), S(5))
+        p.setBrush(mix(QColor("#0A0B0D"), prism(now * 0.5, 0.8, 0.9), k))
+        p.drawEllipse(lock.center(), lock.width() * 0.18, lock.width() * 0.18)
+        if k > 0:                                              # sparkles on the chest
+            for i in range(10):
+                ph = (now * 0.9 + i * 0.37) % 1.0
+                sx = c.left() + ((i * 0.618) % 1.0) * c.width()
+                sy = c.top() + ((i * 0.381) % 1.0) * c.height()
+                s = S(5) * math.sin(ph * math.pi) * k
+                if s <= 0.3:
+                    continue
+                p.setPen(QPen(alpha("#FFFFFF", 0.9 * k), max(1.0, s * 0.3)))
+                p.drawLine(QPointF(sx - s, sy), QPointF(sx + s, sy))
+                p.drawLine(QPointF(sx, sy - s), QPointF(sx, sy + s))
+        p.restore()
+
+    def _prism_text(self, p: QPainter, r: QRectF, text: str, size: float, now: float) -> None:
+        f = font(size, QFont.Weight.Black, 2)
+        g = QLinearGradient(r.left() + r.width() * 0.3, 0, r.right() - r.width() * 0.3, 0)
+        for i in range(7):
+            g.setColorAt(i / 6, prism(i / 6 + now * 0.25, 0.55, 1.0))
+        p.setFont(f)
+        p.setPen(QColor(0, 0, 0, 160))
+        p.drawText(r.translated(0, S(2)), int(Qt.AlignmentFlag.AlignCenter), text)
+        p.setPen(QPen(g, 1))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
+
+    # the three wheels, the rewards and the claim
+    def _reel_offset(self, k: int, t: float) -> float:
+        """Spins at once at full speed, slows down and stops exactly on its reward."""
+        end = REEL_ENDS[k]
+        tile = self._reel_rect(k).height() / 3
+        stops = 46 + 9 * k                                     # tiles passed before the landing tile
+        u = min(1.0, t / end)
+        return stops * tile * (1 - (1 - u) ** 3)
+
+    def _reel_item(self, k: int, i: int) -> str:
+        """What tile i of wheel k shows; the landing tile is its reward."""
+        land = 46 + 9 * k
+        if i == land:
+            return OG_REWARDS[k][0]
+        return ("keys", "coins", "coupon", "gem")[(i * 7 + k * 3) % 4]
+
+    def _paint_tile(self, p: QPainter, kind: str, r: QRectF, now: float, big: bool = False) -> None:
+        c = r.center()
+        s = min(r.width(), r.height())
+        if kind == "keys":
+            paint_key(p, c, s * 0.55, QColor("#FFD27A"))
+        elif kind == "coins":
+            for i, (dx, dy) in enumerate(((-0.14, 0.08), (0.12, 0.1), (0.0, -0.08))):
+                paint_coin(p, QPointF(c.x() + s * dx, c.y() + s * dy), s * 0.2)
+        elif kind == "coupon":
+            w = s * 0.86
+            paint_coupon(p, QRectF(c.x() - w / 2, c.y() - w * 0.22, w, w * 0.44), "coupon:ogchest", now, label=big)
+        else:
+            gem = QPainterPath()
+            gem.moveTo(c.x(), c.y() - s * 0.26)
+            gem.lineTo(c.x() + s * 0.22, c.y())
+            gem.lineTo(c.x(), c.y() + s * 0.26)
+            gem.lineTo(c.x() - s * 0.22, c.y())
+            gem.closeSubpath()
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(prism(now * 0.3 + r.top() * 0.002, 0.5, 1.0, 0.85))
+            p.drawPath(gem)
+
+    def _paint_final(self, p: QPainter, r: QRectF, now: float, t: float) -> None:
+        st = self.state
+        bg = QRadialGradient(r.center(), max(r.width(), r.height()) * 0.8)
+        bg.setColorAt(0, QColor("#141022"))
+        bg.setColorAt(1, QColor("#040307"))
+        p.fillRect(r, bg)
+        for i in range(16):                                    # slow prismatic rays behind the wheels
+            ang = i * math.tau / 16 + now * 0.15
+            ray = QPainterPath(r.center())
+            ray.lineTo(r.center() + QPointF(math.cos(ang - 0.05), math.sin(ang - 0.05)) * r.width())
+            ray.lineTo(r.center() + QPointF(math.cos(ang + 0.05), math.sin(ang + 0.05)) * r.width())
+            ray.closeSubpath()
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(prism(i / 16 + now * 0.05, 0.6, 1.0, 0.07))
+            p.drawPath(ray)
+        self._prism_text(p, QRectF(0, r.height() * 0.05, r.width(), S(44)), tr("PRISMATIC CHEST"), 28, now)
+        spin_t = t if st == "wheels" else 99.0
+        if st == "wheels" and t < 0.35:                         # the white of the explosion fades into the wheels
+            p.fillRect(r, alpha("#FFFFFF", 1 - t / 0.35))
+        for k in range(3):
+            rr = self._reel_rect(k)
+            landed = spin_t >= REEL_ENDS[k]
+            frame = QPainterPath()
+            frame.addRoundedRect(rr, S(16), S(16))
+            p.setPen(QPen(prism(k / 3 + now * 0.2, 0.6, 1.0, 0.9 if landed else 0.45), S(3 if landed else 2)))
+            p.setBrush(QColor(10, 10, 16, 235))
+            p.drawPath(frame)
+            p.save()
+            p.setClipPath(frame)
+            tile = rr.height() / 3
+            off = self._reel_offset(k, spin_t) if not landed else (46 + 9 * k) * tile
+            first = int(off // tile) - 1
+            for i in range(first, first + 5):
+                if i < 0:
+                    continue
+                y = rr.top() + rr.height() / 2 - tile / 2 + i * tile - off
+                cell = QRectF(rr.left() + S(10), y + S(6), rr.width() - S(20), tile - S(12))
+                self._paint_tile(p, self._reel_item(k, i), cell, now, big=landed and i == 46 + 9 * k)
+            shade = QLinearGradient(rr.topLeft(), rr.bottomLeft())
+            shade.setColorAt(0, QColor(0, 0, 0, 220))
+            shade.setColorAt(0.3, QColor(0, 0, 0, 0))
+            shade.setColorAt(0.7, QColor(0, 0, 0, 0))
+            shade.setColorAt(1, QColor(0, 0, 0, 220))
+            p.fillRect(rr, shade)
+            p.restore()
+            mid = QRectF(rr.left() + S(4), rr.center().y() - tile / 2, rr.width() - S(8), tile)
+            p.setPen(QPen(alpha("#FFFFFF", 0.65 if landed else 0.25), S(2)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(mid, S(10), S(10))
+            if landed:                                           # what it landed on, and EXOTIC
+                big, word = OG_REWARDS[k][1], tr(OG_REWARDS[k][2])
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(20, QFont.Weight.Black))
+                p.drawText(QRectF(rr.left(), rr.bottom() + S(8), rr.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter),
+                           f"{big} {word}")
+                self._prism_text(p, QRectF(rr.left(), rr.bottom() + S(38), rr.width(), S(24)), tr("EXOTIC"), 14, now)
+        if st == "claim" and self.error:
+            p.setPen(QColor(DANGER))
+            p.setFont(font(13, QFont.Weight.DemiBold))
+            p.drawText(QRectF(0, r.height() * 0.78, r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter), self.error)
+        if st == "done":
+            k = min(1.0, t / 0.5)
+            p.setOpacity(k)
+            self._prism_text(p, QRectF(0, r.height() * 0.82, r.width(), S(40)), tr("Rewards claimed!"), 24, now)
+            p.setOpacity(1.0)
+
+
+# ==================================================================================================
 # SECTION: goldwheel
 # ==================================================================================================
 import math
@@ -39604,7 +40317,7 @@ class LevelIntro(QWidget):
 # ================================================================ XP coupons
 COUPONS = {"coupon:common": ("Common XP coupon", 40, "#9AA4AD"), "coupon:uncommon": ("Uncommon XP coupon", 100, "#3DDC84"),
            "coupon:rare": ("Rare XP coupon", 250, "#4FC3FF"), "coupon:epic": ("Epic XP coupon", 600, "#B36BFF"),
-           "coupon:og": ("OG XP coupon", 0, "#E8C26A")}
+           "coupon:og": ("OG XP coupon", 0, "#E8C26A"), "coupon:ogchest": ("Prismatic XP coupon", 1000, "#C9B8FF")}
 
 
 def coupon_xp_text(item: str) -> str:
@@ -41178,6 +41891,8 @@ def _make_class():
             self.settings_open = False
             self._was_down = False
             self.phase = "hidden"                  # hidden / dropping / shown / stowed / leaving
+            self.stage = None                      # 5.0: the garage doors / OG chest over the menu
+            self._stage_mode = None
             self._filters: dict = {}
             super().__init__(ctx)
             self.ball.hide()
@@ -41316,6 +42031,12 @@ def _make_class():
         def _layout_body(self) -> None:
             c = self._card_rect()
             self.body.setGeometry(int(round(c.left())), int(round(c.top())), int(c.width()), int(round(c.height())))
+            st = getattr(self, "stage", None)
+            if st is not None:
+                try:
+                    st.setGeometry(self.body.geometry())
+                except RuntimeError:
+                    self.stage = None
 
         def place_columns(self) -> None:
             keys = self.tab_keys()
@@ -41527,6 +42248,9 @@ def _make_class():
                 page.on_show()
             self._layout_body()
             self._pm = snapshot(self.body)
+            self._stage_mode = self.ctx.door_mode() if hasattr(self.ctx, "door_mode") else None
+            if self._stage_mode:                           # 5.0: the doors are shut while it drops, nothing shows
+                self._pm = door_pixmap(self.body.size(), ui.accent)
             self.body.hide()
             self.show()
             if win.IS_WIN:
@@ -41546,6 +42270,21 @@ def _make_class():
                 self._layout_body()
                 self.body.show()
                 self.body.resizeEvent(None)
+                mode = getattr(self, "_stage_mode", None)
+                self._stage_mode = None
+                if mode and getattr(self, "stage", None) is None:     # 5.0: the doors open now, never before
+                    try:
+                        self.stage = DoorStage(self, mode)
+                        self.stage.setGeometry(self.body.geometry())
+                        self.stage.show()
+                        self.stage.raise_()
+                        for w in (self.toast_w, self.confirm_w, self.busy_w):
+                            w.raise_()
+                        self.stage.setFocus()
+                        self.ctx.door_played(mode)
+                    except Exception:  # noqa: BLE001
+                        log.exception("online doors failed")
+                        self.stage = None
                 self._idle.stop()
                 QTimer.singleShot(0, self.sync_lock)
                 self._was_down = True
@@ -48046,22 +48785,34 @@ class App(QObject):
             self.window.sync_lock()
 
     def og_event_check(self) -> None:
-        """The OG event (16/11/2026): asked once per start, after the login is complete and the welcome screen is gone.
-        The server decides (OG tag, the date, only once) and gives the rewards; then the cutscene plays."""
-        if getattr(self, "_og_asked", False) or not self.online.logged_in() or self.cfg["offline_mode"]:
+        """5.0: is the OG Prismatic Chest waiting (OG tag, 20 or 21 November, never claimed)? Nothing is given here: the
+        chest plays behind the online garage doors and only the Claim button gives the rewards."""
+        if not self.online.logged_in() or self.cfg["offline_mode"]:
             return
-        if self.welcome is not None:
-            return QTimer.singleShot(1500, self.og_event_check)
-        self._og_asked = True
 
         def got(ok: bool, data) -> None:
-            if ok and isinstance(data, dict) and data.get("given"):
-                pass
-                self.econ.gold_keys = int(data.get("gold_keys") or 0) + self.econ.gold_keys
-                self._og_scene = OgCutscene(self, data)
-                self._og_scene.show()
-                self._og_scene.raise_()
-        self.online.ask("rb_og_event", {}, got)
+            if ok and isinstance(data, dict):
+                self.og_chest = data
+                if data.get("due") and not getattr(self, "_og_told", False):
+                    self._og_told = True
+                    self.toast(tr("Something is waiting for you in ONLINE mode…"), "ok")
+        self.online.ask("rb_og_chest", {}, got)
+
+    def door_mode(self):
+        """What opens when the online menu has dropped: the OG chest, the garage doors (the first time online after
+        Rubenium starts) or nothing."""
+        oc = getattr(self, "og_chest", None) or {}
+        if oc.get("due") and time.time() < float(oc.get("ends") or 0):
+            return "og"
+        if not getattr(self, "_doors_this_run", False):
+            return "doors"
+        return None
+
+    def door_played(self, mode: str) -> None:
+        self._doors_this_run = True
+        if not self.cfg["online_door_v5"]:
+            self.cfg["online_door_v5"] = True
+            self.cfg.save()
 
     def check_gold_wheels(self) -> None:
         """A Golden Wheel won earlier and never spun opens once the menu is ready."""
@@ -48078,6 +48829,7 @@ class App(QObject):
         pass
         self.tour_pending = not self.cfg["tutorial_done"]
         self.login_pending = True
+        QTimer.singleShot(800, self.og_event_check)        # 5.0: the OG Prismatic Chest
         if self.window.expanded:
             self.on_opened()
         if time.time() - int(self.cfg["backup_at"] or 0) > 86400:
@@ -48207,6 +48959,8 @@ class App(QObject):
             return
         if not self.online.logged_in():
             return self.toast(tr("Log in first"), "warn")
+        if (getattr(self, "og_chest", None) or {}).get("due") is not False:
+            self.og_event_check()                            # 5.0: asked again, the answer is in before the drop ends
         main = self.main_window
         self._online_busy = True
         self._online_back_open = main.expanded
@@ -48287,6 +49041,12 @@ class App(QObject):
         the black hole takes the banner and the ball floats back down to where it lives."""
         if not self.online_mode or getattr(self, "_online_busy", False):
             return
+        st = getattr(self._online_win, "stage", None)
+        try:
+            if st is not None and st.blocking:
+                return self.toast(tr("Open the chest first") if st.mode == "og" else tr("One moment…"), "warn")
+        except RuntimeError:
+            pass
         ow = self._online_win
         if not ask or not self.online.logged_in() or self.cfg["offline_mode"]:
             return self._leave_now(after, cancel=False)
