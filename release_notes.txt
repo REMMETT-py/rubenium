@@ -1,12 +1,12 @@
-Rubenium 4.7
+Rubenium 5.0 - THE FULL RELEASE
 
-- Cases: every badge has new odds. No badge you can get from a case is rarer than 1 in 250 for Basic, 1 in 1 000 for Painted, 1 in 10 000 for Shiny, 1 in 50 000 for Titanium and 1 in 100 000 for Gold, and lower rarities are a bit easier. Cheap cases hold the lower rarities, big cases go up to Epic Gold. What a case pays on average stays the same; Mythic drops are not changed. Every chance shown in the case and on each badge comes from the new table
-- Golden Wheel: it now spins inside the menu like the free wheel (no more flashing over online mode) and pays about 3.7 times more: 10 000, 20 000, 40 000, 100 000 or 250 000 coins, or an Elite, Vault, Top Tier or Royal case with a key
-- Pawn shop: the price slider starts on his own price (100% yes). Asking for more only asks: when he agrees, press Sell to sell. The item's market price is shown so you can compare
-- Game mode no longer closes Rubenium: the menu stays as it is and only stops reacting to the mouse (no hover, no pointer over it). Hold to open and the show / hide key are only in the game mode window now
-- Gifting a case: tap a friend and choose 1 to 3, no more typing a username
-- Deals: each deal is one per day at its price (it was unlimited)
-- Blackjack, Bombs and Hi-Lo: clearer boards with labelled numbers (multiplier, next gem, cash out, streak)
-- Fixed: the coinflip chance bar didn't draw; the Medium / Large online menu switch was invisible
-- Limits against spam on trades, the market, coinflips, duels, messages and gifts
-- Ruben's cheats are gone
+- Everyone starts again from zero: 500 coins and 3 keys (OG players 1 500 coins and a free coupon to level 5). Accounts, friends, hours played and your settings are kept
+- OG players, 20 and 21 November only: something is waiting behind the new garage doors of ONLINE mode
+- Mythic badges: Prismatic is now the rarest finish and has an extra aura. In the Top Tier Case: Titanium about 1 in 30 000, Gold 1 in 75 000, Prismatic 1 in 100 000. Every other case is harder. The R is 4 times rarer than any other Mythic
+- Keys: find one by luck in any mini game, and quests give a key half of the time
+- Royal Case fixed (coins far less often, smaller amounts), quick sell pays more (55% of worth), Wave Rush pays 5 coins every 10 m, your level boosts rewards more
+- Case opening speed: Instant. The daily case shows a key as a key. Rewards no longer wait when you switch tab during an opening
+- Blackjack: Hit or Stand only. The pawn shop opens straight away. New sell buttons, Clear badges in Edit Profile
+- Fixed: level 100 showing 101, the Line ring saying it needs 0 hours, leaving a golf or Wave Rush match (a red Leave button replaces the arrow), the case gift menu (the server is up to date again)
+
+Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

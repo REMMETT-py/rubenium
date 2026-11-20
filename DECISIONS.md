@@ -136,3 +136,24 @@ Choices made where the request left room, newest last.
   settings; the rest are the fixed numbers of the server functions.
 - Casino: closing or hiding the online menu, going into a game or leaving online mode keeps the casino game; only
   switching the left half away from Games goes back to the lobby.
+
+## 5.0
+
+- The reset (031, once, `reset_050`) wipes every bit of progress and everything in progress in one `truncate`. Kept: accounts and
+  passwords, friends, messages, profile pictures, hours played (their unlocks), the OG tag, settings and their cloud backups.
+  Copies of everything taken are in rb_bak50_*. On each PC the app also starts again at the first opening (tutorial, daily
+  reward, welcome), settings kept (`v5_fresh`).
+- OG Prismatic Chest: `rb_og_chest()` only says whether it is waiting; `rb_og_chest_claim(req)` gives 25 keys, 10 000 coins and a
+  1 000 XP coupon under the row lock, once ever (og_event_at), and a resend of the same req returns the same answer. So a crash
+  anywhere before Claim gives nothing and the scene plays again; after Claim nothing more can be had. The wheels are fixed (always
+  those three rewards), so there is nothing to reroll. The XP coupon is 1 000 XP (1 000 000 would have been 4 times level 100).
+- The scene plays behind garage doors when the online menu has finished dropping (the menu shows the shut doors while it drops).
+  Without the chest, the doors open once per start of Rubenium. Leaving online mode waits until the doors are open and the chest
+  is claimed, unless the claim failed (no trap).
+- Mythic: the chance per open is now `myth_ppb` (billionths) on each case, since 1 in 30 000 cannot be written out of 10 000.
+  Top Tier Case 17 in 300 000 (Titanium 10, Gold 4, Prismatic 3); every other case lower, the Royal Case half. "Cases above make it
+  even harder" was read as: no other case is better for Mythics than the Top Tier Case. Gold and Prismatic swapped worths.
+- Keys in mini games: 3% on any round that pays (`key_find_pct`), told with a notice the app turns into a big key on screen; quests
+  50% (`quest_key_pct`). Not shown inside the course itself yet.
+- Royal Case: 30% coins between 8 000 and 32 000 (its badge table scaled to 70%).
+- In a live golf or Wave Rush match the top-left arrow is hidden and a red Leave button takes its place.

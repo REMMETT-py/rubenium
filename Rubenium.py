@@ -3257,6 +3257,11 @@ class Econ(QObject):
                 done(ok, data)
             if ok and not hold:
                 self.changed.emit()
+            if ok and isinstance(data, dict) and data.get("key_found"):     # 5.0: a quest gave a key too
+                try:
+                    show_key_found(self.ctx, "quest")
+                except Exception:  # noqa: BLE001
+                    pass
         self.online.ask(fn, args, back, raw=True)
 
     # -- actions
@@ -6494,6 +6499,20 @@ FR = {
     'Gift a case by tapping a friend, up to 3 at once. Deals: one of each per day': 'Offre une caisse en touchant un ami, jusqu’à 3 d’un coup. Bons plans : un de chaque par jour',
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
+
+FR.update({                                   # 5.0
+    '+1 key · found in {game}': '+1 clé · trouvée dans {game}', '+1 key': '+1 clé',
+    'About {n} coins now': 'Environ {n} pièces tout de suite', 'Claim rewards': 'Récupérer les récompenses',
+    'Claiming…': 'Récupération…', 'Clear badges': 'Retirer les badges', 'Click the chest to open it': 'Clique sur le coffre pour l’ouvrir',
+    'EXOTIC': 'EXOTIQUE', 'Instant': 'Instantané', 'KEY FOUND!': 'CLÉ TROUVÉE !', 'KEY FOUND': 'CLÉ TROUVÉE',
+    'Open the chest first': 'Ouvre d’abord le coffre', 'PRISMATIC CHEST': 'COFFRE PRISMATIQUE',
+    'Rewards claimed!': 'Récompenses récupérées !', 'Something is waiting for you in ONLINE mode…': 'Quelque chose t’attend en mode EN LIGNE…',
+    'Something is waiting in the dark… press the green switch': 'Quelque chose attend dans le noir… appuie sur l’interrupteur vert',
+    'You found a key!': 'Tu as trouvé une clé !', 'You set the price': 'Tu fixes le prix', '{n} free mini games': '{n} mini-jeux gratuits',
+    'KEYS': 'CLÉS', 'COINS': 'PIÈCES', 'XP COUPON': 'COUPON XP', 'Prismatic XP coupon': 'Coupon XP prismatique',
+    'a quest': 'une quête', 'One moment…': 'Un instant…', 'Try again': 'Réessayer', 'Leave': 'Quitter',
+    'Something went wrong: try again': 'Un problème est survenu : réessaie',
+})
 
 
 # ==================================================================================================
@@ -10850,6 +10869,14 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.0", ['THE FULL RELEASE: everyone starts again from zero (500 coins, OG players 1 500 coins and a coupon to level 5). Accounts, friends, hours played and your settings are kept',
+             'OG players, 20 and 21 November only: something is waiting behind the new garage doors of ONLINE mode',
+             'Mythic badges: Prismatic is now the rarest and gets an extra aura. In the Top Tier Case: Titanium 1 in 30 000, Gold 1 in 75 000, Prismatic 1 in 100 000. The R is rarer than ever',
+             'Keys: find one by luck in any mini game, and quests give a key half of the time',
+             'Royal Case fixed (coins far less often), quick sell pays more, Wave Rush pays 5 coins every 10 m, your level boosts more rewards',
+             'Case opening speed: Instant. The daily case shows a key as a key. Rewards no longer wait when you switch tab during an opening',
+             'Blackjack: Hit or Stand. Pawn shop opens straight away. New sell buttons, Clear badges in Edit Profile',
+             'Fixed: level 100 showing 101, the Line ring saying it needs 0 hours, leaving a golf or Wave Rush match (a red Leave button replaces the arrow)']),
     ("4.7", ['Cases: new odds for every badge. No badge is rarer than 1 in 250 (Basic), 1 000 (Painted), 10 000 (Shiny), 50 000 (Titanium) or 100 000 (Gold); cheap cases hold the lower rarities, big cases everything. Mythic drops unchanged',
              'The Golden Wheel now spins inside the menu (no more flashing in online mode) and pays far more: 10 000 to 250 000 coins or a big case',
              'Pawn shop: the slider starts on his price (100%), asking for more no longer sells by itself (press Sell once he agrees), and the market price is shown',
@@ -12893,7 +12920,7 @@ VARIANT_NAME = {"grey": "Basic", "blue": "Blue", "green": "Green", "red": "Red",
 def variants_for(base: str) -> list:
     """Every colour a badge exists in, best first."""
     if base in EXOTIC_IDS:
-        return ["gold", "prime", "white", "black"]
+        return ["prime", "gold", "white", "black"]        # 5.0: Prismatic is the top Mythic
     return GOLD_IDS + TITANIUM_IDS[::-1] + SHINY_IDS + PAINTED_IDS + ["grey"]
 
 
@@ -12948,7 +12975,8 @@ class Wallet(QObject):
 
     def owns(self, ident: str) -> bool:
         value = ident.partition(":")[2]
-        if value.split(":")[0] in ("ball", "line", "theme", "font"):       # bought in the shop, not unlocked by time
+        if ":" in value and value.split(":")[0] in ("ball", "line", "theme", "font"):   # bought in the shop (5.0: the
+            # ring style called "line" is unlocked by time, it is not the shop's line: it said "0 hours" and stayed shut)
             return self.econ.owns(value) or not self.econ.ready
         return self.minutes() >= self.hours_for(ident) * 60
 
@@ -13676,6 +13704,24 @@ def paint_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: 
     lit = effects and dim >= 1.0
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    if lit and var == "prime":                                # 5.0: the top Mythic has an extra aura
+        from PyQt6.QtGui import QRadialGradient
+        pulse = 0.5 + 0.5 * math.sin(now * 2.4)
+        aura = QRadialGradient(c, u * (1.75 + 0.12 * pulse))
+        aura.setColorAt(0.45, QColor.fromHsvF((now * 0.15) % 1.0, 0.7, 1.0, 0.30 + 0.12 * pulse))
+        aura.setColorAt(0.75, QColor.fromHsvF((now * 0.15 + 0.33) % 1.0, 0.7, 1.0, 0.14))
+        aura.setColorAt(1.0, QColor.fromHsvF(0.0, 0.0, 1.0, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(aura)
+        p.drawEllipse(c, u * 1.85, u * 1.85)
+        for k in range(8):                                    # light rays turning slowly behind it
+            ang = now * 0.6 + k * math.tau / 8
+            ray = QPainterPath(c)
+            ray.lineTo(c + QPointF(math.cos(ang - 0.08), math.sin(ang - 0.08)) * u * 1.8)
+            ray.lineTo(c + QPointF(math.cos(ang + 0.08), math.sin(ang + 0.08)) * u * 1.8)
+            ray.closeSubpath()
+            p.setBrush(QColor.fromHsvF((k / 8 + now * 0.1) % 1.0, 0.6, 1.0, 0.16))
+            p.drawPath(ray)
     if lit:                                                   # a ring of light turning around it
         from PyQt6.QtGui import QConicalGradient
         g = QConicalGradient(c, (now * 70) % 360)
@@ -17782,8 +17828,8 @@ class SettingsPage(StylePart, Page):
                     home[1].set_compact(ctx.window.chrome.level)
             toggle(tr("Compact Music Mode"), "compact_music", after=compact_set)
             lay.addWidget(heading(tr("Games")))               # 4.6: game mode moved to the controller button
-            speeds = ["slow", "normal", "fast"]                  # 4.0: how fast cases open
-            sp = Segmented([tr("Slow") + " 0.75×", tr("Normal") + " 1×", tr("Fast") + " 2.5×"],
+            speeds = ["slow", "normal", "fast", "instant"]       # 4.0: how fast cases open (5.0: Instant)
+            sp = Segmented([tr("Slow"), tr("Normal"), tr("Fast"), tr("Instant")],
                            speeds.index(cfg["chest_speed"]) if cfg["chest_speed"] in speeds else 1)
             sp.changed.connect(lambda i: cfg.__setitem__("chest_speed", speeds[i]))
             lay.addWidget(Label(tr("Case opening speed"), 12))
@@ -18859,6 +18905,16 @@ class ShopPage(StylePart, Page):
                 return ctx.toast(tr(str(data)), "warn")
             self._pending = data                             # coins and item show when the strip stops
             ec.fetch_gold_keys()
+
+            def fallback() -> None:                          # 5.0: the page went away mid-spin: give it anyway
+                if isinstance(data, dict) and not data.get("_applied"):
+                    data["_applied"] = True
+                    ec.holding = False
+                    if data.get("item") and data.get("id"):
+                        ec.gained(data["item"], data["id"], "case")
+                    ec.absorb(data)
+                    ec.changed.emit()
+            QTimer.singleShot(int((CaseReel.INTRO_S + CaseReel.SPIN_S) * 1000) + 2500, fallback)
             if daily:
                 import time as _time
                 ctx.daily_ready_at = _time.monotonic() + 24 * 3600
@@ -18876,7 +18932,10 @@ class ShopPage(StylePart, Page):
     def _opened(self) -> None:
         data, self._pending = getattr(self, "_pending", None), None
         self.ctx.econ.holding = False
+        if isinstance(data, dict) and data.get("_applied"):
+            data = None
         if data:
+            data["_applied"] = True
             ec = self.ctx.econ
             if data.get("item") and data.get("id"):
                 ec.gained(data["item"], data["id"], "case")
@@ -19255,7 +19314,18 @@ def case_grid(case: dict):
     return [float(x or 0) / GRID_SCALE for x in g]
 
 
+MYTHIC_CLASS_SHARE = {3: 10 / 17, 4: 4 / 17, 5: 3 / 17}     # 5.0: Titanium, Gold, then Prismatic the rarest
+
+
+def mythic_share(base: str) -> float:
+    """5.0: the share of one Mythic design among all Mythic drops: the R is 4 times rarer than any other."""
+    return (1 if base == "rubenium" else 4) / (4 * (len(EXOTIC_IDS) - 1) + 1)
+
+
 def case_mythic(case: dict) -> float:
+    """The chance of a Mythic per open: 5.0 sends it in billionths (myth_ppb); older servers in odds[5]."""
+    if case.get("myth_ppb") is not None:
+        return float(case.get("myth_ppb") or 0) / 1e9
     odds = list(case.get("odds") or [])
     return odds[5] / (sum(odds) or 1) if len(odds) > 5 else 0.0
 
@@ -19287,8 +19357,8 @@ def item_chances(ec, item: str) -> list:
     cls = int(info.get("cls") or 0)
     base = item.split(":")[1] if item.count(":") >= 2 else ""
     if tier == 5:
-        share = (1 if base == "rubenium" else 2) / 11
-        per = {3: 0.943 / 2, 5: 0.053, 4: 0.004}.get(cls, 0) * share          # 4.5 (Mythic: unchanged)
+        share = mythic_share(base)
+        per = {3: MYTHIC_CLASS_SHARE[3] / 2, 4: MYTHIC_CLASS_SHARE[4], 5: MYTHIC_CLASS_SHARE[5]}.get(cls, 0) * share
     else:                                       # 3.2: inside its group, an item drops in proportion to its weight
         group = _group(ec, info.get("rarity"), cls)
         per = float(info.get("weight") or 1) / max(1e-9, sum(w for _k, w in group) or 1)
@@ -19625,7 +19695,7 @@ class VariantPicker(_Shiny):
         self.label_w = S(74)
         self.sq, self.gap = S(28), S(5)
         if base in EXOTIC_IDS:
-            self.rows = [("Gold", GOLD_IDS), ("Prismatic", ["prime"]), ("Titanium", TITANIUM_IDS)]
+            self.rows = [("Prismatic", ["prime"]), ("Gold", GOLD_IDS), ("Titanium", TITANIUM_IDS)]      # 5.0
         else:
             self.rows = [("Gold", GOLD_IDS), ("Titanium", TITANIUM_IDS), ("Shiny", SHINY_IDS), ("Painted", PAINTED_IDS),
                          ("Basic", ["grey"])]
@@ -19815,9 +19885,10 @@ def case_drops(ec, case: dict, exact: bool = False) -> list:
                 if exact:
                     for k, v in cat.items():
                         if v.get("kind") == "badge" and v.get("base") == base:
-                            out[k] = out.get(k, 0) + pt * (1 if base == "rubenium" else 2) / 11 / 4
+                            c_ = int(v.get("cls") or 3)
+                            out[k] = out.get(k, 0) + pt * mythic_share(base) * MYTHIC_CLASS_SHARE.get(c_, 0) / (2 if c_ == 3 else 1)
                     continue
-                out["badge:%s:white" % base] = pt * (1 if base == "rubenium" else 2) / 11
+                out["badge:%s:white" % base] = pt * mythic_share(base)
         return sorted(out.items(), key=lambda x: -x[1])
     variants = list(case.get("variants") or [1])
     vs = sum(variants) or 1
@@ -19831,9 +19902,9 @@ def case_drops(ec, case: dict, exact: bool = False) -> list:
                 if exact:                                # 4.6 (admin Rig): each version of the Mythic
                     for k, v in cat.items():
                         if v.get("kind") == "badge" and v.get("base") == base:
-                            out[k] = out.get(k, 0) + pt * (1 if base == "rubenium" else 2) / 11 / 4
+                            out[k] = out.get(k, 0) + pt * mythic_share(base) / 4
                     continue
-                out["badge:%s:white" % base] = pt * (1 if base == "rubenium" else 2) / 11
+                out["badge:%s:white" % base] = pt * mythic_share(base)
             continue
         for cls, share in enumerate(variants):
             if not share:
@@ -20375,7 +20446,7 @@ class CaseReel(QWidget):
     def busy(self) -> bool:
         return self.state in ("intro", "spin", "landed") or (self.state == "result" and time.monotonic() - self._stop_t < 0.9)
 
-    SPEEDS = {"slow": 0.75, "normal": 1.0, "fast": 2.5}      # 4.0: Settings > Games > Case opening speed
+    SPEEDS = {"slow": 0.75, "normal": 1.0, "fast": 2.5, "instant": 5.0}      # 5.0: Instant is 5x, never really 0
 
     def _speed(self) -> float:
         return self.SPEEDS.get(str(self.page.ctx.cfg["chest_speed"]), 1.0)
@@ -20385,7 +20456,12 @@ class CaseReel(QWidget):
         self.SPIN_S = CaseReel.SPIN_S / self._speed()
         rnd = random.Random()
         self.strip = self._make_strip(rnd)
-        self.strip[self.WIN] = ("item", result["item"]) if result.get("item") else ("coins", int(result.get("won", 0)))
+        if result.get("item"):
+            self.strip[self.WIN] = ("item", result["item"])
+        elif int(result.get("won_keys", 0) or 0):          # 5.0: a key shows as a key, never "0 coins"
+            self.strip[self.WIN] = ("key", int(result.get("won_keys") or 1))
+        else:
+            self.strip[self.WIN] = ("coins", int(result.get("won", 0)))
         self.result = result
         self.state = "intro"                              # 2.4: the case shakes and opens, then the strip runs
         self._intro_t = time.monotonic()
@@ -20453,11 +20529,14 @@ class CaseReel(QWidget):
             self.update()
 
     def hideEvent(self, _e) -> None:
+        """5.0: switching tab while it spins gives the drop at once (it used to wait for a timer that never came)."""
         self.skip()
+        if self.state == "landed" and self.result is not None:
+            self._reveal()
 
     def _card(self, p: QPainter, rect: QRectF, drop: tuple, now: float, flash: float = 0.0, reveal: bool = False) -> None:
         kind, what = drop
-        col = QColor(GOLD_TEXT) if kind == "coins" else rarity_colour(self.ctx, what)
+        col = QColor(GOLD_TEXT) if kind in ("coins", "key") else rarity_colour(self.ctx, what)
         g = QLinearGradient(rect.topLeft(), rect.bottomLeft())
         g.setColorAt(0.0, QColor("#11171A"))
         g.setColorAt(1.0, mix(QColor("#11171A"), col, 0.32 if kind == "item" else 0.12))
@@ -20472,6 +20551,13 @@ class CaseReel(QWidget):
             p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(QRectF(rect.left(), rect.center().y() + S(6), rect.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
                        coins_text(what))
+            p.setPen(Qt.PenStyle.NoPen)
+        elif kind == "key":
+            paint_key(p, QPointF(rect.center().x(), rect.center().y() - S(8)), S(24), QColor(GOLD_TEXT))
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(11, QFont.Weight.Bold))
+            p.drawText(QRectF(rect.left(), rect.center().y() + S(6), rect.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       "+" + str(what) + " " + tr("key"))
             p.setPen(Qt.PenStyle.NoPen)
         else:
             size = rect.width() * 0.5
@@ -20653,11 +20739,12 @@ class CaseReel(QWidget):
             cls = int(res.get("cls") or 0)
             if cls:
                 tag += "  ·  " + tr(CLASS_NAMES[cls]).upper()
+        elif int(res.get("won_keys", 0) or 0):             # 5.0: a key, drawn as a key
+            paint_key(p, c, size * 0.8, QColor(GOLD_TEXT))
+            title, tag = "+{n} ".format(n=int(res.get("won_keys") or 1)) + tr("key"), tr("Key").upper()
         else:
             paint_coin(p, c, size * 0.42)
             title, tag = "+" + coins_text(int(res.get("won", 0))), tr("Coins").upper()
-        if int(res.get("won_keys", 0) or 0):
-            title, tag = "+1 " + tr("key"), tr("Key").upper()
         p.setPen(QColor(TEXT))
         p.setFont(font(14, QFont.Weight.Bold))
         p.drawText(QRectF(r.left(), r.top() + S(112), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), title)
@@ -21729,11 +21816,7 @@ def build_inventory(page, lay) -> None:
     lay.addWidget(Label(tr("{n} items · worth about {v} coins", n=count, v=coins_text(total)), 11, TEXT_DIM))
     extras = [i["id"] for k in order for i in [c for c in groups[k] if not c.get("locked")][1:]
               if ec.quick_value(k) > 0 and len(groups[k]) > 1]
-    if extras:
-        b = Button(tr("Quick sell every extra copy ({n})", n=len(extras)), "ghost", 30, icon="gem")
-        b.setToolTip(tr("Keeps one of each item and sells the rest right away"))
-        b.clicked.connect(lambda: quick_sell(ctx, extras, tr("{n} extra copies", n=len(extras))))
-        lay.addWidget(b)
+    del extras                                           # 5.0: no more "quick sell the doubles"
     if not order:
         lay.addWidget(Label(tr("Nothing here yet. Open cases or visit the shop."), 12, TEXT_DIM, wrap_w=page.W))
         return
@@ -21805,12 +21888,12 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
         b.clicked.connect(wear)
     line.addWidget(b, 1)
     sellable = bool(free) and bool(ec.info(item).get("tradeable"))
-    sell = Button(tr("Sell on the market"), "ghost", 32, icon="chip")      # 4.6: says what it does
+    sell = SellButton("market", tr("Sell on the market"), tr("You set the price"))      # 5.0: its own look
     sell.setEnabled(sellable)
     sell.setToolTip(tr("Put it on the market: other users buy it or make you an offer"))
     sell.clicked.connect(lambda: market_sell(ctx, item))
     line.addWidget(sell, 1)
-    quick = Button(tr("Quick sell"), "ghost", 32, icon="gem")
+    quick = SellButton("pawn", tr("Quick sell"), tr("About {n} coins now", n=coins_text(ec.quick_value(item))))
     quick.setEnabled(sellable and ec.quick_value(item) > 0)
     quick.setToolTip(tr("Sell it right now for about {n} coins",
                         n=coins_text(ec.quick_value(item))))
@@ -21835,11 +21918,77 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
         clock.start()
         tick()
     lay.addLayout(line)
-    if sellable and len(free) > 1 and ec.quick_value(item) > 0:
-        rest = [c["id"] for c in free[1:]]
-        more = Button(tr("Quick sell the extra copies ({n}), keep one", n=len(rest)), "quiet", 26)
-        more.clicked.connect(lambda: quick_sell(ctx, rest, tr("{n} × {name}", n=len(rest), name=item_name(item))))
-        lay.addWidget(more)
+
+
+class SellButton(QAbstractButton):
+    """5.0: the two ways to sell, drawn as their own places: the market stall (striped awning, your price) and the
+    pawn shop (gold sign, cash now)."""
+
+    def __init__(self, kind: str, title: str, sub: str) -> None:
+        super().__init__()
+        self.kind, self.title, self.sub = kind, title, sub
+        self.setFixedHeight(S(52))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._hover = Tween(self, on_change=self.update)
+
+    def set_text(self, text: str) -> None:
+        self.title = text
+        self.update()
+
+    def enterEvent(self, _e) -> None:
+        self._hover.to(1.0, 140)
+
+    def leaveEvent(self, _e) -> None:
+        self._hover.to(0.0, 220)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        h = self._hover.level
+        on = self.isEnabled()
+        a, b = (("#1E6B5A", "#0E2E28") if self.kind == "market" else ("#6B4A12", "#2A1C06"))
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, mix(QColor(a), QColor("#FFFFFF"), 0.10 * h))
+        g.setColorAt(1, QColor(b))
+        p.setOpacity(1.0 if on else 0.4)
+        p.setPen(QPen(alpha("#FFFFFF", 0.14 + 0.2 * h), 1.2))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(10), S(10))
+        icon = QRectF(r.left() + S(8), r.top() + S(8), r.height() - S(16), r.height() - S(16))
+        if self.kind == "market":                         # a little stall: striped awning over a counter
+            aw = QRectF(icon.left(), icon.top(), icon.width(), icon.height() * 0.42)
+            n = 4
+            for i in range(n):
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#FFFFFF") if i % 2 == 0 else QColor("#3DDC84"))
+                p.drawRect(QRectF(aw.left() + i * aw.width() / n, aw.top(), aw.width() / n + 0.5, aw.height()))
+            p.setBrush(QColor("#C9F5DE"))
+            p.drawRect(QRectF(icon.left() + icon.width() * 0.08, aw.bottom(), icon.width() * 0.84, icon.height() * 0.5))
+            p.setBrush(QColor("#1E6B5A"))
+            p.drawRect(QRectF(icon.left() + icon.width() * 0.3, aw.bottom() + icon.height() * 0.16,
+                              icon.width() * 0.4, icon.height() * 0.34))
+        else:                                             # the pawn shop's three gold balls and a coin
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#E8C26A"))
+            rr = icon.width() * 0.17
+            for dx, dy in ((0.22, 0.3), (0.78, 0.3), (0.5, 0.72)):
+                p.drawEllipse(QPointF(icon.left() + icon.width() * dx, icon.top() + icon.height() * dy), rr, rr)
+            p.setPen(QPen(QColor("#E8C26A"), S(1.4)))
+            p.drawLine(QPointF(icon.left() + icon.width() * 0.22, icon.top() + icon.height() * 0.3),
+                       QPointF(icon.left() + icon.width() * 0.5, icon.top()))
+            p.drawLine(QPointF(icon.left() + icon.width() * 0.78, icon.top() + icon.height() * 0.3),
+                       QPointF(icon.left() + icon.width() * 0.5, icon.top()))
+        tx = icon.right() + S(8)
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(12, QFont.Weight.Bold))
+        p.drawText(QRectF(tx, r.top() + S(7), r.right() - tx - S(6), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
+                   p.fontMetrics().elidedText(self.title, Qt.TextElideMode.ElideRight, int(r.right() - tx - S(6))))
+        p.setPen(alpha("#FFFFFF", 0.65))
+        p.setFont(font(9.5, QFont.Weight.DemiBold))
+        p.drawText(QRectF(tx, r.top() + S(26), r.right() - tx - S(6), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                   p.fontMetrics().elidedText(self.sub, Qt.TextElideMode.ElideRight, int(r.right() - tx - S(6))))
 
 
 def quick_sell(ctx, ids: list, what: str) -> None:
@@ -21914,6 +22063,28 @@ def build_profile_style(page, lay) -> None:
     head.addWidget(pick)
     lay.addLayout(head)
     lay.addWidget(Showcase3(ctx, ec.badges_worn(), page.W, True))
+    if ec.badges_worn():                                 # 5.0: all of them back to the inventory at once
+        clear = Button(tr("Clear badges"), "ghost", 28, icon="close")
+
+        def clear_all() -> None:
+            sfx.play("off")
+            slots = ["badge1", "badge2", "badge3"]
+            for slot in slots:
+                ec.equip.pop(slot, None)                  # gone from the profile right away, the server follows
+
+            def next_one(ok=True, d=None) -> None:         # one after the other: the last answer is the truth
+                if ok and isinstance(d, dict):
+                    ec.equip = {k: v for k, v in d.items() if k not in slots}
+                if slots:
+                    ec.call("rb_equip", {"slot": slots.pop(0), "what": ""}, next_one)
+                else:
+                    ec.looks_changed.emit()
+            next_one()
+            ec.looks_changed.emit()
+            ec.changed.emit()
+            ctx.reload_page()
+        clear.clicked.connect(clear_all)
+        lay.addWidget(clear)
     lay.addWidget(Label(tr("The 3 badges you show are the showcase on your profile."), 10, TEXT_FAINT, wrap_w=page.W))
 
 
@@ -24124,6 +24295,9 @@ class BigCard(QWidget):
             p.drawText(r.adjusted(0, S(8), -S(12), 0), int(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight), self.extra)
 
 
+MINI_GAME_COUNT = 5                                   # 5.0: Beat Tap, Parking, Memory, Block Blast, Minesweeper
+
+
 def build_minigames(page, lay) -> None:
     """Earn coins: the free mini games, each with what it pays."""
     page._back_bar(lay, tr("Earn coins"))
@@ -24998,6 +25172,7 @@ def build_golf_solo(page, lay, sid, leave_screen) -> None:
                     leave_screen()
                 ctx.window.confirm(tr("Leave? This round pays nothing."), go, yes=tr("Leave"))
             quit_.clicked.connect(leave)
+            ctx._live_leave = leave
             lay.addWidget(quit_)
 
         def watch(g=None) -> None:                       # the round ends: Play again replaces Leave
@@ -25040,6 +25215,15 @@ class _ListPoll(QWidget):
         self._t.stop()
 
 
+def live_leave_button(ctx, fallback):
+    """5.0: during a live match the top-left arrow is hidden (it could not end the match, so people kept pressing it):
+    this red Leave button takes its place and does what the Leave button under the game does."""
+    b = Button(tr("Leave"), "danger", 30)
+    b.setFixedWidth(S(92))
+    b.clicked.connect(lambda: (getattr(ctx, "_live_leave", None) or fallback)())
+    return b
+
+
 def build_golf(page, lay) -> None:
     """Mini golf 1 v 1: a live match, or the lobby (open a match, or join one)."""
     pass
@@ -25063,6 +25247,10 @@ def build_golf(page, lay) -> None:
     top.addWidget(Label(tr("Mini Golf"), 16, bold=True), 1)
     pass
     top.addWidget(HelpButton(ctx, "golf"))
+    ctx._live_leave = None
+    if gid or sid:                                       # 5.0: in a match the arrow is gone, Leave is up here
+        back.hide()
+        top.addWidget(live_leave_button(ctx, leave_screen))
     duel = Label(tr("SOLO") if solo else tr("DUEL"), 10, "#3DDC84", bold=True)
     duel.fit()
     top.addWidget(duel)
@@ -25097,6 +25285,7 @@ def build_golf(page, lay) -> None:
             ctx.window.confirm(tr("Leave? The other player wins the match."),
                                lambda: ctx.online.ask("rb_golf_leave", {"gid": gid}, done), yes=tr("Leave"))
         quit_.clicked.connect(leave)
+        ctx._live_leave = leave
         lay.addWidget(quit_)
         lay.addWidget(Label(tr("Drag back anywhere, then let go to shoot. {n} holes, 30 seconds a turn. Fewest strokes wins.",
                                n=view.n_holes() if view.g else int(float(ctx.econ.cfg.get("golf_holes", 5) or 5))),
@@ -25505,8 +25694,8 @@ class Blackjack(Game):
         if self.phase == "player":
             go = not self.waiting
             can_double = go and len(self.player) == 2 and self.econ.coins >= self.stake
-            return [(tr("Hit"), "primary", self.hit, go), (tr("Stand"), "ghost", self.stand, go),
-                    (tr("Double"), "ghost", self.double, can_double)]
+            del can_double                                # 5.0: no Double, only Hit or Stand
+            return [(tr("Hit"), "primary", self.hit, go), (tr("Stand"), "ghost", self.stand, go)]
         return [(tr("Deal"), "primary", self.deal, self.phase == "idle" and not self.busy)]
 
     def _draw_card(self, p: QPainter, x: float, y: float, card: dict, now: float, deck: QPointF) -> None:
@@ -27590,7 +27779,7 @@ class GamesPage(Page):
         fl.addWidget(DailyRow(self), 1)
         fl.addWidget(ScratchRow(self), 1)
         lay.addWidget(free)
-        earn = BigCard(tr("Earn coins"), tr("3 free mini games"), "spark",
+        earn = BigCard(tr("Earn coins"), tr("{n} free mini games", n=MINI_GAME_COUNT), "spark",
                        ("#35E0A1", "#12806A"), lambda: self.open_sub("minigames"), 60)
         lay.addWidget(earn)                                  # 3.1: one long bar
         pass
@@ -33788,6 +33977,13 @@ class Notifier(QObject):
                 except Exception:  # noqa: BLE001
                     pass
             self.push("level", tr("LEVEL UP"), tr("You reached level {n}!", n=lvl), "levels")
+        elif kind == "key_found":                                      # 5.0: a key found in a mini game
+            self.ctx.econ.refresh()
+            try:
+                show_key_found(self.ctx, str(data.get("game") or ""))
+            except Exception:  # noqa: BLE001
+                log.exception("key found effect failed")
+            self.push("level", tr("KEY FOUND"), tr("You found a key!"), None)
         elif kind == "og_coupon":
             self.push("level", tr("OG REWARD"), tr("A free XP coupon for our OG players is in your Inventory"), "levels")
             if hasattr(self.ctx, "offer_og_coupon"):
@@ -34486,6 +34682,63 @@ def door_pixmap(size, accent: QColor) -> QPixmap:
     paint_doors(p, QRectF(0, 0, size.width(), size.height()), 0.0, accent)
     p.end()
     return pm
+
+
+GAME_NAMES = {"wave": "Wave Rush", "mini": "Beat Tap", "park": "Parking", "memory": "Memory", "blocks": "Block Blast",
+              "sweep": "Minesweeper", "sweeper": "Minesweeper", "golf_solo": "Mini Golf", "quest": "a quest"}
+
+
+def show_key_found(ctx, game: str = "") -> None:
+    """5.0: a key found in a mini game (or from a quest) comes down big in the middle of the menu, never silently."""
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtGui import QGuiApplication
+    try:
+        w = ctx.window
+        centre = w.mapToGlobal(QPoint(w.width() // 2, int(w.height() * 0.38)))
+        screen = QGuiApplication.screenAt(centre) or QGuiApplication.primaryScreen()
+        fx = FxOverlay(ctx, screen)
+    except Exception:  # noqa: BLE001
+        return ctx.toast(tr("You found a key!"), "ok")
+    at = fx.local(centre)
+    rnd = random.Random()
+    sparks = [(rnd.uniform(0, math.tau), rnd.uniform(0.4, 1.0) * S(170), rnd.uniform(1.6, 3.6)) for _ in range(40)]
+    where = tr(GAME_NAMES.get(game, "")) if game else ""
+    sfx.tune("unlock")
+
+    def paint(p: QPainter, k: float, now: float) -> None:
+        drop = 1 - (1 - min(1.0, k / 0.22)) ** 3                         # falls in, settles, fades away
+        fade = 1.0 if k < 0.78 else max(0.0, 1 - (k - 0.78) / 0.22)
+        c = QPointF(at.x(), at.y() - S(90) * (1 - drop))
+        p.setOpacity(fade)
+        halo = QRadialGradient(c, S(120))
+        halo.setColorAt(0, QColor(255, 210, 122, 150))
+        halo.setColorAt(1, QColor(255, 210, 122, 0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(halo)
+        p.drawEllipse(c, S(120), S(120))
+        for ang, dist, size in sparks:
+            d = dist * min(1.0, k / 0.5)
+            col = QColor("#FFE6A8")
+            col.setAlphaF(max(0.0, 1 - k) * fade)
+            p.setBrush(col)
+            p.drawEllipse(QPointF(c.x() + math.cos(ang) * d, c.y() + math.sin(ang) * d), S(size), S(size))
+        p.save()
+        p.translate(c)
+        p.rotate(math.sin(now * 5) * 8 * (1 - drop * 0.6))
+        paint_key(p, QPointF(0, 0), S(96) * (0.6 + 0.4 * drop), QColor("#FFD27A"))
+        p.restore()
+        p.setPen(QColor(0, 0, 0, 170))
+        p.setFont(font(26, QFont.Weight.Black, 2))
+        box = QRectF(c.x() - S(240), c.y() + S(62), S(480), S(36))
+        p.drawText(box.translated(0, S(2)), int(Qt.AlignmentFlag.AlignCenter), tr("KEY FOUND!"))
+        p.setPen(QColor("#FFD27A"))
+        p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), tr("KEY FOUND!"))
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(13, QFont.Weight.Bold))
+        p.drawText(box.translated(0, S(34)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("+1 key · found in {game}", game=where) if where else tr("+1 key"))
+        p.setOpacity(1.0)
+    fx.add(2.8, paint)
 
 
 class DoorStage(QWidget):
@@ -37885,7 +38138,7 @@ def _cfg(ctx, key: str, default: float) -> float:
 
 def _mg_cap(ctx) -> int:
     lvl = int(getattr(ctx.econ, "level", 0) or 0)
-    return int(_cfg(ctx, "game_window_cap", 300) * (1 + 0.004 * lvl))
+    return int(_cfg(ctx, "game_window_cap", 300) * (1 + 0.006 * lvl))
 
 
 # title, how to play, best way to play, payouts and chances. {x} values are filled from the live settings.
@@ -40117,8 +40370,11 @@ class XPBar(QWidget):
 
     def _target(self) -> float:
         x = self.ctx.econ.xp
+        level = int(x.get("level") or 0)
+        if level >= 100:                                  # 5.0: the top is 100 (it said 101 once full)
+            return 100.0
         need = max(1, int(x.get("need") or 1))
-        return int(x.get("level") or 0) + min(1.0, int(x.get("into") or 0) / need)
+        return level + min(0.999, int(x.get("into") or 0) / need)
 
     def _changed(self) -> None:
         self.flash = 1.0
@@ -43562,9 +43818,7 @@ def open_pawn(ctx, ids: list, item: str, what: str) -> None:
     except RuntimeError:
         pass
 
-    def go() -> None:
-        ctx._pawn = PawnShop(ctx, ids, item, what)
-    ctx.window.confirm(tr("Go to the pawn shop to sell {what}?", what=what), go, yes=tr("Yes"), no=tr("No"))
+    ctx._pawn = PawnShop(ctx, ids, item, what)            # 5.0: no question first, straight into the shop
 
 
 # ==================================================================================================
@@ -44340,7 +44594,7 @@ class WaveView(QWidget):
 
 
 # ================================================================ the screens
-def _head(page, lay, tag: str, on_back) -> None:
+def _head(page, lay, tag: str, on_back, live: bool = False) -> None:
     pass
     top = hbox(spacing=8)
     back = IconButton("back", 32, tip=tr("Back"))
@@ -44348,6 +44602,10 @@ def _head(page, lay, tag: str, on_back) -> None:
     top.addWidget(back)
     top.addWidget(Label(tr("Wave Rush"), 16, bold=True), 1)
     top.addWidget(HelpButton(page.ctx, "wave"))
+    page.ctx._live_leave = None
+    if live:                                             # 5.0: in a duel the arrow is gone, Leave is up here
+        back.hide()
+        top.addWidget(live_leave_button(page.ctx, on_back))
     pill = Label(tag, 10, "#3DDC84", bold=True)
     pill.fit()
     top.addWidget(pill)
@@ -44369,7 +44627,7 @@ def build_wave(page, lay) -> None:
         page.open_sub(None)
     _head(page, lay, tr("WATCHING") if getattr(ctx, "wave_watch", None) and not did else tr("SOLO") if solo else tr("DUEL"),
           (lambda: (setattr(ctx, "wave_watch", None), ctx.reload_page("games"))) if getattr(ctx, "wave_watch", None) and not did
-          else leave_screen)
+          else leave_screen, live=bool(did))
     if getattr(ctx, "wave_missing", False):
         return server_wait(ctx, lay, page.W)
     if did:
@@ -44865,6 +45123,7 @@ def _duel_run(page, lay, did: str, leave_screen) -> None:
             ctx.window.confirm(tr("Leave? The other player wins the duel."), go, yes=tr("Leave"))
         quit_.clicked.connect(leave)
         lay.addWidget(quit_)
+        ctx._live_leave = leave
 
 
 def _watch_run(page, lay, did: str, leave_screen) -> None:
