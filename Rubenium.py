@@ -28292,6 +28292,8 @@ class GamesPage(Page):
             if sub == "flip":
                 pass
                 return build_flip(self, lay)
+            if sub == "jackpot":                                     # 5.2
+                return build_jackpot(self, lay)
             if sub == "advent":
                 pass
                 return build_advent(self, lay)
@@ -28332,6 +28334,7 @@ class GamesPage(Page):
         quests.clicked.connect(lambda: self._show_quests(True))
         tl.addWidget(quests)
         lay.addWidget(top)
+        lay.addWidget(JackpotCard(self))                      # 5.2: Jackpot at the top of the games
         free = QWidget()                                      # 4.3: the three freebies, side by side
         fl = hbox(free, 6)
         pass
@@ -34601,6 +34604,13 @@ class Notifier(QObject):
                 except Exception:  # noqa: BLE001
                     pass
             self.push("level", tr("LEVEL UP"), tr("You reached level {n}!", n=lvl), "levels")
+        elif kind == "jackpot_end":                                    # 5.2
+            self.ctx.econ.refresh()
+            self.ctx.jackpot_in = False
+            text = (tr("You won the jackpot! Pick your items.") if data.get("won") else
+                    tr("{name} won the jackpot", name=str(data.get("winner") or "?")))
+            self.hold(3.0)
+            self.push("duel", tr("JACKPOT"), text, "jackpot")
         elif kind == "key_found":                                      # 5.0: a key found in a mini game
             self.ctx.econ.refresh()
             try:
@@ -34684,10 +34694,11 @@ def go(ctx, action) -> None:
         ctx.shop_tab = {"market": 4, "inventory": 5, "shop": 1, "cases": 3, "levels": 5, "notifications": 0}[key]
         if key == "levels":
             ctx.inv_tab = "levels"
-    elif key in ("golf", "flip", "advent", "minigames", "wave"):
+    elif key in ("golf", "flip", "advent", "minigames", "wave", "jackpot"):
         target = "games"
         ctx.casino = False
-        ctx.games_sub = {"golf": "duels", "flip": "flip", "advent": "advent", "minigames": "minigames", "wave": "wave"}[key]
+        ctx.games_sub = {"golf": "duels", "flip": "flip", "advent": "advent", "minigames": "minigames", "wave": "wave",
+                         "jackpot": "jackpot"}[key]
         if key == "wave":
             ctx.wave_mode = "duel"
     elif key == "spin":
@@ -35945,6 +35956,587 @@ class DoorStage(QWidget):
             p.setOpacity(k)
             self._prism_text(p, QRectF(0, r.height() * 0.82, r.width(), S(40)), tr("Rewards claimed!"), 24, now)
             p.setOpacity(1.0)
+
+
+# ==================================================================================================
+# SECTION: jackpot (5.2)
+# ==================================================================================================
+import math
+import random
+import time
+
+from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtWidgets import QWidget
+
+JP_COLOURS = ["#FF4D6D", "#3DDC84", "#4FC3FF", "#FFC94D", "#B36BFF", "#FF8A3D"]   # six that never look alike
+JP_EVERY, JP_OPEN, JP_SPIN = 900, 120, 10.0
+
+
+def jp_colour(i) -> QColor:
+    return QColor(JP_COLOURS[int(i or 0) % len(JP_COLOURS)])
+
+
+def jp_phase(now: float = None):
+    """From the clock alone (the server uses the same one): ('open', seconds left) while a jackpot takes players,
+    ('running', 0) while it spins, ('closed', seconds until the next one opens)."""
+    now = time.time() if now is None else now
+    slot = math.floor(now / JP_EVERY) * JP_EVERY
+    t = now - slot
+    if t < JP_OPEN:
+        return "open", JP_OPEN - t
+    if t < JP_OPEN + 25:
+        return "running", 0.0
+    return "closed", slot + JP_EVERY - now
+
+
+def jp_clock(s: float) -> str:
+    s = max(0, int(math.ceil(s)))
+    return f"{s // 60}:{s % 60:02d}"
+
+
+class JackpotCard(QWidget):
+    """5.2: the top of the Games lobby. Gold and glowing while a jackpot is open; greyed with the time to the next."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedHeight(S(74))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._t = QTimer(self)
+        self._t.setInterval(250)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if not self.rect().contains(e.position().toPoint()):
+            return
+        phase, left = jp_phase()
+        if phase == "closed" and not getattr(self.ctx, "jackpot_in", False):
+            sfx.play("off")
+            return self.ctx.toast(tr("The next jackpot opens in {t}", t=jp_clock(left)), "warn")
+        sfx.play("pick")
+        self.page.open_sub("jackpot")
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        now = time.monotonic()
+        phase, left = jp_phase()
+        live = phase != "closed" or getattr(self.ctx, "jackpot_in", False)
+        gold = QColor("#FFC94D")
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        if live:
+            g.setColorAt(0, QColor("#3A2A06"))
+            g.setColorAt(1, QColor("#120C02"))
+        else:
+            g.setColorAt(0, QColor("#1A1C1F"))
+            g.setColorAt(1, QColor("#0E0F11"))
+        pulse = 0.5 + 0.5 * math.sin(now * 3)
+        p.setPen(QPen(alpha(gold, 0.55 + 0.35 * pulse) if live else alpha("#FFFFFF", 0.12), S(1.6)))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+        c = QPointF(r.left() + S(38), r.center().y())
+        if live:                                           # a little wheel of colours turning
+            halo = QRadialGradient(c, S(44))
+            halo.setColorAt(0, alpha(gold, 0.35 + 0.2 * pulse))
+            halo.setColorAt(1, alpha(gold, 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(halo)
+            p.drawEllipse(c, S(44), S(44))
+        rad = S(22)
+        for i in range(6):
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(jp_colour(i) if live else alpha("#FFFFFF", 0.10 + 0.04 * (i % 2)))
+            path = QPainterPath(c)
+            path.arcTo(QRectF(c.x() - rad, c.y() - rad, rad * 2, rad * 2), (now * 40 if live else 0) + i * 60, 60)
+            path.closeSubpath()
+            p.drawPath(path)
+        p.setBrush(QColor("#0B0E10"))
+        p.drawEllipse(c, rad * 0.45, rad * 0.45)
+        p.setPen(gold if live else QColor(TEXT_FAINT))
+        p.setFont(font(18, QFont.Weight.Black, 3))
+        p.drawText(QRectF(r.left() + S(74), r.top() + S(10), r.width() - S(84), S(28)), int(Qt.AlignmentFlag.AlignVCenter),
+                   "JACKPOT")
+        p.setFont(font(11, QFont.Weight.Bold))
+        if phase == "open":
+            p.setPen(QColor("#FFFFFF"))
+            text = tr("OPEN · join in the next {t}", t=jp_clock(left))
+        elif phase == "running":
+            p.setPen(QColor("#FFFFFF"))
+            text = tr("The wheel is spinning: watch it")
+        else:
+            p.setPen(QColor(TEXT_DIM))
+            text = tr("Next jackpot in {t}", t=jp_clock(left))
+        p.drawText(QRectF(r.left() + S(74), r.top() + S(38), r.width() - S(84), S(22)), int(Qt.AlignmentFlag.AlignVCenter), text)
+
+
+class JackpotWheel(QWidget):
+    """The wheel: each player's slice is their share, in their colour. In the middle the countdown, then the spin
+    (10 s) that lands on the winner the server picked when the lobby locked."""
+
+    def __init__(self, page, size: int) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedSize(size, size)
+        self.d: dict = {}
+        self.offset = 0.0                                  # server clock minus ours
+        self._spin_from = None
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self.update)
+        self._confetti = []
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def set_data(self, d: dict) -> None:
+        if d.get("now"):
+            self.offset = float(d["now"]) - time.time()
+        if d.get("i_won") and not self.d.get("i_won"):
+            rnd = random.Random()
+            self._confetti = [(rnd.uniform(0, 1), rnd.uniform(-0.6, 0), rnd.uniform(0.15, 0.45), rnd.uniform(0, math.tau),
+                               rnd.choice(["#FFC94D", "#FFE08A", "#FFFFFF", "#E8B33A"])) for _ in range(140)]
+            self._conf_t = time.monotonic()
+        self.d = d
+        self.update()
+
+    def server_now(self) -> float:
+        return time.time() + self.offset
+
+    def _angle(self, now: float) -> float:
+        """Degrees the wheel has turned. Lands with the winning point (roll) under the pointer at the top."""
+        d = self.d
+        roll = d.get("roll")
+        if roll is None or not d.get("spin_at"):
+            return 0.0
+        t = now - float(d["spin_at"])
+        if t <= 0:
+            return 0.0
+        final = 360 * 7 + float(roll) * 360           # 7 full turns, then the winner's point
+        k = min(1.0, t / JP_SPIN)
+        return final * (1 - (1 - k) ** 4)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        d = self.d
+        now = self.server_now()
+        w = self.width()
+        c = QPointF(w / 2, w / 2)
+        rad = w * 0.44
+        entries = d.get("entries") or []
+        total = sum(int(e.get("value") or 0) for e in entries) or 0
+        ang = self._angle(now)
+        # the slices (clockwise from the top), turned by the spin
+        start = 90.0 + ang
+        if total <= 0:
+            p.setPen(QPen(alpha("#FFFFFF", 0.12), S(10)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(c, rad - S(6), rad - S(6))
+        winner = d.get("winner")
+        landed = d.get("result_at") and now >= float(d["result_at"])
+        for e in entries:
+            share = int(e.get("value") or 0) / total if total else 0
+            span = share * 360
+            path = QPainterPath(c)
+            path.arcTo(QRectF(c.x() - rad, c.y() - rad, rad * 2, rad * 2), start, -span)
+            path.closeSubpath()
+            col = jp_colour(e.get("colour"))
+            if landed and winner and e.get("id") != winner:
+                col = mix(col, QColor("#0B0E10"), 0.65)
+            p.setPen(QPen(QColor("#0B0E10"), S(2)))
+            p.setBrush(col)
+            p.drawPath(path)
+            start -= span
+        # the middle: countdown, bots joining, or the winner
+        inner = rad * 0.62
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#0B0E10"))
+        p.drawEllipse(c, inner, inner)
+        state = d.get("state")
+        box = QRectF(c.x() - inner, c.y() - inner, inner * 2, inner * 2)
+        if state == "open" and d.get("lock_at"):
+            left = float(d["lock_at"]) - now
+            k = max(0.0, min(1.0, left / JP_OPEN))
+            p.setPen(QPen(QColor("#FFC94D"), S(5), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawArc(QRectF(c.x() - inner + S(8), c.y() - inner + S(8), (inner - S(8)) * 2, (inner - S(8)) * 2),
+                      90 * 16, int(k * 360 * 16))
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(font(30, QFont.Weight.Black))
+            p.drawText(box.adjusted(0, -S(14), 0, -S(14)), int(Qt.AlignmentFlag.AlignCenter), str(max(0, int(math.ceil(left)))))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.Bold))
+            p.drawText(box.adjusted(0, S(30), 0, S(30)), int(Qt.AlignmentFlag.AlignCenter), coins_text(total))
+        elif state in ("locked", "picking", "done"):
+            if d.get("spin_at") and now < float(d["spin_at"]):
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(13, QFont.Weight.Black))
+                p.drawText(box.adjusted(S(6), -S(10), -S(6), -S(10)), int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap),
+                           tr("Locked! Filling the seats…"))
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10, QFont.Weight.Bold))
+                p.drawText(box.adjusted(0, S(26), 0, S(26)), int(Qt.AlignmentFlag.AlignCenter), coins_text(total))
+            elif not landed:
+                p.setPen(QColor("#FFC94D"))
+                p.setFont(font(15, QFont.Weight.Black, 2))
+                p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), tr("SPINNING"))
+            else:
+                we = next((e for e in entries if e.get("id") == winner), None)
+                if we is not None:
+                    col = jp_colour(we.get("colour"))
+                    p.setPen(col)
+                    p.setFont(font(10, QFont.Weight.Black, 2))
+                    p.drawText(box.adjusted(0, -S(26), 0, -S(26)), int(Qt.AlignmentFlag.AlignCenter), tr("WINNER"))
+                    p.setPen(QColor("#FFFFFF"))
+                    p.setFont(font(17, QFont.Weight.Black))
+                    p.drawText(box.adjusted(S(4), 0, -S(4), 0), int(Qt.AlignmentFlag.AlignCenter), str(we.get("name")))
+                    p.setPen(QColor("#FFC94D"))
+                    p.setFont(font(11, QFont.Weight.Bold))
+                    p.drawText(box.adjusted(0, S(28), 0, S(28)), int(Qt.AlignmentFlag.AlignCenter), coins_text(total))
+        # the pointer at the top
+        tip = QPainterPath(QPointF(c.x(), c.y() - rad + S(14)))
+        tip.lineTo(QPointF(c.x() - S(11), c.y() - rad - S(10)))
+        tip.lineTo(QPointF(c.x() + S(11), c.y() - rad - S(10)))
+        tip.closeSubpath()
+        p.setPen(QPen(QColor("#0B0E10"), S(2)))
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawPath(tip)
+        # golden confetti for the winner
+        if self._confetti:
+            age = time.monotonic() - self._conf_t
+            if age > 5:
+                self._confetti = []
+            for x, y0, sp, ph, col in self._confetti:
+                y = (y0 + age * sp) * w
+                if y > w:
+                    continue
+                q = alpha(col, max(0.0, 1 - age / 5))
+                p.save()
+                p.translate(x * w + math.sin(age * 3 + ph) * S(8), y)
+                p.rotate(age * 200 + ph * 50)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(q)
+                p.drawRect(QRectF(-S(3), -S(1.5), S(6), S(3)))
+                p.restore()
+
+
+class JackpotRow(QWidget):
+    """One player in the jackpot: colour, name (BOT for bots), their items, worth and chance."""
+
+    def __init__(self, ctx, e: dict, total: int, w: int, winner=None, landed: bool = False) -> None:
+        super().__init__()
+        self.ctx, self.e, self.total, self.winner, self.landed = ctx, e, total, winner, landed
+        self.setFixedSize(w, S(50))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        e = self.e
+        r = QRectF(self.rect()).adjusted(0.5, 2, -0.5, -2)
+        col = jp_colour(e.get("colour"))
+        won = self.landed and e.get("id") == self.winner
+        p.setPen(QPen(col if (e.get("me") or won) else alpha(col, 0.35), S(2) if won else 1.2))
+        p.setBrush(alpha(col, 0.16 if won else 0.07))
+        p.drawRoundedRect(r, S(10), S(10))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(col)
+        p.drawRoundedRect(QRectF(r.left() + S(6), r.top() + S(6), S(6), r.height() - S(12)), S(3), S(3))
+        name = str(e.get("name") or "?")
+        if e.get("bot"):
+            paint_bot_logo(p, QPointF(r.left() + S(30), r.center().y()), S(12))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12, QFont.Weight.Bold))
+        nx = r.left() + S(48 if e.get("bot") else 20)
+        p.drawText(QRectF(nx, r.top() + S(4), S(150), S(20)), int(Qt.AlignmentFlag.AlignVCenter),
+                   name + ("  ·  " + tr("BOT") if e.get("bot") else "") + ("  (" + tr("you") + ")" if e.get("me") else ""))
+        x = nx
+        for it in (e.get("items") or [])[:3]:
+            show_item(p, it, QRectF(x, r.bottom() - S(22), S(18), S(18)), 0, effects=False)
+            x += S(21)
+        pct_ = int(e.get("value") or 0) / self.total if self.total else 0
+        p.setPen(col)
+        p.setFont(font(14, QFont.Weight.Black))
+        p.drawText(r.adjusted(0, 0, -S(10), -S(16)), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                   pct(pct_))
+        p.setPen(QColor(GOLD_TEXT))
+        p.setFont(font(10, QFont.Weight.Bold))
+        p.drawText(r.adjusted(0, S(18), -S(10), 0), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                   coins_text(int(e.get("value") or 0)))
+
+
+class JackpotPick(QWidget):
+    """The winner's prize: everybody else's items; click to choose exactly how many you may take."""
+    changed = pyqtSignal()
+
+    def __init__(self, ctx, pool: list, allowed: int, w: int) -> None:
+        super().__init__()
+        self.ctx, self.pool, self.allowed = ctx, pool, int(allowed)
+        self.picked: list = []
+        self.per = 5
+        self.th = S(74)
+        n = max(1, (len(pool) + self.per - 1) // self.per)
+        self.setFixedSize(w, n * self.th + (n - 1) * S(5))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def _tile(self, i: int) -> QRectF:
+        gap = S(5)
+        w = (self.width() - gap * (self.per - 1)) / self.per
+        r, c = divmod(i, self.per)
+        return QRectF(c * (w + gap), r * (self.th + gap), w, self.th)
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        i = next((k for k in range(len(self.pool)) if self._tile(k).contains(e.position())), -1)
+        if i < 0:
+            return
+        key = self.pool[i]["key"]
+        if key in self.picked:
+            self.picked.remove(key)
+            sfx.play("off")
+        elif len(self.picked) >= self.allowed:
+            return self.ctx.toast(tr("You can take {n}: tap one you picked to swap it", n=self.allowed), "warn")
+        else:
+            self.picked.append(key)
+            sfx.play("pick")
+        self.changed.emit()
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        for i, x in enumerate(self.pool):
+            r = self._tile(i).adjusted(0.5, 0.5, -0.5, -0.5)
+            on = x["key"] in self.picked
+            col = jp_colour(x.get("colour"))
+            p.setPen(QPen(QColor("#FFC94D") if on else alpha(col, 0.4), S(2.2) if on else 1))
+            p.setBrush(alpha("#FFC94D", 0.18) if on else alpha(col, 0.07))
+            p.drawRoundedRect(r, S(9), S(9))
+            dd = min(r.width(), r.height()) * 0.5
+            show_item(p, x["item"], QRectF(r.center().x() - dd / 2, r.top() + S(6), dd, dd), now, effects=on)
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(9, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left(), r.bottom() - S(19), r.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter),
+                       coins_text(int(x.get("worth") or 0)))
+            if on:
+                b = QRectF(r.right() - S(18), r.top() + S(3), S(15), S(15))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#FFC94D"))
+                p.drawEllipse(b)
+                p.setPen(QColor("#1A1200"))
+                p.setFont(font(9, QFont.Weight.Black))
+                p.drawText(b, int(Qt.AlignmentFlag.AlignCenter), "✓")
+
+
+def _jp_shape(d: dict) -> tuple:
+    """What, when changed, needs the page rebuilt (the wheel itself redraws by itself)."""
+    if not isinstance(d, dict):
+        return ()
+    return (d.get("id"), d.get("state"), len(d.get("entries") or []), d.get("mine"), d.get("i_won"),
+            bool(d.get("pool")), d.get("winner") is not None, bool(d.get("feature", True)))
+
+
+def load_jackpot(ctx, then=None) -> None:
+    if getattr(ctx, "_jp_asking", False):
+        return
+    ctx._jp_asking = True
+
+    def got(ok: bool, data) -> None:
+        ctx._jp_asking = False
+        if not ok or not isinstance(data, dict):
+            if "jackpot" in str(data).lower() or server_missing(data):
+                ctx.jackpot_missing = True
+            return
+        old = getattr(ctx, "jackpot_data", None)
+        ctx.jackpot_data = data
+        ctx.jackpot_in = bool(data.get("mine")) and data.get("state") in ("open", "locked", "picking")
+        if then:
+            then(_jp_shape(old) != _jp_shape(data))
+    ctx.online.ask("rb_jackpot_state", {}, got)
+
+
+def glow_jackpot(ctx) -> None:
+    """5.2: a gold glow sweeps the top of the screen when a jackpot opens."""
+    from PyQt6.QtGui import QGuiApplication
+    screen = QGuiApplication.primaryScreen()
+    if screen is None:
+        return
+    fx = FxOverlay(ctx, screen)
+    w = screen.geometry().width()
+
+    def paint(p: QPainter, k: float, now: float) -> None:
+        a = math.sin(k * math.pi)
+        g = QLinearGradient(QPointF(0, 0), QPointF(0, S(120)))
+        g.setColorAt(0, QColor(255, 201, 77, int(170 * a)))
+        g.setColorAt(1, QColor(255, 201, 77, 0))
+        p.fillRect(QRectF(0, 0, w, S(120)), g)
+        x = w * k
+        band = QLinearGradient(QPointF(x - S(220), 0), QPointF(x + S(220), 0))
+        band.setColorAt(0, QColor(255, 255, 255, 0))
+        band.setColorAt(0.5, QColor(255, 240, 200, int(160 * a)))
+        band.setColorAt(1, QColor(255, 255, 255, 0))
+        p.fillRect(QRectF(x - S(220), 0, S(440), S(8)), band)
+    fx.add(2.4, paint)
+
+
+def build_jackpot(page, lay) -> None:
+    ctx = page.ctx
+    top = hbox(spacing=8)
+    back = IconButton("back", 32, tip=tr("Back"))
+    back.clicked.connect(lambda: page.open_sub(None))
+    top.addWidget(back)
+    title = Label("JACKPOT", 16, "#FFC94D", bold=True)
+    top.addWidget(title, 1)
+    top.addWidget(HelpButton(ctx, "jackpot"))
+    lay.addLayout(top)
+    if getattr(ctx, "jackpot_missing", False):
+        return server_wait(ctx, lay, page.W)
+    d = getattr(ctx, "jackpot_data", None)
+
+    def refresh(changed: bool) -> None:
+        try:
+            if ctx.window.showing("games") and getattr(ctx, "games_sub", "") == "jackpot":
+                if changed:
+                    ctx.reload_page("games")
+                elif getattr(page, "_jp_wheel", None) is not None:
+                    page._jp_wheel.set_data(ctx.jackpot_data)
+        except RuntimeError:
+            pass
+    lay.addWidget(_Poll(1000, lambda: load_jackpot(ctx, refresh)))
+    if d is None:
+        return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+    if not d.get("feature", True):
+        return lay.addWidget(LockStrip(tr("Jackpot is paused for a moment. Nothing you own is lost."), page.W))
+    lay.addWidget(CoinBar(ctx))
+    state = d.get("state")
+    if state == "closed":                                # between two jackpots: the next one, and the last result
+        nxt = float(d.get("next_at") or 0) - float(d.get("now") or time.time())
+        lay.addWidget(Label(tr("The next jackpot opens in {t}. Every 15 minutes, 2 minutes to join.", t=jp_clock(nxt)),
+                            12, TEXT, wrap_w=page.W))
+        last = d.get("last") or {}
+        if last.get("entries"):
+            lay.addWidget(heading(tr("Last jackpot")))
+            d = last
+            state = d.get("state")
+        else:
+            return
+    wheel = JackpotWheel(page, min(page.W, S(330)))
+    wheel.set_data(d)
+    page._jp_wheel = wheel
+    lay.addWidget(wheel, 0, Qt.AlignmentFlag.AlignHCenter)
+    entries = d.get("entries") or []
+    total = sum(int(e.get("value") or 0) for e in entries)
+    landed = d.get("result_at") and wheel.server_now() >= float(d["result_at"])
+    # the winner picks their prize
+    if d.get("pool") and d.get("i_won"):
+        allowed = int(d.get("picks_allowed") or 0)
+        lay.addWidget(Label(tr("YOU WON THE JACKPOT!"), 20, "#FFC94D", bold=True))
+        lay.addWidget(Label(tr("Your own items come back for free. Now pick {n} of the {m} items the others put in.",
+                               n=allowed, m=len(d["pool"])), 11.5, TEXT, wrap_w=page.W))
+        pick = JackpotPick(ctx, d["pool"], allowed, page.W)
+        count = Label("", 13, "#FFC94D", bold=True)
+        claim = Button(tr("Claim"), "primary", 42)
+
+        def update_count() -> None:
+            count.set_text(tr("{a} / {b} picked", a=len(pick.picked), b=allowed))
+            claim.setEnabled(len(pick.picked) == allowed)
+        pick.changed.connect(update_count)
+        update_count()
+
+        def do_claim() -> None:
+            claim.setEnabled(False)
+
+            def done(ok: bool, data) -> None:
+                if not ok:
+                    claim.setEnabled(True)
+                    return ctx.toast(tr(str(data)), "warn")
+                sfx.tune("levelup")
+                ctx.toast(tr("Jackpot claimed! The items are in your inventory."))
+                ctx.econ.refresh()
+                ctx.jackpot_data = None
+                ctx.reload_page("games")
+            ctx.econ.call("rb_jackpot_pick", {"jid": d["id"], "keys": list(pick.picked)}, done)
+        claim.clicked.connect(do_claim)
+        row = hbox(spacing=8)
+        row.addWidget(count, 1)
+        row.addWidget(claim, 1)
+        lay.addLayout(row)                               # the button above the items: no scrolling to claim
+        lay.addWidget(pick)
+        left = float(d.get("pick_until") or 0) - wheel.server_now()
+        lay.addWidget(Label(tr("If you don't pick within {t}, the best ones are picked for you.", t=jp_clock(left)),
+                            10, TEXT_FAINT, wrap_w=page.W))
+    # joining (while it is open and you are not in yet)
+    if state == "open" and not d.get("mine") and wheel.server_now() < float(d.get("lock_at") or 0):
+        n = len(entries)
+        if n >= 6:
+            lay.addWidget(Label(tr("This jackpot is full (6 players). Watch it spin!"), 11.5, TEXT_DIM, wrap_w=page.W))
+        else:
+            minj = int(d.get("min_join") or 100)
+            picker = ItemPicker(page, 3)
+            chance = Label("", 12, TEXT, bold=True)
+            join = Button(tr("Join the jackpot"), "primary", 40)
+
+            def update_chance() -> None:
+                mine = picker.total()
+                cur = int((ctx.jackpot_data or d).get("total") or total)
+                if not picker.picked:
+                    chance.set_text(tr("Pick 1 to 3 items (at least {n} in all)", n=coins_text(minj)))
+                    join.setEnabled(False)
+                    return
+                share = mine / max(1, cur + mine)
+                ok = mine >= minj
+                chance.set_text(tr("Your chance: {p}", p=pct(share)) if ok else
+                                tr("Too small: at least {n} to join", n=coins_text(minj)))
+                join.setEnabled(ok)
+            picker.changed.connect(update_chance)
+            update_chance()
+
+            def do_join() -> None:
+                join.setEnabled(False)
+
+                def done(ok: bool, data) -> None:
+                    if not ok:
+                        update_chance()
+                        return ctx.toast(tr(str(data)), "warn")
+                    sfx.play("on")
+                    ctx.econ.refresh()
+                    ctx.jackpot_data = data
+                    ctx.jackpot_in = True
+                    ctx.reload_page("games")
+                ctx.econ.call("rb_jackpot_join", {"items": picker.ids()}, done, once=True)
+            join.clicked.connect(do_join)
+            row = hbox(spacing=8)
+            row.addWidget(chance, 1)
+            row.addWidget(join, 1)
+            lay.addLayout(row)
+            lay.addWidget(sort_bar(ctx, picker.resort))
+            lay.addWidget(picker)
+    elif state == "open" and d.get("mine"):
+        lay.addWidget(Label(tr("You're in! Watch the others join. Good luck."), 11.5, "#3DDC84", bold=True, wrap_w=page.W))
+    elif state == "open":
+        lay.addWidget(Label(tr("Watching. The jackpot locks when the timer runs out."), 11, TEXT_DIM, wrap_w=page.W))
+    # everybody in it
+    lay.addWidget(heading(tr("Players ({n}/6)", n=len(entries))))
+    for e in entries:
+        lay.addWidget(JackpotRow(ctx, e, total, page.W, d.get("winner"), bool(landed)))
+    if not entries:
+        lay.addWidget(Label(tr("Nobody yet: be the first (the first player has a 100% chance until others join)."),
+                            11, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Your chance is your share of everything put in. The winner gets their own items back and "
+                           "picks half of everyone else's; the rest leaves the game. After 2 minutes the lobby locks "
+                           "and bots fill the empty seats."), 10, TEXT_FAINT, wrap_w=page.W))
 
 
 # ==================================================================================================
@@ -38802,13 +39394,21 @@ def _mg_cap(ctx) -> int:
 
 # title, how to play, best way to play, payouts and chances. {x} values are filled from the live settings.
 HELP = {
+    "jackpot": ("Jackpot", [
+        "A jackpot opens every 15 minutes. For 2 minutes you can put in 1 to 3 items (6 players at most).",
+        "Your chance is your share of everything put in. Then the lobby locks, bots fill the empty seats and the wheel spins.",
+        "The winner gets their own items back and picks half of everyone else's items. The rest leaves the game."], [
+        "More worth in = a bigger slice of the wheel, but more to lose.",
+        "Your items must be worth at least 1% of what is already in (at least 100)."], [
+        "Chance = your worth ÷ the total worth.",
+        "Winner: own items back + half of the others' items (rounded up), plus 150 XP.",
+        "2 minutes to pick: after that the most valuable are picked for you."]),
     "blackjack": ("Blackjack", [
         "Press Deal: you and the dealer get two cards; one of the dealer's stays hidden.",
-        "Hit takes a card, Stand keeps your hand, Double doubles your bet for exactly one more card.",
+        "Hit takes a card, Stand keeps your hand.",
         "Get closer to 21 than the dealer without going over. Aces count 1 or 11, faces count 10."], [
         "Always stand on 17 or more, always hit on 11 or less.",
-        "From 12 to 16: stand when the dealer shows 2 to 6, hit when it shows 7 or more.",
-        "Double on 10 or 11 when the dealer shows a lower card."], [
+        "From 12 to 16: stand when the dealer shows 2 to 6, hit when it shows 7 or more."], [
         "Win: ×2 (your bet back, plus as much).",
         "Blackjack (21 with your first two cards): ×2.5.",
         "Same total as the dealer: your bet back.",
@@ -48900,6 +49500,11 @@ class App(QObject):
         self._zoomer.start()
         if self.cfg["update_check"] and not selftest:
             self._safe("updates", self.updater.start)
+        if not selftest:                                  # 5.2: "the jackpot is open", with a glow
+            self._jp_t = QTimer(self)
+            self._jp_t.setInterval(5000)
+            self._jp_t.timeout.connect(self._jackpot_bell)
+            self._jp_t.start()
         if not selftest:                                  # 5.0.1: a forced update reaches every Rubenium in a minute
             self._force_t = QTimer(self)
             self._force_t.setInterval(60_000)
@@ -49865,6 +50470,19 @@ class App(QObject):
             self.window.sync_lock()
         if on and not self.updater.busy:                  # 5.0.1: outdated means updating now, not in 6 hours
             self.updater.check(manual=False)
+
+    def _jackpot_bell(self) -> None:
+        phase, left = jp_phase()
+        slot = int(time.time() // JP_EVERY)
+        if phase != "open" or left < 20 or getattr(self, "_jp_told", None) == slot or not self.online.logged_in():
+            return
+        self._jp_told = slot
+        try:
+            self.notifier.push("duel", tr("JACKPOT IS OPEN"), tr("Join in the next {t}: Games > Jackpot", t=jp_clock(left)),
+                               "jackpot")
+            glow_jackpot(self)
+        except Exception:  # noqa: BLE001
+            log.exception("jackpot bell")
 
     def _force_check(self) -> None:
         """5.0.1: once a minute, the server's lowest allowed version. Older than that: Rubenium downloads the new
