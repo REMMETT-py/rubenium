@@ -1,12 +1,8 @@
-Rubenium 5.0 - THE FULL RELEASE
+Rubenium 5.0.1
 
-- Everyone starts again from zero: 500 coins and 3 keys (OG players 1 500 coins and a free coupon to level 5). Accounts, friends, hours played and your settings are kept
-- OG players, 20 and 21 November only: something is waiting behind the new garage doors of ONLINE mode
-- Mythic badges: Prismatic is now the rarest finish and has an extra aura. In the Top Tier Case: Titanium about 1 in 30 000, Gold 1 in 75 000, Prismatic 1 in 100 000. Every other case is harder. The R is 4 times rarer than any other Mythic
-- Keys: find one by luck in any mini game, and quests give a key half of the time
-- Royal Case fixed (coins far less often, smaller amounts), quick sell pays more (55% of worth), Wave Rush pays 5 coins every 10 m, your level boosts rewards more
-- Case opening speed: Instant. The daily case shows a key as a key. Rewards no longer wait when you switch tab during an opening
-- Blackjack: Hit or Stand only. The pawn shop opens straight away. New sell buttons, Clear badges in Edit Profile
-- Fixed: level 100 showing 101, the Line ring saying it needs 0 hours, leaving a golf or Wave Rush match (a red Leave button replaces the arrow), the case gift menu (the server is up to date again)
+- A new guide for everyone: its own window in the middle of the screen, a moving picture for each part, and your settings chosen as you go (the old tour shrank and broke)
+- Updates now install by themselves within a minute of their release: Rubenium closes, updates and starts again
+- The OG coupon only arrives once you are on 5.0 or newer
+- Wave Rush: the distance and difficulty bar have their own strip above the course, the other player no longer slides through walls, your arrow is the size of what can hit, and a practice bot (on or off) shows a perfect run a little ahead of you
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

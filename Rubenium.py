@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.0"         # the version people see
-BUILD = "2026.11.20.1"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.0.1"         # the version people see
+BUILD = "2026.11.20.2"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1837,6 +1837,7 @@ DEFAULTS: dict = {
     "seen_version": "",
     "v5_fresh": False,                   # 5.0: the full release starts everyone at the first opening (settings kept)
     "online_door_v5": False,             # 5.0: the online garage doors were seen once
+    "wave_bot": False,                   # 5.1: Wave Rush practice bot
     "tabs_off": {},
     "halo": True,
     "autohide": True,
@@ -6500,6 +6501,34 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({                                   # 5.0.1
+    'Welcome to Rubenium 5.0': 'Bienvenue dans Rubenium 5.0',
+    'Everyone starts fresh with the full release. This quick guide shows the main parts and lets you set Rubenium up your way.': 'Tout le monde repart de zéro avec la version complète. Ce petit guide montre les parties principales et te laisse régler Rubenium à ta façon.',
+    'The ball': 'La bulle',
+    'The R on your screen is Rubenium. Click it to open the menu, click the R again to fold it away. Pick the key that shows or hides it:': 'Le R sur ton écran, c’est Rubenium. Clique dessus pour ouvrir le menu, reclique sur le R pour le ranger. Choisis la touche qui l’affiche ou le cache :',
+    'Music': 'Musique',
+    'The first tab shows what is playing (Spotify, YouTube Music and more) with lyrics. Choose how it looks:': 'Le premier onglet montre ce qui joue (Spotify, YouTube Music et plus) avec les paroles. Choisis son apparence :',
+    'Notifications and sounds': 'Notifications et sons',
+    'Small pop-ups tell you about trades, gifts, keys found and level ups. Choose what you want:': 'De petites fenêtres te préviennent des échanges, cadeaux, clés trouvées et niveaux gagnés. Choisis ce que tu veux :',
+    'Coins and keys': 'Pièces et clés',
+    'Coins and keys come in just by having Rubenium open. Keys open cases. Mini games, quests and the daily rewards give more.': 'Les pièces et les clés arrivent juste en gardant Rubenium ouvert. Les clés ouvrent les caisses. Les mini-jeux, les quêtes et les récompenses du jour en donnent plus.',
+    'Games and cases': 'Jeux et caisses',
+    'Games has the mini games, the casino and your quests. Cases open in the Shop. Choose how fast cases open:': 'Jeux contient les mini-jeux, le casino et tes quêtes. Les caisses s’ouvrent dans la Boutique. Choisis la vitesse d’ouverture :',
+    'ONLINE mode': 'Mode EN LIGNE',
+    'The ONLINE button opens the big menu: coinflips, duels, golf, Wave Rush, trading, the market and your friends.': 'Le bouton EN LIGNE ouvre le grand menu : coinflips, duels, golf, Wave Rush, échanges, le marché et tes amis.',
+    "You're all set!": 'Tout est prêt !',
+    'Everything you chose can be changed any time in Settings. Have fun!': 'Tout ce que tu as choisi se change à tout moment dans les Paramètres. Amuse-toi bien !',
+    'Language': 'Langue', 'Confirm': 'Confirmer', 'Next': 'Suivant', 'Back': 'Retour', 'Start playing': 'C’est parti',
+    'Open by holding the mouse on the ball': 'Ouvrir en restant sur la bulle avec la souris',
+    'Menu colours follow the album art': 'Les couleurs du menu suivent la pochette',
+    'Compact music card while gaming': 'Carte musique compacte en jeu',
+    'Notifications': 'Notifications', 'Notification sound': 'Son des notifications', 'Interface sounds': 'Sons de l’interface',
+    'Case opening speed': 'Vitesse d’ouverture des caisses',
+    'Settings are on the right of the menu (the gear).': 'Les Paramètres sont à droite du menu (l’engrenage).',
+    'Hold to go up, let go to go down': 'Maintiens pour monter, lâche pour descendre',
+    'Practice bot: plays perfectly, see-through, a little ahead': 'Bot d’entraînement : joue parfaitement, transparent, un peu devant',
+    '5 coins every 10 m': '5 pièces tous les 10 m',
+})
 FR.update({                                   # 5.0
     '+1 key · found in {game}': '+1 clé · trouvée dans {game}', '+1 key': '+1 clé',
     'About {n} coins now': 'Environ {n} pièces tout de suite', 'Claim rewards': 'Récupérer les récompenses',
@@ -10869,6 +10898,10 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.0.1", ['A new guide for everyone: its own window in the middle of the screen, a moving picture for each part, and your settings chosen as you go (the old tour shrank and broke)',
+               'Updates now install by themselves within a minute of their release: Rubenium closes, updates and starts again',
+               'The OG coupon only arrives once you are on 5.0 or newer',
+               'Wave Rush: the distance and difficulty bar have their own strip above the course, the other player no longer slides through walls, your arrow is the size of what can hit, and a practice bot (on or off) shows a perfect run a little ahead of you']),
     ("5.0", ['THE FULL RELEASE: everyone starts again from zero (500 coins, OG players 1 500 coins and a coupon to level 5). Accounts, friends, hours played and your settings are kept',
              'OG players, 20 and 21 November only: something is waiting behind the new garage doors of ONLINE mode',
              'Mythic badges: Prismatic is now the rarest and gets an extra aura. In the Top Tier Case: Titanium 1 in 30 000, Gold 1 in 75 000, Prismatic 1 in 100 000. The R is rarer than ever',
@@ -12776,92 +12809,325 @@ def badge_menu(ctx, on_change) -> None:
     m.exec(QCursor.pos())
 
 
-# ================================================================ tutorial (first start, can be replayed in Settings)
+# ================================================================ tutorial (5.0: first start and the 5.0 update)
+# Its own window in the middle of the screen (it used to sit inside the menu and shrank or vanished with it). Every
+# step has a small moving picture, two lines at most, and on some steps the settings to choose. No skipping: each
+# step is confirmed, and everything can be changed later in Settings.
 TUTORIAL = [
-    ("Welcome to Rubenium!", "This little tour takes 30 seconds. Click Next, or Skip any time."),
-    ("The ball", "The round R on your screen is Rubenium. Click it to open this menu; click the R at the top to fold it back. "
-                 "Tap Right Shift to show or hide it."),
-    ("Music", "The first tab shows what is playing in Spotify, YouTube Music and others. The button with the gem picks "
-              "the badge size and where badges go."),
-    ("Coins and keys", "You earn coins and keys just by having Rubenium open. Spend them on cases, the shop and the "
-                       "market, or win more in the mini games and the casino."),
-    ("Games", "Beat Tap, Parking and Memory pay coins. Duel your friends, scratch a card every 12 hours and come "
-              "back every day for the login reward."),
-    ("Social", "Add friends, chat, trade and see who is top of the leaderboards."),
-    ("All set!", "Settings has backups, the show/hide key and this tour again. Have fun!"),
+    ("welcome", "Welcome to Rubenium 5.0", "Everyone starts fresh with the full release. This quick guide shows the main parts and lets you set Rubenium up your way."),
+    ("ball", "The ball", "The R on your screen is Rubenium. Click it to open the menu, click the R again to fold it away. Pick the key that shows or hides it:"),
+    ("music", "Music", "The first tab shows what is playing (Spotify, YouTube Music and more) with lyrics. Choose how it looks:"),
+    ("alerts", "Notifications and sounds", "Small pop-ups tell you about trades, gifts, keys found and level ups. Choose what you want:"),
+    ("coins", "Coins and keys", "Coins and keys come in just by having Rubenium open. Keys open cases. Mini games, quests and the daily rewards give more."),
+    ("games", "Games and cases", "Games has the mini games, the casino and your quests. Cases open in the Shop. Choose how fast cases open:"),
+    ("online", "ONLINE mode", "The ONLINE button opens the big menu: coinflips, duels, golf, Wave Rush, trading, the market and your friends."),
+    ("done", "You're all set!", "Everything you chose can be changed any time in Settings. Have fun!"),
 ]
+TUTORIAL_CHOICE_KEYS = ("rshift", "rctrl", "ralt", "f9", "off")
 
 
 class Tutorial(QWidget):
-    """A card over the menu, one step at a time."""
+    """5.0: the guide, a window of its own (never inside the menu)."""
 
     def __init__(self, ctx, on_done=None) -> None:
-        host = ctx.window.body
-        super().__init__(host)
+        super().__init__(None)
         self.ctx, self.on_done = ctx, on_done
         self.step = 0
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
-        lay = vbox(self, 10, (22, 20, 22, 20))
-        self.title = Label("", 16, bold=True, wrap_w=S(290))
-        self.text = Label("", 12, TEXT_DIM, wrap_w=S(290))
-        lay.addStretch(1)
-        lay.addWidget(self.title)
-        lay.addWidget(self.text)
-        line = hbox(spacing=6)
-        self.skip = Button(tr("Skip"), "ghost", 32)
-        self.skip.clicked.connect(self.finish)
-        self.next = Button(tr("Next"), "primary", 32)
-        self.next.clicked.connect(self._next)
-        line.addWidget(self.skip, 1)
-        line.addWidget(self.next, 1)
-        lay.addLayout(line)
-        lay.addStretch(1)
-        self._show_step()
-        self.setGeometry(host.rect())
+        self.step_at = time.monotonic()
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        from PyQt6.QtGui import QGuiApplication
+        screen = QGuiApplication.primaryScreen()
+        geo = screen.availableGeometry() if screen is not None else None
+        w, h = S(600), S(560)
+        if geo is not None:
+            w, h = min(w, int(geo.width() * 0.9)), min(h, int(geo.height() * 0.9))
+            self.setGeometry(geo.center().x() - w // 2, geo.center().y() - h // 2, w, h)
+        else:
+            self.resize(w, h)
+        self.body = QWidget(self)
+        self._build()
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self._tick)
+        self._t.start()
         self.show()
         self.raise_()
+        self.activateWindow()
+        sfx.play("on")
 
-    def _show_step(self) -> None:
-        title, text = TUTORIAL[self.step]
-        self.title.set_text(tr(title))
-        self.text.set_text(tr(text))
+    # -------------------------------------------------------------- layout of one step
+    def _pic_rect(self) -> QRectF:
+        return QRectF(S(24), S(54), self.width() - S(48), self.height() * 0.30)
+
+    def _build(self) -> None:
+        old = self.body
+        self.body = QWidget(self)
+        old.hide()
+        old.deleteLater()
+        top = int(self._pic_rect().bottom() + S(14))
+        self.body.setGeometry(S(28), top, self.width() - S(56), self.height() - top - S(18))
+        lay = vbox(self.body, 8)
+        kind, title, text = TUTORIAL[self.step]
+        lay.addWidget(Label(tr(title), 19, bold=True, wrap_w=self.body.width()))
+        lay.addWidget(Label(tr(text), 12, TEXT_DIM, wrap_w=self.body.width()))
+        cfg = self.ctx.cfg
+        if kind == "welcome":
+            seg = Segmented(["English", "Français"], 1 if lang() == "fr" else 0)
+
+            def set_lang_(i: int) -> None:
+                code = "fr" if i == 1 else "en"
+                if code != lang():
+                    self.ctx.set_language(code)
+                    QTimer.singleShot(50, self._build)
+            seg.changed.connect(set_lang_)
+            lay.addWidget(Label(tr("Language"), 11, TEXT))
+            lay.addWidget(seg)
+        elif kind == "ball":
+            keys = [k for k in TUTORIAL_CHOICE_KEYS if k == "off" or any(c[0] == k for c in KEY_CHOICES)]
+            if cfg["hotkey"] not in keys and any(c[0] == cfg["hotkey"] for c in KEY_CHOICES):
+                keys.insert(0, cfg["hotkey"])
+            names = {c[0]: c[1] for c in KEY_CHOICES}
+            seg = Segmented([tr("No key") if k == "off" else names.get(k, k).replace("Right ", "R ") for k in keys],
+                            keys.index(cfg["hotkey"]) if cfg["hotkey"] in keys else 0)
+
+            def set_key(i: int) -> None:
+                cfg["hotkey"] = keys[i]
+                try:
+                    self.ctx.tapkey.set_key(keys[i])
+                except Exception:  # noqa: BLE001
+                    pass
+            seg.changed.connect(set_key)
+            lay.addWidget(seg)
+            lay.addWidget(self._toggle(tr("Open by holding the mouse on the ball"), "hold_open"))
+        elif kind == "music":
+            lay.addWidget(self._toggle(tr("Menu colours follow the album art"), "accent_from_art"))
+            lay.addWidget(self._toggle(tr("Compact music card while gaming"), "compact_music"))
+        elif kind == "alerts":
+            lay.addWidget(self._toggle(tr("Notifications"), "notify_all"))
+            lay.addWidget(self._toggle(tr("Notification sound"), "notify_sound"))
+            lay.addWidget(self._toggle(tr("Interface sounds"), "sounds", lambda v: setattr(sfx, "enabled", bool(v))))
+        elif kind == "games":
+            speeds = ["slow", "normal", "fast", "instant"]
+            sp = Segmented([tr("Slow"), tr("Normal"), tr("Fast"), tr("Instant")],
+                           speeds.index(cfg["chest_speed"]) if cfg["chest_speed"] in speeds else 1)
+            sp.changed.connect(lambda i: cfg.__setitem__("chest_speed", speeds[i]))
+            lay.addWidget(Label(tr("Case opening speed"), 11, TEXT))
+            lay.addWidget(sp)
+        lay.addStretch(1)
+        line = hbox(spacing=8)
+        self.back = Button(tr("Back"), "ghost", 38)
+        self.back.clicked.connect(self._back)
+        self.back.setVisible(self.step > 0)
         last = self.step == len(TUTORIAL) - 1
-        self.next.set_text(tr("Done") if last else tr("Next") + f"  {self.step + 1}/{len(TUTORIAL)}")
-        self.skip.setVisible(not last)
-        self.update()
+        choose = kind in ("welcome", "ball", "music", "alerts", "games")
+        self.next = Button(tr("Start playing") if last else (tr("Confirm") if choose else tr("Next")) +
+                           f"  {self.step + 1}/{len(TUTORIAL)}", "primary", 38)
+        self.next.clicked.connect(self._next)
+        self.next.setEnabled(False)                     # read it first: Next wakes up after a moment
+        line.addWidget(self.back, 1)
+        line.addWidget(self.next, 2)
+        lay.addLayout(line)
+        if kind == "done":
+            lay.addWidget(Label(tr("Settings are on the right of the menu (the gear)."), 10, TEXT_FAINT, wrap_w=self.body.width()))
+        self.body.show()
+        self.step_at = time.monotonic()
+
+    def _toggle(self, label: str, key: str, after=None) -> QWidget:
+        row = QWidget()
+        rl = hbox(row, 8)
+        rl.addWidget(Label(label, 12, TEXT), 1)
+        t = Toggle(bool(self.ctx.cfg[key]))
+
+        def flip(v: bool) -> None:
+            self.ctx.cfg[key] = bool(v)
+            if after:
+                after(v)
+        t.toggled_by_user.connect(flip)
+        rl.addWidget(t)
+        return row
+
+    # -------------------------------------------------------------- moving on
+    def _tick(self) -> None:
+        if not self.next.isEnabled() and time.monotonic() - self.step_at > 1.2:
+            self.next.setEnabled(True)
+        self.update(self._pic_rect().toRect().adjusted(-4, -40, 4, 4))
 
     def _next(self) -> None:
         sfx.play("pick")
         if self.step >= len(TUTORIAL) - 1:
             return self.finish()
         self.step += 1
-        self._show_step()
+        self._build()
+
+    def _back(self) -> None:
+        if self.step > 0:
+            sfx.play("pick")
+            self.step -= 1
+            self._build()
 
     def finish(self) -> None:
-        self.ctx.cfg["tutorial_done"] = True
-        self.hide()
-        self.deleteLater()
+        cfg = self.ctx.cfg
+        cfg["tutorial_done"] = True
+        try:
+            cfg.save()
+            self.ctx.apply_config()
+        except Exception:  # noqa: BLE001
+            pass
+        self._t.stop()
+        self.close()
         if self.on_done:
             self.on_done()
 
-    def mousePressEvent(self, e) -> None:
+    def keyPressEvent(self, e) -> None:                  # Enter confirms, nothing closes it
+        if e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and self.next.isEnabled():
+            return self._next()
         e.accept()
 
+    def closeEvent(self, e) -> None:
+        if not self.ctx.cfg["tutorial_done"] and not getattr(self.ctx, "_closing", False):
+            e.ignore()
+            return
+        self._t.stop()
+        super().closeEvent(e)
+
+    # -------------------------------------------------------------- paint
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.fillRect(self.rect(), QColor(4, 6, 8, 150))
-        card = QRectF(self.rect()).adjusted(S(8), 0, -S(8), 0)
-        h = S(220)
-        card = QRectF(card.left(), card.center().y() - h / 2, card.width(), h)
-        p.setPen(QPen(alpha(ui.accent, 0.6), S(1.4)))
-        p.setBrush(QColor(12, 15, 16, 250))
-        p.drawRoundedRect(card, S(16), S(16))
+        r = QRectF(self.rect()).adjusted(S(4), S(4), -S(4), -S(4))
+        p.setPen(QPen(alpha(ui.accent, 0.55), S(1.6)))
+        p.setBrush(QColor(10, 13, 15, 250))
+        p.drawRoundedRect(r, S(20), S(20))
         dots = len(TUTORIAL)
-        for k in range(dots):
+        for k in range(dots):                            # where you are
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(ui.accent if k == self.step else alpha("#FFFFFF", 0.2))
-            p.drawEllipse(QPointF(card.center().x() + (k - (dots - 1) / 2) * S(12), card.top() + S(16)), S(3), S(3))
+            p.setBrush(ui.accent if k == self.step else alpha("#FFFFFF", 0.4 if k < self.step else 0.15))
+            p.drawEllipse(QPointF(r.center().x() + (k - (dots - 1) / 2) * S(16), r.top() + S(24)), S(4), S(4))
+        pic = self._pic_rect()
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(255, 255, 255, 8))
+        p.drawRoundedRect(pic, S(14), S(14))
+        p.save()
+        p.setClipRect(pic)
+        self._paint_pic(p, pic, time.monotonic() - self.step_at)
+        p.restore()
+
+    def _ball(self, p: QPainter, c: QPointF, rad: float, now: float) -> None:
+        glow = QRadialGradient(c, rad * 1.9)
+        glow.setColorAt(0, alpha(ui.accent, 0.35))
+        glow.setColorAt(1, alpha(ui.accent, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, rad * 1.9, rad * 1.9)
+        p.setBrush(QColor("#0B0F10"))
+        p.setPen(QPen(ui.accent, max(1.5, rad * 0.08)))
+        p.drawEllipse(c, rad, rad)
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(max(8.0, rad / max(0.1, ui.scale) * 0.9), QFont.Weight.Black))
+        p.drawText(QRectF(c.x() - rad, c.y() - rad, rad * 2, rad * 2), int(Qt.AlignmentFlag.AlignCenter), "R")
+        p.setPen(QPen(alpha(ui.accent, 0.8), max(1.0, rad * 0.06)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawArc(QRectF(c.x() - rad * 1.3, c.y() - rad * 1.3, rad * 2.6, rad * 2.6), int(now * 160 * 16) % 5760, 90 * 16)
+
+    def _paint_pic(self, p: QPainter, r: QRectF, t: float) -> None:
+        kind = TUTORIAL[self.step][0]
+        c = r.center()
+        now = time.monotonic()
+        u = r.height()
+        if kind in ("welcome", "done"):
+            self._ball(p, c, u * 0.22 * (1 + 0.05 * math.sin(now * 3)), now)
+            if kind == "done":
+                p.setPen(QPen(QColor("#3DDC84"), S(5), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                k = min(1.0, t / 0.6)
+                a, b, d = QPointF(c.x() + u * 0.28, c.y() + u * 0.05), QPointF(c.x() + u * 0.36, c.y() + u * 0.14), \
+                    QPointF(c.x() + u * 0.52, c.y() - u * 0.12)
+                p.drawLine(a, a + (b - a) * min(1.0, k * 2))
+                if k > 0.5:
+                    p.drawLine(b, b + (d - b) * ((k - 0.5) * 2))
+            for i in range(14):                          # sparkles
+                ang = i * math.tau / 14 + now * 0.4
+                q = c + QPointF(math.cos(ang), math.sin(ang)) * u * (0.36 + 0.04 * math.sin(now * 2 + i))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#FFFFFF", 0.3 + 0.3 * math.sin(now * 3 + i)))
+                p.drawEllipse(q, S(2), S(2))
+        elif kind == "ball":                             # the ball opens the menu, then folds it away again
+            cyc = t % 3.2
+            open_k = min(1.0, max(0.0, (cyc - 0.6) / 0.4)) * (1 - min(1.0, max(0.0, (cyc - 2.4) / 0.4)))
+            bx = c + QPointF(-r.width() * 0.28, 0)
+            self._ball(p, bx, u * 0.14, now)
+            if 0.4 < cyc < 0.7 or 2.2 < cyc < 2.5:       # the click
+                p.setPen(QPen(alpha("#FFFFFF", 0.8), S(2)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(bx, u * 0.2, u * 0.2)
+            card = QRectF(c.x() - r.width() * 0.08, r.top() + u * 0.12, r.width() * 0.4 * open_k, u * 0.76)
+            if open_k > 0.02:
+                p.setPen(QPen(alpha(ui.accent, 0.7), S(1.4)))
+                p.setBrush(QColor(14, 18, 20))
+                p.drawRoundedRect(card, S(10), S(10))
+                p.setPen(Qt.PenStyle.NoPen)
+                for i in range(4):
+                    p.setBrush(alpha("#FFFFFF", 0.12 * open_k))
+                    p.drawRoundedRect(QRectF(card.left() + S(10), card.top() + S(12) + i * u * 0.16,
+                                             max(0.0, card.width() - S(20)), u * 0.1), S(4), S(4))
+            name = next((n for k, n, _v in KEY_CHOICES if k == self.ctx.cfg["hotkey"]), "")
+            if name:
+                paint_keycap(p, QPointF(r.right() - S(110), r.bottom() - S(26)), name)
+        elif kind == "music":                            # an equaliser and a note
+            n = 14
+            bw = r.width() * 0.5 / n
+            for i in range(n):
+                hgt = u * (0.15 + 0.55 * abs(math.sin(now * 2.6 + i * 0.7)))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor.fromHsvF((i / n * 0.3 + now * 0.05) % 1.0, 0.6, 1.0, 0.85))
+                p.drawRoundedRect(QRectF(c.x() - r.width() * 0.25 + i * bw, c.y() + u * 0.35 - hgt, bw * 0.7, hgt), S(2), S(2))
+        elif kind == "alerts":                           # a pop-up slides in and out
+            cyc = t % 2.8
+            k = min(1.0, cyc / 0.4) * (1 - min(1.0, max(0.0, (cyc - 2.2) / 0.4)))
+            box = QRectF(c.x() - r.width() * 0.3, r.top() - u * 0.3 + (u * 0.42) * k, r.width() * 0.6, u * 0.3)
+            p.setPen(QPen(alpha(ui.accent, 0.6), S(1.2)))
+            p.setBrush(QColor(16, 20, 23))
+            p.drawRoundedRect(box, S(10), S(10))
+            paint_key(p, QPointF(box.left() + box.height() * 0.5, box.center().y()), box.height() * 0.5, QColor("#FFD27A"))
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(font(12, QFont.Weight.Bold))
+            p.drawText(box.adjusted(box.height(), 0, -S(8), 0), int(Qt.AlignmentFlag.AlignVCenter), tr("KEY FOUND!"))
+        elif kind == "coins":                            # coins rain into a pile
+            for i in range(9):
+                ph = (t * 0.8 + i * 0.13) % 1.0
+                x = c.x() + (i - 4) * r.width() * 0.07
+                paint_coin(p, QPointF(x, r.top() + ph * u * 0.9), u * 0.07)
+            paint_key(p, QPointF(c.x() + r.width() * 0.33, c.y()), u * 0.35, QColor("#FFD27A"))
+        elif kind == "games":                            # a case that shakes, then sparkles
+            cyc = t % 2.4
+            sh = math.sin(now * 40) * S(4) if cyc < 1.2 else 0.0
+            size = u * 0.6
+            try:
+                paint_case(p, QRectF(c.x() - size / 2 + sh, c.y() - size / 2, size, size), "premium")
+            except Exception:  # noqa: BLE001
+                pass
+            if cyc >= 1.2:
+                for i in range(12):
+                    ang = i * math.tau / 12
+                    d = (cyc - 1.2) * u * 0.5
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(QColor.fromHsvF(i / 12, 0.6, 1.0, max(0.0, 1 - (cyc - 1.2))))
+                    p.drawEllipse(c + QPointF(math.cos(ang), math.sin(ang)) * d, S(3), S(3))
+        elif kind == "online":                           # the garage doors open on the online menu
+            k = (math.sin(now * 1.4) + 1) / 2
+            box = QRectF(c.x() - r.width() * 0.32, r.top() + u * 0.1, r.width() * 0.64, u * 0.8)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(20, 26, 30))
+            p.drawRoundedRect(box, S(10), S(10))
+            p.setPen(QColor("#3DDC84"))
+            p.setFont(font(16, QFont.Weight.Black, 2))
+            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "ONLINE")
+            p.save()
+            p.setClipRect(box, Qt.ClipOperation.IntersectClip)
+            paint_doors(p, box, k, ui.accent)
+            p.restore()
 
 
 # ==================================================================================================
@@ -43841,6 +44107,9 @@ WAVE_H = 1000             # course height
 WAVE_SW = 48              # half width of a spike
 WAVE_TPS = 60             # ticks a second
 WAVE_MAX = 60 * 900
+WAVE_SLIDE = 0            # 5.1 (150 with the server's rb_wave_sim): the first 2.5 s you slide on the walls
+WAVE_SPACE = 1            # 5.1 (130 with the server): two spikes in a row never closer than this
+WAVE_HUD = 46             # 5.1: the distance and the difficulty bar sit in their own strip above the course
 
 
 class WaveRng:
@@ -43900,6 +44169,7 @@ class WaveCourse:
         if r < p_flat:
             length = 300 + rnd(500)
             n = rnd(2 + 3 * d // 1000) if d >= 20 else 0
+            n = min(n, max(0, length // WAVE_SPACE - 1))              # 5.1: never stacked in a tight space
             side = rnd(2)
             spikes = []
             if n == 1 and 120 <= d <= 650 and rnd(3) == 0:      # 4.6: a gate, a spike above and below at once
@@ -44012,8 +44282,10 @@ class WaveRunner:
             x = n * WAVE_VX
             self.course.ensure(x)
             top, bot = self.course.bounds(self.course.index(x), x)
+            if n <= WAVE_SLIDE:                                     # 5.1: sliding on the start
+                y = max(top + WAVE_R, min(bot - WAVE_R, y))
             self.ys.append(y)
-            if y - WAVE_R < top or y + WAVE_R > bot:
+            if n > WAVE_SLIDE and (y - WAVE_R < top or y + WAVE_R > bot):
                 self.crash = n
         return self.ys[min(t, len(self.ys) - 1)]
 
@@ -44028,7 +44300,7 @@ class WaveView(QWidget):
     def __init__(self, page, width: int, on_end=None, on_start=None) -> None:
         super().__init__()
         self.page, self.ctx = page, page.ctx
-        self.setFixedSize(width, int(width * 0.66))
+        self.setFixedSize(width, int(width * 0.66) + S(WAVE_HUD))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.on_end, self.on_start = on_end, on_start
@@ -44047,6 +44319,8 @@ class WaveView(QWidget):
         self.replay = None                   # dict: the last seconds before a crash, shown again
         self.can_retry = False               # solo: the next course is in, a press starts again
         self.result = None                   # duel: (title, line, colour) once it is over
+        self.bot_on = bool(page.ctx.cfg["wave_bot"])       # 5.1: the practice bot
+        self.bot = None
         self._reset()
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
@@ -44074,6 +44348,7 @@ class WaveView(QWidget):
         self.seed = int(seed)
         self.course = WaveCourse(self.seed)
         self.course.ensure(4000)
+        self.bot = WaveBot(WaveCourse(self.seed))            # 5.1: its own copy of the same course
         self._reset()
         self.message = ""
         self.can_retry = False
@@ -44195,12 +44470,14 @@ class WaveView(QWidget):
         while self.x >= segs[self.i][0] + segs[self.i][1]:
             self.i += 1
         top, bot = self.course.bounds(self.i, self.x)
+        if self.t <= WAVE_SLIDE:                                   # 5.1: the start slides, it never crashes
+            self.y = max(top + WAVE_R, min(bot - WAVE_R, self.y))
         self.trail.append((self.x, self.y))
         if len(self.trail) > 400:
             del self.trail[:100]
         if self.god:
             return True
-        if self.y - WAVE_R < top or self.y + WAVE_R > bot or self.t >= WAVE_MAX:
+        if (self.t > WAVE_SLIDE and (self.y - WAVE_R < top or self.y + WAVE_R > bot)) or self.t >= WAVE_MAX:
             self._crash()
             return False
         return True
@@ -44237,16 +44514,24 @@ class WaveView(QWidget):
 
     # -- drawing
     def _scale(self) -> float:
-        return self.height() / WAVE_H
+        return (self.height() - S(WAVE_HUD)) / WAVE_H
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         now = time.monotonic()
-        r = QRectF(self.rect())
+        full = QRectF(self.rect())
+        hud_h = S(WAVE_HUD)
         clip = QPainterPath()
-        clip.addRoundedRect(r.adjusted(0.5, 0.5, -0.5, -0.5), S(12), S(12))
+        clip.addRoundedRect(full.adjusted(0.5, 0.5, -0.5, -0.5), S(12), S(12))
         p.setClipPath(clip)
+        p.fillRect(QRectF(0, 0, full.width(), hud_h), QColor("#07090C"))          # 5.1: the HUD's own strip
+        p.fillRect(QRectF(0, hud_h - 1, full.width(), 1), alpha("#FFFFFF", 0.08))
+        p.translate(0, hud_h)
+        r = QRectF(0, 0, full.width(), full.height() - hud_h)
+        clip2 = QPainterPath()
+        clip2.addRect(r)
+        p.setClipPath(clip2)
         sc = self._scale()
         focus = self._focus(now)
         d = wave_level(focus)
@@ -44281,13 +44566,27 @@ class WaveView(QWidget):
                 self._paint_runner(p, r, cam, sc, self.watch[0], ta, ui.accent, 0.95, now, boom=True)
                 self._paint_runner(p, r, cam, sc, self.watch[1], tb, QColor("#FFB627"), 0.95, now, boom=True)
             else:
+                self._paint_bot(p, r, cam, sc, now)
                 self._paint_ghost(p, r, cam, sc, now)
                 self._paint_wave(p, r, cam, sc, col, now)
+        if self.state == "run" and self.t <= WAVE_SLIDE and self.course is not None:     # 5.1: the start slide
+            k = 1.0 - self.t / WAVE_SLIDE
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#3DDC84", 0.18 * k))
+            p.drawRect(QRectF(0, r.height() - S(8), r.width(), S(8)))
+            p.drawRect(QRectF(0, 0, r.width(), S(8)))
+            p.setPen(alpha("#FFFFFF", 0.85 * k))
+            p.setFont(font(12, QFont.Weight.Bold))
+            p.drawText(QRectF(0, r.height() * 0.12, r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Hold to go up, let go to go down"))
         p.setClipping(False)
         p.resetTransform()
+        p.setClipPath(clip)
+        play = QRectF(0, hud_h, full.width(), full.height() - hud_h)
         if self.replay is not None:
-            return self._paint_replay_hud(p, r, now)
-        self._paint_hud(p, r, col, now)
+            p.translate(0, hud_h)
+            return self._paint_replay_hud(p, QRectF(0, 0, play.width(), play.height()), now)
+        self._paint_hud(p, play, col, now)
 
     def _paint_course(self, p, r, cam, sc, col) -> None:
         c = self.course
@@ -44389,6 +44688,37 @@ class WaveView(QWidget):
             p.drawText(QRectF(c.x() - S(60), c.y() - S(28), S(120), S(14)), int(Qt.AlignmentFlag.AlignCenter), run.name)
         p.setOpacity(1.0)
 
+    def _paint_bot(self, p, r, cam, sc, now) -> None:
+        """5.1: the practice bot, see-through, 40 ticks ahead of you."""
+        if not self.bot_on or self.bot is None or self.state not in ("run", "ready", "count"):
+            return
+        t = (self.t + 40) if self.state == "run" else 40
+        try:
+            pts = [QPointF((k * WAVE_VX - cam) * sc, self.bot.y(k) * sc) for k in range(max(0, t - 90), t + 1, 2)]
+        except Exception:  # noqa: BLE001
+            return
+        cyan = QColor("#4FE3FF")
+        p.setOpacity(0.32)
+        if len(pts) >= 2:
+            p.setPen(QPen(cyan, S(2), Qt.PenStyle.DashLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.MiterJoin))
+            p.drawPolyline(QPolygonF(pts))
+        c = pts[-1]
+        up = len(pts) < 2 or pts[-1].y() < pts[-2].y()
+        p.save()
+        p.translate(c)
+        p.rotate(-45 if up else 45)
+        size = max(S(7), WAVE_R * sc * 2.2)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(cyan)
+        p.drawPolygon(QPolygonF([QPointF(size, 0), QPointF(-size * 0.8, -size * 0.7), QPointF(-size * 0.35, 0),
+                                 QPointF(-size * 0.8, size * 0.7)]))
+        p.restore()
+        p.setOpacity(0.55)
+        p.setPen(cyan)
+        p.setFont(font(8.5, QFont.Weight.Bold))
+        p.drawText(QRectF(c.x() - S(40), c.y() - S(24), S(80), S(12)), int(Qt.AlignmentFlag.AlignCenter), "BOT")
+        p.setOpacity(1.0)
+
     def _paint_ghost(self, p, r, cam, sc, now) -> None:
         """Duel: the other player, see-through. When they crash they fade out slowly where they crashed."""
         o = self.other
@@ -44402,8 +44732,11 @@ class WaveView(QWidget):
         else:
             if self.state not in ("run", "safe", "dead") or not self.run_t0:
                 return
-            t = min(int((now - self.run_t0) * WAVE_TPS), o.upto + 45)
+            t = min(int((now - self.run_t0) * WAVE_TPS), o.upto + 12)        # 5.1: guesses only a moment ahead
             fade = 1.0
+        o.y(t)
+        if o.crash is not None:                     # 5.1: it stops where its path meets a wall (it used to slide on)
+            t = min(t, o.crash)
         y = o.y(t)
         o.shown_y = y if o.shown_y is None else o.shown_y + (y - o.shown_y) * 0.35   # no jump when news comes in
         first = max(0, t - 120)
@@ -44453,7 +44786,7 @@ class WaveView(QWidget):
         p.save()
         p.translate(c)
         p.rotate(-45 if up else 45)
-        size = S(11)
+        size = max(S(7), WAVE_R * sc * 2.2)                      # 5.1: drawn the size of what can be hit
         head = QPolygonF([QPointF(size, 0), QPointF(-size * 0.8, -size * 0.7), QPointF(-size * 0.35, 0),
                           QPointF(-size * 0.8, size * 0.7)])
         p.setPen(QPen(alpha(col, 0.35), S(6)))
@@ -44471,18 +44804,18 @@ class WaveView(QWidget):
         x = self._focus(now)
         p.setPen(QColor(TEXT))
         p.setFont(font(17, QFont.Weight.Black))
-        p.drawText(QRectF(S(12), S(6), r.width() * 0.28, S(26)), int(Qt.AlignmentFlag.AlignVCenter), f"{metres(int(x))} m")
+        p.drawText(QRectF(S(12), S(2), r.width() * 0.28, S(26)), int(Qt.AlignmentFlag.AlignVCenter), f"{metres(int(x))} m")
         p.setFont(font(9.5, QFont.Weight.Bold))
         p.setPen(QColor(TEXT_DIM))
         if self.best and self.watch is None:
-            p.drawText(QRectF(S(12), S(30), r.width() * 0.28, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+            p.drawText(QRectF(S(12), S(26), r.width() * 0.28, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
                        tr("Best {n} m", n=metres(self.best)))
         self._paint_difficulty(p, r, self._focus(now), now)
-        mid = QRectF(0, r.height() * 0.30, r.width(), r.height() * 0.4)
+        mid = QRectF(0, r.top() + r.height() * 0.30, r.width(), r.height() * 0.4)
         if self.state in ("ready", "count", "dead", "safe"):
             dim = 0.0 if self.state in ("dead", "safe") and now - self.dead_at < 0.45 else 0.55
             if dim:
-                p.fillRect(r, alpha("#000000", dim))
+                p.fillRect(r, alpha("#000000", dim))     # 5.1: r is the course only, the HUD strip stays readable
         if self.state == "count":
             n = max(1, math.ceil(self.count_until - now))
             self._big(p, mid, str(n), "#FFFFFF", 40)
@@ -44579,7 +44912,7 @@ class WaveView(QWidget):
         p.drawRoundedRect(QRectF(line.left(), line.top(), line.width() * min(1.0, f), line.height()), S(1.5), S(1.5))
 
     def _paint_wait(self, p, r) -> None:
-        mid = QRectF(0, r.height() * 0.30, r.width(), r.height() * 0.4)
+        mid = QRectF(0, r.top() + r.height() * 0.30, r.width(), r.height() * 0.4)
         if self.result:
             title, line, colour = self.result
             self._big(p, mid.adjusted(0, -S(16), 0, -S(16)), title, colour, 24)
@@ -44657,6 +44990,86 @@ def _controls(page, lay) -> None:
     lay.addWidget(ControlsBar([(["Hold", "Space", "Up", "W"], tr("Hold to rise, let go to fall"))], page.W))
 
 
+# -- 5.1: the practice bot
+class WaveBot:
+    """5.1: the practice bot. It plays the same course perfectly (a path planned through the walls a few seconds at a
+    time, keeping to the middle of the gap) and is shown see-through, a little ahead of you, to follow."""
+    WINDOW, CHUNK = 360, 120
+
+    def __init__(self, course) -> None:
+        self.course = course
+        self.ys = [500]
+
+    def y(self, t: int) -> int:
+        t = max(0, int(t))
+        guard = 0
+        while len(self.ys) <= t + 1 and guard < 50:
+            self._plan()
+            guard += 1
+        return self.ys[min(t, len(self.ys) - 1)]
+
+    def _plan(self) -> None:
+        t0, y0 = len(self.ys) - 1, self.ys[-1]
+        W = self.WINDOW
+        c = self.course
+        c.ensure((t0 + W + 2) * WAVE_VX)
+        tops, bots = [], []
+        for k in range(W + 1):
+            x = (t0 + k) * WAVE_VX
+            top, bot = c.bounds(c.index(x), x)
+            tops.append(top)
+            bots.append(bot)
+        lo_j, hi_j = -(y0 // WAVE_VX) - 1, (WAVE_H - y0) // WAVE_VX + 1
+        INF = float("inf")
+        nxt_cost = {}
+        for j in range(lo_j, hi_j + 1):                     # the end of the window: anywhere that is open
+            y = y0 + j * WAVE_VX
+            if y - WAVE_R >= tops[W] and y + WAVE_R <= bots[W]:
+                nxt_cost[j] = 0.0
+        choice = [None] * W
+        for k in range(W - 1, -1, -1):                       # back from the end: the cheapest way to stay alive
+            cost, pick = {}, {}
+            mid = (tops[k] + bots[k]) / 2
+            for j in range(lo_j, hi_j + 1):
+                y = y0 + j * WAVE_VX
+                if t0 + k > WAVE_SLIDE and (y - WAVE_R < tops[k] or y + WAVE_R > bots[k]):
+                    continue
+                best, bj = INF, None
+                for nj in (j - 1, j + 1):
+                    v = nxt_cost.get(nj, INF)
+                    if v < best:
+                        best, bj = v, nj
+                if bj is not None:
+                    cost[j] = best + abs(y - mid) * 0.01
+                    pick[j] = bj
+            choice[k] = pick
+            nxt_cost = cost
+        j = 0
+        for k in range(min(self.CHUNK, W)):                  # follow the plan for a while, then plan again
+            nj = (choice[k] or {}).get(j)
+            if nj is None:                                    # no way through: head for the middle
+                mid = (tops[min(k + 1, W)] + bots[min(k + 1, W)]) / 2
+                nj = j + (1 if y0 + j * WAVE_VX < mid else -1)
+            j = nj
+            self.ys.append(y0 + j * WAVE_VX)
+
+
+def wave_bot_toggle(ctx, view):
+    """5.1: the switch under the course: the practice bot on or off."""
+    row = hbox(spacing=8)
+    row.addWidget(Label(tr("Practice bot: plays perfectly, see-through, a little ahead"), 10.5, TEXT_DIM), 1)
+    t = Toggle(bool(ctx.cfg["wave_bot"]))
+
+    def flip(on: bool) -> None:
+        ctx.cfg["wave_bot"] = bool(on)
+        ctx.cfg.save()
+        view.bot_on = bool(on)
+        view.update()
+    t.toggled_by_user.connect(flip)
+    row.addWidget(t)
+    return row
+
+
 # -- solo
 def _solo(page, lay) -> None:
     ctx = page.ctx
@@ -44724,6 +45137,7 @@ def _solo(page, lay) -> None:
         old_press(on)
     view._press = press
     lay.addWidget(view)
+    lay.addLayout(wave_bot_toggle(ctx, view))
     _controls(page, lay)
     fetch()
 
@@ -48091,6 +48505,12 @@ class App(QObject):
         self._zoomer.start()
         if self.cfg["update_check"] and not selftest:
             self._safe("updates", self.updater.start)
+        if not selftest:                                  # 5.0.1: a forced update reaches every Rubenium in a minute
+            self._force_t = QTimer(self)
+            self._force_t.setInterval(60_000)
+            self._force_t.timeout.connect(self._force_check)
+            self._force_t.start()
+            QTimer.singleShot(5000, self._force_check)
         self._safe("show/hide key", lambda: self.tapkey.set_key(self.cfg["hotkey"]))
         self._safe("game mode key", lambda: self.gmkey.set_key(self.cfg["gm_key"]))
         self._pin = QTimer(self)
@@ -49042,6 +49462,31 @@ class App(QObject):
         if on != self.outdated:
             self.outdated = on
             self.window.sync_lock()
+        if on and not self.updater.busy:                  # 5.0.1: outdated means updating now, not in 6 hours
+            self.updater.check(manual=False)
+
+    def _force_check(self) -> None:
+        """5.0.1: once a minute, the server's lowest allowed version. Older than that: Rubenium downloads the new
+        version, closes and starts again by itself (it installs without asking since 4.4)."""
+        if Net.blocked or self.updater.busy or getattr(self, "_forcing", False):
+            return
+
+        def work() -> None:
+            try:
+                rows = _request("/rest/v1/rb_config?select=value&key=eq.min_build", method="GET") or []
+                need = int(float(rows[0]["value"])) if rows else 0
+            except Exception:  # noqa: BLE001
+                return
+            if need > build_number():
+                self.online._back.emit(self._force_now)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _force_now(self) -> None:
+        if getattr(self, "_forcing", False):
+            return
+        self._forcing = True
+        self.set_outdated(True)
+        QTimer.singleShot(120_000, lambda: setattr(self, "_forcing", False))     # try again later if it failed
 
     def og_event_check(self) -> None:
         """5.0: is the OG Prismatic Chest waiting (OG tag, 20 or 21 November, never claimed)? Nothing is given here: the
@@ -49112,10 +49557,15 @@ class App(QObject):
                 check_login_reward(self)
 
     def start_tutorial(self) -> None:
-        pass
-        if not self.window.expanded:
-            self.window.expand()
-        QTimer.singleShot(450, lambda: setattr(self, "_tour", Tutorial(self)))
+        """5.0: the guide is its own window: the menu can stay as it is."""
+        old = getattr(self, "_tour", None)
+        try:
+            if old is not None and old.isVisible():
+                return old.raise_()
+        except RuntimeError:
+            pass
+        self.cfg["tutorial_done"] = False
+        self._tour = Tutorial(self)
 
     def change_password_dialog(self) -> None:
         pass
