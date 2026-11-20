@@ -7313,6 +7313,19 @@ def nice_values(lo: int, hi: int) -> list:
     return sorted(out)
 
 
+def finer_values(vals: list) -> list:
+    """5.1: one more stop halfway between every two (rounded to two digits), for more precise prices."""
+    out = set(vals)
+    for a, b in zip(vals, vals[1:]):
+        if b - a >= 2:
+            m = (a + b) / 2
+            mag = 10 ** max(0, len(str(int(m))) - 2)
+            v = int(round(m / mag) * mag)
+            if a < v < b:
+                out.add(v)
+    return sorted(out)
+
+
 class AmountSlider(QWidget):
     """4.5: one slider in place of rows of amount buttons. It moves through round numbers (lo to hi) and clicks into
     place on the roundest ones (1, 5, 10, 50, 100 …). changed(value) while dragging, released(value) at the end."""
@@ -7986,11 +7999,73 @@ class _ScrollOverlay(QWidget):
             g.setColorAt(0, alpha(bg, 0))
             g.setColorAt(1, bg)
             p.fillRect(QRectF(0, h - fade, w, fade), g)
-        th = max(S(24), h * h / (h + span))
-        y = (h - th) * a.offset() / span
+        # 5.1: the thumb is drawn by the grip, which can be dragged
+
+
+class _ScrollGrip(QWidget):
+    """5.1: the scroll bar on the right can be dragged with the mouse, and a click on its track jumps there."""
+
+    def __init__(self, area: "ScrollArea") -> None:
+        super().__init__(area)
+        self._area = area
+        self._drag = None                       # (mouse y at press, offset at press)
+        self._hover = False
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def _thumb(self) -> QRectF:
+        a = self._area
+        span = a.max_offset()
+        h = self.height()
+        th = max(S(28), h * h / (h + span)) if span > 0 else h
+        y = (h - th) * a.offset() / span if span > 0 else 0
+        return QRectF(0, y, self.width(), th)
+
+    def enterEvent(self, _e) -> None:
+        self._hover = True
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self._hover = False
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        a = self._area
+        if a.max_offset() <= 0 or e.button() != Qt.MouseButton.LeftButton:
+            return e.ignore()
+        e.accept()
+        t = self._thumb()
+        y = e.position().y()
+        if not t.contains(QPointF(t.center().x(), y)):    # a click on the track: the thumb jumps under the mouse
+            k = (y - t.height() / 2) / max(1.0, self.height() - t.height())
+            a.scroll_to(k * a.max_offset(), instant=True)
+        self._drag = (y, a.offset())
+
+    def mouseMoveEvent(self, e) -> None:
+        if self._drag is None:
+            return
+        a = self._area
+        y0, off0 = self._drag
+        t = self._thumb()
+        per_px = a.max_offset() / max(1.0, self.height() - t.height())
+        a.scroll_to(off0 + (e.position().y() - y0) * per_px, instant=True)
+
+    def mouseReleaseEvent(self, _e) -> None:
+        self._drag = None
+
+    def paintEvent(self, _e) -> None:
+        if self._area.max_offset() <= 0:
+            return
+        p = QPainter(self)
+        p.setRenderHint(AA)
+        t = self._thumb()
+        wide = S(6) if (self._hover or self._drag is not None) else S(3)
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.22))
-        p.drawRoundedRect(QRectF(w - S(3), y, S(3), th), S(1.5), S(1.5))
+        if self._hover or self._drag is not None:
+            p.setBrush(alpha("#FFFFFF", 0.06))
+            p.drawRoundedRect(QRectF(self.width() - wide, 0, wide, self.height()), wide / 2, wide / 2)
+        p.setBrush(alpha("#FFFFFF", 0.45 if self._drag is not None else 0.32 if self._hover else 0.22))
+        p.drawRoundedRect(QRectF(self.width() - wide, t.top(), wide, t.height()), wide / 2, wide / 2)
 
 
 class ScrollArea(QWidget):
@@ -8004,9 +8079,19 @@ class ScrollArea(QWidget):
         self._target = 0.0
         self._pos = Tween(self, 0.0, self._apply)
         self._overlay = _ScrollOverlay(self)
+        self._grip = _ScrollGrip(self)
 
     def offset(self) -> float:
         return self._pos.level
+
+    def scroll_to(self, y: float, instant: bool = False) -> None:
+        """5.1: used by the draggable scroll bar."""
+        self._target = max(0.0, min(self.max_offset(), float(y)))
+        if instant:
+            self._pos.jump(self._target)
+            self._apply()
+        else:
+            self._pos.to(self._target, 280)
 
     def max_offset(self) -> float:
         return max(0.0, self._content_h - self.height())
@@ -8014,12 +8099,17 @@ class ScrollArea(QWidget):
     def _apply(self) -> None:
         self.content.move(0, -int(round(self._pos.level)))
         self._overlay.update()
+        self._grip.update()
 
     def resizeEvent(self, _e) -> None:
         self.content.setGeometry(0, -int(round(self._pos.level)), self.width() - S(self.GUTTER),
                                  self._content_h if getattr(self, "no_stretch", False) else max(self._content_h, self.height()))
         self._overlay.setGeometry(self.rect())
         self._overlay.raise_()
+        gw = S(self.GUTTER + 4)                           # 5.1: the grip, over the gutter on the right
+        self._grip.setGeometry(self.width() - gw, 0, gw, self.height())
+        self._grip.setVisible(self.max_offset() > 0)
+        self._grip.raise_()
         if self._target > self.max_offset():
             self._target = self.max_offset()
             self._pos.jump(self._target)
@@ -8030,6 +8120,7 @@ class ScrollArea(QWidget):
             self._content_h = h
             self.resizeEvent(None)
             self._overlay.update()
+            self._grip.update()
 
     def wheelEvent(self, e) -> None:
         if self.max_offset() > 0:
@@ -18036,8 +18127,17 @@ class StylePart:
 
 class SettingsPage(StylePart, Page):
     def _log_out(self) -> None:
+        """5.1: log out, close and open again straight on the login screen."""
+        import sys as _sys
         self.ctx.online.log_out()
-        self.ctx.quit()
+        self.ctx.cfg["welcome"] = True
+        self.ctx.cfg.save()
+        path = _sys.executable if getattr(_sys, "frozen", False) else os.path.abspath(_sys.argv[0])
+        try:
+            started = extras.restart(path)
+        except Exception:  # noqa: BLE001
+            started = False
+        QTimer.singleShot(300 if started else 0, self.ctx.quit)
 
     key = "settings"
 
@@ -18155,7 +18255,7 @@ class SettingsPage(StylePart, Page):
                 pw = Button(tr("Change password"), "ghost", 30)
                 pw.clicked.connect(ctx.change_password_dialog)
                 out = Button(tr("Log out"), "ghost", 30)
-                out.clicked.connect(lambda: ctx.window.confirm(tr("Log out and close Rubenium?"), self._log_out,
+                out.clicked.connect(lambda: ctx.window.confirm(tr("Log out? Rubenium restarts on the login screen."), self._log_out,
                                                                yes=tr("Log out")))
                 line.addWidget(pw, 1)
                 line.addWidget(out, 1)
@@ -21248,6 +21348,64 @@ def rarity_line(ctx, item: str) -> str:
     return text
 
 
+INV_SORTS = [("price", "Price"), ("rarity", "Rarity"), ("recent", "Recent"), ("collection", "Collection")]
+INV_FILTERS = [("", "All"), ("standard", "Common"), ("rare", "Rare"), ("special", "Epic"), ("epic", "Legendary"),
+               ("exotic", "Mythic")]
+
+
+def sort_items(ctx, things: list, get=lambda x: x) -> list:
+    """5.1: one sort and one rarity filter for every list of items (inventory, coinflip, trades). `get` turns an entry
+    into its item id."""
+    ec = ctx.econ
+    mode = getattr(ctx, "inv_sort", "price") or "price"
+    want = getattr(ctx, "inv_filter", "") or ""
+    recent = {}
+    for n, it in enumerate(ec.items):                     # later in the list = got more recently
+        recent[it["item"]] = n
+    out = [x for x in things if not want or ec.rarity(get(x)) == want]
+
+    def key(x):
+        item = get(x)
+        info = ec.info(item) or {}
+        tier = TIERS.index(info.get("rarity")) if info.get("rarity") in TIERS else -1
+        if mode == "rarity":
+            return (-tier, -int(info.get("cls") or 0), -value_of(ctx, item), item)
+        if mode == "recent":
+            return (-recent.get(item, -1), item)
+        if mode == "collection":
+            parts = item.split(":")
+            return (parts[0], parts[1] if len(parts) > 1 else "", -int(info.get("cls") or 0), item)
+        return (-value_of(ctx, item), item)
+    return sorted(out, key=key)
+
+
+def sort_bar(ctx, on_change) -> QWidget:
+    """5.1: Sort (price, rarity, recent, collection) and Filter (a rarity), above any list of items."""
+    box = QWidget()
+    lay = vbox(box, 4)
+    modes = [k for k, _n in INV_SORTS]
+    cur = getattr(ctx, "inv_sort", "price") or "price"
+    s1 = Segmented([tr(n) for _k, n in INV_SORTS], modes.index(cur) if cur in modes else 0)
+    keys = [k for k, _n in INV_FILTERS]
+    curf = getattr(ctx, "inv_filter", "") or ""
+    s2 = Segmented([tr(n) for _k, n in INV_FILTERS], keys.index(curf) if curf in keys else 0)
+
+    def pick_sort(i: int) -> None:
+        ctx.inv_sort = modes[i]
+        sfx.play("pick")
+        on_change()
+
+    def pick_filter(i: int) -> None:
+        ctx.inv_filter = keys[i]
+        sfx.play("pick")
+        on_change()
+    s1.changed.connect(pick_sort)
+    s2.changed.connect(pick_filter)
+    lay.addWidget(s1)
+    lay.addWidget(s2)
+    return box
+
+
 def value_of(ctx, item: str) -> int:
     """What an item is worth, as shown everywhere (inventory, trades, collection)."""
     return ctx.econ.worth(item)
@@ -22076,10 +22234,11 @@ def build_inventory(page, lay) -> None:
             continue
         if not want or k == want or (want == "look" and k in LOOKS):
             groups.setdefault(it["item"], []).append(it)
-    order = sorted(groups, key=lambda k: (-value_of(ctx, k), k))
     total = sum(value_of(ctx, k) * len(v) for k, v in groups.items())
     count = sum(len(v) for v in groups.values())
     lay.addWidget(Label(tr("{n} items · worth about {v} coins", n=count, v=coins_text(total)), 11, TEXT_DIM))
+    lay.addWidget(sort_bar(ctx, lambda: ctx.reload_page()))        # 5.1: sort and filter
+    order = sort_items(ctx, list(groups))
     extras = [i["id"] for k in order for i in [c for c in groups[k] if not c.get("locked")][1:]
               if ec.quick_value(k) > 0 and len(groups[k]) > 1]
     del extras                                           # 5.0: no more "quick sell the doubles"
@@ -23087,7 +23246,8 @@ def _trade_pool(page, link, mine: list, offer) -> QWidget:
     offered = {r["id"] for r in mine}
     pool = [i for i in ec.items if not i.get("locked") and i["id"] not in offered
             and ec.info(i["item"]).get("tradeable") and ec.info(i["item"]).get("kind") != "coupon"]
-    pool.sort(key=lambda i: (-value_of(ctx, i["item"]), i["item"]))
+    pool = sort_items(ctx, pool, lambda i: i["item"])          # 5.1: sorted and filtered like the inventory
+    lay.addWidget(sort_bar(ctx, lambda: ctx.reload_page()))
     if not pool:
         lay.addWidget(Label(tr("Nothing more to add."), 11.5, TEXT_DIM))
         return box
@@ -23114,7 +23274,8 @@ def _trade_peek(page, link, them: str) -> QWidget:
     if "items" not in pk:
         lay.addWidget(Label(tr("Loading {name}'s items…", name=them), 11.5, TEXT_DIM))
         return box
-    items = pk["items"]
+    items = sort_items(ctx, list(pk["items"]), lambda i: i["item"])     # 5.1: sorted and filtered too
+    lay.addWidget(sort_bar(ctx, lambda: ctx.reload_page()))
     if not items:
         lay.addWidget(Label(tr("{name} has nothing to trade.", name=them), 11.5, TEXT_DIM, wrap_w=page.W))
         return box
@@ -29347,9 +29508,13 @@ class SetRow(QWidget):
         self.can = done and not s.get("claimed")
         self.setCursor(Qt.CursorShape.PointingHandCursor if self.can else Qt.CursorShape.ArrowCursor)
 
+    def mousePressEvent(self, e) -> None:
+        e.accept()                                       # 5.1: without this the release never came here
+
     def mouseReleaseEvent(self, e) -> None:
         if self.can and self.rect().contains(e.position().toPoint()):
-            self.page.claim_set(self.s["set_id"])
+            self.can = False                             # one press, one claim
+            claim_set(self.page.ctx, self.s["set_id"])   # 5.1: works from Games > Quests too
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -30935,6 +31100,26 @@ class StatsCard(QWidget):
         p.drawText(QRectF(S(76), S(38), r.width() - S(90), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
                    tr("{h} Played · Member Since {d}", h=played_text(int(d.get("minutes") or 0)), d=date_text(d.get("since"))))
         bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
+        th = None                                          # 5.1: the stats sit on the theme this player wears
+        if name.lower() == (self.ctx.online.username() or "").lower():
+            th = self.ctx.theme()
+        else:
+            tid = str(look.get("theme") or "")
+            if tid.startswith("prog:theme:"):
+                tid = next((k for k, v in extras.PROG_IDS["theme"].items() if v == tid), "")
+            th = extras.theme_by_id(tid) if tid else None
+        if th is not None:
+            area = QRectF(r.left(), S(66), r.width(), r.height() - S(66))
+            pm = extras.theme_pattern(th, int(area.width()), int(area.height()), ui.accent, self.devicePixelRatioF(),
+                                      ui.scale, 0)
+            p.save()
+            clip = QPainterPath()
+            clip.addRoundedRect(area.adjusted(S(4), 0, -S(4), -S(4)), S(10), S(10))
+            p.setClipPath(clip)
+            p.fillRect(area, QColor(8, 10, 12, 200))
+            if pm is not None:
+                p.drawPixmap(area.topLeft(), pm)
+            p.restore()
         cells = [(coins_text(int(d.get("coins") or 0)), tr("Coins")), (str(int(d.get("keys") or 0)), tr("Keys")),
                  (str(int(st.get("items") or 0)), tr("Items")), (str(int(st.get("badges") or 0)), tr("Badges")),
                  (str(int(st.get("cases") or 0)), tr("Cases")), (str(int(st.get("trades") or 0)), tr("Trades")),
@@ -37534,13 +37719,22 @@ class ItemPicker(QWidget):
             w = ec.worth(it["item"])
             if w > 0:
                 rows.append((it["id"], it["item"], w))
-        rows.sort(key=lambda r: -r[2])
-        self.rows = rows                                    # 4.6: all of them, not the first 60
+        self.all_rows = rows
         self.picked: list = []
         self.per = 5
         self.th = S(70)
+        self.resort()
+
+    def resort(self) -> None:
+        """5.1: sorted and filtered like the inventory; what you picked always stays in view."""
+        picked = set(self.picked)
+        rows = sort_items(self.ctx, self.all_rows, lambda r: r[1])
+        rows += [r for r in self.all_rows if r[0] in picked and r not in rows]
+        self.rows = rows
         n = max(1, (len(self.rows) + self.per - 1) // self.per)
-        self.setFixedSize(page.W, n * self.th + (n - 1) * S(5) if self.rows else S(60))
+        self.setFixedSize(self.page.W, n * self.th + (n - 1) * S(5) if self.rows else S(60))
+        self.hover = -1
+        self.update()
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.hover = -1
@@ -38264,9 +38458,11 @@ def _build_view(page, lay, fid: str) -> None:
                                11, TEXT, wrap_w=page.W))
             picker = ItemPicker(page, limit)
             bar = TotalBar(picker)
+            row = hbox(spacing=6)                          # 5.1: the buttons first, never at the bottom of a long list
+            al.addLayout(row)
             al.addWidget(bar)
+            al.addWidget(sort_bar(ctx, picker.resort))
             al.addWidget(picker)
-            row = hbox(spacing=6)
             ok_btn = Button(tr("Confirm items"), "primary", 38)
 
             def confirm() -> None:
@@ -38286,7 +38482,6 @@ def _build_view(page, lay, fid: str) -> None:
                 setattr(ctx, "flip_id", None), setattr(ctx, "flip_data", None), ctx.reload_page("games"))))
             row.addWidget(ok_btn, 2)
             row.addWidget(close, 1)
-            al.addLayout(row)
             holder["picker"], holder["bar"] = picker, bar
         elif (state == "open" and not f.get("mine") and getattr(ctx, "flip_joining", None) == fid) or \
                 (state == "joined" and f.get("joiner")):
@@ -38296,9 +38491,11 @@ def _build_view(page, lay, fid: str) -> None:
                                11, TEXT, wrap_w=page.W))
             picker = ItemPicker(page, limit, (int(f.get("min") or 0), int(f.get("max") or 0)))
             bar = TotalBar(picker, picker.want, int(f.get("a_value") or 0))
+            row = hbox(spacing=6)                          # 5.1: Lock in and Leave at the top
+            al.addLayout(row)
             al.addWidget(bar)
+            al.addWidget(sort_bar(ctx, picker.resort))
             al.addWidget(picker)
-            row = hbox(spacing=6)
             lock = Button(tr("Lock in"), "primary", 38)
             lock.clicked.connect(lambda: lock_in(f, picker, bar))
             walk = Button(tr("Leave"), "ghost", 38)
@@ -38308,7 +38505,6 @@ def _build_view(page, lay, fid: str) -> None:
                 walk.clicked.connect(lambda: leave_view(ctx))
             row.addWidget(lock, 2)
             row.addWidget(walk, 1)
-            al.addLayout(row)
             holder["picker"], holder["bar"] = picker, bar
         elif state == "open" and f.get("mine"):
             bot = Button(tr("Play a bot"), "primary", 38, icon="robot")
@@ -41319,13 +41515,11 @@ class MarketStall(QWidget):
             self.lo, self.hi = int(info.get("min") or 1), int(info.get("max") or 1)
             self.est = max(self.lo, min(self.hi, int(info.get("estimate") or self.lo)))
             self.price = self.est
-            self.slider = AmountSlider(tr("Price"), self.lo, self.hi, self.est, coins_text, label_w=50)
-            vals = self.slider.values                      # the usual price is one of the stops
-            if self.est not in vals:
+            vals = finer_values(nice_values(self.lo, self.hi))     # 5.1: an extra stop between every two
+            if self.est not in vals:                       # the usual price is one of the stops
                 vals.append(self.est)
                 vals.sort()
-                self.slider.deleteLater()
-                self.slider = AmountSlider(tr("Price"), self.lo, self.hi, self.est, coins_text, label_w=50, values=vals)
+            self.slider = AmountSlider(tr("Price"), self.lo, self.hi, self.est, coins_text, label_w=50, values=vals)
             self.slider.changed.connect(self._slid)
             self.box_lay.insertWidget(0, self.slider)
         self.loaded = True
@@ -48903,6 +49097,12 @@ class App(QObject):
         self._preview = ""
         self.cfg["theme"] = ident
         self._theme_changed()
+        try:                                              # 5.1: others see your theme on your profile
+            cid = ident if ident.startswith("theme:") else extras.PROG_IDS["theme"].get(ident)
+            if cid and self.econ.ready:
+                self.econ.wear("theme", cid)
+        except Exception:  # noqa: BLE001
+            pass
 
     def preview_theme(self, ident: str) -> None:
         self._preview = ident
@@ -49557,6 +49757,7 @@ class App(QObject):
         self.tour_pending = not self.cfg["tutorial_done"]
         self.login_pending = True
         QTimer.singleShot(800, self.og_event_check)        # 5.0: the OG Prismatic Chest
+        QTimer.singleShot(4000, lambda: self.econ.ready and self.set_theme(self.cfg["theme"]))   # 5.1: share it
         if self.window.expanded:
             self.on_opened()
         if time.time() - int(self.cfg["backup_at"] or 0) > 86400:

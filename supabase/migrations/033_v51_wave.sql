@@ -167,5 +167,30 @@ begin
     end if;
 end $$;
 
+-- ================================================================ 5.1: profile looks cost more in the shop
+-- Banners, frames and themes 5 times the price, balls and lines 2 times. Badges and fonts unchanged. Once only.
+do $$ begin
+    if exists (select 1 from public.rb_config where key = 'prices_051') then return; end if;
+    create table if not exists public.rb_bak51_prices as select id, price from public.rb_catalog where price is not null;
+    alter table public.rb_bak51_prices enable row level security;
+    update public.rb_catalog set price = price * 5 where kind in ('banner', 'frame', 'theme') and price is not null;
+    update public.rb_catalog set price = price * 2 where kind in ('ball', 'line') and price is not null;
+    insert into public.rb_config (key, value) values ('prices_051', 1);
+end $$;
+
+-- ================================================================ 5.1: everyone sees the theme you wear on your profile
+create or replace function public.rb_looks() returns json
+language plpgsql stable security definer set search_path to '' as $function$
+begin
+    if auth.uid() is null then raise exception 'rb_not_logged_in'; end if;
+    return coalesce((select json_object_agg(p.username, jsonb_strip_nulls(jsonb_build_object(
+                         'tag', p.equip ->> 'tag', 'frame', p.equip ->> 'frame', 'banner', p.equip ->> 'banner',
+                         'theme', p.equip ->> 'theme',
+                         'gold', nullif(least(coalesce((p.equip ->> 'banner_gold')::int, 3), public.rb_gold_level(p.equip ->> 'banner',
+                                    (select w.minutes from public.rb_wear w where w.owner = p.id and w.item = p.equip ->> 'banner'))), 0))))
+                       from public.profiles p
+                      where not p.banned and p.equip ?| array['tag', 'frame', 'banner', 'theme']), '{}'::json);
+end $function$;
+
 update public.rb_config set value = greatest(value, 2026112100) where key = 'min_build';
 commit;
