@@ -134,5 +134,38 @@ begin
     ticks := max_ticks; x := px_; return next;
 end $function$;
 
+-- ================================================================ 5.1: coinflip bots: 20 more names, 5 to 20 open, 30 min to 6 h
+create or replace function public.rb_flip_bots()
+ returns table(name text, tier text, lo double precision, hi double precision)
+ language sql immutable set search_path to ''
+as $function$
+    values ('Pixel', 'low', 0.003::double precision, 0.012::double precision), ('Milo', 'low', 0.006, 0.02),
+           ('Biscuit', 'low', 0.004, 0.014), ('Tango', 'low', 0.005, 0.016), ('Pebble', 'low', 0.003, 0.01),
+           ('Nova', 'mid', 0.02, 0.05), ('Juno', 'mid', 0.03, 0.08),
+           ('Orbit', 'mid', 0.025, 0.06), ('Kiwi', 'mid', 0.02, 0.055), ('Rocket', 'mid', 0.035, 0.08),
+           ('Vega', 'high', 0.08, 0.16), ('Atlas', 'high', 0.12, 0.25),
+           ('Titan', 'high', 0.1, 0.2), ('Onyx', 'high', 0.09, 0.18), ('Blaze', 'high', 0.12, 0.24),
+           ('Noodle', 'low', 0.003, 0.011), ('Sprout', 'low', 0.004, 0.013), ('Waffle', 'low', 0.005, 0.015),
+           ('Ziggy', 'low', 0.003, 0.012), ('Bloop', 'low', 0.004, 0.012), ('Pogo', 'low', 0.005, 0.018),
+           ('Echo', 'mid', 0.02, 0.05), ('Comet', 'mid', 0.025, 0.065), ('Mango', 'mid', 0.02, 0.05),
+           ('Raven', 'mid', 0.03, 0.07), ('Pulse', 'mid', 0.025, 0.06), ('Lynx', 'mid', 0.03, 0.075),
+           ('Zephyr', 'mid', 0.02, 0.055), ('Glacier', 'high', 0.09, 0.17), ('Phantom', 'high', 0.1, 0.2),
+           ('Cobalt', 'high', 0.08, 0.16), ('Talon', 'high', 0.11, 0.22), ('Quasar', 'high', 0.12, 0.25),
+           ('Ember', 'high', 0.09, 0.18), ('Vortex', 'high', 0.1, 0.21) $function$;
+
+update public.rb_config set value = 5 where key = 'bot_flips_min';
+update public.rb_config set value = 20 where key = 'bot_flips_max';
+insert into public.rb_config (key, value) values ('bot_flips_min', 5), ('bot_flips_max', 20) on conflict (key) do nothing;
+
+do $$
+declare src text; out_ text;
+begin
+    src := replace(pg_get_functiondef('public.rb_flip_bot_offer(bigint,boolean,text,text,integer,text[])'::regprocedure), chr(13), '');
+    if position('25 + floor(random() * 21)' in src) > 0 then
+        out_ := replace(src, '25 + floor(random() * 21)::int', '30 + floor(random() * 331)::int');   -- 30 min to 6 h
+        execute out_;
+    end if;
+end $$;
+
 update public.rb_config set value = greatest(value, 2026112100) where key = 'min_build';
 commit;

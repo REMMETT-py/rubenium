@@ -37718,7 +37718,11 @@ class FlipRow(QWidget):
         p.setBrush(alpha("#FFFFFF", 0.05))
         p.drawRoundedRect(r, S(11), S(11))
         pass
-        paint_flip_coin(p, QPointF(r.left() + S(24), r.top() + S(24)), S(12), 0.0, f.get("a_side", "black"))
+        if f.get("a_bot"):                                # 5.1: bots have the bot logo as their picture
+            paint_bot_logo(p, QPointF(r.left() + S(24), r.top() + S(24)), S(15))
+            paint_flip_coin(p, QPointF(r.left() + S(34), r.top() + S(34)), S(6), 0.0, f.get("a_side", "black"))
+        else:
+            paint_flip_coin(p, QPointF(r.left() + S(24), r.top() + S(24)), S(12), 0.0, f.get("a_side", "black"))
         p.setPen(QColor(TEXT))
         p.setFont(font(12, QFont.Weight.Bold))
         name = str(f.get("a") or "?")
@@ -38045,6 +38049,25 @@ def flips_sig(data) -> str:
         return ""
     flips = [{k: v for k, v in f.items() if k not in VOLATILE} for f in (data.get("flips") or [])]
     return _json.dumps([flips, data.get("history"), data.get("mine"), data.get("locked")], sort_keys=True, default=str)
+
+
+def paint_bot_logo(p: QPainter, c: QPointF, rad: float) -> None:
+    """5.1: the bot logo (a little robot head in a circle), the picture of every coinflip bot."""
+    p.save()
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor("#2A3440"))
+    p.drawEllipse(c, rad, rad)
+    head = QRectF(c.x() - rad * 0.58, c.y() - rad * 0.38, rad * 1.16, rad * 0.9)
+    p.setBrush(QColor("#9AA4AD"))
+    p.drawRoundedRect(head, rad * 0.22, rad * 0.22)
+    p.drawRect(QRectF(c.x() - rad * 0.05, head.top() - rad * 0.3, rad * 0.1, rad * 0.3))
+    p.drawEllipse(QPointF(c.x(), head.top() - rad * 0.34), rad * 0.11, rad * 0.11)
+    p.setBrush(QColor("#4FE3FF"))
+    for dx in (-0.24, 0.24):
+        p.drawEllipse(QPointF(c.x() + rad * dx, head.center().y() - rad * 0.05), rad * 0.12, rad * 0.12)
+    p.setBrush(QColor("#2A3440"))
+    p.drawRoundedRect(QRectF(c.x() - rad * 0.26, head.bottom() - rad * 0.26, rad * 0.52, rad * 0.1), rad * 0.05, rad * 0.05)
+    p.restore()
 
 
 def show_name(f: dict, side: str) -> str:
