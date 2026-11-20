@@ -1,8 +1,12 @@
-Rubenium 5.2
+Rubenium 5.3
 
-- NEW: JACKPOT, at the top of Games. Every 15 minutes, 2 minutes to put in up to 3 items; your chance is your share of the total. Then bots fill the empty seats, the wheel spins for 10 seconds and the winner gets their items back and picks half of everyone else's
-- Leaderboard titles: be top 3 of a leaderboard to wear "#1 RICH" in gold, #2 in silver, #3 in bronze. They follow the leaderboards live. Wear up to 3 titles with your OG tag (Style > Your profile, or Inventory > Profile)
-- Coinflip: when the last 15 seconds start, the screen fades into a face-off: you on top, them below, the coin in the middle and a glowing countdown
-- Mini Golf: aim with the mouse while the power bar swings by itself; click or press Space at the right moment. Your ball and whose turn it is are much easier to see
+- A real fresh start: luck is fixed. A badge's design and its finish are rolled apart: Basic is the normal drop, Painted is common, Shiny is rare, Titanium very rare, Gold extremely rare and Prismatic (Mythic only) the rarest. Every badge design has its own rarity (Sunburst is 10 times rarer than the most common Legendary)
+- Cases pay back less than their price on average and only rarely more. Shop prices go up in order from the plainest to the best, nothing is cheap, and every case is priced to match. Buying from the shop costs 33% tax
+- Fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay. OG players: the Prismatic Chest again (5 000 coins, 25 keys, 750 XP)
+- The tutorial comes first, with only the settings that matter; the menu opens once it is done
+- Jackpot: one clock for everybody (no more joining a closed one or missing an open one), bots take at most 2 seats with smaller stakes, the winner takes back their items and picks a third of the pot, and what comes from bots is capped at twice their stake
+- Mini Golf: choose 3, 5, 10 or 15 holes, 12 new holes (60 in all), clearer water, and the help shows what every block does
+- Wave Rush: the first 100 m pay nothing; a gold line shows where coins start
+- Fixes: game mode unlocks again, notifications show their whole text, scratch cards and wheels can't be left before the prize lands, the pawn shop bubble no longer overlaps, the coinflip countdown glows smoothly
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.2"         # the version people see
-BUILD = "2026.11.20.4"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.3"         # the version people see
+BUILD = "2026.11.21.1"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1837,6 +1837,7 @@ DEFAULTS: dict = {
     "seen_version": "",
     "v5_fresh": False,                   # 5.0: the full release starts everyone at the first opening (settings kept)
     "online_door_v5": False,             # 5.0: the online garage doors were seen once
+    "v53_fresh": False,                  # 5.3: every setting back to its default once, then the tutorial
     "wave_bot": False,                   # 5.1: Wave Rush practice bot
     "cheats": False,                     # 5.1: Ruben's cheats (right click), his account only
     "godmode": False,                    # 5.1: secret god mode: every move with a cheat uses it
@@ -1942,6 +1943,15 @@ class Config(QObject):
         d = self.d
         d["scale"] = int(min(150, max(70, round(d["scale"] / 10) * 10)))
         d["opacity"] = 100
+        if not d["v53_fresh"]:                           # 5.3: a true fresh start: every setting back to its default
+            keep = {k: copy.deepcopy(d[k]) for k in ("schema", "rl", "autostart", "source", "usage_s", "backup_at",
+                                                    "reset_rid", "reset_name", "crosshair_presets", "update_check")}
+            self.d = d = copy.deepcopy(DEFAULTS)
+            d.update(keep)
+            d["v5_fresh"] = d["v53_fresh"] = d["online_door_v5"] = False
+            d["v53_fresh"] = True
+            d["v5_fresh"] = True
+            self._fresh53 = True
         if not d["v5_fresh"]:                            # 5.0: back to the very first opening, settings kept
             for k in ("tutorial_done", "daily_shown", "news_tab", "welcome", "xp_intro", "level_seen", "timing_help",
                       "hilo_help", "casino_warned", "badges", "online_panes", "online_tab", "page", "card_open",
@@ -6547,6 +6557,48 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({                                   # 5.3
+    'Balls, lines, fonts, themes, banners and frames, cheapest first. Buying adds a 33% tax.': 'Boules, lignes, polices, thèmes, bannières et cadres, du moins cher au plus cher. Acheter ajoute 33 % de taxe.',
+    "A real fresh start: luck is fixed. A badge's design and its finish are rolled apart: Basic is normal, Painted is common, Shiny is rare, Titanium very rare, Gold extremely rare, Prismatic (Mythic) the rarest. Every design has its own rarity": 'Un vrai nouveau départ : la chance est corrigée. Le motif d’un badge et sa finition sont tirés séparément : Basique est normal, Peint est courant, Brillant est rare, Titane très rare, Or extrêmement rare, Prismatique (Mythique) le plus rare. Chaque motif a sa propre rareté',
+    'Cases pay back less than their price on average and only rarely more. Shop prices go up in order from the plainest to the best, and every case is priced to match. Buying costs 33% tax': 'Les caisses rapportent en moyenne moins que leur prix et rarement plus. Les prix de la boutique montent dans l’ordre, du plus simple au plus beau, et chaque caisse a un prix qui correspond. Acheter coûte 33 % de taxe',
+    'Fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay. OGs: the Prismatic Chest again (5 000 coins, 25 keys, 750 XP)': 'Nouveau départ : pièces, clés, objets, niveaux et marché repartent de zéro. Heures de jeu, séries et tous les scores restent. OG : le Coffre Prismatique revient (5 000 pièces, 25 clés, 750 XP)',
+    'The tutorial comes first (only the settings that matter) and the menu opens when it is done': 'Le tutoriel passe en premier (seulement les réglages importants) et le menu s’ouvre quand il est fini',
+    'Jackpot: one clock for everybody (no more joining a closed one), bots take at most 2 seats, the winner picks a third of the pot and bot items are capped': 'Jackpot : la même horloge pour tout le monde (fini de rejoindre un jackpot fermé), les bots prennent 2 places au plus, le gagnant choisit un tiers du pot et les objets des bots sont plafonnés',
+    'Mini Golf: 3, 5, 10 or 15 holes, 12 new holes (60 in all), clearer water, and the help shows what every block does': 'Mini Golf : 3, 5, 10 ou 15 trous, 12 nouveaux trous (60 en tout), une eau plus claire, et l’aide montre ce que fait chaque bloc',
+    "Wave Rush: the first 100 m pay nothing (a gold line shows where coins start). Fixes: game mode unlocks again, notifications show their whole text, scratch cards and wheels can't be left before the prize lands, the pawn shop bubble no longer overlaps, the coinflip countdown glows smoothly": 'Wave Rush : les 100 premiers mètres ne rapportent rien (une ligne dorée montre où les pièces commencent). Corrections : le mode jeu se déverrouille, les notifications affichent tout leur texte, on ne peut plus quitter un ticket à gratter ou une roue avant le gain, la bulle du prêteur ne déborde plus, le compte à rebours du pile ou face brille en douceur',
+    'Welcome to Rubenium 5.3': 'Bienvenue dans Rubenium 5.3',
+    'Everyone starts fresh. This quick guide shows the main parts and sets up the few things that matter. The menu opens when you finish.': 'Tout le monde repart de zéro. Ce petit guide montre l’essentiel et règle les quelques choses importantes. Le menu s’ouvre quand tu as fini.',
+    'The first tab shows what is playing (Spotify, YouTube Music and more) with lyrics.': 'Le premier onglet montre ce qui joue (Spotify, YouTube Music et plus) avec les paroles.',
+    'Games has the mini games, the casino and your quests. Cases open in the Shop.': 'Jeux contient les mini-jeux, le casino et tes quêtes. Les caisses s’ouvrent dans la Boutique.',
+    'Sounds': 'Sons',
+    'Updating Rubenium… it starts again by itself in a moment.': 'Mise à jour de Rubenium… il redémarre tout seul dans un instant.',
+    'Claim your prize first!': 'Récupère d’abord ton gain !',
+    'Bot items too big: at most {n} from bots': 'Objets des bots trop chers : {n} au maximum venant des bots',
+    'Your own items come back for free. Now pick up to {n} of the {m} items the others put in.': 'Tes propres objets te reviennent gratuitement. Choisis maintenant jusqu’à {n} des {m} objets mis par les autres.',
+    'Items from bots: up to {n} in all (twice what you put in).': 'Objets des bots : jusqu’à {n} en tout (deux fois ta mise).',
+    'Too late: this jackpot is locked': 'Trop tard : ce jackpot est verrouillé',
+    'Too big: at most {n} in one jackpot': 'Trop gros : {n} au maximum par jackpot',
+    'COINS FROM HERE': 'PIÈCES À PARTIR D’ICI',
+    'Coins from {n} m': 'Pièces dès {n} m',
+    'Solo: no coins for the first 100 m (the gold line), then 5 coins every 10 m, with the 2-hour mini game limit.': 'Solo : pas de pièces pour les 100 premiers mètres (la ligne dorée), puis 5 pièces tous les 10 m, avec la limite des mini-jeux sur 2 heures.',
+    'THE BLOCKS': 'LES BLOCS',
+    'Wall': 'Mur',
+    'The ball bounces off it.': 'La balle rebondit dessus.',
+    'Bumper': 'Bumper',
+    'Kicks the ball back harder than a wall.': 'Renvoie la balle plus fort qu’un mur.',
+    'Sand': 'Sable',
+    'Slows the ball down a lot.': 'Ralentit beaucoup la balle.',
+    'Ice': 'Glace',
+    'Almost no slowing down: the ball keeps rolling.': 'Presque aucun freinage : la balle continue de rouler.',
+    'Boost pad': 'Accélérateur',
+    'Pushes the ball the way the arrows point.': 'Pousse la balle dans le sens des flèches.',
+    'Water': 'Eau',
+    'Splash! The ball goes back to where you hit it from (the shot still counts).': 'Plouf ! La balle revient là où tu l’as frappée (le coup compte quand même).',
+    'Cup': 'Trou',
+    'Get the ball in. A slow ball close to it gets pulled in.': 'Mets la balle dedans. Une balle lente tout près est attirée dedans.',
+    'Holes': 'Trous',
+    'The winner gets both bets (5% fee). Closes after 5 minutes if nobody joins.': 'Le gagnant remporte les deux mises (5 % de frais). Se ferme après 5 minutes si personne ne rejoint.',
+})
 FR.update({                                   # 5.2
     '3 titles at most: take one off first': '3 titres maximum : enlève-en un d’abord',
     'Aim with the mouse · click or Space': 'Vise avec la souris · clic ou Espace',
@@ -11075,6 +11127,13 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.3", ["A real fresh start: luck is fixed. A badge's design and its finish are rolled apart: Basic is normal, Painted is common, Shiny is rare, Titanium very rare, Gold extremely rare, Prismatic (Mythic) the rarest. Every design has its own rarity",
+             'Cases pay back less than their price on average and only rarely more. Shop prices go up in order from the plainest to the best, and every case is priced to match. Buying costs 33% tax',
+             'Fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay. OGs: the Prismatic Chest again (5 000 coins, 25 keys, 750 XP)',
+             'The tutorial comes first (only the settings that matter) and the menu opens when it is done',
+             'Jackpot: one clock for everybody (no more joining a closed one), bots take at most 2 seats, the winner picks a third of the pot and bot items are capped',
+             'Mini Golf: 3, 5, 10 or 15 holes, 12 new holes (60 in all), clearer water, and the help shows what every block does',
+             "Wave Rush: the first 100 m pay nothing (a gold line shows where coins start). Fixes: game mode unlocks again, notifications show their whole text, scratch cards and wheels can't be left before the prize lands, the pawn shop bubble no longer overlaps, the coinflip countdown glows smoothly"]),
     ("5.2", ['NEW: JACKPOT at the top of Games. Every 15 minutes, 2 minutes to put in up to 3 items, your chance is your share. Bots fill the empty seats, the wheel spins and the winner picks half of everyone else\'s items',
              'Leaderboard titles: be top 3 of a leaderboard to wear "#1 RICH" in gold, #2 silver, #3 bronze. Up to 3 titles with your OG tag (Style > Your profile)',
              'Coinflip: when the last 15 seconds start, the screen fades into a face-off: you on top, them below, a glowing countdown',
@@ -12997,17 +13056,35 @@ def badge_menu(ctx, on_change) -> None:
     m.exec(QCursor.pos())
 
 
+# ================================================================ 5.3: a prize being shown can't be left half way
+def claim_lock(ctx, seconds: float) -> None:
+    """While a scratch card, a wheel or a prize is being revealed, nothing leaves the screen (with a time limit, so a
+    lost answer can never lock the menu for good)."""
+    ctx.claim_until = time.monotonic() + seconds if seconds > 0 else 0.0
+
+
+def claim_blocked(ctx) -> bool:
+    if time.monotonic() < float(getattr(ctx, "claim_until", 0.0) or 0.0):
+        try:
+            ctx.toast(tr("Claim your prize first!"), "warn")
+            sfx.play("off")
+        except Exception:  # noqa: BLE001
+            pass
+        return True
+    return False
+
+
 # ================================================================ tutorial (5.0: first start and the 5.0 update)
 # Its own window in the middle of the screen (it used to sit inside the menu and shrank or vanished with it). Every
 # step has a small moving picture, two lines at most, and on some steps the settings to choose. No skipping: each
 # step is confirmed, and everything can be changed later in Settings.
 TUTORIAL = [
-    ("welcome", "Welcome to Rubenium 5.0", "Everyone starts fresh with the full release. This quick guide shows the main parts and lets you set Rubenium up your way."),
+    ("welcome", "Welcome to Rubenium 5.3", "Everyone starts fresh. This quick guide shows the main parts and sets up the few things that matter. The menu opens when you finish."),
     ("ball", "The ball", "The R on your screen is Rubenium. Click it to open the menu, click the R again to fold it away. Pick the key that shows or hides it:"),
-    ("music", "Music", "The first tab shows what is playing (Spotify, YouTube Music and more) with lyrics. Choose how it looks:"),
+    ("music", "Music", "The first tab shows what is playing (Spotify, YouTube Music and more) with lyrics."),
     ("alerts", "Notifications and sounds", "Small pop-ups tell you about trades, gifts, keys found and level ups. Choose what you want:"),
     ("coins", "Coins and keys", "Coins and keys come in just by having Rubenium open. Keys open cases. Mini games, quests and the daily rewards give more."),
-    ("games", "Games and cases", "Games has the mini games, the casino and your quests. Cases open in the Shop. Choose how fast cases open:"),
+    ("games", "Games and cases", "Games has the mini games, the casino and your quests. Cases open in the Shop."),
     ("online", "ONLINE mode", "The ONLINE button opens the big menu: coinflips, duels, golf, Wave Rush, trading, the market and your friends."),
     ("done", "You're all set!", "Everything you chose can be changed any time in Settings. Have fun!"),
 ]
@@ -13089,28 +13166,17 @@ class Tutorial(QWidget):
                     pass
             seg.changed.connect(set_key)
             lay.addWidget(seg)
-            lay.addWidget(self._toggle(tr("Open by holding the mouse on the ball"), "hold_open"))
-        elif kind == "music":
-            lay.addWidget(self._toggle(tr("Menu colours follow the album art"), "accent_from_art"))
-            lay.addWidget(self._toggle(tr("Compact music card while gaming"), "compact_music"))
         elif kind == "alerts":
             lay.addWidget(self._toggle(tr("Notifications"), "notify_all"))
-            lay.addWidget(self._toggle(tr("Notification sound"), "notify_sound"))
-            lay.addWidget(self._toggle(tr("Interface sounds"), "sounds", lambda v: setattr(sfx, "enabled", bool(v))))
-        elif kind == "games":
-            speeds = ["slow", "normal", "fast", "instant"]
-            sp = Segmented([tr("Slow"), tr("Normal"), tr("Fast"), tr("Instant")],
-                           speeds.index(cfg["chest_speed"]) if cfg["chest_speed"] in speeds else 1)
-            sp.changed.connect(lambda i: cfg.__setitem__("chest_speed", speeds[i]))
-            lay.addWidget(Label(tr("Case opening speed"), 11, TEXT))
-            lay.addWidget(sp)
+            lay.addWidget(self._toggle(tr("Sounds"), "sounds",
+                                       lambda v: (setattr(sfx, "enabled", bool(v)), cfg.__setitem__("notify_sound", bool(v)))))
         lay.addStretch(1)
         line = hbox(spacing=8)
         self.back = Button(tr("Back"), "ghost", 38)
         self.back.clicked.connect(self._back)
         self.back.setVisible(self.step > 0)
         last = self.step == len(TUTORIAL) - 1
-        choose = kind in ("welcome", "ball", "music", "alerts", "games")
+        choose = kind in ("welcome", "ball", "alerts")
         self.next = Button(tr("Start playing") if last else (tr("Confirm") if choose else tr("Next")) +
                            f"  {self.step + 1}/{len(TUTORIAL)}", "primary", 38)
         self.next.clicked.connect(self._next)
@@ -18956,7 +19022,7 @@ class ShopPage(StylePart, Page):
     MINE = [5, 2, 8, 0]                    # what is yours: inventory, collection, style, notifications (4.2: the
     #                                        sets are in Games > Quests, the style came from Settings)
     NOTES = ["Everything you were told, newest first. Click one to go there.",
-             "Balls, lines, fonts, themes, banners and frames. Shop price = worth + 20% tax.",
+             "Balls, lines, fonts, themes, banners and frames, cheapest first. Buying adds a 33% tax.",
              "Your collection: click a badge to see every colour.", "Buy cases with coins, open them with a key.",
              "Buy and sell with other users.", "Everything you own. Sell, show or trade it.",
              "Collect full sets for a big bonus.", "Items cheaper today. New deals every day at midnight.",
@@ -19768,7 +19834,7 @@ def show_case_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
 
 # 4.7: every badge case has a grid, the chance (in billionths) of each rarity (Common..Epic) x finish (Basic..Gold).
 # Every badge a case can give is at least 1 in: Basic 250, Painted 1 000, Shiny 10 000, Titanium 50 000, Gold 100 000.
-DAILY_GRID = [60764128, 125987522, 7731341, 0, 0, 59604508, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+DAILY_GRID = [139748124, 38113125, 76226, 0, 0, 71144500, 5005524, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]   # 5.3
 GRID_SCALE = 1e9
 
 
@@ -22000,7 +22066,7 @@ def build_cosmetics(page, lay) -> None:
                             "mark": "sale" if pct else ("worn" if owned else ""), "pct": pct})
         designs = [d for d in _designs(kind) if (_on_sale(ec, f"{kind}:{d[0]}") if kind in ("banner", "frame")
                                                  else _design_shown(ec, kind, d[0]))]
-        if kind in ("banner", "frame"):                    # cheapest first: Common to Legendary
+        if True:                                           # 5.3: every kind cheapest first, Common to Legendary
             order = sorted(range(len(entries)), key=lambda i: (entries[i]["price"] or 0, i))
             entries, designs = [entries[i] for i in order], [designs[i] for i in order]
         grid = ItemGrid(ctx, entries, page.W, 3 if kind in ("theme", "banner") else 4 if kind == "frame" else 5,
@@ -24371,6 +24437,7 @@ class ScratchCard(QWidget):
             return
         if not self.asked:
             self.asked = True
+            claim_lock(self.ctx, 8)
 
             def got(ok: bool, data) -> None:
                 if not ok or not isinstance(data, dict):
@@ -24378,6 +24445,7 @@ class ScratchCard(QWidget):
                     return self.ctx.toast(tr(str(data)) if "countdown" not in str(data) else tr("Not ready yet"), "warn")
                 self.prize = data
                 self.ctx.econ.scratch_in = int(data.get("next") or 43200)
+                claim_lock(self.ctx, 90)                         # 5.3: scratch it all before leaving
                 self.update()
             self.ctx.econ.call("rb_scratch", {}, got, hold=True)
         self.last = e.position()
@@ -24421,6 +24489,7 @@ class ScratchCard(QWidget):
     def _finish(self) -> None:
         self.done = True
         self.done_at = time.monotonic()
+        claim_lock(self.ctx, 1.2)
         self._t.start()
         QTimer.singleShot(1500, self._t.stop)
         self.ctx.econ.absorb(self.prize)
@@ -24896,10 +24965,11 @@ def build_minigames(page, lay) -> None:
 # SECTION: golf
 # ==================================================================================================
 import math
+import random
 import time
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
 
@@ -25018,11 +25088,43 @@ HOLES = {
     48: dict(name="Volcano", tee=(0.08, 0.52), cup=(0.50, 0.31), circles=[(0.50, 0.12, 0.035), (0.50, 0.50, 0.035)],
              rects=[], water=[(0.40, 0.20, 0.44, 0.42), (0.56, 0.20, 0.60, 0.42)], sand=[(0.20, 0.0, 0.32, 0.62)],
              boost=[(0.65, 0.04, 0.80, 0.14, -1.3, 0.0)]),
+    # 5.3: twelve new holes (60 in all, 120 with the mirrored ones); each one was played through by the simulation
+    49: dict(name="Spiral", tee=(0.08, 0.08), cup=(0.50, 0.31), circles=[],
+             rects=[(0.20, 0.16, 0.80, 0.20), (0.76, 0.20, 0.80, 0.50), (0.30, 0.46, 0.76, 0.50), (0.30, 0.26, 0.34, 0.46)]),
+    50: dict(name="River Crossing", tee=(0.08, 0.31), cup=(0.92, 0.31), rects=[], circles=[],
+             water=[(0.42, 0.0, 0.56, 0.24), (0.42, 0.38, 0.56, 0.62)], sand=[(0.70, 0.10, 0.80, 0.52)]),
+    51: dict(name="Ice Slalom", tee=(0.06, 0.31), cup=(0.94, 0.31), rects=[],
+             circles=[(0.30, 0.20, 0.035), (0.45, 0.42, 0.035), (0.60, 0.20, 0.035), (0.75, 0.42, 0.035)],
+             ice=[(0.20, 0.0, 0.85, 0.62)]),
+    52: dict(name="Rocket Ramp", tee=(0.08, 0.52), cup=(0.92, 0.52), circles=[],
+             rects=[(0.30, 0.22, 0.34, 0.62), (0.66, 0.22, 0.70, 0.62)],
+             boost=[(0.36, 0.04, 0.64, 0.16, 1.6, 0.0)]),
+    53: dict(name="Sand Castle", tee=(0.08, 0.31), cup=(0.75, 0.31), circles=[(0.55, 0.31, 0.035)],
+             rects=[(0.62, 0.14, 0.88, 0.18), (0.62, 0.44, 0.88, 0.48), (0.84, 0.18, 0.88, 0.44)],
+             sand=[(0.30, 0.0, 0.45, 0.62)]),
+    54: dict(name="Lighthouse", tee=(0.08, 0.52), cup=(0.85, 0.12), circles=[(0.50, 0.31, 0.06)],
+             rects=[], water=[(0.0, 0.0, 0.30, 0.25), (0.65, 0.40, 1.0, 0.62)]),
+    55: dict(name="Bounce House", tee=(0.10, 0.31), cup=(0.90, 0.31), rects=[],
+             circles=[(0.30, 0.12, 0.04), (0.30, 0.50, 0.04), (0.45, 0.31, 0.04), (0.60, 0.12, 0.04), (0.60, 0.50, 0.04),
+                      (0.75, 0.31, 0.04)]),
+    56: dict(name="The Funnel", tee=(0.08, 0.31), cup=(0.92, 0.31), circles=[],
+             rects=[(0.40, 0.0, 0.70, 0.12), (0.40, 0.50, 0.70, 0.62), (0.70, 0.0, 0.74, 0.25), (0.70, 0.37, 0.74, 0.62)],
+             ice=[(0.74, 0.25, 0.95, 0.37)]),
+    57: dict(name="Glacier Bay", tee=(0.10, 0.10), cup=(0.90, 0.52), rects=[(0.45, 0.0, 0.49, 0.40)], circles=[],
+             ice=[(0.0, 0.0, 0.45, 0.62)], water=[(0.60, 0.0, 0.70, 0.35)]),
+    58: dict(name="Conveyor", tee=(0.08, 0.10), cup=(0.92, 0.10), circles=[],
+             rects=[(0.20, 0.18, 0.80, 0.22)],
+             boost=[(0.20, 0.30, 0.80, 0.42, 1.5, 0.0), (0.85, 0.24, 0.97, 0.56, 0.0, -1.5)]),
+    59: dict(name="Desert Oasis", tee=(0.08, 0.52), cup=(0.50, 0.12), circles=[(0.50, 0.40, 0.04)],
+             rects=[], sand=[(0.20, 0.20, 0.38, 0.62), (0.62, 0.20, 0.80, 0.62)], water=[(0.44, 0.0, 0.46, 0.06)]),
+    60: dict(name="Rubenium Cup", tee=(0.06, 0.31), cup=(0.94, 0.31), rects=[(0.25, 0.0, 0.29, 0.22), (0.25, 0.40, 0.29, 0.62)],
+             circles=[(0.50, 0.20, 0.04), (0.50, 0.42, 0.04)], ice=[(0.55, 0.0, 0.75, 0.62)],
+             water=[(0.78, 0.0, 0.84, 0.20), (0.78, 0.42, 0.84, 0.62)], boost=[(0.32, 0.25, 0.44, 0.37, 1.2, 0.0)]),
 }
 
 
 def get_hole(hid: int) -> dict:
-    """Hole 1-48; 101-148 is the same hole mirrored left to right."""
+    """Hole 1-60; 101-160 is the same hole mirrored left to right."""
     base = HOLES.get(hid % 100, HOLES[1])
     if hid < 100:
         return base
@@ -25117,6 +25219,141 @@ def simulate(hole: dict, x: float, y: float, ang: float, pw: float):
             frames.append((x, y))
     frames.append((x, y))
     return frames, x, y, False
+
+
+def paint_golf_zone(p: QPainter, kind: str, r: QRectF, now: float, push=None) -> None:
+    """5.3: sand, ice, water, boost pads, walls and bumpers, the same on the course and in the help. Water is clearer:
+    bright, with a white edge and moving ripples."""
+    p.save()
+    p.setPen(Qt.PenStyle.NoPen)
+    if kind == "sand":
+        p.setBrush(QColor("#E3C88A"))
+        p.drawRoundedRect(r, S(10), S(10))
+        p.setBrush(alpha("#9C7A3C", 0.35))
+        rnd = random.Random(int(r.left() * 7 + r.top() * 13))
+        for _ in range(int(max(4, r.width() * r.height() / S(60)))):
+            p.drawEllipse(QPointF(rnd.uniform(r.left() + S(4), r.right() - S(4)), rnd.uniform(r.top() + S(4), r.bottom() - S(4))),
+                          S(1.1), S(1.1))
+    elif kind == "ice":
+        p.setBrush(alpha("#D8F6FF", 0.70))
+        p.setPen(QPen(alpha("#FFFFFF", 0.85), S(1.2)))
+        p.drawRoundedRect(r, S(6), S(6))
+        p.setPen(QPen(alpha("#FFFFFF", 0.55), S(1.2)))
+        p.setClipRect(r)
+        step = S(14)
+        x = r.left() - r.height()
+        while x < r.right():
+            p.drawLine(QPointF(x, r.bottom()), QPointF(x + r.height() * 0.6, r.top()))
+            x += step
+    elif kind == "water":
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, QColor("#5CC8FF"))
+        g.setColorAt(1, QColor("#1F6FE0"))
+        p.setBrush(g)
+        p.setPen(QPen(alpha("#FFFFFF", 0.9), S(2)))
+        p.drawRoundedRect(r, S(8), S(8))
+        p.setClipRect(r.adjusted(S(2), S(2), -S(2), -S(2)))
+        p.setPen(QPen(alpha("#FFFFFF", 0.55), S(1.4), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        rows = max(1, int(r.height() / S(12)))
+        for k in range(rows):
+            y = r.top() + (k + 0.5) * r.height() / rows
+            path = QPainterPath(QPointF(r.left(), y))
+            x = r.left()
+            while x <= r.right():
+                path.lineTo(QPointF(x, y + math.sin(x / S(7) + now * 2.5 + k) * S(2)))
+                x += S(3)
+            p.drawPath(path)
+    elif kind == "boost":
+        px_, py_ = push or (1.0, 0.0)
+        p.setBrush(alpha("#FFB627", 0.40))
+        p.setPen(QPen(alpha("#FFD36B", 0.9), S(1.2)))
+        p.drawRoundedRect(r, S(6), S(6))
+        ang_ = math.atan2(py_, px_)
+        p.setPen(QPen(QColor("#FFD36B"), S(2.5), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        for k in range(3):
+            t_ = ((now * 1.5 + k / 3) % 1.0) - 0.5
+            m_ = min(r.width(), r.height()) * 0.8
+            c_ = r.center() + QPointF(math.cos(ang_) * t_ * m_, math.sin(ang_) * t_ * m_)
+            for sgn in (-1, 1):
+                p.drawLine(c_, c_ - QPointF(math.cos(ang_ + sgn * 0.6) * S(7), math.sin(ang_ + sgn * 0.6) * S(7)))
+    elif kind == "wall":
+        p.setBrush(QColor("#6B4423"))
+        p.drawRoundedRect(r, S(3), S(3))
+        p.setBrush(alpha("#FFFFFF", 0.12))
+        p.drawRect(QRectF(r.left(), r.top(), r.width(), min(r.height(), S(3))))
+    elif kind == "bumper":
+        rad = min(r.width(), r.height()) / 2
+        glow = QRadialGradient(r.center(), rad)
+        glow.setColorAt(0, QColor("#FF7AD9"))
+        glow.setColorAt(1, QColor("#9B2C7E"))
+        p.setBrush(glow)
+        p.drawEllipse(r.center(), rad, rad)
+    elif kind == "cup":
+        p.setBrush(QColor("#0B120D"))
+        p.drawEllipse(r.center(), min(r.width(), r.height()) * 0.3, min(r.width(), r.height()) * 0.3)
+        p.setPen(QPen(QColor("#EDEDED"), S(1.5)))
+        top = r.center() - QPointF(0, r.height() * 0.45)
+        p.drawLine(r.center(), top)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FF4B4B"))
+        flag = QPainterPath(top)
+        flag.lineTo(top + QPointF(S(12), S(4)))
+        flag.lineTo(top + QPointF(0, S(8)))
+        flag.closeSubpath()
+        p.drawPath(flag)
+    p.restore()
+
+
+GOLF_BLOCKS = [("wall", "Wall", "The ball bounces off it."),
+               ("bumper", "Bumper", "Kicks the ball back harder than a wall."),
+               ("sand", "Sand", "Slows the ball down a lot."),
+               ("ice", "Ice", "Almost no slowing down: the ball keeps rolling."),
+               ("boost", "Boost pad", "Pushes the ball the way the arrows point."),
+               ("water", "Water", "Splash! The ball goes back to where you hit it from (the shot still counts)."),
+               ("cup", "Cup", "Get the ball in. A slow ball close to it gets pulled in.")]
+
+
+class GolfLegend(QWidget):
+    """5.3: in the golf help, every kind of block on a little patch of grass, with what it does."""
+
+    def __init__(self, w: int) -> None:
+        super().__init__()
+        self.row_h = S(48)
+        self.setFixedSize(w, self.row_h * len(GOLF_BLOCKS))
+        self._t = QTimer(self)
+        self._t.setInterval(33)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        for i, (kind, name, what) in enumerate(GOLF_BLOCKS):
+            top = i * self.row_h
+            patch = QRectF(0, top + S(3), S(64), self.row_h - S(6))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#2E9E4F"))
+            p.drawRoundedRect(patch, S(8), S(8))
+            inner = patch.adjusted(S(8), S(6), -S(8), -S(6))
+            if kind == "wall":
+                inner = QRectF(patch.left() + S(10), patch.center().y() - S(4), patch.width() - S(20), S(8))
+            elif kind in ("bumper", "cup"):
+                d = patch.height() - S(10)
+                inner = QRectF(patch.center().x() - d / 2, patch.center().y() - d / 2, d, d)
+            paint_golf_zone(p, kind, inner, now, (1.0, 0.0))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(11.5, QFont.Weight.Bold))
+            p.drawText(QRectF(S(76), top + S(2), self.width() - S(76), S(18)), int(Qt.AlignmentFlag.AlignVCenter), tr(name))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9.5))
+            p.drawText(QRectF(S(76), top + S(19), self.width() - S(78), self.row_h - S(19)),
+                       int(Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), tr(what))
 
 
 def start_pos(hole: dict, side: str):
@@ -25378,32 +25615,11 @@ class GolfView(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         for k in range(0, 12, 2):                            # mowed stripes
             p.fillRect(QRectF(f.left() + k * u / 12, f.top(), u / 12, f.height()), alpha("#FFFFFF", 0.035))
-        for (x1, y1, x2, y2) in h.get("sand", []):
-            p.setBrush(QColor("#E3C88A"))
-            p.drawRoundedRect(QRectF(P(x1, y1), P(x2, y2)), S(10), S(10))
-        for (x1, y1, x2, y2) in h.get("ice", []):
-            p.setBrush(alpha("#CFF4FF", 0.55))
-            p.drawRoundedRect(QRectF(P(x1, y1), P(x2, y2)), S(6), S(6))
-        for (x1, y1, x2, y2) in h.get("water", []):
-            wr = QRectF(P(x1, y1), P(x2, y2))
-            wg = QLinearGradient(wr.topLeft(), wr.bottomRight())
-            wg.setColorAt(0, QColor("#2E7CF6"))
-            wg.setColorAt(1, QColor("#14489E"))
-            p.setBrush(wg)
-            p.drawRoundedRect(wr, S(8), S(8))
+        for kind in ("sand", "ice", "water"):                # 5.3: one painter for the course and the help
+            for (x1, y1, x2, y2) in h.get(kind, []):
+                paint_golf_zone(p, kind, QRectF(P(x1, y1), P(x2, y2)), now)
         for (x1, y1, x2, y2, px_, py_) in h.get("boost", []):
-            br = QRectF(P(x1, y1), P(x2, y2))
-            p.setBrush(alpha("#FFB627", 0.35))
-            p.drawRoundedRect(br, S(6), S(6))
-            ang_ = math.atan2(py_, px_)
-            p.setPen(QPen(QColor("#FFD36B"), S(2.5), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-            for k in range(3):
-                t_ = ((now * 1.5 + k / 3) % 1.0) - 0.5
-                m_ = min(br.width(), br.height()) * 0.8
-                c_ = br.center() + QPointF(math.cos(ang_) * t_ * m_, math.sin(ang_) * t_ * m_)
-                for sgn in (-1, 1):
-                    p.drawLine(c_, c_ - QPointF(math.cos(ang_ + sgn * 0.6) * S(7), math.sin(ang_ + sgn * 0.6) * S(7)))
-            p.setPen(Qt.PenStyle.NoPen)
+            paint_golf_zone(p, "boost", QRectF(P(x1, y1), P(x2, y2)), now, (px_, py_))
         wood = QColor("#6B4423")
         for (x1, y1, x2, y2) in h["rects"]:
             r = QRectF(P(x1, y1), P(x2, y2))
@@ -25775,6 +25991,25 @@ def load_golf(page) -> None:
     ctx.online.ask("rb_golf_lobbies", {}, got)
 
 
+GOLF_COUNTS = (3, 5, 10, 15)                       # 5.3: how many holes a round has
+
+
+def golf_count(ctx) -> int:
+    n = int(getattr(ctx, "golf_count", 5) or 5)
+    return n if n in GOLF_COUNTS else 5
+
+
+def golf_count_picker(ctx) -> QWidget:
+    """5.3: 3, 5, 10 or 15 holes."""
+    box = QWidget()
+    row = hbox(box, 8)
+    row.addWidget(Label(tr("Holes"), 11, TEXT, bold=True))
+    seg = Segmented([str(n) for n in GOLF_COUNTS], GOLF_COUNTS.index(golf_count(ctx)))
+    seg.changed.connect(lambda i: setattr(ctx, "golf_count", GOLF_COUNTS[i]))
+    row.addWidget(seg, 1)
+    return box
+
+
 def build_golf_solo(page, lay, sid, leave_screen) -> None:
     """4.3: Mini Golf alone. No bet and no clock: coins by strokes, paid at the end of the round."""
     pass
@@ -25787,7 +26022,7 @@ def build_golf_solo(page, lay, sid, leave_screen) -> None:
             sfx.play("on")
             ctx.golf_solo_id = data.get("id")
             ctx.reload_page("games")
-        ctx.econ.call("rb_golf_solo_start", {}, done)
+        ctx.econ.call("rb_golf_solo_start", {"holes": golf_count(ctx)}, done)
     if sid:
         view = GolfView(page, sid, solo=True)
         lay.addWidget(view)
@@ -25831,6 +26066,7 @@ def build_golf_solo(page, lay, sid, leave_screen) -> None:
         return
     lay.addWidget(CoinBar(ctx))
     lay.addWidget(Label(tr("PLAY ALONE"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    lay.addWidget(golf_count_picker(ctx))
     go = Button(tr("Start a round"), "primary", 36, icon="flag")
     go.clicked.connect(start)
     lay.addWidget(go)
@@ -26015,11 +26251,13 @@ def build_golf(page, lay) -> None:
                 ctx.econ.refresh()
                 ctx.golf_lobby = None
                 load_golf(page)
-            ctx.econ.call("rb_golf_create", {"bet": bet}, done)
+            ctx.econ.call("rb_golf_create", {"bet": bet, "holes": golf_count(ctx)}, done)
         make.clicked.connect(create)
+        lay.addWidget(golf_count_picker(ctx))
         lay.addWidget(make)
-        lay.addWidget(Label(tr("{n} holes. The winner gets both bets (5% fee). Closes after 5 minutes if nobody joins.", n=holes),
+        lay.addWidget(Label(tr("The winner gets both bets (5% fee). Closes after 5 minutes if nobody joins."),
                             10, TEXT_DIM, wrap_w=page.W))
+        del holes
     else:
         lay.addWidget(Label(tr("YOUR MATCH"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
         lay.addWidget(LobbyRow(page, mine))
@@ -26896,9 +27134,11 @@ class Daily(Game):
             return
         self.busy = True
         self.stake = 0
+        claim_lock(self.ctx, 8)
         self.ask("rb_spin", {}, self._rolled)
 
     def _rolled(self, ans: dict) -> None:
+        claim_lock(self.ctx, 7)                          # 5.3: the wheel lands before anything else
         self.result = int(ans.get("slot", 0))
         self._prize = (int(ans.get("won", 0)), -1 if ans.get("gold") else (-3 if ans.get("coupon") else int(ans.get("won_keys", 0))))
         self._ans = ans
@@ -26915,6 +27155,7 @@ class Daily(Game):
         """4.0: the prize is already yours (paid by the server when the wheel was spun): no Collect button."""
         self.angle = self._to % 360.0
         self.busy = False
+        claim_lock(self.ctx, 1.0)
         self.econ.hold_round(False)
         ans = getattr(self, "_ans", None) or {}
         if not ans.get("collected"):                     # an older server: keep the old way
@@ -28538,6 +28779,8 @@ class GamesPage(Page):
 
     # -- 2.4: sub-screens (Memory, duels, scratch card)
     def open_sub(self, name) -> None:
+        if claim_blocked(self.ctx):
+            return
         sfx.play("pick")
         for flag in ("quests_open", "mini_open", "park_open"):
             setattr(self.ctx, flag, False)
@@ -33253,7 +33496,8 @@ class AdminPage(Page):
                                  ("Slots", "right click Spin", "3 of a kind", "#3DDC84"),
                                  ("Coinflip", "right click Play a bot", "you win", "#3DDC84"),
                                  ("Free spin", "right click Spin", "the gold slot", "#3DDC84"),
-                                 ("Scratch card", "start with a right click", "Exotic or Golden", "#3DDC84")], self.W))
+                                 ("Scratch card", "start with a right click", "Exotic or Golden", "#3DDC84"),
+                                 ("Wave Rush", "god mode on", "the wave flies itself", "#3DDC84")], self.W))
 
     def _rig(self, lay) -> None:
         st = self.state("rig")
@@ -34400,7 +34644,7 @@ import time
 import json
 
 from PyQt6.QtCore import QObject, QPoint, QPointF, QRectF, QTimer, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QCursor, QFont, QGuiApplication, QPainter, QPen
+from PyQt6.QtGui import QColor, QCursor, QFont, QFontMetrics, QGuiApplication, QPainter, QPen
 from PyQt6.QtWidgets import QWidget
 
 
@@ -34452,7 +34696,7 @@ def beep(volume: int) -> None:
 class Popup(QWidget):
     """One notification. 4.0: clickable (it never takes the keyboard): the green button, or the card itself, opens
     what it is about. It stays above the menus while it shows."""
-    W, H = 280, 52
+    W, H = 320, 52
     LIFE = 6.0
 
     def __init__(self, title: str, text: str, colour: str, action=None, on_go=None) -> None:
@@ -34465,7 +34709,12 @@ class Popup(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setCursor(Qt.CursorShape.PointingHandCursor if action else Qt.CursorShape.ArrowCursor)
-        self.setFixedSize(S(self.W), S(self.H))
+        # 5.3: the whole text, on up to 3 lines (it used to be cut off with "…")
+        fm = QFontMetrics(font(11.5, QFont.Weight.DemiBold))
+        self._text_w = S(self.W) - S(26) - (S(56) if action else 0)
+        br = fm.boundingRect(0, 0, int(self._text_w), 2000, int(Qt.TextFlag.TextWordWrap), str(text))
+        self._text_h = min(br.height(), fm.lineSpacing() * 3) + S(2)
+        self.setFixedSize(S(self.W), max(S(self.H), int(S(28) + self._text_h + S(8))))
         self.born = time.monotonic()
         self.finished = False
         self.hover = False
@@ -34550,8 +34799,8 @@ class Popup(QWidget):
         p.drawText(QRectF(r.left() + S(16), r.top() + S(7), right, S(16)), int(Qt.AlignmentFlag.AlignVCenter), self.title)
         p.setPen(QColor(TEXT))
         p.setFont(font(11.5, QFont.Weight.DemiBold))
-        text = p.fontMetrics().elidedText(self.text, Qt.TextElideMode.ElideRight, int(right))
-        p.drawText(QRectF(r.left() + S(16), r.top() + S(24), right, S(20)), int(Qt.AlignmentFlag.AlignVCenter), text)
+        p.drawText(QRectF(r.left() + S(16), r.top() + S(25), self._text_w, self._text_h),
+                   int(Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), self.text)
         if self.action:                                   # the small green button
             g = self.go_rect()
             p.setPen(Qt.PenStyle.NoPen)
@@ -34683,8 +34932,9 @@ class Notifier(QObject):
             screen = QGuiApplication.screenAt(card.center()) or QGuiApplication.primaryScreen()
             area = screen.availableGeometry()
             step = w.height() + gap
+            off = sum(o.height() + gap for o in self.shown[:n])   # 5.3: popups can be taller now
             if getattr(self.ctx, "online_mode", False):
-                y = card.top() + S(80) + step * n
+                y = card.top() + S(80) + off
                 if area.right() - card.right() > w.width() + gap * 2:          # right of the banner
                     x = card.right() + gap
                     return QPoint(x + S(24), y), QPoint(x, y)
@@ -34695,13 +34945,13 @@ class Notifier(QObject):
                 return QPoint(x, y - S(16)), QPoint(x, y)
             x = card.center().x() - w.width() // 2
             if card.top() - area.top() > step * 3:           # room above the menu
-                y = card.top() - step * (n + 1)
+                y = card.top() - (off + step)
                 return QPoint(x, y + S(16)), QPoint(x, y)
             if area.bottom() - card.bottom() > step * 3:     # room below
-                y = card.bottom() + gap + step * n
+                y = card.bottom() + gap + off
                 return QPoint(x, y - S(16)), QPoint(x, y)
             x = card.right() + gap if area.right() - card.right() > w.width() + gap else card.left() - gap - w.width()
-            y = card.top() + S(40) + step * n
+            y = card.top() + S(40) + off
             return QPoint(x, y - S(16)), QPoint(x, y)
         ball = win_.ball.frameGeometry()
         screen = QGuiApplication.screenAt(ball.center()) or QGuiApplication.primaryScreen()
@@ -35462,7 +35712,7 @@ SWITCH_GREEN = "#3DFF7A"
 TITANIUM = "#F4F7FA"
 DOOR_OPEN_S = (0.55, 1.05, 2.45)            # warning lights, bolts slide, doors fully open
 REEL_ENDS = (8.4, 9.2, 10.0)               # each wheel stops, seconds after the explosion
-OG_REWARDS = (("keys", "25", "KEYS"), ("coins", "10K", "COINS"), ("coupon", "1000", "XP COUPON"))
+OG_REWARDS = (("keys", "25", "KEYS"), ("coins", "5K", "COINS"), ("coupon", "750", "XP COUPON"))   # 5.3
 
 
 def prism(h: float, s: float = 0.55, v: float = 1.0, a: float = 1.0) -> QColor:
@@ -36224,10 +36474,27 @@ def jp_colour(i) -> QColor:
     return QColor(JP_COLOURS[int(i or 0) % len(JP_COLOURS)])
 
 
-def jp_phase(now: float = None):
-    """From the clock alone (the server uses the same one): ('open', seconds left) while a jackpot takes players,
-    ('running', 0) while it spins, ('closed', seconds until the next one opens)."""
-    now = time.time() if now is None else now
+def jp_now(ctx=None) -> float:
+    """5.3: the server's clock (a PC clock can be minutes off: the jackpot looked open when it was shut)."""
+    return time.time() + float(getattr(ctx, "jp_offset", 0.0) or 0.0)
+
+
+def jp_phase(ctx=None):
+    """('open', seconds left) while a jackpot takes players, ('running', 0) while it spins, ('closed', seconds until the
+    next one opens). 5.3: from the server's own answer when there is one, on the server's clock."""
+    now = jp_now(ctx)
+    d = getattr(ctx, "jackpot_data", None) if ctx is not None else None
+    if isinstance(d, dict) and d.get("now") and now - float(getattr(ctx, "jp_got_at", 0) or 0) < 30:
+        st = d.get("state")
+        if st == "open" and d.get("lock_at"):
+            left = float(d["lock_at"]) - now
+            if left > 0:
+                return "open", left
+            return "running", 0.0
+        if st in ("locked", "picking"):
+            return "running", 0.0
+        nxt = float(d.get("next_at") or 0) - now
+        return "closed", max(0.0, nxt)
     slot = math.floor(now / JP_EVERY) * JP_EVERY
     t = now - slot
     if t < JP_OPEN:
@@ -36263,7 +36530,7 @@ class JackpotCard(QWidget):
     def mouseReleaseEvent(self, e) -> None:
         if not self.rect().contains(e.position().toPoint()):
             return
-        phase, left = jp_phase()
+        phase, left = jp_phase(self.ctx)
         if phase == "closed" and not getattr(self.ctx, "jackpot_in", False):
             sfx.play("off")
             return self.ctx.toast(tr("The next jackpot opens in {t}", t=jp_clock(left)), "warn")
@@ -36275,7 +36542,7 @@ class JackpotCard(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
         now = time.monotonic()
-        phase, left = jp_phase()
+        phase, left = jp_phase(self.ctx)
         live = phase != "closed" or getattr(self.ctx, "jackpot_in", False)
         gold = QColor("#FFC94D")
         g = QLinearGradient(r.topLeft(), r.bottomRight())
@@ -36348,7 +36615,7 @@ class JackpotWheel(QWidget):
 
     def set_data(self, d: dict) -> None:
         if d.get("now"):
-            self.offset = float(d["now"]) - time.time()
+            self.offset = float(getattr(self.ctx, "jp_offset", float(d["now"]) - time.time()))
         if d.get("i_won") and not self.d.get("i_won"):
             rnd = random.Random()
             self._confetti = [(rnd.uniform(0, 1), rnd.uniform(-0.6, 0), rnd.uniform(0.15, 0.45), rnd.uniform(0, math.tau),
@@ -36608,6 +36875,9 @@ def load_jackpot(ctx, then=None) -> None:
             return
         old = getattr(ctx, "jackpot_data", None)
         ctx.jackpot_data = data
+        if data.get("now"):                               # 5.3: one clock for everybody, the server's
+            ctx.jp_offset = float(data["now"]) - time.time()
+            ctx.jp_got_at = jp_now(ctx)
         ctx.jackpot_in = bool(data.get("mine")) and data.get("state") in ("open", "locked", "picking")
         if then:
             then(_jp_shape(old) != _jp_shape(data))
@@ -36690,15 +36960,26 @@ def build_jackpot(page, lay) -> None:
     if d.get("pool") and d.get("i_won"):
         allowed = int(d.get("picks_allowed") or 0)
         lay.addWidget(Label(tr("YOU WON THE JACKPOT!"), 20, "#FFC94D", bold=True))
-        lay.addWidget(Label(tr("Your own items come back for free. Now pick {n} of the {m} items the others put in.",
+        lay.addWidget(Label(tr("Your own items come back for free. Now pick up to {n} of the {m} items the others put in.",
                                n=allowed, m=len(d["pool"])), 11.5, TEXT, wrap_w=page.W))
+        if d.get("cap"):
+            lay.addWidget(Label(tr("Items from bots: up to {n} in all (twice what you put in).", n=coins_text(int(d["cap"]))),
+                                10.5, TEXT_DIM, wrap_w=page.W))
         pick = JackpotPick(ctx, d["pool"], allowed, page.W)
         count = Label("", 13, "#FFC94D", bold=True)
         claim = Button(tr("Claim"), "primary", 42)
 
-        def update_count() -> None:
-            count.set_text(tr("{a} / {b} picked", a=len(pick.picked), b=allowed))
-            claim.setEnabled(len(pick.picked) == allowed)
+        cap = int(d.get("cap") or 0)
+        worth_of = {x["key"]: int(x.get("worth") or 0) for x in d["pool"]}
+
+        def bot_taken() -> int:
+            return sum(worth_of.get(k, 0) for k in pick.picked if str(k).startswith("bot:"))
+
+        def update_count() -> None:                      # 5.3: up to N, and bot items within the cap
+            over = cap and bot_taken() > cap
+            count.set_text(tr("Bot items too big: at most {n} from bots", n=coins_text(cap)) if over else
+                           tr("{a} / {b} picked", a=len(pick.picked), b=allowed))
+            claim.setEnabled(0 < len(pick.picked) <= allowed and not over)
         pick.changed.connect(update_count)
         update_count()
 
@@ -36730,7 +37011,8 @@ def build_jackpot(page, lay) -> None:
         if n >= 6:
             lay.addWidget(Label(tr("This jackpot is full (6 players). Watch it spin!"), 11.5, TEXT_DIM, wrap_w=page.W))
         else:
-            minj = int(d.get("min_join") or 100)
+            minj = int(d.get("min_join") or 500)
+            maxj = int(d.get("max_join") or 0)
             picker = ItemPicker(page, 3)
             chance = Label("", 12, TEXT, bold=True)
             join = Button(tr("Join the jackpot"), "primary", 40)
@@ -36743,12 +37025,17 @@ def build_jackpot(page, lay) -> None:
                     join.setEnabled(False)
                     return
                 share = mine / max(1, cur + mine)
-                ok = mine >= minj
-                chance.set_text(tr("Your chance: {p}", p=pct(share)) if ok else
+                late = wheel.server_now() >= float((ctx.jackpot_data or d).get("lock_at") or 0) - 0.5
+                big = maxj and mine > maxj
+                ok = mine >= minj and not big and not late
+                chance.set_text(tr("Too late: this jackpot is locked") if late else
+                                tr("Too big: at most {n} in one jackpot", n=coins_text(maxj)) if big else
+                                tr("Your chance: {p}", p=pct(share)) if mine >= minj else
                                 tr("Too small: at least {n} to join", n=coins_text(minj)))
                 join.setEnabled(ok)
             picker.changed.connect(update_chance)
             update_chance()
+            lay.addWidget(_Poll(500, update_chance))         # 5.3: the button shuts with the timer, not after
 
             def do_join() -> None:
                 join.setEnabled(False)
@@ -37025,6 +37312,7 @@ class GoldWheelPanel(QWidget):
             self.prize = data
             self.slot = max(0, min(len(WHEEL_SLOTS) - 1, int(data.get("slot") or 0)))
             self.ctx.notifier.hold(SPIN_S + 1.5)               # no spoiler before it lands
+            claim_lock(self.ctx, SPIN_S + 2)
             self.wheel.spin_to(self.slot)
             sfx.play("on")
         self.ctx.econ.call("rb_gold_wheel", {}, got, hold=True)
@@ -37045,6 +37333,7 @@ class GoldWheelPanel(QWidget):
         except Exception:  # noqa: BLE001
             pass
         self.result.set_text("+ " + slot_text(WHEEL_SLOTS[self.slot]))
+        claim_lock(self.ctx, 0)
         left = int(self.prize.get("left") or 0)
         self.later.setEnabled(True)
         self.later.set_text(tr("Collect"))
@@ -38993,6 +39282,8 @@ class FlipStage(QWidget):
             return self._duel_t is not None
         if f.get("state") != "locked":
             return False
+        if self._duel_t is not None:                      # 5.3: once on, it stays on (it flickered between layouts)
+            return True
         found_left, join_left, count_left = bot_phases(f, elapsed)
         return found_left <= 0 and join_left <= 0 and count_left <= 0
 
@@ -39003,7 +39294,7 @@ class FlipStage(QWidget):
         other = "a" if me == "b" else "b"
         left = max(0.0, float(f.get("flip_in") or 0) - elapsed)
         tense = 1.0 - min(1.0, left / 15.0)
-        beat = 0.5 + 0.5 * math.sin(now * (4 + 10 * tense))
+        beat = 0.5 + 0.5 * math.sin(now * 2.2)            # 5.3: one slow, smooth breath (no more flashing)
         p.setOpacity(k)
         g = QLinearGradient(r.topLeft(), r.bottomLeft())
         g.setColorAt(0, QColor("#140A10"))
@@ -39012,7 +39303,7 @@ class FlipStage(QWidget):
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(g)
         p.drawRoundedRect(r, S(14), S(14))
-        hot = mix(QColor(ui.accent), QColor("#FF3B3B"), tense)
+        hot = QColor.fromHsvF((now * 0.06) % 1.0, 0.55 + 0.15 * tense, 1.0)   # a hue that drifts slowly round
         if not landed:
             for i in range(4):                            # the glowing outline
                 p.setPen(QPen(alpha(hot, (0.22 - i * 0.05) * (0.6 + 0.4 * beat)), S(2 + i * 3)))
@@ -39067,7 +39358,7 @@ class FlipStage(QWidget):
             paint_flip_coin(p, QPointF(c.x(), c.y() - lift), S(40) * (1 + lift / S(200)), ang, None)
         if f.get("state") == "locked" and left > 0.05:   # the countdown on both sides of the coin
             p.setPen(hot)
-            p.setFont(font(30 + 6 * beat * tense, QFont.Weight.Black))
+            p.setFont(font(32, QFont.Weight.Black))
             for x0 in (r.left() + S(10), r.right() - S(90)):
                 p.drawText(QRectF(x0, c.y() - S(24), S(80), S(48)), int(Qt.AlignmentFlag.AlignCenter), f"{math.ceil(left)}")
         elif landed:
@@ -39915,7 +40206,7 @@ HELP = {
         "Small, early taps beat big late ones: steer before the bend, not in it.",
         "Look ahead, not at the arrow.",
         "In a narrow zigzag, tap in rhythm with the walls."], [
-        "Solo: coins from 30 m, more the further you get (100 m: 22, 300 m: 98, 600 m: 252), with the 2-hour mini game limit.",
+        "Solo: no coins for the first 100 m (the gold line), then 5 coins every 10 m, with the 2-hour mini game limit.",
         "The server replays your run to count the distance: it can't be faked.",
         "Duel: both players get the same course at the same time. The longer run wins both bets (5% fee); a tie gives them back."]),
     "slots": ("Slots", [
@@ -40278,6 +40569,9 @@ class HelpSheet(QWidget):
         lay.addWidget(Label(tr("HOW TO PLAY"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
         for i, text in enumerate(how, 1):
             lay.addWidget(StepRow(i, text, w))
+        if key == "golf":                                 # 5.3: what every block does
+            lay.addWidget(Label(tr("THE BLOCKS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+            lay.addWidget(GolfLegend(w))
         if key in CONTROLS:
             lay.addWidget(Label(tr("CONTROLS"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
             lay.addWidget(ControlsBar([(k, tr(t)) for k, t in CONTROLS[key]], w))
@@ -43988,6 +44282,8 @@ def _make_class():
                     sw.update()
 
         def goto(self, key: str) -> None:
+            if claim_blocked(self.ctx):
+                return
             if key in ("games", "themes", "friends", "giveaway", "settings", "admin"):
                 if key not in self.tab_keys():                # brought into its own half
                     self.set_pane(side_of(key), key)
@@ -44194,6 +44490,8 @@ def _make_class():
             on the R; click the R to bring the banner back down. Also when you click outside it (on the desktop or a
             game)."""
             if self.phase != "shown":
+                return
+            if claim_blocked(self.ctx):
                 return
             self._close_sheet()
             self.toast_w.hide()
@@ -45073,6 +45371,7 @@ class PawnShop(QWidget):
         self._paint_counter(p, r, cy, now)
         self._paint_bar(p, now)
         self._paint_texts(p, pn, cy, now)
+        self._paint_bubble(p, pn, now)
 
     def _paint_shelves(self, p, r, cy) -> None:
         rnd = random.Random(7)
@@ -45146,16 +45445,27 @@ class PawnShop(QWidget):
         p.setPen(QPen(QColor("#5A2A1E"), S(2.4), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawPath(mouth)
-        # his speech bubble, to his left
+        self._head = QPointF(c)                             # 5.3: the bubble is painted last, on top
+
+    def _paint_bubble(self, p, pn, now) -> None:
+        """His speech bubble, to the left of his head, over everything else (5.3: nothing draws over it)."""
+        c = getattr(self, "_head", None)
+        if c is None:
+            return
+        a = min(1.0, self.shown_anger / 100)
         age = now - self.line_at
         if self.line:
-            p.setFont(font(12, QFont.Weight.Bold))
-            fm = p.fontMetrics()
-            maxw = pn.width() * 0.52
-            br = fm.boundingRect(0, 0, int(maxw), 400, int(Qt.TextFlag.TextWordWrap), self.line)
+            # 5.3: the bubble only uses the room left of his head (it used to slide over his face and the text)
+            room = max(S(110), c.x() - S(46) - pn.left() - S(6))
+            for size in (12, 11, 10, 9):
+                p.setFont(font(size, QFont.Weight.Bold))
+                fm = p.fontMetrics()
+                br = fm.boundingRect(0, 0, int(room - S(30)), 400, int(Qt.TextFlag.TextWordWrap), self.line)
+                if br.height() + S(22) <= S(96):
+                    break
             bw, bh = br.width() + S(30), br.height() + S(22)      # 4.6: room for every line (no half-hidden words)
-            b = QRectF(c.x() - S(46) - bw, c.y() - S(40), bw, bh)
-            b.moveLeft(max(pn.left(), b.left()))
+            b = QRectF(c.x() - S(46) - bw, max(c.y() - S(40), self._bar_rect().bottom() + S(8)), bw, bh)
+            b.moveLeft(max(pn.left() + S(2), b.left()))
             k = pawn_ease_out(age / 0.25)
             p.save()
             p.translate(b.right(), b.bottom())
@@ -45172,6 +45482,7 @@ class PawnShop(QWidget):
             p.drawText(b.adjusted(S(13), S(8), -S(13), -S(8)), int(Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignCenter),
                        self.line)
             p.restore()
+
 
     def _paint_counter(self, p, r, cy, now) -> None:
         top = QRectF(r.left(), cy, r.width(), S(14))
@@ -45580,9 +45891,12 @@ class WaveCourse:
         return top, bot
 
 
+WAVE_FREE_X = 10000         # 5.3: the first 100 m (the walked start) pay nothing
+
+
 def wave_pay(x: int) -> int:
     """Coins for a solo distance before the mini game limits (the server's rb_wave_pay_for)."""
-    return 0 if x < 3000 else int(math.floor((x / 1000.0) ** 1.35))
+    return (max(0, int(x) - WAVE_FREE_X) // 1000) * 5
 
 
 def metres(x: int) -> int:
@@ -45727,6 +46041,13 @@ class WaveView(QWidget):
 
     def _go(self) -> None:
         self.state = "run"
+        try:                                              # 5.3: Ruben's secret god mode: the wave flies itself
+            ctx = self.page.ctx
+            self.autopilot = bool(ctx.cfg["godmode"] and ctx.cfg["cheats"] and ctx.econ.admin
+                                  and (ctx.online.username() or "").lower() == "ruben" and self.course is not None)
+        except Exception:  # noqa: BLE001
+            self.autopilot = False
+        self.autobot = WaveBot(WaveCourse(self.seed)) if self.autopilot else None
         self.held, self.t = True, 0
         self.acc, self.last = 0.0, time.monotonic()
         self.run_t0 = self.last
@@ -45817,6 +46138,11 @@ class WaveView(QWidget):
 
     # -- the run: fixed 60 ticks a second
     def _tick(self) -> bool:
+        b = getattr(self, "autobot", None)
+        if b is not None:                                 # 5.3: god mode: a perfect path, real inputs (the server agrees)
+            if not (len(b.ys) > self.t and b.ys[self.t] == self.y):
+                b.ys = [self.y] * (self.t + 1)            # plan again from exactly where the wave is
+            self.held_in = b.y(self.t + 1) < self.y
         self.t += 1
         if self.held_in != self.held:
             self.toggles.append(self.t)
@@ -45912,6 +46238,8 @@ class WaveView(QWidget):
             gx += step
         if self.course is not None:
             self._paint_course(p, r, cam, sc, col)
+            if self.replay is None and self.watch is None:   # 5.3: where the coins start (the first 100 m pay nothing)
+                self._paint_pay_line(p, r, cam, sc, now)
             if self.replay is not None:
                 rp = self.replay
                 t = self._replay_t(now)
@@ -45945,6 +46273,22 @@ class WaveView(QWidget):
             p.translate(0, hud_h)
             return self._paint_replay_hud(p, QRectF(0, 0, play.width(), play.height()), now)
         self._paint_hud(p, play, col, now)
+
+    def _paint_pay_line(self, p, r, cam, sc, now) -> None:
+        xx = (WAVE_FREE_X - cam) * sc
+        if xx < -S(80) or xx > r.width() + S(80):
+            return
+        gold = QColor("#FFC94D")
+        pulse = 0.6 + 0.4 * math.sin(now * 3)
+        p.setPen(QPen(alpha(gold, 0.25), S(8)))
+        p.drawLine(QPointF(xx, 0), QPointF(xx, r.height()))
+        p.setPen(QPen(alpha(gold, 0.55 + 0.35 * pulse), S(2), Qt.PenStyle.DashLine))
+        p.drawLine(QPointF(xx, 0), QPointF(xx, r.height()))
+        paint_coin(p, QPointF(xx, r.height() * 0.5), S(11))
+        p.setPen(gold)
+        p.setFont(font(9.5, QFont.Weight.Black, 1.0))
+        p.drawText(QRectF(xx + S(14), r.height() * 0.5 - S(9), S(140), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("COINS FROM HERE"))
 
     def _paint_course(self, p, r, cam, sc, col) -> None:
         c = self.course
@@ -46165,7 +46509,11 @@ class WaveView(QWidget):
         p.drawText(QRectF(S(12), S(2), r.width() * 0.28, S(26)), int(Qt.AlignmentFlag.AlignVCenter), f"{metres(int(x))} m")
         p.setFont(font(9.5, QFont.Weight.Bold))
         p.setPen(QColor(TEXT_DIM))
-        if self.best and self.watch is None:
+        if self.watch is None and self.replay is None and self.state in ("run", "ready", "count") and x < WAVE_FREE_X:
+            p.setPen(QColor("#FFC94D"))                   # 5.3: the first 100 m pay nothing
+            p.drawText(QRectF(S(12), S(26), r.width() * 0.28, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                       tr("Coins from {n} m", n=metres(WAVE_FREE_X)))
+        elif self.best and self.watch is None:
             p.drawText(QRectF(S(12), S(26), r.width() * 0.28, S(16)), int(Qt.AlignmentFlag.AlignVCenter),
                        tr("Best {n} m", n=metres(self.best)))
         self._paint_difficulty(p, r, self._focus(now), now)
@@ -48802,6 +49150,8 @@ class MainWindow(QWidget):
             self.slide.jump(1.0)
 
     def goto(self, key: str) -> None:
+        if claim_blocked(self.ctx):
+            return
         if key == "online" or key in ("games", "themes", "friends", "giveaway", "admin"):   # 4.4: admin opens full size online
             return self.ctx.enter_online(None if key == "online" else key)      # 3.2: they live in the online menu
         if key not in self.tab_keys():
@@ -49043,6 +49393,8 @@ class MainWindow(QWidget):
         """Open the card where it lives. If the ball is parked in a corner it first flies back there."""
         if self.expanded or self.morph.busy or self.ball.gliding or self.ctx.welcome is not None:
             return
+        if not self.ctx.cfg["tutorial_done"]:            # 5.3: the menu opens once the tutorial is done
+            return self.ctx.open_tutorial()
         home, b = self.card_pos, self.ball
         parked = self._docked is not None and (b.center - self._docked).manhattanLength() < 4
         # The card opens from the ball. Only when the ball sits in the corner of a card the user had moved
@@ -49086,6 +49438,8 @@ class MainWindow(QWidget):
 
     def collapse(self) -> None:
         if not self.expanded or self.morph.busy:
+            return
+        if claim_blocked(self.ctx):
             return
         if getattr(self, "sheet", None) is not None:          # folding the menu closes a small screen
             tab = self.sheet_tab
@@ -50769,11 +51123,13 @@ class App(QObject):
         if on == self.game_lock:
             return
         self.game_lock = on
-        self._apply_game_lock()
         if on:
             self._gm_timer.start()
         else:
             self._gm_timer.stop()
+        self._apply_game_lock()
+        if not on:                                        # 5.3: and once more a moment later, to be sure
+            QTimer.singleShot(400, lambda: (not self.game_lock) and self._apply_game_lock())
         for w in {self.window, self.main_window}:
             try:
                 w._mouse_guard()
@@ -50791,8 +51147,8 @@ class App(QObject):
         on = bool(self.game_lock)
         for w in QApplication.topLevelWidgets():
             try:
-                if not w.isVisible():
-                    continue
+                if on and not w.isVisible():
+                    continue                              # 5.3: off reaches the hidden ones too (they stayed locked)
                 hwnd = int(w.winId() or 0) if w.isWindow() else 0
                 if on and not getattr(w, "_gm_through", False):
                     w._gm_through = True
@@ -50839,9 +51195,16 @@ class App(QObject):
             self.updater.check(manual=False)
 
     def _jackpot_bell(self) -> None:
-        phase, left = jp_phase()
-        slot = int(time.time() // JP_EVERY)
-        if phase != "open" or left < 20 or getattr(self, "_jp_told", None) == slot or not self.online.logged_in():
+        if not self.online.logged_in() or self.cfg["offline_mode"]:
+            return
+        n = getattr(self, "_jp_tick", 0) + 1
+        self._jp_tick = n
+        if n % 2 == 0 and not (self.window.showing("games") and getattr(self, "games_sub", "") == "jackpot"):
+            load_jackpot(self)                            # 5.3: the card, the bell and the page read the server
+        phase, left = jp_phase(self)
+        d = getattr(self, "jackpot_data", None) or {}
+        slot = d.get("id") or int(jp_now(self) // JP_EVERY)
+        if phase != "open" or left < 20 or getattr(self, "_jp_told", None) == slot:
             return
         self._jp_told = slot
         try:
@@ -50919,6 +51282,8 @@ class App(QObject):
         pass
         self.tour_pending = not self.cfg["tutorial_done"]
         self.login_pending = True
+        if self.tour_pending:                            # 5.3: straight away, the menu waits for it
+            QTimer.singleShot(1200, lambda: (not self.cfg["tutorial_done"]) and self.open_tutorial())
         QTimer.singleShot(800, self.og_event_check)        # 5.0: the OG Prismatic Chest
         QTimer.singleShot(4000, lambda: self.econ.ready and self.set_theme(self.cfg["theme"]))   # 5.1: share it
         if self.window.expanded:
@@ -50932,16 +51297,32 @@ class App(QObject):
         if not self.window.expanded or getattr(self.window, "sheet", None) is not None:
             return
         if getattr(self, "tour_pending", False):
-            pass
             self.tour_pending = False
-            self._tour = Tutorial(self, lambda: QTimer.singleShot(300, self.on_opened))
-            return
+            return self.open_tutorial()
         if getattr(self, "login_pending", False) and self.online.logged_in() and self.online_mode:
             today = time.strftime("%Y-%m-%d")             # 4.4: the daily reward opens in online mode, once a day
             if self.cfg["daily_shown"] != today:
                 self.cfg["daily_shown"] = today
                 self.login_pending = False
                 check_login_reward(self)
+
+    def open_tutorial(self) -> None:
+        """5.3: nobody gets into the menu before the tutorial is done (and never while an update installs). When it is
+        done, the menu opens."""
+        old = getattr(self, "_tour", None)
+        try:
+            if old is not None and old.isVisible():
+                return old.raise_()
+        except RuntimeError:
+            pass
+        if getattr(self, "outdated", False) or self.updater.busy:
+            return self.toast(tr("Updating Rubenium… it starts again by itself in a moment."), "warn")
+
+        def done() -> None:
+            self.tour_pending = False
+            QTimer.singleShot(250, self.window.expand)
+            QTimer.singleShot(900, self.on_opened)
+        self._tour = Tutorial(self, done)
 
     def start_tutorial(self) -> None:
         """5.0: the guide is its own window: the menu can stay as it is."""
@@ -51136,6 +51517,8 @@ class App(QObject):
         """The back arrow: tell what leaving would close (lobbies, a live match, a giveaway entry) and ask once; then
         the black hole takes the banner and the ball floats back down to where it lives."""
         if not self.online_mode or getattr(self, "_online_busy", False):
+            return
+        if claim_blocked(self):
             return
         st = getattr(self._online_win, "stage", None)
         try:

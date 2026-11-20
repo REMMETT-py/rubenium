@@ -157,3 +157,19 @@ Choices made where the request left room, newest last.
   50% (`quest_key_pct`). Not shown inside the course itself yet.
 - Royal Case: 30% coins between 8 000 and 32 000 (its badge table scaled to 70%).
 - In a live golf or Wave Rush match the top-left arrow is hidden and a red Leave button takes its place.
+
+## 5.3 (21/11/2026): luck fixed, fresh start again
+- Odds: one roll over the case's table, now built as item chance x rarity x finish (finish rolled apart from the design). Per open:
+  Shiny about 1 in 500 (Top Tier) to 1 in 6 000 (Standard), 1 in 60 in the Shiny Case; Titanium 1 in 3 000 to 1 in 150 000; Gold
+  1 in 25 000 to 1 in 600 000. Each case pays back about 70-90% of its price on average (simulated 10 000 opens each) and more than
+  its price about 1 open in 7 to 1 in 10. Mythic chances unchanged.
+- Every badge design has its own rarity: inside each rarity the designs are ranked by worth, the best is 10 times rarer than the most
+  common (Sunburst is about 2% of Legendary drops), and worth follows (x (1/share)^0.4, the rarity's average kept).
+- Cosmetics: each kind and rarity has a price ladder (e.g. banners Common 2 500-4 000 ... Legendary 50 000-80 000), designs in their
+  old order, colours keep their premium; worth = 60% of the shop price. Cosmetic cases repriced to about 80% back. Shop tax 33%.
+- Reset keeps: accounts, friends, messages, hours, streaks, finished game rounds (mini game leaderboards), Block Blast and Wave Rush
+  runs, OG tag. Levels and XP were reset with the economy (XP came partly from coupons won in cases).
+- Jackpot: the app follows the server's clock and state (PC clocks were minutes off). Bots: 1-2 seats at 35-90% of the average stake.
+  The winner picks up to a third of the pot (at least 1); bot items taken are capped at 2x the winner's stake. Entries 500-250 000.
+- The menu does not open before the tutorial is done; the tutorial only asks language, show/hide key, notifications and sounds.
+- God mode in Wave Rush plays the practice bot's path as real inputs, so the server's replay agrees with it.
