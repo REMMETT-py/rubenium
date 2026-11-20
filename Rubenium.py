@@ -38878,6 +38878,99 @@ class FlipStage(QWidget):
         self._confetti: list = []
         self._item_rects: list = []                       # 4.6: (rect, item dict) of the items shown: click one to see it
         self.setMouseTracking(True)
+        self._duel_t = None                               # 5.1: when the 15 s face-off began (the new layout fades in)
+
+    def _duel_now(self, f: dict, elapsed: float) -> bool:
+        """5.1: the face-off: both players are in and the last 15 seconds (or the flip) are running."""
+        if f.get("state") == "done":
+            return self._duel_t is not None
+        if f.get("state") != "locked":
+            return False
+        found_left, join_left, count_left = bot_phases(f, elapsed)
+        return found_left <= 0 and join_left <= 0 and count_left <= 0
+
+    def _paint_duel(self, p, r, f: dict, now: float, elapsed: float, landed: bool, winner_side, k: float) -> None:
+        """5.1: YOU at the top, the other player at the bottom, the coin between, a glowing outline that beats faster
+        as the seconds run out. Everything fits without scrolling."""
+        me = "b" if f.get("joiner") and not f.get("mine") else "a"
+        other = "a" if me == "b" else "b"
+        left = max(0.0, float(f.get("flip_in") or 0) - elapsed)
+        tense = 1.0 - min(1.0, left / 15.0)
+        beat = 0.5 + 0.5 * math.sin(now * (4 + 10 * tense))
+        p.setOpacity(k)
+        g = QLinearGradient(r.topLeft(), r.bottomLeft())
+        g.setColorAt(0, QColor("#140A10"))
+        g.setColorAt(0.5, QColor("#0A0C0E"))
+        g.setColorAt(1, QColor("#0E0A14"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+        hot = mix(QColor(ui.accent), QColor("#FF3B3B"), tense)
+        if not landed:
+            for i in range(4):                            # the glowing outline
+                p.setPen(QPen(alpha(hot, (0.22 - i * 0.05) * (0.6 + 0.4 * beat)), S(2 + i * 3)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(r.adjusted(S(1 + i), S(1 + i), -S(1 + i), -S(1 + i)), S(14), S(14))
+        band_h = r.height() * 0.3
+        for who, box in ((me, QRectF(r.left() + S(10), r.top() + S(10), r.width() - S(20), band_h)),
+                         (other, QRectF(r.left() + S(10), r.bottom() - S(10) - band_h, r.width() - S(20), band_h))):
+            side = f.get(who + "_side", "black")
+            win = landed and winner_side == side
+            p.setPen(QPen(QColor(WIN_C), S(2)) if win else QPen(alpha("#FFFFFF", 0.10), 1))
+            p.setBrush(alpha(WIN_C, 0.12) if win else alpha("#FFFFFF", 0.035))
+            p.drawRoundedRect(box, S(12), S(12))
+            paint_flip_coin(p, QPointF(box.left() + S(20), box.top() + S(20)), S(11), 0, side)
+            name = (tr("YOU") if who == me and (f.get("mine") or f.get("joiner")) else show_name(f, who)) or "?"
+            p.setPen(QColor(ui.accent) if who == me else QColor(TEXT))
+            p.setFont(font(15, QFont.Weight.Black))
+            p.drawText(QRectF(box.left() + S(38), box.top() + S(6), box.width() * 0.55, S(28)), int(Qt.AlignmentFlag.AlignVCenter),
+                       QFontMetrics(p.font()).elidedText(str(name), Qt.TextElideMode.ElideRight, int(box.width() * 0.55)))
+            ch = f.get("chance_a")
+            c = (float(ch) if who == "a" else 1 - float(ch)) if ch is not None else 0.5
+            p.setPen(QColor(TEXT))
+            p.setFont(font(15, QFont.Weight.Black))
+            p.drawText(QRectF(box.left(), box.top() + S(6), box.width() - S(12), S(28)),
+                       int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), pct(c))
+            items = f.get(who + "_items") or []
+            cw = min(S(40), (box.width() - S(16)) / 6)
+            for j, it in enumerate(items[:6]):
+                cell = QRectF(box.left() + S(10) + j * cw, box.top() + S(40), cw, cw)
+                d = cw * 0.85
+                show_item(p, it.get("item", ""), QRectF(cell.center().x() - d / 2, cell.center().y() - d / 2, d, d), now,
+                          effects=False)
+                self._item_rects.append((cell, it))
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(12, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(box.left(), box.bottom() - S(24), box.width() - S(12), S(18)),
+                       int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                       coins_text(int(f.get(who + "_value") or 0)))
+        c = r.center()                                     # the coin between them
+        ang = self.coin_angle(now)
+        spinning = self._shown_result is not None and not landed
+        glow = QRadialGradient(c, S(80))
+        glow.setColorAt(0, alpha(hot if not landed else QColor(WIN_C), 0.30 + 0.15 * beat))
+        glow.setColorAt(1, alpha(hot, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, S(80), S(80))
+        if landed:
+            paint_flip_coin(p, c, S(40), 0, winner_side)
+        else:
+            lift = math.sin(min(1.0, (now - self._spin_t) / self.SPIN_S) * math.pi) * S(20) if spinning else 0.0
+            paint_flip_coin(p, QPointF(c.x(), c.y() - lift), S(40) * (1 + lift / S(200)), ang, None)
+        if f.get("state") == "locked" and left > 0.05:   # the countdown on both sides of the coin
+            p.setPen(hot)
+            p.setFont(font(30 + 6 * beat * tense, QFont.Weight.Black))
+            for x0 in (r.left() + S(10), r.right() - S(90)):
+                p.drawText(QRectF(x0, c.y() - S(24), S(80), S(48)), int(Qt.AlignmentFlag.AlignCenter), f"{math.ceil(left)}")
+        elif landed:
+            won = f.get("won")
+            p.setPen(QColor(WIN_C) if won else QColor(LOSE_C) if (f.get("mine") or f.get("joiner")) else QColor(TEXT))
+            p.setFont(font(13, QFont.Weight.Black))
+            text = (tr("You win {n}!", n=coins_text(int(f.get("a_value") or 0) + int(f.get("b_value") or 0))) if won else
+                    tr("{name} wins", name=f.get("winner") or "?"))
+            p.drawText(QRectF(r.left(), c.y() + S(44), r.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), text)
+        p.setOpacity(1.0)
 
     def _item_at(self, pos):
         return next(((rc, it) for rc, it in self._item_rects if rc.contains(pos)), None)
@@ -38948,6 +39041,17 @@ class FlipStage(QWidget):
         return end * e
 
     def paintEvent(self, _e) -> None:
+        """5.1: the stage, and while the face-off starts, the old layout fading into the dark (then the new one in)."""
+        self._fading = 0.0
+        self._paint_main()
+        if self._fading > 0:
+            p = QPainter(self)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            path = QPainterPath()
+            path.addRoundedRect(QRectF(self.rect()), S(14), S(14))
+            p.fillPath(path, QColor(6, 8, 10, int(235 * self._fading)))
+
+    def _paint_main(self) -> None:
         pass
         pass
         p = QPainter(self)
@@ -38966,6 +39070,22 @@ class FlipStage(QWidget):
         landed = self._landed is not None
         winner_side = self._shown_result if landed else None
         elapsed = now - self._sync_t
+        if self._duel_now(f, elapsed):                    # 5.1: the face-off layout, faded in through a blur
+            if self._duel_t is None:
+                self._duel_t = now
+                self.setFixedSize(self.width(), S(420))
+                refit_scroll(self)
+            k = (now - self._duel_t) / 0.8
+            if k < 0.5:
+                self._fading = k * 2                      # the old layout goes dark first
+            if k >= 1.0:
+                self._item_rects = []
+                return self._paint_duel(p, r, f, now, elapsed, landed, winner_side, 1.0)
+            if k >= 0.5:
+                self._item_rects = []
+                self._paint_duel(p, r, f, now, elapsed, landed, winner_side, (k - 0.5) * 2)
+                p.fillRect(r, QColor(6, 8, 10, int(220 * (1 - (k - 0.5) * 2))))
+                return
         found_left, join_left, count_left = bot_phases(f, elapsed)
         searching = found_left > 0 or (join_left > 0 and not f.get("b") and f.get("vs_bot"))
         self._phase_sound(found_left, join_left, count_left, f)
