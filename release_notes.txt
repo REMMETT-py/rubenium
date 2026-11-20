@@ -1,12 +1,9 @@
-Rubenium 5.3
+Rubenium 5.4
 
-- A real fresh start: luck is fixed. A badge's design and its finish are rolled apart: Basic is the normal drop, Painted is common, Shiny is rare, Titanium very rare, Gold extremely rare and Prismatic (Mythic only) the rarest. Every badge design has its own rarity (Sunburst is 10 times rarer than the most common Legendary)
-- Cases pay back less than their price on average and only rarely more. Shop prices go up in order from the plainest to the best, nothing is cheap, and every case is priced to match. Buying from the shop costs 33% tax
-- Fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay. OG players: the Prismatic Chest again (5 000 coins, 25 keys, 750 XP)
-- The tutorial comes first, with only the settings that matter; the menu opens once it is done
-- Jackpot: one clock for everybody (no more joining a closed one or missing an open one), bots take at most 2 seats with smaller stakes, the winner takes back their items and picks a third of the pot, and what comes from bots is capped at twice their stake
-- Mini Golf: choose 3, 5, 10 or 15 holes, 12 new holes (60 in all), clearer water, and the help shows what every block does
-- Wave Rush: the first 100 m pay nothing; a gold line shows where coins start
-- Fixes: game mode unlocks again, notifications show their whole text, scratch cards and wheels can't be left before the prize lands, the pawn shop bubble no longer overlaps, the coinflip countdown glows smoothly
+- NEW: a second row of 6 Mythics: Eclipse, Supernova, Infinity, Thunder Orb, Omega and Vortex. The Rubenium R is still the rarest by far
+- NEW: 6 animated banners: Sunrise, Bubbles, Plasma, Neon Rain, Fireworks and Hyperspace
+- A second colour of your own (Style > Colour 2) for the outline and the glow
+- Mini games: one simple limit a day per game (1 500 coins, back at midnight) instead of every 2 hours, and no more lower pay after a few rounds
+- Cosmetics and cosmetic cases 20% cheaper. The Shiny Case is back under the Top Tier Case (8 000, Shiny 1 in 90) and the Elite Case has better Mythic odds
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

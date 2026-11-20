@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.3"         # the version people see
-BUILD = "2026.11.21.1"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.4"         # the version people see
+BUILD = "2026.11.21.2"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2725,7 +2725,7 @@ from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 
 log = logging.getLogger("rubenium.econ")
 
-MYTHICS = ("galaxy", "phoenix", "glitch", "crystal", "dragon", "rubenium")
+MYTHICS = ("galaxy", "phoenix", "glitch", "crystal", "dragon", "rubenium", "eclipse", "supernova", "infinity", "thunder", "omega", "vortex")   # 5.4: a second row
 TIERS = ["standard", "rare", "special", "epic", "exotic"]
 RARITY_NAMES = {"standard": "Common", "rare": "Rare", "special": "Epic", "epic": "Legendary", "exotic": "Mythic"}
 CLASS_NAMES = ["Basic", "Painted", "Shiny", "Titanium", "Gold", "Prismatic"]
@@ -6557,6 +6557,31 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({                                   # 5.4
+    'NEW: a second row of 6 Mythics: Eclipse, Supernova, Infinity, Thunder Orb, Omega and Vortex. The Rubenium R is still the rarest by far': 'NOUVEAU : une deuxième rangée de 6 Mythiques : Éclipse, Supernova, Infini, Orbe de foudre, Oméga et Vortex. Le R de Rubenium reste de loin le plus rare',
+    'NEW: 6 animated banners: Sunrise, Bubbles, Plasma, Neon Rain, Fireworks and Hyperspace': 'NOUVEAU : 6 bannières animées : Lever de soleil, Bulles, Plasma, Pluie néon, Feux d’artifice et Hyperespace',
+    'A second colour of your own (Style > Colour 2) for the outline and the glow': 'Une deuxième couleur à toi (Style > Couleur 2) pour le contour et la lueur',
+    'Mini games: one simple limit a day per game (1 500 coins, back at midnight) instead of every 2 hours, and no more lower pay after a few rounds': 'Mini-jeux : une seule limite simple par jour et par jeu (1 500 pièces, de retour à minuit) au lieu de toutes les 2 heures, et plus de baisse des gains après quelques parties',
+    'Cosmetics and cosmetic cases 20% cheaper. The Shiny Case is back under the Top Tier Case (8 000, Shiny 1 in 90) and the Elite Case has better Mythic odds': 'Cosmétiques et caisses de cosmétiques 20 % moins chers. La Caisse Brillante repasse sous la Caisse Top Tier (8 000, Brillant 1 sur 90) et la Caisse Élite a de meilleures chances de Mythique',
+    'Sunrise': 'Lever de soleil',
+    'Bubbles': 'Bulles',
+    'Plasma': 'Plasma',
+    'Neon Rain': 'Pluie néon',
+    'Fireworks': 'Feux d’artifice',
+    'Hyperspace': 'Hyperespace',
+    'Today: {n} / {cap} coins': 'Aujourd’hui : {n} / {cap} pièces',
+    'Every minigame pays up to {cap} coins a day (back at midnight).': 'Chaque mini-jeu rapporte jusqu’à {cap} pièces par jour (de retour à minuit).',
+    'Solo: each hole pays by strokes: 60, 35, 20, 10, 5, then nothing. Paid at the end, with the daily mini game limit.': 'Solo : chaque trou paie selon les coups : 60, 35, 20, 10, 5, puis rien. Payé à la fin, avec la limite quotidienne des mini-jeux.',
+    'Solo: no coins for the first 100 m (the gold line), then 5 coins every 10 m, with the daily mini game limit.': 'Solo : pas de pièces pour les 100 premiers mètres (la ligne dorée), puis 5 pièces tous les 10 m, avec la limite quotidienne des mini-jeux.',
+    "No coins: today's limit is reached (back at midnight)": 'Pas de pièces : la limite du jour est atteinte (de retour à minuit)',
+    'Colour 2 (outline and glow)': 'Couleur 2 (contour et lueur)',
+    'Eclipse': 'Éclipse',
+    'Supernova': 'Supernova',
+    'Infinity': 'Infini',
+    'Thunder Orb': 'Orbe de foudre',
+    'Omega': 'Oméga',
+    'Vortex': 'Vortex',
+})
 FR.update({                                   # 5.3
     'Balls, lines, fonts, themes, banners and frames, cheapest first. Buying adds a 33% tax.': 'Boules, lignes, polices, thèmes, bannières et cadres, du moins cher au plus cher. Acheter ajoute 33 % de taxe.',
     "A real fresh start: luck is fixed. A badge's design and its finish are rolled apart: Basic is normal, Painted is common, Shiny is rare, Titanium very rare, Gold extremely rare, Prismatic (Mythic) the rarest. Every design has its own rarity": 'Un vrai nouveau départ : la chance est corrigée. Le motif d’un badge et sa finition sont tirés séparément : Basique est normal, Peint est courant, Brillant est rare, Titane très rare, Or extrêmement rare, Prismatique (Mythique) le plus rare. Chaque motif a sa propre rareté',
@@ -11127,6 +11152,11 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.4", ['NEW: a second row of 6 Mythics: Eclipse, Supernova, Infinity, Thunder Orb, Omega and Vortex. The Rubenium R is still the rarest by far',
+             'NEW: 6 animated banners: Sunrise, Bubbles, Plasma, Neon Rain, Fireworks and Hyperspace',
+             'A second colour of your own (Style > Colour 2) for the outline and the glow',
+             'Mini games: one simple limit a day per game (1 500 coins, back at midnight) instead of every 2 hours, and no more lower pay after a few rounds',
+             'Cosmetics and cosmetic cases 20% cheaper. The Shiny Case is back under the Top Tier Case (8 000, Shiny 1 in 90) and the Elite Case has better Mythic odds']),
     ("5.3", ["A real fresh start: luck is fixed. A badge's design and its finish are rolled apart: Basic is normal, Painted is common, Shiny is rare, Titanium very rare, Gold extremely rare, Prismatic (Mythic) the rarest. Every design has its own rarity",
              'Cases pay back less than their price on average and only rarely more. Shop prices go up in order from the plainest to the best, and every case is priced to match. Buying costs 33% tax',
              'Fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay. OGs: the Prismatic Chest again (5 000 coins, 25 keys, 750 XP)',
@@ -13416,7 +13446,10 @@ BADGES = [("heart", "Heart"), ("drop", "Droplet"), ("clover", "Clover"), ("paw",
           ("alien", "Alien"), ("rocket", "Rocket ship"), ("shootingstar", "Shooting Star"), ("planet", "Planet"),
           ("crown", "Crown"), ("trophy", "Trophy"), ("goldenstar", "Golden Star"), ("sunburst", "Sunburst Star")]
 EXOTICS = [("galaxy", "Galaxy"), ("phoenix", "Phoenix"), ("glitch", "Glitch"), ("crystal", "Crystal Heart"),
-           ("dragon", "Dragon Eye"), ("rubenium", "Rubenium")]
+           ("dragon", "Dragon Eye"), ("rubenium", "Rubenium"),
+           # 5.4: the second row of Mythics
+           ("eclipse", "Eclipse"), ("supernova", "Supernova"), ("infinity", "Infinity"), ("thunder", "Thunder Orb"),
+           ("omega", "Omega"), ("vortex", "Vortex")]
 BADGE_NAME = dict(BADGES + EXOTICS)
 EXOTIC_IDS = tuple(b for b, _n in EXOTICS)
 BADGE_ROWS = [("standard", [b for b, _n in BADGES[0:12]]), ("rare", [b for b, _n in BADGES[12:24]]),
@@ -13997,6 +14030,40 @@ def _build(ident: str) -> QPainterPath:
         leg = _p((-0.1, 0.12), (0.26, 0.12), (0.82, 0.92), (0.44, 0.92))
         spark = QTransform().translate(K * 0.74, -K * 0.8).map(_star(4, 0.24, 0.07))
         return _u(stem, bowl.subtracted(hole), leg, spark)
+    # 5.4: the second row of Mythics
+    if ident == "eclipse":
+        ring = _c(0, 0, 0.96).subtracted(_c(0, 0, 0.8))
+        moon = _c(-0.08, 0.02, 0.62).subtracted(_c(0.2, -0.14, 0.52))
+        corona = _u(*[QTransform().rotate(a).map(_p((-0.05, -0.8), (0, -0.66), (0.05, -0.8))) for a in range(0, 360, 30)])
+        return _u(ring, moon, corona)
+    if ident == "supernova":
+        big = _star(8, 1.0, 0.3)
+        small = _star(8, 0.66, 0.22, turn=-67.5)
+        return _u(big.subtracted(_c(0, 0, 0.3)), small.subtracted(_c(0, 0, 0.3)), _c(0, 0, 0.16))
+    if ident == "infinity":
+        left = _c(-0.46, 0, 0.48, 0.42).subtracted(_c(-0.46, 0, 0.26, 0.2))
+        right = _c(0.46, 0, 0.48, 0.42).subtracted(_c(0.46, 0, 0.26, 0.2))
+        return _u(left, right, QTransform().translate(0, -K * 0.78).map(_star(4, 0.2, 0.06)))
+    if ident == "thunder":
+        ring = _c(0, 0, 0.96).subtracted(_c(0, 0, 0.8))
+        bolt = _p((0.16, -0.72), (-0.38, 0.08), (-0.04, 0.08), (-0.2, 0.74), (0.4, -0.12), (0.06, -0.12))
+        return _u(ring, bolt)
+    if ident == "omega":
+        arc = _c(0, -0.12, 0.8).subtracted(_c(0, -0.12, 0.52)).subtracted(_r(-0.3, 0.2, 0.6, 0.9))
+        feet = _u(_r(-0.9, 0.62, 0.62, 0.22, 0.06), _r(0.28, 0.62, 0.62, 0.22, 0.06))
+        legs = _u(_r(-0.52, 0.2, 0.24, 0.6), _r(0.28, 0.2, 0.24, 0.6))
+        return _u(arc, feet, legs)
+    if ident == "vortex":
+        parts = [_c(0, 0, 0.26).subtracted(_c(0, 0, 0.12))]
+        for k in range(4):
+            a = math.radians(90 * k)
+            pts = []
+            for n in range(5):
+                t = n / 4
+                ang, rad = a + t * 2.2, 0.3 + t * 0.66
+                pts.append((rad * math.cos(ang), rad * math.sin(ang)))
+            parts.append(_ln(pts, 0.14, curve=True))
+        return _u(*parts)
     return _c(0, 0, 0.8)
 
 
@@ -14165,7 +14232,7 @@ def paint_badge(p: QPainter, ident: str, rect: QRectF, var: str = "grey", now: f
 # --------------------------------------------------------------------------- #
 # Online items: "badge:<design>:<colour>" as the server names them
 # --------------------------------------------------------------------------- #
-EXOTIC = ("galaxy", "phoenix", "glitch", "crystal", "dragon", "rubenium")
+EXOTIC = ("galaxy", "phoenix", "glitch", "crystal", "dragon", "rubenium", "eclipse", "supernova", "infinity", "thunder", "omega", "vortex")
 SHAPE_OF = {"octagon": "gem", "saturn": "planet", "planet": "bigplanet"}      # server design -> drawing
 COLOUR_OF = {"white": "titanium"}                                              # server colour -> drawing
 
@@ -14358,7 +14425,10 @@ BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Ros
            ("slate", "Slate"), ("pastel", "Pastel"), ("tides", "Tides"), ("canyon", "Canyon"), ("koi", "Koi Pond"),
            ("synthwave", "Synthwave"), ("supernova", "Supernova"), ("dragon", "Dragon"),
            ("wreath", "Wreath"), ("hearth", "Hearth"), ("northstar", "North Star"),
-           ("mosaic", "Mosaic"), ("reef", "Reef"), ("thunder", "Thunder"), ("blackhole", "Black Hole"), ("crystal", "Crystal")]
+           ("mosaic", "Mosaic"), ("reef", "Reef"), ("thunder", "Thunder"), ("blackhole", "Black Hole"), ("crystal", "Crystal"),
+           # 5.4: six new animated banners
+           ("sunrise", "Sunrise"), ("bubbles", "Bubbles"), ("plasma", "Plasma"), ("rain", "Neon Rain"),
+           ("fireworks", "Fireworks"), ("hyperspace", "Hyperspace")]
 FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
           ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine"),
@@ -14367,7 +14437,7 @@ FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "
           ("firstfrost", "First Frost 2026"),
           ("chrome", "Chrome"), ("ripple", "Ripple"), ("comet", "Comet"), ("eclipse", "Eclipse")]
 TAGS = [("og", "OG")]
-MOVING = {"reef", "thunder", "blackhole", "crystal", "ripple", "comet", "eclipse", "firstfrost", "yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
+MOVING = {"sunrise", "bubbles", "plasma", "rain", "fireworks", "hyperspace", "reef", "thunder", "blackhole", "crystal", "ripple", "comet", "eclipse", "firstfrost", "yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
           "phoenix", "snowflake", "holly", "waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
           "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine",
           "honeycomb", "comet", "deepsea", "city", "fireflies", "storm", "vortex"}
@@ -14845,7 +14915,9 @@ _BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), 
                 "supernova": ("#05030F", "#FFB347"), "dragon": ("#120406", "#C8283D"), "wreath": ("#5A0E18", "#C8283D"),
                 "hearth": ("#1C0A05", "#FF8A3D"), "northstar": ("#050B1E", "#1B3A6B"),
                 "mosaic": ("#1B2230", "#5A6B8A"), "reef": ("#03263A", "#12A3B8"), "thunder": ("#0B1022", "#2A3A6B"),
-                "blackhole": ("#020205", "#120A24"), "crystal": ("#0A1424", "#2A4A7A")}
+                "blackhole": ("#020205", "#120A24"), "crystal": ("#0A1424", "#2A4A7A"),
+                "sunrise": ("#2A1A4A", "#FF9E5C"), "bubbles": ("#06334A", "#1F8FB8"), "plasma": ("#12051F", "#5A1F8F"),
+                "rain": ("#05060F", "#101A33"), "fireworks": ("#040612", "#0E1430"), "hyperspace": ("#020208", "#0A0A24")}
 
 
 def look_moves(item: str) -> bool:
@@ -14876,7 +14948,89 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
     p.fillRect(rect, g)
     p.setPen(Qt.PenStyle.NoPen)
     L, T = rect.left(), rect.top()
-    if base == "waves":
+    if base == "sunrise":                                      # Common: the sun climbs slowly over soft hills
+        k = (math.sin(now * 0.25) + 1) / 2
+        sun = QPointF(L + w * 0.68, T + h * (0.95 - 0.5 * k))
+        glow = QRadialGradient(sun, h * 0.9)
+        glow.setColorAt(0, alpha("#FFD27A", 0.75))
+        glow.setColorAt(1, alpha("#FFD27A", 0.0))
+        p.setBrush(glow)
+        p.drawEllipse(sun, h * 0.9, h * 0.9)
+        p.setBrush(QColor("#FFE6A8"))
+        p.drawEllipse(sun, h * 0.16, h * 0.16)
+        for n, (col, base_y) in enumerate((("#3A2350", 0.72), ("#24173A", 0.84))):
+            hill = QPainterPath(QPointF(L, rect.bottom()))
+            for x in range(0, int(w) + 8, 8):
+                hill.lineTo(L + x, T + h * base_y + math.sin(x / w * 4 + n * 2) * h * 0.07)
+            hill.lineTo(rect.right(), rect.bottom())
+            p.setBrush(QColor(col))
+            p.drawPath(hill)
+    elif base == "bubbles":                                    # Common: bubbles drifting up
+        for k in range(26):
+            t = (now * (0.08 + 0.1 * _rand(k, 1)) + _rand(k, 2)) % 1.0
+            x = L + w * _rand(k, 3) + math.sin(now * 1.5 + k) * 5
+            r = 2 + 6 * _rand(k, 4)
+            p.setPen(QPen(alpha("#BFF2FF", 0.55 * (1 - t) + 0.1), 1.2))
+            p.setBrush(alpha("#BFF2FF", 0.10))
+            p.drawEllipse(QPointF(x, rect.bottom() + r - t * (h + 2 * r)), r, r)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "plasma":                                     # Rare: glowing plasma blobs that melt into each other
+        for k in range(5):
+            cx = L + w * (0.5 + 0.42 * math.sin(now * (0.3 + k * 0.07) + k * 1.7))
+            cy = T + h * (0.5 + 0.4 * math.cos(now * (0.4 + k * 0.05) + k))
+            g2 = QRadialGradient(QPointF(cx, cy), h * 0.8)
+            col = QColor.fromHsvF((0.78 + k * 0.06 + now * 0.02) % 1.0, 0.8, 1.0)
+            g2.setColorAt(0, alpha(col, 0.55))
+            g2.setColorAt(1, alpha(col, 0.0))
+            p.setBrush(g2)
+            p.drawEllipse(QPointF(cx, cy), h * 0.8, h * 0.8)
+    elif base == "rain":                                       # Rare: neon rain over a dark street
+        for k in range(48):
+            t = (now * (0.9 + 0.6 * _rand(k, 1)) + _rand(k, 2)) % 1.0
+            x = L + w * _rand(k, 3)
+            y = T - h * 0.2 + t * h * 1.3
+            col = ["#FF2BD6", "#35D6E6", "#8C7CFF"][k % 3]
+            p.setPen(QPen(alpha(col, 0.75), 1.4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(QPointF(x, y), QPointF(x - 2, y + h * 0.12))
+        p.setPen(Qt.PenStyle.NoPen)
+        street = QLinearGradient(QPointF(0, rect.bottom() - h * 0.18), QPointF(0, rect.bottom()))
+        street.setColorAt(0, alpha("#FF2BD6", 0.0))
+        street.setColorAt(1, alpha("#FF2BD6", 0.35))
+        p.fillRect(QRectF(L, rect.bottom() - h * 0.18, w, h * 0.18), street)
+    elif base == "fireworks":                                  # Epic: rockets burst into sparks
+        for k in range(5):
+            period = 2.6 + _rand(k, 1) * 1.6
+            t = ((now + _rand(k, 2) * period) % period) / period
+            cx, cy = L + w * (0.1 + 0.8 * _rand(k + int(now / period) * 7, 3)), T + h * (0.25 + 0.3 * _rand(k, 4))
+            col = QColor.fromHsvF(_rand(k + int(now / period) * 3, 5), 0.75, 1.0)
+            if t < 0.3:                                        # the rocket going up
+                y = rect.bottom() - (rect.bottom() - cy) * (t / 0.3)
+                p.setBrush(alpha("#FFFFFF", 0.9))
+                p.drawEllipse(QPointF(cx, y), 1.6, 1.6)
+            else:                                              # the burst
+                b = (t - 0.3) / 0.7
+                for j in range(18):
+                    a = j * math.tau / 18
+                    d = h * 0.38 * (1 - (1 - b) ** 2)
+                    p.setBrush(alpha(col, max(0.0, 1 - b)))
+                    p.drawEllipse(QPointF(cx + math.cos(a) * d, cy + math.sin(a) * d + b * b * h * 0.15), 1.7, 1.7)
+    elif base == "hyperspace":                                 # Legendary: stars streaking past at light speed
+        cen = QPointF(L + w * 0.5, T + h * 0.5)
+        core = QRadialGradient(cen, h * 0.6)
+        core.setColorAt(0, alpha("#9FD8FF", 0.45))
+        core.setColorAt(1, alpha("#9FD8FF", 0.0))
+        p.setBrush(core)
+        p.drawEllipse(cen, h * 0.6, h * 0.6)
+        reach = math.hypot(w, h) * 0.55
+        for k in range(70):
+            a = _rand(k, 1) * math.tau
+            t = (now * (0.35 + 0.5 * _rand(k, 2)) + _rand(k, 3)) % 1.0
+            d0, d1 = reach * t * t, reach * min(1.0, t * t + 0.08 + 0.25 * t)
+            col = mix(QColor("#FFFFFF"), QColor("#6FB8FF"), _rand(k, 4))
+            p.setPen(QPen(alpha(col, 0.2 + 0.8 * t), 0.6 + 1.6 * t, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(cen + QPointF(math.cos(a) * d0, math.sin(a) * d0), cen + QPointF(math.cos(a) * d1, math.sin(a) * d1))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "waves":
         for k in range(4):
             path = QPainterPath(QPointF(L, rect.bottom()))
             for x in range(0, int(w) + 8, 6):
@@ -18186,6 +18340,15 @@ class StylePart:
         lay.addWidget(Label(tr("Colour 1"), 12.5))
         self.c1 = ColourRow(self, "c1", "custom_accent")
         lay.addWidget(self.c1)
+        t2 = Toggle(bool(ctx.cfg["accent2_on"]))           # 5.4: a second colour of your own
+
+        def on2(v: bool) -> None:
+            ctx.cfg["accent2_on"] = bool(v)
+            ctx.refresh_accent()
+        t2.toggled_by_user.connect(on2)
+        lay.addWidget(row(tr("Colour 2 (outline and glow)"), t2))
+        self.c2 = ColourRow(self, "c2", "accent2")
+        lay.addWidget(self.c2)
         lay.addWidget(Label(tr("Themes from the shop bring their own second colour."), 10.5, TEXT_DIM, wrap_w=self.W))
 
         lay.addWidget(heading(tr("Progression")))
@@ -18230,7 +18393,11 @@ class StylePart:
 
     # -- colours
     def set_colour(self, kind: str, col: str) -> None:
-        self.ctx.cfg["custom_accent"] = col
+        if kind == "c2":                                  # 5.4: the second colour switches itself on
+            self.ctx.cfg["accent2"] = col
+            self.ctx.cfg["accent2_on"] = True
+        else:
+            self.ctx.cfg["custom_accent"] = col
         self.ctx.refresh_accent()
         self._rows()
 
@@ -23711,6 +23878,9 @@ LANE_COLOURS = ["#FF5C8A", "#4FC3FF", "#5BE08A", "#FFB547"]
 def window_text(day: dict) -> str:
     """'Next 2 hours: 40 / 150 coins' for the mini game limits."""
     day = day or {}
+    if day.get("daily"):                                 # 5.4: one simple limit a day per game
+        return tr("Today: {n} / {cap} coins", n=coins_text(int(day.get("paid") or 0)),
+                  cap=coins_text(int(day.get("cap") or 1500)))
     return tr("These 2 hours: {n} / {cap} coins", n=coins_text(int(day.get("paid") or 0)),
               cap=coins_text(int(day.get("cap") or 150)))
 
@@ -40047,7 +40217,7 @@ def _cfg(ctx, key: str, default: float) -> float:
 
 def _mg_cap(ctx) -> int:
     lvl = int(getattr(ctx.econ, "level", 0) or 0)
-    return int(_cfg(ctx, "game_window_cap", 300) * (1 + 0.006 * lvl))
+    return int(_cfg(ctx, "game_day_cap", 1500) * (1 + 0.006 * lvl))      # 5.4: a day, not 2 hours
 
 
 # title, how to play, best way to play, payouts and chances. {x} values are filled from the live settings.
@@ -40157,13 +40327,13 @@ HELP = {
         "Use the keyboard and keep your eyes on the line, not on the notes up high.",
         "Combos raise your score: a miss breaks them."], [
         "15 to 65 coins a round.",
-        "Every minigame pays up to {cap} coins every 2 hours."]),
+        "Every minigame pays up to {cap} coins a day (back at midnight)."]),
     "memory": ("Memory", [
         "Turn two cards at a time to find the pairs. Each card is checked on the server."], [
         "Remember every card you turn, even when it is not a pair.",
         "Clear the board in as few turns as you can."], [
         "Fewer turns pay more. Medium and Hard pay more than Easy.",
-        "Every minigame pays up to {cap} coins every 2 hours."]),
+        "Every minigame pays up to {cap} coins a day (back at midnight)."]),
     "parking": ("Parking", [
         "Slide the cars along their lane to clear the way, then drive the red car out."], [
         "First look at what blocks the red car's row, then at what blocks those cars."], [
@@ -40177,14 +40347,14 @@ HELP = {
         "scores much more."], [
         "1 point a square. Clearing L lines at once: +10 × L × L. Clearing again on the next piece: +20 a step.",
         "Classic: score ÷ 5, up to 300 coins. Relaxed: ÷ 8, up to 200. Hard: ÷ 3, up to 360.",
-        "Every minigame pays up to {cap} coins every 2 hours."]),
+        "Every minigame pays up to {cap} coins a day (back at midnight)."]),
     "sweeper": ("Minesweeper", [
         "Open every cell without a mine. A number says how many mines touch that cell.",
         "Right-click puts a flag. The first cell is always safe."], [
         "A 1 touching a single closed cell means that cell is a mine: flag it and open the others.",
         "Start in the middle: one click often opens a big area."], [
         "Easy pays 35 to 105 coins, Medium 75 to 225, Hard 140 to 420: the faster, the more.",
-        "Every minigame pays up to {cap} coins every 2 hours."]),
+        "Every minigame pays up to {cap} coins a day (back at midnight)."]),
     "duels": ("Duels", [
         "Challenge a friend to a game, with or without a bet. You both play the same round: the best score wins."], [
         "Pick the game you are best at, and a level you know well."], [
@@ -40196,7 +40366,7 @@ HELP = {
         "Duel: 5 holes against another player, 25 seconds a turn. Anyone can join your lobby."], [
         "Use the walls: a bank shot is often the shortest way.",
         "A short safe shot beats a long risky one."], [
-        "Solo: each hole pays by strokes: 60, 35, 20, 10, 5, then nothing. Paid at the end, with the 2-hour mini game limit.",
+        "Solo: each hole pays by strokes: 60, 35, 20, 10, 5, then nothing. Paid at the end, with the daily mini game limit.",
         "Duel: fewest strokes wins both bets, minus a {golf}% fee. A draw gives both bets back.",
         "Nobody joins in 5 minutes: it closes and your bet comes back."]),
     "wave": ("Wave Rush", [
@@ -40206,7 +40376,7 @@ HELP = {
         "Small, early taps beat big late ones: steer before the bend, not in it.",
         "Look ahead, not at the arrow.",
         "In a narrow zigzag, tap in rhythm with the walls."], [
-        "Solo: no coins for the first 100 m (the gold line), then 5 coins every 10 m, with the 2-hour mini game limit.",
+        "Solo: no coins for the first 100 m (the gold line), then 5 coins every 10 m, with the daily mini game limit.",
         "The server replays your run to count the distance: it can't be faked.",
         "Duel: both players get the same course at the same time. The longer run wins both bets (5% fee); a tie gives them back."]),
     "slots": ("Slots", [
@@ -46821,7 +46991,7 @@ def _solo(page, lay) -> None:
                     elif x < 3000:
                         view.message, view.message_col = tr("Coins from 30 m"), TEXT_DIM
                     else:
-                        view.message, view.message_col = tr("No coins: the 2-hour limit is reached"), TEXT_DIM
+                        view.message, view.message_col = tr("No coins: today's limit is reached (back at midnight)"), TEXT_DIM
                     ctx.econ.refresh()
                 QTimer.singleShot(700, fetch)                  # the next course, ready for a retry
             except RuntimeError:
@@ -50639,10 +50809,9 @@ class App(QObject):
             target = accent_from_image(self.art_pixmap)
         elif screen:
             target = self._screen_colour
-        second = QColor(self.cfg["accent2"])
-        # The second colour belongs to your own colours: it is not used while the music picks the colour.
-        del second                                       # 2.2.1: a second colour only comes with a shop theme
-        ui.accent2 = None
+        ui.accent2 = None                                # 5.4: your own second colour (outline and header glow)
+        if self.cfg["accent2_on"] and not music and QColor(self.cfg["accent2"]).isValid():
+            ui.accent2 = QColor(self.cfg["accent2"])
         if tint:                                         # a shop theme keeps its own colours (the music only tints them)
             target = mix(QColor(tint[0]), target, 0.2) if target is not None else QColor(tint[0])
             ui.accent2 = QColor(tint[1])
