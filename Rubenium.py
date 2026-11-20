@@ -44107,8 +44107,8 @@ WAVE_H = 1000             # course height
 WAVE_SW = 48              # half width of a spike
 WAVE_TPS = 60             # ticks a second
 WAVE_MAX = 60 * 900
-WAVE_SLIDE = 0            # 5.1 (150 with the server's rb_wave_sim): the first 2.5 s you slide on the walls
-WAVE_SPACE = 1            # 5.1 (130 with the server): two spikes in a row never closer than this
+WAVE_SLIDE = 150          # 5.1 (033): the first 2.5 s you slide on the walls instead of crashing
+WAVE_SPACE = 130          # 5.1 (033): two spikes in a row are never closer than this (they could close the gap)
 WAVE_HUD = 46             # 5.1: the distance and the difficulty bar sit in their own strip above the course
 
 
