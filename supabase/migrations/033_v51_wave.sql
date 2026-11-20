@@ -192,5 +192,108 @@ begin
                       where not p.banned and p.equip ?| array['tag', 'frame', 'banner', 'theme']), '{}'::json);
 end $function$;
 
+-- ================================================================ 5.1: the trash can (an item gone for good, asked twice by the app)
+create or replace function public.rb_trash(item_id uuid, confirm text) returns jsonb
+language plpgsql security definer set search_path to '' as $function$
+declare p public.profiles%rowtype; it public.rb_items%rowtype;
+begin
+    p := public.rb_lock_me();
+    if confirm is distinct from 'DELETE' then raise exception 'rb_bad_choice'; end if;
+    select * into it from public.rb_items where id = item_id and owner = p.id for update;
+    if not found or it.locked is not null then raise exception 'rb_item_locked'; end if;
+    if it.item = 'tag:og' then raise exception 'rb_bad_choice'; end if;
+    delete from public.rb_items where id = it.id;
+    perform public.rb_fix_equip(p.id);
+    insert into public.rb_ledger (owner, coins, keys, reason, ref) values (p.id, 0, 0, 'trash', it.item);
+    return jsonb_build_object('gone', it.item, 'equip', (select equip from public.profiles where id = p.id));
+end $function$;
+revoke all on function public.rb_trash(uuid, text) from public, anon;
+grant execute on function public.rb_trash(uuid, text) to authenticated;
+
+-- ================================================================ 5.1: Ruben's cheats are back (Ruben's account only)
+-- A right click instead of a left click in some games arms a one-time cheat for the next move, then plays it:
+-- Bombs: the tile is never a bomb. Tower: never the bomb. Hi-Lo: the next card is the right one. Blackjack: Hit
+-- draws the best card that does not bust. (Dice, Slots, the coinflip against a bot, the free spin and the scratch
+-- card use the admin Rig on Ruben himself.) It works only for the account named Ruben, and only while he is admin.
+create or replace function public.rb_admin_cheat(game text) returns boolean
+language plpgsql volatile security definer set search_path = '' as $$
+declare me uuid := auth.uid(); n text;
+begin
+    perform public.rb_need_admin();
+    select username into n from public.profiles where id = me;
+    if lower(coalesce(n, '')) <> 'ruben' then raise exception 'rb_not_admin'; end if;
+    if game not in ('mines', 'tower', 'hilo', 'blackjack') then raise exception 'rb_bad_choice'; end if;
+    insert into public.rb_rigs (owner, kind, key, data, by_name) values (me, 'cheat', game, '{}', n)
+        on conflict (owner, kind, key) do update set at = now();
+    return true;
+end $$;
+revoke all on function public.rb_admin_cheat(text) from public, anon;
+grant execute on function public.rb_admin_cheat(text) to authenticated;
+
+do $$
+declare src text; out_ text;
+begin
+    -- Bombs: the bomb under the tile moves somewhere else
+    src := replace(pg_get_functiondef('public.rb_mines(text, integer)'::regprocedure), chr(13), '');
+    if position('''cheat''' in src) = 0 then
+        out_ := replace(src, '        if arg = any (bombs) then',
+            '        if public.rb_rig_take(p.id, ''cheat'', ''mines'') is not null then        -- always used up by the move
+            if arg = any (bombs) then
+                bombs := array_replace(bombs, arg, coalesce((select t from generate_series(0, 24) t where t <> all (bombs)
+                         and t <> all (picked) and t <> arg order by public.rb_rand() limit 1), arg));
+            end if;
+        end if;
+        if arg = any (bombs) then');
+        if out_ = src then raise exception 'rb_mines changed'; end if;
+        execute out_;
+    end if;
+    -- Tower: the bombs of that row move to other columns
+    src := replace(pg_get_functiondef('public.rb_tower(text, integer, integer, text)'::regprocedure), chr(13), '');
+    if position('''cheat''' in src) = 0 then
+        out_ := replace(src, '        if (s -> ''rows'' -> lvl) @> to_jsonb(arg) then',
+            '        if public.rb_rig_take(p.id, ''cheat'', ''tower'') is not null then         -- always used up by the move
+            if (s -> ''rows'' -> lvl) @> to_jsonb(arg) then
+                s := jsonb_set(s, array[''rows'', lvl::text], (select coalesce(jsonb_agg(x), ''[]''::jsonb) from (select x
+                       from generate_series(0, cols - 1) x where x <> arg order by ((s -> ''rows'' -> lvl) @> to_jsonb(x)) desc,
+                       public.rb_rand() limit jsonb_array_length(s -> ''rows'' -> lvl)) t));
+            end if;
+        end if;
+        if (s -> ''rows'' -> lvl) @> to_jsonb(arg) then');
+        if out_ = src then raise exception 'rb_tower changed'; end if;
+        execute out_;
+    end if;
+    -- Hi-Lo: the next card goes the way you said
+    src := replace(pg_get_functiondef('public.rb_hilo(text, integer, text)'::regprocedure), chr(13), '');
+    if position('''cheat''' in src) = 0 then
+        out_ := replace(src, '        nxt := floor(public.rb_rand() * 52)::int;',
+            '        nxt := floor(public.rb_rand() * 52)::int;
+        if public.rb_rig_take(p.id, ''cheat'', ''hilo'') is not null then
+            nxt := (case when action = ''higher'' then rank - 1 + floor(public.rb_rand() * (14 - rank))::int
+                         else floor(public.rb_rand() * rank)::int end) + 13 * floor(public.rb_rand() * 4)::int;
+        end if;');
+        if out_ = src then raise exception 'rb_hilo changed'; end if;
+        execute out_;
+    end if;
+    -- Blackjack: Hit draws the best card that does not bust
+    src := replace(pg_get_functiondef('public.rb_blackjack(text, integer)'::regprocedure), chr(13), '');
+    if position('''cheat''' in src) = 0 then
+        out_ := replace(src, 'deck integer[]; me integer[]; dealer integer[];', 'deck integer[]; me integer[]; dealer integer[]; cheat_k integer;');
+        out_ := replace(out_, '        elsif action = ''hit'' then
+            me := me || deck[1]; deck := deck[2:];',
+            '        elsif action = ''hit'' then
+            if public.rb_rig_take(p.id, ''cheat'', ''blackjack'') is not null then
+                select i into cheat_k from generate_subscripts(deck, 1) i where public.rb_bj_total(me || deck[i]) <= 21
+                 order by public.rb_bj_total(me || deck[i]) desc, i limit 1;
+                if cheat_k is not null and cheat_k > 1 then
+                    deck := deck[cheat_k:cheat_k] || deck[1:cheat_k - 1] || deck[cheat_k + 1:];
+                end if;
+            end if;
+            me := me || deck[1]; deck := deck[2:];');
+        if position('cheat_k > 1' in out_) = 0 then raise exception 'rb_blackjack changed'; end if;
+        execute out_;
+    end if;
+end $$;
+
+
 update public.rb_config set value = greatest(value, 2026112100) where key = 'min_build';
 commit;

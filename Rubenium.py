@@ -1838,6 +1838,8 @@ DEFAULTS: dict = {
     "v5_fresh": False,                   # 5.0: the full release starts everyone at the first opening (settings kept)
     "online_door_v5": False,             # 5.0: the online garage doors were seen once
     "wave_bot": False,                   # 5.1: Wave Rush practice bot
+    "cheats": False,                     # 5.1: Ruben's cheats (right click), his account only
+    "godmode": False,                    # 5.1: secret god mode: every move with a cheat uses it
     "tabs_off": {},
     "halo": True,
     "autohide": True,
@@ -3239,9 +3241,42 @@ class Econ(QObject):
         self.keys = max(0, self.keys + int(keys))
         self.changed.emit()
 
+    # 5.1: Ruben's cheats again. A right click (instead of a left click) arms one for the next move; secret god mode
+    # arms one for every move that has one.
+    CHEATS = {"rb_mines": ("pick",), "rb_tower": ("pick",), "rb_hilo": ("higher", "lower"), "rb_blackjack": ("hit",),
+              "rb_dice": None, "rb_slots": None, "rb_spin": None, "rb_scratch": None, "rb_flip_vs_bot": None}
+
+    def _cheat_for(self, fn: str, args: dict):
+        """(server function, its arguments) that makes this move go your way, or None."""
+        import time as _t
+        if fn not in self.CHEATS or (self.online.username() or "").lower() != "ruben":
+            return None
+        god = bool(self.ctx.cfg["godmode"]) and bool(self.ctx.cfg["cheats"])
+        if not god and _t.monotonic() - getattr(self, "cheat_armed", 0.0) > 2.0:
+            return None
+        acts = self.CHEATS[fn]
+        if acts is not None and str(args.get("action")) not in acts:
+            return None
+        self.cheat_armed = 0.0
+        me = self.online.username()
+        if fn in ("rb_mines", "rb_tower", "rb_hilo", "rb_blackjack"):
+            return "rb_admin_cheat", {"game": {"rb_mines": "mines", "rb_tower": "tower", "rb_hilo": "hilo",
+                                               "rb_blackjack": "blackjack"}[fn]}
+        import random as _r
+        kind, data = {"rb_dice": ("dice", {"win": True}), "rb_flip_vs_bot": ("flip", {"win": True}),
+                      "rb_slots": ("slots", {"reels": [_r.choice(["seven", "gem", "bell"])] * 3}),
+                      "rb_spin": ("wheel", {"slot": 8}), "rb_scratch": ("scratch", {"tier": _r.choice(["exotic", "golden"])})}[fn]
+        return "rb_admin_rig", {"name": me, "kind": kind, "key": "", "data": data}
+
     def call(self, fn: str, args: dict, done=None, once: bool = False, hold: bool = False) -> None:
         """Ask the server to do something. `done(ok, answer or message)` runs on the main thread, after the
         balance in the answer was taken. `once` adds an id so a resend can never be done twice."""
+        cheat = self._cheat_for(fn, args) if self.admin else None
+        if cheat is not None:                          # armed first, then the move itself
+            return self.online.ask(cheat[0], cheat[1], lambda _o, _d: self.call_plain(fn, args, done, once, hold), raw=True)
+        self.call_plain(fn, args, done, once, hold)
+
+    def call_plain(self, fn: str, args: dict, done=None, once: bool = False, hold: bool = False) -> None:
         if once:
             args = dict(args, req=uuid.uuid4().hex)
 
@@ -19486,13 +19521,18 @@ class GiftSheet(QWidget):
             self.empty.set_text(tr("Add friends on the Social page to send them gifts.") if ok else tr(str(data)))
             cols = 3
             cw = int((self.W - S(6) * (cols - 1)) / cols)
-            for k, f in enumerate(friends[:30]):
+            for k, f in enumerate(friends[:60]):
                 chip = _FriendChip(self.ctx, f, cw)
                 chip.picked.connect(self._pick)
                 self.grid.addWidget(chip, k // cols, k % cols)
                 self.chips.append(chip)
             if len(friends) == 1:
                 self._pick(friends[0]["username"])
+            rows = max(1, (min(len(friends), 60) + cols - 1) // cols)     # 5.1: every friend fits, nothing cut off
+            self.grid_box.setFixedHeight(rows * S(44) + (rows - 1) * S(6) if friends else 0)
+            self.adjustSize()
+            self.setFixedHeight(self.sizeHint().height())
+            refit_scroll(self)
         except RuntimeError:
             pass
 
@@ -22317,13 +22357,18 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
     sell.setEnabled(sellable)
     sell.setToolTip(tr("Put it on the market: other users buy it or make you an offer"))
     sell.clicked.connect(lambda: market_sell(ctx, item))
-    line.addWidget(sell, 1)
+    line2 = hbox(spacing=6)                               # 5.1: the two sell places get their own row
+    line2.addWidget(sell, 1)
     quick = SellButton("pawn", tr("Quick sell"), tr("About {n} coins now", n=coins_text(ec.quick_value(item))))
     quick.setEnabled(sellable and ec.quick_value(item) > 0)
     quick.setToolTip(tr("Sell it right now for about {n} coins",
                         n=coins_text(ec.quick_value(item))))
     quick.clicked.connect(lambda: quick_sell(ctx, [free[-1]["id"]], item_name(item)))
-    line.addWidget(quick, 1)
+    line2.addWidget(quick, 1)
+    if free and item != "tag:og":                         # 5.1: the trash can, asked twice
+        bin_ = IconButton("trash", 32, tip=tr("Delete for good"))
+        bin_.clicked.connect(lambda: trash_item(ctx, free[-1]["id"], item))
+        line.addWidget(bin_)
     import time as _t
     if getattr(ctx, "pawn_ban_until", 0) > _t.time():          # 4.6: the pawn shop's ban, readable at a glance
         pass
@@ -22343,6 +22388,7 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
         clock.start()
         tick()
     lay.addLayout(line)
+    lay.addLayout(line2)
 
 
 class SellButton(QAbstractButton):
@@ -22414,6 +22460,34 @@ class SellButton(QAbstractButton):
         p.setFont(font(9.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(tx, r.top() + S(26), r.right() - tx - S(6), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
                    p.fontMetrics().elidedText(self.sub, Qt.TextElideMode.ElideRight, int(r.right() - tx - S(6))))
+
+
+def trash_item(ctx, instance: str, item: str) -> None:
+    """5.1: delete one copy for good. Two questions, then the server checks a third time ('DELETE')."""
+    name = item_name(item)
+
+    def last() -> None:
+        def done(ok: bool, data) -> None:
+            if not ok:
+                return ctx.toast(tr(str(data)), "warn")
+            sfx.play("off")
+            ec = ctx.econ
+            ec.items = [i for i in ec.items if i["id"] != instance]
+            ec._index()
+            if isinstance(data, dict) and isinstance(data.get("equip"), dict):
+                ec.equip = dict(data["equip"])
+            ec.changed.emit()
+            ctx.toast(tr("{name} was deleted", name=name))
+            ctx.inv_pick = ""
+            ctx.reload_page()
+        ctx.econ.call("rb_trash", {"item_id": instance, "confirm": "DELETE"}, done)
+
+    def second() -> None:
+        QTimer.singleShot(250, lambda: ctx.window.confirm(
+            tr("Really delete {name}? It cannot be undone, sold or given back.", name=name), last,
+            yes=tr("Delete for good"), no=tr("Keep it")))
+    ctx.window.confirm(tr("Throw {name} in the trash? It will be gone forever.", name=name), second,
+                       yes=tr("Delete"), no=tr("Keep it"))
 
 
 def quick_sell(ctx, ids: list, what: str) -> None:
@@ -24173,6 +24247,7 @@ class ScratchCard(QWidget):
 
     def __init__(self, page) -> None:
         super().__init__()
+        self.setProperty("cheat", True)                    # 5.1: Ruben's right click
         self.page, self.ctx = page, page.ctx
         self.setFixedSize(page.W, S(170))
         self.setCursor(Qt.CursorShape.CrossCursor)
@@ -25640,6 +25715,42 @@ class _ListPoll(QWidget):
 
     def hideEvent(self, _e) -> None:
         self._t.stop()
+
+
+def install_cheat_clicks(ctx) -> None:
+    """5.1 (from 4.6): Ruben's cheats. With them on, a right click in a casino game, on the coinflip's play-a-bot button
+    or on the free spin / scratch card arms a cheat for that one move and acts as a normal click."""
+    from PyQt6.QtCore import QEvent, QObject
+    from PyQt6.QtGui import QMouseEvent
+    from PyQt6.QtWidgets import QApplication
+
+    class _F(QObject):
+        def eventFilter(self, obj, e) -> bool:
+            t = e.type()
+            if t not in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease, QEvent.Type.MouseButtonDblClick):
+                return False
+            if e.button() != Qt.MouseButton.RightButton or not isinstance(obj, QWidget):
+                return False
+            if not (ctx.cfg["cheats"] and ctx.econ.admin and (ctx.online.username() or "").lower() == "ruben"):
+                return False
+            w, zone = obj, False
+            while w is not None:
+                if isinstance(w, Game) or w.property("cheat"):
+                    zone = True
+                    break
+                w = w.parentWidget()
+            if not zone:
+                return False
+            if t == QEvent.Type.MouseButtonPress:
+                ctx.econ.cheat_armed = time.monotonic()
+            left = QMouseEvent(t if t != QEvent.Type.MouseButtonDblClick else QEvent.Type.MouseButtonPress,
+                               e.position(), e.globalPosition(), Qt.MouseButton.LeftButton,
+                               Qt.MouseButton.LeftButton if t != QEvent.Type.MouseButtonRelease else Qt.MouseButton.NoButton,
+                               e.modifiers())
+            QApplication.sendEvent(obj, left)
+            return True
+    ctx._cheat_filter = _F()
+    QApplication.instance().installEventFilter(ctx._cheat_filter)
 
 
 def live_leave_button(ctx, fallback):
@@ -28085,11 +28196,19 @@ class QuestRow(QWidget):
         p.setBrush(alpha("#FFFFFF", 0.04))
         p.drawRoundedRect(r, S(10), S(10))
         p.setOpacity(0.45 if claimed else 1.0)
+        p.setFont(font(11.5, QFont.Weight.Bold))
+        reward_w = p.fontMetrics().horizontalAdvance(coins_text(int(q["reward"]))) + S(30)
+        if done and not claimed:
+            reward_w = max(reward_w, S(112))                 # the Claim button
+        room = max(S(60), r.width() - reward_w - S(24))     # 5.1: the text stops before the reward, in any language
         p.setPen(QColor(TEXT))
         p.setFont(font(12, QFont.Weight.DemiBold))
         text = tr(GamesPage.QUESTS.get(q.get("quest"), ""), n=coins_text(goal))
-        p.drawText(QRectF(r.left() + S(12), r.top() + S(5), r.width() * 0.62, S(18)), int(Qt.AlignmentFlag.AlignVCenter), text)
-        bar = QRectF(r.left() + S(12), r.bottom() - S(13), r.width() * 0.56, S(5))
+        shown = p.fontMetrics().elidedText(text, Qt.TextElideMode.ElideRight, int(room))
+        if shown != text:
+            self.setToolTip(text)
+        p.drawText(QRectF(r.left() + S(12), r.top() + S(5), room, S(18)), int(Qt.AlignmentFlag.AlignVCenter), shown)
+        bar = QRectF(r.left() + S(12), r.bottom() - S(13), max(S(40), room - S(70)), S(5))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(alpha("#FFFFFF", 0.08))
         p.drawRoundedRect(bar, S(2.5), S(2.5))
@@ -28099,8 +28218,8 @@ class QuestRow(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
         if claimed or not done:                       # (when it can be claimed, the button sits here)
-            p.drawText(QRectF(bar.right() + S(8), bar.top() - S(6), S(90), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
-                       f"{coins_text(prog)} / {coins_text(goal)}")
+            p.drawText(QRectF(bar.right() + S(6), bar.top() - S(6), S(64), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(f"{coins_text(prog)} / {coins_text(goal)}", Qt.TextElideMode.ElideRight, S(64)))
         if claimed or not done:
             right = r.adjusted(0, 0, -S(12), 0)
             if claimed:
@@ -32834,8 +32953,47 @@ class AdminPage(Page):
              (("seven", "cherry", "seven"), "2 sevens ×2"), (("lemon", "bell", "bell"), "2 bells ×2"),
              (("cherry", "lemon", "bell"), "Lose")]
 
+    def _secret(self, lay) -> None:
+        """5.1: Ruben's cheats and the secret god mode, behind the faint dots at the top of Rig."""
+        cfg = self.ctx.cfg
+        dots = Button("···", "quiet", 22)
+        dots.setFixedWidth(S(40))
+        dots.setToolTip("")
+        dots.clicked.connect(lambda: (setattr(self.ctx, "secret_open", not getattr(self.ctx, "secret_open", False)),
+                                      self.ctx.reload_page("admin")))
+        lay.addWidget(dots)
+        if not getattr(self.ctx, "secret_open", False):
+            return
+        for label, key in (("Cheats: right click instead of left click to win that move", "cheats"),
+                           ("Secret god mode: every move below wins, no right click needed", "godmode")):
+            row = hbox(spacing=8)
+            row.addWidget(Label(label, 11.5, TEXT, bold=True, wrap_w=self.W - S(70)), 1)
+            t = Toggle(bool(cfg[key]))
+
+            def flip(v, k=key) -> None:
+                cfg[k] = bool(v)
+                if k == "godmode" and v:
+                    cfg["cheats"] = True
+                cfg.save()
+                self.ctx.reload_page("admin")
+            t.toggled_by_user.connect(flip)
+            row.addWidget(t)
+            lay.addLayout(row)
+        if cfg["cheats"]:
+            lay.addWidget(Table([("Bombs", "right click a tile", "never a bomb", "#3DDC84"),
+                                 ("Tower", "right click a tile", "never the bomb", "#3DDC84"),
+                                 ("Hi-Lo", "right click Higher / Lower", "always right", "#3DDC84"),
+                                 ("Blackjack", "right click Hit", "the best card that doesn't bust", "#3DDC84"),
+                                 ("Dice", "right click Roll", "a win", "#3DDC84"),
+                                 ("Slots", "right click Spin", "3 of a kind", "#3DDC84"),
+                                 ("Coinflip", "right click Play a bot", "you win", "#3DDC84"),
+                                 ("Free spin", "right click Spin", "the gold slot", "#3DDC84"),
+                                 ("Scratch card", "start with a right click", "Exotic or Golden", "#3DDC84")], self.W))
+
     def _rig(self, lay) -> None:
         st = self.state("rig")
+        if (self.ctx.online.username() or "").lower() == "ruben":      # 5.1: Ruben only
+            self._secret(lay)
         lay.addWidget(heading("Player"))
         self.player_chips(lay, st, multi=False)
         lay.addWidget(heading("Game"))
@@ -38508,6 +38666,7 @@ def _build_view(page, lay, fid: str) -> None:
             holder["picker"], holder["bar"] = picker, bar
         elif state == "open" and f.get("mine"):
             bot = Button(tr("Play a bot"), "primary", 38, icon="robot")
+            bot.setProperty("cheat", True)               # 5.1: Ruben's right click
 
             def vs_bot() -> None:
                 def done(ok: bool, d) -> None:
@@ -48638,6 +48797,10 @@ class App(QObject):
         self.online.changed.connect(lambda: self.window.sync_lock())     # offline mode: cover the online tabs
         pass
         self.notifier = Notifier(self)              # pop-ups and a quiet beep for what happens online
+        try:
+            install_cheat_clicks(self)                # 5.1: Ruben's cheats (right click), off unless he turns them on
+        except Exception:  # noqa: BLE001
+            log.exception("cheat clicks")
 
         self.media.state_changed.connect(self._on_state)
         self.media.artwork_ready.connect(self._on_artwork)
