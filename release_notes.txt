@@ -1,8 +1,5 @@
-Rubenium 6.2.2
+Rubenium 6.2.3
 
-- SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews
-- Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s
-- Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)
-- Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile
+- The Jackpot stays open until a player joins, and its countdown only starts when the first player joins, so it no longer cycles with nobody in it
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
