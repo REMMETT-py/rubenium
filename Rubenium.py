@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.7"         # the version people see
-BUILD = "2026.11.21.5"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.7.1"         # the version people see
+BUILD = "2026.11.21.6"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6558,6 +6558,7 @@ FR = {
 }
 
 FR.update({                                   # 5.7
+    'Fixed "Could not check for updates": updates are found even when GitHub limits how often it can be asked': 'Corrigé « Impossible de vérifier les mises à jour » : les mises à jour sont trouvées même quand GitHub limite les demandes',
     'Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)': 'Wave Rush est plus fluide : la vague et la caméra sont dessinées entre les étapes physiques, elle glisse à n’importe quelle fréquence d’images (même parcours, mêmes collisions)',
     'Fixes and polish everywhere': 'Corrections et finitions partout',
 })
@@ -11221,6 +11222,7 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.7.1", ['Fixed "Could not check for updates": updates are found even when GitHub limits how often it can be asked']),
     ("5.7", ['Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)',
              'Fixes and polish everywhere']),
     ("5.6", ['NEW: Mini Golf PARTIES for 3 or 4 players. Everyone plays their own ball at the same time, you see the other balls and a dashed line where each player is aiming. Bots fill the empty seats after 90 seconds',
@@ -12708,16 +12710,58 @@ class Updater(QObject):
         import threading
         threading.Thread(target=self._check, args=(manual,), daemon=True).start()
 
+    @classmethod
+    def _latest_without_api(cls) -> dict:
+        """5.7: the latest release without GitHub's API (which allows only 60 checks an hour per internet connection,
+        so a house full of players could get "Could not check for updates"). The release page redirects to its tag,
+        and every file has a fixed download address."""
+        import ssl
+        import urllib.request
+        try:
+            import certifi  # type: ignore
+            ctx = ssl.create_default_context(cafile=certifi.where())
+        except Exception:  # noqa: BLE001
+            ctx = ssl.create_default_context()
+        if Net.blocked:
+            raise OSError("offline mode")
+        req = urllib.request.Request(UPDATE_PAGE, headers={"User-Agent": "Rubenium-updater"})
+        with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:  # noqa: S310
+            final = resp.geturl()
+            page = resp.read(3_000_000).decode("utf-8", "ignore")
+        tag = final.rstrip("/").rsplit("/tag/", 1)[-1] if "/tag/" in final else ""
+        if not tag or version_tuple(tag) == version_tuple(""):
+            raise ValueError("no release tag")
+        import re
+        shown = re.search(r"Rubenium\s+v?(\d+(?:\.\d+)+)", page)
+        base = f"https://github.com/{UPDATE_REPO}/releases/download/{tag}/"
+        names = ("RubeniumSetup.exe", "Rubenium.exe", "Rubenium.py", "swaps.zip")
+        assets = {n: base + n for n in names}
+        assets.update({n + ".sha256": base + n + ".sha256" for n in names})
+        return {"version": tag.lstrip("vV"), "label": shown.group(1) if shown else tag.lstrip("vV"),
+                "page": final, "assets": assets}
+
     def _check(self, manual: bool) -> None:
         try:
-            rel = json.loads(self._get(f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest").decode("utf-8"))
-            tag = str(rel.get("tag_name", ""))
-            assets = {str(a.get("name", "")): str(a.get("browser_download_url", ""))
-                      for a in rel.get("assets", []) if isinstance(a, dict)}
-            import re
-            shown = re.search(r"Rubenium\s+v?(\d+(?:\.\d+)*)", str(rel.get("name", "")))   # "... Rubenium 1.0" -> 1.0
-            info = {"version": tag.lstrip("vV"), "label": shown.group(1) if shown else tag.lstrip("vV"),
-                    "page": str(rel.get("html_url", UPDATE_PAGE)), "assets": assets}
+            try:
+                import time as _t
+                if _t.monotonic() < getattr(Updater, "_api_skip_until", 0.0):
+                    raise OSError("API rested for an hour")
+                rel = json.loads(self._get(f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest").decode("utf-8"))
+                tag = str(rel.get("tag_name", ""))
+                assets = {str(a.get("name", "")): str(a.get("browser_download_url", ""))
+                          for a in rel.get("assets", []) if isinstance(a, dict)}
+                import re
+                shown = re.search(r"Rubenium\s+v?(\d+(?:\.\d+)*)", str(rel.get("name", "")))   # "... Rubenium 1.0" -> 1.0
+                info = {"version": tag.lstrip("vV"), "label": shown.group(1) if shown else tag.lstrip("vV"),
+                        "page": str(rel.get("html_url", UPDATE_PAGE)), "assets": assets}
+                if not tag or not assets:
+                    raise ValueError("empty release")
+            except Exception as exc:  # noqa: BLE001
+                log.info("GitHub API check failed (%s): using the release page", exc)
+                import time as _t
+                Updater._api_skip_until = _t.monotonic() + 3600     # don't use up the hourly limit any further
+                info = self._latest_without_api()
+                tag = info["version"]
             self.busy = False
             # Releases are told apart by their tag, a date such as 2026.11.14.3, which only ever goes up.
             # (The title starts with the same date so that Rubenium 0.8 and 0.9, which read the title, update too.)

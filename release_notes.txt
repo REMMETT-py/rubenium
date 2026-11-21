@@ -1,6 +1,6 @@
-Rubenium 5.7
+Rubenium 5.7.1
 
+- Fixed "Could not check for updates": updates are found even when GitHub limits how often it can be asked
 - Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)
-- Fixes and polish everywhere
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
