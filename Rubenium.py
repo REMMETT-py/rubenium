@@ -1489,7 +1489,7 @@ from PyQt6.QtGui import QColor, QFont
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "6.0"         # the version people see
-BUILD = "2026.11.21.15"       # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.21.16"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6776,6 +6776,8 @@ FR.update({'This hour': 'Cette heure', 'Today': 'Aujourd’hui', 'This week': 'C
 FR.update({'What you can get ({n})': 'Ce que tu peux obtenir ({n})', '{what} (any colour or finish)': '{what} (toute couleur ou finition)', 'Themed badge cases': 'Caisses de badges à thème', 'Always a badge, all of one theme. No coins.': 'Toujours un badge, tous du même thème. Pas de pièces.', 'Always a badge, with much better odds for rare ones. No coins.': 'Toujours un badge, avec de bien meilleures chances pour les rares. Pas de pièces.', 'Mostly COINS back, and sometimes a badge.': 'Surtout des PIÈCES, et parfois un badge.', 'Balls, lines, fonts, app colours, banners and frames. No key needed.': 'Balles, lignes, polices, couleurs d’app, bannières et cadres. Pas besoin de clé.', 'App Colour Case': 'Caisse Couleurs d’app', 'Ocean Case': 'Caisse Océan', 'Spooky Case': 'Caisse Frisson', 'Arcade Case': 'Caisse Arcade', 'Treasure Case': 'Caisse Trésor', 'A COIN case: mostly coins back, sometimes a badge (Basic or Painted).': 'Une caisse à PIÈCES : surtout des pièces, parfois un badge (Basique ou Peint).', 'A COIN case: mostly coins, sometimes a badge, a tiny chance of Gold.': 'Une caisse à PIÈCES : surtout des pièces, parfois un badge, une toute petite chance d’Or.', 'A COIN case: coins, or a better badge than the Standard Case (up to Shiny and Gold).': 'Une caisse à PIÈCES : des pièces, ou un meilleur badge que la caisse Standard (jusqu’à Brillant et Or).', 'A COIN case for high rollers: big coin drops, or a badge in every finish up to Epic Gold.': 'Une caisse à PIÈCES pour gros joueurs : de grosses sommes, ou un badge de toute finition jusqu’à Épique Or.', 'Always a badge, never Basic: Painted, Shiny, Titanium or Gold.': 'Toujours un badge, jamais Basique : Peint, Brillant, Titane ou Or.', 'Always a space badge: moons, suns, stars, comets, planets, rockets and aliens. A real chance of a Mythic.': 'Toujours un badge de l’espace : lunes, soleils, étoiles, comètes, planètes, fusées et aliens. Une vraie chance de Mythique.', 'Always a medieval badge: swords, shields, castles, helmets, bows, crowns, goblets, scrolls. 6 found only here.': 'Toujours un badge médiéval : épées, boucliers, châteaux, heaumes, arcs, couronnes, coupes, parchemins. 6 introuvables ailleurs.', 'Always a nature badge: flowers, trees, butterflies, cacti, mushrooms, the lotus, the rainbow. 5 found only here.': 'Toujours un badge nature : fleurs, arbres, papillons, cactus, champignons, le lotus, l’arc-en-ciel. 5 introuvables ailleurs.', 'Always an ocean badge: fish, waves, anchors, tridents, snowflakes and the moon.': 'Toujours un badge océan : poissons, vagues, ancres, tridents, flocons et la lune.', 'Always a spooky badge: ghosts, skulls, eyes, black cats, mushrooms and aliens.': 'Toujours un badge frisson : fantômes, crânes, yeux, chats noirs, champignons et aliens.', 'Always a game badge: controllers, headsets, dice, cards, rockets and targets.': 'Toujours un badge jeu : manettes, casques, dés, cartes, fusées et cibles.', 'Always a treasure badge: keys, crowns, diamonds, shields, swords and gold stars.': 'Toujours un badge trésor : clés, couronnes, diamants, boucliers, épées et étoiles d’or.', 'Always a badge, no Basic finish: the best odds for Shiny, Titanium and Gold.': 'Toujours un badge, sans finition Basique : les meilleures chances de Brillant, Titane et Or.', 'Always a Special or Epic badge, with the best Mythic odds.': 'Toujours un badge Spécial ou Épique, avec les meilleures chances de Mythique.', 'App colours (they change how Rubenium looks), Rare or better, or coins. Not badges.': 'Des couleurs d’app (elles changent l’apparence de Rubenium), Rares ou mieux, ou des pièces. Pas de badges.'})
 
 FR.update({'PRISMATIC CASE': 'CAISSE PRISMATIQUE', 'Break the 3 seals: click them as they fly around the case': 'Brise les 3 sceaux : clique-les quand ils tournent autour de la caisse', 'Now hold the case down until it opens': "Maintenant, maintiens la caisse jusqu'à ce qu'elle s'ouvre", 'Yours, OG. Thank you for being here from the start': 'À toi, OG. Merci d’être là depuis le début', 'HOLD': 'MAINTIENS', 'Casino: 1 to 5 XP a win, nothing on a loss': 'Casino : 1 à 5 XP par victoire, rien en cas de perte', 'Minigames: 3 to 12 XP when they pay': 'Mini-jeux : 3 à 12 XP quand ils paient', 'Alone: each hole pays by strokes: 60, 35, 20, 10, 5, then nothing.': 'Seul : chaque trou paie selon les coups : 60, 35, 20, 10, 5, puis rien.', 'Solo: no coins for the first 100 m (the gold line), then 5 coins every 10 m.': 'Solo : pas de pièces pour les 100 premiers mètres (la ligne dorée), puis 5 pièces tous les 10 m.', 'Leaving a game or giving up loses the bet.': 'Quitter une partie ou abandonner fait perdre la mise.', 'Hit takes a card, Stand keeps your hand.': 'Tirer prend une carte, Rester garde ta main.', 'Picture removed': 'Photo retirée', 'now': 'maintenant', '2 minutes to pick: after that the most valuable are picked for you.': '2 minutes pour choisir : ensuite, les plus précieux sont choisis pour toi.', 'A jackpot opens every 15 minutes. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Un jackpot ouvre toutes les 15 minutes. Pendant 2 minutes, tu peux mettre 1 à 3 objets (5 joueurs maximum).', 'Chance = your worth ÷ the total worth.': 'Chance = ta valeur ÷ la valeur totale.', 'More worth in = a bigger slice of the wheel, but more to lose.': 'Plus de valeur = une plus grosse part de la roue, mais plus à perdre.', "The winner gets their own items back and picks half of everyone else's items. The rest leaves the game.": 'Le gagnant récupère ses objets et choisit la moitié des objets des autres. Le reste quitte le jeu.', "Winner: own items back + half of the others' items (rounded up), plus 150 XP.": 'Gagnant : ses objets + la moitié des objets des autres (arrondi au-dessus), plus 150 XP.', 'Your chance is your share of everything put in. Then the lobby locks, bots fill the empty seats and the wheel spins.': 'Ta chance est ta part de tout ce qui est mis. Ensuite le salon se ferme, des bots prennent les places vides et la roue tourne.', 'Your items must be worth at least 1% of what is already in (at least 100).': 'Tes objets doivent valoir au moins 1 % de ce qui est déjà dedans (au moins 100).', 'Final version, fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay': 'Version finale, nouveau départ : pièces, clés, objets, niveaux et marché repartent de zéro. Heures de jeu, séries et tous les scores restent', 'OGs: the Prismatic Case is back and remade. Break its 3 seals, then hold it down until it bursts open (5 000 coins, 25 keys, 750 XP)': "OG : la Caisse Prismatique revient, refaite. Brise ses 3 sceaux, puis maintiens-la jusqu'à ce qu'elle explose (5 000 pièces, 25 clés, 750 XP)", 'No more limits: casino games, mini games and XP have no daily or hourly limit any more': "Plus aucune limite : casino, mini-jeux et XP n'ont plus de limite par jour ni par heure", 'All new sounds: case reel clicks, cards, chips, coins, keys, cups, discs and putts, and new tunes for rare drops and big wins': 'Tous les sons refaits : clics de la roue des caisses, cartes, jetons, pièces, clés, gobelets, pions et putts, et de nouvelles mélodies pour les drops rares et les gros gains', 'Cases: new themed badge cases (Ocean, Spooky, Arcade, Treasure) and fewer coin cases. Every case says clearly whether it gives badges or coins, and shows every item you can get': 'Caisses : nouvelles caisses de badges à thème (Océan, Hantée, Arcade, Trésor) et moins de caisses de pièces. Chaque caisse dit clairement si elle donne des badges ou des pièces, et montre tous les objets possibles', 'Case prices go back down every day at midnight': 'Le prix des caisses redescend chaque jour à minuit', 'Deals in three shelves: 2 this hour, 4 today, 2 this week': "Bons plans en trois rayons : 2 cette heure, 4 aujourd'hui, 2 cette semaine", "Pawn shop: he offers about a third of your item's worth (up to 80% if you're lucky), asking for more never gets you something worth more, his anger cools down 30 min after it last rose, and the exchange button works": "Prêteur sur gages : il propose environ un tiers de la valeur de ton objet (jusqu'à 80 % avec de la chance), demander plus ne donne jamais un objet plus cher, sa colère retombe 30 min après sa dernière hausse, et le bouton d'échange marche", 'Roulette: no more betting red and black (or low and high) at once': 'Roulette : plus possible de miser rouge et noir (ou manque et passe) en même temps', 'Mini Golf: the power bar sits under the course, bots are plain AI balls and you can see where they aim': 'Mini Golf : la barre de puissance est sous le parcours, les bots sont de simples balles IA et tu vois où ils visent', 'Outdated app: pressing ONLINE shows a black hole, drops you back and updates': 'App pas à jour : appuyer sur EN LIGNE montre un trou noir, te ramène et met à jour', "Fixed: quests like 'win 3 Mini Golf games' complete again, right-click cheats, the cups sit higher, and the ball no longer needs a click on another screen first": "Corrigé : les quêtes comme « gagne 3 parties de Mini Golf » se valident, les triches au clic droit, les gobelets sont plus hauts, et la boule n'a plus besoin d'un clic sur un autre écran d'abord"})                                   # 6.0
+FR.update({'120 coins 17.3% · 200 coins 17% · 300 coins 17% · 450 coins 13%': '120 pièces 17,3 % · 200 pièces 17 % · 300 pièces 17 % · 450 pièces 13 %', '700 coins 9% · 1 200 coins 6% · 2 500 coins 3%': '700 pièces 9 % · 1 200 pièces 6 % · 2 500 pièces 3 %'})
+FR.update({'Settings: About is now UPDATE, with a Repair button that reinstalls the newest Rubenium if updating ever fails (your account, items and settings are never touched)': 'Réglages : À propos devient MISE À JOUR, avec un bouton Réparer qui réinstalle la dernière Rubenium si la mise à jour échoue (ton compte, tes objets et tes réglages ne sont jamais touchés)', 'The free spin pays a lot more: 120 to 2 500 coins': 'Le tour gratuit rapporte bien plus : 120 à 2 500 pièces', 'Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen': 'Wave Rush plus fluide : un mode performance caché pendant chaque course, et des images calées sur ton écran', "Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys": "Les notifications de jackpot disent « environ 2 minutes » au lieu d'une horloge figée, et le tour gratuit et le ticket à gratter n'affichent plus les touches du casino", 'UPDATE': 'MISE À JOUR', 'Repair': 'Réparer', 'Repair Rubenium': 'Réparer Rubenium', 'Repair Rubenium?': 'Réparer Rubenium ?', 'Repair now': 'Réparer maintenant', 'Repairing… {p}%': 'Réparation… {p} %', 'Reinstalling…': 'Réinstallation…', 'Finish your round first, then repair': 'Termine ta partie d’abord, puis répare', 'Update not working, or Rubenium acting strange? Repair downloads the newest Rubenium again and reinstalls it cleanly over this one, then opens it again.': 'La mise à jour ne marche pas, ou Rubenium fait des siennes ? Réparer télécharge à nouveau la dernière Rubenium, la réinstalle proprement par-dessus celle-ci, puis la rouvre.', 'It only replaces the program files. Your account, coins, keys, items, levels, friends and settings are NOT touched: your account is saved online and your settings stay in Documents\\Rubenium.': 'Seuls les fichiers du programme sont remplacés. Ton compte, tes pièces, clés, objets, niveaux, amis et réglages ne sont PAS touchés : ton compte est enregistré en ligne et tes réglages restent dans Documents\\Rubenium.', 'What happens: Rubenium downloads the newest version, closes, reinstalls itself cleanly and opens again. It takes about a minute.': 'Ce qui se passe : Rubenium télécharge la dernière version, se ferme, se réinstalle proprement et se rouvre. Cela prend environ une minute.', 'What stays: your account, coins, keys, items, levels, friends, trophies and settings. Nothing is deleted from your account.': "Ce qui reste : ton compte, tes pièces, clés, objets, niveaux, amis, trophées et réglages. Rien n'est supprimé de ton compte.", 'Before you go on: finish any game, bet, trade or coinflip you are in, because Rubenium closes for a moment.': 'Avant de continuer : termine toute partie, mise, échange ou pile ou face en cours, car Rubenium se ferme un instant.', 'The repair could not download Rubenium. Check your internet, or get RubeniumSetup.exe from GitHub.': "La réparation n'a pas pu télécharger Rubenium. Vérifie ta connexion, ou récupère RubeniumSetup.exe sur GitHub.", '{n} minutes': '{n} minutes', '1 minute': '1 minute', '{n} seconds': '{n} secondes', 'Open for about {t}. Join in Games > Jackpot': 'Ouvert encore environ {t}. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in about {t}': 'Le prochain jackpot ouvre dans environ {t}', 'Wave god mode on: slide along the walls': 'Mode dieu Wave activé : glisse le long des murs', 'Wave god mode off': 'Mode dieu Wave désactivé'})
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
     'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power': 'Visée du Mini Golf refaite : une flèche montre la direction (elle s’arrête aux murs et à l’eau) et une barre la puissance. Plus de cercle qui montre où la balle s’arrête : c’est toi qui sens la distance. Moitié moins de mouvement de souris pour la pleine puissance',
@@ -7768,6 +7770,91 @@ class ControlsBar(QWidget):
                 p.setFont(font(10, QFont.Weight.DemiBold))
                 p.drawText(QRectF(cx + S(2), y - S(10), w, S(20)), int(Qt.AlignmentFlag.AlignVCenter), text)
                 x += w
+
+
+class GamePerf:
+    """6.0: the hidden performance mode for Wave Rush. While a run is on: no garbage collection pauses (Python's
+    collector could freeze a frame for tens of milliseconds), Windows timers at 1 ms, the app a little ahead of
+    other programs, no pop-ups, and no page rebuilt in the background. All undone the moment the run ends."""
+    on = False
+    beat = 0.0
+    _dog = None
+
+    @classmethod
+    def alive(cls) -> None:
+        """Called every frame of a run: if the frames ever stop (the game was closed some other way), the
+        watchdog undoes everything."""
+        cls.beat = time.monotonic()
+
+    @classmethod
+    def enter(cls, ctx) -> None:
+        cls.beat = time.monotonic()
+        if cls.on:
+            return
+        cls.on = True
+        ctx.wave_running = True
+        if cls._dog is None:
+            cls._dog = QTimer()
+            cls._dog.setInterval(1000)
+            cls._dog.timeout.connect(lambda: cls.leave(ctx) if cls.on and time.monotonic() - cls.beat > 1.5 else None)
+        cls._dog.start()
+        import gc
+        try:
+            gc.collect()
+            gc.freeze()                       # what exists now is never scanned again: later collections are tiny
+            gc.disable()
+        except Exception:  # noqa: BLE001
+            pass
+        if win.IS_WIN:
+            try:
+                ctypes.windll.winmm.timeBeginPeriod(1)
+                k = ctypes.windll.kernel32
+                k.GetCurrentProcess.restype = ctypes.c_void_p
+                k.SetPriorityClass(ctypes.c_void_p(k.GetCurrentProcess()), 0x8000)    # ABOVE_NORMAL
+            except Exception:  # noqa: BLE001
+                pass
+
+    @classmethod
+    def leave(cls, ctx) -> None:
+        if not cls.on:
+            return
+        cls.on = False
+        ctx.wave_running = False
+        if cls._dog is not None:
+            cls._dog.stop()
+        import gc
+        try:
+            gc.unfreeze()                      # back to normal: nothing is kept forever
+            gc.enable()
+        except Exception:  # noqa: BLE001
+            pass
+        if win.IS_WIN:
+            try:
+                ctypes.windll.winmm.timeEndPeriod(1)
+                k = ctypes.windll.kernel32
+                k.GetCurrentProcess.restype = ctypes.c_void_p
+                k.SetPriorityClass(ctypes.c_void_p(k.GetCurrentProcess()), 0x20)      # NORMAL
+            except Exception:  # noqa: BLE001
+                pass
+        keys, ctx._deferred_reloads = list(getattr(ctx, "_deferred_reloads", ()) or ()), set()
+        if keys:
+            def flush() -> None:
+                for key in keys:
+                    try:
+                        ctx.window.reload_page(key)
+                    except Exception:  # noqa: BLE001
+                        log.exception("deferred reload")
+            QTimer.singleShot(250, flush)
+
+    @staticmethod
+    def defer(ctx, window, key) -> bool:
+        """True (and remembered) when a page rebuild must wait for the run to end."""
+        if not getattr(ctx, "wave_running", False):
+            return False
+        if not hasattr(ctx, "_deferred_reloads") or ctx._deferred_reloads is None:
+            ctx._deferred_reloads = set()
+        ctx._deferred_reloads.add(key or window.current)
+        return True
 
 
 class KeyPoll(QWidget):
@@ -11531,7 +11618,11 @@ NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritte
              'Roulette: no more betting red and black (or low and high) at once',
              'Mini Golf: the power bar sits under the course, bots are plain AI balls and you can see where they aim',
              'Outdated app: pressing ONLINE shows a black hole, drops you back and updates',
-             "Fixed: quests like 'win 3 Mini Golf games' complete again, right-click cheats, the cups sit higher, and the ball no longer needs a click on another screen first"]),
+             "Fixed: quests like 'win 3 Mini Golf games' complete again, right-click cheats, the cups sit higher, and the ball no longer needs a click on another screen first",
+             'Settings: About is now UPDATE, with a Repair button that reinstalls the newest Rubenium if updating ever fails (your account, items and settings are never touched)',
+             'The free spin pays a lot more: 120 to 2 500 coins',
+             'Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen',
+             "Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys"]),
     ("5.14", ['Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone',
               'The practice bot plays like a real player now (long holds, no straight lines)',
               'Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch']),
@@ -13195,6 +13286,37 @@ class Updater(QObject):
         import threading
         threading.Thread(target=self._install, args=(dict(self.latest),), daemon=True).start()
         return True
+
+    def repair(self) -> bool:
+        """6.0: Repair. Downloads the newest full version again (even if this one is the newest) and installs it
+        over this one, the same way an update does. Only the program files are replaced: the account lives on the
+        server, and settings, backups and swaps stay in their own folders."""
+        if self.installing:
+            return True
+        self.installing = True
+        self.install_after = False
+        import threading
+        threading.Thread(target=self._repair_run, daemon=True).start()
+        return True
+
+    def _repair_run(self) -> None:
+        try:
+            try:
+                info = self._latest_from_server()
+            except Exception as exc:  # noqa: BLE001
+                log.info("repair: server check failed (%s): asking GitHub", exc)
+                info, _tag = self._latest_from_github()
+            self.latest = info
+            for junk in (app_home() / "update" / SETUP, app_home() / "update" / "Rubenium.download"):
+                try:
+                    junk.unlink()                          # never reuse a half or broken download
+                except OSError:
+                    pass
+            self._install(dict(info))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("repair failed: %s", exc)
+            self.installing = False
+            self.failed.emit("error")
 
     def _download(self, url: str, dest: Path, share: tuple) -> None:
         import urllib.request
@@ -19160,7 +19282,8 @@ class SettingsPage(StylePart, Page):
         if sec not in shown:
             sec = ctx.settings_tab = 0
         tiles = NavTiles([(tr("General"), "cog"), (tr("Style"), "spark"), (tr("Sounds"), "volume"), (tr("Account"), "users"),
-                          (tr("Backup"), "folder"), (tr("About"), "refresh")], shown.index(sec), per_row=3)
+                          (tr("Backup"), "folder"), (tr("UPDATE"), "refresh")], shown.index(sec), per_row=3,
+                         badges={5: 1} if ctx.updater.latest else None, glow={5})
 
         def pick(i: int) -> None:
             ctx.settings_tab = shown[i]
@@ -19296,6 +19419,15 @@ class SettingsPage(StylePart, Page):
                 ctx.updater.start() if v else ctx.updater.stop()
             t_up.toggled_by_user.connect(auto_up)
             lay.addWidget(row(tr("Check automatically"), t_up))
+            # 6.0: Repair, for when the Update button does nothing or Rubenium acts broken
+            lay.addWidget(heading(tr("Repair")))
+            note(tr("Update not working, or Rubenium acting strange? Repair downloads the newest Rubenium again and "
+                    "reinstalls it cleanly over this one, then opens it again."))
+            note(tr("It only replaces the program files. Your account, coins, keys, items, levels, friends and settings "
+                    "are NOT touched: your account is saved online and your settings stay in Documents\\Rubenium."))
+            fix = Button(tr("Repair Rubenium"), "ghost", 34, icon="refresh")
+            fix.clicked.connect(lambda: repair_dialog(ctx))
+            lay.addWidget(fix)
             lay.addSpacing(S(10))
             leave = Button(tr("Quit Rubenium"), "quiet", 22)
             leave.setFixedWidth(max(S(120), leave.sizeHint().width()))
@@ -28525,6 +28657,16 @@ def install_cheat_clicks(ctx) -> None:
                 return False
             if not (ctx.cfg["cheats"] and ctx.econ.admin and (ctx.online.username() or "").lower() == "ruben"):
                 return False
+            wv = obj
+            while wv is not None and not isinstance(wv, WaveView):
+                wv = wv.parentWidget()
+            if wv is not None:                         # 6.0: Wave Rush: a right click turns god mode on or off
+                if t == QEvent.Type.MouseButtonPress:
+                    ctx.wave_god = not getattr(ctx, "wave_god", False)
+                    sfx.play("on" if ctx.wave_god else "off")
+                    ctx.toast(tr("Wave god mode on: slide along the walls") if ctx.wave_god else tr("Wave god mode off"))
+                    wv.update()
+                return True
             w, zone = obj, False
             while w is not None:                       # 5.15: the whole casino page counts (Hit, Stand, Spin…)
                 if isinstance(w, (Game, GamesPage)) or w.property("cheat"):
@@ -29513,7 +29655,7 @@ class Bombs(Game):
 # --------------------------------------------------------------------------- #
 class Daily(Game):
     # (coins, keys) on each slice
-    PRIZES = [(40, 0), (75, 0), (120, 0), (180, 0), (300, 0), (500, 0), (1200, 0), (0, 1)]      # as the server numbers them
+    PRIZES = [(120, 0), (200, 0), (300, 0), (450, 0), (700, 0), (1200, 0), (2500, 0), (0, 1)]   # 6.0: pays more      # as the server numbers them
 
     def prizes(self) -> list:
         """3.1: a 9th slice, GOLD (the Golden Wheel). 4.0: a 10th, an XP coupon (keys = -3)."""
@@ -31517,8 +31659,9 @@ class GamesPage(Page):
         self.act_buttons: list = []
         lay.addWidget(self.actions)
         pass
-        lay.addWidget(ControlsBar([("Space", tr("Main button")), (["2", "3"], tr("Other buttons")),
-                                   (["Left", "Right"], tr("Bet"))], self.W))
+        self.controls_bar = ControlsBar([("Space", tr("Main button")), (["2", "3"], tr("Other buttons")),
+                                         (["Left", "Right"], tr("Bet"))], self.W)
+        lay.addWidget(self.controls_bar)
         self._keys = KeyPoll(["Space", "1", "2", "3", "4", "Left", "Right"], self._casino_key,
                              lambda: self.game is not None and self.game.busy)
         lay.addWidget(self._keys)
@@ -31558,7 +31701,7 @@ class GamesPage(Page):
         self.ctx.casino_bet = int(v)
 
     def _casino_key(self, name: str, down: bool) -> None:
-        if not down or self.game is None or not self.game.isVisible():
+        if not down or self.game is None or not self.game.isVisible() or isinstance(self.game, Daily):
             return
         if name in ("Left", "Right"):
             return self._step(-1 if name == "Left" else 1)
@@ -31593,6 +31736,8 @@ class GamesPage(Page):
                 self.opts[n].setVisible(n == i)
         self.game = self.games[i]
         self.bet_row.setVisible(self.NAMES[i] != "Free spin")       # the free spin has no bet
+        if getattr(self, "controls_bar", None) is not None:          # 6.0: no casino keys on the free spin / scratch card
+            self.controls_bar.setVisible(not isinstance(self.game, Daily))
         self.sync()
 
     def sync(self) -> None:
@@ -31619,7 +31764,8 @@ class GamesPage(Page):
                 b = Button(text, kind, 38)
                 b.text_key = text
                 (b.pressed if how and how[0] == "press" else b.clicked).connect(call)
-                b.keycap = "Space" if not self.act_buttons else str(len(self.act_buttons) + 1)     # 4.5: keys
+                b.keycap = ("" if isinstance(self.game, Daily) else                                  # 6.0
+                            "Space" if not self.act_buttons else str(len(self.act_buttons) + 1))     # 4.5: keys
                 self.act_lay.addWidget(b)
                 self.act_buttons.append(b)
         for b, (_t, _k, _c, on, *_how) in zip(self.act_buttons, spec):
@@ -31737,13 +31883,30 @@ def ago(at) -> str:
 
 
 # ================================================================ big, clear section buttons (shop, admin)
+def repair_dialog(ctx) -> None:
+    """6.0: says exactly what Repair does before doing anything."""
+    def go(_v: dict, dlg) -> None:
+        dlg.close()
+        ctx.repair_app()
+    FormDialog(ctx, tr("Repair Rubenium?"), [], tr("Repair now"), go,
+               note="\n\n".join((
+                   tr("What happens: Rubenium downloads the newest version, closes, reinstalls itself "
+                      "cleanly and opens again. It takes about a minute."),
+                   tr("What stays: your account, coins, keys, items, levels, friends, trophies and settings. Nothing is "
+                      "deleted from your account."),
+                   tr("Before you go on: finish any game, bet, trade or coinflip you are in, because Rubenium closes "
+                      "for a moment."))))
+
+
 class NavTiles(QWidget):
     """Sections as tiles with an icon and a name, 4 per row. The one you are in is lit."""
     changed = pyqtSignal(int)
 
-    def __init__(self, items: list, index: int = 0, per_row: int = 4, badges: dict = None, select: bool = True) -> None:
+    def __init__(self, items: list, index: int = 0, per_row: int = 4, badges: dict = None, select: bool = True,
+                 glow: set = None) -> None:
         super().__init__()
         self.items, self.index, self.per = items, index, per_row          # items: [(label, icon)]
+        self.glow = set(glow or ())                                       # 6.0: tiles that glow (UPDATE)
         self.select = select                                              # False: plain action buttons
         self.badges = badges or {}                                        # index -> small number (new things)
         rows = (len(items) + per_row - 1) // per_row
@@ -31801,14 +31964,22 @@ class NavTiles(QWidget):
             else:
                 p.setPen(QPen(alpha("#FFFFFF", 0.10 if hov else 0.06), 1))
                 p.setBrush(alpha("#FFFFFF", 0.07 if hov else 0.035))
+            if i in self.glow:                                       # 6.0: a soft accent glow around the tile
+                for k in range(3):
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+                    p.setPen(QPen(alpha(ui.accent, 0.22 - k * 0.06), S(2 + k * 2)))
+                    p.drawRoundedRect(r.adjusted(-k, -k, k, k), S(10) + k, S(10) + k)
+                p.setPen(QPen(alpha(ui.accent, 0.9), S(1.4)))
+                p.setBrush(alpha(ui.accent, 0.16 if not on else 0.3))
             p.drawRoundedRect(r, S(10), S(10))
             p.save()
             p.translate(r.center().x(), r.top() + S(17))
             p.scale(0.9, 0.9)
-            draw_icon(p, icon, QColor(TEXT) if on or hov else QColor(TEXT_DIM))
+            draw_icon(p, icon, QColor(TEXT) if on or hov or i in self.glow else QColor(TEXT_DIM))
             p.restore()
-            p.setPen(QColor(TEXT) if on else QColor(TEXT_DIM))
-            p.setFont(font(10, QFont.Weight.Bold if on else QFont.Weight.DemiBold))
+            p.setPen(QColor(TEXT) if on or i in self.glow else QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.Black if i in self.glow else (QFont.Weight.Bold if on else QFont.Weight.DemiBold),
+                           0.8 if i in self.glow else 0.0))
             text = QFontMetrics(p.font()).elidedText(label, Qt.TextElideMode.ElideRight, int(r.width() - S(6)))
             p.drawText(QRectF(r.left(), r.bottom() - S(20), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), text)
             n = int(self.badges.get(i) or 0)
@@ -36007,7 +36178,7 @@ class AdminPage(Page):
     # -- Rig: the next result of one player
     RIG_KINDS = [("wheel", "Free spin"), ("scratch", "Scratch card"), ("case", "Case"), ("slots", "Slots"),
                  ("dice", "Dice"), ("flip", "Coinflip vs bot")]
-    WHEEL = ["40 coins", "75 coins", "120 coins", "180 coins", "300 coins", "500 coins", "1 200 coins", "A key",
+    WHEEL = ["120 coins", "200 coins", "300 coins", "450 coins", "700 coins", "1 200 coins", "2 500 coins", "A key",
              "Golden Wheel", "XP coupon"]
     SCRATCH = [("standard", "80-160 coins"), ("rare", "220-420 coins"), ("special", "Key + XP coupon"),
                ("epic", "2 keys + coupon"), ("exotic", "2 500 coins + coupon"), ("golden", "Golden Wheel")]
@@ -39147,6 +39318,16 @@ def jp_phase(ctx=None):
     return "closed", slot + JP_EVERY - now
 
 
+def jp_words(s: float) -> str:
+    """6.0: a time in words for notices ('about 2 minutes'), not a frozen clock like 1:52."""
+    s = max(0, int(math.ceil(s)))
+    if s >= 90:
+        return tr("{n} minutes", n=int(round(s / 60)))
+    if s >= 45:
+        return tr("1 minute")
+    return tr("{n} seconds", n=max(5, int(round(s / 5)) * 5))
+
+
 def jp_clock(s: float) -> str:
     s = max(0, int(math.ceil(s)))
     return f"{s // 60}:{s % 60:02d}"
@@ -39176,7 +39357,7 @@ class JackpotCard(QWidget):
         phase, left = jp_phase(self.ctx)
         if phase == "closed" and not getattr(self.ctx, "jackpot_in", False):
             sfx.play("off")
-            return self.ctx.toast(tr("The next jackpot opens in {t}", t=jp_clock(left)), "warn")
+            return self.ctx.toast(tr("The next jackpot opens in about {t}", t=jp_words(left)), "warn")
         sfx.play("pick")
         self.page.open_sub("jackpot")
 
@@ -42795,8 +42976,8 @@ HELP = {
     "spin": ("Free spin", [
         "Free every {h} hours: spin the wheel and win what it lands on."], [
         "It costs nothing: come back every {h} hours."], [
-        "40 coins 19.5% · 75 coins 19.5% · 120 coins 18% · 180 coins 12%",
-        "300 coins 7.5% · 500 coins 4% · 1 200 coins 1.8%",
+        "120 coins 17.3% · 200 coins 17% · 300 coins 17% · 450 coins 13%",
+        "700 coins 9% · 1 200 coins 6% · 2 500 coins 3%",
         "A key 7.7% · the Golden Wheel 5% · an XP coupon 5%"]),
     "scratch": ("Scratch card", [
         "One free card every {h} hours. Scratch it (or press Reveal) to see your prize."], [
@@ -47524,6 +47705,8 @@ def _make_class():
 
         def reload_page(self, key: str = None) -> None:
             key = key or self.current
+            if GamePerf.defer(self.ctx, self, key):          # 6.0: never rebuilt in the middle of a Wave Rush run
+                return
             if not self.expanded or key not in self.tab_keys():
                 if key in self.pages:
                     self._drop_page(key)
@@ -49409,10 +49592,10 @@ class WaveView(QWidget):
         self._reset()
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
-        self._timer.setInterval(8)
+        self._timer.setInterval(self._frame_ms())          # 6.0: one frame per screen refresh (no judder)
         self._timer.timeout.connect(self._frame)
         self._timer.start()
-        pass
+        self._idle_paint = 0.0
         self.keys = KeyPoll(["Space", "Up", "W"], self._key, lambda: self.state == "run")
         self.keys.setParent(self)
 
@@ -49465,6 +49648,7 @@ class WaveView(QWidget):
         self.acc, self.last = 0.0, time.monotonic()
         self.run_t0 = self.last
         sfx.play("pick")
+        GamePerf.enter(self.ctx)                          # 6.0: the hidden performance mode, for this run only
         if self.on_start:
             self.on_start()
 
@@ -49476,6 +49660,7 @@ class WaveView(QWidget):
         self.state = "safe"
         self.dead_at = time.monotonic()
         sfx.play("on")
+        QTimer.singleShot(0, lambda: GamePerf.leave(self.ctx))
         if self.on_end:
             self.on_end(self.t, list(self.toggles), self.x)
 
@@ -49545,9 +49730,26 @@ class WaveView(QWidget):
         if self.state == "run":                       # no pausing in the middle of a run: hiding it ends it
             self._crash()
         self._timer.stop()
+        GamePerf.leave(self.ctx)
 
     def showEvent(self, _e) -> None:
+        self._timer.setInterval(self._frame_ms())
         self._timer.start()
+
+    def _frame_ms(self) -> int:
+        """6.0: the timer follows the screen's refresh rate (60, 75, 120, 144 Hz…), so every frame shown is a new
+        position the same distance apart: no more judder from 125 frames a second on a 60 Hz screen."""
+        try:
+            scr = self.screen() or QGuiApplication.primaryScreen()
+            hz = float(scr.refreshRate()) if scr is not None else 60.0
+        except Exception:  # noqa: BLE001
+            hz = 60.0
+        hz = max(50.0, min(240.0, hz or 60.0))
+        return max(4, int(1000.0 / hz))
+
+    def closeEvent(self, e) -> None:
+        GamePerf.leave(self.ctx)
+        super().closeEvent(e)
 
     # -- the run: fixed 60 ticks a second
     def _tick(self) -> bool:
@@ -49574,6 +49776,11 @@ class WaveView(QWidget):
             del self.trail[:100]
         if self.god:
             return True
+        if getattr(self.ctx, "wave_god", False) and self.t < WAVE_MAX:     # 6.0: god mode: slide, never crash
+            self.y = max(top + WAVE_R, min(bot - WAVE_R, self.y))
+            if self.trail:
+                self.trail[-1] = (self.x, self.y)
+            return True
         if (self.t > WAVE_SLIDE and (self.y - WAVE_R < top or self.y + WAVE_R > bot)) or self.t >= WAVE_MAX:
             self._crash()
             return False
@@ -49582,7 +49789,8 @@ class WaveView(QWidget):
     def _crash(self) -> None:
         self.state = "dead"
         self.dead_at = time.monotonic()
-        sfx.play("off")
+        sfx.play("lose")
+        QTimer.singleShot(0, lambda: GamePerf.leave(self.ctx))
         rnd = random.Random(self.t)
         self.parts = [(rnd.uniform(0, math.tau), rnd.uniform(90, 420), rnd.uniform(3, 7)) for _ in range(26)]
         if self.on_end:
@@ -49607,6 +49815,15 @@ class WaveView(QWidget):
             while self.acc >= step and self.state == "run":
                 self.acc -= step
                 self._tick()
+            GamePerf.alive()
+            try:
+                self.ctx.notifier.hold(0.5)                # 6.0: no pop-up in the middle of a run
+            except Exception:  # noqa: BLE001
+                pass
+        elif self.state in ("wait", "ready") and self.watch is None and self.replay is None:
+            if now - self._idle_paint < 0.05:              # 6.0: nothing moving: 20 frames a second is plenty
+                return
+            self._idle_paint = now
         self.update()
 
     # -- drawing
@@ -49644,7 +49861,7 @@ class WaveView(QWidget):
         p.setPen(QPen(alpha("#FFFFFF", 0.035), 1))          # a grid that scrolls slower than the course
         step = 200
         first = int((cam * 0.5) // step) * step
-        gx = first
+        gx = first if self.state != "run" else 10 ** 9      # 6.0: skipped while running (performance mode)
         while (gx - cam * 0.5) * sc < r.width():
             xx = (gx - cam * 0.5) * sc
             p.drawLine(QPointF(xx, 0), QPointF(xx, r.height()))
@@ -49697,11 +49914,7 @@ class WaveView(QWidget):
         p.drawLine(QPointF(xx, 0), QPointF(xx, r.height()))
         p.setPen(QPen(alpha(gold, 0.55 + 0.35 * pulse), S(2), Qt.PenStyle.DashLine))
         p.drawLine(QPointF(xx, 0), QPointF(xx, r.height()))
-        paint_coin(p, QPointF(xx, r.height() * 0.5), S(11))
-        p.setPen(gold)
-        p.setFont(font(9.5, QFont.Weight.Black, 1.0))
-        p.drawText(QRectF(xx + S(14), r.height() * 0.5 - S(9), S(140), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("COINS FROM HERE"))
+        paint_coin(p, QPointF(xx, r.height() * 0.5), S(11))         # 6.0: the line and the coin say it, no words
 
     def _paint_course(self, p, r, cam, sc, col) -> None:
         c = self.course
@@ -49892,7 +50105,7 @@ class WaveView(QWidget):
         if self.state == "run":
             pts.append(QPointF((hx - cam) * sc, hy * sc))
         if len(pts) >= 2:                                  # the trail: the zigzag you drew
-            for w, a in ((S(7), 0.12), (S(3), 0.85)):
+            for w, a in (((S(3), 0.85),) if self.state == "run" else ((S(7), 0.12), (S(3), 0.85))):
                 p.setPen(QPen(alpha(mix(col, QColor("#FFFFFF"), 0.55), a), w, Qt.PenStyle.SolidLine,
                               Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.MiterJoin))
                 p.drawPolyline(QPolygonF(pts))
@@ -49931,6 +50144,10 @@ class WaveView(QWidget):
         p.setPen(QColor(TEXT))
         p.setFont(font(17, QFont.Weight.Black))
         p.drawText(QRectF(S(12), S(2), r.width() * 0.28, S(26)), int(Qt.AlignmentFlag.AlignVCenter), f"{metres(int(x))} m")
+        if getattr(self.ctx, "wave_god", False):         # 6.0: Ruben's god mode is on
+            p.setPen(QColor("#FF5C8A"))
+            p.setFont(font(10, QFont.Weight.Black, 1.5))
+            p.drawText(QRectF(r.width() * 0.3, S(4), S(60), S(22)), int(Qt.AlignmentFlag.AlignVCenter), "GOD")
         p.setFont(font(9.5, QFont.Weight.Bold))
         p.setPen(QColor(TEXT_DIM))
         if self.watch is None and self.replay is None and self.state in ("run", "ready", "count") and x < WAVE_FREE_X:
@@ -52737,6 +52954,8 @@ class MainWindow(QWidget):
     def reload_page(self, key: str = None) -> None:
         """Rebuild the current page (its content changed) and glide to its new height. 3.2: a page that is not the
         current one is just dropped, so it is built fresh when it is opened."""
+        if GamePerf.defer(self.ctx, self, key):              # 6.0: never rebuilt in the middle of a Wave Rush run
+            return
         if key is not None and key != self.current:
             self._drop_page(key)
             return
@@ -53512,7 +53731,8 @@ class App(QObject):
         self.updater = extras.Updater(BUILD)
         self.updater.found.connect(self._update_found)
         self.updater.checked.connect(self._update_checked)
-        self.updater.progress.connect(lambda pct: self.window.show_busy(tr("Downloading update… {p}%", p=pct)))
+        self.updater.progress.connect(lambda pct: self.window.show_busy(
+            tr("Repairing… {p}%", p=pct) if getattr(self, "repairing", False) else tr("Downloading update… {p}%", p=pct)))
         self.updater.ready.connect(self._update_ready)
         self.updater.failed.connect(self._update_failed)
         self._update_prompted = ""
@@ -54640,8 +54860,8 @@ class App(QObject):
             return
         self._jp_told = slot
         try:
-            self.notifier.push("duel", tr("JACKPOT IS OPEN"), tr("Join in the next {t}: Games > Jackpot", t=jp_clock(left)),
-                               "jackpot")
+            self.notifier.push("duel", tr("JACKPOT IS OPEN"),
+                               tr("Open for about {t}. Join in Games > Jackpot", t=jp_words(left)), "jackpot")
             glow_jackpot(self)
         except Exception:  # noqa: BLE001
             log.exception("jackpot bell")
@@ -54809,6 +55029,18 @@ class App(QObject):
             self.toast(tr("Updating to {v}…", v=info["label"]))
         self.install_update()
 
+    def repair_app(self) -> None:
+        """6.0: reinstall the newest version over this one (asked for in Settings > UPDATE, after a clear warning)."""
+        try:
+            if self.econ.rounds_held():
+                return self.toast(tr("Finish your round first, then repair"), "warn")
+        except Exception:  # noqa: BLE001
+            pass
+        sfx.play("pick")
+        self.repairing = True
+        self.window.show_busy(tr("Repairing… {p}%", p=0))
+        self.updater.repair()
+
     def install_update(self) -> None:
         sfx.play("pick")
         if self.updater.install():
@@ -54821,7 +55053,7 @@ class App(QObject):
             self.toast(tr("Could not check for updates"), "warn")
 
     def _update_ready(self, path: str) -> None:
-        self.window.show_busy(tr("Restarting…"))
+        self.window.show_busy(tr("Reinstalling…") if getattr(self, "repairing", False) else tr("Restarting…"))
         started = extras.run_setup(path) if path.lower().endswith(".exe") else extras.restart(path)
         if started:
             QTimer.singleShot(400, self.quit)        # the setup waits for Rubenium to close, then installs
@@ -54830,8 +55062,14 @@ class App(QObject):
 
     def _update_failed(self, key: str) -> None:
         self._update_prompted = ""                   # 4.4: the next check tries again by itself
+        repairing, self.repairing = getattr(self, "repairing", False), False
 
         def after() -> None:
+            if repairing and key != "blocked":
+                self.toast(tr("The repair could not download Rubenium. Check your internet, or get RubeniumSetup.exe "
+                              "from GitHub."), "error")
+                return win.open_path(self.updater.latest.get("page", extras.UPDATE_PAGE) if self.updater.latest
+                                     else extras.UPDATE_PAGE)
             if key == "blocked":
                 self.toast(tr("Windows blocked the update. Download it from GitHub."), "error")
                 win.open_path(self.updater.latest.get("page", extras.UPDATE_PAGE))

@@ -12,5 +12,9 @@ Rubenium 6.0 (the final version)
 - Mini Golf: the power bar sits under the course, bots are plain AI balls and you can see where they aim
 - Outdated app: pressing ONLINE shows a black hole, drops you back and updates
 - Fixed: quests like 'win 3 Mini Golf games' complete again, right-click cheats, the cups sit higher, and the ball no longer needs a click on another screen first
+- Settings: About is now UPDATE, with a Repair button that reinstalls the newest Rubenium if updating ever fails (your account, items and settings are never touched)
+- The free spin pays a lot more: 120 to 2 500 coins
+- Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen
+- Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

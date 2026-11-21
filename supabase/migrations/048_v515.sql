@@ -9,6 +9,22 @@ update public.rb_config set value = 1000000000
  where key in ('cups_day_profit', 'c4_day_profit', 'mini_day_cap', 'park_day_cap', 'game_window_cap', 'mg_window_cap',
                'game_day_cap');
 
+-- ================================================================ the free spin pays more (applied live with replace())
+-- rb_spin and rb_spin_odds: slots 120, 200, 300, 450, 700, 1 200, 2 500, key, Golden Wheel, XP coupon;
+-- odds 1730, 1700, 1700, 1300, 900, 600, 300, 770, 500, 500 (out of 10 000)
+do $$
+declare src text;
+begin
+  select pg_get_functiondef('public.rb_spin()'::regprocedure) into src;
+  src := replace(src, 'array[40, 75, 120, 180, 300, 500, 1200, -1, -2, -3]', 'array[120, 200, 300, 450, 700, 1200, 2500, -1, -2, -3]');
+  src := replace(src, 'array[1950, 1950, 1800, 1200, 750, 400, 180, 770, 500, 500]', 'array[1730, 1700, 1700, 1300, 900, 600, 300, 770, 500, 500]');
+  execute src;
+  select pg_get_functiondef('public.rb_spin_odds()'::regprocedure) into src;
+  src := replace(src, 'json_build_array(40, 75, 120, 180, 300, 500, 1200, -1, -2, -3)', 'json_build_array(120, 200, 300, 450, 700, 1200, 2500, -1, -2, -3)');
+  src := replace(src, 'json_build_array(1950, 1950, 1800, 1200, 750, 400, 180, 770, 500, 500)', 'json_build_array(1730, 1700, 1700, 1300, 900, 600, 300, 770, 500, 500)');
+  execute src;
+end $$;
+
 -- ================================================================ admin: bots sell on the market
 create or replace function public.rb_admin_bot_market(name text, action text, item_id uuid default null,
                                                       price integer default null, n integer default 3)
@@ -80,7 +96,7 @@ begin
     select * into p from public.profiles where id = auth.uid();
     if not found then return json_build_object('due', false); end if;
     return json_build_object(
-        'due', p.og_event_at is null and extract(epoch from now()) < ends and coalesce(p.build, 0) >= 2026112115
+        'due', p.og_event_at is null and extract(epoch from now()) < ends and coalesce(p.build, 0) >= 2026112116
                and exists (select 1 from public.rb_items i where i.owner = p.id and i.item = 'tag:og'),
         'claimed', p.og_event_at is not null, 'ends', ends,
         'coins', coalesce(public.rb_cfg('og_chest_coins'), 5000)::int, 'keys', coalesce(public.rb_cfg('og_chest_keys'), 25)::int,
