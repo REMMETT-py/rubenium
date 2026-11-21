@@ -1,6 +1,5 @@
-Rubenium 6.2.4
+Rubenium 6.2.5
 
-- SFX Match has a volume bar, so you can turn the sound up or down
-- The Jackpot stays open until a player joins, and its countdown only starts when the first player joins
+- Quick sell: if the pawn shop throws you out, the ban lasts 5 minutes instead of 30
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

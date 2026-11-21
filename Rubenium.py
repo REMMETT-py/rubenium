@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.2.4"         # the version people see
-BUILD = "2026.11.22.4"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.2.5"         # the version people see
+BUILD = "2026.11.22.5"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6509,7 +6509,7 @@ FR = {
     'Ask {n}': 'Demander {n}',
     'PAWN SHOP': 'PRÊTEUR SUR GAGES',
     'HIS PATIENCE RUNS OUT': "SA PATIENCE S'ÉPUISE",
-    'The more you ask, the less likely he says yes. Every no makes him angrier (he calms down over time). If his patience runs out, he throws you out for 30 minutes.': "Plus tu demandes, moins il risque d'accepter. Chaque refus l'énerve davantage (il se calme avec le temps). S'il perd patience, il te met dehors pour 30 minutes.",
+    'The more you ask, the less likely he says yes. Every no makes him angrier (he calms down over time). If his patience runs out, he throws you out for 5 minutes.': "Plus tu demandes, moins il risque d'accepter. Chaque refus l'énerve davantage (il se calme avec le temps). S'il perd patience, il te met dehors pour 5 minutes.",
     'CLOSED TO YOU': 'FERMÉ POUR TOI',
     "You can't come in for {t}": 'Tu ne peux pas entrer avant {t}',
     'You made him too angry': "Tu l'as trop énervé",
@@ -6519,7 +6519,7 @@ FR = {
     'Deal. Pleasure doing business.': 'Marché conclu. Un plaisir de faire affaire.',
     'His offer: {n} coins': 'Son offre : {n} pièces',
     "That's it. GET OUT!": 'Ça suffit. DEHORS !',
-    'Thrown out of the pawn shop for 30 minutes': 'Mis dehors par le prêteur sur gages pour 30 minutes',
+    'Thrown out of the pawn shop for 5 minutes': 'Mis dehors par le prêteur sur gages pour 5 minutes',
     'No way.': 'Pas question.',
     "You're pushing it.": 'Tu pousses le bouchon.',
     "One more and you're out.": 'Encore une et tu sors.',
@@ -6727,7 +6727,7 @@ FR = {
     'Hold to open, keys and game mode': 'Maintenir pour ouvrir, touches et mode jeu',
     'Sell for {n}': 'Vendre pour {n}',
     'Suit yourself.': 'Comme tu veux.',
-    'His price always sells. Asking for more only asks: if he says yes, you still choose to sell. Every no makes him angrier (he calms down over time); if his patience runs out, he throws you out for 30 minutes.': 'Son prix vend toujours. Demander plus ne fait que demander : s’il dit oui, c’est toi qui choisis de vendre. Chaque refus l’énerve (il se calme avec le temps) ; si sa patience est à bout, il te met dehors pendant 30 minutes.',
+    'His price always sells. Asking for more only asks: if he says yes, you still choose to sell. Every no makes him angrier (he calms down over time); if his patience runs out, he throws you out for 5 minutes.': 'Son prix vend toujours. Demander plus ne fait que demander : s’il dit oui, c’est toi qui choisis de vendre. Chaque refus l’énerve (il se calme avec le temps) ; si sa patience est à bout, il te met dehors pendant 5 minutes.',
     'Market price: about {n} coins (selling there takes longer, 5% fee)': 'Prix du marché : environ {n} pièces (plus long à vendre, 5 % de frais)',
     'He agreed to {n} coins: press Sell to sell it': 'Il accepte {n} pièces : appuie sur Vendre pour vendre',
     'Fine. {n} coins, if you want it.': 'D’accord. {n} pièces, si tu veux.',
@@ -11629,6 +11629,7 @@ def close_app(exe: str) -> bool:
 FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match (recreate a sound). Easy, Medium and Hard, rewards by accuracy, with their own leaderboards': 'NOUVEAU : Choix de couleur (recrée une couleur de mémoire) et SFX Match (recrée un son). Facile, Moyen et Difficile, gains selon la précision, avec leurs propres classements', 'A big 30 second countdown on every move in Connect 4 and the Cup Game: when it runs out you lose the round': 'Un grand compte à rebours de 30 secondes à chaque coup au Puissance 4 et au jeu des gobelets : à zéro, tu perds la manche', 'Cup Game is much harder: more swaps, and faster': 'Le jeu des gobelets est bien plus dur : plus d’échanges, et plus vite', 'Cases: Mythics are listed in every case as a hidden "?" until you unlock them, and Prismatic chances show above Gold': 'Caisses : les Mythiques sont listés dans chaque caisse sous forme de « ? » caché jusqu’à leur déblocage, et les chances de Prismatique s’affichent au-dessus d’Or', 'Much rarer odds: Mythic 1 / 100 000 in the Top Tier Case and 1 / 250 000 to 1 / 500 000 in the others. Shiny, Titanium and Gold are far rarer too, Painted is the common finish': 'Chances bien plus rares : Mythique 1 / 100 000 dans la caisse Haut de gamme et 1 / 250 000 à 1 / 500 000 dans les autres. Brillant, Titane et Or sont bien plus rares aussi, Peint est la finition courante', 'Updates no longer pop Rubenium open: after an automatic update it slides to the top right as the ball and waits. Open it to see what is new': 'Les mises à jour n’ouvrent plus Rubenium : après une mise à jour automatique, il glisse en haut à droite sous forme de bulle et attend. Ouvre-le pour voir les nouveautés', 'Colour Pick': 'Choix de couleur', 'Previews': 'Essais', 'SFX Match': 'SFX Match', 'Submit': 'Valider', 'Sine': 'Sinus', 'Triangle': 'Triangle', 'Saw': 'Dent de scie', 'Square': 'Carré', 'Pluck': 'Pincé', 'Beep': 'Bip', 'Swell': 'Crescendo', 'Accuracy': 'Précision', 'Colour distance {n}': 'Écart de couleur {n}', 'Daily limit reached: wins give your bet back until midnight': 'Limite du jour atteinte : une victoire rend ta mise jusqu’à minuit', 'Duration': 'Durée', 'Glide': 'Glissando', 'Hear original': 'Écouter l’original', 'Hear yours': 'Écouter le tien', 'Hue': 'Teinte', 'Saturation': 'Saturation', 'Listen closely, then recreate the sound.': 'Écoute bien, puis recrée le son.', 'Listen!': 'Écoute !', 'Listen: {a} s · Answer: {b} s': 'Écoute : {a} s · Réponse : {b} s', 'Look: {a} s · Answer: {b} s': 'Regarde : {a} s · Réponse : {b} s', 'Memorise the colour, then recreate it.': 'Mémorise la couleur, puis recrée-la.', 'Memorise this colour!': 'Mémorise cette couleur !', 'No previews left': 'Plus d’écoutes d’essai', 'Original': 'Original', 'Pitch': 'Hauteur', 'Play sound · {n} left': 'Jouer le son · {n} restantes', 'Plays left: {n}': 'Écoutes restantes : {n}', 'Preview · {n} left': 'Essai · {n} restants', 'Previews left: {n}': 'Essais restants : {n}', 'Recreate the colour': 'Recrée la couleur', 'Recreate the sound': 'Recrée le son', 'The original is gone: you were disconnected': 'L’original a disparu : tu as été déconnecté', 'Time is up!': 'Temps écoulé !', 'Time is up: you lose the game': 'Temps écoulé : tu perds la partie', 'Tone': 'Timbre', 'Wobble': 'Vibrato', 'A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.': 'Une couleur s’affiche quelques secondes, puis disparaît. Recrée-la de mémoire avec les curseurs Teinte, Saturation et Luminosité, puis valide.', 'A short sound plays, then it is gone. Recreate it with the sliders: pitch, duration and tone, and on harder levels glide, shape and wobble.': 'Un court son est joué, puis il disparaît. Recrée-le avec les curseurs : hauteur, durée et timbre, et aux niveaux difficiles glissando, forme et vibrato.', 'After the round you hear both sounds and see how close each setting was.': 'Après la manche, tu entends les deux sons et vois la précision de chaque réglage.', 'Easy shows it for 6 s and gives 45 s, Medium 4 s and 35 s, Hard shows a muted colour for only 2.5 s and gives 25 s.': 'Facile l’affiche 6 s et laisse 45 s, Moyen 4 s et 35 s, Difficile montre une couleur terne seulement 2,5 s et laisse 25 s.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy. Low accuracy gives back part of your bet or nothing.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision. Une faible précision rend une partie de la mise ou rien.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision.', 'Easy: 10 s to listen, 60 s to answer. Medium: 7 s and 45 s. Hard: 5 s and 30 s, with 2 listens and 4 previews.': 'Facile : 10 s pour écouter, 60 s pour répondre. Moyen : 7 s et 45 s. Difficile : 5 s et 30 s, avec 2 écoutes et 4 essais.', 'Find the pitch first, then the length, then the tone: sine is soft, square is buzzy, saw is sharp.': 'Trouve d’abord la hauteur, puis la durée, puis le timbre : le sinus est doux, le carré bourdonne, la dent de scie est vive.', 'Once you are up 12 000 coins in a day, a win gives your bet back.': 'Une fois 12 000 pièces gagnées dans la journée, une victoire rend ta mise.', 'Remember the hue first, then how pale or dark it was. Move the sliders one at a time.': 'Retiens d’abord la teinte, puis si elle était pâle ou sombre. Bouge les curseurs un par un.', 'The colour is shown once and the clock is kept by the server: a late answer scores nothing.': 'La couleur n’est montrée qu’une fois et le serveur garde le chrono : une réponse tardive ne rapporte rien.', 'You can listen to the original a few times while it is available, and to your own sound a limited number of times before you submit.': 'Tu peux écouter l’original quelques fois tant qu’il est disponible, et ton propre son un nombre limité de fois avant de valider.', 'Your accuracy is measured the way the eye sees colour (CIEDE2000): close counts, exact is best.': 'Ta précision est mesurée comme l’œil voit les couleurs (CIEDE2000) : proche compte, exact est le mieux.'})      # 6.2
 FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'Preview': 'Essai', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
 FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
+FR.update({"Quick sell's pawn shop ban is 5 minutes instead of 30": 'Le bannissement du prêteur sur gages (vente rapide) dure 5 minutes au lieu de 30'})      # 6.2.5
 FR.update({'SFX Match has a volume bar, so you can turn the sound up or down': 'SFX Match a une barre de volume pour monter ou baisser le son', 'Volume': 'Volume'})      # 6.2.4
 FR.update({'Trophies: tap one you have unlocked to see how you got it, on your profile too': 'Trophées : touche-en un débloqué pour voir comment tu l’as eu, sur ton profil aussi', 'Connect 4 payouts: Easy ×1.2, Medium ×2, Hard ×5, Professional ×250': 'Gains du Puissance 4 : Facile ×1,2, Moyen ×2, Difficile ×5, Professionnel ×250', 'Cup Game tightened: a top bet of 2 000 and a daily profit limit': 'Jeu des gobelets resserré : mise maximale de 2 000 et limite de gain par jour', 'Fair play: the games now watch for results nobody can get by playing normally, and pause that game for the player while it is checked': 'Fair-play : les jeux surveillent les résultats impossibles en jouant normalement et mettent ce jeu en pause pour le joueur le temps d’une vérification'})
 FR.update({'This game is paused on your account while it is checked': 'Ce jeu est en pause sur ton compte le temps d’une vérification'})
@@ -11639,6 +11640,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.2.5", ["Quick sell's pawn shop ban is 5 minutes instead of 30"]),
     ("6.2.4", ['SFX Match has a volume bar, so you can turn the sound up or down']),
     ("6.2.3", ['The Jackpot stays open until a player joins, and its countdown only starts when the first player joins']),
     ("6.2.2", ['SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile']),
@@ -49850,7 +49852,7 @@ class PawnShop(QWidget):
                 elif res == "kicked":
                     self.anger = 100.0
                     self.line, self.line_at = tr("That's it. GET OUT!"), time.monotonic()
-                    self.after = lambda: self.ctx.toast(tr("Thrown out of the pawn shop for 30 minutes"), "warn")
+                    self.after = lambda: self.ctx.toast(tr("Thrown out of the pawn shop for 5 minutes"), "warn")
                     self._controls(False)
                     sfx.play("off")
                     QTimer.singleShot(500, self._crack)
@@ -49936,7 +49938,7 @@ class PawnShop(QWidget):
                 elif res == "kicked":
                     self.anger, self.trade = 100.0, None
                     self.line, self.line_at = tr("That's it. GET OUT!"), time.monotonic()
-                    self.after = lambda: self.ctx.toast(tr("Thrown out of the pawn shop for 30 minutes"), "warn")
+                    self.after = lambda: self.ctx.toast(tr("Thrown out of the pawn shop for 5 minutes"), "warn")
                     self._controls(False)
                     sfx.play("off")
                     QTimer.singleShot(500, self._crack)
@@ -49977,7 +49979,7 @@ class PawnShop(QWidget):
                 elif res == "kicked":
                     self.anger = 100.0
                     self.line, self.line_at = tr("That's it. GET OUT!"), time.monotonic()
-                    self.after = lambda: self.ctx.toast(tr("Thrown out of the pawn shop for 30 minutes"), "warn")
+                    self.after = lambda: self.ctx.toast(tr("Thrown out of the pawn shop for 5 minutes"), "warn")
                     self._controls(False)
                     sfx.play("off")
                     QTimer.singleShot(500, self._crack)
@@ -50074,8 +50076,8 @@ class PawnShop(QWidget):
                 self._make_shards()
             if t >= 1.5:
                 self._go("slam")
-                self.ban_end = time.monotonic() + 1800
-                self.ctx.pawn_ban_until = time.time() + 1800
+                self.ban_end = time.monotonic() + 300
+                self.ctx.pawn_ban_until = time.time() + 300
         elif ph == "slam" and t >= 0.25 + 1.6:
             self._go("leave_open")
         elif ph == "leave_open" and t >= 0.5:
@@ -50503,7 +50505,7 @@ class PawnShop(QWidget):
         p.drawText(foot, int(Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop),
                    tr("His price always sells. Asking for more only asks: if he says yes, you still choose to sell. "
                       "Every no makes him angrier (he calms down over time); if his patience runs out, he throws you out "
-                      "for 30 minutes."))
+                      "for 5 minutes."))
 
     # the doors
     def _paint_doors(self, p, r, d, now) -> None:
