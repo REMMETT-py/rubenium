@@ -182,20 +182,34 @@ export class Searcher {
   }
 }
 
-export const LEVELS: Record<string, { depth: number; ms: number; slack: number }> = {
-  easy: { depth: 2, ms: 300, slack: 30 },       // sees a win or a block one move ahead; picks among close moves
-  medium: { depth: 4, ms: 500, slack: 12 },
-  hard: { depth: 8, ms: 700, slack: 0 },
-  pro: { depth: 42, ms: 1300, slack: 0 },       // iterative deepening until the time runs out
+// 6.0: four real levels. Easy is quick and makes plain mistakes; Medium sees a few moves ahead but misses deeper
+// tactics now and then; Hard looks far ahead (it moves first) and only rarely falls into a well-built trap; the
+// Professional plays perfectly (solver.ts: an opening book, then an exact solve) and moves first: it cannot lose.
+export const LEVELS: Record<string, { depth: number; ms: number; slack: number; blunder: number; shallow: number; low: number }> = {
+  easy: { depth: 2, ms: 150, slack: 45, blunder: 0.33, shallow: 0, low: 1 },     // a third of its moves are careless
+  medium: { depth: 5, ms: 400, slack: 10, blunder: 0.05, shallow: 0.2, low: 2 },  // 1 move in 5 it only looks 2 ahead
+  hard: { depth: 10, ms: 900, slack: 0, blunder: 0, shallow: 0.08, low: 6 },     // 1 in 12 it looks 6 ahead, not 10
+  pro: { depth: 42, ms: 1500, slack: 0, blunder: 0, shallow: 0, low: 42 },
 };
 
 export function bestMove(seq: number[], level: string, rand: () => number = Math.random): { col: number; depth: number; score: number } {
   const L = LEVELS[level] ?? LEVELS.medium;
   const b = Board.from(seq);
+  // a careless move: any column that does not hand over a win at once (Easy: even that, half of the time)
+  if (L.blunder && rand() < L.blunder) {
+    const s0 = new Searcher();
+    const legal = ORDER.filter((c) => b.canPlay(c));
+    const mine = legal.find((c) => b.winsAt(c, b.turn()));
+    if (mine !== undefined && rand() < 0.5) return { col: mine, depth: 0, score: 0 };
+    const careful = level === "easy" && rand() < 0.5 ? legal : legal.filter((c) => !s0.givesWin(b, c));
+    const pool = careful.length ? careful : legal;
+    return { col: pool[Math.floor(rand() * pool.length)], depth: 0, score: 0 };
+  }
+  const maxDepth = L.shallow && rand() < L.shallow ? L.low : L.depth;
   const s = new Searcher();
   s.deadline = Date.now() + L.ms;
   let scores = new Map<number, number>(), reached = 0;
-  for (let d = 1; d <= L.depth; d++) {
+  for (let d = 1; d <= maxDepth; d++) {
     const got = s.rootScores(b, d);
     if (s.stopped) break;
     scores = got; reached = d;

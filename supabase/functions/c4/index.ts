@@ -2,6 +2,40 @@
 // POST { game, col }  (col = -1: just let the bot move, e.g. its first move on Professional)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { bestMove, result, Board } from "./ai.ts";
+import { perfectMove, loadBook } from "./solver.ts";
+
+// 6.0: the Professional's opening book, built offline (tools/c4book), read once per server start from the public repo
+// and checked against its SHA-256. Without it the Professional still solves, just more slowly early in a game.
+const BOOK_URL = "https://raw.githubusercontent.com/REMMETT-py/rubenium/main/supabase/functions/c4/book.bin";
+const BOOK_SHA = "dfcb8f7a4b79396acbf6a37fc236df020f4357a0503535c93be330f34ff726f1";
+let bookState: "none" | "loading" | "ok" | "bad" = "none";
+let bookWait: Promise<void> | null = null;
+function ensureBook(): Promise<void> {
+  if (bookState === "ok" || bookState === "bad") return Promise.resolve();
+  if (!bookWait) {
+    bookState = "loading";
+    bookWait = (async () => {
+      try {
+        const res = await fetch(BOOK_URL);
+        const buf = new Uint8Array(await res.arrayBuffer());
+        const sha = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buf)))
+          .map((x) => x.toString(16).padStart(2, "0")).join("");
+        if (sha !== BOOK_SHA) { console.error("c4 book checksum mismatch", sha); bookState = "bad"; return; }
+        console.log("c4 book", loadBook(buf), "positions");
+        bookState = "ok";
+      } catch (e) { console.error("c4 book", e); bookState = "bad"; }
+    })();
+  }
+  return bookWait;
+}
+ensureBook();
+
+// the Professional: perfect play; if the exact search ran out of time (no book), the Hard search decides
+function proMove(moves: number[]): { col: number; depth: number } {
+  const m = perfectMove(moves, 1600);
+  if (m.source === "partial" && m.value < 1) { const h = bestMove(moves, "hard"); return { col: h.col, depth: h.depth }; }
+  return { col: m.col, depth: 42 };
+}
 
 const HEAD = { "Content-Type": "application/json" };
 const out = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: HEAD });
@@ -35,7 +69,8 @@ Deno.serve(async (req) => {
     let botCol = -1, depth = 0;
     if (!finished && Board.from(moves).turn() !== human) {
       const t0 = Date.now();
-      const m = bestMove(moves, g.level);
+      if (g.level === "pro") await ensureBook();
+      const m = g.level === "pro" ? proMove(moves) : bestMove(moves, g.level);
       botCol = m.col; depth = m.depth;
       moves.push(botCol);
       const r = result(moves);
@@ -54,10 +89,10 @@ Deno.serve(async (req) => {
       paid = fin?.paid ?? 0; coins = fin?.coins ?? null; capped = !!fin?.capped;
     }
     const r = result(moves);
-    // how long the bot "thinks" on screen: 3 to 7 seconds, longer when the position is tense
-    const free = [0, 1, 2, 3, 4, 5, 6].filter((c) => Board.from(moves).canPlay(c)).length;
-    const think = botCol < 0 ? 0 : Math.min(7, Math.max(3, 3 + (moves.length > 8 ? 1.5 : 0) + (free > 5 ? 0.5 : 0)
-      + Math.random() * 2 + (g.level === "pro" ? 1 : 0)));
+    // how long the bot "thinks" on screen (6.0): the easier the bot, the quicker it plays
+    const span: Record<string, [number, number]> = { easy: [0.6, 1.4], medium: [1.0, 2.4], hard: [1.8, 3.8], pro: [2.5, 5.5] };
+    const [lo, hi] = span[g.level] ?? [1, 3];
+    const think = botCol < 0 ? 0 : lo + Math.random() * (hi - lo) + (moves.length > 10 && g.level !== "easy" ? 0.5 : 0);
     return out({ moves, bot: botCol, state: finished ? "done" : "live", outcome: finished, line: r.line, paid, coins,
                  capped, think: Math.round(think * 10) / 10 });
   } catch (e) {

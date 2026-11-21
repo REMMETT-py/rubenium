@@ -6781,6 +6781,8 @@ FR.update({'Settings: About is now UPDATE, with a Repair button that reinstalls 
 FR.update({'Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself': "Mettre à jour ne peut plus ne rien faire en silence : un téléchargement bloqué se libère tout seul, et si la mise à jour automatique échoue deux fois, la page de téléchargement s'ouvre toute seule", 'Automatic update failed twice: opening the download page. Run RubeniumSetup.exe there.': 'La mise à jour automatique a échoué deux fois : ouverture de la page de téléchargement. Lance RubeniumSetup.exe là-bas.'})
 FR.update({'Badge cases': 'Caisses de badges', 'Always a badge, never coins. Best case first: the higher, the better the odds.': 'Toujours un badge, jamais de pièces. La meilleure caisse en premier : plus elle est haut, meilleures sont les chances.', 'Always a badge, never coins': 'Toujours un badge, jamais de pièces', 'The cheapest case: always a badge, mostly Common, Basic or Painted.': 'La caisse la moins chère : toujours un badge, surtout Commun, Basique ou Peint.', 'Always a badge, mostly Common, with a small chance of Rare or better, and of Shiny or Gold.': 'Toujours un badge, surtout Commun, avec une petite chance de Rare ou mieux, et de Brillant ou Or.', 'Always a badge of any rarity, with better odds than the Standard Case, up to Shiny, Titanium and Gold.': 'Toujours un badge de toute rareté, avec de meilleures chances que la caisse Standard, jusqu’à Brillant, Titane et Or.', 'Always a Rare, Epic or Legendary badge in every finish, up to Gold, with a Mythic chance.': 'Toujours un badge Rare, Épique ou Légendaire dans toutes les finitions, jusqu’à Or, avec une chance de Mythique.', 'Always a badge, never Basic: mostly Painted, with a good chance of Shiny, Titanium and Gold.': 'Toujours un badge, jamais Basique : surtout Peint, avec une bonne chance de Brillant, Titane et Or.', 'The best case: always an Epic or Legendary badge, never Basic, with the best Shiny, Titanium, Gold and Mythic odds.': 'La meilleure caisse : toujours un badge Épique ou Légendaire, jamais Basique, avec les meilleures chances de Brillant, Titane, Or et Mythique.', 'Cases remade: every badge case (themed ones too) always gives a badge and is priced fairly, in two groups, best case first. No more coin cases, the Top Tier Case is the best, Mythics stay a surprise in the previews, and tiny chances read "1 in 250 000" instead of 0.000%': 'Caisses refaites : chaque caisse de badges (à thème aussi) donne toujours un badge à un prix juste, en deux groupes, la meilleure en premier. Plus de caisses à pièces, la caisse Haut de gamme est la meilleure, les Mythiques restent une surprise dans les aperçus, et les toutes petites chances s’écrivent « 1 sur 250 000 » au lieu de 0,000 %'})
 FR.update({'BADGES': 'BADGES', 'THEMED': 'À THÈME'})
+FR.update({'Easy is quick and makes mistakes. Medium sees a few moves ahead. Hard moves first and looks far ahead.': "Facile joue vite et fait des erreurs. Moyen voit quelques coups à l'avance. Difficile commence et voit loin.", 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 200 times your bet.': "Professionnel commence et joue parfaitement : il n'a jamais perdu. Bats-le et tu gagnes 200 fois ta mise.", 'Easy ×1.2 · Medium ×2.5 · Hard ×10 · Professional ×200. A draw gives your bet back.': 'Facile ×1,2 · Moyen ×2,5 · Difficile ×10 · Professionnel ×200. Un match nul rend ta mise.'})
+FR.update({'Always an Epic or Legendary badge, never Basic, with the best Gold and Mythic odds.': "Toujours un badge Épique ou Légendaire, jamais Basique, avec les meilleures chances d'Or et de Mythique.", 'The best case: always an Epic or Legendary badge, never Basic, with the best Shiny and Titanium odds.': 'La meilleure caisse : toujours un badge Épique ou Légendaire, jamais Basique, avec les meilleures chances de Brillant et de Titane.'})
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
     'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power': 'Visée du Mini Golf refaite : une flèche montre la direction (elle s’arrête aux murs et à l’eau) et une barre la puissance. Plus de cercle qui montre où la balle s’arrête : c’est toi qui sens la distance. Moitié moins de mouvement de souris pour la pleine puissance',
@@ -20141,7 +20143,7 @@ class ShopPage(StylePart, Page):
         head = tr(RARITY_NAMES.get(info.get("rarity", "standard"), "Common")) + " · " + tr(CLASS_NAMES[int(info.get("cls") or 0)])
         odds = item_chances(ec, item)
         if odds:
-            best = "  ·  ".join(f"{tr(CASE_NAMES.get(cid, cid))}: {chance_text(pr)}" for cid, pr in odds[:3])
+            best = "  ·  ".join(f"{tr(CASE_NAMES.get(cid, cid))}: {chance_text(pr)}" for cid, pr in odds[:3] if pr > 1e-12)
             self.luck.set_text(head + "\n" + tr("Chance of this exact badge per open:") + " " + best)
         else:
             self.luck.set_text(head + "\n" + tr("Not in any case right now."))
@@ -20812,7 +20814,7 @@ CASE_NOTES = {                    # 4.0: checked against the real odds of every 
     "jackpot": "Coins only, never a badge. Most opens pay less than the price; a few pay up to 32 times it.",
     "titan": "Every finish, Titanium and Gold included, up to Epic Gold.",
     "elite": "Every rarity in every finish, Epic Gold included.",
-    "royal": "Always a Rare, Epic or Legendary badge in every finish, up to Gold, with a Mythic chance.",
+    "royal": "Always an Epic or Legendary badge, never Basic, with the best Gold and Mythic odds.",
     "gamble": "High risk: mostly a few coins, otherwise Rare or Special, up to Titanium and Gold.",
     "painter": "Always a badge, never Basic: Painted, Shiny, Titanium or Gold.",
     "vault": "No Common badges: Rare to Epic in every finish.",
@@ -20824,7 +20826,7 @@ CASE_NOTES = {                    # 4.0: checked against the real odds of every 
     "arcade": "Always a game badge: controllers, headsets, dice, cards, rockets and targets.",
     "treasure": "Always a treasure badge: keys, crowns, diamonds, shields, swords and gold stars.",
     "shiny": "Always a badge, never Basic: mostly Painted, with a good chance of Shiny, Titanium and Gold.",
-    "mythic": "The best case: always an Epic or Legendary badge, never Basic, with the best Shiny, Titanium, Gold and Mythic odds.",
+    "mythic": "The best case: always an Epic or Legendary badge, never Basic, with the best Shiny and Titanium odds.",
     "winter": "Limited: Christmas looks you cannot buy anywhere else, or coins.",
     "giftbox": "Limited: a present full of coins, sometimes a badge.",
     "style": "Balls, song lines and fonts, or coins.",
@@ -21030,8 +21032,31 @@ def item_chances(ec, item: str) -> list:
 
 
 def chance_text(p: float) -> str:
-    pass
+    if p <= 1e-12:                                   # 6.0: a rounding leftover, not a chance
+        return "—"
     return tr("1 in {n}", n=coins_text(max(1, round(1 / p))))
+
+
+def one_in(p: float) -> str:
+    """6.0: a chance as '1 / 24' (rarities)."""
+    if p <= 1e-12:
+        return "—"
+    return "1 / " + coins_text(max(1, round(1 / p)))
+
+
+def pct_plain(p: float) -> str:
+    """6.0: a chance always as a percentage, as precise as it needs to be (finishes): 0.0015% rather than 1 in ..."""
+    pct = p * 100
+    if pct <= 1e-9:
+        return "—"
+    if pct >= 10:
+        text = f"{pct:.1f}%"
+    elif pct >= 0.1:
+        text = f"{pct:.2f}%"
+    else:
+        digits = max(3, min(8, 2 - int(math.floor(math.log10(pct)))))
+        text = f"{pct:.{digits}f}".rstrip("0").rstrip(".") + "%"
+    return text.replace(".", ",") if lang() == "fr" else text
 
 
 def worn(ctx) -> list:
@@ -22329,8 +22354,9 @@ class OddsTable(QWidget):
             p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
             p.setPen(QColor(TEXT))
+            # 6.0: a rarity's chance as "1 / 24", a finish's (Basic, Painted, Shiny...) as a percentage
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                       pct_text(share))                    # 6.0: never 0.000%
+                       (one_in(share) if kind == "tier" and n else pct_plain(share)))
 
 
 class CaseReel(QWidget):
@@ -36314,7 +36340,7 @@ class AdminPage(Page):
                 if sel is not None:
                     vs = sorted(groups[sel], key=lambda i: chance[i])
                     lay.addWidget(Label(f"Exact version ({len(vs)})", 10.5, TEXT_DIM, bold=True))
-                    ig = ItemGrid(self.ctx, [{"item": it, "text": f"{chance[it] * 100:.3g}%", "mark": pick == ("item", it)}
+                    ig = ItemGrid(self.ctx, [{"item": it, "text": pct_text(chance[it]), "mark": pick == ("item", it)}
                                              for it in vs], self.W, 8, 60,
                                   next((i for i, it in enumerate(vs) if pick == ("item", it)), -1), moving=False)
                     ig.picked.connect(lambda i: set_pick(("item", vs[i])))
@@ -42976,9 +43002,10 @@ HELP = {
         "A round stops at 50 000 coins."]),
     "connect4": ("Connect 4", [
         "Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.",
-        "The bot really plays: it looks ahead, blocks you and attacks. On Professional it moves first."], [
+        "Easy is quick and makes mistakes. Medium sees a few moves ahead. Hard moves first and looks far ahead.",
+        "Professional moves first and plays perfectly: it has never lost. Beat it and you win 200 times your bet."], [
         "Take the middle column early, block every line of 3, and set up two threats at once."], [
-        "Easy ×1.5 · Medium ×2.2 · Hard ×4 · Professional ×10. A draw gives your bet back.",
+        "Easy ×1.2 · Medium ×2.5 · Hard ×10 · Professional ×200. A draw gives your bet back.",
         "Leaving a game or giving up loses the bet."]),
     "cups": ("Cup Game", [
         "A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.",
@@ -43936,7 +43963,7 @@ class CupGame(Game):
 class ConnectFour(Game):
     """Drop discs, line up 4 (across, down or diagonal) before the bot does. Easy, Medium, Hard and Professional:
     the bot really plays (it looks ahead and blocks); on Professional it moves first and thinks deep."""
-    MODES = [("Easy", "easy", 1.5), ("Medium", "medium", 2.2), ("Hard", "hard", 4.0), ("Professional", "pro", 10.0)]
+    MODES = [("Easy", "easy", 1.2), ("Medium", "medium", 2.5), ("Hard", "hard", 10.0), ("Professional", "pro", 200.0)]
     COLS, ROWS = 7, 6
 
     def __init__(self, page) -> None:
