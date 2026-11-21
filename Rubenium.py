@@ -2755,7 +2755,8 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
           "rb_too_soon": "Not ready yet", "rb_bad_bet": "This bet is too high or too low",
           "rb_pawn_no_deal": "He never agreed to that price: ask him again",
-          "rb_pawn_nothing": "He has nothing to offer for that right now", "rb_not_your_turn": "Wait for your turn",
+          "rb_pawn_nothing": "He has nothing to offer for that right now",
+          "rb_roulette_opposite": "Red and Black (or Low and High) can't both be picked", "rb_not_your_turn": "Wait for your turn",
           "rb_row_not_full": "You need every colour of that row (not on sale or in a trade)",
           "rb_have_them_all": "You already have all of those",
           "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
@@ -6583,7 +6584,7 @@ FR.update({'Today: {n} coins won': 'Aujourd’hui : {n} pièces gagnées', 'No d
 
 FR.update({'LOWER': 'PLUS BAS', 'HIGHER': 'PLUS HAUT', 'or the same': 'ou pareil', '{p}% chance': '{p} % de chance', 'Pick HIGHER or LOWER · cash out when you like': 'Choisis PLUS HAUT ou PLUS BAS · encaisse quand tu veux', 'Spin  ·  {n} picks  ·  {t} in all': 'Lancer  ·  {n} choix  ·  {t} au total', 'Clear picks': 'Effacer les choix', '12 picks at most': '12 choix au maximum', 'Not enough coins for {n} picks': 'Pas assez de pièces pour {n} choix', '{k} picks · {t} bet · chance to win something {c} · up to {n}': '{k} choix · {t} misés · chance de gagner {c} · jusqu’à {n}', 'Click to add or remove picks · the bet goes on each · a number pays ×24': 'Clique pour ajouter ou retirer des choix · la mise va sur chacun · un numéro paie ×24'})
 
-FR.update({'Click as many picks as you like (up to 12): your bet goes on each one. Then spin.': 'Clique autant de choix que tu veux (jusqu’à 12) : ta mise va sur chacun. Puis lance.', 'More picks = more chances to win something, but more coins on the table.': 'Plus de choix = plus de chances de gagner quelque chose, mais plus de pièces en jeu.', 'One number: ×24, 4% chance. Gold: ×25, 4% chance.': 'Un numéro : ×24, 4 % de chance. Or : ×25, 4 % de chance.'})
+FR.update({'Click up to 6 picks: your bet goes on each one. Red or Black, Low or High: never both. Then spin.': 'Clique jusqu’à 6 choix : ta mise va sur chacun. Rouge ou Noir, Bas ou Haut : jamais les deux. Puis lance.', 'More picks = more chances to win something, but more coins on the table.': 'Plus de choix = plus de chances de gagner quelque chose, mais plus de pièces en jeu.', 'One number: ×24, 4% chance. Gold: ×25, 4% chance.': 'Un numéro : ×24, 4 % de chance. Or : ×25, 4 % de chance.'})
 
 FR.update({'NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5': 'NOUVEAU : le jeu des gobelets. Une pièce Rubenium passe sous un gobelet, ils se mélangent, retrouve la pièce. Facile (3) ×1,4, Moyen (6) ×2,2, Difficile (9) ×3,3, Expert (9, très rapide) ×5', 'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25': 'Roulette : choisis autant de paris que tu veux en un tour (ta mise va sur chacun), vois ta chance de gagner. L’or paie maintenant ×25', 'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each': 'Plus ou moins est plus clair : deux grands choix PLUS HAUT / PLUS BAS à côté de la carte, avec la chance et le multiplicateur', 'No more daily coin limit in mini games, and up to 16 keys a day from games': 'Plus de limite de pièces par jour dans les mini-jeux, et jusqu’à 16 clés par jour grâce aux jeux', "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)": 'Jackpot : tu peux réduire Rubenium pendant que tu y participes (sans pouvoir ouvrir d’autres onglets)', 'Cups': 'Gobelets', 'Cup Game': 'Jeu des gobelets', 'Watch the coin, follow its cup, then click it.': 'Regarde la pièce, suis son gobelet, puis clique dessus.', 'Watch the coin…': 'Regarde la pièce…', 'Follow the cup!': 'Suis le gobelet !', 'Which cup hides the coin?': 'Quel gobelet cache la pièce ?', 'Found it!': 'Trouvée !', 'It was here': 'Elle était ici', 'Your pick': 'Ton choix', 'Click the cup with the coin': 'Clique sur le gobelet avec la pièce', 'Play  ·  {m} cups': 'Jouer  ·  {m} gobelets', 'Easy': 'Facile', 'Medium': 'Moyen', 'Hard': 'Difficile', 'Expert': 'Expert', 'Daily Cup Game limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte aux gobelets : une victoire rend ta mise jusqu’à minuit', 'A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.': 'Une pièce Rubenium tombe sur la table et les gobelets la recouvrent. Puis ils se mélangent.', 'Follow the cup with the coin and click it when they stop.': 'Suis le gobelet avec la pièce et clique dessus quand ils s’arrêtent.', 'Watch only the cup with the coin, never the others.': 'Regarde seulement le gobelet avec la pièce, jamais les autres.', 'Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves.': 'Facile : 3 gobelets, lent. Moyen : 6. Difficile : 9. Expert : 9 gobelets, très rapide et beaucoup plus de mouvements.', 'Easy ×1.4 · Medium ×2.2 · Hard ×3.3 · Expert ×5.': 'Facile ×1,4 · Moyen ×2,2 · Difficile ×3,3 · Expert ×5.', 'Once you are up 6 000 coins in a day, a win gives your bet back until midnight.': 'Une fois 6 000 pièces gagnées dans la journée, une victoire rend ta mise jusqu’à minuit.', 'Click the cup with the coin.': 'Clique sur le gobelet avec la pièce.'})
 
@@ -6606,6 +6607,8 @@ FR.update({'Wave Rush best': 'Record Wave Rush', 'Golf games': 'Parties de golf'
 FR.update({'NEW: Trophies. 99 of them: every game has 3 Bronze, 3 Silver, 2 Gold and 1 Platinum. They give XP (150 to 5 000), take real time from Silver up, and you can show 3 on your profile. Find them under Collection': 'NOUVEAU : les Trophées. 99 au total : chaque jeu a 3 Bronze, 3 Argent, 2 Or et 1 Platine. Ils donnent de l’XP (150 à 5 000), demandent du vrai temps dès l’Argent, et tu peux en montrer 3 sur ton profil. Ils sont sous Collection', 'Quests now give keys and cases (no more coins or XP)': 'Les quêtes donnent maintenant des clés et des caisses (plus de pièces ni d’XP)', 'Leaderboards in 3 sections (Players, Games, Mini games) with new boards: Wave Rush, Coinflip, Mini Golf, Connect 4, Cup Game and Trophies': 'Classements en 3 sections (Joueurs, Jeux, Mini-jeux) avec de nouveaux classements : Wave Rush, Pile ou face, Mini Golf, Puissance 4, Gobelets et Trophées', 'Your stats card: click a number in the bottom row to show another one (Wave Rush best, coinflips won, trophies…). Profiles show game records too': 'Ta carte de stats : clique un nombre de la ligne du bas pour en montrer un autre (record Wave Rush, pile ou face gagnés, trophées…). Les profils montrent aussi les records', 'The Trophy badge is now a Laurel Wreath, so it never looks like a real trophy': 'Le badge Trophée devient une Couronne de laurier, pour ne jamais ressembler à un vrai trophée'})
 
 FR.update({'Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone': 'Wave Rush refait : la difficulté monte d’un cran à 250 m (Moyen), 500 m (Difficile), 750 m (Insane) et 1 000 m (Extrême), avec de nouveaux tunnels et des doubles pics sur les longues pentes. Les portes injustes (un pic en haut et en bas en même temps) ont disparu', 'The practice bot plays like a real player now (long holds, no straight lines)': 'Le bot d’entraînement joue maintenant comme un vrai joueur (longues pressions, plus de lignes droites)', 'Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch': 'Wave Rush plus fluide : plus de saccades dans les longs duels ni de temps perdu après un ralentissement', 'Practice bot: plays like a good player, see-through, a little ahead': 'Bot d’entraînement : joue comme un bon joueur, transparent, un peu devant'})
+
+FR.update({'6 picks at most': '6 choix au maximum', "Red and Black (or Low and High) can't both be picked": 'Rouge et Noir (ou Bas et Haut) ne peuvent pas être choisis ensemble'})
 
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
@@ -42377,7 +42380,7 @@ HELP = {
         "First gem: ×1.01 with 1 bomb, ×1.10 with 3, ×1.21 with 5, ×1.61 with 10, ×4.85 with 20."]),
     "roulette": ("Roulette", [
         "25 slots: 1 gold (0), 12 red (odd numbers) and 12 black (even numbers).",
-        "Click as many picks as you like (up to 12): your bet goes on each one. Then spin."], [
+        "Click up to 6 picks: your bet goes on each one. Red or Black, Low or High: never both. Then spin."], [
         "More picks = more chances to win something, but more coins on the table.",
         "Red, Black, Low and High win almost half the time.",
         "Gold and single numbers rarely win, but pay a lot."], [
@@ -42980,13 +42983,16 @@ class Roulette(Game):
         pos = e.position()
         for rect, pick in self.hits:
             if rect.contains(pos):
+                opposite = {"red": "black", "black": "red", "low": "high", "high": "low"}.get(pick)
                 if pick in self.picks:
                     if len(self.picks) > 1:
                         self.picks.remove(pick)
                         sfx.play("off")
-                elif len(self.picks) >= 12:
-                    self.ctx.toast(tr("12 picks at most"), "warn")
+                elif len(self.picks) >= 6:
+                    self.ctx.toast(tr("6 picks at most"), "warn")
                 else:
+                    if opposite in self.picks:                 # 5.15: red OR black, low OR high (like real roulette)
+                        self.picks.remove(opposite)
                     self.picks.append(pick)
                     sfx.play("pick")
                 self.page.sync()
