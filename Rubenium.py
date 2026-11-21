@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.4"         # the version people see
-BUILD = "2026.11.21.2"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.5"         # the version people see
+BUILD = "2026.11.21.3"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2743,7 +2743,7 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_nothing_to_collect": "Nothing to collect", "rb_not_done": "Not finished yet",
           "rb_already_claimed": "Already claimed", "rb_trade_locked": "Unlocks after 5 hours with Rubenium",
           "rb_they_cannot_trade": "This user needs 5 hours with Rubenium first",
-          "rb_bad_price": "This price is too low or too high", "rb_too_many_listings": "You have too many items on sale",
+          "rb_bad_price": "This price is too low or too high", "rb_too_many_listings": "3 items on sale at most: take one off first", "rb_too_many_swaps": "3 swaps at most: cancel one first", "rb_swap_gone": "This swap is gone", "rb_jackpot_too_big": "Too big for one jackpot", "rb_jackpot_cap": "Too much from bots: pick fewer bot items",
           "rb_not_listed": "No longer on sale", "rb_sold": "Already sold", "rb_own_listing": "This is your own item",
           "rb_trade_gone": "This trade is over", "rb_trade_changed": "The offer changed: look again",
           "rb_not_ready": "Both users must be ready", "rb_wait": "Wait for the countdown",
@@ -6557,6 +6557,46 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({                                   # 5.5
+    '3 items on sale at most: take one off first': '3 objets en vente au maximum : retires-en un d’abord',
+    '3 swaps at most: cancel one first': '3 échanges au maximum : annules-en un d’abord',
+    'This swap is gone': 'Cet échange n’existe plus',
+    'Too big for one jackpot': 'Trop gros pour un jackpot',
+    'Too much from bots: pick fewer bot items': 'Trop d’objets de bots : choisis-en moins',
+    'NEW: SWAPS in the Market. Put an item up, choose up to 3 items you would take for it, and anyone who has one swaps in one click. No coins, no fee': 'NOUVEAU : les ÉCHANGES dans le Marché. Mets un objet, choisis jusqu’à 3 objets que tu accepterais en retour, et n’importe qui en possédant un échange en un clic. Sans pièces, sans frais',
+    'The Market has Buy, Swaps, Sell, My sales and Offers. Selling starts in the Market now (Inventory has an Open the market button). 3 sales and 3 swaps at most each': 'Le Marché a Acheter, Échanges, Vendre, Mes ventes et Offres. La vente commence maintenant dans le Marché (l’Inventaire a un bouton Ouvrir le marché). 3 ventes et 3 échanges au maximum chacun',
+    'New leaderboard titles: COINFLIP and GOLF for the top 3 by wins': 'Nouveaux titres de classement : COINFLIP et GOLF pour le top 3 en victoires',
+    'Swaps': 'Échanges',
+    'Sell': 'Vendre',
+    'My sales': 'Mes ventes',
+    'Your listings: {n} / 3': 'Tes ventes : {n} / 3',
+    'Pick one item, then set your price at the stall. 5% market fee when it sells.': 'Choisis un objet, puis fixe ton prix au stand. 5 % de frais quand il se vend.',
+    'Put it on sale…': 'Le mettre en vente…',
+    'New swap ({n}/3)': 'Nouvel échange ({n}/3)',
+    'No swap yet. Start one: pick what you give and what you want back.': 'Aucun échange pour l’instant. Lance-en un : choisis ce que tu donnes et ce que tu veux en retour.',
+    'A swap gives your item for one of the items you asked for. No coins, no fee.': 'Un échange donne ton objet contre un des objets demandés. Sans pièces, sans frais.',
+    'Swap': 'Échanger',
+    'You need one of the items it asks for': 'Il te faut un des objets demandés',
+    'Swapped! {what} is yours': 'Échangé ! {what} est à toi',
+    'Give your {a} for {b}?': 'Donner ton {a} contre {b} ?',
+    'any one of these': 'l’un de ceux-ci',
+    'NEW SWAP': 'NOUVEL ÉCHANGE',
+    '2. What you want back: up to 3 (tap to remove)': '2. Ce que tu veux en retour : jusqu’à 3 (touche pour retirer)',
+    'Which item do you want?': 'Quel objet veux-tu ?',
+    '3 at most: tap one above to remove it': '3 au maximum : touche-en un au-dessus pour le retirer',
+    '1. What you give: pick one of your items': '1. Ce que tu donnes : choisis un de tes objets',
+    'Start the swap': 'Lancer l’échange',
+    'Swap open: anyone with one of those items can take it': 'Échange ouvert : quiconque possède un de ces objets peut le prendre',
+    'Open the market': 'Ouvrir le marché',
+    'Sell or swap it there': 'Vends-le ou échange-le là-bas',
+    'The market: buy, sell and swap items with other users': 'Le marché : achète, vends et échange des objets avec les autres',
+    'SWAP DONE': 'ÉCHANGE FAIT',
+    '{who} took your swap: {a} for {b}': '{who} a pris ton échange : {a} contre {b}',
+    'Nothing on sale. Put an item on sale in Sell.': 'Rien en vente. Mets un objet en vente dans Vendre.',
+    'Nothing on sale right now. Be the first: put an item on sale in Sell.': 'Rien en vente pour l’instant. Sois le premier : mets un objet en vente dans Vendre.',
+    'COINFLIP': 'COINFLIP',
+    'GOLF': 'GOLF',
+})
 FR.update({                                   # 5.4
     'NEW: a second row of 6 Mythics: Eclipse, Supernova, Infinity, Thunder Orb, Omega and Vortex. The Rubenium R is still the rarest by far': 'NOUVEAU : une deuxième rangée de 6 Mythiques : Éclipse, Supernova, Infini, Orbe de foudre, Oméga et Vortex. Le R de Rubenium reste de loin le plus rare',
     'NEW: 6 animated banners: Sunrise, Bubbles, Plasma, Neon Rain, Fireworks and Hyperspace': 'NOUVEAU : 6 bannières animées : Lever de soleil, Bulles, Plasma, Pluie néon, Feux d’artifice et Hyperespace',
@@ -11152,6 +11192,9 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.5", ['NEW: SWAPS in the Market. Put an item up, choose up to 3 items you would take for it, and anyone who has one swaps in one click. No coins, no fee',
+             'The Market has Buy, Swaps, Sell, My sales and Offers. Selling starts in the Market now (Inventory has an Open the market button). 3 sales and 3 swaps at most each',
+             'New leaderboard titles: COINFLIP and GOLF for the top 3 by wins']),
     ("5.4", ['NEW: a second row of 6 Mythics: Eclipse, Supernova, Infinity, Thunder Orb, Omega and Vortex. The Rubenium R is still the rarest by far',
              'NEW: 6 animated banners: Sunrise, Bubbles, Plasma, Neon Rain, Fireworks and Hyperspace',
              'A second colour of your own (Style > Colour 2) for the outline and the glow',
@@ -22651,10 +22694,10 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
         b.clicked.connect(wear)
     line.addWidget(b, 1)
     sellable = bool(free) and bool(ec.info(item).get("tradeable"))
-    sell = SellButton("market", tr("Sell on the market"), tr("You set the price"))      # 5.0: its own look
-    sell.setEnabled(sellable)
-    sell.setToolTip(tr("Put it on the market: other users buy it or make you an offer"))
-    sell.clicked.connect(lambda: market_sell(ctx, item))
+    sell = SellButton("market", tr("Open the market"), tr("Sell or swap it there"))     # 5.5: selling lives in the market
+    sell.setEnabled(True)
+    sell.setToolTip(tr("The market: buy, sell and swap items with other users"))
+    sell.clicked.connect(lambda: (setattr(ctx, "mk_tab", 2), go(ctx, "market")))
     line2 = hbox(spacing=6)                               # 5.1: the two sell places get their own row
     line2.addWidget(sell, 1)
     quick = SellButton("pawn", tr("Quick sell"), tr("About {n} coins now", n=coins_text(ec.quick_value(item))))
@@ -22969,15 +23012,20 @@ def build_market(page, lay) -> None:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the market"), 12, TEXT_DIM))
     tab = int(getattr(ctx, "mk_tab", 0) or 0)
     offers = int(ec.live.get("offers") or 0)
-    seg = Segmented([tr("Buy"), tr("My sales"), tr("Offers") + (f" ({offers})" if offers else "")], tab)
+    # 5.5: Buy · Swaps · Sell · My sales · Offers (selling starts here now, not in the inventory)
+    seg = Segmented([tr("Buy"), tr("Swaps"), tr("Sell"), tr("My sales"), tr("Offers") + (f" ({offers})" if offers else "")], tab)
 
     def switch(i: int) -> None:
         ctx.mk_tab, ctx.mk_at = i, 0
         ctx.reload_page()
     seg.changed.connect(switch)
     lay.addWidget(seg)
-    if tab == 2:
+    if tab == 4:
         return _offers(page, lay)
+    if tab == 1:
+        return build_swaps(page, lay)
+    if tab == 2:
+        return build_sell(page, lay)
     if tab:
         fn, args = "rb_market_mine", {}
     else:                                                    # 4.0: search by name, type, rarity and finish
@@ -23006,19 +23054,243 @@ def build_market(page, lay) -> None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     if not rows:
         searching = not tab and market_filters(ctx) != MARKET_FILTERS
-        lay.addWidget(Label(tr("Nothing on sale. List an item from your Inventory.") if tab else
+        lay.addWidget(Label(tr("Nothing on sale. Put an item on sale in Sell.") if tab else
                             tr("Nothing on sale matches this search.") if searching else
-                            tr("Nothing on sale right now. Be the first: put an item on sale from your Inventory."),
+                            tr("Nothing on sale right now. Be the first: put an item on sale in Sell."),
                             12, TEXT_DIM, wrap_w=page.W))
     for row in rows[:40]:
         if is_secret(row.get("item", "")):
             row = dict(row)
         w = ListingRow(ctx, row, page.W, mine=bool(tab))
+        if tab:
+            ctx.mk_open_mine = sum(1 for r in rows if r.get("state", "open") == "open")
         w.clicked.connect(lambda r=row: _market_click(page, r, bool(tab)))
         lay.addWidget(w)
     if not tab:
         lay.addWidget(Label(tr("Fixed price set by the seller. 5% market fee."), 10.5, TEXT_DIM,
                             wrap_w=page.W))
+
+
+def build_sell(page, lay) -> None:
+    """5.5: pick one of your items here and put it on sale at the stall. 3 listings at most."""
+    ctx = page.ctx
+    n = int(getattr(ctx, "mk_open_mine", 0) or 0)
+    lay.addWidget(Label(tr("Your listings: {n} / 3", n=n), 12, TEXT, bold=True))
+    lay.addWidget(Label(tr("Pick one item, then set your price at the stall. 5% market fee when it sells."),
+                        10.5, TEXT_DIM, wrap_w=page.W))
+    picker = ItemPicker(page, 1)
+    go = Button(tr("Put it on sale…"), "primary", 40, icon="chip")
+
+    def update_go() -> None:
+        go.setEnabled(bool(picker.picked))
+    picker.changed.connect(update_go)
+    update_go()
+
+    def sell() -> None:
+        if not picker.picked:
+            return
+        item = next((it for iid, it, _w in picker.rows if iid == picker.picked[0]), None)
+        if item:
+            open_market_stall(ctx, item)
+    go.clicked.connect(sell)
+    lay.addWidget(go)
+    lay.addWidget(sort_bar(ctx, picker.resort))
+    lay.addWidget(picker)
+
+
+def build_swaps(page, lay) -> None:
+    """5.5: SWAPS. Put an item up and say which items (1 to 3) you would take for it; anyone who has one of them can
+    swap with one click. No coins, no fee. 3 open swaps at most."""
+    ctx, ec = page.ctx, page.ctx.econ
+    rows = getattr(ctx, "sw_rows", None)
+    if rows is None or time.monotonic() - getattr(ctx, "sw_at", 0) > 10:
+        ctx.sw_at = time.monotonic()
+
+        def got(ok: bool, data) -> None:
+            if not ok or not isinstance(data, list):
+                return
+            changed = data != getattr(ctx, "sw_rows", None)
+            ctx.sw_rows = data
+            if changed and ctx.window.showing("themes") and getattr(ctx, "mk_tab", 0) == 1:
+                ctx.reload_page("themes")
+        ec.online.ask("rb_item_swaps_list", {}, got)
+    if getattr(ctx, "sw_new", False):
+        return _swap_new(page, lay)
+    mine = [r for r in rows or [] if r.get("mine")]
+    new = Button(tr("New swap ({n}/3)", n=len(mine)), "primary", 38, icon="chip")
+    new.setEnabled(len(mine) < 3)
+    new.clicked.connect(lambda: (setattr(ctx, "sw_new", True), setattr(ctx, "sw_wants", []), ctx.reload_page()))
+    lay.addWidget(new)
+    if rows is None:
+        return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+    if not rows:
+        lay.addWidget(Label(tr("No swap yet. Start one: pick what you give and what you want back."), 12, TEXT_DIM,
+                            wrap_w=page.W))
+    for r in rows[:40]:
+        lay.addWidget(SwapRow(page, r))
+    lay.addWidget(Label(tr("A swap gives your item for one of the items you asked for. No coins, no fee."),
+                        10.5, TEXT_DIM, wrap_w=page.W))
+
+
+class SwapRow(QWidget):
+    """One swap: what is given, the arrow, the 1-3 items wanted, and Swap / Cancel."""
+
+    def __init__(self, page, r: dict) -> None:
+        super().__init__()
+        self.page, self.ctx, self.r = page, page.ctx, r
+        self.setFixedSize(page.W, S(78))
+        lay = hbox(self, 8)
+        lay.setContentsMargins(S(8), S(6), S(8), S(6))
+        lay.addStretch(1)
+        can = list(r.get("can") or [])
+        if r.get("mine"):
+            b = Button(tr("Cancel"), "ghost", 30)
+            b.clicked.connect(self._cancel)
+        else:
+            b = Button(tr("Swap"), "primary", 30)
+            b.setEnabled(bool(can))
+            b.setToolTip(tr("You need one of the items it asks for") if not can else "")
+            b.clicked.connect(self._take)
+        b.setFixedWidth(S(84))
+        lay.addWidget(b, 0, Qt.AlignmentFlag.AlignVCenter)
+
+    def _cancel(self) -> None:
+        ctx = self.ctx
+
+        def done(ok: bool, d) -> None:
+            sfx.play("off")
+            ctx.sw_at = 0
+            ctx.econ.refresh()
+            ctx.reload_page()
+        ctx.econ.call("rb_swap_cancel", {"sid": self.r["id"]}, done)
+
+    def _take(self) -> None:
+        ctx, r = self.ctx, self.r
+        can = list(r.get("can") or [])
+        if not can:
+            return
+        give = can[0]
+
+        def go() -> None:
+            def done(ok: bool, d) -> None:
+                if not ok:
+                    sfx.play("off")
+                    return ctx.toast(tr(str(d)), "warn")
+                sfx.tune("levelup")
+                ctx.toast(tr("Swapped! {what} is yours", what=item_name(r.get("item", ""))))
+                ctx.sw_at = 0
+                ctx.econ.refresh()
+                ctx.reload_page()
+            ctx.econ.call("rb_swap_take", {"sid": r["id"], "item_id": give["id"]}, done, once=True)
+        ctx.window.confirm(tr("Give your {a} for {b}?", a=item_name(give.get("item", "")), b=item_name(r.get("item", ""))),
+                           go, yes=tr("Swap"))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 2, -0.5, -2)
+        mine = bool(self.r.get("mine"))
+        p.setPen(QPen(alpha(ui.accent, 0.6) if mine else alpha("#FFFFFF", 0.1), 1.2))
+        p.setBrush(alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(r, S(10), S(10))
+        now = time.monotonic()
+        d = r.height() - S(22)
+        show_item(p, self.r.get("item", ""), QRectF(r.left() + S(8), r.top() + S(4), d, d), now, effects=False)
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9, QFont.Weight.Bold))
+        who = tr("You") if mine else str(self.r.get("from") or "?")
+        p.drawText(QRectF(r.left() + S(4), r.bottom() - S(18), d + S(8), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                   QFontMetrics(p.font()).elidedText(who, Qt.TextElideMode.ElideRight, int(d + S(8))))
+        ax = r.left() + d + S(22)                          # the arrow
+        p.setPen(QPen(QColor("#FFC94D"), S(2.4), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawLine(QPointF(ax, r.center().y() - S(4)), QPointF(ax + S(22), r.center().y() - S(4)))
+        p.drawLine(QPointF(ax + S(22), r.center().y() - S(4)), QPointF(ax + S(15), r.center().y() - S(10)))
+        p.drawLine(QPointF(ax, r.center().y() + S(4)), QPointF(ax + S(22), r.center().y() + S(4)))
+        p.drawLine(QPointF(ax, r.center().y() + S(4)), QPointF(ax + S(7), r.center().y() + S(10)))
+        x = ax + S(32)
+        have = {c.get("item") for c in self.r.get("can") or []}
+        for it in (self.r.get("wants") or [])[:3]:
+            box = QRectF(x, r.top() + S(8), d - S(10), d - S(10))
+            if it in have:
+                p.setPen(QPen(QColor("#3DDC84"), S(2)))
+                p.setBrush(alpha("#3DDC84", 0.12))
+                p.drawRoundedRect(box.adjusted(-S(3), -S(3), S(3), S(3)), S(6), S(6))
+            show_item(p, it, box, now, effects=False)
+            x += d - S(2)
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9))
+        p.drawText(QRectF(ax + S(32), r.bottom() - S(18), S(160), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("any one of these"))
+
+
+def _swap_new(page, lay) -> None:
+    """Making a swap: 1. the item you give, 2. up to 3 items you want back (search by name), 3. Start."""
+    ctx, ec = page.ctx, page.ctx.econ
+    wants = list(getattr(ctx, "sw_wants", None) or [])
+    top = hbox(spacing=8)
+    back = IconButton("back", 30, tip=tr("Back"))
+    back.clicked.connect(lambda: (setattr(ctx, "sw_new", False), ctx.reload_page()))
+    top.addWidget(back)
+    top.addWidget(Label(tr("NEW SWAP"), 14, "#FFC94D", bold=True), 1)
+    lay.addLayout(top)
+    lay.addWidget(Label(tr("2. What you want back: up to 3 (tap to remove)"), 11.5, TEXT, bold=True))
+    if wants:
+        grid = ItemGrid(ctx, [{"item": w, "text": item_name(w)} for w in wants], page.W, 5, 76)
+        grid.picked.connect(lambda i: (wants.pop(i), setattr(ctx, "sw_wants", wants), ctx.reload_page()))
+        lay.addWidget(grid)
+    q = str(getattr(ctx, "sw_q", "") or "")
+
+    def ask() -> None:
+        def got(text: str, dlg) -> None:
+            dlg.close()
+            ctx.sw_q = text.strip()[:40]
+            ctx.reload_page()
+        AskDialog(ctx, tr("Which item do you want?"), tr("Name, type, rarity or finish"), tr("Search"), got, 40,
+                  tr("For example: dragon, titanium, mythic banner."))
+    bar = SearchBar(q, page.W)
+    bar.clicked.connect(ask)
+    bar.cleared.connect(lambda: (setattr(ctx, "sw_q", ""), ctx.reload_page()))
+    lay.addWidget(bar)
+    if q:
+        found = [i for i in market_ids(ctx, q) if i not in wants][:15]
+        if not found:
+            lay.addWidget(Label(tr("No item is called “{q}”.", q=q), 11, TEXT_DIM, wrap_w=page.W))
+        else:
+            res = ItemGrid(ctx, [{"item": i, "text": item_name(i)} for i in found], page.W, 5, 76)
+
+            def add(i: int) -> None:
+                if len(wants) >= 3:
+                    return ctx.toast(tr("3 at most: tap one above to remove it"), "warn")
+                wants.append(found[i])
+                ctx.sw_wants = wants
+                sfx.play("pick")
+                ctx.reload_page()
+            res.picked.connect(add)
+            lay.addWidget(res)
+    lay.addWidget(Label(tr("1. What you give: pick one of your items"), 11.5, TEXT, bold=True))
+    picker = ItemPicker(page, 1)
+    start = Button(tr("Start the swap"), "primary", 40)
+
+    def update() -> None:
+        start.setEnabled(bool(picker.picked) and bool(wants))
+    picker.changed.connect(update)
+    update()
+
+    def make() -> None:
+        def done(ok: bool, d) -> None:
+            if not ok:
+                sfx.play("off")
+                return ctx.toast(tr(str(d)), "warn")
+            sfx.play("on")
+            ctx.toast(tr("Swap open: anyone with one of those items can take it"))
+            ctx.sw_new, ctx.sw_wants, ctx.sw_q, ctx.sw_at = False, [], "", 0
+            ec.refresh()
+            ctx.reload_page()
+        ec.call("rb_swap_create", {"item_id": picker.ids()[0], "wants": wants}, done, once=True)
+    start.clicked.connect(make)
+    lay.addWidget(start)
+    lay.addWidget(sort_bar(ctx, picker.resort))
+    lay.addWidget(picker)
 
 
 MARKET_FILTERS = {"q": "", "kind": "", "rarity": "", "cls": None, "sort": "new"}
@@ -31610,7 +31882,7 @@ def paint_name_tags(p: QPainter, x: float, cy: float, ctx, name: str, admin: boo
 
 TITLE_NAMES = {"coins": "RICH", "worth": "VALUE", "level": "LEVEL", "hours": "HOURS", "badges": "BADGES",
                "streak": "STREAK", "blocks": "BLOCKBLAST", "wave": "WAVE", "tap": "BEAT TAP", "park": "PARKING",
-               "memory": "MEMORY"}
+               "memory": "MEMORY", "flip": "COINFLIP", "golf": "GOLF"}      # 5.5: coinflip and golf wins
 RANK_COLOURS = {1: ("#FFE9A8", "#E8B13A", "#B87A16"), 2: ("#FFFFFF", "#C9D2DC", "#8E9AA8"),
                 3: ("#FFD2A8", "#C8783A", "#8A4A1E")}
 
@@ -35178,6 +35450,10 @@ class Notifier(QObject):
         if kind == "sold":
             self.push("market", tr("SOLD"), tr("{what} sold: +{n} coins", what=item_name(data.get("item", "")),
                                                n=coins_text(int(data.get("got") or 0))), "market")
+        elif kind == "swapped":                          # 5.5
+            self.push("market", tr("SWAP DONE"), tr("{who} took your swap: {a} for {b}", who=data.get("with", "?"),
+                                                    a=item_name(data.get("gave", "")), b=item_name(data.get("got", ""))), "inventory")
+            self.ctx.econ.refresh()
         elif kind == "offer":
             self.push("market", tr("NEW OFFER"), tr("{who} offers {n} for {what}", who=data.get("from", "?"),
                                                     n=coins_text(int(data.get("price") or 0)), what=item_name(data.get("item", ""))), "market")

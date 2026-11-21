@@ -1,9 +1,7 @@
-Rubenium 5.4
+Rubenium 5.5
 
-- NEW: a second row of 6 Mythics: Eclipse, Supernova, Infinity, Thunder Orb, Omega and Vortex. The Rubenium R is still the rarest by far
-- NEW: 6 animated banners: Sunrise, Bubbles, Plasma, Neon Rain, Fireworks and Hyperspace
-- A second colour of your own (Style > Colour 2) for the outline and the glow
-- Mini games: one simple limit a day per game (1 500 coins, back at midnight) instead of every 2 hours, and no more lower pay after a few rounds
-- Cosmetics and cosmetic cases 20% cheaper. The Shiny Case is back under the Top Tier Case (8 000, Shiny 1 in 90) and the Elite Case has better Mythic odds
+- NEW: SWAPS in the Market. Put an item up, choose up to 3 items you would take for it, and anyone who has one swaps in one click. No coins, no fee
+- The Market has Buy, Swaps, Sell, My sales and Offers. Selling starts in the Market now (Inventory has an Open the market button). 3 sales and 3 swaps at most each
+- New leaderboard titles: COINFLIP and GOLF for the top 3 by wins
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
