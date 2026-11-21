@@ -10,13 +10,19 @@ const BOOK_URL = "https://raw.githubusercontent.com/REMMETT-py/rubenium/main/sup
 const BOOK_SHA = "dfcb8f7a4b79396acbf6a37fc236df020f4357a0503535c93be330f34ff726f1";
 let bookState: "none" | "loading" | "ok" | "bad" = "none";
 let bookWait: Promise<void> | null = null;
+let bookTried = 0;
 function ensureBook(): Promise<void> {
-  if (bookState === "ok" || bookState === "bad") return Promise.resolve();
+  if (bookState === "ok") return Promise.resolve();
+  if (bookState === "bad") {
+    if (Date.now() - bookTried < 60_000) return Promise.resolve();
+    bookWait = null;                                // tried a minute ago and failed: try again
+  }
   if (!bookWait) {
+    bookTried = Date.now();
     bookState = "loading";
     bookWait = (async () => {
       try {
-        const res = await fetch(BOOK_URL);
+        const res = await fetch(BOOK_URL, { signal: AbortSignal.timeout(4000) });
         const buf = new Uint8Array(await res.arrayBuffer());
         const sha = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buf)))
           .map((x) => x.toString(16).padStart(2, "0")).join("");
