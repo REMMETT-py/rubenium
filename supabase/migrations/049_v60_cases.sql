@@ -1,0 +1,9 @@
+-- Rubenium 6.0 (build 18): the case lineup remade. Applied live on 21/11/2026 (backup: rb_bak60_cases).
+-- * The four coin cases (starter, standard, premium, royal) are badge cases now: always a badge, never coins.
+-- * Every badge case grid fills exactly 1 000 000 000 (with myth_ppb): no "0.000%" coin leftover.
+-- * Prices = expected worth / 0.8 (worth from rb_worth, weighted like the server picks), order best first (pos 0).
+--   mythic (Top Tier) 44 200, royal 23 300, shiny 13 800, cosmos 8 900, painter 7 100, medieval 5 400, premium 5 100,
+--   arcade 3 200, ocean 2 950, treasure 2 650, nature 2 650, spooky 2 600, standard 2 300, starter 1 400;
+--   style cases: themes 6 400, banners 4 500, profile 4 250, frames 3 550, style 950.
+-- * odds / variants are derived from the grid (old app versions read them).
+-- The exact grids are in rb_cases (see SETUP.md step 44); this file records what was done.

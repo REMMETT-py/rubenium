@@ -1489,7 +1489,7 @@ from PyQt6.QtGui import QColor, QFont
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "6.0"         # the version people see
-BUILD = "2026.11.21.17"       # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.21.18"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6779,6 +6779,8 @@ FR.update({'PRISMATIC CASE': 'CAISSE PRISMATIQUE', 'Break the 3 seals: click the
 FR.update({'120 coins 17.3% · 200 coins 17% · 300 coins 17% · 450 coins 13%': '120 pièces 17,3 % · 200 pièces 17 % · 300 pièces 17 % · 450 pièces 13 %', '700 coins 9% · 1 200 coins 6% · 2 500 coins 3%': '700 pièces 9 % · 1 200 pièces 6 % · 2 500 pièces 3 %'})
 FR.update({'Settings: About is now UPDATE, with a Repair button that reinstalls the newest Rubenium if updating ever fails (your account, items and settings are never touched)': 'Réglages : À propos devient MISE À JOUR, avec un bouton Réparer qui réinstalle la dernière Rubenium si la mise à jour échoue (ton compte, tes objets et tes réglages ne sont jamais touchés)', 'The free spin pays a lot more: 120 to 2 500 coins': 'Le tour gratuit rapporte bien plus : 120 à 2 500 pièces', 'Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen': 'Wave Rush plus fluide : un mode performance caché pendant chaque course, et des images calées sur ton écran', "Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys": "Les notifications de jackpot disent « environ 2 minutes » au lieu d'une horloge figée, et le tour gratuit et le ticket à gratter n'affichent plus les touches du casino", 'UPDATE': 'MISE À JOUR', 'Repair': 'Réparer', 'Repair Rubenium': 'Réparer Rubenium', 'Repair Rubenium?': 'Réparer Rubenium ?', 'Repair now': 'Réparer maintenant', 'Repairing… {p}%': 'Réparation… {p} %', 'Reinstalling…': 'Réinstallation…', 'Finish your round first, then repair': 'Termine ta partie d’abord, puis répare', 'Update not working, or Rubenium acting strange? Repair downloads the newest Rubenium again and reinstalls it cleanly over this one, then opens it again.': 'La mise à jour ne marche pas, ou Rubenium fait des siennes ? Réparer télécharge à nouveau la dernière Rubenium, la réinstalle proprement par-dessus celle-ci, puis la rouvre.', 'It only replaces the program files. Your account, coins, keys, items, levels, friends and settings are NOT touched: your account is saved online and your settings stay in Documents\\Rubenium.': 'Seuls les fichiers du programme sont remplacés. Ton compte, tes pièces, clés, objets, niveaux, amis et réglages ne sont PAS touchés : ton compte est enregistré en ligne et tes réglages restent dans Documents\\Rubenium.', 'What happens: Rubenium downloads the newest version, closes, reinstalls itself cleanly and opens again. It takes about a minute.': 'Ce qui se passe : Rubenium télécharge la dernière version, se ferme, se réinstalle proprement et se rouvre. Cela prend environ une minute.', 'What stays: your account, coins, keys, items, levels, friends, trophies and settings. Nothing is deleted from your account.': "Ce qui reste : ton compte, tes pièces, clés, objets, niveaux, amis, trophées et réglages. Rien n'est supprimé de ton compte.", 'Before you go on: finish any game, bet, trade or coinflip you are in, because Rubenium closes for a moment.': 'Avant de continuer : termine toute partie, mise, échange ou pile ou face en cours, car Rubenium se ferme un instant.', 'The repair could not download Rubenium. Check your internet, or get RubeniumSetup.exe from GitHub.': "La réparation n'a pas pu télécharger Rubenium. Vérifie ta connexion, ou récupère RubeniumSetup.exe sur GitHub.", '{n} minutes': '{n} minutes', '1 minute': '1 minute', '{n} seconds': '{n} secondes', 'Open for about {t}. Join in Games > Jackpot': 'Ouvert encore environ {t}. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in about {t}': 'Le prochain jackpot ouvre dans environ {t}', 'Wave god mode on: slide along the walls': 'Mode dieu Wave activé : glisse le long des murs', 'Wave god mode off': 'Mode dieu Wave désactivé'})
 FR.update({'Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself': "Mettre à jour ne peut plus ne rien faire en silence : un téléchargement bloqué se libère tout seul, et si la mise à jour automatique échoue deux fois, la page de téléchargement s'ouvre toute seule", 'Automatic update failed twice: opening the download page. Run RubeniumSetup.exe there.': 'La mise à jour automatique a échoué deux fois : ouverture de la page de téléchargement. Lance RubeniumSetup.exe là-bas.'})
+FR.update({'Badge cases': 'Caisses de badges', 'Always a badge, never coins. Best case first: the higher, the better the odds.': 'Toujours un badge, jamais de pièces. La meilleure caisse en premier : plus elle est haut, meilleures sont les chances.', 'Always a badge, never coins': 'Toujours un badge, jamais de pièces', 'The cheapest case: always a badge, mostly Common, Basic or Painted.': 'La caisse la moins chère : toujours un badge, surtout Commun, Basique ou Peint.', 'Always a badge, mostly Common, with a small chance of Rare or better, and of Shiny or Gold.': 'Toujours un badge, surtout Commun, avec une petite chance de Rare ou mieux, et de Brillant ou Or.', 'Always a badge of any rarity, with better odds than the Standard Case, up to Shiny, Titanium and Gold.': 'Toujours un badge de toute rareté, avec de meilleures chances que la caisse Standard, jusqu’à Brillant, Titane et Or.', 'Always a Rare, Epic or Legendary badge in every finish, up to Gold, with a Mythic chance.': 'Toujours un badge Rare, Épique ou Légendaire dans toutes les finitions, jusqu’à Or, avec une chance de Mythique.', 'Always a badge, never Basic: mostly Painted, with a good chance of Shiny, Titanium and Gold.': 'Toujours un badge, jamais Basique : surtout Peint, avec une bonne chance de Brillant, Titane et Or.', 'The best case: always an Epic or Legendary badge, never Basic, with the best Shiny, Titanium, Gold and Mythic odds.': 'La meilleure caisse : toujours un badge Épique ou Légendaire, jamais Basique, avec les meilleures chances de Brillant, Titane, Or et Mythique.', 'Cases remade: every badge case (themed ones too) always gives a badge and is priced fairly, in two groups, best case first. No more coin cases, the Top Tier Case is the best, Mythics stay a surprise in the previews, and tiny chances read "1 in 250 000" instead of 0.000%': 'Caisses refaites : chaque caisse de badges (à thème aussi) donne toujours un badge à un prix juste, en deux groupes, la meilleure en premier. Plus de caisses à pièces, la caisse Haut de gamme est la meilleure, les Mythiques restent une surprise dans les aperçus, et les toutes petites chances s’écrivent « 1 sur 250 000 » au lieu de 0,000 %'})
+FR.update({'BADGES': 'BADGES', 'THEMED': 'À THÈME'})
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
     'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power': 'Visée du Mini Golf refaite : une flèche montre la direction (elle s’arrête aux murs et à l’eau) et une barre la puissance. Plus de cercle qui montre où la balle s’arrête : c’est toi qui sens la distance. Moitié moins de mouvement de souris pour la pleine puissance',
@@ -11624,7 +11626,8 @@ NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritte
              'The free spin pays a lot more: 120 to 2 500 coins',
              'Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen',
              "Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys",
-             'Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself']),
+             'Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself',
+             'Cases remade: every badge case (themed ones too) always gives a badge and is priced fairly, in two groups, best case first. No more coin cases, the Top Tier Case is the best, Mythics stay a surprise in the previews, and tiny chances read "1 in 250 000" instead of 0.000%']),
     ("5.14", ['Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone',
               'The practice bot plays like a real player now (long holds, no straight lines)',
               'Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch']),
@@ -20262,15 +20265,15 @@ class ShopPage(StylePart, Page):
             if daily_ready:                                   # 5.9: an opened daily case waits at the bottom
                 lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
-                groups = (("theme", tr("Themed badge cases"), tr("Always a badge, all of one theme. No coins.")),
-                          ("hunt", tr("Rare badge cases"), tr("Always a badge, with much better odds for rare ones. No coins.")),
-                          ("coins", tr("Coin cases"), tr("Mostly COINS back, and sometimes a badge.")),
-                          ("style", tr("Style cases"), tr("Balls, lines, fonts, app colours, banners and frames. No key needed.")))
-                for kind, title, sub in groups:
+                # 6.0: two groups, the best case first. Every badge case (themed ones too) always gives a badge.
+                groups = (({"hunt", "theme", "coins"}, tr("Badge cases"),
+                           tr("Always a badge, never coins. Best case first: the higher, the better the odds.")),
+                          ({"style"}, tr("Style cases"), tr("Balls, lines, fonts, app colours, banners and frames. No key needed.")))
+                for kinds, title, sub in groups:
                     lay.addWidget(heading(title))
                     lay.addWidget(Label(sub, 10.5, TEXT_DIM, wrap_w=self.W))
-                    for case in sorted((c for c in ec.cases if case_kind(c["id"]) == kind and not c.get("limited")),
-                                       key=lambda c: int(c["price"])):
+                    for case in sorted((c for c in ec.cases if case_kind(c["id"]) in kinds and not c.get("limited")),
+                                       key=lambda c: (-int(c.get("price") or 0), int(c.get("pos") or 0))):
                         lay.addWidget(CaseCard(self, case))
                 for case in ec.cases:                         # a case the admin added later
                     if not case_kind(case["id"]) and not case.get("limited"):
@@ -20802,14 +20805,14 @@ CASE_FRONT = {"lucky": ("clover", "dice", "clover"), "frames": ("crown", "star",
               "treasure": ("key", "crown", "diamond")}
 CASE_NOTES = {                    # 4.0: checked against the real odds of every case (the numbers are shown below)
     "pocket": "The cheapest case: mostly coins, sometimes a Basic or Painted badge.",
-    "starter": "A COIN case: mostly coins back, sometimes a badge (Basic or Painted).",
+    "starter": "The cheapest case: always a badge, mostly Common, Basic or Painted.",
     "lucky": "Mostly coins back, Basic and Painted badges, and a small Shiny chance.",
-    "standard": "A COIN case: mostly coins, sometimes a badge, a tiny chance of Gold.",
-    "premium": "A COIN case: coins, or a better badge than the Standard Case (up to Shiny and Gold).",
+    "standard": "Always a badge, mostly Common, with a small chance of Rare or better, and of Shiny or Gold.",
+    "premium": "Always a badge of any rarity, with better odds than the Standard Case, up to Shiny, Titanium and Gold.",
     "jackpot": "Coins only, never a badge. Most opens pay less than the price; a few pay up to 32 times it.",
     "titan": "Every finish, Titanium and Gold included, up to Epic Gold.",
     "elite": "Every rarity in every finish, Epic Gold included.",
-    "royal": "A COIN case for high rollers: big coin drops, or a badge in every finish up to Epic Gold.",
+    "royal": "Always a Rare, Epic or Legendary badge in every finish, up to Gold, with a Mythic chance.",
     "gamble": "High risk: mostly a few coins, otherwise Rare or Special, up to Titanium and Gold.",
     "painter": "Always a badge, never Basic: Painted, Shiny, Titanium or Gold.",
     "vault": "No Common badges: Rare to Epic in every finish.",
@@ -20820,8 +20823,8 @@ CASE_NOTES = {                    # 4.0: checked against the real odds of every 
     "spooky": "Always a spooky badge: ghosts, skulls, eyes, black cats, mushrooms and aliens.",
     "arcade": "Always a game badge: controllers, headsets, dice, cards, rockets and targets.",
     "treasure": "Always a treasure badge: keys, crowns, diamonds, shields, swords and gold stars.",
-    "shiny": "Always a badge, no Basic finish: the best odds for Shiny, Titanium and Gold.",
-    "mythic": "Always a Special or Epic badge, with the best Mythic odds.",
+    "shiny": "Always a badge, never Basic: mostly Painted, with a good chance of Shiny, Titanium and Gold.",
+    "mythic": "The best case: always an Epic or Legendary badge, never Basic, with the best Shiny, Titanium, Gold and Mythic odds.",
     "winter": "Limited: Christmas looks you cannot buy anywhere else, or coins.",
     "giftbox": "Limited: a present full of coins, sometimes a badge.",
     "style": "Balls, song lines and fonts, or coins.",
@@ -20977,7 +20980,8 @@ def case_coin_share(case: dict) -> float:
     if g is None:
         odds = list(case.get("odds") or [])
         return odds[0] / (sum(odds) or 1) if odds else 0.0
-    return max(0.0, 1 - sum(g) - case_mythic(case))
+    left = 1 - sum(g) - case_mythic(case)
+    return left if left > 1e-6 else 0.0             # 6.0: a rounding leftover is not a chance of coins
 
 
 def _group(ec, rarity: str, cls: int, pool=None) -> list:
@@ -21856,8 +21860,11 @@ def case_drops(ec, case: dict, exact: bool = False) -> list:
 
 
 def pct_text(p: float) -> str:
-    """A chance as a percentage, as precise as it needs to be."""
+    """A chance as a percentage, as precise as it needs to be. 6.0: below 0.001 % it says "1 in 250 000" instead of a
+    misleading 0.000 %."""
     pct = p * 100
+    if 0 < pct < 0.001:
+        return chance_text(p)
     text = f"{pct:.3f}%" if pct < 0.1 else f"{pct:.2f}%" if pct < 10 else f"{pct:.1f}%"
     return text.replace(".", ",") if lang() == "fr" else text
 
@@ -21873,7 +21880,7 @@ class CaseOverview(QWidget):
         super().__init__()
         self.ctx, self.case = ctx, case
         self.coins = case_coin_share(case)
-        self.drops = case_drops(ctx.econ, case)
+        self.drops = [d for d in case_drops(ctx.econ, case) if not is_mythic(d[0])]     # 6.0: Mythics are not listed
         self.jackpot = case.get("mode") == "jackpot"
         self.setFixedSize(width, S(150) if self.jackpot else S(118))
 
@@ -21933,15 +21940,20 @@ class CaseOverview(QWidget):
         else:
             tiers = [TIERS[i - 1] for i, o in enumerate(self.case.get("odds") or []) if i and o]
         line = QRectF(0, S(78), w, S(18))
-        paint_coin(p, QPointF(S(7), line.center().y()), S(5.5))
-        p.setPen(QColor(GOLD_TEXT))
-        p.setFont(font(10.5, QFont.Weight.Bold))
-        lucky = int(float((ECON.cfg if ECON is not None else {}).get("case_lucky_x") or 1))
-        text = tr("Coins: {p} of opens, {a} to {b}", p=pct_text(self.coins), a=coins_text(int(self.case.get("coin_min") or 0)),
-                  b=coins_text(int(self.case.get("coin_max") or 0)))
-        if lucky > 1:
-            text += "  ·  " + tr("lucky ×{x}", x=lucky)
-        p.drawText(line.adjusted(S(18), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), text)
+        if self.coins <= 0:                                  # 6.0: a badge case never pays coins: say that instead
+            p.setPen(QColor("#3DDC84"))
+            p.setFont(font(10.5, QFont.Weight.Bold))
+            p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter), "✓  " + tr("Always a badge, never coins"))
+        else:
+            paint_coin(p, QPointF(S(7), line.center().y()), S(5.5))
+            p.setPen(QColor(GOLD_TEXT))
+            p.setFont(font(10.5, QFont.Weight.Bold))
+            lucky = int(float((ECON.cfg if ECON is not None else {}).get("case_lucky_x") or 1))
+            text = tr("Coins: {p} of opens, {a} to {b}", p=pct_text(self.coins), a=coins_text(int(self.case.get("coin_min") or 0)),
+                      b=coins_text(int(self.case.get("coin_max") or 0)))
+            if lucky > 1:
+                text += "  ·  " + tr("lucky ×{x}", x=lucky)
+            p.drawText(line.adjusted(S(18), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), text)
         if tiers:
             p.setPen(QColor(TEXT_DIM))
             p.setFont(font(10.5, QFont.Weight.DemiBold))
@@ -21958,7 +21970,7 @@ class CaseItemsGrid(QWidget):
     def __init__(self, ctx, case: dict, width: int) -> None:
         super().__init__()
         self.ctx = ctx
-        rows = case_drops(ctx.econ, case)
+        rows = [r for r in case_drops(ctx.econ, case) if not is_mythic(r[0])]      # 6.0: Mythics stay a surprise
         self.items = sorted(rows, key=lambda r: -r[1])
         self.cell = S(46)
         self.per = max(1, int(width // self.cell))
@@ -21979,8 +21991,7 @@ class CaseItemsGrid(QWidget):
                 name = item_name(item)
                 if item.startswith("badge:") and not item.split(":")[1] in EXOTIC_IDS:
                     name = tr("{what} (any colour or finish)", what=tr(BADGE_NAME.get(item.split(":")[1], name)))
-                pct = ch * 100
-                self.setToolTip(f"{name}\n" + (f"{pct:.2f}%" if pct >= 0.01 else f"1 in {coins_text(int(1 / max(ch, 1e-12)))}"))
+                self.setToolTip(f"{name}\n" + pct_text(ch))
                 return
         self.setToolTip("")
 
@@ -22006,7 +22017,7 @@ class DropList(QWidget):
     def __init__(self, page, case: dict) -> None:
         super().__init__()
         self.page = page
-        self.rows = case_drops(page.ctx.econ, case)[::-1][::-1]
+        self.rows = [r for r in case_drops(page.ctx.econ, case) if not is_mythic(r[0])]      # 6.0: no Mythics shown
         self.rows.sort(key=lambda x: (TIERS.index(page.ctx.econ.rarity(x[0])) if page.ctx.econ.rarity(x[0]) in TIERS else 0, -x[1]))
         self.row_h = S(30)
         self.cols = 2
@@ -22031,10 +22042,7 @@ class DropList(QWidget):
             name = badge_label(item).replace(" · " + tr("Basic"), "") if item.startswith("badge:") else item_name(item)
             if item.startswith("badge:"):
                 name = "???" if is_mythic(item) else tr(BADGE_NAME.get(item.split(":")[1], "?"))
-            pct = chance * 100
-            text = (f"{pct:.3f}%" if pct < 0.1 else f"{pct:.2f}%" if pct < 10 else f"{pct:.1f}%")
-            if lang() == "fr":
-                text = text.replace(".", ",")
+            text = pct_text(chance)                         # 6.0: never 0.000%
             p.setFont(font(9.5, QFont.Weight.Bold))
             tw = p.fontMetrics().horizontalAdvance(text)
             p.setPen(QColor(TEXT))
@@ -22211,8 +22219,8 @@ class CaseCard(QWidget):
         if kind:                                            # what this case is for, at a glance
             if self.case.get("mode") == "jackpot":           # 4.0: the Jackpot never gives a badge
                 kind = "jackpot"
-            text = {"coins": tr("COINS + BADGES"), "hunt": tr("RARE BADGES"), "style": tr("COSMETICS"),
-                    "limited": tr("LIMITED"), "jackpot": tr("COINS ONLY")}.get(kind, kind.upper())
+            text = {"coins": tr("BADGES"), "hunt": tr("BADGES"), "theme": tr("THEMED"), "style": tr("COSMETICS"),
+                    "limited": tr("LIMITED"), "jackpot": tr("COINS ONLY")}.get(kind, kind.upper())     # 6.0
             kc = QColor({"coins": "#3DDC84", "hunt": "#FF5CC8", "style": "#2EC5FF", "limited": "#9FE3FF",
                          "jackpot": GOLD_TEXT}.get(kind, "#FFFFFF"))
             p.setFont(font(9, QFont.Weight.Black, 0.6))
@@ -22277,10 +22285,10 @@ class OddsTable(QWidget):
             tiers = [x / (sum(odds) or 1) for x in odds]
             variants = list(case.get("variants") or [])
             finishes = [x / (sum(variants) or 1) for x in variants]
-        self.rows = [("tier", i, share) for i, share in enumerate(tiers) if share > 0][::-1]
+        self.rows = [("tier", i, share) for i, share in enumerate(tiers) if share > 1e-9][::-1]
         if any(t for _k, t, _s in self.rows) and finishes and not str(case.get("mode", "")).startswith("kinds:"):
             self.rows.append(("head", 0, 0))
-            self.rows += [("cls", i, share) for i, share in enumerate(finishes) if share > 0][::-1]
+            self.rows += [("cls", i, share) for i, share in enumerate(finishes) if share > 1e-9][::-1]
         self.row_h = S(24)
         self.setFixedSize(width, int(self.row_h * len(self.rows) + S(4)))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -22320,11 +22328,9 @@ class OddsTable(QWidget):
             p.setPen(col)
             p.setFont(font(11, QFont.Weight.Bold))
             p.drawText(r.adjusted(S(24), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), name)
-            pct = share * 100
-            text = f"{pct:.3f}%" if pct < 0.1 else f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
             p.setPen(QColor(TEXT))
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                       text.replace(".", ",") if lang() == "fr" else text)
+                       pct_text(share))                    # 6.0: never 0.000%
 
 
 class CaseReel(QWidget):
