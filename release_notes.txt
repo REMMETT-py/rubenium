@@ -1,8 +1,9 @@
-Rubenium 5.7.2
+Rubenium 5.8
 
-- Mini Golf parties: the lobby no longer reloads itself over and over (it froze Rubenium and blocked online mode)
-- Jackpot: bots fill every empty seat, and once you're in you stay on the Jackpot screen until it ends
-- Cases give fewer coins and more Basic badges
-- Fixed "Could not check for updates" (5.7.1)
+- Mini Golf, rebuilt: one simple screen. Play alone, or create / join an online match for 2, 3 or 4 players right there
+- Online golf is turn by turn now, 25 seconds a shot, and the course only appears when the match starts
+- You choose the power: move the mouse away from your ball (further = harder) and click. The dotted line shows exactly how far it rolls on flat grass
+- More realistic ball: grass slows it evenly, so what you aim is what you get
+- Also: jackpot lobbies always full, you stay in a running jackpot, cases give fewer coins and more Basic badges, update check fixed
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
