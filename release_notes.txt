@@ -1,22 +1,14 @@
-Rubenium 6.0 (the final version)
+Rubenium 6.1
 
-- Final version, fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay
-- OGs: the Prismatic Case is back and remade. Break its 3 seals, then hold it down until it bursts open (5 000 coins, 25 keys, 750 XP)
-- No more limits: casino games, mini games and XP have no daily or hourly limit any more
-- All new sounds: case reel clicks, cards, chips, coins, keys, cups, discs and putts, and new tunes for rare drops and big wins
-- Cases: new themed badge cases (Ocean, Spooky, Arcade, Treasure) and fewer coin cases. Every case says clearly whether it gives badges or coins, and shows every item you can get
-- Case prices go back down every day at midnight
-- Deals in three shelves: 2 this hour, 4 today, 2 this week
-- Pawn shop: he offers about a third of your item's worth (up to 80% if you're lucky), asking for more never gets you something worth more, his anger cools down 30 min after it last rose, and the exchange button works
-- Roulette: no more betting red and black (or low and high) at once
-- Mini Golf: the power bar sits under the course, bots are plain AI balls and you can see where they aim
-- Outdated app: pressing ONLINE shows a black hole, drops you back and updates
-- Fixed: quests like 'win 3 Mini Golf games' complete again, right-click cheats, the cups sit higher, and the ball no longer needs a click on another screen first
-- Settings: About is now UPDATE, with a Repair button that reinstalls the newest Rubenium if updating ever fails (your account, items and settings are never touched)
-- The free spin pays a lot more: 120 to 2 500 coins
-- Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen
-- Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys
-- Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself
-- Cases remade: every badge case (themed ones too) always gives a badge and is priced fairly, in two groups, best case first. No more coin cases, the Top Tier Case is the best, Mythics stay a surprise in the previews, and tiny chances read "1 in 250 000" instead of 0.000%
+- Top Tier and Royal Cases: 20 000 each, only Epic and Legendary badges, never Basic. Top Tier has the best Shiny and Titanium odds, Royal the best Gold and Mythic odds
+- Badge values fixed: a rarer badge is now always worth more than a more common one with the same finish, and every case is priced from them
+- Case odds: rarities read as 1 / x, finishes (Basic, Painted, Shiny...) as a percentage
+- Connect 4: Easy ×1.2, Medium ×2.5, Hard ×10 (it moves first), Professional ×200: it moves first and plays perfectly. Easier bots play faster
+- Cup Game: a win no longer fails with an error (lost wins were paid back)
+- Jackpot: the winner picks 75% of the other items
+- The Quests button glows when a quest is ready to claim
+- OG Prismatic Case: the rewards stay hidden until the case bursts open, then flip over one by one
+- Collection: Medieval and Nature badges at the top, Trophies on their own tab. Leaderboards: a board for every casino game
+- Settings: keep Online open when you click outside it (off by default). Game mode: hovering the menu no longer unfolds it
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

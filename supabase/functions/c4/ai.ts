@@ -187,8 +187,8 @@ export class Searcher {
 // Professional plays perfectly (solver.ts: an opening book, then an exact solve) and moves first: it cannot lose.
 export const LEVELS: Record<string, { depth: number; ms: number; slack: number; blunder: number; shallow: number; low: number }> = {
   easy: { depth: 2, ms: 150, slack: 45, blunder: 0.33, shallow: 0, low: 1 },     // a third of its moves are careless
-  medium: { depth: 5, ms: 400, slack: 10, blunder: 0.05, shallow: 0.2, low: 2 },  // 1 move in 5 it only looks 2 ahead
-  hard: { depth: 10, ms: 900, slack: 0, blunder: 0, shallow: 0.08, low: 6 },     // 1 in 12 it looks 6 ahead, not 10
+  medium: { depth: 6, ms: 450, slack: 8, blunder: 0.03, shallow: 0.15, low: 3 },  // about 1 move in 7 it only looks 3 ahead
+  hard: { depth: 12, ms: 1000, slack: 0, blunder: 0, shallow: 0.05, low: 8 },    // 1 in 20 it looks 8 ahead, not 12
   pro: { depth: 42, ms: 1500, slack: 0, blunder: 0, shallow: 0, low: 42 },
 };
 

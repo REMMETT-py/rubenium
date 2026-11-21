@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.0"         # the version people see
-BUILD = "2026.11.21.18"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.1"         # the version people see
+BUILD = "2026.11.21.19"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1949,6 +1949,7 @@ DEFAULTS: dict = {
     "notify_sound": True,
     "notify_volume": 20,
     "font_item": "",
+    "online_stay_open": False,              # 6.0: True: clicking outside (tabbing out) does not send Online up
     "game_mouse": False,                    # 5.15: off: outside game mode the ball always answers the first click
     "badge_size": 100,
     "badge_pos": "above",
@@ -6783,6 +6784,11 @@ FR.update({'Badge cases': 'Caisses de badges', 'Always a badge, never coins. Bes
 FR.update({'BADGES': 'BADGES', 'THEMED': 'À THÈME'})
 FR.update({'Easy is quick and makes mistakes. Medium sees a few moves ahead. Hard moves first and looks far ahead.': "Facile joue vite et fait des erreurs. Moyen voit quelques coups à l'avance. Difficile commence et voit loin.", 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 200 times your bet.': "Professionnel commence et joue parfaitement : il n'a jamais perdu. Bats-le et tu gagnes 200 fois ta mise.", 'Easy ×1.2 · Medium ×2.5 · Hard ×10 · Professional ×200. A draw gives your bet back.': 'Facile ×1,2 · Moyen ×2,5 · Difficile ×10 · Professionnel ×200. Un match nul rend ta mise.'})
 FR.update({'Always an Epic or Legendary badge, never Basic, with the best Gold and Mythic odds.': "Toujours un badge Épique ou Légendaire, jamais Basique, avec les meilleures chances d'Or et de Mythique.", 'The best case: always an Epic or Legendary badge, never Basic, with the best Shiny and Titanium odds.': 'La meilleure caisse : toujours un badge Épique ou Légendaire, jamais Basique, avec les meilleures chances de Brillant et de Titane.'})
+FR.update({"Your chance is your share of everything put in. The winner gets their own items back and picks 75% of everyone else's; the rest leaves the game. After 2 minutes the lobby locks and bots fill the empty seats.": 'Ta chance est ta part de tout ce qui est mis. Le gagnant récupère ses objets et choisit 75 % de ceux des autres ; le reste quitte le jeu. Après 2 minutes, le salon se ferme et des bots prennent les places vides.', "The winner gets their own items back and picks 75% of everyone else's items. The rest leaves the game.": 'Le gagnant récupère ses objets et choisit 75 % des objets des autres. Le reste quitte le jeu.', "Winner: own items back + 75% of the others' items (rounded up), plus 150 XP.": 'Gagnant : ses objets + 75 % des objets des autres (arrondi au-dessus), plus 150 XP.'})
+FR.update({'{n} / 3 seals broken': '{n} / 3 sceaux brisés'})
+FR.update({'Keep Online open when I click outside it': 'Garder En ligne ouvert quand je clique à côté'})
+FR.update({'Biggest win in one round (coins won above the bet)': 'Plus gros gain en une partie (pièces gagnées en plus de la mise)'})
+FR.update({'Top Tier and Royal Cases: 20 000 each, only Epic and Legendary badges, never Basic. Top Tier has the best Shiny and Titanium odds, Royal the best Gold and Mythic odds': "Caisses Haut de gamme et Royale : 20 000 chacune, seulement des badges Épiques et Légendaires, jamais Basiques. Haut de gamme a les meilleures chances de Brillant et Titane, Royale d'Or et de Mythique", 'Badge values fixed: a rarer badge is now always worth more than a more common one with the same finish, and every case is priced from them': "Valeur des badges corrigée : un badge plus rare vaut toujours plus qu'un plus commun de même finition, et chaque caisse est calculée dessus", 'Case odds: rarities read as 1 / x, finishes (Basic, Painted, Shiny...) as a percentage': 'Chances des caisses : les raretés en 1 / x, les finitions (Basique, Peint, Brillant...) en pourcentage', 'Connect 4: Easy ×1.2, Medium ×2.5, Hard ×10 (it moves first), Professional ×200: it moves first and plays perfectly. Easier bots play faster': 'Puissance 4 : Facile ×1,2, Moyen ×2,5, Difficile ×10 (il commence), Professionnel ×200 : il commence et joue parfaitement. Les bots faciles jouent plus vite', 'Cup Game: a win no longer fails with an error (lost wins were paid back)': 'Jeu des gobelets : une victoire ne finit plus en erreur (les gains perdus ont été remboursés)', 'Jackpot: the winner picks 75% of the other items': 'Jackpot : le gagnant choisit 75 % des autres objets', 'The Quests button glows when a quest is ready to claim': 'Le bouton Quêtes brille quand une quête est prête', 'OG Prismatic Case: the rewards stay hidden until the case bursts open, then flip over one by one': "Caisse Prismatique OG : les récompenses restent cachées jusqu'à l'ouverture, puis se retournent une par une", 'Collection: Medieval and Nature badges at the top, Trophies on their own tab. Leaderboards: a board for every casino game': 'Collection : badges Médiévaux et Nature en haut, Trophées dans leur propre onglet. Classements : un tableau pour chaque jeu du casino', 'Settings: keep Online open when you click outside it (off by default). Game mode: hovering the menu no longer unfolds it': 'Réglages : garder En ligne ouvert quand tu cliques à côté (désactivé par défaut). Mode jeu : survoler le menu ne le déplie plus'})
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
     'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power': 'Visée du Mini Golf refaite : une flèche montre la direction (elle s’arrête aux murs et à l’eau) et une barre la puissance. Plus de cercle qui montre où la balle s’arrête : c’est toi qui sens la distance. Moitié moins de mouvement de souris pour la pleine puissance',
@@ -11612,6 +11618,16 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.1", ['Top Tier and Royal Cases: 20 000 each, only Epic and Legendary badges, never Basic. Top Tier has the best Shiny and Titanium odds, Royal the best Gold and Mythic odds',
+             'Badge values fixed: a rarer badge is now always worth more than a more common one with the same finish, and every case is priced from them',
+             'Case odds: rarities read as 1 / x, finishes (Basic, Painted, Shiny...) as a percentage',
+             'Connect 4: Easy ×1.2, Medium ×2.5, Hard ×10 (it moves first), Professional ×200: it moves first and plays perfectly. Easier bots play faster',
+             'Cup Game: a win no longer fails with an error (lost wins were paid back)',
+             'Jackpot: the winner picks 75% of the other items',
+             'The Quests button glows when a quest is ready to claim',
+             'OG Prismatic Case: the rewards stay hidden until the case bursts open, then flip over one by one',
+             'Collection: Medieval and Nature badges at the top, Trophies on their own tab. Leaderboards: a board for every casino game',
+             'Settings: keep Online open when you click outside it (off by default). Game mode: hovering the menu no longer unfolds it']),
     ("6.0", ['Final version, fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay',
              'OGs: the Prismatic Case is back and remade. Break its 3 seals, then hold it down until it bursts open (5 000 coins, 25 keys, 750 XP)',
              'No more limits: casino games, mini games and XP have no daily or hourly limit any more',
@@ -14154,11 +14170,11 @@ THEMED_BADGES = [("scroll", "Scroll", "standard", "medieval"), ("goblet", "Goble
                  ("rainbow", "Rainbow", "epic", "nature")]
 BADGE_NAME = dict(BADGES + EXOTICS + [(b, n) for b, n, _r, _t in THEMED_BADGES])
 EXOTIC_IDS = tuple(b for b, _n in EXOTICS)
-BADGE_ROWS = [("standard", [b for b, _n in BADGES[0:12]]), ("rare", [b for b, _n in BADGES[12:24]]),
+BADGE_ROWS = [("medieval", [b for b, _n, _r, t in THEMED_BADGES if t == "medieval"]),     # 6.0: case-only rows first
+              ("nature", [b for b, _n, _r, t in THEMED_BADGES if t == "nature"]),
+              ("standard", [b for b, _n in BADGES[0:12]]), ("rare", [b for b, _n in BADGES[12:24]]),
               ("special", [b for b, _n in BADGES[24:36]]), ("epic", [b for b, _n in BADGES[36:48]]),
-              ("exotic", list(EXOTIC_IDS)),
-              ("medieval", [b for b, _n, _r, t in THEMED_BADGES if t == "medieval"]),
-              ("nature", [b for b, _n, _r, t in THEMED_BADGES if t == "nature"])]
+              ("exotic", list(EXOTIC_IDS))]
 # the colours of a badge, rarest first
 GOLD_IDS = ["gold"]
 TITANIUM_IDS = ["black", "white"]
@@ -19333,6 +19349,7 @@ class SettingsPage(StylePart, Page):
                 if home is not None:
                     home[1].set_compact(ctx.window.chrome.level)
             toggle(tr("Compact Music Mode"), "compact_music", after=compact_set)
+            toggle(tr("Keep Online open when I click outside it"), "online_stay_open")      # 6.0: off by default
             lay.addWidget(heading(tr("Games")))               # 4.6: game mode moved to the controller button
             speeds = ["slow", "normal", "fast", "instant"]       # 4.0: how fast cases open (5.0: Instant)
             sp = Segmented([tr("Slow"), tr("Normal"), tr("Fast"), tr("Instant")],
@@ -20086,15 +20103,21 @@ class ShopPage(StylePart, Page):
             return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see your badges"),
                                        12, TEXT_DIM))
         if not base:
+            # 6.0: Badges and Trophies (the achievements) on their own tabs
+            view = Segmented([tr("Badges"), tr("Trophies")], 1 if getattr(ctx, "coll_trophies", False) else 0)
+            view.changed.connect(lambda i: (setattr(ctx, "coll_trophies", i == 1), ctx.reload_page()))
+            lay.addWidget(view)
+            if getattr(ctx, "coll_trophies", False):
+                lay.addWidget(heading(tr("Trophies")))            # 5.13: a row of 9 for every game
+                lay.addWidget(Label(tr("Play to earn them. A gold outline: ready, click to claim its XP. Click one you "
+                                       "have to show it on your profile (3 at most)."), 10.5, TEXT_DIM, wrap_w=self.W))
+                lay.addWidget(TrophyBoard(self))
+                return
             lay.addWidget(heading(tr("On show")))
             self.showcase = Showcase(self)
             lay.addWidget(self.showcase)
             lay.addWidget(heading(tr("Collection")))
             lay.addWidget(BadgeGrid(self))
-            lay.addWidget(heading(tr("Trophies")))                # 5.13: a row of 9 for every game
-            lay.addWidget(Label(tr("Play to earn them. A gold outline: ready, click to claim its XP. Click one you have "
-                                   "to show it on your profile (3 at most)."), 10.5, TEXT_DIM, wrap_w=self.W))
-            lay.addWidget(TrophyBoard(self))
             return
         top = hbox(spacing=8)
         back = IconButton("back", 32, tip=tr("Back"))
@@ -21041,7 +21064,11 @@ def one_in(p: float) -> str:
     """6.0: a chance as '1 / 24' (rarities)."""
     if p <= 1e-12:
         return "—"
-    return "1 / " + coins_text(max(1, round(1 / p)))
+    x = 1 / p
+    if x < 10:                                       # "1 / 1.3" rather than a rounded "1 / 1" (80%)
+        t = f"{x:.1f}".rstrip("0").rstrip(".")
+        return "1 / " + (t.replace(".", ",") if lang() == "fr" else t)
+    return "1 / " + coins_text(round(x))
 
 
 def pct_plain(p: float) -> str:
@@ -22392,7 +22419,7 @@ class CaseReel(QWidget):
                 self._pool[tier] = sorted({v.get("base") for v in ec.catalog.values() if v.get("kind") == "badge"
                                            and v.get("base") in pool and v.get("rarity") == TIERS[tier - 1]}) or ["star"]
             else:
-                self._pool[tier] = [b for b in BADGE_ROWS[tier - 1][1]] or ["star"]
+                self._pool[tier] = list(dict(BADGE_ROWS).get(TIERS[tier - 1], [])) or ["star"]     # 6.0: by name
         return self._pool[tier]
 
     def _make_strip(self, rnd) -> list:
@@ -31175,6 +31202,85 @@ class DailyRow(QWidget):
         paint_freebie(self, p, tr("Free spin"), text, ready, GOLD_TEXT, lambda p, c: paint_coin(p, c, S(10)))
 
 
+def quests_ready(data) -> int:
+    """How many quests are done and not claimed yet."""
+    n = 0
+    for q in data or []:
+        if isinstance(q, dict) and int(q.get("progress", 0) or 0) >= int(q.get("goal", 1) or 1) and not q.get("claimed"):
+            n += 1
+    return n
+
+
+class QuestNudge(QWidget):
+    """6.0: sits on the Quests button. When a quest can be claimed: a soft pulsing glow, a gold count bubble, and a
+    little shake every few seconds. Asks the server every minute while it is on screen."""
+
+    def __init__(self, ctx, button) -> None:
+        super().__init__(button)
+        self.ctx, self.btn = ctx, button
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.n = quests_ready(getattr(ctx, "quests_data", None))
+        self.t0 = time.monotonic()
+        self._anim = QTimer(self)
+        self._anim.setInterval(33)
+        self._anim.timeout.connect(self._step)
+        self._anim.start()
+        self._ask = QTimer(self)
+        self._ask.setInterval(60000)
+        self._ask.timeout.connect(self._fetch)
+        self._ask.start()
+        self._fetch()
+
+    def _fetch(self) -> None:
+        if not self.isVisible() and self.n:
+            return
+        try:
+            self.ctx.econ.call("rb_quests", {}, self._got)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _got(self, ok: bool, data) -> None:
+        if ok and isinstance(data, list):
+            self.ctx.quests_data = data
+            try:
+                self.n = quests_ready(data)
+                self.update()
+            except RuntimeError:
+                pass
+
+    def _step(self) -> None:
+        try:
+            self.setGeometry(self.btn.rect())
+        except RuntimeError:
+            return
+        if self.n:
+            self.update()
+
+    def paintEvent(self, _e) -> None:
+        if not self.n:
+            return
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        t = time.monotonic() - self.t0
+        r = QRectF(self.rect()).adjusted(S(1.5), S(1.5), -S(1.5), -S(1.5))
+        pulse = 0.5 + 0.5 * math.sin(t * 3.2)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for k in range(3):                                  # the glow
+            p.setPen(QPen(alpha(GOLD_TEXT, (0.55 - k * 0.15) * (0.4 + 0.6 * pulse)), S(1.6 + k * 1.2)))
+            p.drawRoundedRect(r.adjusted(k, k, -k, -k), S(9), S(9))
+        shake = 0.0                                          # a little shake every 3 seconds
+        ph = t % 3.0
+        if ph < 0.45:
+            shake = math.sin(ph * 40) * (1 - ph / 0.45) * S(2.2)
+        bubble = QRectF(r.right() - S(18) + shake, r.top() + S(2), S(16), S(16))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(GOLD_TEXT))
+        p.drawEllipse(bubble)
+        p.setPen(QColor("#1A1400"))
+        p.setFont(font(8.5, QFont.Weight.Black))
+        p.drawText(bubble, int(Qt.AlignmentFlag.AlignCenter), str(min(self.n, 9)))
+
+
 class QuestRow(QWidget):
     """One quest: what to do, how far you are, and the reward (a Claim button once it is done)."""
 
@@ -31326,6 +31432,7 @@ class GamesPage(Page):
         quests.setFixedWidth(max(S(118), quests.sizeHint().width() + S(18)))
         quests.clicked.connect(lambda: self._show_quests(True))
         tl.addWidget(quests)
+        QuestNudge(self.ctx, quests)                          # 6.0: glows and shakes when a quest can be claimed
         lay.addWidget(top)
         lay.addWidget(JackpotCard(self))                      # 5.2: Jackpot at the top of the games
         free = QWidget()                                      # 4.3: the three freebies, side by side
@@ -32473,10 +32580,15 @@ def build_messages(page, lay) -> None:
 BOARDS = [("coins", "Richest"), ("worth", "Worth"), ("level", "Level"), ("badges", "Badges"), ("hours", "Hours"),
           ("streak", "Streak"), ("tap", "Beat Tap"), ("park", "Parking"), ("memory", "Memory"), ("blocks", "Block Blast"),
           ("sweeper", "Minesweeper"), ("wave", "Wave Rush"), ("flips", "Coinflip"), ("golf", "Mini Golf"), ("c4", "Connect 4"),
-          ("cups", "Cup Game"), ("trophies", "Trophies")]
+          ("cups", "Cup Game"), ("trophies", "Trophies"),
+          # 6.0: every casino game has a board: the biggest win in one round
+          ("g:roulette", "Roulette"), ("g:blackjack", "Blackjack"), ("g:hilo", "Hi-Lo"), ("g:slots", "Slots"),
+          ("g:rocket", "Rocket"), ("g:plinko", "Plinko"), ("g:mines", "Bombs"), ("g:tower", "Tower"), ("g:dice", "Dice"),
+          ("g:timing", "Timing")]
 # 5.13: the boards in three sections (no more one long row of buttons)
 BOARD_SECTIONS = [("Players", ["coins", "worth", "level", "badges", "trophies", "hours", "streak"]),
-                  ("Games", ["wave", "flips", "golf", "c4", "cups"]),
+                  ("Games", ["wave", "flips", "golf", "c4", "cups", "g:roulette", "g:blackjack", "g:hilo", "g:slots",
+                             "g:rocket", "g:plinko", "g:mines", "g:tower", "g:dice", "g:timing"]),
                   ("Mini games", ["tap", "park", "memory", "blocks", "sweeper"])]
 BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are worth", "badges": "Different badges owned",
                "hours": "Hours with Rubenium", "streak": "Days in a row of daily rewards", "tap": "Best Beat Tap score (%)",
@@ -32484,6 +32596,7 @@ BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are w
                "blocks": "Best Block Blast score", "sweeper": "Fastest Minesweeper clear",
                "wave": "Furthest Wave Rush run (m)", "flips": "Coinflips won", "golf": "Mini Golf games played",
                "c4": "Connect 4 games won against the bot", "cups": "Cup Game rounds won", "trophies": "Trophies earned"}
+BOARD_NOTES.update({k: "Biggest win in one round (coins won above the bet)" for k, _n in BOARDS if k.startswith("g:")})
 
 
 class LeaderRow(QWidget):
@@ -32547,10 +32660,10 @@ class LeaderRow(QWidget):
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        f"{coins_text(v)} m")
             return
-        text = coins_text(v) if self.kind in ("coins", "worth") else (f"{v}%" if self.kind == "tap" else
+        text = coins_text(v) if self.kind in ("coins", "worth") or self.kind.startswith("g:") else (f"{v}%" if self.kind == "tap" else
                                                                        (tr("{n} days", n=v) if self.kind == "streak" else
                                                                         (f"{v} h" if self.kind == "hours" else str(v))))
-        p.setPen(QColor(GOLD_TEXT if self.kind in ("coins", "worth") else TEXT))
+        p.setPen(QColor(GOLD_TEXT if self.kind in ("coins", "worth") or self.kind.startswith("g:") else TEXT))
         p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
 
 
@@ -39007,13 +39120,13 @@ class DoorStage(QWidget):
                     for i in range(4):
                         self.rings.append([now + i * 0.12, i / 4, c])
         elif self.state == "nova":
-            if t > 1.6:
+            if t > 2.4:
                 self._go("claim")
                 self.claim_btn.show()
                 self.claim_btn.raise_()
                 self.setFocus()
                 for k in range(3):
-                    QTimer.singleShot(120 * k, lambda k_=k: (sfx.play("card"), self._burst(self.card_rect(k_).center(), 30, prismatic=True)))
+                    QTimer.singleShot(120 * k, lambda k_=k: self._burst(self.card_rect(k_).center(), 30, prismatic=True))
         elif self.state == "done":
             if t > 2.6:
                 self._go("out")
@@ -39151,25 +39264,42 @@ class DoorStage(QWidget):
             p.setFont(font(12, QFont.Weight.Bold, 2))
             p.drawText(QRectF(0, ring.bottom() + S(8), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("HOLD") if not self.holding else f"{int(self.charge * 100)}%")
-        # the reward cards: each one freed by its seal, all three shown big once the case is open
-        for k in range(3):
-            freed = self.broken.get(k)
-            if freed is None and not opened:
-                continue
-            age = now - (freed or now - 9)
-            k_in = min(1.0, age / 0.6)
-            cr = self.card_rect(k)
-            start = self.seal_at(k, freed) if freed else cr.center()
-            ease = 1 - (1 - k_in) ** 3
-            centre = QPointF(start.x() + (cr.center().x() - start.x()) * ease, start.y() + (cr.center().y() - start.y()) * ease)
-            if st == "done":                                   # claimed: they fly up into your wallet
-                up = min(1.0, t / 1.2) ** 2
-                centre = centre + QPointF(0, -up * r.height() * 0.8)
-                p.setOpacity(max(0.0, 1 - up))
-            sc = 0.3 + 0.7 * ease
-            card = QRectF(centre.x() - cr.width() * sc / 2, centre.y() - cr.height() * sc / 2, cr.width() * sc, cr.height() * sc)
-            self._paint_card(p, card, k, now, opened)
-            p.setOpacity(1.0)
+        # 6.0: the rewards stay hidden until the case bursts open. Then three cards rise out of it face down and flip
+        # over one by one. Before that, only a count of the seals broken.
+        if st == "void" and self.broken:
+            p.setPen(QColor(255, 255, 255, 170))
+            p.setFont(font(12, QFont.Weight.Bold, 1.5))
+            p.drawText(QRectF(0, r.height() * 0.66, r.width(), S(24)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("{n} / 3 seals broken", n=len(self.broken)))
+        if opened:
+            since = t if st == "nova" else 9.0                  # seconds since the burst (claim / done: long done)
+            for k in range(3):
+                rise = max(0.0, min(1.0, (since - 0.35 - 0.12 * k) / 0.6))
+                if rise <= 0:
+                    continue
+                cr = self.card_rect(k)
+                ease = 1 - (1 - rise) ** 3
+                centre = QPointF(cc.x() + (cr.center().x() - cc.x()) * ease, cc.y() + (cr.center().y() - cc.y()) * ease)
+                if st == "done":                               # claimed: they fly up into your wallet
+                    up = min(1.0, t / 1.2) ** 2
+                    centre = centre + QPointF(0, -up * r.height() * 0.8)
+                    p.setOpacity(max(0.0, 1 - up))
+                sc = 0.35 + 0.65 * ease
+                card = QRectF(centre.x() - cr.width() * sc / 2, centre.y() - cr.height() * sc / 2, cr.width() * sc, cr.height() * sc)
+                flip = max(0.0, min(1.0, (since - 1.0 - 0.35 * k) / 0.45))        # 0 face down, 1 face up
+                if 0 < flip < 1 and getattr(self, "_flipped", 0) <= k and flip > 0.5:
+                    self._flipped = k + 1
+                    sfx.play("card")
+                p.save()
+                p.translate(card.center())
+                p.scale(max(0.04, abs(math.cos(flip * math.pi))), 1.0)          # the card turns over
+                p.translate(-card.center())
+                if flip < 0.5:
+                    self._paint_card_back(p, card, k, now)
+                else:
+                    self._paint_card(p, card, k, now, True)
+                p.restore()
+                p.setOpacity(1.0)
         if st == "claim" and self.error:
             p.setPen(QColor(DANGER))
             p.setFont(font(13, QFont.Weight.DemiBold))
@@ -39256,6 +39386,20 @@ class DoorStage(QWidget):
                 p.drawRoundedRect(lk, S(3), S(3))
         p.restore()
 
+    def _paint_card_back(self, p: QPainter, cr: QRectF, k: int, now: float) -> None:
+        """6.0: a card face down: prismatic stripes and a question mark."""
+        path = QPainterPath()
+        path.addRoundedRect(cr, S(14), S(14))
+        g = QLinearGradient(cr.topLeft(), cr.bottomRight())
+        for i in range(5):
+            g.setColorAt(i / 4, prism(i / 4 + now * 0.2 + k * 0.2, 0.55, 0.55))
+        p.setBrush(g)
+        p.setPen(QPen(QColor(255, 255, 255, 220), S(2.5)))
+        p.drawPath(path)
+        p.setPen(QColor(255, 255, 255, 235))
+        p.setFont(font(28, QFont.Weight.Black))
+        p.drawText(cr, int(Qt.AlignmentFlag.AlignCenter), "?")
+
     def _paint_card(self, p: QPainter, cr: QRectF, k: int, now: float, big: bool) -> None:
         kind, value, word = self.rewards[k]
         path = QPainterPath()
@@ -39275,14 +39419,18 @@ class DoorStage(QWidget):
         sw.setColorAt(1, QColor(255, 255, 255, 0))
         p.fillRect(cr, sw)
         p.restore()
-        self._paint_tile(p, kind, QRectF(cr.left(), cr.top() + cr.height() * 0.06, cr.width(), cr.height() * 0.55), now, big=big)
-        if cr.width() > S(60):
-            p.setPen(QColor("#FFFFFF"))
-            p.setFont(font(max(10, cr.width() / S(1) * 0.1), QFont.Weight.Black))
-            p.drawText(QRectF(cr.left(), cr.top() + cr.height() * 0.6, cr.width(), cr.height() * 0.2),
-                       int(Qt.AlignmentFlag.AlignCenter), f"{value} {tr(word)}")
-            self._prism_text(p, QRectF(cr.left(), cr.top() + cr.height() * 0.78, cr.width(), cr.height() * 0.16),
-                             tr("EXOTIC"), max(9, cr.width() / S(1) * 0.07), now)
+        self._paint_tile(p, kind, QRectF(cr.left(), cr.top() + cr.height() * 0.06, cr.width(), cr.height() * 0.52), now, big=big)
+        # 6.0: the amount in big plain white, the word under it: always readable, whatever the card size
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(17, QFont.Weight.Black))
+        p.drawText(QRectF(cr.left(), cr.top() + cr.height() * 0.58, cr.width(), cr.height() * 0.17),
+                   int(Qt.AlignmentFlag.AlignCenter), value)
+        p.setPen(QColor(255, 255, 255, 200))
+        p.setFont(font(10.5, QFont.Weight.Bold, 1.2))
+        p.drawText(QRectF(cr.left(), cr.top() + cr.height() * 0.75, cr.width(), cr.height() * 0.1),
+                   int(Qt.AlignmentFlag.AlignCenter), tr(word))
+        self._prism_text(p, QRectF(cr.left(), cr.top() + cr.height() * 0.85, cr.width(), cr.height() * 0.12),
+                         tr("EXOTIC"), 9.5, now)
 
     def _prism_text(self, p: QPainter, r: QRectF, text: str, size: float, now: float) -> None:
         f = font(size, QFont.Weight.Black, 2)
@@ -39305,7 +39453,7 @@ class DoorStage(QWidget):
                 paint_coin(p, QPointF(c.x() + s * dx, c.y() + s * dy), s * 0.2)
         elif kind == "coupon":
             w = s * 0.86
-            paint_coupon(p, QRectF(c.x() - w / 2, c.y() - w * 0.22, w, w * 0.44), "coupon:ogchest", now, label=big)
+            paint_coupon(p, QRectF(c.x() - w / 2, c.y() - w * 0.22, w, w * 0.44), "coupon:ogchest", now, label=False)
         else:
             gem = QPainterPath()
             gem.moveTo(c.x(), c.y() - s * 0.26)
@@ -39941,7 +40089,7 @@ def build_jackpot(page, lay) -> None:
         lay.addWidget(Label(tr("Nobody yet: be the first (the first player has a 100% chance until others join)."),
                             11, TEXT_DIM, wrap_w=page.W))
     lay.addWidget(Label(tr("Your chance is your share of everything put in. The winner gets their own items back and "
-                           "picks half of everyone else's; the rest leaves the game. After 2 minutes the lobby locks "
+                           "picks 75% of everyone else's; the rest leaves the game. After 2 minutes the lobby locks "
                            "and bots fill the empty seats."), 10, TEXT_FAINT, wrap_w=page.W))
 
 
@@ -42927,11 +43075,11 @@ HELP = {
     "jackpot": ("Jackpot", [
         "A jackpot opens every 15 minutes. For 2 minutes you can put in 1 to 3 items (5 players at most).",
         "Your chance is your share of everything put in. Then the lobby locks, bots fill the empty seats and the wheel spins.",
-        "The winner gets their own items back and picks half of everyone else's items. The rest leaves the game."], [
+        "The winner gets their own items back and picks 75% of everyone else's items. The rest leaves the game."], [
         "More worth in = a bigger slice of the wheel, but more to lose.",
         "Your items must be worth at least 1% of what is already in (at least 100)."], [
         "Chance = your worth ÷ the total worth.",
-        "Winner: own items back + half of the others' items (rounded up), plus 150 XP.",
+        "Winner: own items back + 75% of the others' items (rounded up), plus 150 XP.",
         "2 minutes to pick: after that the most valuable are picked for you."]),
     "blackjack": ("Blackjack", [
         "Press Deal: you and the dealer get two cards; one of the dealer's stays hidden.",
@@ -43962,7 +44110,7 @@ class CupGame(Game):
 # --------------------------------------------------------------------------- #
 class ConnectFour(Game):
     """Drop discs, line up 4 (across, down or diagonal) before the bot does. Easy, Medium, Hard and Professional:
-    the bot really plays (it looks ahead and blocks); on Professional it moves first and thinks deep."""
+    the bot really plays (it looks ahead and blocks); Hard and Professional move first, Professional plays perfectly."""
     MODES = [("Easy", "easy", 1.2), ("Medium", "medium", 2.5), ("Hard", "hard", 10.0), ("Professional", "pro", 200.0)]
     COLS, ROWS = 7, 6
 
@@ -48037,7 +48185,8 @@ def _make_class():
         def _watch_outside(self) -> None:
             """A click anywhere outside the banner (the desktop, a game) sends it up into the R. 4.7: not in game
             mode, where every click is for the game and the banner just stays as it is."""
-            if self.phase != "shown" or getattr(self, "modal", False) or getattr(self.ctx, "game_lock", False):
+            if self.phase != "shown" or getattr(self, "modal", False) or getattr(self.ctx, "game_lock", False) \
+                    or self.ctx.cfg.get("online_stay_open", False):     # 6.0: the setting keeps it open
                 self._was_down = False
                 return
             down = win.key_down(0x01) if win.IS_WIN else False
@@ -53258,6 +53407,8 @@ class MainWindow(QWidget):
         now = time.monotonic()
         m = S(6)
         inside = self.card_global().adjusted(-m, -m, m, m).contains(QCursor.pos())
+        if getattr(self.ctx, "game_lock", False):              # 6.0: game mode: hovering the menu never unfolds it
+            inside = False
         if inside != getattr(self, "_was_inside", None):       # 4.3: Compact Music Mode unfolds under the mouse
             self._was_inside = inside
             if not self.ctx.cfg["autohide"]:
