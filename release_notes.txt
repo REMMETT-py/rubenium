@@ -1,9 +1,5 @@
-Rubenium 5.11
+Rubenium 5.12
 
-- NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5
-- Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25
-- Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each
-- No more daily coin limit in mini games, and up to 16 keys a day from games
-- Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)
+- NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

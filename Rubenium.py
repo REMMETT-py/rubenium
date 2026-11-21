@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.11"         # the version people see
-BUILD = "2026.11.21.11"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.12"         # the version people see
+BUILD = "2026.11.21.12"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2593,6 +2593,20 @@ class Online(QObject):
     def rpc(self, name: str, args: dict):
         """Call a server function as the logged-in account. Off the main thread only."""
         return _request("/rest/v1/rpc/" + name, args, self._token())
+
+    def edge(self, name: str, body: dict, done) -> None:
+        """5.12: call one of our server's edge functions (Connect 4's bot) as the logged-in account."""
+        def work():
+            try:
+                ans = _request("/functions/v1/" + name, body, self._token(), timeout=20.0)
+                self._back.emit(lambda: done(True, ans))
+            except ApiError as err:
+                msg = explain(err)
+                self._back.emit(lambda: done(False, msg))
+            except Exception:  # noqa: BLE001
+                log.exception("%s failed", name)
+                self._back.emit(lambda: done(False, "Something went wrong: try again"))
+        net_pool().submit(work)
 
     def ask(self, fn: str, args: dict, done, raw: bool = False) -> None:
         """Call a server function for the logged-in account; `done(ok, answer or message)` runs on the main thread."""
@@ -6569,6 +6583,8 @@ FR.update({'LOWER': 'PLUS BAS', 'HIGHER': 'PLUS HAUT', 'or the same': 'ou pareil
 FR.update({'Click as many picks as you like (up to 12): your bet goes on each one. Then spin.': 'Clique autant de choix que tu veux (jusqu’à 12) : ta mise va sur chacun. Puis lance.', 'More picks = more chances to win something, but more coins on the table.': 'Plus de choix = plus de chances de gagner quelque chose, mais plus de pièces en jeu.', 'One number: ×24, 4% chance. Gold: ×25, 4% chance.': 'Un numéro : ×24, 4 % de chance. Or : ×25, 4 % de chance.'})
 
 FR.update({'NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5': 'NOUVEAU : le jeu des gobelets. Une pièce Rubenium passe sous un gobelet, ils se mélangent, retrouve la pièce. Facile (3) ×1,4, Moyen (6) ×2,2, Difficile (9) ×3,3, Expert (9, très rapide) ×5', 'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25': 'Roulette : choisis autant de paris que tu veux en un tour (ta mise va sur chacun), vois ta chance de gagner. L’or paie maintenant ×25', 'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each': 'Plus ou moins est plus clair : deux grands choix PLUS HAUT / PLUS BAS à côté de la carte, avec la chance et le multiplicateur', 'No more daily coin limit in mini games, and up to 16 keys a day from games': 'Plus de limite de pièces par jour dans les mini-jeux, et jusqu’à 16 clés par jour grâce aux jeux', "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)": 'Jackpot : tu peux réduire Rubenium pendant que tu y participes (sans pouvoir ouvrir d’autres onglets)', 'Cups': 'Gobelets', 'Cup Game': 'Jeu des gobelets', 'Watch the coin, follow its cup, then click it.': 'Regarde la pièce, suis son gobelet, puis clique dessus.', 'Watch the coin…': 'Regarde la pièce…', 'Follow the cup!': 'Suis le gobelet !', 'Which cup hides the coin?': 'Quel gobelet cache la pièce ?', 'Found it!': 'Trouvée !', 'It was here': 'Elle était ici', 'Your pick': 'Ton choix', 'Click the cup with the coin': 'Clique sur le gobelet avec la pièce', 'Play  ·  {m} cups': 'Jouer  ·  {m} gobelets', 'Easy': 'Facile', 'Medium': 'Moyen', 'Hard': 'Difficile', 'Expert': 'Expert', 'Daily Cup Game limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte aux gobelets : une victoire rend ta mise jusqu’à minuit', 'A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.': 'Une pièce Rubenium tombe sur la table et les gobelets la recouvrent. Puis ils se mélangent.', 'Follow the cup with the coin and click it when they stop.': 'Suis le gobelet avec la pièce et clique dessus quand ils s’arrêtent.', 'Watch only the cup with the coin, never the others.': 'Regarde seulement le gobelet avec la pièce, jamais les autres.', 'Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves.': 'Facile : 3 gobelets, lent. Moyen : 6. Difficile : 9. Expert : 9 gobelets, très rapide et beaucoup plus de mouvements.', 'Easy ×1.4 · Medium ×2.2 · Hard ×3.3 · Expert ×5.': 'Facile ×1,4 · Moyen ×2,2 · Difficile ×3,3 · Expert ×5.', 'Once you are up 6 000 coins in a day, a win gives your bet back until midnight.': 'Une fois 6 000 pièces gagnées dans la journée, une victoire rend ta mise jusqu’à minuit.', 'Click the cup with the coin.': 'Clique sur le gobelet avec la pièce.'})
+
+FR.update({"NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back": 'NOUVEAU : Puissance 4 contre un vrai bot qui réfléchit sur notre serveur (impossible de le tromper). Facile ×1,5, Moyen ×2,2, Difficile ×4, Professionnel ×10 (il commence et voit loin). Un match nul rend ta mise', 'Connect 4': 'Puissance 4', 'Professional': 'Professionnel', 'Play  ·  {lvl}': 'Jouer  ·  {lvl}', 'Your turn: click a column': 'À toi : clique une colonne', 'Bot is thinking…': 'Le bot réfléchit…', 'Give up': 'Abandonner', 'Give up this game? You lose your bet.': 'Abandonner cette partie ? Tu perds ta mise.', 'You win!': 'Tu gagnes !', 'The bot wins': 'Le bot gagne', 'Draw: bet back': 'Nul : mise rendue', 'Line up 4 to win ×{m}': 'Aligne 4 pour gagner ×{m}', 'Your turn': 'À toi', 'Thinking': 'Il réfléchit', 'Win: {n}': 'Gain : {n}', 'Bot': 'Bot', 'You': 'Toi', 'Daily Connect 4 limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte au Puissance 4 : une victoire rend ta mise jusqu’à minuit', 'Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.': 'Lâche des jetons dans les colonnes. Aligne 4 des tiens (en ligne, en colonne ou en diagonale) avant le bot.', 'The bot really plays: it looks ahead, blocks you and attacks. On Professional it moves first.': 'Le bot joue vraiment : il anticipe, te bloque et attaque. En Professionnel il commence.', 'Take the middle column early, block every line of 3, and set up two threats at once.': 'Prends la colonne du milieu tôt, bloque chaque ligne de 3 et prépare deux menaces à la fois.', 'Easy ×1.5 · Medium ×2.2 · Hard ×4 · Professional ×10. A draw gives your bet back.': 'Facile ×1,5 · Moyen ×2,2 · Difficile ×4 · Professionnel ×10. Un nul rend ta mise.', 'Leaving a game or giving up loses the bet. Once you are up 15 000 coins in a day, a win gives your bet back.': 'Quitter ou abandonner fait perdre la mise. Une fois 15 000 pièces gagnées dans la journée, une victoire rend ta mise.', 'Drop a disc in a column': 'Lâche un jeton dans une colonne'})
 
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
@@ -11314,6 +11330,7 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.12", ["NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back"]),
     ("5.11", ['NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5',
               'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25',
               'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each',
@@ -29990,7 +30007,7 @@ class GamePicker(QWidget):
         grid = QGridLayout(self)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(S(4))
-        per_row = 5 if len(labels) >= 10 else 3              # 4.3: 10 games, 2 rows of 5
+        per_row = 6 if len(labels) >= 11 else 5 if len(labels) >= 10 else 3   # 5.12: 12 games, 2 rows of 6
         rows = (len(labels) + per_row - 1) // per_row
         for i, text in enumerate(labels):
             b = Button(text, "primary" if i == index else "ghost", 26)
@@ -30224,6 +30241,13 @@ class GameTile(QWidget):
                 p.drawRoundedRect(cell, S(3), S(3))
                 paint_slot_symbol(p, "seven", cell.center(), S(13))
             p.setPen(Qt.PenStyle.NoPen)
+        elif self.name == "Connect 4":                         # 5.12: a little blue board with discs
+            p.setBrush(QColor("#1F4FB8"))
+            p.drawRoundedRect(QRectF(art.x() - S(20), art.y() - S(14), S(40), S(28)), S(4), S(4))
+            for k, (cx_, cy_, colr) in enumerate(((-12, 8, "#FF4B5C"), (-4, 8, "#FFC94D"), (4, 8, "#FF4B5C"), (-4, 0, "#FF4B5C"),
+                                                  (4, 0, "#FFC94D"), (12, 8, "#FFC94D"), (4, -8, "#FF4B5C"))):
+                p.setBrush(QColor(colr))
+                p.drawEllipse(QPointF(art.x() + S(cx_), art.y() + S(cy_)), S(3.2), S(3.2))
         elif self.name == "Cups":                              # 5.11: three cups, a coin under one
             p.setBrush(QColor("#E8C26A"))
             p.drawEllipse(QPointF(art.x() + S(1), art.y() + S(10)), S(4), S(4))
@@ -30374,7 +30398,7 @@ class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
     NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Tower", "Slots", "Cups",
-             "Free spin"]
+             "Connect 4", "Free spin"]
     PICKER = len(NAMES) - 1                  # 4.1: the free spin is not in the bar of games (its row in the lobby opens it)
 
     def __init__(self, ctx) -> None:
@@ -30803,7 +30827,7 @@ class GamesPage(Page):
         pass
         pass
         self.games = [Blackjack(self), Plinko(self), Bombs(self), Roulette(self), Dice(self), Timing(self), Rocket(self),
-                      HiLo(self), Tower(self), Slots(self), CupGame(self), Daily(self)]
+                      HiLo(self), Tower(self), Slots(self), CupGame(self), ConnectFour(self), Daily(self)]
         for g in self.games:
             g.setVisible(False)
             lay.addWidget(g)
@@ -41964,6 +41988,12 @@ HELP = {
         "Each right guess multiplies by 0.985 × 13 ÷ the ranks that win.",
         "Higher on a 2: ×1.07. Higher on a Queen: ×6.40.",
         "A round stops at 50 000 coins."]),
+    "connect4": ("Connect 4", [
+        "Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.",
+        "The bot really plays: it looks ahead, blocks you and attacks. On Professional it moves first."], [
+        "Take the middle column early, block every line of 3, and set up two threats at once."], [
+        "Easy ×1.5 · Medium ×2.2 · Hard ×4 · Professional ×10. A draw gives your bet back.",
+        "Leaving a game or giving up loses the bet. Once you are up 15 000 coins in a day, a win gives your bet back."]),
     "cups": ("Cup Game", [
         "A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.",
         "Follow the cup with the coin and click it when they stop."], [
@@ -42081,6 +42111,7 @@ CONTROLS = {
     "bombs": _CASINO + [("LMB", "Open a tile")], "tower": _CASINO + [("LMB", "Pick a tile")],
     "roulette": _CASINO + [("LMB", "Pick what you bet on")],
     "cups": _CASINO + [("LMB", "Click the cup with the coin")],
+    "connect4": _CASINO + [("LMB", "Drop a disc in a column")],
     "spin": [("LMB", "Spin the wheel")], "scratch": [("Drag", "Scratch the card")],
     "beat": [(["D", "F", "J", "K"], "Hit a lane"), ("LMB", "Hit a lane"), ("Space", "Start")],
     "memory": [("LMB", "Turn a card")], "parking": [("Drag", "Slide a car along its lane")],
@@ -42091,7 +42122,7 @@ CONTROLS = {
 }
 
 CASINO_KEYS = {"Blackjack": "blackjack", "Plinko": "plinko", "Bombs": "bombs", "Roulette": "roulette", "Dice": "dice",
-               "Timing": "timing", "Rocket": "rocket", "Hi-Lo": "hilo", "Tower": "tower", "Slots": "slots", "Cups": "cups",
+               "Timing": "timing", "Rocket": "rocket", "Hi-Lo": "hilo", "Tower": "tower", "Slots": "slots", "Cups": "cups", "Connect 4": "connect4",
                "Free spin": "spin"}
 
 
@@ -42913,6 +42944,262 @@ class CupGame(Game):
     def failed(self, message: str) -> None:
         super().failed(message)
         self.state = "idle"
+
+
+# --------------------------------------------------------------------------- #
+# 5.12 Connect 4 against a real bot (it thinks on our server)
+# --------------------------------------------------------------------------- #
+class ConnectFour(Game):
+    """Drop discs, line up 4 (across, down or diagonal) before the bot does. Easy, Medium, Hard and Professional:
+    the bot really plays (it looks ahead and blocks); on Professional it moves first and thinks deep."""
+    MODES = [("Easy", "easy", 1.5), ("Medium", "medium", 2.2), ("Hard", "hard", 4.0), ("Professional", "pro", 10.0)]
+    COLS, ROWS = 7, 6
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        self.mode = 1
+        self.gid = None
+        self.moves: list = []
+        self.shown = 0                       # moves drawn so far (the bot's waits while it "thinks")
+        self.bot_first = False
+        self.thinking_until = 0.0
+        self.pending = None                  # the server's answer, waiting for the think time
+        self.line = None
+        self.outcome = None
+        self.hover = -1
+        self.drop_t = 0.0
+        self._resumed = False
+        self.setMouseTracking(True)
+
+    def options(self):
+        return [f"{tr(m)} ×{x:g}" for m, _k, x in self.MODES], self.mode
+
+    def set_option(self, i: int) -> None:
+        if not self.busy:
+            self.mode = i
+            self.update()
+
+    def always_moving(self) -> bool:
+        return self.busy
+
+    def level(self) -> str:
+        return self.MODES[self.mode][1]
+
+    def my_turn(self) -> bool:
+        human = 1 if self.bot_first else 0
+        return (self.busy and self.gid is not None and self.outcome is None and not self.waiting and self.pending is None
+                and self.shown == len(self.moves) and len(self.moves) % 2 == human)
+
+    def buttons(self) -> list:
+        if not self.busy:
+            return [(tr("Play  ·  {lvl}", lvl=tr(self.MODES[self.mode][0])), "primary", self.play, True)]
+        return [(tr("Your turn: click a column") if self.my_turn() else tr("Bot is thinking…"), "ghost", lambda: None, False),
+                (tr("Give up"), "ghost", self._resign, self.outcome is None and not self.waiting)]
+
+    def showEvent(self, e) -> None:
+        super().showEvent(e)
+        if not self.busy and not self._resumed and self.econ.ready:
+            self._resumed = True
+
+            def got(ok: bool, ans) -> None:
+                if ok and isinstance(ans, dict) and ans.get("state") == "live":
+                    self._load(ans)
+                    self.busy = True
+                    self.econ.hold_round(True)
+                    self.page.sync()
+                    if self._bot_due():
+                        self._send(-1)
+            self.ctx.online.ask("rb_c4_state", {}, got)
+
+    def _load(self, g: dict) -> None:
+        self.gid = g.get("id")
+        self.moves = [int(x) for x in (g.get("moves") or [])]
+        self.shown = len(self.moves)
+        self.bot_first = bool(g.get("bot_first"))
+        self.stake = int(g.get("bet") or self.stake)
+        self.mode = next((i for i, m in enumerate(self.MODES) if m[1] == g.get("level")), self.mode)
+        self.outcome, self.line, self.pending = None, None, None
+
+    def _bot_due(self) -> bool:
+        human = 1 if self.bot_first else 0
+        return len(self.moves) % 2 != human
+
+    def play(self) -> None:
+        if self.busy or self.waiting or not self.take():
+            return
+        self.outcome, self.line = None, None
+
+        def started(ans: dict) -> None:
+            self._load(ans)
+            self.animate(1)
+            if self._bot_due():
+                self._send(-1)
+        self.ask("rb_c4_start", {"level": self.level(), "bet": self.stake}, started, once=True, refund=self.stake)
+
+    def _send(self, col: int) -> None:
+        self.waiting = True
+        self.page.sync()
+        self.thinking_until = time.monotonic() + 3.0
+        self.animate(10)
+
+        def got(ok: bool, ans) -> None:
+            self.waiting = False
+            if not ok or not isinstance(ans, dict):
+                self.thinking_until = 0
+                if col >= 0 and len(self.moves) > self.shown - 1 and self.moves and self.moves[-1] == col:
+                    self.moves.pop()
+                    self.shown = len(self.moves)
+                self.ctx.toast(tr(str(ans)), "warn")
+                self.page.sync()
+                return
+            self.pending = ans
+            wait = float(ans.get("think") or 0)
+            self.thinking_until = self.sent_at + wait if ans.get("bot", -1) >= 0 else 0
+            QTimer.singleShot(int(max(0.0, self.thinking_until - time.monotonic()) * 1000) + 30, self._land)
+            self.page.sync()
+        self.sent_at = time.monotonic()
+        self.ctx.online.edge("c4", {"game": self.gid, "col": col}, got)
+
+    def _land(self) -> None:
+        ans = self.pending
+        if ans is None:
+            return
+        self.pending = None
+        self.moves = [int(x) for x in (ans.get("moves") or self.moves)]
+        if len(self.moves) > self.shown:
+            self.drop_t = time.monotonic()
+            sfx.play("pick")
+        self.shown = len(self.moves)
+        self.thinking_until = 0
+        self.animate(1)
+        if ans.get("state") == "done":
+            self.outcome = ans.get("outcome")
+            self.line = ans.get("line")
+            if ans.get("coins") is not None:
+                self._srv_coins = int(ans["coins"])
+            if ans.get("capped"):
+                self.ctx.toast(tr("Daily Connect 4 limit reached: a win gives your bet back until midnight"), "warn")
+            QTimer.singleShot(1200, lambda: self.finish(int(ans.get("paid") or 0)))
+        self.page.sync()
+
+    def _resign(self) -> None:
+        def yes() -> None:
+            self.ctx.online.ask("rb_c4_resign", {}, lambda _o, _d: None)
+            self.outcome = "lose"
+            self.finish(0)
+        self.ctx.window.confirm(tr("Give up this game? You lose your bet."), yes, yes=tr("Give up"))
+
+    def finish(self, payout: int) -> None:
+        super().finish(payout)
+        self.gid = None
+        self.animate(2)
+
+    def _geom(self, r: QRectF):
+        cell = min((r.width() - S(150)) / self.COLS, (r.height() - S(30)) / self.ROWS)
+        w, h = cell * self.COLS, cell * self.ROWS
+        x0 = r.left() + S(14)
+        y0 = r.top() + (r.height() - h) / 2 + S(8)
+        return QRectF(x0, y0, w, h), cell
+
+    def mouseMoveEvent(self, e) -> None:
+        board, cell = self._geom(QRectF(self.rect()))
+        x = e.position().x()
+        col = int((x - board.left()) // cell) if board.left() <= x < board.right() else -1
+        if col != self.hover:
+            self.hover = col
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if not self.my_turn():
+            return
+        board, cell = self._geom(QRectF(self.rect()))
+        x = e.position().x()
+        if not board.left() <= x < board.right():
+            return
+        col = int((x - board.left()) // cell)
+        if sum(1 for m in self.moves if m == col) >= self.ROWS:
+            return sfx.play("off")
+        self.moves.append(col)                   # your disc drops at once
+        self.shown = len(self.moves)
+        self.drop_t = time.monotonic()
+        sfx.play("pick")
+        self._send(col)
+
+    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
+        board, cell = self._geom(r)
+        human = 1 if self.bot_first else 0
+        you, bot = QColor("#FF4B5C"), QColor("#FFC94D")
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#1F4FB8"))
+        p.drawRoundedRect(board.adjusted(-S(6), -S(6), S(6), S(6)), S(10), S(10))
+        if self.my_turn() and 0 <= self.hover < self.COLS:
+            p.setBrush(alpha("#FFFFFF", 0.08))
+            p.drawRect(QRectF(board.left() + self.hover * cell, board.top(), cell, board.height()))
+        heights = [0] * self.COLS
+        grid = {}
+        for k, c in enumerate(self.moves[:self.shown]):
+            grid[(c, heights[c])] = k
+            heights[c] += 1
+        win_cells = set(int(x) for x in (self.line or []))
+        for c in range(self.COLS):
+            for row in range(self.ROWS):
+                ctr = QPointF(board.left() + (c + 0.5) * cell, board.bottom() - (row + 0.5) * cell)
+                k = grid.get((c, row))
+                rad = cell * 0.4
+                if k is None:
+                    p.setBrush(QColor("#0B1014"))
+                    p.drawEllipse(ctr, rad, rad)
+                    continue
+                col = you if k % 2 == human else bot
+                y = ctr.y()
+                if k == self.shown - 1 and now - self.drop_t < 0.35:              # the last disc falls in
+                    t = (now - self.drop_t) / 0.35
+                    y = board.top() - cell * 0.5 + (ctr.y() - board.top() + cell * 0.5) * t * t
+                p.setBrush(QColor("#0B1014"))
+                p.drawEllipse(ctr, rad, rad)
+                g = QRadialGradient(QPointF(ctr.x() - rad * 0.3, y - rad * 0.3), rad * 1.3)
+                g.setColorAt(0, col.lighter(135))
+                g.setColorAt(1, col.darker(115))
+                p.setBrush(g)
+                p.drawEllipse(QPointF(ctr.x(), y), rad, rad)
+                if (c * self.ROWS + row) in win_cells and self.outcome:
+                    p.setPen(QPen(QColor("#FFFFFF"), S(3)))
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+                    p.drawEllipse(ctr, rad * 0.8, rad * 0.8)
+                    p.setPen(Qt.PenStyle.NoPen)
+        # the side panel: who is who, whose turn, the prize
+        side = QRectF(board.right() + S(20), board.top(), r.right() - board.right() - S(30), board.height())
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        for k, (name, colr) in enumerate(((tr("You"), you), (tr("Bot") + " · " + tr(self.MODES[self.mode][0]), bot))):
+            y = side.top() + k * S(24)
+            p.setBrush(colr)
+            p.drawEllipse(QPointF(side.left() + S(8), y + S(9)), S(7), S(7))
+            p.setPen(QColor(TEXT))
+            p.drawText(QRectF(side.left() + S(20), y, side.width() - S(20), S(18)), int(Qt.AlignmentFlag.AlignVCenter), name)
+            p.setPen(Qt.PenStyle.NoPen)
+        y = side.top() + S(60)
+        if self.outcome:
+            text, colr = {"win": (tr("You win!"), WIN), "lose": (tr("The bot wins"), LOSE),
+                          "draw": (tr("Draw: bet back"), TEXT)}.get(self.outcome, ("", TEXT))
+        elif not self.busy:
+            text, colr = tr("Line up 4 to win ×{m}", m=f"{self.MODES[self.mode][2]:g}"), TEXT_DIM
+        elif self.my_turn():
+            text, colr = tr("Your turn"), WIN
+        else:
+            dots = "." * (1 + int(now * 2.5) % 3)
+            text, colr = tr("Thinking") + dots, GOLD_TEXT
+        p.setPen(QColor(colr))
+        p.setFont(font(13, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(side.left(), y, side.width(), S(40)), int(Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap), text)
+        if self.busy:
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            p.drawText(QRectF(side.left(), y + S(46), side.width(), S(36)), int(Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap),
+                       tr("Win: {n}", n=coins_text(int(self.stake * self.MODES[self.mode][2]))))
 
 
 # --------------------------------------------------------------------------- #
