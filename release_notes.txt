@@ -1,7 +1,16 @@
-Rubenium 5.14
+Rubenium 6.0 (the final version)
 
-- Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone
-- The practice bot plays like a real player now (long holds, no straight lines)
-- Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch
+- Final version, fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay
+- OGs: the Prismatic Case is back and remade. Break its 3 seals, then hold it down until it bursts open (5 000 coins, 25 keys, 750 XP)
+- No more limits: casino games, mini games and XP have no daily or hourly limit any more
+- All new sounds: case reel clicks, cards, chips, coins, keys, cups, discs and putts, and new tunes for rare drops and big wins
+- Cases: new themed badge cases (Ocean, Spooky, Arcade, Treasure) and fewer coin cases. Every case says clearly whether it gives badges or coins, and shows every item you can get
+- Case prices go back down every day at midnight
+- Deals in three shelves: 2 this hour, 4 today, 2 this week
+- Pawn shop: he offers about a third of your item's worth (up to 80% if you're lucky), asking for more never gets you something worth more, his anger cools down 30 min after it last rose, and the exchange button works
+- Roulette: no more betting red and black (or low and high) at once
+- Mini Golf: the power bar sits under the course, bots are plain AI balls and you can see where they aim
+- Outdated app: pressing ONLINE shows a black hole, drops you back and updates
+- Fixed: quests like 'win 3 Mini Golf games' complete again, right-click cheats, the cups sit higher, and the ball no longer needs a click on another screen first
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
