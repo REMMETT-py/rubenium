@@ -16,5 +16,6 @@ Rubenium 6.0 (the final version)
 - The free spin pays a lot more: 120 to 2 500 coins
 - Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen
 - Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys
+- Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

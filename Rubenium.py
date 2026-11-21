@@ -1489,7 +1489,7 @@ from PyQt6.QtGui import QColor, QFont
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "6.0"         # the version people see
-BUILD = "2026.11.21.16"       # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.21.17"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6778,6 +6778,7 @@ FR.update({'What you can get ({n})': 'Ce que tu peux obtenir ({n})', '{what} (an
 FR.update({'PRISMATIC CASE': 'CAISSE PRISMATIQUE', 'Break the 3 seals: click them as they fly around the case': 'Brise les 3 sceaux : clique-les quand ils tournent autour de la caisse', 'Now hold the case down until it opens': "Maintenant, maintiens la caisse jusqu'à ce qu'elle s'ouvre", 'Yours, OG. Thank you for being here from the start': 'À toi, OG. Merci d’être là depuis le début', 'HOLD': 'MAINTIENS', 'Casino: 1 to 5 XP a win, nothing on a loss': 'Casino : 1 à 5 XP par victoire, rien en cas de perte', 'Minigames: 3 to 12 XP when they pay': 'Mini-jeux : 3 à 12 XP quand ils paient', 'Alone: each hole pays by strokes: 60, 35, 20, 10, 5, then nothing.': 'Seul : chaque trou paie selon les coups : 60, 35, 20, 10, 5, puis rien.', 'Solo: no coins for the first 100 m (the gold line), then 5 coins every 10 m.': 'Solo : pas de pièces pour les 100 premiers mètres (la ligne dorée), puis 5 pièces tous les 10 m.', 'Leaving a game or giving up loses the bet.': 'Quitter une partie ou abandonner fait perdre la mise.', 'Hit takes a card, Stand keeps your hand.': 'Tirer prend une carte, Rester garde ta main.', 'Picture removed': 'Photo retirée', 'now': 'maintenant', '2 minutes to pick: after that the most valuable are picked for you.': '2 minutes pour choisir : ensuite, les plus précieux sont choisis pour toi.', 'A jackpot opens every 15 minutes. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Un jackpot ouvre toutes les 15 minutes. Pendant 2 minutes, tu peux mettre 1 à 3 objets (5 joueurs maximum).', 'Chance = your worth ÷ the total worth.': 'Chance = ta valeur ÷ la valeur totale.', 'More worth in = a bigger slice of the wheel, but more to lose.': 'Plus de valeur = une plus grosse part de la roue, mais plus à perdre.', "The winner gets their own items back and picks half of everyone else's items. The rest leaves the game.": 'Le gagnant récupère ses objets et choisit la moitié des objets des autres. Le reste quitte le jeu.', "Winner: own items back + half of the others' items (rounded up), plus 150 XP.": 'Gagnant : ses objets + la moitié des objets des autres (arrondi au-dessus), plus 150 XP.', 'Your chance is your share of everything put in. Then the lobby locks, bots fill the empty seats and the wheel spins.': 'Ta chance est ta part de tout ce qui est mis. Ensuite le salon se ferme, des bots prennent les places vides et la roue tourne.', 'Your items must be worth at least 1% of what is already in (at least 100).': 'Tes objets doivent valoir au moins 1 % de ce qui est déjà dedans (au moins 100).', 'Final version, fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay': 'Version finale, nouveau départ : pièces, clés, objets, niveaux et marché repartent de zéro. Heures de jeu, séries et tous les scores restent', 'OGs: the Prismatic Case is back and remade. Break its 3 seals, then hold it down until it bursts open (5 000 coins, 25 keys, 750 XP)': "OG : la Caisse Prismatique revient, refaite. Brise ses 3 sceaux, puis maintiens-la jusqu'à ce qu'elle explose (5 000 pièces, 25 clés, 750 XP)", 'No more limits: casino games, mini games and XP have no daily or hourly limit any more': "Plus aucune limite : casino, mini-jeux et XP n'ont plus de limite par jour ni par heure", 'All new sounds: case reel clicks, cards, chips, coins, keys, cups, discs and putts, and new tunes for rare drops and big wins': 'Tous les sons refaits : clics de la roue des caisses, cartes, jetons, pièces, clés, gobelets, pions et putts, et de nouvelles mélodies pour les drops rares et les gros gains', 'Cases: new themed badge cases (Ocean, Spooky, Arcade, Treasure) and fewer coin cases. Every case says clearly whether it gives badges or coins, and shows every item you can get': 'Caisses : nouvelles caisses de badges à thème (Océan, Hantée, Arcade, Trésor) et moins de caisses de pièces. Chaque caisse dit clairement si elle donne des badges ou des pièces, et montre tous les objets possibles', 'Case prices go back down every day at midnight': 'Le prix des caisses redescend chaque jour à minuit', 'Deals in three shelves: 2 this hour, 4 today, 2 this week': "Bons plans en trois rayons : 2 cette heure, 4 aujourd'hui, 2 cette semaine", "Pawn shop: he offers about a third of your item's worth (up to 80% if you're lucky), asking for more never gets you something worth more, his anger cools down 30 min after it last rose, and the exchange button works": "Prêteur sur gages : il propose environ un tiers de la valeur de ton objet (jusqu'à 80 % avec de la chance), demander plus ne donne jamais un objet plus cher, sa colère retombe 30 min après sa dernière hausse, et le bouton d'échange marche", 'Roulette: no more betting red and black (or low and high) at once': 'Roulette : plus possible de miser rouge et noir (ou manque et passe) en même temps', 'Mini Golf: the power bar sits under the course, bots are plain AI balls and you can see where they aim': 'Mini Golf : la barre de puissance est sous le parcours, les bots sont de simples balles IA et tu vois où ils visent', 'Outdated app: pressing ONLINE shows a black hole, drops you back and updates': 'App pas à jour : appuyer sur EN LIGNE montre un trou noir, te ramène et met à jour', "Fixed: quests like 'win 3 Mini Golf games' complete again, right-click cheats, the cups sit higher, and the ball no longer needs a click on another screen first": "Corrigé : les quêtes comme « gagne 3 parties de Mini Golf » se valident, les triches au clic droit, les gobelets sont plus hauts, et la boule n'a plus besoin d'un clic sur un autre écran d'abord"})                                   # 6.0
 FR.update({'120 coins 17.3% · 200 coins 17% · 300 coins 17% · 450 coins 13%': '120 pièces 17,3 % · 200 pièces 17 % · 300 pièces 17 % · 450 pièces 13 %', '700 coins 9% · 1 200 coins 6% · 2 500 coins 3%': '700 pièces 9 % · 1 200 pièces 6 % · 2 500 pièces 3 %'})
 FR.update({'Settings: About is now UPDATE, with a Repair button that reinstalls the newest Rubenium if updating ever fails (your account, items and settings are never touched)': 'Réglages : À propos devient MISE À JOUR, avec un bouton Réparer qui réinstalle la dernière Rubenium si la mise à jour échoue (ton compte, tes objets et tes réglages ne sont jamais touchés)', 'The free spin pays a lot more: 120 to 2 500 coins': 'Le tour gratuit rapporte bien plus : 120 à 2 500 pièces', 'Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen': 'Wave Rush plus fluide : un mode performance caché pendant chaque course, et des images calées sur ton écran', "Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys": "Les notifications de jackpot disent « environ 2 minutes » au lieu d'une horloge figée, et le tour gratuit et le ticket à gratter n'affichent plus les touches du casino", 'UPDATE': 'MISE À JOUR', 'Repair': 'Réparer', 'Repair Rubenium': 'Réparer Rubenium', 'Repair Rubenium?': 'Réparer Rubenium ?', 'Repair now': 'Réparer maintenant', 'Repairing… {p}%': 'Réparation… {p} %', 'Reinstalling…': 'Réinstallation…', 'Finish your round first, then repair': 'Termine ta partie d’abord, puis répare', 'Update not working, or Rubenium acting strange? Repair downloads the newest Rubenium again and reinstalls it cleanly over this one, then opens it again.': 'La mise à jour ne marche pas, ou Rubenium fait des siennes ? Réparer télécharge à nouveau la dernière Rubenium, la réinstalle proprement par-dessus celle-ci, puis la rouvre.', 'It only replaces the program files. Your account, coins, keys, items, levels, friends and settings are NOT touched: your account is saved online and your settings stay in Documents\\Rubenium.': 'Seuls les fichiers du programme sont remplacés. Ton compte, tes pièces, clés, objets, niveaux, amis et réglages ne sont PAS touchés : ton compte est enregistré en ligne et tes réglages restent dans Documents\\Rubenium.', 'What happens: Rubenium downloads the newest version, closes, reinstalls itself cleanly and opens again. It takes about a minute.': 'Ce qui se passe : Rubenium télécharge la dernière version, se ferme, se réinstalle proprement et se rouvre. Cela prend environ une minute.', 'What stays: your account, coins, keys, items, levels, friends, trophies and settings. Nothing is deleted from your account.': "Ce qui reste : ton compte, tes pièces, clés, objets, niveaux, amis, trophées et réglages. Rien n'est supprimé de ton compte.", 'Before you go on: finish any game, bet, trade or coinflip you are in, because Rubenium closes for a moment.': 'Avant de continuer : termine toute partie, mise, échange ou pile ou face en cours, car Rubenium se ferme un instant.', 'The repair could not download Rubenium. Check your internet, or get RubeniumSetup.exe from GitHub.': "La réparation n'a pas pu télécharger Rubenium. Vérifie ta connexion, ou récupère RubeniumSetup.exe sur GitHub.", '{n} minutes': '{n} minutes', '1 minute': '1 minute', '{n} seconds': '{n} secondes', 'Open for about {t}. Join in Games > Jackpot': 'Ouvert encore environ {t}. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in about {t}': 'Le prochain jackpot ouvre dans environ {t}', 'Wave god mode on: slide along the walls': 'Mode dieu Wave activé : glisse le long des murs', 'Wave god mode off': 'Mode dieu Wave désactivé'})
+FR.update({'Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself': "Mettre à jour ne peut plus ne rien faire en silence : un téléchargement bloqué se libère tout seul, et si la mise à jour automatique échoue deux fois, la page de téléchargement s'ouvre toute seule", 'Automatic update failed twice: opening the download page. Run RubeniumSetup.exe there.': 'La mise à jour automatique a échoué deux fois : ouverture de la page de téléchargement. Lance RubeniumSetup.exe là-bas.'})
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
     'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power': 'Visée du Mini Golf refaite : une flèche montre la direction (elle s’arrête aux murs et à l’eau) et une barre la puissance. Plus de cercle qui montre où la balle s’arrête : c’est toi qui sens la distance. Moitié moins de mouvement de souris pour la pleine puissance',
@@ -11622,7 +11623,8 @@ NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritte
              'Settings: About is now UPDATE, with a Repair button that reinstalls the newest Rubenium if updating ever fails (your account, items and settings are never touched)',
              'The free spin pays a lot more: 120 to 2 500 coins',
              'Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen',
-             "Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys"]),
+             "Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys",
+             'Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself']),
     ("5.14", ['Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone',
               'The practice bot plays like a real player now (long holds, no straight lines)',
               'Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch']),
@@ -13161,9 +13163,13 @@ class Updater(QObject):
             self.checking = self.installing = False
 
     def check(self, manual: bool = False) -> None:
+        import time as _t
+        if self.checking and _t.monotonic() - getattr(self, "_check_at", 0.0) > 90:
+            self.checking = False
         if self.checking or self.installing:
             return
         self.checking = True
+        self._check_at = _t.monotonic()
         import threading
         threading.Thread(target=self._check, args=(manual,), daemon=True).start()
 
@@ -13275,14 +13281,20 @@ class Updater(QObject):
     def install(self) -> bool:
         """Download and install the newest version. 5.10: always does something: if a check is running or nothing is
         known yet, it installs right after the check."""
+        import time as _t
+        if self.installing and _t.monotonic() - getattr(self, "_install_at", 0.0) > 300:
+            self.installing = False                       # 6.0: a download that hung for 5 minutes never blocks the button
         if self.installing:
             return True
+        if self.checking and _t.monotonic() - getattr(self, "_check_at", 0.0) > 90:
+            self.checking = False                         # 6.0: neither does a check that never answered
         if self.checking or not self.latest:
             self.install_after = True
             if not self.checking:
                 self.check(manual=False)
             return True
         self.installing = True
+        self._install_at = _t.monotonic()
         import threading
         threading.Thread(target=self._install, args=(dict(self.latest),), daemon=True).start()
         return True
@@ -13291,9 +13303,13 @@ class Updater(QObject):
         """6.0: Repair. Downloads the newest full version again (even if this one is the newest) and installs it
         over this one, the same way an update does. Only the program files are replaced: the account lives on the
         server, and settings, backups and swaps stay in their own folders."""
+        import time as _t
+        if self.installing and _t.monotonic() - getattr(self, "_install_at", 0.0) > 300:
+            self.installing = False
         if self.installing:
             return True
         self.installing = True
+        self._install_at = _t.monotonic()
         self.install_after = False
         import threading
         threading.Thread(target=self._repair_run, daemon=True).start()
@@ -55053,6 +55069,7 @@ class App(QObject):
             self.toast(tr("Could not check for updates"), "warn")
 
     def _update_ready(self, path: str) -> None:
+        self._update_fails = 0
         self.window.show_busy(tr("Reinstalling…") if getattr(self, "repairing", False) else tr("Restarting…"))
         started = extras.run_setup(path) if path.lower().endswith(".exe") else extras.restart(path)
         if started:
@@ -55063,6 +55080,14 @@ class App(QObject):
     def _update_failed(self, key: str) -> None:
         self._update_prompted = ""                   # 4.4: the next check tries again by itself
         repairing, self.repairing = getattr(self, "repairing", False), False
+        self._update_fails = getattr(self, "_update_fails", 0) + 1
+        if self._update_fails >= 2 and key != "blocked":      # 6.0: never nothing: the download page opens by itself
+            self._update_fails = 0
+
+            def page() -> None:
+                self.toast(tr("Automatic update failed twice: opening the download page. Run RubeniumSetup.exe there."), "error")
+                win.open_path(self.updater.latest.get("page", extras.UPDATE_PAGE) if self.updater.latest else extras.UPDATE_PAGE)
+            return self.window.end_busy(page)
 
         def after() -> None:
             if repairing and key != "blocked":
