@@ -1,6 +1,9 @@
-Rubenium 5.12
+Rubenium 5.13
 
-- NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back
-- Pawn shop: PROPOSE EXCHANGE. He puts one of his items on a plate for yours. Accept, refuse, or ask for a better one: you see the chance he says yes and how angry a no makes him. The market's Swaps tab is gone
+- NEW: Trophies. 99 of them: every game has 3 Bronze, 3 Silver, 2 Gold and 1 Platinum. They give XP (150 to 5 000), take real time from Silver up, and you can show 3 on your profile. Find them under Collection
+- Quests now give keys and cases (no more coins or XP)
+- Leaderboards in 3 sections (Players, Games, Mini games) with new boards: Wave Rush, Coinflip, Mini Golf, Connect 4, Cup Game and Trophies
+- Your stats card: click a number in the bottom row to show another one (Wave Rush best, coinflips won, trophies…). Profiles show game records too
+- The Trophy badge is now a Laurel Wreath, so it never looks like a real trophy
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

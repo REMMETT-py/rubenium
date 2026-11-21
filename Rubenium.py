@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.12"         # the version people see
-BUILD = "2026.11.21.12"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.13"         # the version people see
+BUILD = "2026.11.21.13"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1825,6 +1825,8 @@ DEFAULTS: dict = {
     "ad_mute": True,                     # 3.2: mute the music app while an advert plays
     "online_tab": "games",               # 3.2: the last part of the online menu that was open
     "hilo_help": False,
+    "my_stats": ["cases", "trades", "rounds", "casino"],     # 5.13: the bottom row of your stats card
+    "cups_mode": 0,
     "online_panes": ["games", "friends"],  # 4.0: the two parts of the online menu shown side by side
     "compact_music": True,               # 4.0: while gaming, the minimised music card keeps only the track and its time
     "chest_speed": "normal",             # 4.0: slow (0.75x), normal (1x) or fast (2.5x) case openings
@@ -6593,6 +6595,16 @@ FR.update({"Pawn shop: PROPOSE EXCHANGE. He puts one of his items on a plate for
 
 FR.update({'Exchange: yours for his {what}': 'Échange : le tien contre son {what}', 'This is his best offer': 'C’est sa meilleure offre', 'Ask for more: {c}% chance he says yes, a no adds {r} anger (the faint part of the bar)': 'Demander mieux : {c} % de chance qu’il dise oui, un non ajoute {r} de colère (la partie pâle de la barre)'})
 
+FR.update({'Laurel Wreath': 'Couronne de laurier', 'Trophies': 'Trophées', 'Bronze': 'Bronze', 'Silver': 'Argent', 'Gold': 'Or', 'Platinum': 'Platine', 'Play to earn them. A gold outline: ready, click to claim its XP. Click one you have to show it on your profile (3 at most).': 'Joue pour les gagner. Contour doré : prêt, clique pour récupérer son XP. Clique un trophée obtenu pour l’afficher sur ton profil (3 au maximum).', 'Play {n} rounds of {game}': 'Joue {n} parties de {game}', 'Win {n} rounds of {game}': 'Gagne {n} parties de {game}', 'Win ×{n} or more in one round of {game}': 'Gagne ×{n} ou plus en une partie de {game}', 'Reach {n} m in {game}': 'Atteins {n} m à {game}', 'Win a coinflip worth {n} or more': 'Gagne un pile ou face d’au moins {n}', '{a} / {b}': '{a} / {b}', '{tier} trophy! +{x} XP': 'Trophée {tier} ! +{x} XP', 'Taken off your profile': 'Retiré de ton profil', 'On your profile now': 'Sur ton profil maintenant'})
+
+FR.update({'+{k} key(s)': '+{k} clé(s)', '{case} added to Your cases': '{case} ajoutée à Tes caisses', 'key': 'clé', 'keys': 'clés'})
+
+FR.update({'Players': 'Joueurs', 'Games': 'Jeux', 'Mini games': 'Mini-jeux', 'Furthest Wave Rush run (m)': 'Plus longue course de Wave Rush (m)', 'Coinflips won': 'Pile ou face gagnés', 'Mini Golf games played': 'Parties de Mini Golf jouées', 'Connect 4 games won against the bot': 'Parties de Puissance 4 gagnées contre le bot', 'Cup Game rounds won': 'Manches gagnées aux gobelets', 'Trophies earned': 'Trophées obtenus', 'Coinflip': 'Pile ou face', 'Wave Rush': 'Wave Rush'})
+
+FR.update({'Wave Rush best': 'Record Wave Rush', 'Golf games': 'Parties de golf', 'Connect 4 wins': 'Victoires Puissance 4', 'Cups won': 'Gobelets gagnés', 'Best win': 'Meilleur gain', 'Day streak': 'Série de jours', 'Click to show another number here': 'Clique pour afficher un autre nombre ici'})
+
+FR.update({'NEW: Trophies. 99 of them: every game has 3 Bronze, 3 Silver, 2 Gold and 1 Platinum. They give XP (150 to 5 000), take real time from Silver up, and you can show 3 on your profile. Find them under Collection': 'NOUVEAU : les Trophées. 99 au total : chaque jeu a 3 Bronze, 3 Argent, 2 Or et 1 Platine. Ils donnent de l’XP (150 à 5 000), demandent du vrai temps dès l’Argent, et tu peux en montrer 3 sur ton profil. Ils sont sous Collection', 'Quests now give keys and cases (no more coins or XP)': 'Les quêtes donnent maintenant des clés et des caisses (plus de pièces ni d’XP)', 'Leaderboards in 3 sections (Players, Games, Mini games) with new boards: Wave Rush, Coinflip, Mini Golf, Connect 4, Cup Game and Trophies': 'Classements en 3 sections (Joueurs, Jeux, Mini-jeux) avec de nouveaux classements : Wave Rush, Pile ou face, Mini Golf, Puissance 4, Gobelets et Trophées', 'Your stats card: click a number in the bottom row to show another one (Wave Rush best, coinflips won, trophies…). Profiles show game records too': 'Ta carte de stats : clique un nombre de la ligne du bas pour en montrer un autre (record Wave Rush, pile ou face gagnés, trophées…). Les profils montrent aussi les records', 'The Trophy badge is now a Laurel Wreath, so it never looks like a real trophy': 'Le badge Trophée devient une Couronne de laurier, pour ne jamais ressembler à un vrai trophée'})
+
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
     'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power': 'Visée du Mini Golf refaite : une flèche montre la direction (elle s’arrête aux murs et à l’eau) et une barre la puissance. Plus de cercle qui montre où la balle s’arrête : c’est toi qui sens la distance. Moitié moins de mouvement de souris pour la pleine puissance',
@@ -11337,6 +11349,11 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.13", ['NEW: Trophies. 99 of them: every game has 3 Bronze, 3 Silver, 2 Gold and 1 Platinum. They give XP (150 to 5 000), take real time from Silver up, and you can show 3 on your profile. Find them under Collection',
+              'Quests now give keys and cases (no more coins or XP)',
+              'Leaderboards in 3 sections (Players, Games, Mini games) with new boards: Wave Rush, Coinflip, Mini Golf, Connect 4, Cup Game and Trophies',
+              'Your stats card: click a number in the bottom row to show another one (Wave Rush best, coinflips won, trophies…). Profiles show game records too',
+              'The Trophy badge is now a Laurel Wreath, so it never looks like a real trophy']),
     ("5.12", ["NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back",
               "Pawn shop: PROPOSE EXCHANGE. He puts one of his items on a plate for yours. Accept, refuse, or ask for a better one: you see the chance he says yes and how angry a no makes him. The market's Swaps tab is gone"]),
     ("5.11", ['NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5',
@@ -13793,7 +13810,7 @@ BADGES = [("heart", "Heart"), ("drop", "Droplet"), ("clover", "Clover"), ("paw",
           ("trident", "Trident"), ("quill", "Quill"),
           ("hourglass", "Hourglass"), ("target", "Target"), ("comet", "Comet"), ("saturn", "Saturn"),
           ("alien", "Alien"), ("rocket", "Rocket ship"), ("shootingstar", "Shooting Star"), ("planet", "Planet"),
-          ("crown", "Crown"), ("trophy", "Trophy"), ("goldenstar", "Golden Star"), ("sunburst", "Sunburst Star")]
+          ("crown", "Crown"), ("trophy", "Laurel Wreath"), ("goldenstar", "Golden Star"), ("sunburst", "Sunburst Star")]
 EXOTICS = [("galaxy", "Galaxy"), ("phoenix", "Phoenix"), ("glitch", "Glitch"), ("crystal", "Crystal Heart"),
            ("dragon", "Dragon Eye"), ("rubenium", "Rubenium"),
            # 5.4: the second row of Mythics
@@ -14248,15 +14265,17 @@ def _build(ident: str) -> QPainterPath:
     if ident == "crown":
         return _p((-1, 0.65), (-1, -0.55), (-0.45, 0.0), (0, -0.8), (0.45, 0.0), (1, -0.55), (1, 0.65)).subtracted(
             _r(-0.75, 0.3, 1.5, 0.1))
-    if ident == "trophy":
-        cup = _P()
-        cup.moveTo(-0.6, -0.9)
-        cup.lineTo(0.6, -0.9)
-        cup.cubicTo(0.6, 0.1, 0.3, 0.3, 0, 0.3)
-        cup.cubicTo(-0.3, 0.3, -0.6, 0.1, -0.6, -0.9)
-        handles = [_c(s * 0.72, -0.45, 0.26, 0.3).subtracted(_c(s * 0.72, -0.45, 0.12, 0.15)) for s in (-1, 1)]
-        return _u(cup, _p((-0.1, 0.25), (0.1, 0.25), (0.1, 0.7), (0.45, 0.7), (0.45, 0.95), (-0.45, 0.95), (-0.45, 0.7),
-                          (-0.1, 0.7)), *handles)
+    if ident == "trophy":                                # 5.13: a laurel wreath now (trophies are the achievements)
+        parts = []
+        for side in (-1, 1):
+            for k in range(6):
+                a = math.radians(240 - k * 22) if side < 0 else math.radians(-60 + k * 22)
+                cx, cy = 0.68 * math.cos(a), -0.68 * math.sin(a) + 0.05
+                leaf = QTransform().translate(cx * K, cy * K).rotate(-math.degrees(a)).map(_c(0, 0, 0.13, 0.25))
+                parts.append(leaf)
+            parts.append(_ln([(side * 0.1, 0.78), (side * 0.5, 0.6), (side * 0.72, 0.15), (side * 0.6, -0.4)], 0.07, curve=True))
+        parts.append(_star(5, 0.3, 0.13))
+        return _u(*parts)
     if ident == "diamond":
         gem = _p((-0.55, -0.7), (0.55, -0.7), (1, -0.15), (0, 0.95), (-1, -0.15))
         return gem.subtracted(_ln([(-0.92, -0.15), (0.92, -0.15)], 0.07))
@@ -19733,6 +19752,10 @@ class ShopPage(StylePart, Page):
             lay.addWidget(self.showcase)
             lay.addWidget(heading(tr("Collection")))
             lay.addWidget(BadgeGrid(self))
+            lay.addWidget(heading(tr("Trophies")))                # 5.13: a row of 9 for every game
+            lay.addWidget(Label(tr("Play to earn them. A gold outline: ready, click to claim its XP. Click one you have "
+                                   "to show it on your profile (3 at most)."), 10.5, TEXT_DIM, wrap_w=self.W))
+            lay.addWidget(TrophyBoard(self))
             return
         top = hbox(spacing=8)
         back = IconButton("back", 32, tip=tr("Back"))
@@ -20782,6 +20805,296 @@ class Showcase(_Shiny):
         p.setFont(font(15, QFont.Weight.Bold))
         p.drawText(QRectF(right.left(), right.top() + S(26), right.width(), S(24)),
                    int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), f"{have} / {total}")
+
+
+# ================================================================ 5.13 trophies (achievements)
+TROPHY_GAMES = [("blackjack", "Blackjack", "spade"), ("roulette", "Roulette", "sunburst"), ("bombs", "Bombs", "bomb"),
+                ("plinko", "Plinko", "drop"), ("slots", "Slots", "cherry"), ("hilo", "Hi-Lo", "diamond"),
+                ("cups", "Cup Game", "eye"), ("connect4", "Connect 4", "cube"), ("coinflip", "Coinflip", "crown"),
+                ("golf", "Mini Golf", "target"), ("wave", "Wave Rush", "wave")]
+TROPHY_TIERS = {1: ("Bronze", "#CD7F32"), 2: ("Silver", "#C9D2DA"), 3: ("Gold", "#FFC94D"), 4: ("Platinum", "#B8F2FF")}
+
+
+def trophy_goal_text(game: str, metric: str, goal) -> str:
+    name = tr(dict((g, n) for g, n, _i in TROPHY_GAMES).get(game, game))
+    g = int(float(goal)) if float(goal) == int(float(goal)) else float(goal)
+    return {"rounds": tr("Play {n} rounds of {game}", n=coins_text(int(g)), game=name),
+            "wins": tr("Win {n} rounds of {game}", n=coins_text(int(g)), game=name),
+            "bigx": tr("Win ×{n} or more in one round of {game}", n=g, game=name),
+            "best": tr("Reach {n} m in {game}", n=coins_text(int(g)), game=name),
+            "bigwin": tr("Win a coinflip worth {n} or more", n=coins_text(int(g)))}.get(metric, metric)
+
+
+def paint_trophy(p: QPainter, rect: QRectF, game: str, tier: int, now: float = 0.0, locked: bool = False) -> None:
+    """The same cup for every trophy, with the game's sign on it. Bronze plain, Silver a little sparkle, Gold a glow
+    and sparkles, Platinum alive: a turning shine, a breathing glow and sparkles going round."""
+    from PyQt6.QtGui import QBrush, QConicalGradient
+    s_ = min(rect.width(), rect.height())
+    c = rect.center()
+    base = QColor(TROPHY_TIERS.get(tier, TROPHY_TIERS[1])[1])
+    p.save()
+    if locked:
+        p.setOpacity(0.28)
+        base = QColor("#59626A")
+    if not locked and tier >= 3:                          # glow
+        pulse = 0.5 + 0.5 * math.sin(now * (2.6 if tier == 4 else 1.6))
+        g = QRadialGradient(c, s_ * 0.62)
+        g.setColorAt(0, alpha(base, 0.35 + 0.2 * pulse))
+        g.setColorAt(1, alpha(base, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawEllipse(c, s_ * 0.62, s_ * 0.62)
+    cup = QPainterPath()                                  # the bowl, handles, stem and foot
+    w = s_ * 0.56
+    top = c.y() - s_ * 0.36
+    cup.moveTo(c.x() - w / 2, top)
+    cup.lineTo(c.x() + w / 2, top)
+    cup.cubicTo(c.x() + w / 2, top + s_ * 0.34, c.x() + w * 0.2, top + s_ * 0.42, c.x(), top + s_ * 0.42)
+    cup.cubicTo(c.x() - w * 0.2, top + s_ * 0.42, c.x() - w / 2, top + s_ * 0.34, c.x() - w / 2, top)
+    cup.closeSubpath()
+    for side in (-1, 1):
+        h = QPainterPath()
+        h.addEllipse(QPointF(c.x() + side * w * 0.52, top + s_ * 0.12), s_ * 0.11, s_ * 0.1)
+        inner = QPainterPath()
+        inner.addEllipse(QPointF(c.x() + side * w * 0.52, top + s_ * 0.12), s_ * 0.06, s_ * 0.05)
+        cup = cup.united(h.subtracted(inner))
+    cup.addRect(QRectF(c.x() - s_ * 0.045, top + s_ * 0.4, s_ * 0.09, s_ * 0.14))
+    cup.addRoundedRect(QRectF(c.x() - s_ * 0.2, top + s_ * 0.53, s_ * 0.4, s_ * 0.1), s_ * 0.03, s_ * 0.03)
+    if tier == 4 and not locked:                          # platinum: a shine that turns
+        grad = QConicalGradient(c, (now * 90) % 360)
+        for k, col in enumerate(("#FFFFFF", "#B8F2FF", "#D9B8FF", "#FFFFFF", "#9EE7FF", "#FFFFFF")):
+            grad.setColorAt(k / 5, QColor(col))
+        p.setBrush(QBrush(grad))
+    else:
+        grad = QLinearGradient(QPointF(c.x() - w / 2, 0), QPointF(c.x() + w / 2, 0))
+        grad.setColorAt(0, base.darker(150))
+        grad.setColorAt(0.45, base.lighter(125))
+        grad.setColorAt(1, base.darker(170))
+        p.setBrush(QBrush(grad))
+    p.setPen(QPen(alpha("#000000", 0.45), max(1.0, s_ * 0.02)))
+    p.drawPath(cup)
+    icon = dict((g, i) for g, _n, i in TROPHY_GAMES).get(game, "star")
+    gl = badge_path(icon, QRectF(c.x() - s_ * 0.12, top + s_ * 0.06, s_ * 0.24, s_ * 0.24))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha("#000000", 0.45) if tier != 4 else alpha("#3A2A6A", 0.6))
+    p.drawPath(gl)
+    if not locked and tier >= 2:                          # sparkles: 1 for silver, 3 for gold, 5 going round for platinum
+        n = {2: 1, 3: 3, 4: 5}[tier]
+        for k in range(n):
+            if tier == 4:
+                ang = now * 1.6 + k * math.tau / n
+                pt = QPointF(c.x() + math.cos(ang) * s_ * 0.44, c.y() + math.sin(ang) * s_ * 0.40)
+                tw = 0.6 + 0.4 * math.sin(now * 5 + k)
+            else:
+                rnd = random.Random(hash((game, tier, k)) & 0xFFFF)
+                pt = QPointF(c.x() + rnd.uniform(-0.38, 0.38) * s_, c.y() + rnd.uniform(-0.42, 0.1) * s_)
+                tw = max(0.0, math.sin(now * 2.2 + k * 2.1))
+            if tw <= 0.05:
+                continue
+            r_ = s_ * (0.07 if tier == 4 else 0.06) * tw
+            star = QPainterPath()
+            for q in range(8):
+                ang2 = math.radians(45 * q)
+                rr = r_ if q % 2 == 0 else r_ * 0.25
+                pt2 = QPointF(pt.x() + math.cos(ang2) * rr, pt.y() + math.sin(ang2) * rr)
+                star.lineTo(pt2) if q else star.moveTo(pt2)
+            star.closeSubpath()
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawPath(star)
+    p.restore()
+
+
+def load_trophies(ctx, done=None, name=None) -> None:
+    def got(ok: bool, data) -> None:
+        if ok and isinstance(data, dict):
+            if name is None:
+                ctx.trophies = data
+            if done:
+                done(data)
+    ctx.online.ask("rb_ach_list", {"name": name}, got)
+
+
+class TrophyBoard(QWidget):
+    """Every game on a row with its 9 trophies (3 bronze, 3 silver, 2 gold, 1 platinum). A gold ring: ready to claim
+    (click it, it gives XP). Click a trophy you have to show it on your profile."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.row_h, self.cell = S(56), (page.W - S(130)) / 9
+        self.setFixedSize(page.W, int(self.row_h * len(TROPHY_GAMES) + S(8)))
+        self.setMouseTracking(True)
+        self.hover = None
+        self._t = QTimer(self)
+        self._t.setInterval(40)
+        self._t.timeout.connect(self.update)
+        if getattr(self.ctx, "trophies", None) is None:
+            load_trophies(self.ctx, lambda _d: self._safe_update())
+
+    def _safe_update(self) -> None:
+        try:
+            self.update()
+        except RuntimeError:
+            pass
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+        load_trophies(self.ctx, lambda _d: self._safe_update())
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def items(self) -> dict:
+        d = getattr(self.ctx, "trophies", None) or {}
+        return {a["id"]: a for a in d.get("list") or []}
+
+    def _cell(self, row: int, k: int) -> QRectF:
+        return QRectF(S(124) + k * self.cell, row * self.row_h + S(4), self.cell, self.row_h - S(8))
+
+    def _at(self, pos):
+        for row, (g, _n, _i) in enumerate(TROPHY_GAMES):
+            for k in range(9):
+                if self._cell(row, k).contains(pos):
+                    return f"{g}:{k + 1}"
+        return None
+
+    def mouseMoveEvent(self, e) -> None:
+        h = self._at(e.position())
+        if h != self.hover:
+            self.hover = h
+            a = self.items().get(h or "")
+            self.setToolTip("" if not a else "%s — %s\n%s / %s · +%s XP" % (
+                tr(TROPHY_TIERS[int(a["tier"])][0]), trophy_goal_text(a["game"], a["metric"], a["goal"]),
+                coins_text(int(float(a["have"]))) if a["metric"] != "bigx" else a["have"],
+                coins_text(int(float(a["goal"]))) if a["metric"] != "bigx" else a["goal"], coins_text(int(a["xp"]))))
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        aid = self._at(e.position())
+        a = self.items().get(aid or "")
+        if not a:
+            return
+        ready = float(a["have"]) >= float(a["goal"])
+        if a.get("claimed"):
+            return self._show(aid)
+        if not ready:
+            sfx.play("off")
+            return self.ctx.toast(trophy_goal_text(a["game"], a["metric"], a["goal"]) + "  ·  " + tr("{a} / {b}",
+                                  a=a["have"], b=a["goal"]), "warn")
+
+        def got(ok: bool, d) -> None:
+            if not ok:
+                return self.ctx.toast(tr(str(d)), "warn")
+            sfx.tune("unlock")
+            self.ctx.toast(tr("{tier} trophy! +{x} XP", tier=tr(TROPHY_TIERS[int(a["tier"])][0]), x=coins_text(int(d.get("xp") or 0))))
+            self.ctx.econ.fetch_xp()
+            load_trophies(self.ctx, lambda _d: self._safe_update())
+        self.ctx.econ.call("rb_ach_claim", {"aid": aid}, got)
+
+    def _show(self, aid: str) -> None:
+        eq = self.ctx.econ.equip or {}
+        slots = ["trophy1", "trophy2", "trophy3"]
+        on = next((k for k in slots if eq.get(k) == aid), None)
+        slot = on or next((k for k in slots if not eq.get(k)), "trophy3")
+
+        def got(ok: bool, d) -> None:
+            if not ok:
+                return self.ctx.toast(tr(str(d)), "warn")
+            if isinstance(d, dict):
+                self.ctx.econ.equip = dict(d)
+                self.ctx.econ.changed.emit()
+            self.ctx.toast(tr("Taken off your profile") if on else tr("On your profile now"))
+            self._safe_update()
+        sfx.play("pick")
+        self.ctx.econ.call("rb_ach_show", {"slot": slot, "aid": "" if on else aid}, got)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        items = self.items()
+        eq = self.ctx.econ.equip or {}
+        shown = {eq.get(k) for k in ("trophy1", "trophy2", "trophy3")}
+        if not items:
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(11, QFont.Weight.DemiBold))
+            p.drawText(QRectF(self.rect()), int(Qt.AlignmentFlag.AlignCenter), tr("Loading…"))
+            return
+        for row, (g, name, icon) in enumerate(TROPHY_GAMES):
+            y = row * self.row_h
+            band = QRectF(0, y + S(2), self.width(), self.row_h - S(4))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.03 if row % 2 else 0.05))
+            p.drawRoundedRect(band, S(8), S(8))
+            got = sum(1 for k in range(9) if (items.get(f"{g}:{k + 1}") or {}).get("claimed"))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(11, QFont.Weight.Bold))
+            p.drawText(QRectF(S(10), y + S(8), S(112), S(20)), int(Qt.AlignmentFlag.AlignVCenter), tr(name))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(S(10), y + S(28), S(112), S(16)), int(Qt.AlignmentFlag.AlignVCenter), f"{got} / 9")
+            for k in range(9):
+                a = items.get(f"{g}:{k + 1}") or {}
+                cell = self._cell(row, k)
+                tier = int(a.get("tier") or 1)
+                claimed = bool(a.get("claimed"))
+                ready = not claimed and a and float(a.get("have") or 0) >= float(a.get("goal") or 1)
+                box = QRectF(cell.center().x() - S(19), cell.center().y() - S(19), S(38), S(38))
+                if ready:
+                    pulse = 0.5 + 0.5 * math.sin(now * 5)
+                    p.setPen(QPen(alpha(GOLD_TEXT, 0.5 + 0.5 * pulse), S(2)))
+                    p.setBrush(alpha(GOLD_TEXT, 0.10))
+                    p.drawRoundedRect(box.adjusted(-S(2), -S(2), S(2), S(2)), S(8), S(8))
+                elif f"{g}:{k + 1}" in shown:
+                    p.setPen(QPen(ui.accent, S(1.6)))
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+                    p.drawRoundedRect(box.adjusted(-S(2), -S(2), S(2), S(2)), S(8), S(8))
+                paint_trophy(p, box, g, tier, now, locked=not claimed and not ready)
+                if not claimed and not ready and a:
+                    frac = min(1.0, float(a.get("have") or 0) / max(1e-9, float(a.get("goal") or 1)))
+                    bar = QRectF(box.left() + S(4), box.bottom() + S(1), box.width() - S(8), S(3))
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(alpha("#FFFFFF", 0.08))
+                    p.drawRoundedRect(bar, S(1.5), S(1.5))
+                    p.setBrush(QColor(TROPHY_TIERS[tier][1]))
+                    p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * frac, bar.height()), S(1.5), S(1.5))
+
+
+class TrophyShelf(QWidget):
+    """Up to 3 trophies someone chose to show on their profile."""
+
+    def __init__(self, ids: list, width: int) -> None:
+        super().__init__()
+        self.ids = [i for i in ids if i]
+        self.setFixedSize(width, S(64) if self.ids else 0)
+        self._t = QTimer(self)
+        self._t.setInterval(40)
+        self._t.timeout.connect(self.update)
+        self._t.start()
+
+    def paintEvent(self, _e) -> None:
+        if not self.ids:
+            return
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        w = self.width() / 3
+        for k, aid in enumerate(self.ids[:3]):
+            game, _sep, n = aid.partition(":")
+            tier = {1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 4}.get(int(n or 1), 1)
+            cell = QRectF(k * w, 0, w, self.height())
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.04))
+            p.drawRoundedRect(cell.adjusted(S(3), S(2), -S(3), -S(2)), S(10), S(10))
+            paint_trophy(p, QRectF(cell.left() + S(10), cell.top() + S(8), S(48), S(48)), game, tier, now)
+            p.setPen(QColor(TROPHY_TIERS[tier][1]))
+            p.setFont(font(10.5, QFont.Weight.Bold))
+            p.drawText(QRectF(cell.left() + S(62), cell.top() + S(12), w - S(66), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                       tr(TROPHY_TIERS[tier][0]))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(cell.left() + S(62), cell.top() + S(30), w - S(66), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                       tr(dict((g, nm) for g, nm, _i in TROPHY_GAMES).get(game, game)))
 
 
 class BadgeGrid(_Shiny):
@@ -30372,7 +30685,10 @@ class QuestRow(QWidget):
         p.drawRoundedRect(r, S(10), S(10))
         p.setOpacity(0.45 if claimed else 1.0)
         p.setFont(font(11.5, QFont.Weight.Bold))
-        reward_w = p.fontMetrics().horizontalAdvance(coins_text(int(q["reward"]))) + S(30)
+        prize = q.get("prize") or {}                        # 5.13: keys and cases, not coins
+        prize_text = (f"+{int(prize.get('keys') or 1)} " + tr("key" if int(prize.get("keys") or 1) == 1 else "keys")
+                      + ("  +" + tr(CASE_NAMES.get(prize["case"], "Case")) if prize.get("case") else "")) if prize else coins_text(int(q["reward"]))
+        reward_w = p.fontMetrics().horizontalAdvance(prize_text) + S(30)
         if done and not claimed:
             reward_w = max(reward_w, S(112))                 # the Claim button
         room = max(S(60), r.width() - reward_w - S(24))     # 5.1: the text stops before the reward, in any language
@@ -30400,11 +30716,9 @@ class QuestRow(QWidget):
             if claimed:
                 p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), tr("Done"))
             else:
-                paint_coin(p, QPointF(right.right() - p.fontMetrics().horizontalAdvance(coins_text(int(q["reward"]))) - S(12),
-                                      right.center().y()), S(6))
                 p.setPen(QColor(GOLD_TEXT))
                 p.setFont(font(11.5, QFont.Weight.Bold))
-                p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), coins_text(int(q["reward"])))
+                p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), prize_text)
 
 
 class GamesPage(Page):
@@ -30784,7 +31098,10 @@ class GamesPage(Page):
         def done(ok: bool, data) -> None:
             if ok:
                 sfx.play("on")
-                self.ctx.toast("+" + coins_text(int(data.get("paid", 0))))
+                k = int(data.get("won_keys") or 0)
+                self.ctx.toast(tr("+{k} key(s)", k=k) + (("  ·  " + tr("{case} added to Your cases",
+                               case=tr(CASE_NAMES.get(data["case"], "Case")))) if data.get("case") else ""))
+                self.ctx.econ.refresh()
                 self.ctx.quests_data = None
                 if self.ctx.window.showing("games") and getattr(self.ctx, "quests_open", False):
                     self.ctx.reload_page("games")
@@ -31608,11 +31925,18 @@ def build_messages(page, lay) -> None:
 # ================================================================ leaderboards
 BOARDS = [("coins", "Richest"), ("worth", "Worth"), ("level", "Level"), ("badges", "Badges"), ("hours", "Hours"),
           ("streak", "Streak"), ("tap", "Beat Tap"), ("park", "Parking"), ("memory", "Memory"), ("blocks", "Block Blast"),
-          ("sweeper", "Minesweeper")]
+          ("sweeper", "Minesweeper"), ("wave", "Wave Rush"), ("flips", "Coinflip"), ("golf", "Mini Golf"), ("c4", "Connect 4"),
+          ("cups", "Cup Game"), ("trophies", "Trophies")]
+# 5.13: the boards in three sections (no more one long row of buttons)
+BOARD_SECTIONS = [("Players", ["coins", "worth", "level", "badges", "trophies", "hours", "streak"]),
+                  ("Games", ["wave", "flips", "golf", "c4", "cups"]),
+                  ("Mini games", ["tap", "park", "memory", "blocks", "sweeper"])]
 BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are worth", "badges": "Different badges owned",
                "hours": "Hours with Rubenium", "streak": "Days in a row of daily rewards", "tap": "Best Beat Tap score (%)",
                "park": "Parking puzzles solved", "memory": "Memory games finished", "level": "Highest level (by XP)",
-               "blocks": "Best Block Blast score", "sweeper": "Fastest Minesweeper clear"}
+               "blocks": "Best Block Blast score", "sweeper": "Fastest Minesweeper clear",
+               "wave": "Furthest Wave Rush run (m)", "flips": "Coinflips won", "golf": "Mini Golf games played",
+               "c4": "Connect 4 games won against the bot", "cups": "Cup Game rounds won", "trophies": "Trophies earned"}
 
 
 class LeaderRow(QWidget):
@@ -31671,6 +31995,11 @@ class LeaderRow(QWidget):
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        f"{float(secs):.1f} s" if secs is not None else "-")
             return
+        if self.kind == "wave":
+            p.setPen(QColor(TEXT))
+            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       f"{coins_text(v)} m")
+            return
         text = coins_text(v) if self.kind in ("coins", "worth") else (f"{v}%" if self.kind == "tap" else
                                                                        (tr("{n} days", n=v) if self.kind == "streak" else
                                                                         (f"{v} h" if self.kind == "hours" else str(v))))
@@ -31687,11 +32016,23 @@ def build_leaders(page, lay) -> None:
     seg = Segmented([tr("Everyone"), tr("Friends")], 1 if friends else 0)
     seg.changed.connect(lambda i: (setattr(ctx, "board_friends", i == 1), setattr(ctx, "board_data", None), ctx.reload_page()))
     lay.addWidget(seg)
-    pass
-    pick = GamePicker([tr(n) for _k, n in BOARDS], k)
-    pick.changed.connect(lambda i: (setattr(ctx, "board_kind", i), setattr(ctx, "board_data", None), ctx.reload_page()))
-    lay.addWidget(pick)
+    names = dict(BOARDS)
     kind = BOARDS[min(k, len(BOARDS) - 1)][0]
+    sec = next((i for i, (_t, ks) in enumerate(BOARD_SECTIONS) if kind in ks), 0)
+    sseg = Segmented([tr(t) for t, _ks in BOARD_SECTIONS], sec)
+
+    def to_section(i: int) -> None:
+        first = BOARD_SECTIONS[i][1][0]
+        ctx.board_kind = [b for b, _n in BOARDS].index(first)
+        ctx.board_data = None
+        ctx.reload_page()
+    sseg.changed.connect(to_section)
+    lay.addWidget(sseg)
+    keys = BOARD_SECTIONS[sec][1]
+    pick = GamePicker([tr(names[b]) for b in keys], keys.index(kind) if kind in keys else 0)
+    pick.changed.connect(lambda i: (setattr(ctx, "board_kind", [b for b, _n in BOARDS].index(keys[i])),
+                                    setattr(ctx, "board_data", None), ctx.reload_page()))
+    lay.addWidget(pick)
     mode = int(getattr(ctx, "board_mode", 0) or 0)
     if kind in ("blocks", "sweeper"):                       # 4.0: the new minigames, one board per mode
         pass
@@ -33462,6 +33803,25 @@ class PlayerRow(QWidget):
             self.setToolTip(tr("FRIENDS") if near else "")
 
 
+# 5.13: what the bottom row of your stats card can show (records included)
+STAT_CHOICES = {"cases": "Cases", "trades": "Trades", "rounds": "Bets", "casino": "Casino", "wave": "Wave Rush best",
+                "flip": "Coinflips won", "golf": "Golf games", "c4": "Connect 4 wins", "cups": "Cups won",
+                "trophies": "Trophies", "best": "Best win", "streak": "Day streak", "friends": "Friends"}
+
+
+def stat_cell(key: str, st: dict) -> tuple:
+    """(big text, label, colour) for one stat of the stats card."""
+    if key == "casino":
+        bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
+        return (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino"), "#5BE08A" if won >= bet else "#FF7A7A")
+    v = int(st.get(key) or 0)
+    if key == "wave":
+        return (f"{coins_text(v)} m", tr(STAT_CHOICES[key]), "#7FE8FF")
+    if key == "best":
+        return (coins_text(v), tr(STAT_CHOICES[key]), GOLD_TEXT)
+    return (coins_text(v), tr(STAT_CHOICES.get(key, key)), TEXT)
+
+
 class StatsCard(QWidget):
     """Your picture, name, ADMIN tag and stats: the top of the Social tab."""
     picture = pyqtSignal()
@@ -33482,15 +33842,56 @@ class StatsCard(QWidget):
     def _face(self) -> QRectF:
         return QRectF(S(12), S(12), S(52), S(52))
 
+    _hover_cell = -1
+
+    def bottom(self) -> list:
+        keys = [k for k in (self.ctx.cfg["my_stats"] or []) if k in STAT_CHOICES]
+        for k in STAT_CHOICES:
+            if len(keys) >= 4:
+                break
+            if k not in keys:
+                keys.append(k)
+        return keys[:4]
+
+    def _cell_at(self, pos) -> int:
+        w = (self.width() - S(16)) / 4
+        for i in range(4, 8):
+            box = QRectF(S(8) + (i % 4) * w, S(72) + S(38), w, S(36))
+            if box.contains(pos):
+                return i
+        return -1
+
     def mouseMoveEvent(self, e) -> None:
         on = self._face().contains(e.position())
-        self.setCursor(Qt.CursorShape.PointingHandCursor if on else Qt.CursorShape.ArrowCursor)
-        self.setToolTip(tr("Change your picture (PNG or JPG)") if on else "")
+        cell = self._cell_at(e.position())
+        if cell != self._hover_cell:
+            self._hover_cell = cell
+            self.update()
+        self.setCursor(Qt.CursorShape.PointingHandCursor if (on or cell >= 0) else Qt.CursorShape.ArrowCursor)
+        self.setToolTip(tr("Change your picture (PNG or JPG)") if on else (tr("Click to show another number here") if cell >= 0 else ""))
+
+    def leaveEvent(self, _e) -> None:
+        self._hover_cell = -1
+        self.update()
 
     def mousePressEvent(self, e) -> None:
         e.accept()
         if self._face().contains(e.position()):
-            self.picture.emit()
+            return self.picture.emit()
+        cell = self._cell_at(e.position())
+        if cell >= 0:                                       # the next number nobody else in the row shows
+            keys = self.bottom()
+            cur = keys[cell - 4]
+            order = list(STAT_CHOICES)
+            j = order.index(cur)
+            for step in range(1, len(order) + 1):
+                cand = order[(j + step) % len(order)]
+                if cand not in keys:
+                    keys[cell - 4] = cand
+                    break
+            self.ctx.cfg["my_stats"] = keys
+            sfx.play("pick")
+            self.update()
 
     def paintEvent(self, _e) -> None:
         pass
@@ -33542,21 +33943,23 @@ class StatsCard(QWidget):
             if pm is not None:
                 p.drawPixmap(area.topLeft(), pm)
             p.restore()
-        cells = [(coins_text(int(d.get("coins") or 0)), tr("Coins")), (str(int(d.get("keys") or 0)), tr("Keys")),
-                 (str(int(st.get("items") or 0)), tr("Items")), (str(int(st.get("badges") or 0)), tr("Badges")),
-                 (str(int(st.get("cases") or 0)), tr("Cases")), (str(int(st.get("trades") or 0)), tr("Trades")),
-                 (str(int(st.get("rounds") or 0)), tr("Bets")), (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino"))]
+        cells = [(coins_text(int(d.get("coins") or 0)), tr("Coins"), TEXT), (str(int(d.get("keys") or 0)), tr("Keys"), TEXT),
+                 (str(int(st.get("items") or 0)), tr("Items"), TEXT), (str(int(st.get("badges") or 0)), tr("Badges"), TEXT)]
+        for key in self.bottom():                            # 5.13: the bottom row is yours to choose (click a value)
+            cells.append(stat_cell(key, st))
         w = (r.width() - S(16)) / 4
-        for i, (big, small) in enumerate(cells):
+        for i, (big, small, col) in enumerate(cells):
             box = QRectF(r.left() + S(8) + (i % 4) * w, S(72) + (i // 4) * S(38), w, S(36))
-            col = TEXT
-            if i == 7:
-                col = "#5BE08A" if won >= bet else "#FF7A7A"
+            if i >= 4 and self._hover_cell == i:
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#FFFFFF", 0.06))
+                p.drawRoundedRect(box.adjusted(S(2), 0, -S(2), 0), S(6), S(6))
             p.setPen(QColor(col))
             p.setFont(font(12.5, QFont.Weight.Bold))
             p.drawText(QRectF(box.left(), box.top(), box.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), big)
             p.setPen(QColor(TEXT_FAINT))
             p.setFont(font(9.5, QFont.Weight.DemiBold))
+            small = p.fontMetrics().elidedText(small, Qt.TextElideMode.ElideRight, int(box.width() - S(4)))
             p.drawText(QRectF(box.left(), box.top() + S(18), box.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter), small)
 
 
@@ -34050,6 +34453,10 @@ class FriendsPage(Page):
         worn_now = [w for w in ((prof.get("equip") or {}).get(k) for k in ("badge1", "badge2", "badge3")) if w and
                     (w in owned or (w.endswith(":grey") and any(b.startswith(w[:-4]) for b in owned)))]
         self.lay.addWidget(Showcase3(ctx, worn_now, self.W, prof.get("me")))
+        eq_ = prof.get("equip") or {}
+        shelf = [eq_.get(k) for k in ("trophy1", "trophy2", "trophy3") if eq_.get(k)]
+        if shelf:                                          # 5.13: the trophies they chose to show
+            self.lay.addWidget(TrophyShelf(shelf, self.W))
         if not prof.get("me"):
             self._relation(prof, name)
         self.lay.addWidget(heading(tr("Badges") + f"  ·  {len(badges)}"))
@@ -34156,7 +34563,11 @@ class FriendsPage(Page):
             (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino Result"),
              "#5BE08A" if won >= bet else "#FF7A7A"),
             (int(st.get("mini") or 0), tr("Beat Tap")), (int(st.get("park") or 0), tr("Parking")),
-            (int(st.get("spins") or 0), tr("Free Spins"))], self.W))
+            (int(st.get("spins") or 0), tr("Free Spins")),
+            (f"{coins_text(int(st.get('wave') or 0))} m", tr("Wave Rush best"), "#7FE8FF"),     # 5.13: records
+            (int(st.get("flip") or 0), tr("Coinflips won")), (int(st.get("golf") or 0), tr("Golf games")),
+            (int(st.get("c4") or 0), tr("Connect 4 wins")), (int(st.get("cups") or 0), tr("Cups won")),
+            (int(st.get("trophies") or 0), tr("Trophies"), "#FFC94D")], self.W))
         eq = prof.get("equip") or {}
         wearing = [eq.get(k) for k in ("ball", "ring", "theme", "font")]
         wearing = [w for w in wearing if w and w.split(":")[0] in ("ball", "line", "theme", "font")]
