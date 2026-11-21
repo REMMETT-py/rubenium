@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.5"         # the version people see
-BUILD = "2026.11.21.3"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.6"         # the version people see
+BUILD = "2026.11.21.4"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6557,6 +6557,31 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({                                   # 5.6
+    'NEW: Mini Golf PARTIES for 3 or 4 players. Everyone plays their own ball at the same time, you see the other balls and a dashed line where each player is aiming. Bots fill the empty seats after 90 seconds': 'NOUVEAU : des PARTIES de Mini Golf à 3 ou 4 joueurs. Chacun joue sa balle en même temps, tu vois les autres balles et une ligne pointillée là où chacun vise. Des bots prennent les places vides après 90 secondes',
+    'Party bets are only between players: the best player takes them all (5% fee). Everyone earns coins by strokes': 'Les mises d’une partie se jouent entre joueurs seulement : le meilleur joueur prend tout (5 % de frais). Tout le monde gagne des pièces selon ses coups',
+    'Party (3-4)': 'Partie (3-4)',
+    'PARTY': 'PARTIE',
+    'START A PARTY': 'LANCER UNE PARTIE',
+    '3 players': '3 joueurs',
+    '4 players': '4 joueurs',
+    'Open a party': 'Ouvrir une partie',
+    'OPEN PARTIES': 'PARTIES OUVERTES',
+    'No party right now. Open one!': 'Aucune partie pour l’instant. Ouvres-en une !',
+    "{host}'s party · {p}/{s} players · {h} holes": 'Partie de {host} · {p}/{s} joueurs · {h} trous',
+    'Bet {n}': 'Mise {n}',
+    'No bet': 'Sans mise',
+    'Join': 'Rejoindre',
+    'Others have 90 seconds to join, then bots fill the empty seats. Bets are only between players: the best player takes them all (5% fee). Everyone earns coins by strokes.': 'Les autres ont 90 secondes pour rejoindre, puis des bots prennent les places vides. Les mises se jouent entre joueurs : le meilleur prend tout (5 % de frais). Tout le monde gagne des pièces selon ses coups.',
+    'Start now (bots fill the seats)': 'Commencer (des bots complètent)',
+    'Leave? Your bet stays in the pot.': 'Partir ? Ta mise reste dans le pot.',
+    'Everyone plays their own ball at the same time. Dashed lines show where the others aim.': 'Chacun joue sa balle en même temps. Les pointillés montrent où les autres visent.',
+    'Waiting for players · starts in {s} s': 'En attente de joueurs · début dans {s} s',
+    '{s} s left': '{s} s restantes',
+    'In! Waiting for the others…': 'Dedans ! On attend les autres…',
+    'left': 'parti',
+    'in': 'dedans',
+})
 FR.update({                                   # 5.5
     '3 items on sale at most: take one off first': '3 objets en vente au maximum : retires-en un d’abord',
     '3 swaps at most: cancel one first': '3 échanges au maximum : annules-en un d’abord',
@@ -11192,6 +11217,8 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.6", ['NEW: Mini Golf PARTIES for 3 or 4 players. Everyone plays their own ball at the same time, you see the other balls and a dashed line where each player is aiming. Bots fill the empty seats after 90 seconds',
+             'Party bets are only between players: the best player takes them all (5% fee). Everyone earns coins by strokes']),
     ("5.5", ['NEW: SWAPS in the Market. Put an item up, choose up to 3 items you would take for it, and anyone who has one swaps in one click. No coins, no fee',
              'The Market has Buy, Swaps, Sell, My sales and Offers. Selling starts in the Market now (Inventory has an Open the market button). 3 sales and 3 swaps at most each',
              'New leaderboard titles: COINFLIP and GOLF for the top 3 by wins']),
@@ -25746,6 +25773,56 @@ def paint_golf_zone(p: QPainter, kind: str, r: QRectF, now: float, push=None) ->
     p.restore()
 
 
+def paint_golf_field(p: QPainter, f: QRectF, h: dict, now: float) -> None:
+    """The course of one hole inside the field rect f (clipped by the caller): grass, zones, walls, bumpers, cup, tee."""
+    u = f.width()
+
+    def P(x, y):
+        return QPointF(f.left() + x * u, f.top() + y * u)
+    grass = QLinearGradient(f.topLeft(), f.bottomRight())
+    grass.setColorAt(0, QColor("#2E9E4F"))
+    grass.setColorAt(1, QColor("#1E7A3B"))
+    p.fillRect(f, grass)
+    p.setPen(Qt.PenStyle.NoPen)
+    for k in range(0, 12, 2):                            # mowed stripes
+        p.fillRect(QRectF(f.left() + k * u / 12, f.top(), u / 12, f.height()), alpha("#FFFFFF", 0.035))
+    for kind in ("sand", "ice", "water"):                # 5.3: one painter for the course and the help
+        for (x1, y1, x2, y2) in h.get(kind, []):
+            paint_golf_zone(p, kind, QRectF(P(x1, y1), P(x2, y2)), now)
+    for (x1, y1, x2, y2, px_, py_) in h.get("boost", []):
+        paint_golf_zone(p, "boost", QRectF(P(x1, y1), P(x2, y2)), now, (px_, py_))
+    wood = QColor("#6B4423")
+    for (x1, y1, x2, y2) in h["rects"]:
+        r = QRectF(P(x1, y1), P(x2, y2))
+        p.setBrush(wood)
+        p.drawRoundedRect(r, S(3), S(3))
+        p.setBrush(alpha("#FFFFFF", 0.12))
+        p.drawRect(QRectF(r.left(), r.top(), r.width(), min(r.height(), S(3))))
+    for (bx, by, br) in h["circles"]:
+        glow = QRadialGradient(P(bx, by), br * u)
+        glow.setColorAt(0, QColor("#FF7AD9"))
+        glow.setColorAt(1, QColor("#9B2C7E"))
+        p.setBrush(glow)
+        p.drawEllipse(P(bx, by), br * u, br * u)
+    cx, cy = h["cup"]
+    p.setBrush(QColor("#0B120D"))
+    p.drawEllipse(P(cx, cy), CUP_R * u, CUP_R * u)
+    p.setPen(QPen(QColor("#EDEDED"), S(1.5)))
+    top = P(cx, cy) - QPointF(0, S(30))
+    p.drawLine(P(cx, cy), top)
+    flag = QPainterPath(top)
+    wave = math.sin(now * 3) * S(2)
+    flag.lineTo(top + QPointF(S(16), S(5) + wave))
+    flag.lineTo(top + QPointF(0, S(10)))
+    flag.closeSubpath()
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor("#FF4B4B"))
+    p.drawPath(flag)
+    tx, ty = h["tee"]
+    p.setBrush(alpha("#FFFFFF", 0.12))
+    p.drawRoundedRect(QRectF(P(tx - 0.03, ty - 0.05), P(tx + 0.03, ty + 0.05)), S(4), S(4))
+
+
 GOLF_BLOCKS = [("wall", "Wall", "The ball bounces off it."),
                ("bumper", "Bumper", "Kicks the ball back harder than a wall."),
                ("sand", "Sand", "Slows the ball down a lot."),
@@ -26050,48 +26127,7 @@ class GolfView(QWidget):
         clip.addRoundedRect(f, S(10), S(10))
         p.save()
         p.setClipPath(clip)
-        grass = QLinearGradient(f.topLeft(), f.bottomRight())
-        grass.setColorAt(0, QColor("#2E9E4F"))
-        grass.setColorAt(1, QColor("#1E7A3B"))
-        p.fillRect(f, grass)
-        p.setPen(Qt.PenStyle.NoPen)
-        for k in range(0, 12, 2):                            # mowed stripes
-            p.fillRect(QRectF(f.left() + k * u / 12, f.top(), u / 12, f.height()), alpha("#FFFFFF", 0.035))
-        for kind in ("sand", "ice", "water"):                # 5.3: one painter for the course and the help
-            for (x1, y1, x2, y2) in h.get(kind, []):
-                paint_golf_zone(p, kind, QRectF(P(x1, y1), P(x2, y2)), now)
-        for (x1, y1, x2, y2, px_, py_) in h.get("boost", []):
-            paint_golf_zone(p, "boost", QRectF(P(x1, y1), P(x2, y2)), now, (px_, py_))
-        wood = QColor("#6B4423")
-        for (x1, y1, x2, y2) in h["rects"]:
-            r = QRectF(P(x1, y1), P(x2, y2))
-            p.setBrush(wood)
-            p.drawRoundedRect(r, S(3), S(3))
-            p.setBrush(alpha("#FFFFFF", 0.12))
-            p.drawRect(QRectF(r.left(), r.top(), r.width(), min(r.height(), S(3))))
-        for (bx, by, br) in h["circles"]:
-            glow = QRadialGradient(P(bx, by), br * u)
-            glow.setColorAt(0, QColor("#FF7AD9"))
-            glow.setColorAt(1, QColor("#9B2C7E"))
-            p.setBrush(glow)
-            p.drawEllipse(P(bx, by), br * u, br * u)
-        cx, cy = h["cup"]
-        p.setBrush(QColor("#0B120D"))
-        p.drawEllipse(P(cx, cy), CUP_R * u, CUP_R * u)
-        p.setPen(QPen(QColor("#EDEDED"), S(1.5)))
-        top = P(cx, cy) - QPointF(0, S(30))
-        p.drawLine(P(cx, cy), top)
-        flag = QPainterPath(top)
-        wave = math.sin(now * 3) * S(2)
-        flag.lineTo(top + QPointF(S(16), S(5) + wave))
-        flag.lineTo(top + QPointF(0, S(10)))
-        flag.closeSubpath()
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor("#FF4B4B"))
-        p.drawPath(flag)
-        tx, ty = h["tee"]
-        p.setBrush(alpha("#FFFFFF", 0.12))
-        p.drawRoundedRect(QRectF(P(tx - 0.03, ty - 0.05), P(tx + 0.03, ty + 0.05)), S(4), S(4))
+        paint_golf_field(p, f, h, now)                   # 5.6: shared with the parties
         me = g.get("me", "a")
         mine_now = self.my_turn()
         if mine_now and not self._was_mine:
@@ -26324,6 +26360,465 @@ class LobbyRow(QWidget):
         p.setFont(font(9.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(r.left() + S(10), r.bottom() - S(15), r.width() * 0.5, S(13)), int(Qt.AlignmentFlag.AlignVCenter),
                    tr("Closes in {t}", t=f"{left // 60}:{left % 60:02d}"))
+
+
+# ---------------------------------------------------------------- 5.6: parties of 3 or 4
+PARTY_COLOURS = ["#4FC3FF", "#FFB627", "#FF5C8A", "#3DDC84"]
+
+
+def party_tee(h: dict, seat: int):
+    tx, ty = h["tee"]
+    return (tx, max(0.02, min(0.6, ty + (seat - 1.5) * 0.022)))
+
+
+class GolfPartyView(QWidget):
+    """A party hole: everyone plays their own ball at the same time. You see the other balls move and the dashed line
+    of where each player is aiming; bots walk their ball to the cup. Aim with the mouse, click or Space on the swing."""
+    POWER_PERIOD = 1.6
+
+    def __init__(self, page, pid: str) -> None:
+        super().__init__()
+        self.page, self.ctx, self.pid = page, page.ctx, pid
+        w = page.W
+        self.head_h = S(64)
+        self.setFixedSize(w, int(self.head_h + w * FIELD_H))
+        self.g: dict = {}
+        self.balls: dict = {}
+        self.anims: dict = {}                    # seat -> [frames, i]
+        self.seen: dict = {}                     # seat -> last shot number shown
+        self.aim = None
+        self.sending = False
+        self._asking = False
+        self._aim_sent = 0.0
+        self._pw_t0 = time.monotonic()
+        self._hole_was = None
+        self._banner, self._banner_at = "", 0.0
+        self._poll = QTimer(self)
+        self._poll.setInterval(500)
+        self._poll.timeout.connect(self.ask)
+        self._frame = QTimer(self)
+        self._frame.setInterval(16)
+        self._frame.timeout.connect(self._step)
+        self.setCursor(Qt.CursorShape.CrossCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setMouseTracking(True)
+        self.ask()
+
+    def showEvent(self, _e) -> None:
+        self._poll.start()
+        self._frame.start()
+
+    def hideEvent(self, _e) -> None:
+        self._poll.stop()
+        self._frame.stop()
+
+    def ask(self) -> None:
+        if self._asking:
+            return
+        self._asking = True
+
+        def got(ok: bool, data) -> None:
+            self._asking = False
+            if ok and isinstance(data, dict):
+                self.set_state(data)
+            elif not ok and "gone" in str(data).lower():
+                self.ctx.party_id = None
+                self.ctx.reload_page("games")
+        self.ctx.online.ask("rb_party_state", {"pid": self.pid}, got)
+
+    def hole(self) -> dict:
+        hs = list(self.g.get("holes") or [1])
+        n = max(1, min(len(hs), int(self.g.get("hole") or 1)))
+        return get_hole(int(hs[n - 1]))
+
+    def me(self):
+        return self.g.get("me")
+
+    def seat(self, k):
+        return next((s for s in self.g.get("seats") or [] if s.get("seat") == k), {})
+
+    def set_state(self, g: dict) -> None:
+        old_state = self.g.get("state")
+        self.g = g
+        if self._hole_was is not None and self._hole_was != g.get("hole") and g.get("state") == "live":
+            self._banner, self._banner_at = tr("Hole {n} of {t}", n=g.get("hole"), t=g.get("n_holes")), time.monotonic()
+            self.anims.clear()
+            sfx.play("on")
+        self._hole_was = g.get("hole")
+        h = self.hole()
+        for s in g.get("seats") or []:
+            k = s.get("seat")
+            if s.get("bot"):
+                n = max(1, int(s.get("n") or 1))
+                if s.get("in"):
+                    self.balls[k] = None
+                else:
+                    t0, cup = party_tee(h, k), h["cup"]
+                    f = min(0.92, int(s.get("done") or 0) / n)
+                    off = (0.03 * math.sin(k * 2.1 + f * 5)) * (1 - f)
+                    self.balls[k] = (t0[0] + (cup[0] - t0[0]) * f, t0[1] + (cup[1] - t0[1]) * f + off)
+                continue
+            if k in self.anims:
+                continue
+            shot = s.get("shot") or {}
+            n = shot.get("n")
+            if k != self.me() and n is not None and int(shot.get("hole") or 0) == int(g.get("hole") or 0) \
+                    and self.seen.get(k, -1) < int(n):
+                self.seen[k] = int(n)
+                frames, _x, _y, _in = simulate(h, float(shot["x0"]), float(shot["y0"]), float(shot["ang"]), float(shot["pow"]))
+                frames[-1] = (float(shot["x"]), float(shot["y"]))
+                self.anims[k] = [frames, 0]
+                continue
+            if s.get("in") or s.get("gone"):
+                self.balls[k] = None
+            elif s.get("pos"):
+                self.balls[k] = (float(s["pos"][0]), float(s["pos"][1]))
+            else:
+                self.balls[k] = party_tee(h, k)
+        if g.get("state") == "done" and old_state == "live":
+            mine = self.seat(self.me())
+            sfx.tune("levelup") if int(mine.get("paid") or 0) else sfx.play("off")
+            self.ctx.econ.refresh()
+        self.update()
+
+    def my_turn(self) -> bool:
+        me = self.me()
+        s = self.seat(me)
+        return (self.g.get("state") == "live" and me is not None and not s.get("in") and not s.get("gone")
+                and not self.sending and me not in self.anims and self.balls.get(me) is not None)
+
+    def field(self) -> QRectF:
+        return QRectF(0, self.head_h, self.width(), self.width() * FIELD_H)
+
+    def to_field(self, pt) -> tuple:
+        f = self.field()
+        return ((pt.x() - f.left()) / f.width(), (pt.y() - f.top()) / f.width())
+
+    def power(self) -> float:
+        t = (time.monotonic() - self._pw_t0) % self.POWER_PERIOD
+        half = self.POWER_PERIOD / 2
+        return 0.06 + 0.94 * (t / half if t < half else 2 - t / half)
+
+    def _angle(self) -> float:
+        b = self.balls.get(self.me()) or (0.5, 0.3)
+        (qx, qy) = self.aim
+        return math.atan2(qy - b[1], qx - b[0])
+
+    def mouseMoveEvent(self, e) -> None:
+        if self.my_turn():
+            self.aim = self.to_field(e.position())
+            now = time.monotonic()
+            if now - self._aim_sent > 0.35:              # the others see where you aim
+                self._aim_sent = now
+                self.ctx.online.ask("rb_party_aim", {"pid": self.pid, "a": self._angle(), "p": self.power()},
+                                    lambda _o, _d: None)
+            self.update()
+
+    def mousePressEvent(self, e) -> None:
+        self.setFocus()
+        if e.button() == Qt.MouseButton.LeftButton and self.my_turn():
+            self.aim = self.to_field(e.position())
+            self._fire()
+
+    def keyPressEvent(self, e) -> None:
+        if e.key() == Qt.Key.Key_Space and not e.isAutoRepeat() and self.my_turn() and self.aim is not None:
+            return self._fire()
+        super().keyPressEvent(e)
+
+    def _fire(self) -> None:
+        me = self.me()
+        ball = self.balls.get(me)
+        if self.aim is None or ball is None:
+            return
+        ang, pw = self._angle(), self.power()
+        frames, x, y, holed = simulate(self.hole(), ball[0], ball[1], ang, pw)
+        x, y = round(x, 4), round(y, 4)
+        n = int(self.seat(me).get("seq") or 0)
+        self.sending = True
+        self.anims[me] = [frames, 0]
+        sfx.play("pick")
+
+        def done(ok: bool, data) -> None:
+            self.sending = False
+            if ok and isinstance(data, dict):
+                self.g = data
+            else:
+                self.ctx.toast(tr(str(data)), "warn")
+        self.ctx.online.ask("rb_party_shot", {"pid": self.pid, "n": n, "x0": ball[0], "y0": ball[1], "ang": ang, "pow": pw,
+                                              "x": x, "y": y, "holed": holed}, done)
+
+    def _step(self) -> None:
+        for k in list(self.anims):
+            frames, i = self.anims[k]
+            i += 2 if len(frames) > 400 else 1
+            if i >= len(frames) - 1:
+                del self.anims[k]
+                last = frames[-1]
+                cup = self.hole()["cup"]
+                inside = math.hypot(last[0] - cup[0], last[1] - cup[1]) < 1e-3
+                self.balls[k] = None if inside else last
+                if inside:
+                    sfx.play("on")
+                if k == self.me():
+                    self._pw_t0 = time.monotonic()
+                    QTimer.singleShot(50, lambda: self.set_state(self.g))
+            else:
+                self.anims[k][1] = i
+                self.balls[k] = frames[i]
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        g, now = self.g, time.monotonic()
+        me = self.me()
+        self._paint_head(p, g)
+        if not g:
+            return
+        f = self.field()
+        u = f.width()
+        h = self.hole()
+
+        def P(x, y):
+            return QPointF(f.left() + x * u, f.top() + y * u)
+        clip = QPainterPath()
+        clip.addRoundedRect(f, S(10), S(10))
+        p.save()
+        p.setClipPath(clip)
+        paint_golf_field(p, f, h, now)
+        for s in g.get("seats") or []:                   # where the others aim
+            k = s.get("seat")
+            aim, ball = s.get("aim"), self.balls.get(k)
+            if k == me or not aim or ball is None or k in self.anims:
+                continue
+            a, pw = float(aim[0]), float(aim[1])
+            col = QColor(PARTY_COLOURS[k % 4])
+            p.setPen(QPen(alpha(col, 0.8), S(2), Qt.PenStyle.DashLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(P(*ball), P(ball[0] + math.cos(a) * (0.05 + 0.25 * pw), ball[1] + math.sin(a) * (0.05 + 0.25 * pw)))
+        if self.my_turn():                               # your aim and the swinging power bar
+            pw = self.power()
+            bx, by = self.balls[me]
+            col = QColor.fromHsvF(max(0.0, 0.33 - 0.33 * pw), 0.85, 1.0)
+            if self.aim is not None:
+                ang = self._angle()
+                p.setPen(QPen(col, S(3), Qt.PenStyle.DashLine, Qt.PenCapStyle.RoundCap))
+                p.drawLine(P(bx, by), P(bx + math.cos(ang) * (0.05 + 0.25 * pw), by + math.sin(ang) * (0.05 + 0.25 * pw)))
+            bar = QRectF(f.right() - S(22), f.top() + S(12), S(10), f.height() - S(24))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#000000", 0.45))
+            p.drawRoundedRect(bar.adjusted(-S(3), -S(3), S(3), S(3)), S(6), S(6))
+            p.setBrush(col)
+            p.drawRoundedRect(QRectF(bar.left(), bar.bottom() - bar.height() * pw, bar.width(), bar.height() * pw), S(4), S(4))
+        for s in g.get("seats") or []:                   # the balls
+            k = s.get("seat")
+            pos = self.balls.get(k)
+            if pos is None:
+                continue
+            c = P(*pos)
+            col = QColor(PARTY_COLOURS[k % 4])
+            if k == me:
+                pulse = 0.5 + 0.5 * math.sin(now * 4)
+                p.setPen(QPen(alpha(col, 0.35 + 0.35 * pulse), S(2)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(c, BALL_R * u * (2.0 + 0.4 * pulse), BALL_R * u * (2.0 + 0.4 * pulse))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#000000", 0.3))
+            p.drawEllipse(c + QPointF(S(1.5), S(2)), BALL_R * u, BALL_R * u)
+            p.setBrush(QColor("#FFFFFF"))
+            p.setPen(QPen(col, S(2.5)))
+            p.drawEllipse(c, BALL_R * u, BALL_R * u)
+            p.setPen(col)
+            p.setFont(font(8.5, QFont.Weight.Black))
+            label = tr("YOU") if k == me else str(s.get("name") or "")
+            p.drawText(QRectF(c.x() - S(50), c.y() - BALL_R * u - S(18), S(100), S(14)), int(Qt.AlignmentFlag.AlignCenter), label)
+        if self._banner and now - self._banner_at < 2.0:
+            p.setOpacity(min(1.0, 2.0 - (now - self._banner_at)))
+            p.fillRect(QRectF(f.left(), f.center().y() - S(22), f.width(), S(44)), alpha("#000000", 0.55))
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(font(16, QFont.Weight.Black))
+            p.drawText(f, int(Qt.AlignmentFlag.AlignCenter), self._banner)
+            p.setOpacity(1.0)
+        if g.get("state") == "live" and self.seat(me).get("in"):
+            p.fillRect(QRectF(f.left(), f.bottom() - S(26), f.width(), S(26)), alpha("#000000", 0.5))
+            p.setPen(QColor("#3DDC84"))
+            p.setFont(font(10.5, QFont.Weight.Black))
+            p.drawText(QRectF(f.left(), f.bottom() - S(26), f.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("In! Waiting for the others…"))
+        if g.get("state") == "done":                     # the final ranking
+            p.fillRect(f, alpha("#000000", 0.7))
+            rows = sorted(g.get("seats") or [], key=lambda s: (s.get("gone"), int(s.get("total") or 99)))
+            y = f.top() + S(16)
+            p.setPen(QColor("#FFC94D"))
+            p.setFont(font(16, QFont.Weight.Black))
+            p.drawText(QRectF(f.left(), y, f.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter), tr("Final score"))
+            y += S(34)
+            for i, s in enumerate(rows):
+                col = QColor(PARTY_COLOURS[int(s.get("seat") or 0) % 4])
+                p.setPen(col)
+                p.setFont(font(13, QFont.Weight.Black))
+                name = (tr("You") if s.get("seat") == me else str(s.get("name"))) + ("  ·  BOT" if s.get("bot") else "")
+                p.drawText(QRectF(f.left() + S(30), y, f.width() * 0.6, S(22)), int(Qt.AlignmentFlag.AlignVCenter),
+                           f"{i + 1}.  {name}")
+                p.setPen(QColor("#FFFFFF"))
+                p.drawText(QRectF(f.left(), y, f.width() - S(30), S(22)), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                           tr("{n} strokes", n=int(s.get("total") or 0)) + (f"   +{coins_text(int(s['paid']))}" if s.get("paid") else ""))
+                y += S(28)
+        p.restore()
+
+    def _paint_head(self, p: QPainter, g: dict) -> None:
+        r = QRectF(0, 0, self.width(), self.head_h - S(6))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.05))
+        p.drawRoundedRect(r, S(10), S(10))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(11, QFont.Weight.Black))
+        if g.get("state") == "open":
+            text = tr("Waiting for players · starts in {s} s", s=int(float(g.get("starts_in") or 0)))
+        elif g.get("state") == "live":
+            text = tr("Hole {n} of {t}", n=g.get("hole"), t=g.get("n_holes")) + "  ·  " + \
+                tr("{s} s left", s=int(float(g.get("left") or 0)))
+        else:
+            text = tr("Final score")
+        p.drawText(QRectF(r.left(), r.top() + S(2), r.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), text)
+        seats = g.get("seats") or []
+        if not seats:
+            return
+        w = r.width() / max(1, len(seats))
+        for i, s in enumerate(seats):
+            box = QRectF(r.left() + i * w, r.top() + S(22), w, r.height() - S(24))
+            col = QColor(PARTY_COLOURS[int(s.get("seat") or 0) % 4])
+            if s.get("seat") == self.me():
+                p.setPen(QPen(alpha(col, 0.7), S(1.5)))
+                p.setBrush(alpha(col, 0.12))
+                p.drawRoundedRect(box.adjusted(S(3), S(1), -S(3), -S(1)), S(7), S(7))
+            p.setPen(col)
+            p.setFont(font(9.5, QFont.Weight.Black))
+            name = str(s.get("name") or "?") + (" · BOT" if s.get("bot") else "")
+            p.drawText(box.adjusted(S(4), 0, -S(4), -box.height() / 2), int(Qt.AlignmentFlag.AlignCenter),
+                       QFontMetrics(p.font()).elidedText(name, Qt.TextElideMode.ElideRight, int(box.width() - S(8))))
+            p.setPen(QColor("#3DDC84") if s.get("in") else QColor(TEXT_DIM))
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            p.drawText(box.adjusted(0, box.height() / 2, 0, 0), int(Qt.AlignmentFlag.AlignCenter),
+                       (tr("left") if s.get("gone") else tr("in") if s.get("in") and g.get("state") == "live" else
+                        tr("{n} strokes", n=int(s.get("total") or 0))))
+
+
+def build_golf_party(page, lay) -> None:
+    """5.6: the party lobby (open parties, start one) or the party being played."""
+    ctx = page.ctx
+    pid = getattr(ctx, "party_id", None)
+    if pid:
+        view = GolfPartyView(page, pid)
+        lay.addWidget(view)
+        row = hbox(spacing=6)
+        start = Button(tr("Start now (bots fill the seats)"), "primary", 32)
+        start.clicked.connect(lambda: ctx.online.ask("rb_party_go", {"pid": pid},
+                                                     lambda ok, d: view.set_state(d) if ok else ctx.toast(tr(str(d)), "warn")))
+        out = Button(tr("Leave"), "ghost", 32)
+
+        def leave() -> None:
+            def done(_ok, _d) -> None:
+                ctx.party_id = None
+                ctx.econ.refresh()
+                ctx.reload_page("games")
+            st = view.g.get("state")
+            if st == "live":
+                return ctx.window.confirm(tr("Leave? Your bet stays in the pot."),
+                                          lambda: ctx.online.ask("rb_party_leave", {"pid": pid}, done), yes=tr("Leave"))
+            if st in ("done", "cancelled"):
+                return done(True, None)
+            ctx.online.ask("rb_party_leave", {"pid": pid}, done)
+        out.clicked.connect(leave)
+        ctx._live_leave = leave
+        row.addWidget(start, 2)
+        row.addWidget(out, 1)
+        lay.addLayout(row)
+
+        def sync() -> None:
+            try:
+                start.setVisible(view.g.get("state") == "open" and bool(view.g.get("host")))
+                out.set_text(tr("Back") if view.g.get("state") in ("done", "cancelled") else tr("Leave"))
+            except RuntimeError:
+                pass
+        lay.addWidget(_Poll(500, sync))
+        lay.addWidget(Label(tr("Everyone plays their own ball at the same time. Dashed lines show where the others aim."),
+                            10, TEXT_DIM, wrap_w=page.W))
+        return
+    lay.addWidget(CoinBar(ctx))
+    data = getattr(ctx, "party_lobby", None)
+
+    def load() -> None:
+        def got(ok: bool, d) -> None:
+            if not ok or not isinstance(d, dict):
+                return
+            if d.get("mine") and not getattr(ctx, "party_id", None):
+                ctx.party_id = d["mine"]
+                return ctx.reload_page("games")
+            if d != getattr(ctx, "party_lobby", None):
+                ctx.party_lobby = d
+                if ctx.window.showing("games") and getattr(ctx, "golf_party", False):
+                    ctx.reload_page("games")
+        ctx.online.ask("rb_party_list", {}, got)
+    lay.addWidget(_Poll(3000, load))
+    lay.addWidget(Label(tr("START A PARTY"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    size = Segmented([tr("3 players"), tr("4 players")], 1 if int(getattr(ctx, "party_size", 4)) == 4 else 0)
+    size.changed.connect(lambda i: setattr(ctx, "party_size", 3 + i))
+    lay.addWidget(size)
+    lay.addWidget(golf_count_picker(ctx))
+    cap = max(0, int(ctx.econ.coins * 0.8) // 10 * 10)
+    bet_box = None
+    if cap >= 10:
+        start_v = max(10, min(cap, int(getattr(ctx, "party_bet", 0) or 100)))
+        bet_box = SliderRow(tr("Bet"), 0, min(cap, 5000), min(start_v, min(cap, 5000)), 10, start_v,
+                            lambda v: coins_text(int(v)) if v else tr("No bet"), label_w=60)
+        bet_box._val.setFixedWidth(S(78))
+        bet_box.changed.connect(lambda v: setattr(ctx, "party_bet", int(v)))
+        lay.addWidget(bet_box)
+    make = Button(tr("Open a party"), "primary", 36, icon="flag")
+
+    def create() -> None:
+        bet = int(bet_box.value()) if bet_box is not None else 0
+        bet = 0 if bet < 10 else bet - bet % 10
+
+        def done(ok: bool, d) -> None:
+            if not ok:
+                return ctx.toast(tr(str(d)), "warn")
+            sfx.play("on")
+            ctx.party_id = d.get("id")
+            ctx.econ.refresh()
+            ctx.reload_page("games")
+        ctx.econ.call("rb_party_create", {"size": int(getattr(ctx, "party_size", 4)), "bet": bet, "holes": golf_count(ctx)}, done)
+    make.clicked.connect(create)
+    lay.addWidget(make)
+    lay.addWidget(Label(tr("Others have 90 seconds to join, then bots fill the empty seats. Bets are only between players: "
+                           "the best player takes them all (5% fee). Everyone earns coins by strokes."), 10, TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("OPEN PARTIES"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+    rows = (data or {}).get("open") or []
+    if data is None:
+        return lay.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
+    if not rows:
+        lay.addWidget(Label(tr("No party right now. Open one!"), 11, TEXT_DIM, wrap_w=page.W))
+    for r in rows[:10]:
+        line = hbox(spacing=8)
+        text = tr("{host}'s party · {p}/{s} players · {h} holes", host=r.get("host"), p=r.get("players"), s=r.get("size"),
+                  h=r.get("holes"))
+        if int(r.get("bet") or 0):
+            text += "  ·  " + tr("Bet {n}", n=coins_text(int(r["bet"])))
+        line.addWidget(Label(text, 11, TEXT, wrap_w=int(page.W * 0.68)), 1)
+        j = Button(tr("Join"), "primary", 30)
+
+        def join(_=False, rid=r.get("id")) -> None:
+            def done(ok: bool, d) -> None:
+                if not ok:
+                    return ctx.toast(tr(str(d)), "warn")
+                sfx.play("on")
+                ctx.party_id = rid
+                ctx.econ.refresh()
+                ctx.reload_page("games")
+            ctx.econ.call("rb_party_join", {"pid": rid}, done)
+        j.clicked.connect(join)
+        line.addWidget(j)
+        lay.addLayout(line)
 
 
 class GolfRow(QWidget):
@@ -26607,22 +27102,26 @@ def build_golf(page, lay) -> None:
     if gid or sid:                                       # 5.0: in a match the arrow is gone, Leave is up here
         back.hide()
         top.addWidget(live_leave_button(ctx, leave_screen))
-    duel = Label(tr("SOLO") if solo else tr("DUEL"), 10, "#3DDC84", bold=True)
+    party = bool(getattr(ctx, "golf_party", False)) and not gid and not sid
+    duel = Label(tr("PARTY") if party else tr("SOLO") if solo else tr("DUEL"), 10, "#3DDC84", bold=True)
     duel.fit()
     top.addWidget(duel)
     lay.addLayout(top)
     if getattr(ctx, "golf_missing", False):
         server_wait(ctx, lay, page.W)
         return
-    if not gid and not sid:
-        which = Segmented([tr("Solo"), tr("Duel")], 0 if solo else 1)
+    if not gid and not sid and not getattr(ctx, "party_id", None):
+        which = Segmented([tr("Solo"), tr("Duel"), tr("Party (3-4)")], 2 if party else 0 if solo else 1)
 
         def pick(i: int) -> None:
             ctx.golf_solo = i == 0
+            ctx.golf_party = i == 2
             sfx.play("pick")
             ctx.reload_page("games")
         which.changed.connect(pick)
         lay.addWidget(which)
+    if party:                                            # 5.6: 3 or 4 players, bots in the empty seats
+        return build_golf_party(page, lay)
     if solo:
         return build_golf_solo(page, lay, sid, leave_screen)
     if gid:
