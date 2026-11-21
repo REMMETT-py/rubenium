@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.10"         # the version people see
-BUILD = "2026.11.21.10"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.11"         # the version people see
+BUILD = "2026.11.21.11"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6562,6 +6562,14 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({'Today: {n} coins won': 'Aujourd’hui : {n} pièces gagnées', 'No daily limit: every game pays what you earn.': 'Pas de limite par jour : chaque jeu paie ce que tu gagnes.'})
+
+FR.update({'LOWER': 'PLUS BAS', 'HIGHER': 'PLUS HAUT', 'or the same': 'ou pareil', '{p}% chance': '{p} % de chance', 'Pick HIGHER or LOWER · cash out when you like': 'Choisis PLUS HAUT ou PLUS BAS · encaisse quand tu veux', 'Spin  ·  {n} picks  ·  {t} in all': 'Lancer  ·  {n} choix  ·  {t} au total', 'Clear picks': 'Effacer les choix', '12 picks at most': '12 choix au maximum', 'Not enough coins for {n} picks': 'Pas assez de pièces pour {n} choix', '{k} picks · {t} bet · chance to win something {c} · up to {n}': '{k} choix · {t} misés · chance de gagner {c} · jusqu’à {n}', 'Click to add or remove picks · the bet goes on each · a number pays ×24': 'Clique pour ajouter ou retirer des choix · la mise va sur chacun · un numéro paie ×24'})
+
+FR.update({'Click as many picks as you like (up to 12): your bet goes on each one. Then spin.': 'Clique autant de choix que tu veux (jusqu’à 12) : ta mise va sur chacun. Puis lance.', 'More picks = more chances to win something, but more coins on the table.': 'Plus de choix = plus de chances de gagner quelque chose, mais plus de pièces en jeu.', 'One number: ×24, 4% chance. Gold: ×25, 4% chance.': 'Un numéro : ×24, 4 % de chance. Or : ×25, 4 % de chance.'})
+
+FR.update({'NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5': 'NOUVEAU : le jeu des gobelets. Une pièce Rubenium passe sous un gobelet, ils se mélangent, retrouve la pièce. Facile (3) ×1,4, Moyen (6) ×2,2, Difficile (9) ×3,3, Expert (9, très rapide) ×5', 'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25': 'Roulette : choisis autant de paris que tu veux en un tour (ta mise va sur chacun), vois ta chance de gagner. L’or paie maintenant ×25', 'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each': 'Plus ou moins est plus clair : deux grands choix PLUS HAUT / PLUS BAS à côté de la carte, avec la chance et le multiplicateur', 'No more daily coin limit in mini games, and up to 16 keys a day from games': 'Plus de limite de pièces par jour dans les mini-jeux, et jusqu’à 16 clés par jour grâce aux jeux', "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)": 'Jackpot : tu peux réduire Rubenium pendant que tu y participes (sans pouvoir ouvrir d’autres onglets)', 'Cups': 'Gobelets', 'Cup Game': 'Jeu des gobelets', 'Watch the coin, follow its cup, then click it.': 'Regarde la pièce, suis son gobelet, puis clique dessus.', 'Watch the coin…': 'Regarde la pièce…', 'Follow the cup!': 'Suis le gobelet !', 'Which cup hides the coin?': 'Quel gobelet cache la pièce ?', 'Found it!': 'Trouvée !', 'It was here': 'Elle était ici', 'Your pick': 'Ton choix', 'Click the cup with the coin': 'Clique sur le gobelet avec la pièce', 'Play  ·  {m} cups': 'Jouer  ·  {m} gobelets', 'Easy': 'Facile', 'Medium': 'Moyen', 'Hard': 'Difficile', 'Expert': 'Expert', 'Daily Cup Game limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte aux gobelets : une victoire rend ta mise jusqu’à minuit', 'A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.': 'Une pièce Rubenium tombe sur la table et les gobelets la recouvrent. Puis ils se mélangent.', 'Follow the cup with the coin and click it when they stop.': 'Suis le gobelet avec la pièce et clique dessus quand ils s’arrêtent.', 'Watch only the cup with the coin, never the others.': 'Regarde seulement le gobelet avec la pièce, jamais les autres.', 'Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves.': 'Facile : 3 gobelets, lent. Moyen : 6. Difficile : 9. Expert : 9 gobelets, très rapide et beaucoup plus de mouvements.', 'Easy ×1.4 · Medium ×2.2 · Hard ×3.3 · Expert ×5.': 'Facile ×1,4 · Moyen ×2,2 · Difficile ×3,3 · Expert ×5.', 'Once you are up 6 000 coins in a day, a win gives your bet back until midnight.': 'Une fois 6 000 pièces gagnées dans la journée, une victoire rend ta mise jusqu’à minuit.', 'Click the cup with the coin.': 'Clique sur le gobelet avec la pièce.'})
+
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
     'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power': 'Visée du Mini Golf refaite : une flèche montre la direction (elle s’arrête aux murs et à l’eau) et une barre la puissance. Plus de cercle qui montre où la balle s’arrête : c’est toi qui sens la distance. Moitié moins de mouvement de souris pour la pleine puissance',
@@ -11306,6 +11314,11 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.11", ['NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5',
+              'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25',
+              'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each',
+              'No more daily coin limit in mini games, and up to 16 keys a day from games',
+              "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)"]),
     ("5.10", ['Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own',
               'NEW: themed cases. The Medieval Case and the Nature Case only hold badges of their theme, and the Cosmic Case is now space only',
               '11 new badge designs you can only get from them: Scroll, Goblet, Knight Helmet, Bow, Battle Axe, Castle, Flower, Butterfly, Cactus, Lotus and Rainbow',
@@ -13395,8 +13408,10 @@ def jackpot_holds(ctx) -> bool:
         return False
 
 
-def claim_blocked(ctx) -> bool:
-    if jackpot_holds(ctx):
+def claim_blocked(ctx, minimize: bool = False) -> bool:
+    """A prize being revealed, or a jackpot you're in, keeps you on its screen. 5.11: during a jackpot you may still
+    minimize the menu (to use your PC), just not open another tab."""
+    if jackpot_holds(ctx) and not minimize:
         try:
             ctx.toast(tr("You're in this jackpot: stay until it ends"), "warn")
             sfx.play("off")
@@ -24649,6 +24664,8 @@ LANE_COLOURS = ["#FF5C8A", "#4FC3FF", "#5BE08A", "#FFB547"]
 def window_text(day: dict) -> str:
     """'Next 2 hours: 40 / 150 coins' for the mini game limits."""
     day = day or {}
+    if int(day.get("cap") or 0) >= 1_000_000:           # 5.11: no daily limit any more
+        return tr("Today: {n} coins won", n=coins_text(int(day.get("paid") or 0)))
     if day.get("daily"):                                 # 5.4: one simple limit a day per game
         return tr("Today: {n} / {cap} coins", n=coins_text(int(day.get("paid") or 0)),
                   cap=coins_text(int(day.get("cap") or 1500)))
@@ -30207,6 +30224,19 @@ class GameTile(QWidget):
                 p.drawRoundedRect(cell, S(3), S(3))
                 paint_slot_symbol(p, "seven", cell.center(), S(13))
             p.setPen(Qt.PenStyle.NoPen)
+        elif self.name == "Cups":                              # 5.11: three cups, a coin under one
+            p.setBrush(QColor("#E8C26A"))
+            p.drawEllipse(QPointF(art.x() + S(1), art.y() + S(10)), S(4), S(4))
+            for k in range(3):
+                cx_ = art.x() - S(16) + k * S(16)
+                cup = QPainterPath()
+                cup.moveTo(cx_ - S(4), art.y() - S(10) - (S(5) if k == 1 else 0))
+                cup.lineTo(cx_ + S(4), art.y() - S(10) - (S(5) if k == 1 else 0))
+                cup.lineTo(cx_ + S(7), art.y() + S(6) - (S(5) if k == 1 else 0))
+                cup.lineTo(cx_ - S(7), art.y() + S(6) - (S(5) if k == 1 else 0))
+                cup.closeSubpath()
+                p.setBrush(QColor("#E0484F"))
+                p.drawPath(cup)
         else:                                                  # Hi-Lo: two cards and an arrow
             for k, (dx, txt) in enumerate(((-S(8), "7"), (S(8), "?"))):
                 p.setBrush(QColor("#F4F5F6") if k == 0 else alpha(ui.accent, 0.55))
@@ -30343,7 +30373,8 @@ class QuestRow(QWidget):
 class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
-    NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Tower", "Slots", "Free spin"]
+    NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Tower", "Slots", "Cups",
+             "Free spin"]
     PICKER = len(NAMES) - 1                  # 4.1: the free spin is not in the bar of games (its row in the lobby opens it)
 
     def __init__(self, ctx) -> None:
@@ -30772,7 +30803,7 @@ class GamesPage(Page):
         pass
         pass
         self.games = [Blackjack(self), Plinko(self), Bombs(self), Roulette(self), Dice(self), Timing(self), Rocket(self),
-                      HiLo(self), Tower(self), Slots(self), Daily(self)]
+                      HiLo(self), Tower(self), Slots(self), CupGame(self), Daily(self)]
         for g in self.games:
             g.setVisible(False)
             lay.addWidget(g)
@@ -32907,7 +32938,7 @@ from PyQt6.QtWidgets import QWidget
 
 GAME_NAMES = {"slots": "Slots", "plinko": "Plinko", "dice": "Dice", "mines": "Bombs", "rocket": "Rocket",
               "blackjack": "Blackjack", "daily": "Daily case", "spin": "Free spin", "mini": "Beat Tap",
-              "roulette": "Roulette", "hilo": "Hi-Lo", "timing": "Timing", "golf": "Mini Golf", "flip": "Coinflip",
+              "roulette": "Roulette", "hilo": "Hi-Lo", "cups": "Cup Game", "timing": "Timing", "golf": "Mini Golf", "flip": "Coinflip",
               "golf_solo": "Mini Golf", "wave": "Wave Rush", "tower": "Tower", "blocks": "Block Blast", "sweeper": "Minesweeper"}
 ADMIN_COLOUR = "#FF4B6E"
 
@@ -41893,12 +41924,13 @@ HELP = {
         "First gem: ×1.01 with 1 bomb, ×1.10 with 3, ×1.21 with 5, ×1.61 with 10, ×4.85 with 20."]),
     "roulette": ("Roulette", [
         "25 slots: 1 gold (0), 12 red (odd numbers) and 12 black (even numbers).",
-        "Pick your bet, then spin."], [
+        "Click as many picks as you like (up to 12): your bet goes on each one. Then spin."], [
+        "More picks = more chances to win something, but more coins on the table.",
         "Red, Black, Low and High win almost half the time.",
         "Gold and single numbers rarely win, but pay a lot."], [
         "Red or Black: ×2, 48% chance.",
         "Low (1-12) or High (13-24): ×2, 48% chance.",
-        "Gold or one number: ×24, 4% chance.",
+        "One number: ×24, 4% chance. Gold: ×25, 4% chance.",
         "96% of what is bet comes back on average."]),
     "dice": ("Dice", [
         "Choose your chance to win, from 5% to 95%, then roll.",
@@ -41932,6 +41964,13 @@ HELP = {
         "Each right guess multiplies by 0.985 × 13 ÷ the ranks that win.",
         "Higher on a 2: ×1.07. Higher on a Queen: ×6.40.",
         "A round stops at 50 000 coins."]),
+    "cups": ("Cup Game", [
+        "A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.",
+        "Follow the cup with the coin and click it when they stop."], [
+        "Watch only the cup with the coin, never the others.",
+        "Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves."], [
+        "Easy ×1.4 · Medium ×2.2 · Hard ×3.3 · Expert ×5.",
+        "Once you are up 6 000 coins in a day, a win gives your bet back until midnight."]),
     "tower": ("Tower", [
         "Climb 8 rows. On each row, pick a tile: a safe one takes you up, a bomb ends the round.",
         "Cash out whenever you like from the first row on."], [
@@ -41962,13 +42001,13 @@ HELP = {
         "Use the keyboard and keep your eyes on the line, not on the notes up high.",
         "Combos raise your score: a miss breaks them."], [
         "15 to 65 coins a round.",
-        "Every minigame pays up to {cap} coins a day (back at midnight)."]),
+        "No daily limit: every game pays what you earn."]),
     "memory": ("Memory", [
         "Turn two cards at a time to find the pairs. Each card is checked on the server."], [
         "Remember every card you turn, even when it is not a pair.",
         "Clear the board in as few turns as you can."], [
         "Fewer turns pay more. Medium and Hard pay more than Easy.",
-        "Every minigame pays up to {cap} coins a day (back at midnight)."]),
+        "No daily limit: every game pays what you earn."]),
     "parking": ("Parking", [
         "Slide the cars along their lane to clear the way, then drive the red car out."], [
         "First look at what blocks the red car's row, then at what blocks those cars."], [
@@ -41982,14 +42021,14 @@ HELP = {
         "scores much more."], [
         "1 point a square. Clearing L lines at once: +10 × L × L. Clearing again on the next piece: +20 a step.",
         "Classic: score ÷ 5, up to 300 coins. Relaxed: ÷ 8, up to 200. Hard: ÷ 3, up to 360.",
-        "Every minigame pays up to {cap} coins a day (back at midnight)."]),
+        "No daily limit: every game pays what you earn."]),
     "sweeper": ("Minesweeper", [
         "Open every cell without a mine. A number says how many mines touch that cell.",
         "Right-click puts a flag. The first cell is always safe."], [
         "A 1 touching a single closed cell means that cell is a mine: flag it and open the others.",
         "Start in the middle: one click often opens a big area."], [
         "Easy pays 35 to 105 coins, Medium 75 to 225, Hard 140 to 420: the faster, the more.",
-        "Every minigame pays up to {cap} coins a day (back at midnight)."]),
+        "No daily limit: every game pays what you earn."]),
     "duels": ("Duels", [
         "Challenge a friend to a game, with or without a bet. You both play the same round: the best score wins."], [
         "Pick the game you are best at, and a level you know well."], [
@@ -42041,6 +42080,7 @@ CONTROLS = {
     "rocket": _CASINO, "hilo": _CASINO, "slots": _CASINO,
     "bombs": _CASINO + [("LMB", "Open a tile")], "tower": _CASINO + [("LMB", "Pick a tile")],
     "roulette": _CASINO + [("LMB", "Pick what you bet on")],
+    "cups": _CASINO + [("LMB", "Click the cup with the coin")],
     "spin": [("LMB", "Spin the wheel")], "scratch": [("Drag", "Scratch the card")],
     "beat": [(["D", "F", "J", "K"], "Hit a lane"), ("LMB", "Hit a lane"), ("Space", "Start")],
     "memory": [("LMB", "Turn a card")], "parking": [("Drag", "Slide a car along its lane")],
@@ -42051,7 +42091,8 @@ CONTROLS = {
 }
 
 CASINO_KEYS = {"Blackjack": "blackjack", "Plinko": "plinko", "Bombs": "bombs", "Roulette": "roulette", "Dice": "dice",
-               "Timing": "timing", "Rocket": "rocket", "Hi-Lo": "hilo", "Tower": "tower", "Slots": "slots", "Free spin": "spin"}
+               "Timing": "timing", "Rocket": "rocket", "Hi-Lo": "hilo", "Tower": "tower", "Slots": "slots", "Cups": "cups",
+               "Free spin": "spin"}
 
 
 def help_lines(ctx, key: str) -> tuple:
@@ -42423,13 +42464,14 @@ def pocket_colour(slot: int) -> str:
 
 
 class Roulette(Game):
-    """A betting board under a spinning strip of 25 pockets. Red or black, 1-12 or 13-24 pay x2; the gold pocket or
-    one number pays x24 (96% back on every bet). The pick stays until you change it: press Spin again to repeat."""
+    """A betting board under a spinning strip of 25 pockets. Red or black, 1-12 or 13-24 pay x2; one number x24, the
+    gold pocket x25. 5.11: pick as many as you like (up to 12): the bet goes on each one. Picks stay for the next spin."""
     CELL = 46
 
     def __init__(self, page) -> None:
         super().__init__(page)
-        self.pick_id = "red"
+        self.picks: list = ["red"]
+        self.wins: list = []
         self.history: list = []
         self.slot = 0
         self.offset = 0.0
@@ -42440,9 +42482,28 @@ class Roulette(Game):
         self.hits: list = []                                      # (rect, pick) of the board, for clicks
         self.order = [(k * 7) % 25 for k in range(25)]            # the pockets around the wheel, mixed
 
+    @property
+    def pick_id(self) -> str:
+        return self.picks[0] if self.picks else "red"
+
     @staticmethod
     def mult(pick: str) -> int:
-        return 24 if pick == "gold" or pick.startswith("n:") else 2
+        return 25 if pick == "gold" else 24 if pick.startswith("n:") else 2
+
+    @staticmethod
+    def slots_of(pick: str) -> set:
+        if pick == "gold":
+            return {0}
+        if pick.startswith("n:"):
+            return {int(pick[2:])}
+        if pick == "low":
+            return set(range(1, 13))
+        if pick == "high":
+            return set(range(13, 25))
+        return {k for k in range(1, 25) if (k % 2 == 1) == (pick == "red")}
+
+    def total(self, bet: int) -> int:
+        return bet * max(1, len(self.picks))
 
     @staticmethod
     def chance(pick: str) -> int:
@@ -42459,23 +42520,40 @@ class Roulette(Game):
         pos = e.position()
         for rect, pick in self.hits:
             if rect.contains(pos):
-                if pick != self.pick_id:
-                    self.pick_id = pick
+                if pick in self.picks:
+                    if len(self.picks) > 1:
+                        self.picks.remove(pick)
+                        sfx.play("off")
+                elif len(self.picks) >= 12:
+                    self.ctx.toast(tr("12 picks at most"), "warn")
+                else:
+                    self.picks.append(pick)
                     sfx.play("pick")
-                    self.page.sync()
-                    self.update()
+                self.page.sync()
+                self.update()
                 return
 
     def play(self) -> None:
-        if self.busy or self.waiting or not self.take():
+        if self.busy or self.waiting:
             return
+        each = self.page.bet()
+        if each * len(self.picks) > self.econ.coins:
+            return self.ctx.toast(tr("Not enough coins for {n} picks", n=len(self.picks)), "warn")
+        if not self.take():
+            return
+        self.econ.adjust(-(each * (len(self.picks) - 1)))         # the bet goes on every pick
+        self.each = each
+        self.stake = each * len(self.picks)
         self.won = None
-        self.ask("rb_roulette", {"bet": self.stake, "pick": self.pick_id}, self._rolled, once=True, refund=self.stake)
+        self.wins = []
+        total = each * len(self.picks)
+        self.ask("rb_roulette_multi", {"bet": each, "picks": list(self.picks)}, self._rolled, once=True, refund=total)
 
     def _rolled(self, ans: dict) -> None:
         self.slot = int(ans.get("slot", 0))
         self._paid = int(ans.get("paid", 0))
         self._win = bool(ans.get("win"))
+        self._wins = list(ans.get("wins") or [])
         idx = self.order.index(self.slot)
         self._from = self.offset % (25 * self.CELL)
         self._to = (4 * 25 + idx) * self.CELL + RNG.uniform(-0.32, 0.32) * self.CELL
@@ -42488,21 +42566,38 @@ class Roulette(Game):
         self.offset = self._to
         self._t0 = 0.0
         self.won = self._win
+        self.wins = getattr(self, "_wins", [])
         self.history.insert(0, self.slot)
         del self.history[14:]
         self.finish(self._paid)
 
     def buttons(self) -> list:
-        return [(tr("Spin") + "  ·  " + self.pick_name(self.pick_id), "primary", self.play, not self.busy)]
+        bet = self.page.bet()
+        n = len(self.picks)
+        label = (tr("Spin") + "  ·  " + self.pick_name(self.pick_id)) if n == 1 else \
+            tr("Spin  ·  {n} picks  ·  {t} in all", n=n, t=coins_text(bet * n))
+        return [(label, "primary", self.play, not self.busy),
+                (tr("Clear picks"), "ghost", self._clear, not self.busy and n > 1)]
+
+    def _clear(self) -> None:
+        self.picks = [self.picks[0]] if self.picks else ["red"]
+        sfx.play("off")
+        self.page.sync()
+        self.update()
 
     def _chip(self, p: QPainter, box: QRectF, text: str, colour: str, pick: str, sub: str = "") -> None:
-        on = pick == self.pick_id
+        on = pick in self.picks
+        won_ = pick in self.wins and self.won is not None and not self.busy
         p.setPen(QPen(QColor(GOLD_TEXT) if on else alpha("#FFFFFF", 0.10), S(2) if on else 1))
         g = QLinearGradient(box.topLeft(), box.bottomLeft())
         g.setColorAt(0, mix(QColor(colour), QColor("#FFFFFF"), 0.16 if on else 0.05))
         g.setColorAt(1, mix(QColor(colour), QColor("#000000"), 0.30 if on else 0.45))
         p.setBrush(g)
         p.drawRoundedRect(box, S(6), S(6))
+        if won_:
+            p.setPen(QPen(QColor(WIN), S(2.4)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(box.adjusted(-S(1), -S(1), S(1), S(1)), S(7), S(7))
         p.setPen(QColor("#2A1B04") if colour == POCKET["gold"] else QColor("#FFFFFF"))
         p.setFont(font(10.5 if box.height() > S(22) else 9, QFont.Weight.ExtraBold))
         if sub:
@@ -42524,13 +42619,18 @@ class Roulette(Game):
                 self._last_cell = cur
                 sfx.play("pick")
         # what is on: the pick, its chance and the prize
-        pick = self.pick_id
-        bet = self.stake if self.busy else self.page.bet()
+        bet = getattr(self, "each", self.stake) if self.busy else self.page.bet()
         p.setFont(font(11, QFont.Weight.Bold))
         p.setPen(QColor(TEXT))
-        pct = f"{self.chance(pick) / 25 * 100:.0f}%"
-        p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("{pick} · chance {c} · wins {n}", pick=self.pick_name(pick), c=pct, n=coins_text(bet * self.mult(pick))))
+        covered = set().union(*[self.slots_of(k) for k in self.picks])          # 5.11: what all the picks cover
+        best = max(sum(bet * self.mult(k) for k in self.picks if s_ in self.slots_of(k)) for s_ in covered) if covered else 0
+        pct = f"{len(covered) / 25 * 100:.0f}%"
+        if len(self.picks) == 1:
+            line = tr("{pick} · chance {c} · wins {n}", pick=self.pick_name(self.pick_id), c=pct, n=coins_text(best))
+        else:
+            line = tr("{k} picks · {t} bet · chance to win something {c} · up to {n}", k=len(self.picks),
+                      t=coins_text(bet * len(self.picks)), c=pct, n=coins_text(best))
+        p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), line)
         strip = QRectF(r.left(), r.top() + S(28), r.width(), S(52))
         cx = strip.center().x()
         off = self.offset / self.CELL * cell
@@ -42571,7 +42671,7 @@ class Roulette(Game):
         third = (w - S(8)) / 3
         self._chip(p, QRectF(x0, top, third, S(28)), tr("Red"), POCKET["red"], "red", "×2")
         self._chip(p, QRectF(x0 + third + S(4), top, third, S(28)), tr("Black"), "#2A3238", "black", "×2")
-        self._chip(p, QRectF(x0 + 2 * (third + S(4)), top, third, S(28)), "★ " + tr("Gold"), POCKET["gold"], "gold", "×24")
+        self._chip(p, QRectF(x0 + 2 * (third + S(4)), top, third, S(28)), "★ " + tr("Gold"), POCKET["gold"], "gold", "×25")
         half = (w - S(4)) / 2
         y = top + S(32)
         self._chip(p, QRectF(x0, y, half, S(24)), "1 – 12", "#3A4650", "low", "×2")
@@ -42584,7 +42684,7 @@ class Roulette(Game):
             self._chip(p, box, str(n), POCKET[pocket_colour(n)] if pocket_colour(n) == "red" else "#2A3238", f"n:{n}")
         p.setFont(font(9, QFont.Weight.DemiBold))
         p.setPen(QColor(TEXT_FAINT))
-        p.drawText(QRectF(x0, y + S(48), w, S(14)), int(Qt.AlignmentFlag.AlignCenter), tr("One number pays ×24"))
+        p.drawText(QRectF(x0, y + S(48), w, S(14)), int(Qt.AlignmentFlag.AlignCenter), tr("Click to add or remove picks · the bet goes on each · a number pays ×24"))
         x = r.left() + S(12)                                    # the last pockets, newest first
         for slot in self.history[:14]:
             c = pocket_colour(slot)
@@ -42597,6 +42697,222 @@ class Roulette(Game):
             p.drawText(QRectF(cc.x() - S(9), cc.y() - S(9), S(18), S(18)), int(Qt.AlignmentFlag.AlignCenter),
                        "★" if slot == 0 else str(slot))
             x += S(21)
+
+
+# --------------------------------------------------------------------------- #
+# 5.11 Cup Game: follow the cup with the Rubenium coin
+# --------------------------------------------------------------------------- #
+class CupGame(Game):
+    """A Rubenium coin lands on the table, the cups drop over the spots and shuffle. Click the cup you think hides the
+    coin. Easy 3 cups, Medium 6, Hard 9, Expert 9 cups and much faster."""
+    MODES = [("Easy", 3, 1.4), ("Medium", 6, 2.2), ("Hard", 9, 3.3), ("Expert", 9, 5.0)]
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        self.mode = int(self.ctx.cfg.get("cups_mode", 0) or 0) if hasattr(self.ctx.cfg, "get") else 0
+        self.mode = max(0, min(3, self.mode))
+        self.n = self.MODES[self.mode][1]
+        self.state = "idle"                 # idle / show / shuffle / pick / reveal
+        self.swaps: list = []
+        self.secs = 0.5
+        self.start = 0
+        self.coin = None
+        self.picked = None
+        self.won = None
+        self.t0 = 0.0
+        self.slot_of = list(range(self.n))  # cup -> slot
+        self._applied = 0
+        self.zones: list = []
+
+    def options(self):
+        return [f"{tr(m)} ×{x:g}" for m, _n, x in self.MODES], self.mode
+
+    def set_option(self, i: int) -> None:
+        if not self.busy:
+            self.mode = i
+            self.n = self.MODES[i][1]
+            self.slot_of = list(range(self.n))
+            self.state, self.coin, self.won = "idle", None, None
+            try:
+                self.ctx.cfg["cups_mode"] = i
+            except Exception:  # noqa: BLE001
+                pass
+            self.update()
+
+    def always_moving(self) -> bool:
+        return self.state in ("show", "shuffle", "pick", "reveal")
+
+    def buttons(self) -> list:
+        if self.state == "pick":
+            return [(tr("Click the cup with the coin"), "ghost", lambda: None, False)]
+        return [(tr("Play  ·  {m} cups", m=self.n), "primary", self.play, not self.busy)]
+
+    def play(self) -> None:
+        if self.busy or self.waiting or not self.take():
+            return
+        self.won, self.picked, self.coin = None, None, None
+        self.ask("rb_cups", {"action": "start", "level": self.mode, "bet": self.stake, "pick": None}, self._started,
+                 once=True, refund=self.stake)
+
+    def _started(self, ans: dict) -> None:
+        self.n = int(ans.get("n") or self.n)
+        self.start = int(ans.get("start") or 0)
+        self.swaps = [(int(a), int(b)) for a, b in (ans.get("swaps") or [])]
+        self.secs = float(ans.get("secs") or 0.5)
+        self.slot_of = list(range(self.n))
+        self._applied = 0
+        self.state, self.t0 = "show", time.monotonic()
+        self.animate(60)
+        sfx.play("pick")
+
+    def _layout(self, r: QRectF) -> list:
+        cols = 3 if self.n in (3, 6, 9) else self.n
+        rows = (self.n + cols - 1) // cols
+        cw = min(S(110), (r.width() - S(40)) / cols)
+        rh = min(S(100), (r.height() - S(34)) / rows)
+        size = min(cw, rh * 1.15)
+        x0 = r.center().x() - cw * cols / 2
+        y0 = r.top() + S(26) + (r.height() - S(32) - rh * rows) / 2
+        return [QPointF(x0 + cw * (k % cols + 0.5), y0 + rh * (k // cols + 0.5) + size * 0.3) for k in range(self.n)], size
+
+    def _cup(self, p: QPainter, c: QPointF, size: float, lift: float = 0.0, hot: bool = False) -> None:
+        w, h = size * 0.62, size * 0.66
+        top = c.y() - h * 0.62 - lift
+        path = QPainterPath()
+        path.moveTo(c.x() - w * 0.36, top)
+        path.lineTo(c.x() + w * 0.36, top)
+        path.lineTo(c.x() + w * 0.5, top + h)
+        path.lineTo(c.x() - w * 0.5, top + h)
+        path.closeSubpath()
+        g = QLinearGradient(QPointF(c.x() - w / 2, 0), QPointF(c.x() + w / 2, 0))
+        g.setColorAt(0, QColor("#7A1F2B"))
+        g.setColorAt(0.45, QColor("#E0484F"))
+        g.setColorAt(1, QColor("#6A1823"))
+        p.setPen(QPen(QColor("#FFD27A") if hot else alpha("#000000", 0.5), S(2) if hot else 1))
+        p.setBrush(g)
+        p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.22))
+        p.drawRoundedRect(QRectF(c.x() - w * 0.5, top + h * 0.72, w, h * 0.1), S(2), S(2))
+        p.setBrush(QColor("#4A0F17"))
+        p.drawEllipse(QPointF(c.x(), top), w * 0.36, h * 0.07)
+
+    def _coin(self, p: QPainter, c: QPointF, size: float) -> None:
+        r = size * 0.18
+        p.setPen(QPen(QColor("#B8862B"), S(1.4)))
+        p.setBrush(QColor("#E8C26A"))
+        p.drawEllipse(QPointF(c.x(), c.y() - r * 0.2), r, r)
+        p.setPen(QColor("#5A3A08"))
+        p.setFont(font(max(7.0, r / S(1) * 0.9), QFont.Weight.Black))
+        p.drawText(QRectF(c.x() - r, c.y() - r * 1.2, 2 * r, 2 * r), int(Qt.AlignmentFlag.AlignCenter), "R")
+
+    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
+        pts, size = self._layout(r)
+        t = now - self.t0
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        head = {"idle": tr("Watch the coin, follow its cup, then click it."),
+                "show": tr("Watch the coin…"), "shuffle": tr("Follow the cup!"),
+                "pick": tr("Which cup hides the coin?"),
+                "reveal": (tr("Found it!") if self.won else tr("It was here"))}[self.state]
+        p.drawText(QRectF(r.left(), r.top() + S(4), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), head)
+        for k in range(self.n):                        # the spots on the table
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.05))
+            p.drawEllipse(QPointF(pts[k].x(), pts[k].y() + size * 0.06), size * 0.34, size * 0.1)
+        self.zones = []
+        if self.state == "idle":
+            for k in range(self.n):
+                self._cup(p, pts[k], size)
+            return
+        if self.state == "show":
+            drop = max(0.0, min(1.0, (t - 1.0) / 0.6))       # the coin, then the cups come down
+            self._coin(p, pts[self.start], size)
+            for k in range(self.n):
+                self._cup(p, pts[k], size, lift=size * 0.45 * (1 - drop) ** 2, ) if drop > 0 else None
+            if t >= 1.8:
+                self.state, self.t0 = "shuffle", now
+            return
+        if self.state == "shuffle":
+            i = int(t / self.secs)
+            if i >= len(self.swaps):
+                self.state = "pick"
+                self.page.sync()
+                return self.draw(p, r, now)
+            done = self._applied
+            while done < i:                                 # swaps that finished move for good
+                a, b = self.swaps[done]
+                ca, cb = self.slot_of.index(a), self.slot_of.index(b)
+                self.slot_of[ca], self.slot_of[cb] = b, a
+                done += 1
+                sfx.play("pick")
+            self._applied = done
+            k_ = (t - i * self.secs) / self.secs
+            k_ = k_ * k_ * (3 - 2 * k_)
+            a, b = self.swaps[i]
+            for cup in range(self.n):
+                s_ = self.slot_of[cup]
+                if s_ in (a, b):
+                    o = b if s_ == a else a
+                    pa, pb = pts[s_], pts[o]
+                    side = 1 if s_ == a else -1
+                    mx = QPointF((pa.x() + pb.x()) / 2, (pa.y() + pb.y()) / 2)
+                    nx, ny = -(pb.y() - pa.y()), pb.x() - pa.x()
+                    ln = max(1.0, math.hypot(nx, ny))
+                    arc = math.sin(k_ * math.pi) * size * 0.35 * side
+                    pos = QPointF(pa.x() + (pb.x() - pa.x()) * k_ + nx / ln * arc, pa.y() + (pb.y() - pa.y()) * k_ + ny / ln * arc)
+                    del mx
+                    self._cup(p, pos, size)
+                else:
+                    self._cup(p, pts[s_], size)
+            return
+        if self.state == "pick":
+            if getattr(self, "_applied", 0) < len(self.swaps):
+                for a, b in self.swaps[self._applied:]:
+                    ca, cb = self.slot_of.index(a), self.slot_of.index(b)
+                    self.slot_of[ca], self.slot_of[cb] = b, a
+                self._applied = len(self.swaps)
+            hover = self.mapFromGlobal(QCursor.pos())
+            for k in range(self.n):
+                box = QRectF(pts[k].x() - size * 0.36, pts[k].y() - size * 0.62, size * 0.72, size * 0.72)
+                self.zones.append((box, k))
+                self._cup(p, pts[k], size, lift=S(4) if box.contains(QPointF(hover)) else 0, hot=box.contains(QPointF(hover)))
+            return
+        # reveal
+        up = min(1.0, t / 0.4)
+        for k in range(self.n):
+            if k == self.coin:
+                self._coin(p, pts[k], size)
+            lift = size * 0.45 * up if k in (self.coin, self.picked) else size * 0.2 * up
+            self._cup(p, pts[k], size, lift=lift, hot=k == self.picked)
+        if self.picked is not None:
+            p.setPen(QColor(WIN if self.won else LOSE))
+            p.setFont(font(10, QFont.Weight.Black))
+            p.drawText(QRectF(pts[self.picked].x() - S(50), pts[self.picked].y() + size * 0.12, S(100), S(16)),
+                       int(Qt.AlignmentFlag.AlignCenter), tr("Your pick"))
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.state != "pick" or self.waiting:
+            return
+        for box, k in self.zones:
+            if box.contains(e.position()):
+                self.picked = k
+                sfx.play("pick")
+                self.ask("rb_cups", {"action": "pick", "level": self.mode, "bet": 0, "pick": k}, self._answered, once=True)
+                return
+
+    def _answered(self, ans: dict) -> None:
+        self.coin = int(ans.get("coin") if ans.get("coin") is not None else -1)
+        self.won = bool(ans.get("won"))
+        self.state, self.t0 = "reveal", time.monotonic()
+        self._applied = 0
+        if ans.get("capped"):
+            self.ctx.toast(tr("Daily Cup Game limit reached: a win gives your bet back until midnight"), "warn")
+        QTimer.singleShot(1400, lambda: (self.finish(int(ans.get("paid") or 0)), self.animate(1.5)))
+
+    def failed(self, message: str) -> None:
+        super().failed(message)
+        self.state = "idle"
 
 
 # --------------------------------------------------------------------------- #
@@ -42762,7 +43078,7 @@ class HiLo(Game):
                 y += box.height() + S(6)
             return
         cw, ch = S(78), S(110)
-        c = QPointF(r.center().x(), r.top() + S(18) + ch / 2)
+        c = QPointF(r.left() + (r.width() - S(116)) / 2, r.top() + S(18) + ch / 2)     # 5.11: clear of the numbers
         self._stats(p, r)                                    # 4.7: the same labelled boxes as the other games
         if not self.cards:
             self._card(p, QRectF(c.x() - cw / 2, c.y() - ch / 2, cw, ch), 0, face=False)
@@ -42786,10 +43102,47 @@ class HiLo(Game):
             self._card(p, QRectF(x, r.top() + S(14), S(28), S(40)), card)
             x += S(32)
         hi, lo = self.chances()
+        # 5.11: two big choices beside the card: click one (or use the buttons)
+        self.zones = []
+        if self.busy and not self.lost and not self.waiting:
+            pw_, ph_ = S(96), ch
+            for side, key, label, ch_, arrow in ((-1, "lower", tr("LOWER"), lo, "▼"), (1, "higher", tr("HIGHER"), hi, "▲")):
+                x = c.x() + side * (cw / 2 + S(14)) - (pw_ if side < 0 else 0)
+                box = QRectF(x, c.y() - ph_ / 2, pw_, ph_)
+                ok = ch_ > 0
+                col = QColor("#3DDC84") if key == "higher" else QColor("#FF6B6B")
+                p.setPen(QPen(alpha(col, 0.7 if ok else 0.15), S(1.6)))
+                p.setBrush(alpha(col, 0.14 if ok else 0.04))
+                p.drawRoundedRect(box, S(10), S(10))
+                p.setPen(QColor(col) if ok else QColor(TEXT_FAINT))
+                p.setFont(font(18, QFont.Weight.Black))
+                p.drawText(QRectF(box.left(), box.top() + S(6), box.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter), arrow)
+                p.setFont(font(11, QFont.Weight.Black, 1))
+                p.drawText(QRectF(box.left(), box.top() + S(32), box.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), label)
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(9, QFont.Weight.DemiBold))
+                p.drawText(QRectF(box.left(), box.top() + S(50), box.width(), S(14)), int(Qt.AlignmentFlag.AlignCenter),
+                           tr("or the same"))
+                p.setPen(QColor(TEXT))
+                p.setFont(font(13, QFont.Weight.ExtraBold))
+                p.drawText(QRectF(box.left(), box.top() + S(66), box.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                           f"×{self.next_mult(key):.2f}" if ok else "—")
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(9.5, QFont.Weight.Bold))
+                p.drawText(QRectF(box.left(), box.top() + S(86), box.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                           tr("{p}% chance", p=round(ch_ * 100)))
+                if ok:
+                    self.zones.append((box, key))
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.setPen(QColor(TEXT_DIM))
-        line = tr("Higher or same {a}%  ·  Lower or same {b}%", a=round(hi * 100), b=round(lo * 100))
+        line = (tr("Pick HIGHER or LOWER · cash out when you like") if self.busy and not self.lost
+                else tr("Higher or same {a}%  ·  Lower or same {b}%", a=round(hi * 100), b=round(lo * 100)))
         p.drawText(QRectF(r.left(), c.y() + ch / 2 + S(10), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter), line)
+
+    def mouseReleaseEvent(self, e) -> None:
+        for box, key in getattr(self, "zones", []):
+            if box.contains(e.position()):
+                return self.guess(key)
 
     def _stats(self, p: QPainter, r: QRectF) -> None:
         pass
@@ -46297,7 +46650,7 @@ def _make_class():
             game)."""
             if self.phase != "shown":
                 return
-            if claim_blocked(self.ctx):
+            if claim_blocked(self.ctx, minimize=True):
                 return
             self._close_sheet()
             self.toast_w.hide()
@@ -51256,7 +51609,7 @@ class MainWindow(QWidget):
     def collapse(self) -> None:
         if not self.expanded or self.morph.busy:
             return
-        if claim_blocked(self.ctx):
+        if claim_blocked(self.ctx, minimize=True):
             return
         if getattr(self, "sheet", None) is not None:          # folding the menu closes a small screen
             tab = self.sheet_tab

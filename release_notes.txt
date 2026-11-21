@@ -1,11 +1,9 @@
-Rubenium 5.10
+Rubenium 5.11
 
-- Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own
-- NEW: themed cases. The Medieval Case and the Nature Case only hold badges of their theme, and the Cosmic Case is now space only
-- 11 new badge designs you can only get from them: Scroll, Goblet, Knight Helmet, Bow, Battle Axe, Castle, Flower, Butterfly, Cactus, Lotus and Rainbow
-- Case prices climb as you buy: each case costs 10, 25 or 50 coins more than the last one you bought this week. Every price goes back to normal on Saturday at 12:00
-- All or Nothing, Coin Rush, Jackpot and Vault cases are no longer sold (the ones you have still open)
-- Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power
-- Golf bots really play now: you see every shot roll, around the walls, with the same physics as you
+- NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5
+- Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25
+- Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each
+- No more daily coin limit in mini games, and up to 16 keys a day from games
+- Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
