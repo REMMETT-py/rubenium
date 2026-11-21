@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.9"         # the version people see
-BUILD = "2026.11.21.9"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.10"         # the version people see
+BUILD = "2026.11.21.10"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2732,6 +2732,8 @@ CLASS_NAMES = ["Basic", "Painted", "Shiny", "Titanium", "Gold", "Prismatic"]
 CLASS_COLOURS = ["#9AA4AD", "#6FB7FF", "#FF7AD9", "#E6EEF5", "#FFC94D", "#C38BFF"]
 RARITY_COLOURS = {"standard": "#9AA4AD", "rare": "#4FA8FF", "special": "#B36BFF", "epic": "#FF5CC8",
                   "exotic": "#FFC94D"}
+RARITY_NAMES.update({"medieval": "Medieval Case only", "nature": "Nature Case only"})      # 5.10: collection rows
+RARITY_COLOURS.update({"medieval": "#D9A45B", "nature": "#5BD47A"})
 ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not for sale",
           "rb_already_owned": "You already have it", "rb_not_yours": "You do not have this",
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
@@ -6559,6 +6561,37 @@ FR = {
     'Gift a case by tapping a friend, up to 3 at once. Deals: one of each per day': 'Offre une caisse en touchant un ami, jusqu’à 3 d’un coup. Bons plans : un de chaque par jour',
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
+
+FR.update({                                   # 5.10
+    'NEW: themed cases. The Medieval Case and the Nature Case only hold badges of their theme, and the Cosmic Case is now space only': 'NOUVEAU : des caisses à thème. La caisse Médiévale et la caisse Nature ne contiennent que des badges de leur thème, et la caisse Cosmique est maintenant 100 % espace',
+    '11 new badge designs you can only get from them: Scroll, Goblet, Knight Helmet, Bow, Battle Axe, Castle, Flower, Butterfly, Cactus, Lotus and Rainbow': '11 nouveaux badges qu’on ne trouve que là : Parchemin, Coupe, Heaume, Arc, Hache de guerre, Château, Fleur, Papillon, Cactus, Lotus et Arc-en-ciel',
+    'Case prices climb as you buy: each case costs 10, 25 or 50 coins more than the last one you bought this week. Every price goes back to normal on Saturday at 12:00': 'Les prix des caisses montent quand tu achètes : chaque caisse coûte 10, 25 ou 50 pièces de plus que la précédente cette semaine. Tous les prix reviennent à la normale le samedi à 12:00',
+    'All or Nothing, Coin Rush, Jackpot and Vault cases are no longer sold (the ones you have still open)': 'Les caisses Tout ou rien, Ruée vers l’or, Jackpot et Coffre-fort ne sont plus vendues (celles que tu as s’ouvrent toujours)',
+    'Back to {p} on Saturday at 12:00 (in {t}).': 'Retour à {p} samedi à 12:00 (dans {t}).',
+    'Each one you buy this week costs {s} more than the last.': 'Chaque caisse achetée cette semaine coûte {s} de plus que la précédente.',
+    'You bought {n} this week: each one costs {s} more than the last.': 'Tu en as acheté {n} cette semaine : chacune coûte {s} de plus que la précédente.',
+    'Only badges of one theme, and designs found nowhere else.': 'Seulement des badges d’un thème, et des modèles introuvables ailleurs.',
+    'Saturday 12:00': 'samedi 12:00',
+    'Themed cases': 'Caisses à thème',
+    'Medieval Case': 'Caisse Médiévale',
+    'Nature Case': 'Caisse Nature',
+    'Medieval Case only': 'Seulement dans la caisse Médiévale',
+    'Nature Case only': 'Seulement dans la caisse Nature',
+    'Space only: moons, suns, stars, comets, planets, rockets and aliens. No Common badges, and a real chance of a Mythic.': 'Seulement l’espace : lunes, soleils, étoiles, comètes, planètes, fusées et aliens. Aucun badge Commun, et une vraie chance de Mythique.',
+    'Medieval only: swords, shields, castles, helmets, bows, crowns, goblets and scrolls. 6 designs are only found here.': 'Seulement le Moyen Âge : épées, boucliers, châteaux, heaumes, arcs, couronnes, coupes et parchemins. 6 modèles ne se trouvent qu’ici.',
+    'Nature only: flowers, trees, butterflies, cacti, mushrooms, the lotus and the rainbow. 5 designs are only found here.': 'Seulement la nature : fleurs, arbres, papillons, cactus, champignons, le lotus et l’arc-en-ciel. 5 modèles ne se trouvent qu’ici.',
+    'Scroll': 'Parchemin',
+    'Goblet': 'Coupe',
+    'Knight Helmet': 'Heaume',
+    'Bow': 'Arc',
+    'Battle Axe': 'Hache de guerre',
+    'Castle': 'Château',
+    'Flower': 'Fleur',
+    'Butterfly': 'Papillon',
+    'Cactus': 'Cactus',
+    'Lotus': 'Lotus',
+    'Rainbow': 'Arc-en-ciel',
+})
 
 FR.update({                                   # 5.9
     'The OG tag is one of a kind now: a turning rainbow edge, a bright glow and sparkles': 'Le tag OG est unique maintenant : un bord arc-en-ciel qui tourne, une lueur vive et des étincelles',
@@ -11270,6 +11303,10 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.10", ['NEW: themed cases. The Medieval Case and the Nature Case only hold badges of their theme, and the Cosmic Case is now space only',
+              '11 new badge designs you can only get from them: Scroll, Goblet, Knight Helmet, Bow, Battle Axe, Castle, Flower, Butterfly, Cactus, Lotus and Rainbow',
+              'Case prices climb as you buy: each case costs 10, 25 or 50 coins more than the last one you bought this week. Every price goes back to normal on Saturday at 12:00',
+              'All or Nothing, Coin Rush, Jackpot and Vault cases are no longer sold (the ones you have still open)']),
     ("5.9", ['The OG tag is one of a kind now: a turning rainbow edge, a bright glow and sparkles',
              'Keys are back in the games: any casino bet of 50 coins or more, and mini games, can drop a key (up to 6 a day). You always see it land',
              'Daily case: once opened it moves to the bottom with its timer, no Open button until it is ready again',
@@ -13651,11 +13688,20 @@ EXOTICS = [("galaxy", "Galaxy"), ("phoenix", "Phoenix"), ("glitch", "Glitch"), (
            # 5.4: the second row of Mythics
            ("eclipse", "Eclipse"), ("supernova", "Supernova"), ("infinity", "Infinity"), ("thunder", "Thunder Orb"),
            ("omega", "Omega"), ("vortex", "Vortex")]
-BADGE_NAME = dict(BADGES + EXOTICS)
+# 5.10: designs only found in the themed cases (rarity, theme)
+THEMED_BADGES = [("scroll", "Scroll", "standard", "medieval"), ("goblet", "Goblet", "standard", "medieval"),
+                 ("helmet", "Knight Helmet", "rare", "medieval"), ("bow", "Bow", "rare", "medieval"),
+                 ("axe", "Battle Axe", "special", "medieval"), ("castle", "Castle", "epic", "medieval"),
+                 ("flower", "Flower", "standard", "nature"), ("butterfly", "Butterfly", "rare", "nature"),
+                 ("cactus", "Cactus", "rare", "nature"), ("lotus", "Lotus", "special", "nature"),
+                 ("rainbow", "Rainbow", "epic", "nature")]
+BADGE_NAME = dict(BADGES + EXOTICS + [(b, n) for b, n, _r, _t in THEMED_BADGES])
 EXOTIC_IDS = tuple(b for b, _n in EXOTICS)
 BADGE_ROWS = [("standard", [b for b, _n in BADGES[0:12]]), ("rare", [b for b, _n in BADGES[12:24]]),
               ("special", [b for b, _n in BADGES[24:36]]), ("epic", [b for b, _n in BADGES[36:48]]),
-              ("exotic", list(EXOTIC_IDS))]
+              ("exotic", list(EXOTIC_IDS)),
+              ("medieval", [b for b, _n, _r, t in THEMED_BADGES if t == "medieval"]),
+              ("nature", [b for b, _n, _r, t in THEMED_BADGES if t == "nature"])]
 # the colours of a badge, rarest first
 GOLD_IDS = ["gold"]
 TITANIUM_IDS = ["black", "white"]
@@ -14055,7 +14101,7 @@ def _build(ident: str) -> QPainterPath:
         head.cubicTo(0.72, -0.98, 1.02, -0.42, 0.86, 0.08)
         head.lineTo(0.16, -0.3)
         head.closeSubpath()
-        return _u(_ln([(-0.62, 0.95), (0.3, -0.72)], 0.15), head)
+        return _u(_ln([(-0.62, 0.95), (0.3, -0.72)], 0.17), head)
     if ident == "shield":
         path.moveTo(0, -1)
         path.lineTo(0.85, -0.65)
@@ -14265,6 +14311,59 @@ def _build(ident: str) -> QPainterPath:
                 pts.append((rad * math.cos(ang), rad * math.sin(ang)))
             parts.append(_ln(pts, 0.14, curve=True))
         return _u(*parts)
+    # 5.10: the designs only found in themed cases
+    if ident == "scroll":
+        body = _u(_r(-0.62, -0.72, 1.24, 1.44, 0.04), _r(-0.86, -0.94, 1.72, 0.34, 0.17), _r(-0.86, 0.6, 1.72, 0.34, 0.17))
+        return body.subtracted(_u(_r(-0.4, -0.36, 0.8, 0.1, 0.05), _r(-0.4, -0.12, 0.8, 0.1, 0.05), _r(-0.4, 0.12, 0.52, 0.1, 0.05),
+                                  _c(-0.69, -0.77, 0.07), _c(0.69, 0.77, 0.07)))
+    if ident == "goblet":
+        path.moveTo(-0.68, -0.9)
+        path.lineTo(0.68, -0.9)
+        path.cubicTo(0.68, -0.18, 0.32, 0.1, 0, 0.1)
+        path.cubicTo(-0.32, 0.1, -0.68, -0.18, -0.68, -0.9)
+        cup = path.subtracted(_c(0, -0.46, 0.15))
+        return _u(cup, _r(-0.09, 0.0, 0.18, 0.66), _r(-0.5, 0.62, 1.0, 0.26, 0.12))
+    if ident == "flower":
+        petals = [QTransform().rotate(72 * k).map(_c(0, -0.52, 0.3, 0.44)) for k in range(5)]
+        return _u(*petals).subtracted(_c(0, 0, 0.32)).united(_c(0, 0, 0.22))
+    if ident == "helmet":
+        head = _u(_c(0, -0.18, 0.74, 0.74), _r(-0.74, -0.18, 1.48, 1.0, 0.14))
+        return _u(head.subtracted(_u(_r(-0.58, -0.16, 1.16, 0.14, 0.07), _r(-0.06, 0.08, 0.12, 0.56, 0.06))),
+                  _r(-0.07, -1.0, 0.14, 0.3, 0.07))
+    if ident == "bow":
+        bow = _ln([(-0.5, -0.96), (0.62, -0.62), (0.62, 0.62), (-0.5, 0.96)], 0.13, curve=True)
+        arrow = _u(_ln([(-0.92, 0), (0.68, 0)], 0.08), _p((0.98, 0), (0.62, -0.2), (0.62, 0.2)),
+                   _p((-0.98, -0.2), (-0.76, -0.2), (-0.6, 0), (-0.98, 0)), _p((-0.98, 0.2), (-0.76, 0.2), (-0.6, 0), (-0.98, 0)))
+        return _u(bow, _ln([(-0.5, -0.96), (-0.5, 0.96)], 0.07), arrow)
+    if ident == "butterfly":
+        wings = _u(_c(-0.46, -0.34, 0.44, 0.42), _c(0.46, -0.34, 0.44, 0.42), _c(-0.36, 0.42, 0.32, 0.36), _c(0.36, 0.42, 0.32, 0.36))
+        wings = wings.subtracted(_r(-0.14, -1, 0.28, 2)).subtracted(_u(_c(-0.5, -0.36, 0.14), _c(0.5, -0.36, 0.14)))
+        body = _r(-0.08, -0.56, 0.16, 1.24, 0.08)
+        return _u(wings, body, _ln([(0, -0.5), (-0.1, -0.8), (-0.3, -0.95), (-0.42, -0.95)], 0.06, curve=True),
+                  _ln([(0, -0.5), (0.1, -0.8), (0.3, -0.95), (0.42, -0.95)], 0.06, curve=True))
+    if ident == "cactus":
+        plant = _u(_r(-0.2, -0.95, 0.4, 1.78, 0.2), _r(-0.72, -0.48, 0.24, 0.68, 0.12), _r(-0.72, -0.02, 0.62, 0.24, 0.12),
+                   _r(0.48, -0.78, 0.24, 0.62, 0.12), _r(0.1, -0.38, 0.62, 0.24, 0.12))
+        return _u(plant.subtracted(_r(-0.025, -0.72, 0.05, 1.3)), _r(-0.6, 0.76, 1.2, 0.2, 0.08))
+    if ident == "lotus":
+        def petal(turn: float, k: float) -> QPainterPath:
+            pt = _P()
+            pt.moveTo(0, 0.55)
+            pt.cubicTo(-0.42, 0.2, -0.26, -0.6, 0, -0.95)
+            pt.cubicTo(0.26, -0.6, 0.42, 0.2, 0, 0.55)
+            return QTransform().translate(0, 0.55 * K).rotate(turn).scale(k, k).translate(0, -0.55 * K).map(pt)
+        return _u(petal(-68, 0.72), petal(68, 0.72), petal(-36, 0.86), petal(36, 0.86), petal(0, 1.0),
+                  _r(-0.9, 0.66, 1.8, 0.14, 0.07))
+    if ident == "castle":
+        towers = _u(_r(-0.95, -0.6, 0.5, 1.5), _r(0.45, -0.6, 0.5, 1.5), _r(-0.5, -0.22, 1.0, 1.09))   # no shared edges: Qt drops them
+        teeth = _u(*[_r(x, -0.82, 0.14, 0.26) for x in (-0.95, -0.77, -0.59, 0.45, 0.63, 0.81)],
+                   *[_r(x, -0.42, 0.16, 0.24) for x in (-0.4, -0.08, 0.24)])
+        holes = _u(_c(0, 0.42, 0.24), _r(-0.24, 0.42, 0.48, 0.5), _r(-0.77, -0.3, 0.14, 0.28, 0.07), _r(0.63, -0.3, 0.14, 0.28, 0.07))
+        return _u(towers, teeth).subtracted(holes)
+    if ident == "rainbow":
+        bands = _u(*[_c(0, 0.5, a).subtracted(_c(0, 0.5, b)) for a, b in ((1.0, 0.84), (0.76, 0.6), (0.52, 0.36))])
+        bands = bands.intersected(_r(-1.1, -0.7, 2.2, 1.2))
+        return _u(bands, _c(-0.72, 0.56, 0.2), _c(-0.48, 0.62, 0.16), _c(0.72, 0.56, 0.2), _c(0.48, 0.62, 0.16))
     return _c(0, 0, 0.8)
 
 
@@ -19671,6 +19770,11 @@ class ShopPage(StylePart, Page):
             return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to open cases"),
                                        12, TEXT_DIM))
         cid = getattr(ctx, "shop_case", None)
+        import time as _t
+        if _t.monotonic() - getattr(ctx, "_case_prices_at", -99) > 20:     # 5.10: this week's prices
+            ctx._case_prices_at = _t.monotonic()
+            fetch_case_prices(ctx, lambda: (self._case_texts(), [c.update() for c in self.findChildren(QWidget)
+                                                                 if getattr(c, "case", None) is not None]))
         self._daily_timer = QTimer(self)
         self._daily_timer.setInterval(1000)
         self._daily_timer.timeout.connect(self._tick_daily)
@@ -19690,7 +19794,8 @@ class ShopPage(StylePart, Page):
             if daily_ready:                                   # 5.9: an opened daily case waits at the bottom
                 lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
-                groups = (("hunt", tr("Rare badge cases"), tr("Fewer coins, much better odds for rare badges.")),   # 4.3: first
+                groups = (("theme", tr("Themed cases"), tr("Only badges of one theme, and designs found nowhere else.")),
+                          ("hunt", tr("Rare badge cases"), tr("Fewer coins, much better odds for rare badges.")),   # 4.3: first
                           ("coins", tr("Coin cases"), tr("Mostly coins, and badges of every rarity too.")),
                           ("style", tr("Style cases"), tr("Balls, lines, fonts, themes, banners and frames. No key needed.")))
                 for kind, title, sub in groups:
@@ -19757,15 +19862,19 @@ class ShopPage(StylePart, Page):
                 self.buy_btn.level_locked = True
                 row_.addWidget(self.buy_btn, 3)
             elif not case.get("limited"):
-                self.buy_btn = Button(tr("Buy {n}", n=coins_text(case["price"])), "ghost", 40)
+                self.buy_btn = Button(tr("Buy {n}", n=coins_text(case_price_now(case))), "ghost", 40)
                 self.buy_btn.clicked.connect(lambda: self._buy(case, 1))
                 row_.addWidget(self.buy_btn, 2)
                 five = Button("×5", "ghost", 40)
-                five.setToolTip(tr("Buy 5 for {n}", n=coins_text(case["price"] * 5)))
                 five.clicked.connect(lambda: self._buy(case, 5))
                 five.setFixedWidth(S(52))
                 row_.addWidget(five)
+                self.five_btn = five
             lay.addLayout(row_)
+            if not case.get("limited") and case_step(case):     # 5.10: the price climbs, said in plain words
+                self.climb_lbl = Label("", 10.5, "#FFC94D", wrap_w=self.W)
+                lay.addWidget(self.climb_lbl)
+                lay.addWidget(_Poll(1000, self._case_texts))
             self._case_texts()
         if cid != "daily":
             pass
@@ -19805,6 +19914,20 @@ class ShopPage(StylePart, Page):
         ec = self.ctx.econ
         have = int(ec.stock.get(case["id"], 0) or 0)
         try:
+            if getattr(self, "buy_btn", None) is not None and not getattr(self.buy_btn, "level_locked", False) \
+                    and not case.get("limited"):
+                self.buy_btn.set_text(tr("Buy {n}", n=coins_text(case_price_now(case))))
+                if getattr(self, "five_btn", None) is not None:
+                    self.five_btn.setToolTip(tr("Buy 5 for {n}", n=coins_text(case_cost(case, 5))))
+            if getattr(self, "climb_lbl", None) is not None:
+                st, b = case_step(case), case_bought(case)
+                self.climb_lbl.set_text(
+                    (tr("You bought {n} this week: each one costs {s} more than the last.", n=b, s=coins_text(st)) if b else
+                     tr("Each one you buy this week costs {s} more than the last.", s=coins_text(st)))
+                    + " " + tr("Back to {p} on Saturday at 12:00 (in {t}).", p=coins_text(int(case["price"])), t=case_reset_text()))
+        except RuntimeError:
+            pass
+        try:
             self.have_lbl.set_text(tr("You have {n}", n=have) if have else tr("You have none yet: buy one first"))
             self.open_btn.set_text(tr("Open") if case_keyless(case) else tr("Open  ·  1 key"))
             self.open_btn.set_kind("primary")
@@ -19817,7 +19940,7 @@ class ShopPage(StylePart, Page):
         ctx, ec = self.ctx, self.ctx.econ
         if self.reel is not None and self.reel.busy() or getattr(self, "_asking", False):
             return
-        cost = int(case["price"]) * n
+        cost = case_cost(case, n)
         if cost > ec.coins:
             return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(cost - ec.coins)), "warn")
         self._asking = True
@@ -19829,6 +19952,9 @@ class ShopPage(StylePart, Page):
                 return ctx.toast(tr(str(data)), "warn")
             sfx.play("on")
             ec.stock[case["id"]] = int(data.get("stock") or 0)
+            if data.get("bought") is not None:
+                ec.case_bought = dict(getattr(ec, "case_bought", None) or {})
+                ec.case_bought[case["id"]] = int(data["bought"])
             ec.changed.emit()
             ctx.toast(tr("Added to Your cases") if n == 1 else tr("{n} cases added to Your cases", n=n))
             self._case_texts()
@@ -20123,7 +20249,7 @@ class GiftSheet(QWidget):
         self._texts()
 
     def _texts(self) -> None:
-        price = int(self.case["price"]) * self.n
+        price = case_cost(self.case, self.n)
         left = self.left
         self.info.set_text((tr("Gifts left today: {n}", n=left) + "  ·  " if left is not None else "")
                            + tr("You have {n} coins", n=coins_text(self.ctx.econ.coins)))
@@ -20145,6 +20271,11 @@ class GiftSheet(QWidget):
                     self.ctx.toast(tr(str(data)), "warn")
                     return self._texts()
                 sfx.play("on")
+                if isinstance(data, dict) and data.get("bought") is not None:     # 5.10: a gift counts as one bought
+                    ec_ = self.ctx.econ
+                    ec_.case_bought = dict(getattr(ec_, "case_bought", None) or {})
+                    ec_.case_bought[self.case["id"]] = int(data["bought"])
+                    ec_.changed.emit()
                 self.ctx.toast(tr("Gift sent to {name}!", name=self.to))
                 self.close_sheet()
             except RuntimeError:
@@ -20175,12 +20306,13 @@ CASE_NAMES = {"lucky": "Coin Rush Case", "frames": "Frame Case", "cosmos": "Cosm
               "titan": "Titan Case", "vault": "Vault Case", "mythic": "Top Tier Case", "daily": "Daily Case",
               "style": "Ball, Line & Font Case", "themes": "Theme Case", "profile": "Banner & Frame Case",
               "pocket": "Pocket Case", "elite": "Elite Case", "royal": "Royal Case", "shiny": "Shiny Case",
-              "banners": "Banner Case"}            # 4.1: every one is a "Case", and no name promises what it cannot keep
+              "banners": "Banner Case", "medieval": "Medieval Case", "nature": "Nature Case"}            # 4.1: every one is a "Case", and no name promises what it cannot keep
 CASE_COLOURS = {"lucky": "#57E389", "frames": "#C99BFF", "cosmos": "#5B6CFF", "winter": "#9FE3FF", "giftbox": "#FF4F6D",
                 "starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
                 "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0",
                 "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF",
-                "pocket": "#9AD27A", "elite": "#3DE0A0", "royal": "#E8C26A", "shiny": "#E6F2FF", "banners": "#FF6FA8"}
+                "pocket": "#9AD27A", "elite": "#3DE0A0", "royal": "#E8C26A", "shiny": "#E6F2FF", "banners": "#FF6FA8",
+                "medieval": "#D9A45B", "nature": "#5BD47A"}
 CASE_FRONT = {"lucky": ("clover", "dice", "clover"), "frames": ("crown", "star", "crown"), "cosmos": ("planet", "comet", "saturn"),
               "winter": ("snowflake", "star", "snowflake"), "giftbox": ("$", "heart", "$"),
               "starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"),
@@ -20189,7 +20321,8 @@ CASE_FRONT = {"lucky": ("clover", "dice", "clover"), "frames": ("crown", "star",
               "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?"),
               "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame"),
               "pocket": ("clover", "heart", "note"), "elite": ("bolt", "crown", "comet"), "royal": ("crown", "trophy", "crown"),
-              "shiny": ("drop", "comet", "drop"), "banners": ("flame", "crown", "feather")}
+              "shiny": ("drop", "comet", "drop"), "banners": ("flame", "crown", "feather"),
+              "medieval": ("sword", "castle", "shield"), "nature": ("flower", "tree", "butterfly")}
 CASE_NOTES = {                    # 4.0: checked against the real odds of every case (the numbers are shown below)
     "pocket": "The cheapest case: mostly coins, sometimes a Basic or Painted badge.",
     "starter": "Mostly coins, Basic and Painted badges, and a small Shiny chance.",
@@ -20203,7 +20336,9 @@ CASE_NOTES = {                    # 4.0: checked against the real odds of every 
     "gamble": "High risk: mostly a few coins, otherwise Rare or Special, up to Titanium and Gold.",
     "painter": "Never Basic: Painted, Shiny, Titanium and Gold.",
     "vault": "No Common badges: Rare to Epic in every finish.",
-    "cosmos": "No Common badges, and a real chance of a Mythic badge.",
+    "cosmos": "Space only: moons, suns, stars, comets, planets, rockets and aliens. No Common badges, and a real chance of a Mythic.",
+    "medieval": "Medieval only: swords, shields, castles, helmets, bows, crowns, goblets and scrolls. 6 designs are only found here.",
+    "nature": "Nature only: flowers, trees, butterflies, cacti, mushrooms, the lotus and the rainbow. 5 designs are only found here.",
     "shiny": "No Basic finishes: the best odds for Shiny, Titanium and Gold.",
     "mythic": "Special and Epic badges only, with the best Mythic odds.",
     "winter": "Limited: Christmas looks you cannot buy anywhere else, or coins.",
@@ -20215,7 +20350,8 @@ CASE_NOTES = {                    # 4.0: checked against the real odds of every 
     "banners": "Banners, or coins."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
 COIN_CASES = ("pocket", "starter", "standard", "premium", "jackpot", "titan", "elite", "royal", "lucky")
-HUNT_CASES = ("gamble", "painter", "vault", "shiny", "mythic", "cosmos")
+HUNT_CASES = ("gamble", "painter", "vault", "shiny", "mythic")
+THEME_CASES = ("nature", "medieval", "cosmos")
 STYLE_CASES = ("style", "themes", "banners", "profile", "frames")
 
 
@@ -20227,7 +20363,8 @@ def case_kind(case_id: str) -> str:
     row = next((c for c in ECON.cases if c.get("id") == case_id), None)
     if row is not None and row.get("kind"):
         return str(row["kind"])
-    return "coins" if case_id in COIN_CASES else "hunt" if case_id in HUNT_CASES else "style" if case_id in STYLE_CASES else ""
+    return ("coins" if case_id in COIN_CASES else "hunt" if case_id in HUNT_CASES else "style" if case_id in STYLE_CASES
+            else "theme" if case_id in THEME_CASES else "")
 
 
 def case_keyless(case: dict) -> bool:
@@ -20281,9 +20418,58 @@ def case_grid(case: dict):
     if case.get("id") == "daily":
         return [x / GRID_SCALE for x in DAILY_GRID]
     g = case.get("grid")
-    if not g or str(case.get("mode") or ""):
+    if not g or (str(case.get("mode") or "") and theme_pool(case) is None):
         return None
     return [float(x or 0) / GRID_SCALE for x in g]
+
+
+def case_step(case: dict) -> int:
+    """5.10: how much more the next one costs after each one bought this week."""
+    return int((case or {}).get("step") or 0)
+
+
+def case_bought(case: dict) -> int:
+    return int((getattr(ECON, "case_bought", None) or {}).get((case or {}).get("id"), 0) or 0)
+
+
+def case_price_now(case: dict, k: int = 0) -> int:
+    """What the next one costs you (k more after it)."""
+    return int(case.get("price") or 0) + case_step(case) * (case_bought(case) + k)
+
+
+def case_cost(case: dict, n: int) -> int:
+    return sum(case_price_now(case, k) for k in range(max(0, n)))
+
+
+def case_reset_text() -> str:
+    """Time left until Saturday 12:00 (Paris), when every case price goes back to normal."""
+    import time as _t
+    at = float(getattr(ECON, "case_resets", 0) or 0)
+    left = int(at - _t.time()) if at else 0
+    if left <= 0:
+        return tr("Saturday 12:00")
+    d, h, m = left // 86400, left % 86400 // 3600, left % 3600 // 60
+    return f"{d}d {h}h" if d else (f"{h}h {m:02d}m" if h else f"{m}m")
+
+
+def fetch_case_prices(ctx, done=None) -> None:
+    """5.10: how many of each case you bought this week (prices climb until Saturday 12:00)."""
+    ec = ctx.econ
+
+    def got(ok: bool, data) -> None:
+        if ok and isinstance(data, dict):
+            ec.case_bought = {k: int(v or 0) for k, v in (data.get("bought") or {}).items()}
+            ec.case_resets = float(data.get("resets") or 0)
+            ec.changed.emit()
+        if done:
+            done()
+    ec.call("rb_case_prices", {}, got)
+
+
+def theme_pool(case: dict):
+    """5.10: the designs a themed case can give (a set), or None for any other case."""
+    mode = str((case or {}).get("mode") or "")
+    return set(mode[6:].split(",")) if mode.startswith("theme:") else None
 
 
 MYTHIC_CLASS_SHARE = {3: 10 / 17, 4: 4 / 17, 5: 3 / 17}     # 5.0: Titanium, Gold, then Prismatic the rarest
@@ -20313,9 +20499,11 @@ def case_coin_share(case: dict) -> float:
     return max(0.0, 1 - sum(g) - case_mythic(case))
 
 
-def _group(ec, rarity: str, cls: int) -> list:
+def _group(ec, rarity: str, cls: int, pool=None) -> list:
+    """Badges of one rarity and finish a case draws from (a themed case: only its designs, its own ones included)."""
     return [(k, float(v.get("weight") or 1)) for k, v in ec.catalog.items() if v.get("kind") == "badge"
-            and v.get("rarity") == rarity and int(v.get("cls") or 0) == cls and not v.get("limited")]
+            and v.get("rarity") == rarity and int(v.get("cls") or 0) == cls
+            and (v.get("base") in pool if pool is not None else not v.get("limited"))]
 
 
 def item_chances(ec, item: str) -> list:
@@ -20332,20 +20520,25 @@ def item_chances(ec, item: str) -> list:
         share = mythic_share(base)
         per = {3: MYTHIC_CLASS_SHARE[3] / 2, 4: MYTHIC_CLASS_SHARE[4], 5: MYTHIC_CLASS_SHARE[5]}.get(cls, 0) * share
     else:                                       # 3.2: inside its group, an item drops in proportion to its weight
-        group = _group(ec, info.get("rarity"), cls)
-        per = float(info.get("weight") or 1) / max(1e-9, sum(w for _k, w in group) or 1)
+        per = None
     out = []
     for c in list(ec.cases) + [{"id": "daily"}]:
         mode = str(c.get("mode") or "")
-        if mode:
+        pool = theme_pool(c)
+        if mode and pool is None:
             continue                            # 4.0: style, limited and coin-only cases never give badges
+        if pool is not None and tier < 5 and base not in pool:
+            continue
+        if pool is None and tier < 5 and info.get("limited"):
+            continue
         if tier == 5:
             p = case_mythic(c) * per
         else:
             g = case_grid(c)
             if g is None:
                 continue
-            p = g[(tier - 1) * 5 + cls] * per
+            group = _group(ec, info.get("rarity"), cls, pool)
+            p = g[(tier - 1) * 5 + cls] * float(info.get("weight") or 1) / max(1e-9, sum(w for _k, w in group) or 1)
         if p > 0:
             out.append((c["id"], p))
     return sorted(out, key=lambda x: -x[1])
@@ -20825,7 +21018,7 @@ def case_drops(ec, case: dict, exact: bool = False) -> list:
     mode = str(case.get("mode", ""))
     cat = ec.catalog if ec is not None else {}
     out: dict = {}
-    if mode.startswith("kinds:") or mode.startswith("items:"):
+    if mode.startswith("kinds:") or mode.startswith("items:"):        # (themed cases have a grid: below)
         kinds = set(mode[6:].split(","))
         for tier in range(1, min(6, len(odds))):
             if not odds[tier]:
@@ -20846,7 +21039,7 @@ def case_drops(ec, case: dict, exact: bool = False) -> list:
             if pg <= 0:
                 continue
             tier, cls = i // 5 + 1, i % 5
-            group = _group(ec, TIERS[tier - 1], cls)
+            group = _group(ec, TIERS[tier - 1], cls, theme_pool(case))
             wsum = sum(w for _k, w in group) or 1
             for k, w in group:
                 key = k if exact else "badge:%s:grey" % cat[k].get("base")
@@ -21231,10 +21424,11 @@ class CaseCard(QWidget):
             p.setFont(font(11, QFont.Weight.DemiBold))
             p.drawText(line, int(Qt.AlignmentFlag.AlignVCenter), tr("Limited: not sold"))
         else:
-            paint_price(p, line, self.case["price"], 11, GOLD_TEXT, centre=False)
+            now_p = case_price_now(self.case)
+            paint_price(p, line, now_p, 11, "#FFB15C" if now_p > int(self.case["price"]) else GOLD_TEXT, centre=False)
             if not case_keyless(self.case):                  # opening it needs a key (style cases do not)
                 p.setFont(font(11, QFont.Weight.DemiBold))
-                pw = p.fontMetrics().horizontalAdvance(coins_text(self.case["price"])) + S(26)
+                pw = p.fontMetrics().horizontalAdvance(coins_text(now_p)) + S(26)
                 p.setPen(QColor(TEXT_DIM))
                 p.setFont(font(10, QFont.Weight.DemiBold))
                 p.drawText(QRectF(x + pw, line.top(), S(120), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
@@ -21340,7 +21534,13 @@ class CaseReel(QWidget):
 
     def _badges_of(self, tier: int) -> list:
         if tier not in self._pool:
-            self._pool[tier] = [b for b in BADGE_ROWS[tier - 1][1]] or ["star"]
+            pool = theme_pool(getattr(self, "case", None) or {})
+            if pool is not None and tier < 5:                 # 5.10: a themed case shows its own designs only
+                ec = self.ctx.econ if hasattr(self, "ctx") else ECON
+                self._pool[tier] = sorted({v.get("base") for v in ec.catalog.values() if v.get("kind") == "badge"
+                                           and v.get("base") in pool and v.get("rarity") == TIERS[tier - 1]}) or ["star"]
+            else:
+                self._pool[tier] = [b for b in BADGE_ROWS[tier - 1][1]] or ["star"]
         return self._pool[tier]
 
     def _make_strip(self, rnd) -> list:

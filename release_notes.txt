@@ -1,9 +1,8 @@
-Rubenium 5.9
+Rubenium 5.10
 
-- The OG tag is one of a kind now: a turning rainbow edge, a bright glow and sparkles
-- Keys are back in the games: any casino bet of 50 coins or more, and mini games, can drop a key (up to 6 a day). You always see it land
-- Daily case: once opened it moves to the bottom with its timer, no Open button until it is ready again
-- Jackpot: 5 players at most. Bots now and then put in something much cheaper or much better than everyone else
-- Mini Golf: the waiting room is clean again (no more overlapping text or broken buttons). Colour pickers no longer go off screen
+- NEW: themed cases. The Medieval Case and the Nature Case only hold badges of their theme, and the Cosmic Case is now space only
+- 11 new badge designs you can only get from them: Scroll, Goblet, Knight Helmet, Bow, Battle Axe, Castle, Flower, Butterfly, Cactus, Lotus and Rainbow
+- Case prices climb as you buy: each case costs 10, 25 or 50 coins more than the last one you bought this week. Every price goes back to normal on Saturday at 12:00
+- All or Nothing, Coin Rush, Jackpot and Vault cases are no longer sold (the ones you have still open)
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
