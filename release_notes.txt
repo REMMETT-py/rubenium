@@ -1,5 +1,6 @@
-Rubenium 6.2.3
+Rubenium 6.2.4
 
-- The Jackpot stays open until a player joins, and its countdown only starts when the first player joins, so it no longer cycles with nobody in it
+- SFX Match has a volume bar, so you can turn the sound up or down
+- The Jackpot stays open until a player joins, and its countdown only starts when the first player joins
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
