@@ -1637,16 +1637,30 @@ LOCKED_TABS = ("home", "lyrics", "settings")       # always shown
 
 
 class Sfx:
-    """Very quiet, soft interface sounds (switch on, switch off, pick). Made in code once, cached as .wav files.
-    Only for things you change, never for hovering."""
+    """Soft interface and game sounds, made in code once and cached as .wav files (5.15: all remade, plus
+    game sounds: reel ticks, cards, chips, coins, keys, cups, discs, putts). Only for things you change,
+    never for hovering."""
     RATE = 44100
-    SOUNDS = {          # (start Hz, end Hz, length s, loudness 0-1): low, round and short
-        "on": (330.0, 440.0, 0.17, 0.050),
-        "off": (392.0, 294.0, 0.16, 0.045),
-        "pick": (494.0, 466.0, 0.09, 0.030),
+    VER = 3                     # bump when the sounds change: new file names, the old ones are left alone
+    # name: (kind, settings). Kinds: tone (glide), tap (wood), click (bright tick), swish (card), chip, bell,
+    # drop (disc), thud (cup), whoosh (spin start), rumble (lose)
+    SOUNDS = {          # the last number: how loud it peaks (0-1)
+        "on": ("tone", (392.0, 523.3, 0.16, 0.050)),
+        "off": ("tone", (440.0, 311.1, 0.15, 0.044)),
+        "pick": ("tap", (720.0, 0.07, 0.040)),
+        "tick": ("click", (2600.0, 0.030, 0.050)),
+        "spin": ("whoosh", (0.42, 0.050)),
+        "card": ("swish", (0.13, 0.070)),
+        "chip": ("chip", (3300.0, 0.10, 0.065)),
+        "coin": ("bell", (1975.5, 0.42, 0.060)),
+        "key": ("keys", (2349.3, 0.40, 0.060)),
+        "drop": ("drop", (620.0, 170.0, 0.14, 0.070)),
+        "cup": ("thud", (150.0, 0.16, 0.070)),
+        "putt": ("tap", (980.0, 0.09, 0.070)),
+        "lose": ("rumble", (0.38, 0.065)),
     }
 
-    # 4.0: a few small tunes, note by note (Hz, start s, length s); still soft and short
+    # little tunes, note by note (Hz, start s, length s); still soft and short
     TUNES = {
         "levelup": [(523.3, 0.00, 0.14), (659.3, 0.10, 0.14), (784.0, 0.20, 0.16), (1046.5, 0.32, 0.42)],
         "jingle": [(1318.5, 0.00, 0.12), (1318.5, 0.14, 0.12), (1318.5, 0.28, 0.26), (1318.5, 0.58, 0.12),
@@ -1654,22 +1668,42 @@ class Sfx:
                    (1046.5, 1.44, 0.18), (1174.7, 1.62, 0.10), (1318.5, 1.74, 0.40)],
         "coupon": [(784.0, 0.00, 0.10), (987.8, 0.08, 0.10), (1174.7, 0.16, 0.10), (1568.0, 0.24, 0.30)],
         "unlock": [(392.0, 0.00, 0.12), (587.3, 0.10, 0.22)],
+        "win": [(659.3, 0.00, 0.10), (830.6, 0.07, 0.10), (987.8, 0.14, 0.26)],
+        "bigwin": [(523.3, 0.00, 0.10), (659.3, 0.07, 0.10), (784.0, 0.14, 0.10), (1046.5, 0.21, 0.12),
+                   (1318.5, 0.30, 0.12), (1568.0, 0.39, 0.45)],
+        "rare": [(880.0, 0.00, 0.16), (1108.7, 0.09, 0.16), (1318.5, 0.18, 0.34)],
+        "epic": [(740.0, 0.00, 0.14), (932.3, 0.08, 0.14), (1108.7, 0.16, 0.14), (1480.0, 0.26, 0.48)],
+        "legend": [(523.3, 0.00, 0.16), (784.0, 0.10, 0.16), (1046.5, 0.20, 0.16), (1318.5, 0.30, 0.16),
+                   (1568.0, 0.40, 0.18), (2093.0, 0.52, 0.70), (1568.0, 0.52, 0.70)],
     }
 
     def __init__(self) -> None:
         self.enabled = True
         self._files: dict = {}
         self._last = 0.0
+        self._lastname = ""
+
+    def _write(self, path, buf: list, gain: float) -> None:
+        import struct
+        import wave
+        path.parent.mkdir(parents=True, exist_ok=True)
+        frames = bytearray()
+        for v in buf:
+            frames += struct.pack("<h", int(max(-1.0, min(1.0, v * gain)) * 32767))
+        tmp = path.with_suffix(".tmp")
+        with wave.open(str(tmp), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(self.RATE)
+            w.writeframes(bytes(frames))
+        os.replace(tmp, path)
 
     def _make_tune(self, name: str) -> str:
         import math
-        import struct
-        import wave
         notes = self.TUNES[name]
-        path = DATA_DIR / "sounds" / f"tune_{name}_1.wav"
+        path = DATA_DIR / "sounds" / f"tune_{name}_{self.VER}.wav"
         if not path.is_file():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            total = max(s + ln for _f, s, ln in notes) + 0.05
+            total = max(s + ln for _f, s, ln in notes) + 0.08
             n = int(self.RATE * total)
             buf = [0.0] * n
             for f, start, ln in notes:
@@ -1677,18 +1711,11 @@ class Sfx:
                 for i in range(a, b):
                     t = (i - a) / self.RATE
                     k = t / ln
-                    env = min(1.0, t / 0.008) * math.exp(-4.0 * k)
-                    buf[i] += (math.sin(2 * math.pi * f * t) + 0.3 * math.sin(4 * math.pi * f * t)) * env
-            frames = bytearray()
-            for v in buf:
-                frames += struct.pack("<h", int(max(-1.0, min(1.0, v * 0.06)) * 32767))
-            tmp = path.with_suffix(".tmp")
-            with wave.open(str(tmp), "wb") as w:
-                w.setnchannels(1)
-                w.setsampwidth(2)
-                w.setframerate(self.RATE)
-                w.writeframes(bytes(frames))
-            os.replace(tmp, path)
+                    env = min(1.0, t / 0.006) * math.exp(-4.5 * k) * min(1.0, (b - i) / (0.01 * self.RATE))
+                    w = 2 * math.pi * f * t
+                    # a soft bell: a pure tone with a light octave and a touch of shimmer
+                    buf[i] += (math.sin(w) + 0.28 * math.sin(2 * w) + 0.08 * math.sin(3.01 * w) * math.exp(-9 * k)) * env
+            self._write(path, buf, 0.055)
         return str(path)
 
     def tune(self, name: str) -> None:
@@ -1701,32 +1728,150 @@ class Sfx:
         except OSError as exc:
             log.debug("tune %s failed: %s", name, exc)
 
-    def _make(self, name: str) -> str:
+    def _render(self, name: str) -> tuple:
+        """The samples of one sound (and its loudness)."""
         import math
-        import struct
-        import wave
-        f0, f1, length, gain = self.SOUNDS[name]
-        folder = DATA_DIR / "sounds"
-        path = folder / f"{name}_2.wav"                 # bump the number when a sound changes
-        if not path.is_file():
-            folder.mkdir(parents=True, exist_ok=True)
-            n = int(self.RATE * length)
-            frames, phase = bytearray(), 0.0
+        import random
+        R = self.RATE
+        kind, a = self.SOUNDS[name]
+        rnd = random.Random(hash(name) & 0xFFFF)
+
+        def noise(n):
+            return [rnd.uniform(-1.0, 1.0) for _ in range(n)]
+
+        def reson(src, f, q):            # a two-pole band pass: noise in, a pitched knock out
+            r = math.exp(-math.pi * f / (q * R))
+            c1, c2 = 2 * r * math.cos(2 * math.pi * f / R), -r * r
+            y1 = y2 = 0.0
+            out = []
+            for x in src:
+                y = (1 - r) * x + c1 * y1 + c2 * y2
+                out.append(y)
+                y1, y2 = y, y1
+            return out
+
+        def fade(buf, ms=4.0):
+            m = int(ms / 1000 * R)
+            for i in range(min(m, len(buf))):
+                buf[-1 - i] *= i / m
+            return buf
+
+        if kind == "tone":
+            f0, f1, ln, g = a
+            n = int(R * ln)
+            buf, ph = [], 0.0
             for i in range(n):
                 t = i / n
-                freq = f0 + (f1 - f0) * (1 - (1 - t) ** 3)          # glides, then settles
-                phase += 2 * math.pi * freq / self.RATE
-                attack = min(1.0, i / (0.018 * self.RATE))
-                env = (0.5 - 0.5 * math.cos(math.pi * attack)) * math.exp(-4.2 * t) * min(1.0, (n - i) / (0.03 * self.RATE))
-                v = math.sin(phase)                                       # a pure tone: nothing sharp in it
-                frames += struct.pack("<h", int(max(-1.0, min(1.0, v * env * gain)) * 32767))
-            tmp = path.with_suffix(".tmp")
-            with wave.open(str(tmp), "wb") as w:
-                w.setnchannels(1)
-                w.setsampwidth(2)
-                w.setframerate(self.RATE)
-                w.writeframes(bytes(frames))
-            os.replace(tmp, path)
+                freq = f0 + (f1 - f0) * (1 - (1 - t) ** 3)
+                ph += 2 * math.pi * freq / R
+                att = min(1.0, i / (0.012 * R))
+                env = (0.5 - 0.5 * math.cos(math.pi * att)) * math.exp(-4.4 * t)
+                buf.append((math.sin(ph) + 0.18 * math.sin(2 * ph) + 0.05 * math.sin(3 * ph)) * env)
+            return fade(buf, 25), g
+        if kind == "tap":                    # a soft wooden knock: a short tone plus a little noise
+            f, ln, g = a
+            n = int(R * ln)
+            nz = reson(noise(n), f * 2.2, 6)
+            buf = []
+            for i in range(n):
+                t = i / R
+                env = math.exp(-t * 55)
+                buf.append(math.sin(2 * math.pi * f * t * (1 - 0.15 * min(1.0, t * 30))) * env
+                           + 3.0 * nz[i] * math.exp(-t * 160))
+            return fade(buf), g
+        if kind == "click":                  # the case reel / wheel tick
+            f, ln, g = a
+            n = int(R * ln)
+            src = [x * math.exp(-i / R * 420) for i, x in enumerate(noise(n))]
+            k = reson(src, f, 9)
+            buf = [k[i] * 6 + 0.35 * math.sin(2 * math.pi * f / 2.4 * i / R) * math.exp(-i / R * 260) for i in range(n)]
+            return fade(buf), g
+        if kind == "whoosh":                 # a reel starting: air that rises and falls
+            ln, g = a
+            n = int(R * ln)
+            src = noise(n)
+            buf, y = [], 0.0
+            for i, x in enumerate(src):
+                t = i / n
+                cut = 0.02 + 0.18 * math.sin(math.pi * t)
+                y += cut * (x - y)
+                buf.append(y * math.sin(math.pi * t) ** 1.5 * 2.2)
+            return fade(buf), g
+        if kind == "swish":                  # a card sliding out, then landing
+            ln, g = a
+            n = int(R * ln)
+            src = noise(n)
+            buf, y, y2 = [], 0.0, 0.0
+            for i, x in enumerate(src):
+                t = i / n
+                cut = 0.05 + 0.5 * t
+                y += cut * (x - y)
+                y2 += 0.5 * (y - y2)
+                env = math.sin(math.pi * min(1.0, t * 1.25)) ** 2 if t < 0.8 else 0.0
+                buf.append((y - y2) * env * 2.5)
+            land = int(n * 0.78)
+            knock = reson([x * math.exp(-j / R * 500) for j, x in enumerate(noise(n - land))], 1400, 5)
+            for j, v in enumerate(knock):
+                buf[land + j] += v * 5
+            return fade(buf), g
+        if kind == "chip":                   # two clay chips knocking together
+            f, ln, g = a
+            n = int(R * ln)
+            buf = [0.0] * n
+            for start, ff in ((0, f), (int(0.028 * R), f * 1.13)):
+                src = [x * math.exp(-j / R * 600) for j, x in enumerate(noise(n - start))]
+                k = reson(src, ff, 14)
+                for j, v in enumerate(k):
+                    buf[start + j] += v * 7
+            return fade(buf), g
+        if kind in ("bell", "keys"):         # a coin ring / keys jingling (a few metal hits)
+            f, ln, g = a
+            n = int(R * ln)
+            buf = [0.0] * n
+            hits = [(0.0, 1.0)] if kind == "bell" else [(0.0, 1.0), (0.055, 0.7), (0.12, 0.85), (0.2, 0.5)]
+            for start, amp in hits:
+                s0 = int(start * R)
+                ff = f * (1 + 0.06 * rnd.uniform(-1, 1)) if kind == "keys" else f
+                for i in range(s0, n):
+                    t = (i - s0) / R
+                    env = min(1.0, t / 0.002) * amp
+                    buf[i] += env * (math.sin(2 * math.pi * ff * t) * math.exp(-t * 9)
+                                     + 0.5 * math.sin(2 * math.pi * ff * 2.76 * t) * math.exp(-t * 18)
+                                     + 0.25 * math.sin(2 * math.pi * ff * 5.4 * t) * math.exp(-t * 30))
+            return fade(buf, 20), g
+        if kind == "drop":                   # a disc dropping into its slot
+            f0, f1, ln, g = a
+            n = int(R * ln)
+            buf, ph = [], 0.0
+            for i in range(n):
+                t = i / n
+                ph += 2 * math.pi * (f1 + (f0 - f1) * (1 - t) ** 3) / R
+                buf.append(math.sin(ph) * math.exp(-t * 4) * min(1.0, i / (0.003 * R)))
+            return fade(buf, 10), g
+        if kind == "thud":                   # a cup set down on the table
+            f, ln, g = a
+            n = int(R * ln)
+            nz = reson(noise(n), 600, 3)
+            buf = [math.sin(2 * math.pi * f * i / R) * math.exp(-i / R * 30) + 2.5 * nz[i] * math.exp(-i / R * 90)
+                   for i in range(n)]
+            return fade(buf, 10), g
+        # rumble: a soft low fall for a loss
+        ln, g = a
+        n = int(R * ln)
+        nz = reson(noise(n), 220, 2)
+        buf, ph = [], 0.0
+        for i in range(n):
+            t = i / n
+            ph += 2 * math.pi * (180 - 90 * t) / R
+            buf.append((math.sin(ph) * 0.8 + 2.0 * nz[i]) * math.exp(-t * 3.5) * min(1.0, i / (0.01 * R)))
+        return fade(buf, 30), g
+
+    def _make(self, name: str) -> str:
+        path = DATA_DIR / "sounds" / f"{name}_{self.VER}.wav"
+        if not path.is_file():
+            buf, gain = self._render(name)
+            peak = max(1e-6, max(abs(v) for v in buf))
+            self._write(path, buf, gain / peak)          # every sound peaks at its own loudness
         return str(path)
 
     def play(self, name: str) -> None:
@@ -1734,9 +1879,11 @@ class Sfx:
             return
         import time
         now = time.monotonic()
-        if now - self._last < 0.03:                    # two widgets reacting to one click: one sound
+        if now - self._last < 0.03 and name == self._lastname:     # two widgets reacting to one click: one sound
             return
-        self._last = now
+        if now - self._last < 0.03 and name in ("pick", "on", "off"):
+            return
+        self._last, self._lastname = now, name
         try:
             if name not in self._files:
                 self._files[name] = self._make(name)
@@ -6617,6 +6764,10 @@ FR.update({'His · worth {n} ({p}% of yours)': 'Le sien · vaut {n} ({p} % du ti
 FR.update({'Power': 'Puissance', 'Your turn: move the mouse away from your ball': 'À toi : éloigne la souris de ta balle'})
 
 FR.update({'Please update to the latest version to play online: updating now…': 'Mets à jour vers la dernière version pour jouer en ligne : mise à jour en cours…', 'A new version is out: online closes while it updates': 'Une nouvelle version est sortie : le mode en ligne se ferme pendant la mise à jour'})
+
+FR.update({'This hour': 'Cette heure', 'Today': 'Aujourd’hui', 'This week': 'Cette semaine', 'new ones in {t}': 'nouveaux dans {t}'})
+
+FR.update({'What you can get ({n})': 'Ce que tu peux obtenir ({n})', '{what} (any colour or finish)': '{what} (toute couleur ou finition)', 'Themed badge cases': 'Caisses de badges à thème', 'Always a badge, all of one theme. No coins.': 'Toujours un badge, tous du même thème. Pas de pièces.', 'Always a badge, with much better odds for rare ones. No coins.': 'Toujours un badge, avec de bien meilleures chances pour les rares. Pas de pièces.', 'Mostly COINS back, and sometimes a badge.': 'Surtout des PIÈCES, et parfois un badge.', 'Balls, lines, fonts, app colours, banners and frames. No key needed.': 'Balles, lignes, polices, couleurs d’app, bannières et cadres. Pas besoin de clé.', 'App Colour Case': 'Caisse Couleurs d’app', 'Ocean Case': 'Caisse Océan', 'Spooky Case': 'Caisse Frisson', 'Arcade Case': 'Caisse Arcade', 'Treasure Case': 'Caisse Trésor', 'A COIN case: mostly coins back, sometimes a badge (Basic or Painted).': 'Une caisse à PIÈCES : surtout des pièces, parfois un badge (Basique ou Peint).', 'A COIN case: mostly coins, sometimes a badge, a tiny chance of Gold.': 'Une caisse à PIÈCES : surtout des pièces, parfois un badge, une toute petite chance d’Or.', 'A COIN case: coins, or a better badge than the Standard Case (up to Shiny and Gold).': 'Une caisse à PIÈCES : des pièces, ou un meilleur badge que la caisse Standard (jusqu’à Brillant et Or).', 'A COIN case for high rollers: big coin drops, or a badge in every finish up to Epic Gold.': 'Une caisse à PIÈCES pour gros joueurs : de grosses sommes, ou un badge de toute finition jusqu’à Épique Or.', 'Always a badge, never Basic: Painted, Shiny, Titanium or Gold.': 'Toujours un badge, jamais Basique : Peint, Brillant, Titane ou Or.', 'Always a space badge: moons, suns, stars, comets, planets, rockets and aliens. A real chance of a Mythic.': 'Toujours un badge de l’espace : lunes, soleils, étoiles, comètes, planètes, fusées et aliens. Une vraie chance de Mythique.', 'Always a medieval badge: swords, shields, castles, helmets, bows, crowns, goblets, scrolls. 6 found only here.': 'Toujours un badge médiéval : épées, boucliers, châteaux, heaumes, arcs, couronnes, coupes, parchemins. 6 introuvables ailleurs.', 'Always a nature badge: flowers, trees, butterflies, cacti, mushrooms, the lotus, the rainbow. 5 found only here.': 'Toujours un badge nature : fleurs, arbres, papillons, cactus, champignons, le lotus, l’arc-en-ciel. 5 introuvables ailleurs.', 'Always an ocean badge: fish, waves, anchors, tridents, snowflakes and the moon.': 'Toujours un badge océan : poissons, vagues, ancres, tridents, flocons et la lune.', 'Always a spooky badge: ghosts, skulls, eyes, black cats, mushrooms and aliens.': 'Toujours un badge frisson : fantômes, crânes, yeux, chats noirs, champignons et aliens.', 'Always a game badge: controllers, headsets, dice, cards, rockets and targets.': 'Toujours un badge jeu : manettes, casques, dés, cartes, fusées et cibles.', 'Always a treasure badge: keys, crowns, diamonds, shields, swords and gold stars.': 'Toujours un badge trésor : clés, couronnes, diamants, boucliers, épées et étoiles d’or.', 'Always a badge, no Basic finish: the best odds for Shiny, Titanium and Gold.': 'Toujours un badge, sans finition Basique : les meilleures chances de Brillant, Titane et Or.', 'Always a Special or Epic badge, with the best Mythic odds.': 'Toujours un badge Spécial ou Épique, avec les meilleures chances de Mythique.', 'App colours (they change how Rubenium looks), Rare or better, or coins. Not badges.': 'Des couleurs d’app (elles changent l’apparence de Rubenium), Rares ou mieux, ou des pièces. Pas de badges.'})
 
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
@@ -19944,10 +20095,10 @@ class ShopPage(StylePart, Page):
             if daily_ready:                                   # 5.9: an opened daily case waits at the bottom
                 lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
-                groups = (("theme", tr("Themed cases"), tr("Only badges of one theme, and designs found nowhere else.")),
-                          ("hunt", tr("Rare badge cases"), tr("Fewer coins, much better odds for rare badges.")),   # 4.3: first
-                          ("coins", tr("Coin cases"), tr("Mostly coins, and badges of every rarity too.")),
-                          ("style", tr("Style cases"), tr("Balls, lines, fonts, themes, banners and frames. No key needed.")))
+                groups = (("theme", tr("Themed badge cases"), tr("Always a badge, all of one theme. No coins.")),
+                          ("hunt", tr("Rare badge cases"), tr("Always a badge, with much better odds for rare ones. No coins.")),
+                          ("coins", tr("Coin cases"), tr("Mostly COINS back, and sometimes a badge.")),
+                          ("style", tr("Style cases"), tr("Balls, lines, fonts, app colours, banners and frames. No key needed.")))
                 for kind, title, sub in groups:
                     lay.addWidget(heading(title))
                     lay.addWidget(Label(sub, 10.5, TEXT_DIM, wrap_w=self.W))
@@ -20039,6 +20190,10 @@ class ShopPage(StylePart, Page):
             lay.addWidget(heading(tr("Chances")))
             lay.addWidget(CaseOverview(ctx, case, self.W))
             lay.addWidget(OddsTable(case, self.W))
+            grid_ = CaseItemsGrid(ctx, case, self.W)          # 5.15: what you can get, at a glance
+            if grid_.items:
+                lay.addWidget(heading(tr("What you can get ({n})", n=len(grid_.items))))
+                lay.addWidget(grid_)
             drops = DropList(self, case)
             if drops.rows:
                 open_pool = getattr(ctx, "case_pool", "") == case["id"]
@@ -20456,13 +20611,16 @@ CASE_NAMES = {"lucky": "Coin Rush Case", "frames": "Frame Case", "cosmos": "Cosm
               "titan": "Titan Case", "vault": "Vault Case", "mythic": "Top Tier Case", "daily": "Daily Case",
               "style": "Ball, Line & Font Case", "themes": "Theme Case", "profile": "Banner & Frame Case",
               "pocket": "Pocket Case", "elite": "Elite Case", "royal": "Royal Case", "shiny": "Shiny Case",
-              "banners": "Banner Case", "medieval": "Medieval Case", "nature": "Nature Case"}            # 4.1: every one is a "Case", and no name promises what it cannot keep
+              "banners": "Banner Case", "medieval": "Medieval Case", "nature": "Nature Case",
+              "ocean": "Ocean Case", "spooky": "Spooky Case", "arcade": "Arcade Case", "treasure": "Treasure Case"}
+CASE_NAMES["themes"] = "App Colour Case"                 # 5.15: its items colour the whole app (not the themed cases)            # 4.1: every one is a "Case", and no name promises what it cannot keep
 CASE_COLOURS = {"lucky": "#57E389", "frames": "#C99BFF", "cosmos": "#5B6CFF", "winter": "#9FE3FF", "giftbox": "#FF4F6D",
                 "starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
                 "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0",
                 "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF",
                 "pocket": "#9AD27A", "elite": "#3DE0A0", "royal": "#E8C26A", "shiny": "#E6F2FF", "banners": "#FF6FA8",
-                "medieval": "#D9A45B", "nature": "#5BD47A"}
+                "medieval": "#D9A45B", "nature": "#5BD47A", "ocean": "#2FA8FF", "spooky": "#9B5CFF",
+                "arcade": "#FF4FD8", "treasure": "#FFC94D"}
 CASE_FRONT = {"lucky": ("clover", "dice", "clover"), "frames": ("crown", "star", "crown"), "cosmos": ("planet", "comet", "saturn"),
               "winter": ("snowflake", "star", "snowflake"), "giftbox": ("$", "heart", "$"),
               "starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"),
@@ -20472,36 +20630,42 @@ CASE_FRONT = {"lucky": ("clover", "dice", "clover"), "frames": ("crown", "star",
               "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame"),
               "pocket": ("clover", "heart", "note"), "elite": ("bolt", "crown", "comet"), "royal": ("crown", "trophy", "crown"),
               "shiny": ("drop", "comet", "drop"), "banners": ("flame", "crown", "feather"),
-              "medieval": ("sword", "castle", "shield"), "nature": ("flower", "tree", "butterfly")}
+              "medieval": ("sword", "castle", "shield"), "nature": ("flower", "tree", "butterfly"),
+              "ocean": ("fish", "anchor", "wave"), "spooky": ("ghost", "skull", "eye"), "arcade": ("gamepad", "rocket", "dice"),
+              "treasure": ("key", "crown", "diamond")}
 CASE_NOTES = {                    # 4.0: checked against the real odds of every case (the numbers are shown below)
     "pocket": "The cheapest case: mostly coins, sometimes a Basic or Painted badge.",
-    "starter": "Mostly coins, Basic and Painted badges, and a small Shiny chance.",
+    "starter": "A COIN case: mostly coins back, sometimes a badge (Basic or Painted).",
     "lucky": "Mostly coins back, Basic and Painted badges, and a small Shiny chance.",
-    "standard": "Coins, Common to Special badges, and a tiny chance of Gold.",
-    "premium": "Better badges than the Standard Case, up to Shiny and Gold.",
+    "standard": "A COIN case: mostly coins, sometimes a badge, a tiny chance of Gold.",
+    "premium": "A COIN case: coins, or a better badge than the Standard Case (up to Shiny and Gold).",
     "jackpot": "Coins only, never a badge. Most opens pay less than the price; a few pay up to 32 times it.",
     "titan": "Every finish, Titanium and Gold included, up to Epic Gold.",
     "elite": "Every rarity in every finish, Epic Gold included.",
-    "royal": "For high rollers: no Common badges, every finish up to Epic Gold, and rare huge coin drops.",
+    "royal": "A COIN case for high rollers: big coin drops, or a badge in every finish up to Epic Gold.",
     "gamble": "High risk: mostly a few coins, otherwise Rare or Special, up to Titanium and Gold.",
-    "painter": "Never Basic: Painted, Shiny, Titanium and Gold.",
+    "painter": "Always a badge, never Basic: Painted, Shiny, Titanium or Gold.",
     "vault": "No Common badges: Rare to Epic in every finish.",
-    "cosmos": "Space only: moons, suns, stars, comets, planets, rockets and aliens. No Common badges, and a real chance of a Mythic.",
-    "medieval": "Medieval only: swords, shields, castles, helmets, bows, crowns, goblets and scrolls. 6 designs are only found here.",
-    "nature": "Nature only: flowers, trees, butterflies, cacti, mushrooms, the lotus and the rainbow. 5 designs are only found here.",
-    "shiny": "No Basic finishes: the best odds for Shiny, Titanium and Gold.",
-    "mythic": "Special and Epic badges only, with the best Mythic odds.",
+    "cosmos": "Always a space badge: moons, suns, stars, comets, planets, rockets and aliens. A real chance of a Mythic.",
+    "medieval": "Always a medieval badge: swords, shields, castles, helmets, bows, crowns, goblets, scrolls. 6 found only here.",
+    "nature": "Always a nature badge: flowers, trees, butterflies, cacti, mushrooms, the lotus, the rainbow. 5 found only here.",
+    "ocean": "Always an ocean badge: fish, waves, anchors, tridents, snowflakes and the moon.",
+    "spooky": "Always a spooky badge: ghosts, skulls, eyes, black cats, mushrooms and aliens.",
+    "arcade": "Always a game badge: controllers, headsets, dice, cards, rockets and targets.",
+    "treasure": "Always a treasure badge: keys, crowns, diamonds, shields, swords and gold stars.",
+    "shiny": "Always a badge, no Basic finish: the best odds for Shiny, Titanium and Gold.",
+    "mythic": "Always a Special or Epic badge, with the best Mythic odds.",
     "winter": "Limited: Christmas looks you cannot buy anywhere else, or coins.",
     "giftbox": "Limited: a present full of coins, sometimes a badge.",
     "style": "Balls, song lines and fonts, or coins.",
-    "themes": "Themes, Rare or better, or coins.",
+    "themes": "App colours (they change how Rubenium looks), Rare or better, or coins. Not badges.",
     "frames": "Profile frames, or coins.",
     "profile": "Banners and frames, or coins.",
     "banners": "Banners, or coins."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
 COIN_CASES = ("pocket", "starter", "standard", "premium", "jackpot", "titan", "elite", "royal", "lucky")
 HUNT_CASES = ("gamble", "painter", "vault", "shiny", "mythic")
-THEME_CASES = ("nature", "medieval", "cosmos")
+THEME_CASES = ("nature", "ocean", "spooky", "treasure", "arcade", "medieval", "cosmos")
 STYLE_CASES = ("style", "themes", "banners", "profile", "frames")
 
 
@@ -21620,6 +21784,55 @@ class CaseOverview(QWidget):
                        tr("{n} different rewards · {r}", n=len(self.drops), r=rng))
 
 
+class CaseItemsGrid(QWidget):
+    """5.15: everything a case can give, like an inventory: one square per item (badges once per design), the rarest
+    last. Hover one for its name and chance."""
+
+    def __init__(self, ctx, case: dict, width: int) -> None:
+        super().__init__()
+        self.ctx = ctx
+        rows = case_drops(ctx.econ, case)
+        self.items = sorted(rows, key=lambda r: -r[1])
+        self.cell = S(46)
+        self.per = max(1, int(width // self.cell))
+        n = len(self.items)
+        self.setFixedSize(width, int(((n + self.per - 1) // self.per) * self.cell) if n else 0)
+        self.setMouseTracking(True)
+        self._t = QTimer(self)
+        self._t.setInterval(60)
+        self._t.timeout.connect(self.update)
+        self._t.start()
+
+    def _rect(self, k: int) -> QRectF:
+        return QRectF((k % self.per) * self.cell, (k // self.per) * self.cell, self.cell, self.cell)
+
+    def mouseMoveEvent(self, e) -> None:
+        for k, (item, ch) in enumerate(self.items):
+            if self._rect(k).contains(e.position()):
+                name = item_name(item)
+                if item.startswith("badge:") and not item.split(":")[1] in EXOTIC_IDS:
+                    name = tr("{what} (any colour or finish)", what=tr(BADGE_NAME.get(item.split(":")[1], name)))
+                pct = ch * 100
+                self.setToolTip(f"{name}\n" + (f"{pct:.2f}%" if pct >= 0.01 else f"1 in {coins_text(int(1 / max(ch, 1e-12)))}"))
+                return
+        self.setToolTip("")
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        for k, (item, _ch) in enumerate(self.items):
+            r = self._rect(k).adjusted(S(2), S(2), -S(2), -S(2))
+            p.setPen(Qt.PenStyle.NoPen)
+            info = (self.ctx.econ.catalog or {}).get(item, {})
+            col = RARITY_COLOURS.get(info.get("rarity"), "#FFFFFF")
+            p.setBrush(alpha(col, 0.10))
+            p.drawRoundedRect(r, S(6), S(6))
+            p.setBrush(alpha(col, 0.8))
+            p.drawRoundedRect(QRectF(r.left() + S(6), r.bottom() - S(3), r.width() - S(12), S(2)), S(1), S(1))
+            show_item(p, item, r.adjusted(S(4), S(3), -S(4), -S(5)), now)
+
+
 class DropList(QWidget):
     """Every item of a case and its chance, two columns, rarest last."""
 
@@ -22098,7 +22311,7 @@ class CaseReel(QWidget):
         if self.state == "intro" and now - self._intro_t >= self.INTRO_S:
             self.state = "spin"
             self._t0 = now
-            sfx.play("on")
+            sfx.play("spin")
         if self.state == "spin":
             t = min(1.0, (now - self._t0) / self.SPIN_S)
             start = self._start()
@@ -22108,7 +22321,7 @@ class CaseReel(QWidget):
                 self._last_cell = cell
                 if now - self._last_tick > 0.035:
                     self._last_tick = now
-                    sfx.play("pick")
+                    sfx.play("tick")
             if t >= 1.0:
                 self.state = "landed"
                 self._stop_t = now
@@ -22124,10 +22337,18 @@ class CaseReel(QWidget):
         self.state = "result"
         self._stop_t = time.monotonic()
         tier = self._tier()
-        sfx.play("on")
         cls = int(self.result.get("cls") or 0)
-        for k in range((1 if tier >= 3 else 0) + (1 if tier >= 4 else 0) + (2 if tier >= 5 else 0) + (1 if cls >= 2 else 0)):
-            QTimer.singleShot(170 * (k + 1), lambda: sfx.play("on"))          # the rarer, the longer it rings
+        rank = tier + (1 if cls >= 2 else 0)                  # the rarer, the bigger the tune
+        if rank >= 5:
+            sfx.tune("legend")
+        elif rank == 4:
+            sfx.tune("epic")
+        elif rank == 3:
+            sfx.tune("rare")
+        elif self.result.get("kind") == "coins" or self.result.get("coins"):
+            sfx.play("coin")
+        else:
+            sfx.play("on")
         n = [0, 0, 10, 18, 30, 60][tier] + [0, 0, 12, 30, 70][int(self.result.get("cls") or 0)]
         rnd = random.Random()
         self._sparks = [(rnd.uniform(0, math.tau), rnd.uniform(S(60), S(150)), rnd.uniform(0.6, 1.3)) for _ in range(n)]
@@ -27033,7 +27254,7 @@ class GolfView(QWidget):
         n = int(self.g.get("seq") or 0)
         self.sending, self._mine_sent = True, True
         self.seen = n
-        sfx.play("pick")
+        sfx.play("putt")
         self.anim_hole = int(self.g.get("hole") or 1)
         self.anim = [me, frames, 0, self._settle]
 
@@ -27638,7 +27859,7 @@ class GolfPartyView(QWidget):
         self.sending = True
         self.aim = None
         self.anims[me] = [frames, 0]
-        sfx.play("pick")
+        sfx.play("putt")
 
         def done(ok: bool, data) -> None:
             self.sending = False
@@ -27676,7 +27897,7 @@ class GolfPartyView(QWidget):
         try:
             self.bot_aims.pop(k, None)
             self.anims[k] = [frames, 0]
-            sfx.play("pick")
+            sfx.play("putt")
             self.update()
         except RuntimeError:
             pass
@@ -28592,10 +28813,10 @@ class Game(QWidget):
         gain = payout - self.stake
         if gain > 0:
             self.flash("+" + coins_text(gain), WIN)
-            sfx.play("on")
+            sfx.tune("bigwin" if self.stake and payout >= self.stake * 5 else "win")
         elif gain < 0:
             self.flash("−" + coins_text(-gain), LOSE)
-            sfx.play("off")
+            sfx.play("lose")
         else:
             self.flash("0", TEXT_DIM)
         self.busy = False
@@ -28696,6 +28917,7 @@ class Blackjack(Game):
         """A card as the server names it (0..51), or a face-down one (None)."""
         rank = RANKS[code % 13] if code is not None else "A"
         suit = SUITS[code // 13] if code is not None else "♠"
+        QTimer.singleShot(int(max(0.0, delay) * 1000), lambda: sfx.play("card"))
         return {"rank": rank, "suit": suit, "born": time.monotonic() + delay, "hidden": hidden, "turned": 0.0}
 
     def deal(self) -> None:
@@ -29146,7 +29368,7 @@ class Bombs(Game):
             QTimer.singleShot(650, self._reveal_all)
             QTimer.singleShot(1100, lambda: self._end(0))
             return
-        sfx.play("pick")
+        sfx.play("chip")
         if not ans.get("open"):                          # every gem found: the server paid already
             self._cashed(ans)
         self.page.sync()
@@ -29730,7 +29952,7 @@ class Slots(Game):
         stopped = sum(1 for i in range(3) if now >= self.stop_at[i])
         while self._stopped < stopped:
             self._stopped += 1
-            sfx.play("pick")
+            sfx.play("tick")
         if stopped == 3:
             self.spinning = False
             self.pos = [float(d) for d in self.dist]
@@ -33290,18 +33512,28 @@ def build_deals(page, lay) -> None:
     if data is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     ans = data[1]
-    left = max(0, int(ans.get("ends_in") or 0) - int(time.monotonic() - data[0]))
-    pass
-    lay.addWidget(Label(tr("New deals in {t}", t=clock_text(left)), 11, GOLD_TEXT, bold=True))
+    since = int(time.monotonic() - data[0])
     from PyQt6.QtWidgets import QGridLayout
-    holder = QWidget()
-    grid = QGridLayout(holder)
-    grid.setContentsMargins(0, 0, 0, 0)
-    grid.setSpacing(S(6))
     w = (page.W - S(6)) // 2
-    for k, d in enumerate(ans.get("deals") or []):
-        grid.addWidget(DealCard(page, d, w), k // 2, k % 2)
-    lay.addWidget(holder)
+    deals = ans.get("deals") or []
+    # 5.15: three shelves: 2 deals of the hour, 4 of the day, 2 of the week (each with its own clock)
+    for slot, title in (("hour", tr("This hour")), ("day", tr("Today")), ("week", tr("This week"))):
+        row = [d for d in deals if d.get("slot", "day") == slot]
+        if not row:
+            continue
+        left = max(0, int(row[0].get("ends_in") or ans.get("ends_in") or 0) - since)
+        head = hbox(spacing=8)
+        head.addWidget(Label(title, 13, TEXT, bold=True))
+        head.addStretch(1)
+        head.addWidget(Label(tr("new ones in {t}", t=(f"{left // 86400}d {left % 86400 // 3600}h" if left >= 86400 else clock_text(left))), 10.5, GOLD_TEXT, bold=True))
+        lay.addLayout(head)
+        holder = QWidget()
+        grid = QGridLayout(holder)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(S(6))
+        for k, d in enumerate(row):
+            grid.addWidget(DealCard(page, d, w), k // 2, k % 2)
+        lay.addWidget(holder)
 
 
 class GameModeWindow(FloatWindow):
@@ -38206,7 +38438,8 @@ def show_key_found(ctx, game: str = "") -> None:
     rnd = random.Random()
     sparks = [(rnd.uniform(0, math.tau), rnd.uniform(0.4, 1.0) * S(170), rnd.uniform(1.6, 3.6)) for _ in range(40)]
     where = tr(GAME_NAMES.get(game, "")) if game else ""
-    sfx.tune("unlock")
+    sfx.play("key")
+    QTimer.singleShot(420, lambda: sfx.tune("unlock"))
 
     def paint(p: QPainter, k: float, now: float) -> None:
         drop = 1 - (1 - min(1.0, k / 0.22)) ** 3                         # falls in, settles, fades away
@@ -39530,7 +39763,7 @@ class _Wheel(QWidget):
             seg = int(self.angle / (360.0 / len(WHEEL_SLOTS)))
             if seg != self._last_seg:
                 self._last_seg = seg
-                sfx.play("pick")
+                sfx.play("tick")
             if u >= 1.0:
                 self.spinning = False
                 self.landed_at = time.monotonic()
@@ -41768,7 +42001,7 @@ class FlipStage(QWidget):
         if f.get("state") == "done" and f.get("result") and self._shown_result is None:
             self._shown_result = f["result"]
             self._spin_t = time.monotonic()               # the coin starts to spin now and lands on the result
-            sfx.play("on")
+            sfx.play("coin")
             self.ctx.notifier.hold(self.SPIN_S + 1.5)     # 4.6: no pop-up telling the result before the coin lands
         elif f.get("state") == "locked" and old.get("state") != "locked":
             sfx.play("pick")
@@ -43073,7 +43306,7 @@ class Roulette(Game):
                     if opposite in self.picks:                 # 5.15: red OR black, low OR high (like real roulette)
                         self.picks.remove(opposite)
                     self.picks.append(pick)
-                    sfx.play("pick")
+                    sfx.play("chip")
                 self.page.sync()
                 self.update()
                 return
@@ -43162,7 +43395,7 @@ class Roulette(Game):
             cur = int(self.offset // self.CELL)
             if cur != getattr(self, "_last_cell", -1):
                 self._last_cell = cur
-                sfx.play("pick")
+                sfx.play("tick")
         # what is on: the pick, its chance and the prize
         bet = getattr(self, "each", self.stake) if self.busy else self.page.bet()
         p.setFont(font(11, QFont.Weight.Bold))
@@ -43308,7 +43541,7 @@ class CupGame(Game):
         self._applied = 0
         self.state, self.t0 = "show", time.monotonic()
         self.animate(60)
-        sfx.play("pick")
+        sfx.play("cup")
 
     def _layout(self, r: QRectF) -> list:
         cols = 3 if self.n in (3, 6, 9) else self.n
@@ -43391,7 +43624,7 @@ class CupGame(Game):
                 ca, cb = self.slot_of.index(a), self.slot_of.index(b)
                 self.slot_of[ca], self.slot_of[cb] = b, a
                 done += 1
-                sfx.play("pick")
+                sfx.play("cup")
             self._applied = done
             k_ = (t - i * self.secs) / self.secs
             k_ = k_ * k_ * (3 - 2 * k_)
@@ -43443,7 +43676,7 @@ class CupGame(Game):
         for box, k in self.zones:
             if box.contains(e.position()):
                 self.picked = k
-                sfx.play("pick")
+                sfx.play("cup")
                 self.ask("rb_cups", {"action": "pick", "level": self.mode, "bet": 0, "pick": k}, self._answered, once=True)
                 return
 
@@ -43583,7 +43816,7 @@ class ConnectFour(Game):
         self.moves = [int(x) for x in (ans.get("moves") or self.moves)]
         if len(self.moves) > self.shown:
             self.drop_t = time.monotonic()
-            sfx.play("pick")
+            sfx.play("drop")
         self.shown = len(self.moves)
         self.thinking_until = 0
         self.animate(1)
@@ -43641,7 +43874,7 @@ class ConnectFour(Game):
         self.moves.append(col)                   # your disc drops at once
         self.shown = len(self.moves)
         self.drop_t = time.monotonic()
-        sfx.play("pick")
+        sfx.play("drop")
         self._send(col)
 
     def draw(self, p: QPainter, r: QRectF, now: float) -> None:
@@ -43786,7 +44019,7 @@ class HiLo(Game):
         self.mult, self.hits = 1.0, 0
         self._flip_t = time.monotonic()
         self.animate(0.6)
-        sfx.play("pick")
+        sfx.play("card")
 
     def guess(self, which: str) -> None:
         if not self.busy or self.waiting or not self.cards:
@@ -43804,7 +44037,7 @@ class HiLo(Game):
             return
         self.mult = float(ans.get("mult") or self.mult)
         self.hits = int(ans.get("hits") or self.hits)
-        sfx.play("on")
+        sfx.play("card")
         if not ans.get("open"):                       # the biggest prize: paid at once
             QTimer.singleShot(450, lambda: self.finish(int(ans.get("paid") or 0)))
 
@@ -44184,7 +44417,7 @@ class Tower(Game):
 
     def _started(self, ans: dict) -> None:
         self.level = 0
-        sfx.play("pick")
+        sfx.play("chip")
         self.animate(0.5)
 
     def mouseReleaseEvent(self, e) -> None:
