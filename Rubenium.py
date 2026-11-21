@@ -3082,8 +3082,8 @@ class Econ(QObject):
                 if self.server_old:
                     self.server_old = False
                     self.changed.emit()
-                if isinstance(data, dict) and hasattr(self.ctx, "set_outdated"):
-                    self.ctx.set_outdated(bool(data.get("update")))
+                if isinstance(data, dict) and data.get("update") and hasattr(self.ctx, "set_outdated"):
+                    self.ctx.set_outdated(True)          # 5.15: only ever on (an app can't get newer without a restart)
             self.online.ask("rb_hello2", {"pc": pc_id(), "build": build_number()}, hello)
             self.refresh()
             self.fetch_catalog()
@@ -3294,7 +3294,7 @@ class Econ(QObject):
         if fn not in self.CHEATS or (self.online.username() or "").lower() != "ruben":
             return None
         god = bool(self.ctx.cfg["godmode"]) and bool(self.ctx.cfg["cheats"])
-        if not god and _t.monotonic() - getattr(self, "cheat_armed", 0.0) > 2.0:
+        if not god and _t.monotonic() - getattr(self, "cheat_armed", 0.0) > 4.0:
             return None
         acts = self.CHEATS[fn]
         if acts is not None and str(args.get("action")) not in acts:
@@ -6609,6 +6609,14 @@ FR.update({'NEW: Trophies. 99 of them: every game has 3 Bronze, 3 Silver, 2 Gold
 FR.update({'Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone': 'Wave Rush refait : la difficulté monte d’un cran à 250 m (Moyen), 500 m (Difficile), 750 m (Insane) et 1 000 m (Extrême), avec de nouveaux tunnels et des doubles pics sur les longues pentes. Les portes injustes (un pic en haut et en bas en même temps) ont disparu', 'The practice bot plays like a real player now (long holds, no straight lines)': 'Le bot d’entraînement joue maintenant comme un vrai joueur (longues pressions, plus de lignes droites)', 'Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch': 'Wave Rush plus fluide : plus de saccades dans les longs duels ni de temps perdu après un ralentissement', 'Practice bot: plays like a good player, see-through, a little ahead': 'Bot d’entraînement : joue comme un bon joueur, transparent, un peu devant'})
 
 FR.update({'6 picks at most': '6 choix au maximum', "Red and Black (or Low and High) can't both be picked": 'Rouge et Noir (ou Bas et Haut) ne peuvent pas être choisis ensemble'})
+
+FR.update({'You bought {n} today: each one costs {s} more than the last.': 'Tu en as acheté {n} aujourd’hui : chacune coûte {s} de plus que la précédente.', 'Each one you buy today costs {s} more than the last.': 'Chaque caisse achetée aujourd’hui coûte {s} de plus que la précédente.', 'Back to {p} at midnight (in {t}).': 'Retour à {p} à minuit (dans {t}).', 'midnight': 'minuit'})
+
+FR.update({'His · worth {n} ({p}% of yours)': 'Le sien · vaut {n} ({p} % du tien)', 'Ask for more = ask for an item worth about {p}% of yours. {c}% chance he says yes. If he says no: +{r} anger (the faint part of the bar) and no more asking.': 'Demander mieux = demander un objet valant environ {p} % du tien. {c} % de chance qu’il dise oui. S’il dit non : +{r} de colère (la partie pâle de la barre) et plus de demande possible.', 'This is his last offer: accept or refuse.': 'C’est sa dernière offre : accepte ou refuse.', 'Something worth {p}% of yours? {c}% chance I say yes. If I say no: +{r} anger.': 'Quelque chose qui vaut {p} % du tien ? {c} % de chance que je dise oui. Si je dis non : +{r} de colère.'})
+
+FR.update({'Power': 'Puissance', 'Your turn: move the mouse away from your ball': 'À toi : éloigne la souris de ta balle'})
+
+FR.update({'Please update to the latest version to play online: updating now…': 'Mets à jour vers la dernière version pour jouer en ligne : mise à jour en cours…', 'A new version is out: online closes while it updates': 'Une nouvelle version est sortie : le mode en ligne se ferme pendant la mise à jour'})
 
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
@@ -20064,9 +20072,9 @@ class ShopPage(StylePart, Page):
             if getattr(self, "climb_lbl", None) is not None:
                 st, b = case_step(case), case_bought(case)
                 self.climb_lbl.set_text(
-                    (tr("You bought {n} this week: each one costs {s} more than the last.", n=b, s=coins_text(st)) if b else
-                     tr("Each one you buy this week costs {s} more than the last.", s=coins_text(st)))
-                    + " " + tr("Back to {p} on Saturday at 12:00 (in {t}).", p=coins_text(int(case["price"])), t=case_reset_text()))
+                    (tr("You bought {n} today: each one costs {s} more than the last.", n=b, s=coins_text(st)) if b else
+                     tr("Each one you buy today costs {s} more than the last.", s=coins_text(st)))
+                    + " " + tr("Back to {p} at midnight (in {t}).", p=coins_text(int(case["price"])), t=case_reset_text()))
         except RuntimeError:
             pass
         try:
@@ -20589,7 +20597,7 @@ def case_reset_text() -> str:
     at = float(getattr(ECON, "case_resets", 0) or 0)
     left = int(at - _t.time()) if at else 0
     if left <= 0:
-        return tr("Saturday 12:00")
+        return tr("midnight")
     d, h, m = left // 86400, left % 86400 // 3600, left % 3600 // 60
     return f"{d}d {h}h" if d else (f"{h}h {m:02d}m" if h else f"{m}m")
 
@@ -26562,7 +26570,36 @@ def golf_ray(h, ball, ang: float, length: float) -> float:
     return length
 
 
-def paint_golf_aim(p: QPainter, P, ball, ang: float, pw: float, col: QColor, f: QRectF, u: float, h=None) -> None:
+def paint_power_strip(p: QPainter, r: QRectF, pw, label: str = "") -> None:
+    """5.15: the shot power, under the course: a wide bar, green to red, with the percentage."""
+    p.save()
+    bar = QRectF(r.left() + S(12), r.center().y() - S(7), r.width() - S(24) - S(56), S(14))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha("#FFFFFF", 0.08))
+    p.drawRoundedRect(bar, S(7), S(7))
+    if pw is None:
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9.5, QFont.Weight.DemiBold))
+        p.drawText(bar, int(Qt.AlignmentFlag.AlignCenter), label)
+        p.restore()
+        return
+    g = QLinearGradient(bar.topLeft(), bar.topRight())
+    g.setColorAt(0, QColor("#3DDC84"))
+    g.setColorAt(0.6, QColor("#FFC94D"))
+    g.setColorAt(1, QColor("#FF5C5C"))
+    p.setBrush(g)
+    p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * pw), bar.height()), S(7), S(7))
+    for k in (0.25, 0.5, 0.75):
+        p.fillRect(QRectF(bar.left() + bar.width() * k, bar.top() + S(3), 1, bar.height() - S(6)), alpha("#000000", 0.35))
+    p.setPen(QColor("#FFFFFF"))
+    p.setFont(font(11, QFont.Weight.Black))
+    p.drawText(QRectF(bar.right() + S(6), r.top(), S(56), r.height()), int(Qt.AlignmentFlag.AlignVCenter),
+               f"{int(round(pw * 100))}%")
+    p.restore()
+
+
+def paint_golf_aim(p: QPainter, P, ball, ang: float, pw: float, col: QColor, f: QRectF, u: float, h=None,
+                   meter: bool = False) -> None:
     """5.10: the aim shows the direction only (a short arrow that stops at the first wall or water) and a power meter.
     How far the ball rolls is up to you: no more target circle."""
     if ball is None:
@@ -26591,7 +26628,9 @@ def paint_golf_aim(p: QPainter, P, ball, ang: float, pw: float, col: QColor, f: 
         p.setPen(QPen(QColor("#FFFFFF"), S(2.4), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         nx, ny = -math.sin(ang) * S(6), math.cos(ang) * S(6)
         p.drawLine(QPointF(tip.x() - nx, tip.y() - ny), QPointF(tip.x() + nx, tip.y() + ny))
-    # the power meter, beside the ball
+    if not meter:                                         # 5.15: the power is shown under the course
+        p.restore()
+        return
     side = -1 if math.cos(ang) > 0 else 1                # on the other side from the arrow
     if c.x() + side * S(50) > f.right():
         side = -1
@@ -26817,7 +26856,8 @@ class GolfView(QWidget):
         self.solo = solo                     # 4.3: a round alone: no opponent, no clock, coins by strokes
         w = page.W
         self.head_h = S(46)
-        self.setFixedSize(w, int(self.head_h + w * FIELD_H))
+        self.foot_h = S(34)                  # 5.15: the power bar lives under the course
+        self.setFixedSize(w, int(self.head_h + w * FIELD_H + self.foot_h))
         self.g: dict = {}
         self.balls = {"a": None, "b": None}
         self.anim = None                     # (side, frames, i, then)
@@ -27144,6 +27184,10 @@ class GolfView(QWidget):
                        ("+" + coins_text(int(bet * 2 * 0.95)) if won else "−" + coins_text(bet)))
                 p.drawText(QRectF(f.left(), f.center().y() + S(4), f.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), sub)
         p.restore()
+        foot = QRectF(0, f.bottom() + S(4), self.width(), self.foot_h - S(4))      # 5.15: the power, under the course
+        aiming = self.my_turn() and self.balls.get(g.get("me", "a")) and self.aim is not None
+        paint_power_strip(p, foot, self.power() if aiming else None,
+                          tr("Your turn: move the mouse away from your ball") if self.my_turn() else tr("Power"))
 
     def _paint_head(self, p: QPainter, g: dict) -> None:
         r = QRectF(0, 0, self.width(), self.head_h - S(6))
@@ -27421,13 +27465,15 @@ class GolfPartyView(QWidget):
         self.page, self.ctx, self.pid = page, page.ctx, pid
         w = page.W
         self.head_h = S(70)
-        self.setFixedSize(w, int(self.head_h + w * FIELD_H))
+        self.foot_h = S(34)                  # 5.15: the power bar lives under the course
+        self.setFixedSize(w, int(self.head_h + w * FIELD_H + self.foot_h))
         self.g: dict = {}
         self.got_at = time.monotonic()
         self.balls: dict = {}
         self.anims: dict = {}
         self.seen: dict = {}
         self.bot_seen: dict = {}
+        self.bot_aims: dict = {}
         self.aim = None
         self.sending = False
         self._asking = False
@@ -27497,7 +27543,7 @@ class GolfPartyView(QWidget):
         h = self.hole()
         for s in g.get("seats") or []:
             k = s.get("seat")
-            if k in self.anims:
+            if k in self.anims or k in self.bot_aims:
                 continue
             if s.get("bot"):                              # 5.10: a bot really shoots, and you see its ball roll
                 n, holed = int(s.get("now") or 0), bool(s.get("in"))
@@ -27506,8 +27552,14 @@ class GolfPartyView(QWidget):
                 path = bot_golf_path(h, str(self.pid), key[0], k, n, holed) if n else []
                 self.bot_seen[key] = n
                 if n and shown is not None and shown < n and g.get("state") == "live":
-                    self.anims[k] = [list(path[-1][0]), 0]          # roll its last shot
-                    sfx.play("pick")
+                    frames = list(path[-1][0])
+                    start = path[-2][1] if len(path) > 1 else party_tee(h, k)
+                    tgt = next((fr for fr in frames if math.hypot(fr[0] - start[0], fr[1] - start[1]) > 0.02), frames[-1])
+                    ang = math.atan2(tgt[1] - start[1], tgt[0] - start[0])
+                    far = math.hypot(frames[-1][0] - start[0], frames[-1][1] - start[1])
+                    self.bot_aims[k] = (start, ang, min(1.0, 0.25 + far / GOLF_DMAX), time.monotonic())
+                    self.balls[k] = start
+                    QTimer.singleShot(900, lambda k=k, frames=frames: self._bot_roll(k, frames))   # 5.15: you see it aim first
                 elif holed:
                     self.balls[k] = None
                 else:
@@ -27620,6 +27672,15 @@ class GolfPartyView(QWidget):
     def turn_left(self) -> int:
         return max(0, int(float(self.g.get("turn_left") or 0) - (time.monotonic() - self.got_at)))
 
+    def _bot_roll(self, k, frames: list) -> None:
+        try:
+            self.bot_aims.pop(k, None)
+            self.anims[k] = [frames, 0]
+            sfx.play("pick")
+            self.update()
+        except RuntimeError:
+            pass
+
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -27647,6 +27708,8 @@ class GolfPartyView(QWidget):
         if self.my_turn() and self.aim is not None:
             pw = self.power()
             paint_golf_aim(p, P, self.balls[me], self._angle(), pw, QColor.fromHsvF(max(0.0, 0.33 - 0.33 * pw), 0.85, 1.0), f, u, h)
+        for k, (start, ang, pw, _t0) in list(self.bot_aims.items()):      # 5.15: where a bot is about to shoot
+            paint_golf_aim(p, P, start, ang, pw, QColor("#DDDDDD"), f, u, h)
         for s in g.get("seats") or []:
             k = s.get("seat")
             pos = self.balls.get(k)
@@ -27662,9 +27725,18 @@ class GolfPartyView(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha("#000000", 0.3))
             p.drawEllipse(c + QPointF(S(1.5), S(2)), BALL_R * u, BALL_R * u)
-            p.setBrush(QColor("#FFFFFF"))
-            p.setPen(QPen(col, S(2.5)))
-            p.drawEllipse(c, BALL_R * u, BALL_R * u)
+            if s.get("bot"):                               # 5.15: a bot: a plain ball, thin black edge, "AI" on it
+                rr = max(BALL_R * u * 1.25, S(8))
+                p.setBrush(QColor("#F2F2F2"))
+                p.setPen(QPen(QColor("#000000"), max(1.0, S(1.1))))
+                p.drawEllipse(c, rr, rr)
+                p.setPen(QColor("#111111"))
+                p.setFont(font(max(6.0, rr / S(1) * 0.75), QFont.Weight.Black))
+                p.drawText(QRectF(c.x() - rr, c.y() - rr, 2 * rr, 2 * rr), int(Qt.AlignmentFlag.AlignCenter), "AI")
+            else:
+                p.setBrush(QColor("#FFFFFF"))
+                p.setPen(QPen(col, S(2.5)))
+                p.drawEllipse(c, BALL_R * u, BALL_R * u)
             p.setPen(col)
             p.setFont(font(8.5, QFont.Weight.Black))
             label = tr("YOU") if k == me else str(s.get("name") or "")
@@ -27700,6 +27772,13 @@ class GolfPartyView(QWidget):
                            tr("{n} strokes", n=int(s.get("total") or 0)) + (f"   +{coins_text(int(s['paid']))}" if s.get("paid") else ""))
                 y += S(28)
         p.restore()
+        foot = QRectF(0, f.bottom() + S(4), self.width(), self.foot_h - S(4))      # 5.15: the power, under the course
+        if self.my_turn() and self.aim is not None:
+            paint_power_strip(p, foot, self.power())
+        elif g.get("state") == "live" and turn != me and ts.get("aim"):
+            paint_power_strip(p, foot, float(ts["aim"][1]))
+        else:
+            paint_power_strip(p, foot, None, tr("Power"))
 
     def _paint_head(self, p: QPainter, g: dict) -> None:
         r = QRectF(0, 0, self.width(), self.head_h - S(6))
@@ -28207,8 +28286,8 @@ def install_cheat_clicks(ctx) -> None:
             if not (ctx.cfg["cheats"] and ctx.econ.admin and (ctx.online.username() or "").lower() == "ruben"):
                 return False
             w, zone = obj, False
-            while w is not None:
-                if isinstance(w, Game) or w.property("cheat"):
+            while w is not None:                       # 5.15: the whole casino page counts (Hit, Stand, Spin…)
+                if isinstance(w, (Game, GamesPage)) or w.property("cheat"):
                     zone = True
                     break
                 w = w.parentWidget()
@@ -43235,11 +43314,12 @@ class CupGame(Game):
         cols = 3 if self.n in (3, 6, 9) else self.n
         rows = (self.n + cols - 1) // cols
         cw = min(S(110), (r.width() - S(40)) / cols)
-        rh = min(S(100), (r.height() - S(34)) / rows)
-        size = min(cw, rh * 1.15)
+        rh = min(S(100), (r.height() - S(44)) / rows)
+        size = min(cw, rh * 1.05)
         x0 = r.center().x() - cw * cols / 2
-        y0 = r.top() + S(26) + (r.height() - S(32) - rh * rows) / 2
-        return [QPointF(x0 + cw * (k % cols + 0.5), y0 + rh * (k // cols + 0.5) + size * 0.3) for k in range(self.n)], size
+        y0 = r.top() + S(24) + (r.height() - S(40) - rh * rows) / 2
+        # 5.15: the cup is drawn mostly above its spot: the spot sits low in its cell, the cup's foot never cut off
+        return [QPointF(x0 + cw * (k % cols + 0.5), y0 + rh * (k // cols + 0.5) + size * 0.14) for k in range(self.n)], size
 
     def _cup(self, p: QPainter, c: QPointF, size: float, lift: float = 0.0, hot: bool = False) -> None:
         w, h = size * 0.62, size * 0.66
@@ -47230,7 +47310,6 @@ def _make_class():
             mode = ("offmode" if ctx.cfg["offline_mode"] and ctx.online.logged_in() else
                     "locked" if ctx.econ.live.get("locked") else
                     "lockdown" if ctx.econ.lockdown_cover() else
-                    "update" if getattr(ctx, "outdated", False) else
                     "offline" if ctx.online.logged_in() and ctx.online.offline else "")
             on = bool(mode) and self.expanded and self.phase == "shown"
             if on and mode != cover.mode:
@@ -48091,8 +48170,8 @@ class PawnShop(QWidget):
             self.trade_confirm = True
             sfx.play("pick")
             m = self.trade["more"]
-            self.line = tr("A better one? {c}% chance I say yes. If I say no: +{r} anger.",
-                           c=int(round(float(m.get("chance") or 0) * 100)), r=int(round(float(m.get("rage") or 0))))
+            self.line = tr("Something worth {p}% of yours? {c}% chance I say yes. If I say no: +{r} anger.",
+                           p=int(m.get("pct") or 0), c=int(round(float(m.get("chance") or 0) * 100)), r=int(round(float(m.get("rage") or 0))))
             self.line_at = time.monotonic()
             self._refresh_texts()
             return self.update()
@@ -48522,7 +48601,7 @@ class PawnShop(QWidget):
             show_item(p, self.item, box, now)
             p.setOpacity(1.0)
             if self.trade:                                   # 5.12: his item on a plate, on his side of the counter
-                plate = QRectF(pn.center().x() + pn.width() * 0.26 - S(56), cy - S(16), S(112), S(20))
+                plate = QRectF(pn.center().x() + pn.width() * 0.34 - S(56), cy - S(16), S(112), S(20))     # his side
                 g3 = QLinearGradient(plate.topLeft(), plate.bottomLeft())
                 g3.setColorAt(0, QColor("#E6EEF5"))
                 g3.setColorAt(1, QColor("#8C98A3"))
@@ -48538,7 +48617,8 @@ class PawnShop(QWidget):
                 p.setPen(QColor(TEXT))
                 p.setFont(font(10, QFont.Weight.Bold))
                 p.drawText(QRectF(plate.left() - S(40), plate.bottom() + S(2), plate.width() + S(80), S(16)),
-                           int(Qt.AlignmentFlag.AlignCenter), tr("His offer · worth {n}", n=coins_text(int(self.trade.get("worth") or 0))))
+                           int(Qt.AlignmentFlag.AlignCenter), tr("His · worth {n} ({p}% of yours)", n=coins_text(int(self.trade.get("worth") or 0)),
+                                                                 p=int(self.trade.get("pct") or 0)))
                 p.setPen(QColor(TEXT_DIM))
                 p.drawText(QRectF(pad.left() - S(40), pad.bottom() + S(2), pad.width() + S(80), S(16)),
                            int(Qt.AlignmentFlag.AlignCenter), tr("Yours · worth {n}", n=coins_text(int(self.trade.get("mine_worth") or 0))))
@@ -48672,9 +48752,10 @@ class PawnShop(QWidget):
             p.setPen(QColor(TEXT_DIM))
             p.setFont(font(10.5, QFont.Weight.DemiBold))
             more = self.trade.get("more")
-            line = (tr("Ask for more: {c}% chance he says yes, a no adds {r} anger (the faint part of the bar)",
+            line = (tr("Ask for more = ask for an item worth about {p}% of yours. {c}% chance he says yes. If he says no: +{r} anger "
+                       "(the faint part of the bar) and no more asking.", p=int(more.get("pct") or 0),
                        c=int(round(float(more.get("chance") or 0) * 100)), r=int(round(float(more.get("rage") or 0))))
-                    if more else tr("This is his best offer"))
+                    if more else tr("This is his last offer: accept or refuse."))
             p.drawText(QRectF(pn.left(), y + S(56), pn.width(), S(36)),
                        int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), line)
             return
@@ -52367,8 +52448,7 @@ class MainWindow(QWidget):
         mode = ("offmode" if ctx.cfg["offline_mode"] and ctx.online.logged_in() else
                 "locked" if ctx.econ.live.get("locked") else
                 "lockdown" if ctx.econ.lockdown_cover() else
-                "update" if getattr(ctx, "outdated", False) else
-                "offline" if ctx.online.logged_in() and ctx.online.offline else "")
+                "offline" if ctx.online.logged_in() and ctx.online.offline else "")     # 5.15: no "update" cover
         on = bool(mode) and self.expanded and self.current in LOCK_PAGES
         if on and mode != cover.mode:
             cover.set_mode(mode, ctx.install_update if mode == "update" else
@@ -54270,10 +54350,14 @@ class App(QObject):
             self.window.expand()
 
     def set_outdated(self, on: bool) -> None:
-        """Online games, trades and the market wait until Rubenium is up to date."""
+        """Online games, trades and the market wait until Rubenium is up to date. 5.15: no blurred cover any more:
+        an old version leaves online mode by itself (and says why)."""
         if on != self.outdated:
             self.outdated = on
             self.window.sync_lock()
+            if on and self.online_mode:
+                self.toast(tr("A new version is out: online closes while it updates"), "warn")
+                QTimer.singleShot(300, lambda: self.leave_online(ask=False))
         if on:                                            # 5.0.1: outdated means updating now, not in 6 hours
             self.updater.install()                        # 5.10: straight to installing (it checks first if needed)
 
@@ -54523,6 +54607,8 @@ class App(QObject):
             return
         if not self.online.logged_in():
             return self.toast(tr("Log in first"), "warn")
+        if getattr(self, "outdated", False):              # 5.15: an old version: up into the black hole, back down
+            return self._online_refused()
         if (getattr(self, "og_chest", None) or {}).get("due") is not False:
             self.og_event_check()                            # 5.0: asked again, the answer is in before the drop ends
         main = self.main_window
@@ -54599,6 +54685,44 @@ class App(QObject):
             QTimer.singleShot(340, fly)
         else:
             fly()
+
+    def _online_refused(self) -> None:
+        """5.15: online needs the latest version. The ball goes up into the black hole as usual, and a moment later
+        it drops back down like nothing happened, with a message (and the update starts)."""
+        if getattr(self, "_online_busy", False):
+            return
+        main = self.main_window
+        self._online_busy = True
+
+        def back() -> None:
+            def landed() -> None:
+                self._online_busy = False
+                try:
+                    main.ball.set_center(main.ball.center)
+                    main.show_ball()
+                except Exception:  # noqa: BLE001
+                    main.ball.show()
+                self.toast(tr("Please update to the latest version to play online: updating now…"), "warn")
+                self.install_update()
+            try:
+                float_down(self, main, landed)
+            except Exception:  # noqa: BLE001
+                log.exception("ball back failed")
+                landed()
+
+        def up() -> None:
+            try:
+                fly_up(self, main, lambda: QTimer.singleShot(1500, back))
+            except Exception:  # noqa: BLE001
+                log.exception("fly up failed")
+                self._online_busy = False
+                main.show_ball()
+        QTimer.singleShot(6000, lambda: setattr(self, "_online_busy", False))     # never stuck
+        if main.expanded:
+            main.collapse()
+            QTimer.singleShot(340, up)
+        else:
+            up()
 
     def leave_online(self, after=None, ask: bool = True) -> None:
         """The back arrow: tell what leaving would close (lobbies, a live match, a giveaway entry) and ask once; then
