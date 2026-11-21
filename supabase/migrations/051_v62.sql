@@ -477,3 +477,13 @@ begin
     if d = o then raise exception 'rb_ach_stats not patched'; end if;
     execute d;
 end $$;
+
+-- Connect 4 clock stays off until the 6.2 release is live (old apps have no timer): the trigger clears turn_by while
+-- c4_turn_secs >= 1000. Applied live; the config was set to 30 when 6.2 went out.
+create or replace function public.rb_c4_clock_off() returns trigger language plpgsql set search_path = '' as $$
+begin
+    if coalesce(public.rb_cfg('c4_turn_secs'), 30) >= 1000 then new.turn_by := null; end if;
+    return new;
+end $$;
+drop trigger if exists rb_c4_clock_off on public.rb_c4;
+create trigger rb_c4_clock_off before insert or update on public.rb_c4 for each row execute function public.rb_c4_clock_off();
