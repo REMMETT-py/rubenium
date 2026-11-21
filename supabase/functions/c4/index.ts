@@ -43,6 +43,7 @@ function proMove(moves: number[]): { col: number; depth: number } {
   return { col: m.col, depth: 42 };
 }
 
+const TURN_SECS = 30;                              // 6.2: seconds a player has for each move (also rb_config c4_turn_secs)
 const HEAD = { "Content-Type": "application/json" };
 const out = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: HEAD });
 
@@ -59,6 +60,18 @@ Deno.serve(async (req) => {
     const { data: g } = await admin.from("rb_c4").select("*").eq("id", gid).maybeSingle();
     if (!g || g.owner !== who.user.id) return out({ message: "rb_round_gone" }, 400);
     if (g.state !== "live") return out({ message: "rb_round_gone" }, 400);
+    // 6.2: the clock. The player has TURN_SECS per move (turn_by also holds the bot's thinking time and a little network
+    // slack). A move that comes in late, or the client saying "time is up" when it really is, loses the game.
+    const nowMs = Date.now();
+    const turnBy = g.turn_by ? new Date(g.turn_by).getTime() : 0;
+    const timedOut = turnBy > 0 && ((col >= 0 && nowMs > turnBy) || (col === -2 && nowMs >= turnBy - 4000));
+    if (col === -2 && !timedOut) return out({ message: "rb_too_soon" }, 400);
+    if (timedOut) {
+      const { data: fin, error } = await admin.rpc("rb_c4_finish", { gid, outcome: "lose" });
+      if (error) return out({ message: error.message }, 400);
+      return out({ moves: (g.moves ?? []).map(Number), bot: -1, state: "done", outcome: "lose", line: null, paid: 0,
+                   coins: fin?.coins ?? null, capped: false, think: 0, timeout: true });
+    }
     const moves: number[] = (g.moves ?? []).map(Number);
     const human = g.bot_first ? 1 : 0;
     const b = Board.from(moves);
@@ -84,8 +97,14 @@ Deno.serve(async (req) => {
       else if (r.draw) finished = "draw";
       console.log("c4", g.level, "depth", depth, "ms", Date.now() - t0);
     }
+    // how long the bot "thinks" on screen (6.0): the easier the bot, the quicker it plays
+    const span: Record<string, [number, number]> = { easy: [0.6, 1.4], medium: [1.0, 2.4], hard: [1.8, 3.8], pro: [2.5, 5.5] };
+    const [lo, hi] = span[g.level] ?? [1, 3];
+    const think = botCol < 0 ? 0 : lo + Math.random() * (hi - lo) + (moves.length > 10 && g.level !== "easy" ? 0.5 : 0);
     // the update only lands if nobody moved meanwhile (same number of moves as we read)
-    const { data: upd } = await admin.from("rb_c4").update({ moves, updated_at: new Date().toISOString() })
+    const upd0: Record<string, unknown> = { moves, updated_at: new Date().toISOString() };
+    if (!finished) upd0.turn_by = new Date(Date.now() + (think + TURN_SECS + 3) * 1000).toISOString();
+    const { data: upd } = await admin.from("rb_c4").update(upd0)
       .eq("id", gid).eq("state", "live").eq("n", g.n).select("id");
     if (!upd || !upd.length) return out({ message: "rb_too_soon" }, 409);
     let paid = 0, coins = null, capped = false;
@@ -95,10 +114,6 @@ Deno.serve(async (req) => {
       paid = fin?.paid ?? 0; coins = fin?.coins ?? null; capped = !!fin?.capped;
     }
     const r = result(moves);
-    // how long the bot "thinks" on screen (6.0): the easier the bot, the quicker it plays
-    const span: Record<string, [number, number]> = { easy: [0.6, 1.4], medium: [1.0, 2.4], hard: [1.8, 3.8], pro: [2.5, 5.5] };
-    const [lo, hi] = span[g.level] ?? [1, 3];
-    const think = botCol < 0 ? 0 : lo + Math.random() * (hi - lo) + (moves.length > 10 && g.level !== "easy" ? 0.5 : 0);
     return out({ moves, bot: botCol, state: finished ? "done" : "live", outcome: finished, line: r.line, paid, coins,
                  capped, think: Math.round(think * 10) / 10 });
   } catch (e) {

@@ -20916,6 +20916,14 @@ def show_case_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
     show_item(p, item, rect, now, effects)
 
 
+def show_preview_item(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effects: bool = True) -> None:
+    """6.2: a case's item list shows its Mythics as a glowing "?" until this account has unlocked that design (the
+    admins too: nothing is spoiled on a screenshot); once it has, the real badge shows."""
+    if is_mythic(item) and ECON is not None and ECON.secret(item):
+        return paint_secret(p, rect, now, effects)
+    show_item(p, item, rect, now, effects)
+
+
 # 4.7: every badge case has a grid, the chance (in billionths) of each rarity (Common..Epic) x finish (Basic..Gold).
 # Every badge a case can give is at least 1 in: Basic 250, Painted 1 000, Shiny 10 000, Titanium 50 000, Gold 100 000.
 DAILY_GRID = [139748124, 38113125, 76226, 0, 0, 71144500, 5005524, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]   # 5.3
@@ -21932,7 +21940,7 @@ class CaseOverview(QWidget):
         super().__init__()
         self.ctx, self.case = ctx, case
         self.coins = case_coin_share(case)
-        self.drops = [d for d in case_drops(ctx.econ, case) if not is_mythic(d[0])]     # 6.0: Mythics are not listed
+        self.drops = list(case_drops(ctx.econ, case))                            # 6.2: Mythics count (shown as "?")
         self.jackpot = case.get("mode") == "jackpot"
         self.setFixedSize(width, S(150) if self.jackpot else S(118))
 
@@ -22022,7 +22030,7 @@ class CaseItemsGrid(QWidget):
     def __init__(self, ctx, case: dict, width: int) -> None:
         super().__init__()
         self.ctx = ctx
-        rows = [r for r in case_drops(ctx.econ, case) if not is_mythic(r[0])]      # 6.0: Mythics stay a surprise
+        rows = list(case_drops(ctx.econ, case))                                      # 6.2: Mythics are listed, as a "?"
         self.items = sorted(rows, key=lambda r: -r[1])
         self.cell = S(46)
         self.per = max(1, int(width // self.cell))
@@ -22041,7 +22049,9 @@ class CaseItemsGrid(QWidget):
         for k, (item, ch) in enumerate(self.items):
             if self._rect(k).contains(e.position()):
                 name = item_name(item)
-                if item.startswith("badge:") and not item.split(":")[1] in EXOTIC_IDS:
+                if is_mythic(item) and ECON is not None and ECON.secret(item):
+                    name = "???"
+                elif item.startswith("badge:") and not item.split(":")[1] in EXOTIC_IDS:
                     name = tr("{what} (any colour or finish)", what=tr(BADGE_NAME.get(item.split(":")[1], name)))
                 self.setToolTip(f"{name}\n" + pct_text(ch))
                 return
@@ -22060,7 +22070,7 @@ class CaseItemsGrid(QWidget):
             p.drawRoundedRect(r, S(6), S(6))
             p.setBrush(alpha(col, 0.8))
             p.drawRoundedRect(QRectF(r.left() + S(6), r.bottom() - S(3), r.width() - S(12), S(2)), S(1), S(1))
-            show_item(p, item, r.adjusted(S(4), S(3), -S(4), -S(5)), now)
+            show_preview_item(p, item, r.adjusted(S(4), S(3), -S(4), -S(5)), now)
 
 
 class DropList(QWidget):
@@ -22069,7 +22079,7 @@ class DropList(QWidget):
     def __init__(self, page, case: dict) -> None:
         super().__init__()
         self.page = page
-        self.rows = [r for r in case_drops(page.ctx.econ, case) if not is_mythic(r[0])]      # 6.0: no Mythics shown
+        self.rows = list(case_drops(page.ctx.econ, case))                              # 6.2: Mythics are listed, as a "?"
         self.rows.sort(key=lambda x: (TIERS.index(page.ctx.econ.rarity(x[0])) if page.ctx.econ.rarity(x[0]) in TIERS else 0, -x[1]))
         self.row_h = S(30)
         self.cols = 2
@@ -22090,10 +22100,11 @@ class DropList(QWidget):
             p.setBrush(alpha(col, 0.08))
             p.drawRoundedRect(r, S(6), S(6))
             icon = QRectF(r.left() + S(4), r.top() + S(2), r.height() - S(4), r.height() - S(4))
-            show_case_item(p, item, icon, 0, effects=False)
+            show_preview_item(p, item, icon, 0, effects=False)
             name = badge_label(item).replace(" · " + tr("Basic"), "") if item.startswith("badge:") else item_name(item)
             if item.startswith("badge:"):
-                name = "???" if is_mythic(item) else tr(BADGE_NAME.get(item.split(":")[1], "?"))
+                secret = is_mythic(item) and ECON is not None and ECON.secret(item)
+                name = "???" if secret else tr(BADGE_NAME.get(item.split(":")[1], "?"))
             text = pct_text(chance)                         # 6.0: never 0.000%
             p.setFont(font(9.5, QFont.Weight.Bold))
             tw = p.fontMetrics().horizontalAdvance(text)
@@ -22332,6 +22343,9 @@ class OddsTable(QWidget):
             tiers = [case_coin_share(case)] + [sum(g[t * 5:t * 5 + 5]) for t in range(4)] + [case_mythic(case)]
             badges = sum(g) or 1
             finishes = [sum(g[t * 5 + k] for t in range(4)) / badges for k in range(5)]
+            if case_mythic(case) > 0 and not str(case.get("mode", "")).startswith("kinds:"):
+                # 6.2: Prismatic only comes as a Mythic: its chance per open is shown above Gold, with the finishes
+                finishes.append(case_mythic(case) * MYTHIC_CLASS_SHARE[5])      # per open, shown as 1 / N
         else:
             odds = list(case["odds"])
             tiers = [x / (sum(odds) or 1) for x in odds]
@@ -22383,7 +22397,7 @@ class OddsTable(QWidget):
             p.setPen(QColor(TEXT))
             # 6.0: a rarity's chance as "1 / 24", a finish's (Basic, Painted, Shiny...) as a percentage
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                       (one_in(share) if kind == "tier" and n else pct_plain(share)))
+                       (one_in(share) if (kind == "tier" and n) or (kind == "cls" and n == 5) else pct_plain(share)))
 
 
 class CaseReel(QWidget):
@@ -28945,6 +28959,45 @@ class Game(QWidget):
         self._frames.setInterval(16)
         self._frames.timeout.connect(self.update)
         self._until = 0.0
+        self._clk = None                         # 6.2: the big countdown (deadline, total seconds)
+        self._clk_timer = None
+
+    # -- 6.2: a big countdown. The server keeps its own clock too: this one only shows it (and sends "time is up")
+    def clock_start(self, secs: float, on_end) -> None:
+        self.clock_stop()
+        secs = float(secs)
+        self._clk = (time.monotonic() + secs, secs)
+        t = QTimer(self)
+        t.setSingleShot(True)
+        t.timeout.connect(lambda: self._clock_end(t, on_end))
+        t.start(int(max(0.0, secs) * 1000) + 40)
+        self._clk_timer = t
+        self.animate(secs + 1.0)
+
+    def clock_stop(self) -> None:
+        self._clk = None
+        t, self._clk_timer = self._clk_timer, None
+        if t is not None:
+            try:
+                t.stop()
+                t.deleteLater()
+            except RuntimeError:
+                pass
+
+    def _clock_end(self, t, on_end) -> None:
+        if self._clk_timer is not t:
+            return
+        self._clk, self._clk_timer = None, None
+        t.deleteLater()
+        on_end()
+
+    def clock_left(self):
+        return None if self._clk is None else max(0.0, self._clk[0] - time.monotonic())
+
+    def paint_clock(self, p: QPainter, c: QPointF, rad: float) -> None:
+        left = self.clock_left()
+        if left is not None:
+            paint_ring_clock(p, c, rad, left, self._clk[1])
 
     # -- helpers
     def animate(self, seconds: float) -> None:
@@ -30880,11 +30933,17 @@ class GamePicker(QWidget):
         grid.setSpacing(S(4))
         per_row = 6 if len(labels) >= 11 else 5 if len(labels) >= 10 else 3   # 5.12: 12 games, 2 rows of 6
         rows = (len(labels) + per_row - 1) // per_row
+        extra = 2 if len(labels) >= 14 else 0                    # 6.2: Colour Pick and SFX Match: a row of their own,
+        if extra:                                                 # right under Cups and Connect 4
+            rows = (len(labels) - extra + per_row - 1) // per_row + 1
         for i, text in enumerate(labels):
             b = Button(text, "primary" if i == index else "ghost", 26)
             b.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
             b.clicked.connect(lambda _=False, n=i: self._pick(n))
-            grid.addWidget(b, i // per_row, i % per_row)
+            if extra and i >= len(labels) - extra:
+                grid.addWidget(b, rows - 1, per_row - extra + (i - (len(labels) - extra)))
+            else:
+                grid.addWidget(b, i // per_row, i % per_row)
             self.buttons.append(b)
         for c in range(per_row):
             grid.setColumnStretch(c, 1)
@@ -31132,6 +31191,20 @@ class GameTile(QWidget):
                 cup.closeSubpath()
                 p.setBrush(QColor("#E0484F"))
                 p.drawPath(cup)
+        elif self.name == "Colour Pick":                       # 6.2: a swatch and its hue slider
+            p.setBrush(QColor("#3FA7FF"))
+            p.drawRoundedRect(QRectF(art.x() - S(20), art.y() - S(14), S(40), S(18)), S(4), S(4))
+            g_ = QLinearGradient(QPointF(art.x() - S(20), 0), QPointF(art.x() + S(20), 0))
+            for i_ in range(5):
+                g_.setColorAt(i_ / 4, QColor.fromHsvF(i_ / 5, 0.85, 1.0))
+            p.setBrush(g_)
+            p.drawRoundedRect(QRectF(art.x() - S(20), art.y() + S(8), S(40), S(5)), S(2.5), S(2.5))
+            p.setBrush(QColor("#FFFFFF"))
+            p.drawEllipse(QPointF(art.x() + S(6), art.y() + S(10.5)), S(3.4), S(3.4))
+        elif self.name == "SFX Match":                         # 6.2: sound bars
+            for k_, hh in enumerate((6, 13, 20, 11, 16, 7, 10)):
+                p.setBrush(alpha(ui.accent, 0.9) if k_ % 2 == 0 else QColor("#EDEDED"))
+                p.drawRoundedRect(QRectF(art.x() - S(21) + k_ * S(6.2), art.y() - S(hh) / 2, S(4), S(hh)), S(2), S(2))
         else:                                                  # Hi-Lo: two cards and an arrow
             for k, (dx, txt) in enumerate(((-S(8), "7"), (S(8), "?"))):
                 p.setBrush(QColor("#F4F5F6") if k == 0 else alpha(ui.accent, 0.55))
@@ -31349,7 +31422,7 @@ class GamesPage(Page):
     """The lobby (normal size) and, once you go in, the casino (shown bigger)."""
     key = "games"
     NAMES = ["Blackjack", "Plinko", "Bombs", "Roulette", "Dice", "Timing", "Rocket", "Hi-Lo", "Tower", "Slots", "Cups",
-             "Connect 4", "Free spin"]
+             "Connect 4", "Colour Pick", "SFX Match", "Free spin"]
     PICKER = len(NAMES) - 1                  # 4.1: the free spin is not in the bar of games (its row in the lobby opens it)
 
     def __init__(self, ctx) -> None:
@@ -31782,7 +31855,8 @@ class GamesPage(Page):
         pass
         pass
         self.games = [Blackjack(self), Plinko(self), Bombs(self), Roulette(self), Dice(self), Timing(self), Rocket(self),
-                      HiLo(self), Tower(self), Slots(self), CupGame(self), ConnectFour(self), Daily(self)]
+                      HiLo(self), Tower(self), Slots(self), CupGame(self), ConnectFour(self), ColourPick(self), SfxMatch(self),
+                      Daily(self)]
         for g in self.games:
             g.setVisible(False)
             lay.addWidget(g)
@@ -32584,11 +32658,11 @@ BOARDS = [("coins", "Richest"), ("worth", "Worth"), ("level", "Level"), ("badges
           # 6.0: every casino game has a board: the biggest win in one round
           ("g:roulette", "Roulette"), ("g:blackjack", "Blackjack"), ("g:hilo", "Hi-Lo"), ("g:slots", "Slots"),
           ("g:rocket", "Rocket"), ("g:plinko", "Plinko"), ("g:mines", "Bombs"), ("g:tower", "Tower"), ("g:dice", "Dice"),
-          ("g:timing", "Timing")]
+          ("g:timing", "Timing"), ("g:colour", "Colour Pick"), ("g:sfx", "SFX Match")]
 # 5.13: the boards in three sections (no more one long row of buttons)
 BOARD_SECTIONS = [("Players", ["coins", "worth", "level", "badges", "trophies", "hours", "streak"]),
                   ("Games", ["wave", "flips", "golf", "c4", "cups", "g:roulette", "g:blackjack", "g:hilo", "g:slots",
-                             "g:rocket", "g:plinko", "g:mines", "g:tower", "g:dice", "g:timing"]),
+                             "g:rocket", "g:plinko", "g:mines", "g:tower", "g:dice", "g:timing", "g:colour", "g:sfx"]),
                   ("Mini games", ["tap", "park", "memory", "blocks", "sweeper"])]
 BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are worth", "badges": "Different badges owned",
                "hours": "Hours with Rubenium", "streak": "Days in a row of daily rewards", "tap": "Best Beat Tap score (%)",
@@ -33987,7 +34061,7 @@ from PyQt6.QtWidgets import QWidget
 GAME_NAMES = {"slots": "Slots", "plinko": "Plinko", "dice": "Dice", "mines": "Bombs", "rocket": "Rocket",
               "blackjack": "Blackjack", "daily": "Daily case", "spin": "Free spin", "mini": "Beat Tap",
               "roulette": "Roulette", "hilo": "Hi-Lo", "cups": "Cup Game", "timing": "Timing", "golf": "Mini Golf", "flip": "Coinflip",
-              "golf_solo": "Mini Golf", "wave": "Wave Rush", "tower": "Tower", "blocks": "Block Blast", "sweeper": "Minesweeper"}
+              "colour": "Colour Pick", "sfx": "SFX Match", "golf_solo": "Mini Golf", "wave": "Wave Rush", "tower": "Tower", "blocks": "Block Blast", "sweeper": "Minesweeper"}
 ADMIN_COLOUR = "#FF4B6E"
 
 
@@ -43155,6 +43229,22 @@ HELP = {
         "Take the middle column early, block every line of 3, and set up two threats at once."], [
         "Easy ×1.2 · Medium ×2.5 · Hard ×10 · Professional ×200. A draw gives your bet back.",
         "Leaving a game or giving up loses the bet."]),
+    "colour": ("Colour Pick", [
+        "A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.",
+        "Your accuracy is measured the way the eye sees colour (CIEDE2000): close counts, exact is best.",
+        "Easy shows it for 6 s and gives 45 s, Medium 4 s and 35 s, Hard shows a muted colour for only 2.5 s and gives 25 s."], [
+        "Remember the hue first, then how pale or dark it was. Move the sliders one at a time.",
+        "The colour is shown once and the clock is kept by the server: a late answer scores nothing."], [
+        "Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy. Low accuracy gives back part of your bet or nothing.",
+        "Once you are up 12 000 coins in a day, a win gives your bet back."]),
+    "sfxmatch": ("SFX Match", [
+        "A short sound plays, then it is gone. Recreate it with the sliders: pitch, duration and tone, and on harder levels glide, shape and wobble.",
+        "You can listen to the original a few times while it is available, and to your own sound a limited number of times before you submit.",
+        "After the round you hear both sounds and see how close each setting was."], [
+        "Find the pitch first, then the length, then the tone: sine is soft, square is buzzy, saw is sharp.",
+        "Easy: 10 s to listen, 60 s to answer. Medium: 7 s and 45 s. Hard: 5 s and 30 s, with 2 listens and 4 previews."], [
+        "Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy.",
+        "Once you are up 12 000 coins in a day, a win gives your bet back."]),
     "cups": ("Cup Game", [
         "A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.",
         "Follow the cup with the coin and click it when they stop."], [
@@ -43280,7 +43370,7 @@ CONTROLS = {
 
 CASINO_KEYS = {"Blackjack": "blackjack", "Plinko": "plinko", "Bombs": "bombs", "Roulette": "roulette", "Dice": "dice",
                "Timing": "timing", "Rocket": "rocket", "Hi-Lo": "hilo", "Tower": "tower", "Slots": "slots", "Cups": "cups", "Connect 4": "connect4",
-               "Free spin": "spin"}
+               "Colour Pick": "colour", "SFX Match": "sfxmatch", "Free spin": "spin"}
 
 
 def help_lines(ctx, key: str) -> tuple:
@@ -43914,6 +44004,9 @@ class CupGame(Game):
         self.slot_of = list(range(self.n))  # cup -> slot
         self._applied = 0
         self.zones: list = []
+        self.pick_secs = 30.0                # 6.2: seconds to choose a cup (the server counts too)
+        self.late = False
+        self._tries = 0
 
     def options(self):
         return [f"{tr(m)} ×{x:g}" for m, _n, x in self.MODES], self.mode
@@ -43950,6 +44043,8 @@ class CupGame(Game):
         self.start = int(ans.get("start") or 0)
         self.swaps = [(int(a), int(b)) for a, b in (ans.get("swaps") or [])]
         self.secs = float(ans.get("secs") or 0.5)
+        self.pick_secs = float(ans.get("pick_secs") or 30)
+        self.late = False
         self.slot_of = list(range(self.n))
         self._applied = 0
         self.state, self.t0 = "show", time.monotonic()
@@ -44006,7 +44101,7 @@ class CupGame(Game):
         head = {"idle": tr("Watch the coin, follow its cup, then click it."),
                 "show": tr("Watch the coin…"), "shuffle": tr("Follow the cup!"),
                 "pick": tr("Which cup hides the coin?"),
-                "reveal": (tr("Found it!") if self.won else tr("It was here"))}[self.state]
+                "reveal": (tr("Found it!") if self.won else tr("Time is up!") if self.late else tr("It was here"))}[self.state]
         p.drawText(QRectF(r.left(), r.top() + S(4), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), head)
         for k in range(self.n):                        # the spots on the table
             p.setPen(Qt.PenStyle.NoPen)
@@ -44029,6 +44124,9 @@ class CupGame(Game):
             i = int(t / self.secs)
             if i >= len(self.swaps):
                 self.state = "pick"
+                self._tries = 0
+                if 0 < self.pick_secs < 1000:
+                    self.clock_start(self.pick_secs, self._time_up)
                 self.page.sync()
                 return self.draw(p, r, now)
             done = self._applied
@@ -44069,6 +44167,7 @@ class CupGame(Game):
                 box = QRectF(pts[k].x() - size * 0.36, pts[k].y() - size * 0.62, size * 0.72, size * 0.72)
                 self.zones.append((box, k))
                 self._cup(p, pts[k], size, lift=S(4) if box.contains(QPointF(hover)) else 0, hot=box.contains(QPointF(hover)))
+            self.paint_clock(p, QPointF(r.right() - S(44), r.top() + S(46)), S(30))
             return
         # reveal
         up = min(1.0, t / 0.4)
@@ -44089,11 +44188,21 @@ class CupGame(Game):
         for box, k in self.zones:
             if box.contains(e.position()):
                 self.picked = k
+                self.clock_stop()
                 sfx.play("cup")
                 self.ask("rb_cups", {"action": "pick", "level": self.mode, "bet": 0, "pick": k}, self._answered, once=True)
                 return
 
+    def _time_up(self) -> None:
+        """6.2: the clock ran out: tell the server (it checks that it really is time) and lose the round."""
+        if self.state != "pick" or self.waiting:
+            return
+        self.picked = None
+        self.ask("rb_cups", {"action": "pick", "level": self.mode, "bet": 0, "pick": -1}, self._answered, once=True)
+
     def _answered(self, ans: dict) -> None:
+        self.clock_stop()
+        self.late = bool(ans.get("late"))
         self.coin = int(ans.get("coin") if ans.get("coin") is not None else -1)
         self.won = bool(ans.get("won"))
         self.state, self.t0 = "reveal", time.monotonic()
@@ -44101,6 +44210,11 @@ class CupGame(Game):
         QTimer.singleShot(1400, lambda: (self.finish(int(ans.get("paid") or 0)), self.animate(1.5)))
 
     def failed(self, message: str) -> None:
+        if self.state == "pick" and self.picked is None and "Not ready" in message and self._tries < 4:
+            self._tries += 1                       # our clock was a hair ahead of the server's: ask again shortly
+            QTimer.singleShot(1500, self._time_up)
+            return
+        self.clock_stop()
         super().failed(message)
         self.state = "idle"
 
@@ -44128,6 +44242,8 @@ class ConnectFour(Game):
         self.hover = -1
         self.drop_t = 0.0
         self._resumed = False
+        self.secs = 30.0                     # 6.2: seconds for each of your moves (the server counts too)
+        self._tries = 0
         self.setMouseTracking(True)
 
     def options(self):
@@ -44178,6 +44294,21 @@ class ConnectFour(Game):
         self.stake = int(g.get("bet") or self.stake)
         self.mode = next((i for i, m in enumerate(self.MODES) if m[1] == g.get("level")), self.mode)
         self.outcome, self.line, self.pending = None, None, None
+        self.secs = float(g.get("secs") or 30)
+        self._turn_clock(g.get("left"))
+
+    def _turn_clock(self, left=None) -> None:
+        """6.2: the big countdown for your move: 30 s, or what is left of it after a reconnect."""
+        self.clock_stop()
+        if self.secs >= 1000 or self.gid is None or self.outcome is not None or self._bot_due():
+            return
+        lim = self.secs if left is None else max(1.0, min(self.secs, float(left)))
+        self._tries = 0
+        self.clock_start(lim, self._time_up)
+
+    def _time_up(self) -> None:
+        if self.my_turn():
+            self._send(-2)
 
     def _bot_due(self) -> bool:
         human = 1 if self.bot_first else 0
@@ -44196,6 +44327,7 @@ class ConnectFour(Game):
         self.ask("rb_c4_start", {"level": self.level(), "bet": self.stake}, started, once=True, refund=self.stake)
 
     def _send(self, col: int) -> None:
+        self.clock_stop()
         self.waiting = True
         self.page.sync()
         self.thinking_until = time.monotonic() + 3.0
@@ -44205,6 +44337,11 @@ class ConnectFour(Game):
             self.waiting = False
             if not ok or not isinstance(ans, dict):
                 self.thinking_until = 0
+                if col == -2 and "Not ready" in str(ans) and self._tries < 4:
+                    self._tries += 1               # the clock on screen was a hair ahead of the server's: ask again
+                    QTimer.singleShot(1500, self._time_up)
+                    self.page.sync()
+                    return
                 if col >= 0 and len(self.moves) > self.shown - 1 and self.moves and self.moves[-1] == col:
                     self.moves.pop()
                     self.shown = len(self.moves)
@@ -44231,7 +44368,12 @@ class ConnectFour(Game):
         self.shown = len(self.moves)
         self.thinking_until = 0
         self.animate(1)
+        if ans.get("state") != "done":
+            self._turn_clock()
+        if ans.get("timeout"):
+            self.ctx.toast(tr("Time is up: you lose the game"), "warn")
         if ans.get("state") == "done":
+            self.clock_stop()
             self.outcome = ans.get("outcome")
             self.line = ans.get("line")
             if ans.get("coins") is not None:
@@ -44241,12 +44383,14 @@ class ConnectFour(Game):
 
     def _resign(self) -> None:
         def yes() -> None:
+            self.clock_stop()
             self.ctx.online.ask("rb_c4_resign", {}, lambda _o, _d: None)
             self.outcome = "lose"
             self.finish(0)
         self.ctx.window.confirm(tr("Give up this game? You lose your bet."), yes, yes=tr("Give up"))
 
     def finish(self, payout: int) -> None:
+        self.clock_stop()
         super().finish(payout)
         self.gid = None
         self.animate(2)
@@ -44357,6 +44501,694 @@ class ConnectFour(Game):
             p.setFont(font(10, QFont.Weight.DemiBold))
             p.drawText(QRectF(side.left(), y + S(46), side.width(), S(36)), int(Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap),
                        tr("Win: {n}", n=coins_text(int(self.stake * self.MODES[self.mode][2]))))
+        if self.my_turn():
+            self.paint_clock(p, QPointF(side.center().x(), side.bottom() - S(34)), S(30))
+
+
+# --------------------------------------------------------------------------- #
+# 6.2 Colour Pick and SFX Match: look or listen once, then recreate it from memory. The server picks the colour or
+# the sound, hands it out exactly once (the "show" step), times everything and does the scoring; this is only the table.
+# --------------------------------------------------------------------------- #
+def hsb_colour(h: float, s: float, v: float) -> QColor:
+    return QColor.fromHsvF(min(0.999, max(0.0, (h % 360.0) / 360.0)), max(0.0, min(1.0, s / 100.0)),
+                           max(0.0, min(1.0, v / 100.0)))
+
+
+def synth_sfx(f: float, d: float, w: int, g: float, wb: float, sh: int, rate: int = 44100) -> list:
+    """6.2: the sound of SFX Match from its parameters: pitch f (Hz), length d (s), waveform w (0 sine, 1 triangle,
+    2 saw, 3 square), glide g (semitones over the note), wobble wb (0-100, a vibrato) and shape sh (0 pluck, 1 beep,
+    2 swell). The same function plays the original and your own sound."""
+    n = max(1, int(float(d) * rate))
+    w, sh = int(round(w)), int(round(sh))
+    vib = max(0.0, min(100.0, float(wb))) / 100.0 * 1.2           # up to 1.2 semitones of wobble, 6 times a second
+    gain = (0.5, 0.5, 0.3, 0.24)[max(0, min(3, w))]
+    out, ph = [], 0.0
+    two_pi = 2 * math.pi
+    for i in range(n):
+        t, u = i / rate, i / n
+        semis = g * u + (vib * math.sin(two_pi * 6.0 * t) if vib else 0.0)
+        ph += f * (2.0 ** (semis / 12.0)) / rate
+        ph -= int(ph)
+        if w == 0:
+            s = math.sin(two_pi * ph)
+        elif w == 1:
+            s = 4.0 * abs(ph - 0.5) - 1.0
+        elif w == 2:
+            s = 2.0 * ph - 1.0
+        else:
+            s = 1.0 if ph < 0.5 else -1.0
+        if sh == 0:
+            env = math.exp(-5.0 * u) * min(1.0, t / 0.003)
+        elif sh == 1:
+            env = max(0.0, min(1.0, t / 0.010, (d - t) / 0.030))
+        else:
+            env = math.sin(math.pi * (u ** 0.6)) ** 1.5
+        out.append(s * env * gain)
+    return out
+
+
+def play_match_sound(slot: str, params: tuple, cache: dict) -> float:
+    """Make (once per set of values) and play a .wav of synth_sfx; returns its length in seconds."""
+    if not win.IS_WIN:
+        return float(params[1])
+    try:
+        path = DATA_DIR / "sounds" / f"match_{slot}.wav"
+        if cache.get(slot) != params or not path.is_file():
+            sfx._write(path, synth_sfx(*params), 1.0)
+            cache[slot] = params
+        win.play_sound(str(path))
+    except OSError as exc:
+        log.debug("match sound failed: %s", exc)
+    return float(params[1])
+
+
+def forget_match_sound(slot: str, cache: dict) -> None:
+    cache.pop(slot, None)
+    try:
+        (DATA_DIR / "sounds" / f"match_{slot}.wav").unlink()
+    except OSError:
+        pass
+
+
+def paint_ring_clock(p: QPainter, c: QPointF, rad: float, left: float, total: float) -> None:
+    """6.2: a big round countdown: the seconds left in the middle, a ring that empties, red in the last 5 seconds."""
+    left = max(0.0, left)
+    low = left <= 5.0
+    col = QColor(LOSE) if low else QColor(GOLD_TEXT) if left <= 10.0 else QColor(TEXT)
+    p.save()
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha("#FFFFFF", 0.05))
+    p.drawEllipse(c, rad, rad)
+    ring = QRectF(c.x() - rad + S(3), c.y() - rad + S(3), 2 * rad - S(6), 2 * rad - S(6))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.setPen(QPen(alpha("#FFFFFF", 0.10), S(4)))
+    p.drawEllipse(ring)
+    p.setPen(QPen(col, S(4), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    p.drawArc(ring, 90 * 16, -int(360 * 16 * max(0.0, min(1.0, left / max(0.001, total)))))
+    scale = 1.0 + (0.07 * math.sin(time.monotonic() * 9) if low and left > 0 else 0.0)
+    p.setPen(col)
+    p.setFont(font(rad / S(1) * 0.92 * scale, QFont.Weight.ExtraBold))
+    p.drawText(QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad), int(Qt.AlignmentFlag.AlignCenter),
+               str(int(math.ceil(left))))
+    p.restore()
+
+
+class GradientSlider(Slider):
+    """A slider whose track shows what moving it does (the Colour Pick sliders)."""
+
+    def __init__(self, hi: float, stops, value: float = 0.0, step: float = 1.0) -> None:
+        super().__init__(0.0, hi, value, step)
+        self.stops = stops
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(AA)
+        if not self.isEnabled():
+            p.setOpacity(0.5)
+        m, cy = S(7), self.height() / 2
+        w = self.width() - 2 * m
+        th = S(8)
+        track = QRectF(m, cy - th / 2, w, th)
+        g = QLinearGradient(track.topLeft(), track.topRight())
+        cols = self.stops()
+        for i, c in enumerate(cols):
+            g.setColorAt(i / max(1, len(cols) - 1), c)
+        p.setPen(QPen(alpha("#FFFFFF", 0.18), 1))
+        p.setBrush(g)
+        p.drawRoundedRect(track, th / 2, th / 2)
+        x = m + w * self._shown.level
+        kr = S(7) + self._hover.level * S(1.2) + (S(1.5) if self._drag else 0)
+        p.setPen(QPen(QColor("#0C1113"), S(2)))
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawEllipse(QPointF(x, cy), kr, kr)
+
+
+class MatchGame(Game):
+    """Shared flow: start (the bet) -> show (the one look or listen) -> the original is hidden -> answer with the
+    sliders against a clock -> submit -> the server scores it. Colour Pick and SFX Match fill in the rest."""
+    RPC = ""
+    CFG = ""
+    MODES: list = []          # (name, best multiplier, seconds to look, seconds to answer)
+    SLIDER_ROWS = 3
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        try:
+            self.mode = max(0, min(2, int(self.ctx.cfg.get(self.CFG, 0) or 0)))
+        except Exception:  # noqa: BLE001
+            self.mode = 0
+        self.state = "idle"             # idle / ready / watch / answer / sending / result
+        self.target = None              # the original: only exists while it is on screen / playing
+        self.res = None
+        self.view_s = self.ans_s = 0.0
+        self.t_watch = self.t_res = 0.0
+        self._token = 0
+        self._resumed = False
+        self.lost = False               # reconnected mid-round: the original is gone
+        self.sliders: list = []
+
+    # -- the choice row
+    def options(self):
+        return [f"{tr(m[0])} ×{m[1]:g}" for m in self.MODES], self.mode
+
+    def set_option(self, i: int) -> None:
+        if not self.busy:
+            self.mode = i
+            try:
+                self.ctx.cfg[self.CFG] = i
+            except Exception:  # noqa: BLE001
+                pass
+            if self.state == "result":
+                self.state, self.res = "idle", None
+            self.update()
+
+    def always_moving(self) -> bool:
+        return self.state in ("ready", "watch", "answer", "sending")
+
+    def set_state(self, state: str) -> None:
+        self.state = state
+        for s in self.sliders:
+            s.setVisible(state in ("answer", "sending"))
+            s.setEnabled(state == "answer")
+        self.animate(1.0)
+        self.page.sync()
+
+    # -- the round
+    def buttons(self) -> list:
+        if self.state == "answer":
+            return [(tr("Submit"), "primary", self._submit, not self.waiting)]
+        if self.state == "result":
+            return [(tr("Play again"), "primary", self.play, not self.busy)]
+        if self.state in ("ready", "watch", "sending") or self.busy:
+            return [(tr("Checking…") if self.state == "sending" else tr("Get ready…"), "ghost", lambda: None, False)]
+        return [(tr("Play  ·  {lvl}", lvl=tr(self.MODES[self.mode][0])), "primary", self.play, True)]
+
+    def play(self) -> None:
+        if self.busy or self.waiting or not self.take():
+            return
+        self.res, self.target, self.lost = None, None, False
+        self.set_state("ready")
+        self.ask(self.RPC, {"action": "start", "level": self.mode, "bet": self.stake, "vals": None}, self._started,
+                 once=True, refund=self.stake)
+
+    def _started(self, ans: dict) -> None:
+        self._info(ans)
+        self._show()
+
+    def _info(self, ans: dict) -> None: ...
+
+    def _show(self) -> None:
+        self.set_state("ready")
+        self.ask(self.RPC, {"action": "show", "level": self.mode, "bet": 0, "vals": None}, self._shown, once=True)
+
+    def _shown(self, ans: dict) -> None:
+        self.view_s = float(ans.get("view") or 5)
+        self.ans_s = float(ans.get("ans") or 30)
+        self.target = self._read(ans)
+        self.t_watch = time.monotonic()
+        self._token += 1
+        tok = self._token
+        QTimer.singleShot(int(self.view_s * 1000) + 40, lambda: self._end_watch(tok))
+        self.set_state("watch")
+        self._on_watch(ans)
+        self.animate(self.view_s + 1)
+
+    def _read(self, ans: dict):
+        return None
+
+    def _on_watch(self, ans: dict) -> None: ...
+
+    def _end_watch(self, tok: int) -> None:
+        try:
+            if tok != self._token or self.state != "watch":
+                return
+            self.target = None                          # the original is forgotten the moment its time is up
+            self._on_hide()
+            self._begin_answer(self.ans_s)
+        except RuntimeError:
+            pass
+
+    def _on_hide(self) -> None: ...
+
+    def _begin_answer(self, left: float) -> None:
+        self._reset_sliders()
+        self.set_state("answer")
+        self.clock_start(max(1.0, left), self._submit)       # at 0 the answer you have goes in by itself
+
+    def _reset_sliders(self) -> None: ...
+
+    def _vals(self) -> dict:
+        return {}
+
+    def _submit(self) -> None:
+        if self.state != "answer" or self.waiting:
+            return
+        self.clock_stop()
+        vals = self._vals()
+        self.mine = dict(vals)
+        self.set_state("sending")
+        self.ask(self.RPC, {"action": "submit", "level": self.mode, "bet": 0, "vals": vals}, self._result, once=True)
+
+    def _result(self, ans: dict) -> None:
+        self.clock_stop()
+        self.res = ans
+        self.target = None
+        self.t_res = time.monotonic()
+        self.set_state("result")
+        if ans.get("late"):
+            self.ctx.toast(tr("Time is up!"), "warn")
+        elif ans.get("capped"):
+            self.ctx.toast(tr("Daily limit reached: wins give your bet back until midnight"), "warn")
+        paid = int(ans.get("paid") or 0)
+        QTimer.singleShot(1500, lambda: self._pay(paid))
+        self.animate(2.0)
+
+    def _pay(self, paid: int) -> None:
+        try:
+            self.finish(paid)
+            self.animate(1.5)
+        except RuntimeError:
+            pass
+
+    def failed(self, message: str) -> None:
+        if self.state in ("sending", "answer") and "round is over" not in message:
+            self.set_state("answer")                       # not sent: the answer is still yours (until the clock ends)
+            self.ctx.toast(tr(message), "warn")
+            return
+        self.clock_stop()
+        super().failed(message)
+        self.set_state("idle")
+
+    def finish(self, payout: int) -> None:
+        super().finish(payout)
+        self.animate(2)
+
+    # -- after a reconnect
+    def showEvent(self, e) -> None:
+        super().showEvent(e)
+        if not self.busy and not self._resumed and self.econ.ready:
+            self._resumed = True
+
+            def got(ok: bool, ans) -> None:
+                try:
+                    if not (ok and isinstance(ans, dict) and ans.get("open")):
+                        return
+                    self.mode = max(0, min(2, int(ans.get("level") or 0)))
+                    self.stake = int(ans.get("bet") or 0)
+                    self.busy = True
+                    self.econ.hold_round(True)
+                    self.res, self.target = None, None
+                    self._info(ans)
+                    if ans.get("phase") == "ready":
+                        self._show()
+                    else:                                  # the original was already shown: it cannot be shown again
+                        wait, left = float(ans.get("wait") or 0), float(ans.get("left") or 0)
+                        self.lost = True
+                        self.view_s, self.t_watch = wait, time.monotonic()
+                        self._token += 1
+                        tok = self._token
+                        self.set_state("watch")
+                        QTimer.singleShot(int(wait * 1000) + 40, lambda: (
+                            setattr(self, "ans_s", max(1.0, left - wait)), self._end_watch(tok)))
+                    self.page.sync()
+                except RuntimeError:
+                    pass
+            self.econ.call(self.RPC, {"action": "state", "level": 0, "bet": 0, "vals": None}, got, once=True)
+
+    # -- painting helpers
+    def head(self, p: QPainter, r: QRectF, text: str) -> None:
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left(), r.top() + S(4), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), text)
+
+    def swatch(self, p: QPainter, rect: QRectF, colour, label: str = "") -> None:
+        p.save()
+        if colour is None:
+            paint_slot(p, rect, "?")
+        else:
+            p.setPen(QPen(alpha("#FFFFFF", 0.22), S(1.5)))
+            p.setBrush(colour)
+            p.drawRoundedRect(rect, S(10), S(10))
+        if label:
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9, QFont.Weight.Bold, 0.5))
+            p.drawText(QRectF(rect.left() - S(10), rect.top() - S(16), rect.width() + S(20), S(14)),
+                       int(Qt.AlignmentFlag.AlignCenter), label.upper())
+        p.restore()
+
+    def watch_left(self) -> float:
+        return max(0.0, self.t_watch + self.view_s - time.monotonic())
+
+    def acc_colour(self, acc: float) -> QColor:
+        return QColor(WIN) if acc >= 70 else QColor(GOLD_TEXT) if acc >= 40 else QColor(LOSE)
+
+
+class ColourPick(MatchGame):
+    """A colour is shown for a few seconds, then gone. Recreate it with Hue, Saturation and Brightness."""
+    RPC, CFG = "rb_colour", "colour_mode"
+    MODES = [("Easy", 1.5, 6, 45), ("Medium", 2.2, 4, 35), ("Hard", 3.0, 2.5, 25)]
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        self.mine = {"h": 180, "s": 50, "v": 50}
+        W, H = self.width(), self.height()
+        sx = S(150)
+        self.s_h = GradientSlider(360, lambda: [hsb_colour(i * 60, 100, 100) for i in range(7)], 180, 1)
+        self.s_s = GradientSlider(100, lambda: [hsb_colour(self.s_h.value(), 0, self.s_v.value()),
+                                                hsb_colour(self.s_h.value(), 100, self.s_v.value())], 50, 1)
+        self.s_v = GradientSlider(100, lambda: [hsb_colour(self.s_h.value(), self.s_s.value(), 0),
+                                                hsb_colour(self.s_h.value(), self.s_s.value(), 100)], 50, 1)
+        self.sliders = [self.s_h, self.s_s, self.s_v]
+        for k, s in enumerate(self.sliders):
+            s.setParent(self)
+            s.setGeometry(int(sx), int(S(84) + k * S(52)), int(W - sx - S(18)), int(S(24)))
+            s.changed.connect(lambda _v: self.update())
+            s.hide()
+
+    def _reset_sliders(self) -> None:
+        for s, v in zip(self.sliders, (180, 50, 50)):
+            s.set_value(v, animate=False)
+
+    def _read(self, ans: dict):
+        return (float(ans.get("h") or 0), float(ans.get("s") or 0), float(ans.get("v") or 0))
+
+    def _vals(self) -> dict:
+        return {"h": float(self.s_h.value()), "s": float(self.s_s.value()), "v": float(self.s_v.value())}
+
+    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
+        st = self.state
+        W = r.width()
+        name, _m, vs, as_ = self.MODES[self.mode]
+        if st == "idle":
+            self.head(p, r, tr("Memorise the colour, then recreate it."))
+            self.swatch(p, QRectF(r.center().x() - S(70), r.top() + S(40), S(140), S(130)), None)
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left(), r.top() + S(186), r.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Look: {a} s · Answer: {b} s", a=f"{vs:g}", b=as_))
+            return
+        if st == "ready":
+            self.head(p, r, tr("Get ready…"))
+            self.swatch(p, QRectF(r.center().x() - S(70), r.top() + S(40), S(140), S(130)), None)
+            return
+        if st == "watch":
+            self.head(p, r, tr("Memorise this colour!") if not self.lost else tr("The original is gone: you were disconnected"))
+            box = QRectF(r.left() + S(20), r.top() + S(30), W - S(138), r.height() - S(46))
+            self.swatch(p, box, hsb_colour(*self.target) if self.target else None)
+            paint_ring_clock(p, QPointF(r.right() - S(56), r.center().y() + S(8)), S(36), self.watch_left(), max(0.1, self.view_s))
+            return
+        if st in ("answer", "sending"):
+            self.head(p, r, tr("Recreate the colour"))
+            now_c = hsb_colour(self.s_h.value(), self.s_s.value(), self.s_v.value())
+            self.swatch(p, QRectF(r.left() + S(16), r.top() + S(66), S(118), S(156)), now_c, tr("Your colour"))
+            sx = S(150)
+            for k, (lab, s, unit) in enumerate(((tr("Hue"), self.s_h, "°"), (tr("Saturation"), self.s_s, "%"),
+                                                (tr("Brightness"), self.s_v, "%"))):
+                y = S(64) + k * S(52)
+                p.setPen(QColor(TEXT))
+                p.setFont(font(10.5, QFont.Weight.Bold))
+                p.drawText(QRectF(sx, y, S(120), S(18)), int(Qt.AlignmentFlag.AlignVCenter), lab)
+                p.setPen(QColor(TEXT_DIM))
+                p.drawText(QRectF(sx, y, W - sx - S(18), S(18)),
+                           int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), f"{int(s.value())}{unit}")
+            c = self.clock_left()
+            if c is not None:
+                paint_ring_clock(p, QPointF(r.right() - S(40), r.top() + S(34)), S(26), c, self._clk[1])
+            return
+        res = self.res or {}                                                 # result
+        acc = float(res.get("acc") or 0)
+        age = now - self.t_res
+        self.head(p, r, tr("Time is up!") if res.get("late") else tr("Accuracy"))
+        orig = hsb_colour(float(res.get("h") or 0), float(res.get("s") or 0), float(res.get("v") or 0))
+        mine = hsb_colour(self.mine["h"], self.mine["s"], self.mine["v"])
+        sw, sh = min(S(120), W * 0.26), S(130)
+        top = r.top() + S(44)
+        self.swatch(p, QRectF(r.left() + S(18), top, sw, sh), orig, tr("Original"))
+        self.swatch(p, QRectF(r.right() - S(18) - sw, top, sw, sh), mine, tr("Yours"))
+        mid = QRectF(r.left() + S(18) + sw, top, W - 2 * (S(18) + sw), sh)
+        shown = acc * min(1.0, age / 0.6)
+        p.setPen(self.acc_colour(acc))
+        p.setFont(font(30, QFont.Weight.Black))
+        p.drawText(QRectF(mid.left(), mid.top() + S(10), mid.width(), S(44)), int(Qt.AlignmentFlag.AlignCenter), f"{shown:.0f}%")
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        p.drawText(QRectF(mid.left(), mid.top() + S(58), mid.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Colour distance {n}", n=f"{float(res.get('de') or 0):g}"))
+        mult = float(res.get("mult") or 0)
+        p.setPen(QColor(GOLD_TEXT if mult > 1 else TEXT))
+        p.setFont(font(13, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(mid.left(), mid.top() + S(82), mid.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), f"×{mult:g}")
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9.5, QFont.Weight.DemiBold))
+        for rect, vals in ((QRectF(r.left() + S(8), top + sh + S(6), sw + S(20), S(16)), (res.get("h"), res.get("s"), res.get("v"))),
+                           (QRectF(r.right() - S(18) - sw - S(12), top + sh + S(6), sw + S(20), S(16)),
+                            (self.mine["h"], self.mine["s"], self.mine["v"]))):
+            p.drawText(rect, int(Qt.AlignmentFlag.AlignCenter),
+                       "{:.0f}° {:.0f} {:.0f}".format(float(vals[0] or 0), float(vals[1] or 0), float(vals[2] or 0)))
+
+
+class SfxMatch(MatchGame):
+    """A short sound plays a few times, then it is gone. Recreate it with pitch, duration, tone and more."""
+    RPC, CFG = "rb_sfx", "sfx_mode"
+    MODES = [("Easy", 1.5, 10, 60), ("Medium", 2.2, 7, 45), ("Hard", 3.0, 5, 30)]
+    WAVES = ["Sine", "Triangle", "Saw", "Square"]
+    SHAPES = ["Pluck", "Beep", "Swell"]
+
+    def __init__(self, page) -> None:
+        super().__init__(page)
+        self.plays_left = self.prev_left = 0
+        self.mine = {"f": 440.0, "d": 1.0, "w": 0, "g": 0.0, "wb": 0.0, "sh": 1}
+        self._cache: dict = {}
+        self._quiet_until = 0.0
+        W = self.width()
+        self.rows = [("pitch", tr("Pitch"), Slider(0, 48, 24, 0.1)), ("dur", tr("Duration"), Slider(0.1, 2.5, 1.0, 0.05)),
+                     ("wave", tr("Tone"), Slider(0, 3, 0, 1)), ("glide", tr("Glide"), Slider(-12, 12, 0, 0.5)),
+                     ("shape", tr("Shape"), Slider(0, 2, 1, 1)), ("wob", tr("Wobble"), Slider(0, 100, 0, 1))]
+        self.sliders = [s for _k, _l, s in self.rows]
+        for k, (_key, _lab, s) in enumerate(self.rows):
+            s.setParent(self)
+            s.setGeometry(int(S(86)), int(S(40) + k * S(34)), int(W - S(86) - S(122)), int(S(22)))
+            s.changed.connect(lambda _v: self.update())
+            s.hide()
+        self.rows_by = {k: s for k, _l, s in self.rows}
+
+    def _active(self) -> int:
+        return (3, 5, 6)[self.mode]
+
+    def set_state(self, state: str) -> None:
+        super().set_state(state)
+        n = self._active()
+        for k, s in enumerate(self.sliders):
+            s.setVisible(state in ("answer", "sending") and k < n)
+
+    def _info(self, ans: dict) -> None:
+        self.plays_left = int(ans.get("plays") or self.plays_left or 0)
+        self.prev_left = int(ans.get("previews") or self.prev_left or 0)
+
+    def _read(self, ans: dict):
+        return (float(ans.get("f") or 440), float(ans.get("d") or 1), int(ans.get("w") or 0), float(ans.get("g") or 0),
+                float(ans.get("wb") or 0), int(ans.get("sh") or 1))
+
+    def _on_watch(self, ans: dict) -> None:
+        self._play_target()                                  # the first listen starts by itself
+
+    def _on_hide(self) -> None:
+        forget_match_sound("target", self._cache)
+
+    def _reset_sliders(self) -> None:
+        for s, v in zip(self.sliders, (24, 1.0, 0, 0, 1, 0)):
+            s.set_value(v, animate=False)
+
+    def _my(self) -> tuple:
+        f = 110.0 * 2.0 ** (self.rows_by["pitch"].value() / 12.0)
+        n = self._active()
+        return (round(f, 2), round(self.rows_by["dur"].value(), 2), int(self.rows_by["wave"].value()),
+                float(self.rows_by["glide"].value()) if n >= 5 else 0.0,
+                float(self.rows_by["wob"].value()) if n >= 6 else 0.0,
+                int(self.rows_by["shape"].value()) if n >= 5 else 1)
+
+    def _vals(self) -> dict:
+        f, d, w, g, wb, sh = self._my()
+        return {"f": f, "d": d, "w": w, "g": g, "wb": wb, "sh": sh}
+
+    # -- listening
+    def _play_target(self) -> None:
+        if self.state != "watch" or self.target is None or self.plays_left <= 0 or time.monotonic() < self._quiet_until:
+            return
+        self.plays_left -= 1
+        self._quiet_until = time.monotonic() + float(self.target[1]) + 0.1
+        play_match_sound("target", self.target, self._cache)
+        self.page.sync()
+        self.animate(float(self.target[1]) + 0.2)
+
+    def _preview(self) -> None:
+        if self.state != "answer" or self.waiting or time.monotonic() < self._quiet_until:
+            return
+        if self.prev_left <= 0:
+            return self.ctx.toast(tr("No previews left"), "warn")
+
+        def ok(ans: dict) -> None:
+            self.prev_left = int(ans.get("left") if ans.get("left") is not None else self.prev_left - 1)
+            params = self._my()
+            self._quiet_until = time.monotonic() + params[1] + 0.1
+            play_match_sound("mine", params, self._cache)
+            self.animate(params[1] + 0.2)
+        self.ask(self.RPC, {"action": "preview", "level": self.mode, "bet": 0, "vals": None}, ok, once=True)
+
+    def _hear(self, which: str) -> None:
+        res = self.res or {}
+        if which == "orig":
+            params = (float(res.get("f") or 440), float(res.get("d") or 1), int(res.get("w") or 0), float(res.get("g") or 0),
+                      float(res.get("wb") or 0), int(res.get("sh") or 1))
+        else:
+            m = self.mine
+            params = (float(m["f"]), float(m["d"]), int(m["w"]), float(m["g"]), float(m["wb"]), int(m["sh"]))
+        if time.monotonic() < self._quiet_until:
+            return
+        self._quiet_until = time.monotonic() + params[1] + 0.1
+        play_match_sound("replay_" + which, params, self._cache)
+        self.animate(params[1] + 0.2)
+
+    def buttons(self) -> list:
+        if self.state == "watch":
+            return [(tr("Play sound · {n} left", n=self.plays_left), "primary", self._play_target, self.plays_left > 0)]
+        if self.state == "answer":
+            return [(tr("Preview · {n} left", n=self.prev_left), "ghost", self._preview, self.prev_left > 0 and not self.waiting),
+                    (tr("Submit"), "primary", self._submit, not self.waiting)]
+        if self.state == "result":
+            return [(tr("Play again"), "primary", self.play, not self.busy),
+                    (tr("Hear original"), "ghost", lambda: self._hear("orig"), True),
+                    (tr("Hear yours"), "ghost", lambda: self._hear("mine"), True)]
+        return super().buttons()
+
+    def finish(self, payout: int) -> None:
+        for slot in ("target", "mine"):
+            forget_match_sound(slot, self._cache)
+        super().finish(payout)
+
+    # -- text of one parameter
+    def fmt(self, key: str, v: float) -> str:
+        if key == "pitch":
+            return f"{110.0 * 2.0 ** (v / 12.0):.0f} Hz"
+        if key == "dur":
+            return f"{v:.2f} s"
+        if key == "wave":
+            return tr(self.WAVES[max(0, min(3, int(round(v))))])
+        if key == "glide":
+            return f"{v:+g} st"
+        if key == "shape":
+            return tr(self.SHAPES[max(0, min(2, int(round(v))))])
+        return f"{v:.0f}%"
+
+    PART_KEYS = [("pitch", "Pitch"), ("dur", "Duration"), ("wave", "Tone"), ("glide", "Glide"), ("shape", "Shape"),
+                 ("wobble", "Wobble")]
+
+    def draw(self, p: QPainter, r: QRectF, now: float) -> None:
+        st, W = self.state, r.width()
+        name, _m, vs, as_ = self.MODES[self.mode]
+        if st in ("idle", "ready"):
+            self.head(p, r, tr("Listen closely, then recreate the sound.") if st == "idle" else tr("Get ready…"))
+            self._speaker(p, QPointF(r.center().x(), r.top() + S(96)), S(44), 0.0)
+            if st == "idle":
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(10.5, QFont.Weight.DemiBold))
+                p.drawText(QRectF(r.left(), r.top() + S(170), r.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                           tr("Listen: {a} s · Answer: {b} s", a=f"{vs:g}", b=as_))
+            return
+        if st == "watch":
+            self.head(p, r, tr("Listen!") if not self.lost else tr("The original is gone: you were disconnected"))
+            pulse = 1.0 if now < self._quiet_until else 0.0
+            self._speaker(p, QPointF(r.center().x() - S(40), r.center().y() + S(6)), S(50), pulse * (0.5 + 0.5 * math.sin(now * 14)))
+            paint_ring_clock(p, QPointF(r.right() - S(56), r.center().y() + S(8)), S(36), self.watch_left(), max(0.1, self.view_s))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left(), r.bottom() - S(34), W - S(110), S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Plays left: {n}", n=self.plays_left))
+            return
+        if st in ("answer", "sending"):
+            self.head(p, r, tr("Recreate the sound"))
+            n = self._active()
+            for k, (key, lab, s) in enumerate(self.rows[:n]):
+                y = S(40) + k * S(34)
+                p.setPen(QColor(TEXT))
+                p.setFont(font(10.5, QFont.Weight.Bold))
+                p.drawText(QRectF(S(14), y, S(70), S(22)), int(Qt.AlignmentFlag.AlignVCenter), lab)
+                p.setPen(QColor(TEXT_DIM))
+                p.drawText(QRectF(W - S(118), y, S(54), S(22)), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                           self.fmt(key, s.value()))
+            c = self.clock_left()
+            if c is not None:
+                paint_ring_clock(p, QPointF(r.right() - S(36), r.top() + S(60)), S(26), c, self._clk[1])
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.right() - S(78), r.top() + S(94), S(72), S(34)),
+                       int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap), tr("Previews left: {n}", n=self.prev_left))
+            return
+        res = self.res or {}                                                 # result
+        acc = float(res.get("acc") or 0)
+        age = now - self.t_res
+        self.head(p, r, tr("Time is up!") if res.get("late") else tr("Accuracy"))
+        p.setPen(self.acc_colour(acc))
+        p.setFont(font(30, QFont.Weight.Black))
+        p.drawText(QRectF(r.left() + S(10), r.top() + S(30), S(110), S(44)), int(Qt.AlignmentFlag.AlignCenter),
+                   f"{acc * min(1.0, age / 0.6):.0f}%")
+        mult = float(res.get("mult") or 0)
+        p.setPen(QColor(GOLD_TEXT if mult > 1 else TEXT))
+        p.setFont(font(13, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left() + S(10), r.top() + S(76), S(110), S(22)), int(Qt.AlignmentFlag.AlignCenter), f"×{mult:g}")
+        parts = res.get("parts") or {}
+        orig = {"pitch": 12.0 * math.log2(max(1.0, float(res.get("f") or 110)) / 110.0), "dur": float(res.get("d") or 0),
+                "wave": float(res.get("w") or 0), "glide": float(res.get("g") or 0), "shape": float(res.get("sh") or 0),
+                "wobble": float(res.get("wb") or 0)}
+        mine = {"pitch": 12.0 * math.log2(max(1.0, float(self.mine["f"])) / 110.0), "dur": float(self.mine["d"]),
+                "wave": float(self.mine["w"]), "glide": float(self.mine["g"]), "shape": float(self.mine["sh"]),
+                "wobble": float(self.mine["wb"])}
+        rows = [(k, lab) for k, lab in self.PART_KEYS if k in parts]
+        x0, bw = S(132), W - S(132) - S(14)
+        p.setFont(font(9.5, QFont.Weight.DemiBold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(x0 + S(66), r.top() + S(24), bw / 2, S(14)), int(Qt.AlignmentFlag.AlignCenter), tr("Original"))
+        p.drawText(QRectF(x0 + S(66) + bw / 2 - S(30), r.top() + S(24), bw / 2, S(14)), int(Qt.AlignmentFlag.AlignCenter), tr("Yours"))
+        for k, (key, lab) in enumerate(rows):
+            y = r.top() + S(40) + k * S(34)
+            pct = float(parts.get(key) or 0)
+            p.setPen(QColor(TEXT))
+            p.setFont(font(10, QFont.Weight.Bold))
+            p.drawText(QRectF(x0, y, S(66), S(14)), int(Qt.AlignmentFlag.AlignVCenter), tr(lab))
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(x0 + S(66), y, bw / 2 - S(30), S(14)), int(Qt.AlignmentFlag.AlignCenter), self.fmt(key, orig[key]))
+            p.drawText(QRectF(x0 + S(66) + bw / 2 - S(30), y, bw / 2 - S(30), S(14)), int(Qt.AlignmentFlag.AlignCenter),
+                       self.fmt(key, mine[key]))
+            bar = QRectF(x0, y + S(18), bw, S(5))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.08))
+            p.drawRoundedRect(bar, S(2.5), S(2.5))
+            p.setBrush(self.acc_colour(pct))
+            p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * pct / 100.0 * min(1.0, age / 0.6), bar.height()), S(2.5), S(2.5))
+
+    def _speaker(self, p: QPainter, c: QPointF, size: float, pulse: float) -> None:
+        """A speaker with sound waves (they pulse while a sound plays)."""
+        p.save()
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha(ui.accent, 0.16 + 0.1 * pulse))
+        p.drawEllipse(c, size * (0.9 + 0.08 * pulse), size * (0.9 + 0.08 * pulse))
+        body = QPainterPath()
+        body.moveTo(c.x() - size * 0.42, c.y() - size * 0.16)
+        body.lineTo(c.x() - size * 0.18, c.y() - size * 0.16)
+        body.lineTo(c.x() + size * 0.08, c.y() - size * 0.38)
+        body.lineTo(c.x() + size * 0.08, c.y() + size * 0.38)
+        body.lineTo(c.x() - size * 0.18, c.y() + size * 0.16)
+        body.lineTo(c.x() - size * 0.42, c.y() + size * 0.16)
+        body.closeSubpath()
+        p.setBrush(QColor(TEXT))
+        p.drawPath(body)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for k in range(2):
+            p.setPen(QPen(alpha(ui.accent, 0.5 + 0.5 * pulse if pulse else 0.55), S(2.2), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            rr = size * (0.26 + 0.18 * k)
+            p.drawArc(QRectF(c.x() + size * 0.1 - rr * 0.3, c.y() - rr, rr * 1.3, rr * 2), -45 * 16, 90 * 16)
+        p.restore()
 
 
 # --------------------------------------------------------------------------- #
@@ -54025,6 +54857,26 @@ class App(QObject):
         was_open, self._was_open = self._was_open, False
         if self._closing or "--selftest" in sys.argv:
             return
+        if "--updated" in sys.argv:
+            # 6.2: after an automatic update Rubenium never opens by itself (people are in the middle of a game): the
+            # ball slides to the top right of the main monitor and waits. Opened, it shows the New tab.
+            self.cfg["card_open"] = False
+            if self._news:
+                self._news = False
+                TEMP_TABS.add("new")
+                self.window.tabs_changed()
+                self.window.current = "new"
+                self.cfg["page"] = "new"
+                try:
+                    self.window.body.tabbar.set_current("new")
+                except Exception:  # noqa: BLE001
+                    log.exception("new tab")
+            try:
+                wa = QGuiApplication.primaryScreen().availableGeometry()
+                self.window.ball.glide_to(self.window.ball.corner_point(wa, False, True))
+            except Exception:  # noqa: BLE001
+                log.exception("slide to the corner")
+            return
         if self._news:                              # after an update: the New tab shows up while it is read
             self._news = False
             TEMP_TABS.add("new")
@@ -54377,7 +55229,7 @@ class App(QObject):
         area = scr.availableGeometry() if scr is not None else None
         fit = 999
         if area is not None:
-            fit = int(min(area.height() * 0.92 / 640, area.width() * 0.9 / 400) * 100)
+            fit = int(min(area.height() * 0.92 / 670, area.width() * 0.9 / 400) * 100)      # 6.2: a third row of games
         return max(base, min(int(round(base * 1.5)), fit))
 
     def enter_casino(self, game=None) -> None:

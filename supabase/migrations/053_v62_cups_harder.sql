@@ -1,0 +1,4 @@
+-- 6.2: Cup Game is harder (applied live 21/11/2026): more swaps and faster swaps on every level.
+--   swaps  [7,12,18,26]+0..3  ->  [14,24,34,46]+0..4
+--   secs   [0.62,0.42,0.32,0.22] -> [0.46,0.32,0.24,0.16]
+-- Done by rewriting rb_cups in place (see the migration `v62_cups_harder`): only those two lines of the function changed.
