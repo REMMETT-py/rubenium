@@ -1,14 +1,10 @@
-Rubenium 6.1
+Rubenium 6.2
 
-- Top Tier and Royal Cases: 20 000 each, only Epic and Legendary badges, never Basic. Top Tier has the best Shiny and Titanium odds, Royal the best Gold and Mythic odds
-- Badge values fixed: a rarer badge is now always worth more than a more common one with the same finish, and every case is priced from them
-- Case odds: rarities read as 1 / x, finishes (Basic, Painted, Shiny...) as a percentage
-- Connect 4: Easy ×1.2, Medium ×2.5, Hard ×10 (it moves first), Professional ×200: it moves first and plays perfectly. Easier bots play faster
-- Cup Game: a win no longer fails with an error (lost wins were paid back)
-- Jackpot: the winner picks 75% of the other items
-- The Quests button glows when a quest is ready to claim
-- OG Prismatic Case: the rewards stay hidden until the case bursts open, then flip over one by one
-- Collection: Medieval and Nature badges at the top, Trophies on their own tab. Leaderboards: a board for every casino game
-- Settings: keep Online open when you click outside it (off by default). Game mode: hovering the menu no longer unfolds it
+- NEW games: Colour Pick (recreate a colour from memory) and SFX Match (recreate a sound). Easy, Medium and Hard, rewards by accuracy, with their own leaderboards
+- A big 30 second countdown on every move in Connect 4 and the Cup Game: when it runs out you lose the round
+- Cup Game is much harder: more swaps, and faster
+- Cases: Mythics are listed in every case as a hidden "?" until you unlock them, and Prismatic chances show above Gold
+- Much rarer odds: Mythic 1 / 100 000 in the Top Tier Case and 1 / 250 000 to 1 / 500 000 in the others. Shiny, Titanium and Gold are far rarer too, Painted is the common finish
+- Updates no longer pop Rubenium open: after an automatic update it slides to the top right as the ball and waits. Open it to see what is new
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
