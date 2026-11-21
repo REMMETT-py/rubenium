@@ -1,8 +1,8 @@
-Rubenium 6.2.1
+Rubenium 6.2.2
 
-- Trophies: tap one you have unlocked to see how you got it, on your profile too
-- Connect 4 payouts: Easy ×1.2, Medium ×2, Hard ×5, Professional ×250
-- Cup Game tightened: a top bet of 2 000 and a daily profit limit
-- Fair play: the games now watch for results nobody can get by playing normally, and pause that game for the player while it is checked
+- SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews
+- Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s
+- Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)
+- Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

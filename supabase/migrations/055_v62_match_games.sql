@@ -1,0 +1,6 @@
+-- 6.2.2 (applied live 22/11/2026): Colour Pick / SFX Match.
+--  * rb_acc_mult(lv, acc): one table for every level: >=95 x1.5, >=85 x1.25, >=70 x1.0, >=55 x0.7, >=40 x0.4, else 0
+--  * Colour Pick answer time 30 / 20 / 10 s (viewing 6 / 4 / 2.5 s unchanged)
+--  * SFX Match: viewing 12/9/7 s, answer 75/60/45 s, plays 6/5/4, previews unlimited (999), looser tolerances
+--    easy [9, 0.8, 1.0, 1.5, 1.5, 1], medium [4.5, 0.5, 0.65, 5, 0.7, 1], hard [3.2, 0.36, 0.5, 4, 0.55, 0.5]
+-- Done by rewriting rb_colour / rb_sfx in place (migration `v62_match_games_easier`).
