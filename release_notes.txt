@@ -1,9 +1,7 @@
-Rubenium 5.13
+Rubenium 5.14
 
-- NEW: Trophies. 99 of them: every game has 3 Bronze, 3 Silver, 2 Gold and 1 Platinum. They give XP (150 to 5 000), take real time from Silver up, and you can show 3 on your profile. Find them under Collection
-- Quests now give keys and cases (no more coins or XP)
-- Leaderboards in 3 sections (Players, Games, Mini games) with new boards: Wave Rush, Coinflip, Mini Golf, Connect 4, Cup Game and Trophies
-- Your stats card: click a number in the bottom row to show another one (Wave Rush best, coinflips won, trophies…). Profiles show game records too
-- The Trophy badge is now a Laurel Wreath, so it never looks like a real trophy
+- Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone
+- The practice bot plays like a real player now (long holds, no straight lines)
+- Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

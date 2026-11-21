@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.13"         # the version people see
-BUILD = "2026.11.21.13"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.14"         # the version people see
+BUILD = "2026.11.21.14"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6605,6 +6605,8 @@ FR.update({'Wave Rush best': 'Record Wave Rush', 'Golf games': 'Parties de golf'
 
 FR.update({'NEW: Trophies. 99 of them: every game has 3 Bronze, 3 Silver, 2 Gold and 1 Platinum. They give XP (150 to 5 000), take real time from Silver up, and you can show 3 on your profile. Find them under Collection': 'NOUVEAU : les Trophées. 99 au total : chaque jeu a 3 Bronze, 3 Argent, 2 Or et 1 Platine. Ils donnent de l’XP (150 à 5 000), demandent du vrai temps dès l’Argent, et tu peux en montrer 3 sur ton profil. Ils sont sous Collection', 'Quests now give keys and cases (no more coins or XP)': 'Les quêtes donnent maintenant des clés et des caisses (plus de pièces ni d’XP)', 'Leaderboards in 3 sections (Players, Games, Mini games) with new boards: Wave Rush, Coinflip, Mini Golf, Connect 4, Cup Game and Trophies': 'Classements en 3 sections (Joueurs, Jeux, Mini-jeux) avec de nouveaux classements : Wave Rush, Pile ou face, Mini Golf, Puissance 4, Gobelets et Trophées', 'Your stats card: click a number in the bottom row to show another one (Wave Rush best, coinflips won, trophies…). Profiles show game records too': 'Ta carte de stats : clique un nombre de la ligne du bas pour en montrer un autre (record Wave Rush, pile ou face gagnés, trophées…). Les profils montrent aussi les records', 'The Trophy badge is now a Laurel Wreath, so it never looks like a real trophy': 'Le badge Trophée devient une Couronne de laurier, pour ne jamais ressembler à un vrai trophée'})
 
+FR.update({'Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone': 'Wave Rush refait : la difficulté monte d’un cran à 250 m (Moyen), 500 m (Difficile), 750 m (Insane) et 1 000 m (Extrême), avec de nouveaux tunnels et des doubles pics sur les longues pentes. Les portes injustes (un pic en haut et en bas en même temps) ont disparu', 'The practice bot plays like a real player now (long holds, no straight lines)': 'Le bot d’entraînement joue maintenant comme un vrai joueur (longues pressions, plus de lignes droites)', 'Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch': 'Wave Rush plus fluide : plus de saccades dans les longs duels ni de temps perdu après un ralentissement', 'Practice bot: plays like a good player, see-through, a little ahead': 'Bot d’entraînement : joue comme un bon joueur, transparent, un peu devant'})
+
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
     'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power': 'Visée du Mini Golf refaite : une flèche montre la direction (elle s’arrête aux murs et à l’eau) et une barre la puissance. Plus de cercle qui montre où la balle s’arrête : c’est toi qui sens la distance. Moitié moins de mouvement de souris pour la pleine puissance',
@@ -11349,6 +11351,9 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.14", ['Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone',
+              'The practice bot plays like a real player now (long holds, no straight lines)',
+              'Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch']),
     ("5.13", ['NEW: Trophies. 99 of them: every game has 3 Bronze, 3 Silver, 2 Gold and 1 Platinum. They give XP (150 to 5 000), take real time from Silver up, and you can show 3 on your profile. Find them under Collection',
               'Quests now give keys and cases (no more coins or XP)',
               'Leaderboards in 3 sections (Players, Games, Mini games) with new boards: Wave Rush, Coinflip, Mini Golf, Connect 4, Cup Game and Trophies',
@@ -48821,8 +48826,18 @@ class WaveRng:
 
 
 def wave_level(x: int) -> int:
-    """0 (start) to 1000 (the hardest: from 1 100 m on)."""
-    return min(1000, x // 110)
+    """5.13: 0 (start) to 1000. It jumps up at 250 m, 500 m, 750 m and 1 000 m (Medium, Hard, Insane, Extreme) and
+    climbs a little inside each stage. The server (rb_wave_sim) does the same sums."""
+    m = x // 100
+    if m < 250:
+        return m * 160 // 250
+    if m < 500:
+        return 300 + (m - 250) * 100 // 250
+    if m < 750:
+        return 500 + (m - 500) * 100 // 250
+    if m < 1000:
+        return 700 + (m - 750) * 100 // 250
+    return min(1000, 880 + (m - 1000) * 120 // 500)
 
 
 def wave_gap(d: int) -> int:
@@ -48865,15 +48880,17 @@ class WaveCourse:
         r = rnd(1000)
         p_zig = 200 + 400 * d // 1000
         p_flat = 450 - 200 * d // 1000
+        if d >= 300 and r < 90:                                  # 5.13: a tunnel, a quarter narrower
+            length = 300 + rnd(300)
+            narrow = gap * 3 // 4
+            self._add(length, 0, narrow - narrow % 2)
+            return
         if r < p_flat:
             length = 300 + rnd(500)
             n = rnd(2 + 3 * d // 1000) if d >= 20 else 0
             n = min(n, max(0, length // WAVE_SPACE - 1))              # 5.1: never stacked in a tight space
             side = rnd(2)
-            spikes = []
-            if n == 1 and 120 <= d <= 650 and rnd(3) == 0:      # 4.6: a gate, a spike above and below at once
-                spikes = [(self.x_end + length // 2, 0), (self.x_end + length // 2, 1)]
-                n = 0
+            spikes = []                                               # 5.13: no more gates (above and below at once)
             for i in range(n):
                 spikes.append((self.x_end + length * (i + 1) // (n + 1), side))
                 side = 1 - side
@@ -48894,7 +48911,12 @@ class WaveCourse:
             if self._room(slope, gap) < 120:
                 slope = -slope
             length = max(60, min(150 + rnd(400), self._room(slope, gap)))
-            spikes = [(self.x_end + length // 2, rnd(2))] if d >= 150 and length >= 200 else []    # 4.5: ramps too
+            spikes = []
+            if d >= 500 and length >= 360:                            # 5.13: two on a long ramp, same side
+                side = rnd(2)
+                spikes = [(self.x_end + length // 3, side), (self.x_end + 2 * length // 3, side)]
+            elif d >= 150 and length >= 200:                          # 4.5: ramps too
+                spikes = [(self.x_end + length // 2, rnd(2))]
             self._add(length, slope, gap, spikes)
 
     def ensure(self, x: int) -> None:
@@ -48943,7 +48965,7 @@ def level_colour(d: int) -> QColor:
     return QColor.fromHsvF(0.98, 0.85, 1.0)
 
 
-WAVE_TIERS = [(0, "Easy"), (200, "Medium"), (450, "Hard"), (700, "Insane"), (900, "Extreme")]
+WAVE_TIERS = [(0, "Easy"), (300, "Medium"), (500, "Hard"), (700, "Insane"), (880, "Extreme")]     # 250 / 500 / 750 / 1 000 m
 
 
 def wave_tier_of(d: int) -> int:
@@ -48967,8 +48989,15 @@ class WaveRunner:
 
     def set(self, toggles, upto: int, done: bool = False, final=None) -> None:
         tg = sorted({int(t) for t in (toggles or []) if int(t) > 0})
-        if tg != self.tg:
-            self.tg, self.ys, self.crash = tg, [500], None
+        if tg != self.tg:                    # 5.13: keep the path up to the first new toggle (it used to be rebuilt from
+            k = 0                            # the start every time news came in: the stutter in long duels)
+            while k < min(len(tg), len(self.tg)) and tg[k] == self.tg[k]:
+                k += 1
+            cut = min(tg[k] if k < len(tg) else 10 ** 9, self.tg[k] if k < len(self.tg) else 10 ** 9)
+            self.tg = tg
+            del self.ys[max(1, cut):]
+            if self.crash is not None and self.crash >= cut:
+                self.crash = None
         self.upto = max(self.upto, int(upto or 0))
         if done and not self.done:
             self.done, self.fade_at = True, time.monotonic()
@@ -49218,7 +49247,7 @@ class WaveView(QWidget):
             if done:
                 done()
         if self.state == "run":
-            self.acc += min(0.25, now - self.last)
+            self.acc += min(0.5, now - self.last)          # 5.13: a hitch of up to half a second is caught up, not lost
             self.last = now
             step = 1.0 / WAVE_TPS
             while self.acc >= step and self.state == "run":
@@ -49609,13 +49638,13 @@ class WaveView(QWidget):
             p.setBrush(sh)
             p.drawRoundedRect(fill, bar.height() / 2, bar.height() / 2)
         p.setFont(font(8, QFont.Weight.Bold))
-        for lo, name in WAVE_TIERS[1:]:                           # where each level starts, in metres
+        for (lo, name), metres_at in zip(WAVE_TIERS[1:], (250, 500, 750, 1000)):    # where each level starts
             tx = bar.left() + bar.width() * lo / 1000
             p.setPen(QPen(alpha("#FFFFFF", 0.55 if d >= lo else 0.25), 1))
             p.drawLine(QPointF(tx, bar.top() - S(2)), QPointF(tx, bar.bottom() + S(2)))
             p.setPen(alpha("#FFFFFF", 0.55 if d >= lo else 0.35))
             p.drawText(QRectF(tx - S(30), bar.bottom() + S(2), S(60), S(12)), int(Qt.AlignmentFlag.AlignCenter),
-                       f"{lo * 110 // 100} m")
+                       f"{metres_at} m")
         ti = wave_tier_of(d)
         col = level_colour(d)
         p.setPen(col)
@@ -49739,8 +49768,8 @@ def _controls(page, lay) -> None:
 
 # -- 5.1: the practice bot
 class WaveBot:
-    """5.1: the practice bot. It plays the same course perfectly (a path planned through the walls a few seconds at a
-    time, keeping to the middle of the gap) and is shown see-through, a little ahead of you, to follow."""
+    """5.1: the practice bot. It plays the same course (a path planned through the walls a few seconds at a time, like
+    a person: long holds and releases, never a straight line) and is shown see-through, a little ahead of you."""
     WINDOW, CHUNK = 360, 120
 
     def __init__(self, course) -> None:
@@ -49756,6 +49785,8 @@ class WaveBot:
         return self.ys[min(t, len(self.ys) - 1)]
 
     def _plan(self) -> None:
+        """5.13: plays like a person: it holds or lets go for a while (every change costs), keeps a safe distance from
+        the walls and only aims roughly for the middle. Before, it switched every tick and flew in straight lines."""
         t0, y0 = len(self.ys) - 1, self.ys[-1]
         W = self.WINDOW
         c = self.course
@@ -49768,43 +49799,49 @@ class WaveBot:
             bots.append(bot)
         lo_j, hi_j = -(y0 // WAVE_VX) - 1, (WAVE_H - y0) // WAVE_VX + 1
         INF = float("inf")
-        nxt_cost = {}
-        for j in range(lo_j, hi_j + 1):                     # the end of the window: anywhere that is open
-            y = y0 + j * WAVE_VX
+        SWITCH = 3.0                                          # a change of direction costs this much
+        nxt = {}                                              # (j, dir) -> cost from step k+1 on
+        for jj in range(lo_j, hi_j + 1):
+            y = y0 + jj * WAVE_VX
             if y - WAVE_R >= tops[W] and y + WAVE_R <= bots[W]:
-                nxt_cost[j] = 0.0
+                nxt[(jj, 1)] = nxt[(jj, -1)] = 0.0
         choice = [None] * W
-        for k in range(W - 1, -1, -1):                       # back from the end: the cheapest way to stay alive
+        for k in range(W - 1, -1, -1):
             cost, pick = {}, {}
             mid = (tops[k] + bots[k]) / 2
-            for j in range(lo_j, hi_j + 1):
-                y = y0 + j * WAVE_VX
+            room = max(1.0, (bots[k] - tops[k]) / 2)
+            for jj in range(lo_j, hi_j + 1):
+                y = y0 + jj * WAVE_VX
                 if t0 + k > WAVE_SLIDE and (y - WAVE_R < tops[k] or y + WAVE_R > bots[k]):
                     continue
-                best, bj = INF, None
-                for nj in (j - 1, j + 1):
-                    v = nxt_cost.get(nj, INF)
-                    if v < best:
-                        best, bj = v, nj
-                if bj is not None:
-                    cost[j] = best + abs(y - mid) * 0.01
-                    pick[j] = bj
+                edge = max(0.0, abs(y - mid) / room - 0.55) * 2.0     # only near the walls does it care
+                for d in (1, -1):                                 # d = the direction it was going
+                    best, bd = INF, None
+                    for nd in (1, -1):
+                        v = nxt.get((jj + nd, nd), INF) + (SWITCH if nd != d else 0.0)
+                        if v < best:
+                            best, bd = v, nd
+                    if bd is not None:
+                        cost[(jj, d)] = best + edge
+                        pick[(jj, d)] = bd
             choice[k] = pick
-            nxt_cost = cost
-        j = 0
-        for k in range(min(self.CHUNK, W)):                  # follow the plan for a while, then plan again
-            nj = (choice[k] or {}).get(j)
-            if nj is None:                                    # no way through: head for the middle
+            nxt = cost
+        jj = 0
+        d = 1 if len(self.ys) < 2 or self.ys[-1] >= self.ys[-2] else -1
+        for k in range(min(self.CHUNK, W)):
+            nd = (choice[k] or {}).get((jj, d))
+            if nd is None:                                    # no way through: head for the middle
                 mid = (tops[min(k + 1, W)] + bots[min(k + 1, W)]) / 2
-                nj = j + (1 if y0 + j * WAVE_VX < mid else -1)
-            j = nj
-            self.ys.append(y0 + j * WAVE_VX)
+                nd = 1 if y0 + jj * WAVE_VX < mid else -1
+            jj += nd
+            d = nd
+            self.ys.append(y0 + jj * WAVE_VX)
 
 
 def wave_bot_toggle(ctx, view):
     """5.1: the switch under the course: the practice bot on or off."""
     row = hbox(spacing=8)
-    row.addWidget(Label(tr("Practice bot: plays perfectly, see-through, a little ahead"), 10.5, TEXT_DIM), 1)
+    row.addWidget(Label(tr("Practice bot: plays like a good player, see-through, a little ahead"), 10.5, TEXT_DIM), 1)
     t = Toggle(bool(ctx.cfg["wave_bot"]))
 
     def flip(on: bool) -> None:
