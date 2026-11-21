@@ -6563,6 +6563,9 @@ FR = {
 }
 
 FR.update({                                   # 5.10
+    'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
+    'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power': 'Visée du Mini Golf refaite : une flèche montre la direction (elle s’arrête aux murs et à l’eau) et une barre la puissance. Plus de cercle qui montre où la balle s’arrête : c’est toi qui sens la distance. Moitié moins de mouvement de souris pour la pleine puissance',
+    'Golf bots really play now: you see every shot roll, around the walls, with the same physics as you': 'Les bots du golf jouent vraiment : tu vois chaque coup rouler, autour des murs, avec la même physique que toi',
     'NEW: themed cases. The Medieval Case and the Nature Case only hold badges of their theme, and the Cosmic Case is now space only': 'NOUVEAU : des caisses à thème. La caisse Médiévale et la caisse Nature ne contiennent que des badges de leur thème, et la caisse Cosmique est maintenant 100 % espace',
     '11 new badge designs you can only get from them: Scroll, Goblet, Knight Helmet, Bow, Battle Axe, Castle, Flower, Butterfly, Cactus, Lotus and Rainbow': '11 nouveaux badges qu’on ne trouve que là : Parchemin, Coupe, Heaume, Arc, Hache de guerre, Château, Fleur, Papillon, Cactus, Lotus et Arc-en-ciel',
     'Case prices climb as you buy: each case costs 10, 25 or 50 coins more than the last one you bought this week. Every price goes back to normal on Saturday at 12:00': 'Les prix des caisses montent quand tu achètes : chaque caisse coûte 10, 25 ou 50 pièces de plus que la précédente cette semaine. Tous les prix reviennent à la normale le samedi à 12:00',
@@ -6626,7 +6629,7 @@ FR.update({                                   # 5.8
     "{name}'s turn": 'Au tour de {name}',
     'ONLINE': 'EN LIGNE',
     'Move the mouse away from the ball for more power · click to shoot': 'Éloigne la souris de la balle pour plus de puissance · clique pour frapper',
-    'Move the mouse away from your ball to aim: the further away, the harder the shot. The dotted line shows how far it rolls on flat grass. Click (or Space) to shoot.': 'Éloigne la souris de ta balle pour viser : plus loin, plus fort. La ligne pointillée montre jusqu’où elle roule sur l’herbe. Clique (ou Espace) pour frapper.',
+    'Move the mouse away from your ball to aim: the further away, the harder the shot. The arrow shows the direction and the bar the power: how far it rolls is up to you. Click (or Space) to shoot.': 'Éloigne la souris de ta balle pour viser : plus loin, plus fort. La flèche montre la direction et la barre la puissance : la distance, c’est à toi de la sentir. Clique (ou Espace) pour frapper.',
     'Play alone: no bet and no clock.': 'Seul : sans mise et sans chrono.',
     'Play online: 2, 3 or 4 players take turns, 25 seconds a shot. Bots take the free seats.': 'En ligne : 2, 3 ou 4 joueurs chacun son tour, 25 secondes par coup. Des bots prennent les places libres.',
     'Sand slows the ball, ice keeps it rolling, boost pads push it, water sends it back.': 'Le sable freine la balle, la glace la laisse rouler, les accélérateurs la poussent, l’eau la renvoie.',
@@ -11303,10 +11306,13 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
-    ("5.10", ['NEW: themed cases. The Medieval Case and the Nature Case only hold badges of their theme, and the Cosmic Case is now space only',
+    ("5.10", ['Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own',
+              'NEW: themed cases. The Medieval Case and the Nature Case only hold badges of their theme, and the Cosmic Case is now space only',
               '11 new badge designs you can only get from them: Scroll, Goblet, Knight Helmet, Bow, Battle Axe, Castle, Flower, Butterfly, Cactus, Lotus and Rainbow',
               'Case prices climb as you buy: each case costs 10, 25 or 50 coins more than the last one you bought this week. Every price goes back to normal on Saturday at 12:00',
-              'All or Nothing, Coin Rush, Jackpot and Vault cases are no longer sold (the ones you have still open)']),
+              'All or Nothing, Coin Rush, Jackpot and Vault cases are no longer sold (the ones you have still open)',
+              'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power',
+              'Golf bots really play now: you see every shot roll, around the walls, with the same physics as you']),
     ("5.9", ['The OG tag is one of a kind now: a turning rainbow edge, a bright glow and sparkles',
              'Keys are back in the games: any casino bet of 50 coins or more, and mini games, can drop a key (up to 6 a day). You always see it land',
              'Daily case: once opened it moves to the bottom with its timer, no Open button until it is ready again',
@@ -12724,6 +12730,17 @@ def version_tuple(text: str) -> tuple:
     return tuple(int(n) for n in nums[:4]) if nums else (0,)
 
 
+def native_hwnd(w) -> int:
+    """5.10: the window handle of a widget, 0 if it has none yet (internalWinId is missing on some windows: 5.8 crashed
+    on it every frame)."""
+    try:
+        get = getattr(w, "internalWinId", None)
+        h = get() if get is not None else (w.winId() if w.testAttribute(Qt.WidgetAttribute.WA_WState_Created) else 0)
+        return int(h or 0)
+    except Exception:  # noqa: BLE001
+        return 0
+
+
 def app_home() -> Path:
     """A folder Windows always lets the app write to (used for downloads and, if needed, for the app itself)."""
     base = os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local")
@@ -12770,7 +12787,9 @@ class Updater(QObject):
         super().__init__()
         self.current = current
         self.latest: dict = {}
-        self.busy = False
+        self.checking = False          # 5.10: checking and installing are two things (a check no longer blocks
+        self.installing = False        # the Update button: that was why it did nothing)
+        self.install_after = False
         self._timer = QTimer(self)
         self._timer.setInterval(6 * 3600 * 1000)
         self._timer.timeout.connect(lambda: self.check(manual=False))
@@ -12800,12 +12819,40 @@ class Updater(QObject):
             raise ValueError("response too large")
         return data
 
+    @property
+    def busy(self) -> bool:
+        return self.checking or self.installing
+
+    @busy.setter
+    def busy(self, on: bool) -> None:            # old code paths: "busy = False" ends whatever was running
+        if not on:
+            self.checking = self.installing = False
+
     def check(self, manual: bool = False) -> None:
-        if self.busy:
+        if self.checking or self.installing:
             return
-        self.busy = True
+        self.checking = True
         import threading
         threading.Thread(target=self._check, args=(manual,), daemon=True).start()
+
+    @staticmethod
+    def _latest_from_server() -> dict:
+        """5.10: the newest release as our own server knows it (no GitHub limits): the tag, then fixed download
+        addresses."""
+        rows = _request("/rest/v1/rb_config?select=key,value&key=in.(latest_tag,latest_label)", method="GET") or []
+        vals = {r.get("key"): r.get("value") for r in rows if isinstance(r, dict)}
+        raw = vals.get("latest_tag")
+        if raw is None:
+            raise ValueError("no tag on the server")
+        n = str(int(float(raw)))                       # 2026112110 -> 2026.11.21.10
+        tag = f"{n[0:4]}.{n[4:6]}.{n[6:8]}.{int(n[8:])}"
+        base = f"https://github.com/{UPDATE_REPO}/releases/download/{tag}/"
+        names = ("RubeniumSetup.exe", "Rubenium.exe", "Rubenium.py", "swaps.zip")
+        assets = {nm: base + nm for nm in names}
+        assets.update({nm + ".sha256": base + nm + ".sha256" for nm in names})
+        label = vals.get("latest_label")
+        return {"version": tag, "label": str(label) if label not in (None, "") else tag,
+                "page": f"https://github.com/{UPDATE_REPO}/releases/tag/{tag}", "assets": assets}
 
     @classmethod
     def _latest_without_api(cls) -> dict:
@@ -12840,6 +12887,36 @@ class Updater(QObject):
     def _check(self, manual: bool) -> None:
         try:
             try:
+                info = self._latest_from_server()
+                tag = info["version"]
+            except Exception as exc:  # noqa: BLE001
+                log.info("server update check failed (%s): asking GitHub", exc)
+                info, tag = self._latest_from_github()
+            self.checking = False
+            if version_tuple(tag) > version_tuple(self.current):
+                self.latest = info
+                self.found.emit(info)
+                if manual:
+                    self.checked.emit(True, "found")
+            elif manual:
+                self.checked.emit(True, "latest")
+            if self.install_after:
+                self.install_after = False
+                if self.latest:
+                    self.install()
+        except Exception as exc:  # noqa: BLE001
+            log.info("update check failed: %s", exc)
+            self.checking = False
+            if self.install_after:
+                self.install_after = False
+                self.failed.emit("error")
+            if manual:
+                self.checked.emit(False, "offline")
+
+    def _latest_from_github(self):
+        """The newest release from GitHub: its API first, then the release page."""
+        if True:
+            try:
                 import time as _t
                 if _t.monotonic() < getattr(Updater, "_api_skip_until", 0.0):
                     raise OSError("API rested for an hour")
@@ -12859,27 +12936,21 @@ class Updater(QObject):
                 Updater._api_skip_until = _t.monotonic() + 3600     # don't use up the hourly limit any further
                 info = self._latest_without_api()
                 tag = info["version"]
-            self.busy = False
-            # Releases are told apart by their tag, a date such as 2026.11.14.3, which only ever goes up.
-            # (The title starts with the same date so that Rubenium 0.8 and 0.9, which read the title, update too.)
-            if version_tuple(tag) > version_tuple(self.current):
-                self.latest = info
-                self.found.emit(info)
-                if manual:
-                    self.checked.emit(True, "found")
-            elif manual:
-                self.checked.emit(True, "latest")
-        except Exception as exc:  # noqa: BLE001
-            log.info("update check failed: %s", exc)
-            self.busy = False
-            if manual:
-                self.checked.emit(False, "offline")
+        # Releases are told apart by their tag, a date such as 2026.11.14.3, which only ever goes up.
+        return info, tag
 
     # -- installing
     def install(self) -> bool:
-        if self.busy or not self.latest:
-            return False
-        self.busy = True
+        """Download and install the newest version. 5.10: always does something: if a check is running or nothing is
+        known yet, it installs right after the check."""
+        if self.installing:
+            return True
+        if self.checking or not self.latest:
+            self.install_after = True
+            if not self.checking:
+                self.check(manual=False)
+            return True
+        self.installing = True
         import threading
         threading.Thread(target=self._install, args=(dict(self.latest),), daemon=True).start()
         return True
@@ -25849,7 +25920,7 @@ CUP_R = 0.022
 GOLF_DEC = 0.9                     # 5.8: grass slows the ball evenly (field widths per second, per second)
 GOLF_DMAX = 1.3                    # how far a full-power shot rolls on flat grass (1.3 field widths)
 VMAX = math.sqrt(2 * GOLF_DEC * GOLF_DMAX)
-GOLF_PULL = 0.42                   # the mouse this far from the ball (field widths) is full power
+GOLF_PULL = 0.24                   # 5.10: the mouse this far from the ball (field widths) is full power (less to move)
 BOUNCE = 0.78
 TURN_S = 30                                     # 4.6: 30 seconds a shot
 
@@ -26096,29 +26167,87 @@ def simulate(hole: dict, x: float, y: float, ang: float, pw: float):
 
 
 def golf_power(ball, mouse) -> float:
-    """5.8: shot power from how far the mouse is from the ball: 0 at the ball, full at GOLF_PULL away."""
+    """Shot power from how far the mouse is from the ball: 0 at the ball, full at GOLF_PULL away. 5.10: a curve, so
+    small putts are easy to dose and long shots need a steady hand."""
     if not ball or not mouse:
         return 0.0
-    return max(0.0, min(1.0, math.hypot(mouse[0] - ball[0], mouse[1] - ball[1]) / GOLF_PULL))
+    return max(0.0, min(1.0, math.hypot(mouse[0] - ball[0], mouse[1] - ball[1]) / GOLF_PULL)) ** 1.35
 
 
-def paint_golf_aim(p: QPainter, P, ball, ang: float, pw: float, col: QColor, f: QRectF, u: float) -> None:
-    """5.8: the aim: a dotted line as long as the ball would roll on flat grass, a target ring where it would stop,
-    and the power in % next to the ball."""
+def golf_ray(h, ball, ang: float, length: float) -> float:
+    """How far a straight line from the ball goes before it meets a wall, a bumper, water or the edge."""
+    if not h:
+        return length
+    dx, dy, step, d = math.cos(ang), math.sin(ang), 0.004, BALL_R * 1.6
+    water = h.get("water", [])
+    while d < length:
+        x, y = ball[0] + dx * d, ball[1] + dy * d
+        if not (BALL_R <= x <= 1 - BALL_R and BALL_R <= y <= FIELD_H - BALL_R):
+            return d
+        if any(x1 - BALL_R <= x <= x2 + BALL_R and y1 - BALL_R <= y <= y2 + BALL_R for x1, y1, x2, y2 in h.get("rects", [])):
+            return d
+        if any(math.hypot(x - bx, y - by) <= br + BALL_R for bx, by, br in h.get("circles", [])):
+            return d
+        if water and _inside(water, x, y):
+            return d
+        d += step
+    return length
+
+
+def paint_golf_aim(p: QPainter, P, ball, ang: float, pw: float, col: QColor, f: QRectF, u: float, h=None) -> None:
+    """5.10: the aim shows the direction only (a short arrow that stops at the first wall or water) and a power meter.
+    How far the ball rolls is up to you: no more target circle."""
     if ball is None:
         return
-    d = pw * GOLF_DMAX
-    end = (ball[0] + math.cos(ang) * d, ball[1] + math.sin(ang) * d)
-    p.setPen(QPen(col, S(2.6), Qt.PenStyle.DotLine, Qt.PenCapStyle.RoundCap))
-    p.drawLine(P(*ball), P(*end))
-    p.setPen(QPen(alpha(col, 0.9), S(2)))
-    p.setBrush(alpha(col, 0.15))
-    p.drawEllipse(P(*end), BALL_R * u * 1.8, BALL_R * u * 1.8)
+    full = 0.07 + 0.07 * pw                               # a short arrow: longer = harder, never the real distance
+    reach = golf_ray(h, ball, ang, full)
     c = P(*ball)
+    tip = P(ball[0] + math.cos(ang) * reach, ball[1] + math.sin(ang) * reach)
+    start = P(ball[0] + math.cos(ang) * BALL_R * 1.8, ball[1] + math.sin(ang) * BALL_R * 1.8)
+    p.save()
+    p.setPen(QPen(alpha("#000000", 0.35), S(4.5), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    p.drawLine(start, tip)
+    p.setPen(QPen(col, S(3), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    p.drawLine(start, tip)
+    if reach >= full - 1e-6:                              # an arrow head when nothing is in the way
+        a1, a2 = ang + math.radians(150), ang - math.radians(150)
+        hl = S(7)
+        head = QPainterPath(tip)
+        head.lineTo(QPointF(tip.x() + math.cos(a1) * hl, tip.y() + math.sin(a1) * hl))
+        head.lineTo(QPointF(tip.x() + math.cos(a2) * hl, tip.y() + math.sin(a2) * hl))
+        head.closeSubpath()
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(col)
+        p.drawPath(head)
+    else:                                                 # blocked: a small bar where it hits
+        p.setPen(QPen(QColor("#FFFFFF"), S(2.4), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        nx, ny = -math.sin(ang) * S(6), math.cos(ang) * S(6)
+        p.drawLine(QPointF(tip.x() - nx, tip.y() - ny), QPointF(tip.x() + nx, tip.y() + ny))
+    # the power meter, beside the ball
+    side = -1 if math.cos(ang) > 0 else 1                # on the other side from the arrow
+    if c.x() + side * S(50) > f.right():
+        side = -1
+    elif c.x() + side * S(50) < f.left():
+        side = 1
+    mx = c.x() + side * (BALL_R * u + S(10)) - (S(6) if side < 0 else 0)
+    bar = QRectF(mx, c.y() - S(22), S(6), S(44))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha("#000000", 0.55))
+    p.drawRoundedRect(bar.adjusted(-S(1.5), -S(1.5), S(1.5), S(1.5)), S(4), S(4))
+    fill = QRectF(bar.left(), bar.bottom() - bar.height() * pw, bar.width(), bar.height() * pw)
+    g = QLinearGradient(bar.bottomLeft(), bar.topLeft())
+    g.setColorAt(0, QColor("#3DDC84"))
+    g.setColorAt(0.6, QColor("#FFC94D"))
+    g.setColorAt(1, QColor("#FF5C5C"))
+    p.setBrush(g)
+    p.drawRoundedRect(fill, S(3), S(3))
     p.setPen(QColor("#FFFFFF"))
-    p.setFont(font(10, QFont.Weight.Black))
-    p.drawText(QRectF(c.x() - S(40), c.y() + BALL_R * u + S(4), S(80), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+    p.setFont(font(9, QFont.Weight.Black))
+    tx = bar.right() + S(4) if side > 0 else bar.left() - S(36)
+    p.drawText(QRectF(tx, bar.top() - S(2), S(32), S(14)),
+               int((Qt.AlignmentFlag.AlignLeft if side > 0 else Qt.AlignmentFlag.AlignRight) | Qt.AlignmentFlag.AlignVCenter),
                f"{int(round(pw * 100))}%")
+    p.restore()
 
 
 def paint_golf_zone(p: QPainter, kind: str, r: QRectF, now: float, push=None) -> None:
@@ -26582,7 +26711,7 @@ class GolfView(QWidget):
         if self.my_turn() and self.balls.get(me) and self.aim is not None:      # 5.8: power from the mouse
             pw = self.power()
             col = QColor.fromHsvF(max(0.0, 0.33 - 0.33 * pw), 0.85, 1.0)
-            paint_golf_aim(p, P, self.balls[me], self._shot()[0], pw, col, f, u)
+            paint_golf_aim(p, P, self.balls[me], self._shot()[0], pw, col, f, u, h)
         if self.my_turn():
             p.setPen(QColor("#FFFFFF"))
             p.setFont(font(9, QFont.Weight.Black))
@@ -26792,10 +26921,132 @@ def party_tee(h: dict, seat: int):
     return (tx, max(0.02, min(0.6, ty + (seat - 1.5) * 0.022)))
 
 
+_BOT_SHOTS: dict = {}
+_HOLE_FIELDS: dict = {}
+
+
+def hole_distance(h: dict):
+    """5.10: how far each spot is from the cup going around walls and water (a grid, worked out once per hole).
+    Returns a function (x, y) -> distance."""
+    key = (h["cup"], tuple(h["rects"]), tuple(h["circles"]), tuple(h.get("water", [])))
+    if key not in _HOLE_FIELDS:
+        nx, ny = 100, int(100 * FIELD_H)
+        cell = 1 / nx
+        pad = BALL_R * 1.2
+        water = h.get("water", [])
+        blocked = [[False] * nx for _ in range(ny)]
+        for j in range(ny):
+            for i in range(nx):
+                x, y = (i + 0.5) * cell, (j + 0.5) * cell
+                blocked[j][i] = (any(x1 - pad <= x <= x2 + pad and y1 - pad <= y <= y2 + pad for x1, y1, x2, y2 in h["rects"])
+                                 or any(math.hypot(x - bx, y - by) <= br + pad for bx, by, br in h["circles"])
+                                 or bool(water and _inside(water, x, y)))
+        INF = 1e9
+        dist = [[INF] * nx for _ in range(ny)]
+        ci, cj = min(nx - 1, int(h["cup"][0] / cell)), min(ny - 1, int(h["cup"][1] / cell))
+        import heapq
+        dist[cj][ci] = 0.0
+        heap = [(0.0, ci, cj)]
+        steps = [(1, 0, 1), (-1, 0, 1), (0, 1, 1), (0, -1, 1), (1, 1, 1.414), (1, -1, 1.414), (-1, 1, 1.414), (-1, -1, 1.414)]
+        while heap:
+            d, i, j = heapq.heappop(heap)
+            if d > dist[j][i]:
+                continue
+            for di, dj, w in steps:
+                a, b = i + di, j + dj
+                if 0 <= a < nx and 0 <= b < ny and not blocked[b][a] and d + w < dist[b][a]:
+                    dist[b][a] = d + w
+                    heapq.heappush(heap, (d + w, a, b))
+
+        def at(x: float, y: float) -> float:
+            i, j = max(0, min(nx - 1, int(x / cell))), max(0, min(ny - 1, int(y / cell)))
+            v = dist[j][i]
+            return v * cell if v < INF else 9.0
+        if len(_HOLE_FIELDS) > 64:
+            _HOLE_FIELDS.clear()
+        _HOLE_FIELDS[key] = at
+    return _HOLE_FIELDS[key]
+
+
+def bot_golf_shot(h: dict, start, seed: str, must_hole: bool):
+    """5.10: a bot plays a real shot with the real physics, like a decent player: it tries a few aims and keeps one of
+    the better ones (not always the best). The same seed gives the same shot on every PC.
+    Returns (frames, end point, holed)."""
+    key = (seed, round(start[0], 4), round(start[1], 4), must_hole)
+    if key in _BOT_SHOTS:
+        return _BOT_SHOTS[key]
+    rnd = random.Random(seed)
+    cx, cy = h["cup"]
+    far = hole_distance(h)
+    direct = math.atan2(cy - start[1], cx - start[0])
+    dist = math.hypot(cx - start[0], cy - start[1])
+    here = far(*start)
+    tries = []
+    for i in range(70):
+        if i < 26:                                       # at the cup, with a human's error
+            ang = direct + rnd.gauss(0, 0.05 + 0.02 * (i % 5))
+            pw = max(0.05, min(1.0, (dist + rnd.uniform(-0.02, 0.12)) / GOLF_DMAX))
+        else:                                            # and other lines (around a block, off a wall)
+            ang = rnd.uniform(-math.pi, math.pi)
+            pw = rnd.uniform(0.12, 1.0)
+        frames, x, y, holed = simulate(h, start[0], start[1], ang, pw)
+        if not holed and math.hypot(x - start[0], y - start[1]) < 0.01:
+            continue                                     # in the water (back where it was) or barely moved
+        tries.append((0.0 if holed else far(x, y), holed, frames, (x, y)))
+    if not tries:
+        frames, x, y, holed = simulate(h, start[0], start[1], direct, min(1.0, dist / GOLF_DMAX))
+        tries.append((far(x, y), holed, frames, (x, y)))
+    if must_hole:
+        ins = [t for t in tries if t[1]]
+        k = 0
+        while not ins and k < 160:                       # look harder for a shot that goes in
+            k += 1
+            ang = direct + rnd.gauss(0, 0.35) if k % 2 else rnd.uniform(-math.pi, math.pi)
+            pw = rnd.uniform(0.1, 1.0)
+            frames, x, y, holed = simulate(h, start[0], start[1], ang, pw)
+            if holed:
+                ins.append((0.0, True, frames, (x, y)))
+        if ins:
+            got = (ins[0][2], h["cup"], True)
+        else:                                            # none found: roll to the edge, then a short tap in
+            bot_golf_shot.fallbacks = getattr(bot_golf_shot, "fallbacks", 0) + 1
+            best = min(tries, key=lambda t: t[0])
+            fr = list(best[2])
+            ex, ey = best[3]
+            for _k in range(400):                        # then it rolls on around the walls into the cup
+                if math.hypot(cx - ex, cy - ey) < 0.008:
+                    break
+                cands = [(ex + math.cos(a) * 0.005, ey + math.sin(a) * 0.005) for a in
+                         (math.tau * q / 24 for q in range(24))]
+                ex, ey = min(cands, key=lambda c: far(*c) + 0.3 * math.hypot(cx - c[0], cy - c[1]))
+                fr.append((ex, ey))
+            fr.append((cx, cy))
+            got = (fr, h["cup"], True)
+    else:
+        outs = sorted((t for t in tries if not t[1] and t[0] < here), key=lambda t: t[0]) or \
+            sorted((t for t in tries if not t[1]), key=lambda t: t[0])
+        pick = outs[min(len(outs) - 1, int(rnd.random() ** 2 * min(4, len(outs))))] if outs else min(tries, key=lambda t: t[0])
+        got = (pick[2], pick[3], False)
+    if len(_BOT_SHOTS) > 400:
+        _BOT_SHOTS.clear()
+    _BOT_SHOTS[key] = got
+    return got
+
+
+def bot_golf_path(h: dict, pid: str, hole: int, seat: int, n: int, holed: bool) -> list:
+    """Where a bot's ball is after each of its n strokes on this hole: [(frames, end, holed)]."""
+    pos, out = party_tee(h, seat), []
+    for i in range(1, n + 1):
+        shot = bot_golf_shot(h, pos, f"{pid}:{hole}:{seat}:{i}", holed and i == n)
+        out.append(shot)
+        pos = shot[1]
+    return out
+
+
 class GolfPartyView(QWidget):
     """An online match: one player shoots at a time (25 seconds). You see whose turn it is, the others' balls roll
     and where the player aiming right now points. Your shot: move the mouse away from your ball (further = harder,
-    the dotted line shows how far it rolls on flat grass), click to shoot."""
+    the arrow shows the direction, the bar the power), click to shoot."""
 
     def __init__(self, page, pid: str) -> None:
         super().__init__()
@@ -26808,6 +27059,7 @@ class GolfPartyView(QWidget):
         self.balls: dict = {}
         self.anims: dict = {}
         self.seen: dict = {}
+        self.bot_seen: dict = {}
         self.aim = None
         self.sending = False
         self._asking = False
@@ -26879,15 +27131,19 @@ class GolfPartyView(QWidget):
             k = s.get("seat")
             if k in self.anims:
                 continue
-            if s.get("bot"):
-                if s.get("in"):
+            if s.get("bot"):                              # 5.10: a bot really shoots, and you see its ball roll
+                n, holed = int(s.get("now") or 0), bool(s.get("in"))
+                key = (int(g.get("hole") or 0), k)
+                shown = self.bot_seen.get(key)
+                path = bot_golf_path(h, str(self.pid), key[0], k, n, holed) if n else []
+                self.bot_seen[key] = n
+                if n and shown is not None and shown < n and g.get("state") == "live":
+                    self.anims[k] = [list(path[-1][0]), 0]          # roll its last shot
+                    sfx.play("pick")
+                elif holed:
                     self.balls[k] = None
-                elif s.get("pos"):                        # a bot ball: part of the way to the cup
-                    f, wob = float(s["pos"][0]), float(s["pos"][1])
-                    t0, cup = party_tee(h, k), h["cup"]
-                    self.balls[k] = (t0[0] + (cup[0] - t0[0]) * f, t0[1] + (cup[1] - t0[1]) * f + 0.03 * (wob - 1) * (1 - f))
                 else:
-                    self.balls[k] = party_tee(h, k)
+                    self.balls[k] = path[-1][1] if path else party_tee(h, k)
                 continue
             shot = s.get("shot") or {}
             n = shot.get("n")
@@ -27019,10 +27275,10 @@ class GolfPartyView(QWidget):
         ts = self.seat(turn)
         if g.get("state") == "live" and turn != me and ts.get("aim") and self.balls.get(turn) is not None and not self.anims:
             a, pw = float(ts["aim"][0]), float(ts["aim"][1])
-            paint_golf_aim(p, P, self.balls[turn], a, pw, QColor(PARTY_COLOURS[int(turn) % 4]), f, u)
+            paint_golf_aim(p, P, self.balls[turn], a, pw, QColor(PARTY_COLOURS[int(turn) % 4]), f, u, h)
         if self.my_turn() and self.aim is not None:
             pw = self.power()
-            paint_golf_aim(p, P, self.balls[me], self._angle(), pw, QColor.fromHsvF(max(0.0, 0.33 - 0.33 * pw), 0.85, 1.0), f, u)
+            paint_golf_aim(p, P, self.balls[me], self._angle(), pw, QColor.fromHsvF(max(0.0, 0.33 - 0.33 * pw), 0.85, 1.0), f, u, h)
         for s in g.get("seats") or []:
             k = s.get("seat")
             pos = self.balls.get(k)
@@ -41740,7 +41996,7 @@ HELP = {
         "The winner gets both bets minus a {fee}% fee. A draw gives both bets back.",
         "The bet is at most 80% of the lower balance."]),
     "golf": ("Mini Golf", [
-        "Move the mouse away from your ball to aim: the further away, the harder the shot. The dotted line shows how far it rolls on flat grass. Click (or Space) to shoot.",
+        "Move the mouse away from your ball to aim: the further away, the harder the shot. The arrow shows the direction and the bar the power: how far it rolls is up to you. Click (or Space) to shoot.",
         "Play alone: no bet and no clock.",
         "Play online: 2, 3 or 4 players take turns, 25 seconds a shot. Bots take the free seats."], [
         "Sand slows the ball, ice keeps it rolling, boost pads push it, water sends it back.",
@@ -45903,7 +46159,7 @@ def _make_class():
                     "offline" if ctx.online.logged_in() and ctx.online.offline else "")
             on = bool(mode) and self.expanded and self.phase == "shown"
             if on and mode != cover.mode:
-                cover.set_mode(mode, ctx.install_update if mode == "update" and ctx.updater.latest else
+                cover.set_mode(mode, ctx.install_update if mode == "update" else
                                (ctx.online.probe if mode == "offline" else
                                 (lambda: ctx.set_offline_mode(False)) if mode == "offmode" else None))
             if on:
@@ -46121,7 +46377,7 @@ def _make_class():
             if self.phase in ("shown", "dropping") and not getattr(self.ctx, "game_lock", False):
                 if self._through:
                     for w in (self, self.drawer):
-                        hwnd = int(w.internalWinId() or 0)
+                        hwnd = native_hwnd(w)
                         if hwnd:
                             win.set_click_through(hwnd, False)
                     self._through = False
@@ -50803,7 +51059,7 @@ class MainWindow(QWidget):
         through = captured and self.ball._press_pos is None and self._drag_origin is None
         if through != self._through or through:
             for w in (self.ball, self, self.drawer):
-                hwnd = int(w.internalWinId() or 0)
+                hwnd = native_hwnd(w)
                 if hwnd:
                     win.set_click_through(hwnd, through)
         self._through = through
@@ -50848,7 +51104,7 @@ class MainWindow(QWidget):
                 "offline" if ctx.online.logged_in() and ctx.online.offline else "")
         on = bool(mode) and self.expanded and self.current in LOCK_PAGES
         if on and mode != cover.mode:
-            cover.set_mode(mode, ctx.install_update if mode == "update" and ctx.updater.latest else
+            cover.set_mode(mode, ctx.install_update if mode == "update" else
                            (ctx.online.probe if mode == "offline" else
                             (lambda: ctx.set_offline_mode(False)) if mode == "offmode" else None))
         if on:
@@ -52751,8 +53007,8 @@ class App(QObject):
         if on != self.outdated:
             self.outdated = on
             self.window.sync_lock()
-        if on and not self.updater.busy:                  # 5.0.1: outdated means updating now, not in 6 hours
-            self.updater.check(manual=False)
+        if on:                                            # 5.0.1: outdated means updating now, not in 6 hours
+            self.updater.install()                        # 5.10: straight to installing (it checks first if needed)
 
     def _jackpot_bell(self) -> None:
         if not self.online.logged_in() or self.cfg["offline_mode"]:
@@ -52777,7 +53033,7 @@ class App(QObject):
     def _force_check(self) -> None:
         """5.0.1: once a minute, the server's lowest allowed version. Older than that: Rubenium downloads the new
         version, closes and starts again by itself (it installs without asking since 4.4)."""
-        if Net.blocked or self.updater.busy or getattr(self, "_forcing", False):
+        if Net.blocked or self.updater.installing or getattr(self, "_forcing", False):
             return
 
         def work() -> None:
@@ -52916,15 +53172,18 @@ class App(QObject):
         self.tapkey.set_key(self.cfg["hotkey"])
 
     def _update_found(self, info: dict) -> None:
-        """4.4: a new version installs by itself, straight away: no question (an old version can't play online)."""
-        self.set_outdated(True)
+        """4.4: a new version installs by itself, straight away: no question (an old version can't play online).
+        5.10: no new check from here (that started a check that found it again, forever, and nothing installed)."""
+        if not self.outdated:
+            self.outdated = True
+            self.window.sync_lock()
         if self.window.current == "settings" and self.window.expanded:
             self.window.reload_page()
         self.offer_update()
 
     def offer_update(self) -> None:
         info = self.updater.latest
-        if not info or self._update_prompted == info["version"] or self.updater.busy:
+        if not info or self._update_prompted == info["version"] or self.updater.installing:
             return
         self._update_prompted = info["version"]
         if self.tray is not None and not self.window.expanded:
@@ -52935,6 +53194,7 @@ class App(QObject):
         self.install_update()
 
     def install_update(self) -> None:
+        sfx.play("pick")
         if self.updater.install():
             self.window.show_busy(tr("Downloading update… {p}%", p=0))
 
