@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.2"         # the version people see
-BUILD = "2026.11.21.22"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.2.1"         # the version people see
+BUILD = "2026.11.21.23"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2907,7 +2907,7 @@ RARITY_COLOURS.update({"medieval": "#D9A45B", "nature": "#5BD47A"})
 ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not for sale",
           "rb_already_owned": "You already have it", "rb_not_yours": "You do not have this",
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
-          "rb_too_soon": "Not ready yet", "rb_bad_bet": "This bet is too high or too low",
+          "rb_too_soon": "Not ready yet", "rb_game_locked": "This game is paused on your account while it is checked", "rb_bad_bet": "This bet is too high or too low",
           "rb_pawn_no_deal": "He never agreed to that price: ask him again",
           "rb_pawn_nothing": "He has nothing to offer for that right now",
           "rb_roulette_opposite": "Red and Black (or Low and High) can't both be picked", "rb_not_your_turn": "Wait for your turn",
@@ -3355,6 +3355,19 @@ class Econ(QObject):
                 self.changed.emit()
         self.online.ask("rb_live", {}, got, raw=True)
         self.fetch_looks()
+        if self.admin and _t.monotonic() - getattr(self, "_flags_at", -99.0) > 45:       # 6.2: suspicious play (admins)
+            self._flags_at = _t.monotonic()
+
+            def got_flags(ok: bool, data) -> None:
+                if ok and isinstance(data, (int, float)):
+                    old, self.admin_flags = int(getattr(self, "admin_flags", 0) or 0), int(data)
+                    if self.admin_flags > old:
+                        try:
+                            self.ctx.toast("Suspicious activity: open Admin › Alerts", "warn")
+                        except Exception:  # noqa: BLE001
+                            pass
+                        self.looks_changed.emit()
+            self.online.ask("rb_admin_flag_count", {}, got_flags, raw=True)
 
     # -- 4.0: levels and locks
     def take_xp(self, x) -> None:
@@ -11614,12 +11627,16 @@ def close_app(exe: str) -> bool:
 
 
 FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match (recreate a sound). Easy, Medium and Hard, rewards by accuracy, with their own leaderboards': 'NOUVEAU : Choix de couleur (recrée une couleur de mémoire) et SFX Match (recrée un son). Facile, Moyen et Difficile, gains selon la précision, avec leurs propres classements', 'A big 30 second countdown on every move in Connect 4 and the Cup Game: when it runs out you lose the round': 'Un grand compte à rebours de 30 secondes à chaque coup au Puissance 4 et au jeu des gobelets : à zéro, tu perds la manche', 'Cup Game is much harder: more swaps, and faster': 'Le jeu des gobelets est bien plus dur : plus d’échanges, et plus vite', 'Cases: Mythics are listed in every case as a hidden "?" until you unlock them, and Prismatic chances show above Gold': 'Caisses : les Mythiques sont listés dans chaque caisse sous forme de « ? » caché jusqu’à leur déblocage, et les chances de Prismatique s’affichent au-dessus d’Or', 'Much rarer odds: Mythic 1 / 100 000 in the Top Tier Case and 1 / 250 000 to 1 / 500 000 in the others. Shiny, Titanium and Gold are far rarer too, Painted is the common finish': 'Chances bien plus rares : Mythique 1 / 100 000 dans la caisse Haut de gamme et 1 / 250 000 à 1 / 500 000 dans les autres. Brillant, Titane et Or sont bien plus rares aussi, Peint est la finition courante', 'Updates no longer pop Rubenium open: after an automatic update it slides to the top right as the ball and waits. Open it to see what is new': 'Les mises à jour n’ouvrent plus Rubenium : après une mise à jour automatique, il glisse en haut à droite sous forme de bulle et attend. Ouvre-le pour voir les nouveautés', 'Colour Pick': 'Choix de couleur', 'Previews': 'Essais', 'SFX Match': 'SFX Match', 'Submit': 'Valider', 'Sine': 'Sinus', 'Triangle': 'Triangle', 'Saw': 'Dent de scie', 'Square': 'Carré', 'Pluck': 'Pincé', 'Beep': 'Bip', 'Swell': 'Crescendo', 'Accuracy': 'Précision', 'Colour distance {n}': 'Écart de couleur {n}', 'Daily limit reached: wins give your bet back until midnight': 'Limite du jour atteinte : une victoire rend ta mise jusqu’à minuit', 'Duration': 'Durée', 'Glide': 'Glissando', 'Hear original': 'Écouter l’original', 'Hear yours': 'Écouter le tien', 'Hue': 'Teinte', 'Saturation': 'Saturation', 'Listen closely, then recreate the sound.': 'Écoute bien, puis recrée le son.', 'Listen!': 'Écoute !', 'Listen: {a} s · Answer: {b} s': 'Écoute : {a} s · Réponse : {b} s', 'Look: {a} s · Answer: {b} s': 'Regarde : {a} s · Réponse : {b} s', 'Memorise the colour, then recreate it.': 'Mémorise la couleur, puis recrée-la.', 'Memorise this colour!': 'Mémorise cette couleur !', 'No previews left': 'Plus d’écoutes d’essai', 'Original': 'Original', 'Pitch': 'Hauteur', 'Play sound · {n} left': 'Jouer le son · {n} restantes', 'Plays left: {n}': 'Écoutes restantes : {n}', 'Preview · {n} left': 'Essai · {n} restants', 'Previews left: {n}': 'Essais restants : {n}', 'Recreate the colour': 'Recrée la couleur', 'Recreate the sound': 'Recrée le son', 'The original is gone: you were disconnected': 'L’original a disparu : tu as été déconnecté', 'Time is up!': 'Temps écoulé !', 'Time is up: you lose the game': 'Temps écoulé : tu perds la partie', 'Tone': 'Timbre', 'Wobble': 'Vibrato', 'A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.': 'Une couleur s’affiche quelques secondes, puis disparaît. Recrée-la de mémoire avec les curseurs Teinte, Saturation et Luminosité, puis valide.', 'A short sound plays, then it is gone. Recreate it with the sliders: pitch, duration and tone, and on harder levels glide, shape and wobble.': 'Un court son est joué, puis il disparaît. Recrée-le avec les curseurs : hauteur, durée et timbre, et aux niveaux difficiles glissando, forme et vibrato.', 'After the round you hear both sounds and see how close each setting was.': 'Après la manche, tu entends les deux sons et vois la précision de chaque réglage.', 'Easy shows it for 6 s and gives 45 s, Medium 4 s and 35 s, Hard shows a muted colour for only 2.5 s and gives 25 s.': 'Facile l’affiche 6 s et laisse 45 s, Moyen 4 s et 35 s, Difficile montre une couleur terne seulement 2,5 s et laisse 25 s.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy. Low accuracy gives back part of your bet or nothing.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision. Une faible précision rend une partie de la mise ou rien.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision.', 'Easy: 10 s to listen, 60 s to answer. Medium: 7 s and 45 s. Hard: 5 s and 30 s, with 2 listens and 4 previews.': 'Facile : 10 s pour écouter, 60 s pour répondre. Moyen : 7 s et 45 s. Difficile : 5 s et 30 s, avec 2 écoutes et 4 essais.', 'Find the pitch first, then the length, then the tone: sine is soft, square is buzzy, saw is sharp.': 'Trouve d’abord la hauteur, puis la durée, puis le timbre : le sinus est doux, le carré bourdonne, la dent de scie est vive.', 'Once you are up 12 000 coins in a day, a win gives your bet back.': 'Une fois 12 000 pièces gagnées dans la journée, une victoire rend ta mise.', 'Remember the hue first, then how pale or dark it was. Move the sliders one at a time.': 'Retiens d’abord la teinte, puis si elle était pâle ou sombre. Bouge les curseurs un par un.', 'The colour is shown once and the clock is kept by the server: a late answer scores nothing.': 'La couleur n’est montrée qu’une fois et le serveur garde le chrono : une réponse tardive ne rapporte rien.', 'You can listen to the original a few times while it is available, and to your own sound a limited number of times before you submit.': 'Tu peux écouter l’original quelques fois tant qu’il est disponible, et ton propre son un nombre limité de fois avant de valider.', 'Your accuracy is measured the way the eye sees colour (CIEDE2000): close counts, exact is best.': 'Ta précision est mesurée comme l’œil voit les couleurs (CIEDE2000) : proche compte, exact est le mieux.'})      # 6.2
+FR.update({'Trophies: tap one you have unlocked to see how you got it, on your profile too': 'Trophées : touche-en un débloqué pour voir comment tu l’as eu, sur ton profil aussi', 'Connect 4 payouts: Easy ×1.2, Medium ×2, Hard ×5, Professional ×250': 'Gains du Puissance 4 : Facile ×1,2, Moyen ×2, Difficile ×5, Professionnel ×250', 'Cup Game tightened: a top bet of 2 000 and a daily profit limit': 'Jeu des gobelets resserré : mise maximale de 2 000 et limite de gain par jour', 'Fair play: the games now watch for results nobody can get by playing normally, and pause that game for the player while it is checked': 'Fair-play : les jeux surveillent les résultats impossibles en jouant normalement et mettent ce jeu en pause pour le joueur le temps d’une vérification'})
+FR.update({'This game is paused on your account while it is checked': 'Ce jeu est en pause sur ton compte le temps d’une vérification'})
+FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 250 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 250 fois ta mise.', 'Easy ×1.2 · Medium ×2 · Hard ×5 · Professional ×250. A draw gives your bet back.': 'Facile ×1,2 · Moyen ×2 · Difficile ×5 · Professionnel ×250. Un nul rend ta mise.'})
 
 # --------------------------------------------------------------------------- #
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.2.1", ['Trophies: tap one you have unlocked to see how you got it, on your profile too', 'Connect 4 payouts: Easy ×1.2, Medium ×2, Hard ×5, Professional ×250', 'Cup Game tightened: a top bet of 2 000 and a daily profit limit', 'Fair play: the games now watch for results nobody can get by playing normally, and pause that game for the player while it is checked']),
     ("6.2", ['NEW games: Colour Pick (recreate a colour from memory) and SFX Match (recreate a sound). Easy, Medium and Hard, rewards by accuracy, with their own leaderboards', 'A big 30 second countdown on every move in Connect 4 and the Cup Game: when it runs out you lose the round', 'Cup Game is much harder: more swaps, and faster', 'Cases: Mythics are listed in every case as a hidden "?" until you unlock them, and Prismatic chances show above Gold', 'Much rarer odds: Mythic 1 / 100 000 in the Top Tier Case and 1 / 250 000 to 1 / 500 000 in the others. Shiny, Titanium and Gold are far rarer too, Painted is the common finish', 'Updates no longer pop Rubenium open: after an automatic update it slides to the top right as the ball and waits. Open it to see what is new']),
     ("6.1", ['Top Tier and Royal Cases: 20 000 each, only Epic and Legendary badges, never Basic. Top Tier has the best Shiny and Titanium odds, Royal the best Gold and Mythic odds',
              'Badge values fixed: a rarer badge is now always worth more than a more common one with the same finish, and every case is priced from them',
@@ -21390,6 +21407,7 @@ class TrophyBoard(QWidget):
             return
         ready = float(a["have"]) >= float(a["goal"])
         if a.get("claimed"):
+            self.ctx.toast(tr("Unlocked: {what}", what=trophy_goal_text(a["game"], a["metric"], a["goal"])))   # 6.2: how
             return self._show(aid)
         if not ready:
             sfx.play("off")
@@ -21477,14 +21495,39 @@ class TrophyBoard(QWidget):
 class TrophyShelf(QWidget):
     """Up to 3 trophies someone chose to show on their profile."""
 
-    def __init__(self, ids: list, width: int) -> None:
+    def __init__(self, ids: list, width: int, ctx=None) -> None:
         super().__init__()
-        self.ids = [i for i in ids if i]
+        self.ids, self.ctx = [i for i in ids if i], ctx
         self.setFixedSize(width, S(64) if self.ids else 0)
+        self.setMouseTracking(True)
+        if ctx is not None and self.ids:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+            if getattr(ctx, "trophies", None) is None:
+                load_trophies(ctx, lambda _d: None)
         self._t = QTimer(self)
         self._t.setInterval(40)
         self._t.timeout.connect(self.update)
         self._t.start()
+
+    def _how(self, pos) -> str:
+        """6.2: how a shown trophy was unlocked (its goal), for the tooltip and a click."""
+        if not self.ids or self.ctx is None:
+            return ""
+        k = int(pos.x() // max(1.0, self.width() / 3))
+        if not 0 <= k < len(self.ids[:3]):
+            return ""
+        defs = {a["id"]: a for a in (getattr(self.ctx, "trophies", None) or {}).get("list") or []}
+        a = defs.get(self.ids[k])
+        return tr("Unlocked: {what}", what=trophy_goal_text(a["game"], a["metric"], a["goal"])) if a else ""
+
+    def mouseMoveEvent(self, e) -> None:
+        self.setToolTip(self._how(e.position()))
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        text = self._how(e.position())
+        if text and self.ctx is not None:
+            self.ctx.toast(text)
 
     def paintEvent(self, _e) -> None:
         if not self.ids:
@@ -32135,10 +32178,16 @@ class NavTiles(QWidget):
     changed = pyqtSignal(int)
 
     def __init__(self, items: list, index: int = 0, per_row: int = 4, badges: dict = None, select: bool = True,
-                 glow: set = None) -> None:
+                 glow: set = None, glow_col: str = "") -> None:
         super().__init__()
         self.items, self.index, self.per = items, index, per_row          # items: [(label, icon)]
         self.glow = set(glow or ())                                       # 6.0: tiles that glow (UPDATE)
+        self.glow_col = glow_col                                          # 6.2: another colour (red for admin Alerts)
+        if glow_col and self.glow:
+            self._pulse = QTimer(self)
+            self._pulse.setInterval(60)
+            self._pulse.timeout.connect(self.update)
+            self._pulse.start()
         self.select = select                                              # False: plain action buttons
         self.badges = badges or {}                                        # index -> small number (new things)
         rows = (len(items) + per_row - 1) // per_row
@@ -32197,12 +32246,14 @@ class NavTiles(QWidget):
                 p.setPen(QPen(alpha("#FFFFFF", 0.10 if hov else 0.06), 1))
                 p.setBrush(alpha("#FFFFFF", 0.07 if hov else 0.035))
             if i in self.glow:                                       # 6.0: a soft accent glow around the tile
+                gc = QColor(self.glow_col) if self.glow_col else QColor(ui.accent)
+                pulse = 0.75 + 0.25 * math.sin(time.monotonic() * 5) if self.glow_col else 1.0
                 for k in range(3):
                     p.setBrush(Qt.BrushStyle.NoBrush)
-                    p.setPen(QPen(alpha(ui.accent, 0.22 - k * 0.06), S(2 + k * 2)))
+                    p.setPen(QPen(alpha(gc, (0.22 - k * 0.06) * pulse * (1.8 if self.glow_col else 1.0)), S(2 + k * 2)))
                     p.drawRoundedRect(r.adjusted(-k, -k, k, k), S(10) + k, S(10) + k)
-                p.setPen(QPen(alpha(ui.accent, 0.9), S(1.4)))
-                p.setBrush(alpha(ui.accent, 0.16 if not on else 0.3))
+                p.setPen(QPen(alpha(gc, 0.9), S(1.4)))
+                p.setBrush(alpha(gc, 0.16 if not on else 0.3))
             p.drawRoundedRect(r, S(10), S(10))
             p.save()
             p.translate(r.center().x(), r.top() + S(17))
@@ -35203,7 +35254,7 @@ class FriendsPage(Page):
         eq_ = prof.get("equip") or {}
         shelf = [eq_.get(k) for k in ("trophy1", "trophy2", "trophy3") if eq_.get(k)]
         if shelf:                                          # 5.13: the trophies they chose to show
-            self.lay.addWidget(TrophyShelf(shelf, self.W))
+            self.lay.addWidget(TrophyShelf(shelf, self.W, ctx))
         if not prof.get("me"):
             self._relation(prof, name)
         self.lay.addWidget(heading(tr("Badges") + f"  ·  {len(badges)}"))
@@ -36016,8 +36067,8 @@ class AdminPage(Page):
     in the list. English only."""
     key = "admin"
     SECTIONS = ["Overview", "Players", "Give", "Rig", "Live", "Coinflips", "Cases", "Settings", "Locks", "Bots", "Swaps",
-                "Log"]
-    ICONS = ["perf", "users", "gift", "spark", "timer", "coin", "folder", "cog", "lock", "robot", "rocket", "refresh"]
+                "Log", "Alerts"]
+    ICONS = ["perf", "users", "gift", "spark", "timer", "coin", "folder", "cog", "lock", "robot", "rocket", "refresh", "spark"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -36027,12 +36078,15 @@ class AdminPage(Page):
         tab = int(getattr(ctx, "admin_tab", 0) or 0)
         tab = tab if 0 <= tab < len(self.SECTIONS) else 0
         pass
-        pick = NavTiles(list(zip(self.SECTIONS, self.ICONS)), tab, per_row=6)
+        alerts = int(getattr(ctx.econ, "admin_flags", 0) or 0)                 # 6.2: suspicious play: the tile glows red
+        pick = NavTiles(list(zip(self.SECTIONS, self.ICONS)), tab, per_row=6,
+                        glow={self.SECTIONS.index("Alerts")} if alerts else None, glow_col="#FF3B4E",
+                        badges={self.SECTIONS.index("Alerts"): alerts} if alerts else None)
         pick.changed.connect(self._section)
         lay.addWidget(pick)
         self._lockdown_row(lay)
         [self._overview, self._players, self._give, self._rig, self._live, self._flips, self._cases, self._settings,
-         self._locks, self._bots, self._swaps, self._log][tab](lay)
+         self._locks, self._bots, self._swaps, self._log, self._alerts][tab](lay)
 
     # -- helpers
     def state(self, name: str) -> dict:
@@ -36154,6 +36208,75 @@ class AdminPage(Page):
             self.ctx.econ.call(fn, args, back)
         for fn, args, who in jobs:
             one(fn, args, who)
+
+    # -- 6.2: Alerts: what looked suspicious in the games (the server flags it and locks that game for that player)
+    FLAG_KINDS = {"win_rate": "Win rate too high", "profit": "Big profit in 24 h", "big_win": "Huge single win",
+                  "pro_win": "Beat the perfect bot", "hard_wins": "Many Hard bot wins", "fast_clicks": "Inhuman reaction time",
+                  "accuracy": "Near-perfect accuracy, again and again"}
+
+    @staticmethod
+    def _flag_line(game: str, rnd: dict) -> str:
+        info = rnd.get("info") or {}
+        if game == "cups":
+            return "L%s pick %s coin %s%s" % (info.get("level"), info.get("pick"), info.get("coin"),
+                                              f" · {info.get('rt')} s" if info.get("rt") is not None else "")
+        if game == "c4":
+            return "%s · %s moves · %s" % (info.get("level"), len(info.get("moves") or []), info.get("outcome"))
+        if game in ("colour", "sfx"):
+            return "L%s · %s%%%s" % (info.get("level"), info.get("acc"), " · late" if info.get("late") else "")
+        return str(info)[:40]
+
+    def _alerts(self, lay) -> None:
+        data = self.fetch("rb_admin_flags", {})
+        if not data:
+            return self._loading(lay)
+        flags = data.get("list") or []
+        self.ctx.econ.admin_flags = int(data.get("open") or 0)
+        lay.addWidget(Label(f"{data.get('open', 0)} to review. A flagged game is locked for that player until you decide.", 11,
+                            "#FF7A7A" if data.get("open") else TEXT_DIM, wrap_w=self.W))
+        if not flags:
+            return lay.addWidget(Label("Nothing suspicious.", 12, TEXT_DIM))
+        st = self.state("alerts")
+        sel = st.get("id")
+        names = dict(GAME_NAMES)
+        names["c4"] = "Connect 4"
+        rows = []
+        for f in flags:
+            col = TEXT_DIM if f.get("reviewed") else ("#FF4B5C" if int(f.get("severity") or 1) >= 3 else
+                                                      "#FF9A5C" if int(f.get("severity") or 1) == 2 else "#FFD166")
+            rows.append(((("🔒 " if f.get("locked") else "") + f["name"] + " · " + names.get(f["game"], f["game"])),
+                         self.FLAG_KINDS.get(f["kind"], f["kind"]), str(f.get("at", ""))[5:16].replace("T", " "), col))
+        lay.addWidget(Table(rows, self.W, lambda i: (st.__setitem__("id", flags[i]["id"]), self.ctx.reload_page("admin"))))
+        f = next((x for x in flags if x["id"] == sel), None)
+        if f is None:
+            return lay.addWidget(Label("Click an alert to see the details and the last rounds.", 11, TEXT_DIM))
+        lay.addWidget(heading(f"{f['name']}: {self.FLAG_KINDS.get(f['kind'], f['kind'])}"))
+        det = f.get("detail") or {}
+        lay.addWidget(Label("  ·  ".join(f"{k}: {v}" for k, v in det.items() if k != "moves"), 11, TEXT, wrap_w=self.W))
+        if f.get("locked"):
+            lay.addWidget(Label("This game is locked for them right now.", 11, "#FFB27A"))
+        rep = f.get("replay") or []
+        lay.addWidget(Label("Last rounds (newest first)", 10.5, TEXT_DIM, bold=True))
+        lay.addWidget(Table([(str(r.get("at", ""))[11:19] + "  " + self._flag_line(f["game"], r),
+                              f"bet {coins_text(int(r.get('bet') or 0))}",
+                              ("+" if int(r.get("paid") or 0) > int(r.get("bet") or 0) else "") + coins_text(int(r.get("paid") or 0)),
+                              "#5BE08A" if int(r.get("paid") or 0) > int(r.get("bet") or 0) else TEXT) for r in rep]
+                            or [("No rounds saved", "", "")], self.W))
+        row = hbox(spacing=6)
+        for text, kind, act, ok in (("Looks fine", "primary", "dismiss", "Reviewed, game unlocked"),
+                                    ("Lock 7 days", "ghost", "lock", "Game locked for 7 days"),
+                                    ("Unlock", "ghost", "unlock", "Game unlocked")):
+            b = Button(text, kind, 30)
+            b.clicked.connect(lambda _=False, a=act, t=ok: self.do("rb_admin_flag_do", {"fid": f["id"], "action": a}, t))
+            row.addWidget(b)
+        ban = Button("Block player", "ghost", 30)
+        ban.clicked.connect(lambda: self.ctx.window.confirm(
+            f"Block {f['name']}?", lambda: self.do("rb_admin_flag_do", {"fid": f["id"], "action": "ban"}, "Blocked"), yes="Block"))
+        row.addWidget(ban)
+        lay.addLayout(row)
+        who = Button("Open player", "ghost", 28)
+        who.clicked.connect(lambda: self._open(f["name"]))
+        lay.addWidget(who)
 
     # -- Overview
     def _overview(self, lay) -> None:
@@ -43228,9 +43351,9 @@ HELP = {
     "connect4": ("Connect 4", [
         "Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.",
         "Easy is quick and makes mistakes. Medium sees a few moves ahead. Hard moves first and looks far ahead.",
-        "Professional moves first and plays perfectly: it has never lost. Beat it and you win 200 times your bet."], [
+        "Professional moves first and plays perfectly: it has never lost. Beat it and you win 250 times your bet."], [
         "Take the middle column early, block every line of 3, and set up two threats at once."], [
-        "Easy ×1.2 · Medium ×2.5 · Hard ×10 · Professional ×200. A draw gives your bet back.",
+        "Easy ×1.2 · Medium ×2 · Hard ×5 · Professional ×250. A draw gives your bet back.",
         "Leaving a game or giving up loses the bet."]),
     "colour": ("Colour Pick", [
         "A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.",
@@ -44228,7 +44351,7 @@ class CupGame(Game):
 class ConnectFour(Game):
     """Drop discs, line up 4 (across, down or diagonal) before the bot does. Easy, Medium, Hard and Professional:
     the bot really plays (it looks ahead and blocks); Hard and Professional move first, Professional plays perfectly."""
-    MODES = [("Easy", "easy", 1.2), ("Medium", "medium", 2.5), ("Hard", "hard", 10.0), ("Professional", "pro", 200.0)]
+    MODES = [("Easy", "easy", 1.2), ("Medium", "medium", 2.0), ("Hard", "hard", 5.0), ("Professional", "pro", 250.0)]
     COLS, ROWS = 7, 6
 
     def __init__(self, page) -> None:

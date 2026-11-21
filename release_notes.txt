@@ -1,10 +1,8 @@
-Rubenium 6.2
+Rubenium 6.2.1
 
-- NEW games: Colour Pick (recreate a colour from memory) and SFX Match (recreate a sound). Easy, Medium and Hard, rewards by accuracy, with their own leaderboards
-- A big 30 second countdown on every move in Connect 4 and the Cup Game: when it runs out you lose the round
-- Cup Game is much harder: more swaps, and faster
-- Cases: Mythics are listed in every case as a hidden "?" until you unlock them, and Prismatic chances show above Gold
-- Much rarer odds: Mythic 1 / 100 000 in the Top Tier Case and 1 / 250 000 to 1 / 500 000 in the others. Shiny, Titanium and Gold are far rarer too, Painted is the common finish
-- Updates no longer pop Rubenium open: after an automatic update it slides to the top right as the ball and waits. Open it to see what is new
+- Trophies: tap one you have unlocked to see how you got it, on your profile too
+- Connect 4 payouts: Easy ×1.2, Medium ×2, Hard ×5, Professional ×250
+- Cup Game tightened: a top bet of 2 000 and a daily profit limit
+- Fair play: the games now watch for results nobody can get by playing normally, and pause that game for the player while it is checked
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
