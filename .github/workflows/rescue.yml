@@ -1,0 +1,40 @@
+# Old Rubenium (5.0.1 - 5.9) checks for updates in a loop while a newer "latest" release exists, so its Update
+# button does nothing. Every 4 minutes, for ~40 s the newest release is "latest" (old apps learn about it), then a
+# "Rubenium download" release (tag 1.0.0, older to them, but the newest installer inside) is "latest" for ~3 min: the
+# loop stops and their Update now button works. New downloaders always get the newest installer.
+name: Rescue old updaters
+on:
+  push:
+    branches: [rescue]
+permissions:
+  contents: write
+jobs:
+  rescue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      R: ${{ github.repository }}
+    steps:
+      - name: Cycle the latest release
+        run: |
+          set +e
+          newest() { gh release list -R "$R" -L 100 --json tagName,isDraft -q '.[] | select(.isDraft|not) | .tagName' | grep '^20' | sort -V | tail -1; }
+          make_dl() {
+            N=$(newest); echo "newest $N"
+            rm -rf dl && mkdir dl && gh release download "$N" -R "$R" -D dl
+            gh release delete 1.0.0 -R "$R" -y --cleanup-tag
+            gh release create 1.0.0 -R "$R" --title "Rubenium (download the newest)" --notes "The newest Rubenium ($N). Download RubeniumSetup.exe." --latest=false dl/*
+            echo "$N" > made_for
+          }
+          make_dl
+          END=$(( $(date +%s) + 20700 ))
+          while [ $(date +%s) -lt $END ]; do
+            N=$(newest)
+            [ "$N" != "$(cat made_for)" ] && make_dl
+            gh release edit "$N" -R "$R" --prerelease=false --latest && echo "$(date +%T) latest: $N"
+            sleep 40
+            gh release edit 1.0.0 -R "$R" --latest && echo "$(date +%T) latest: 1.0.0 (old apps can update now)"
+            sleep 200
+          done
+          gh release edit "$(newest)" -R "$R" --latest
