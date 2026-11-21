@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.7.1"         # the version people see
-BUILD = "2026.11.21.6"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.7.2"         # the version people see
+BUILD = "2026.11.21.7"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6558,6 +6558,10 @@ FR = {
 }
 
 FR.update({                                   # 5.7
+    'Mini Golf parties: the lobby no longer reloads itself over and over (it froze Rubenium and blocked online mode)': 'Parties de Mini Golf : le salon ne se recharge plus sans arrêt (Rubenium se figeait et le mode en ligne bloquait)',
+    "Jackpot: bots fill every empty seat, and once you're in you stay on the Jackpot screen until it ends": 'Jackpot : les bots remplissent toutes les places vides, et une fois dedans tu restes sur l’écran du Jackpot jusqu’à la fin',
+    'Cases give fewer coins and more Basic badges': 'Les caisses donnent moins de pièces et plus de badges Basiques',
+    "You're in this jackpot: stay until it ends": 'Tu es dans ce jackpot : reste jusqu’à la fin',
     'Fixed "Could not check for updates": updates are found even when GitHub limits how often it can be asked': 'Corrigé « Impossible de vérifier les mises à jour » : les mises à jour sont trouvées même quand GitHub limite les demandes',
     'Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)': 'Wave Rush est plus fluide : la vague et la caméra sont dessinées entre les étapes physiques, elle glisse à n’importe quelle fréquence d’images (même parcours, mêmes collisions)',
     'Fixes and polish everywhere': 'Corrections et finitions partout',
@@ -11222,6 +11226,9 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.7.2", ['Mini Golf parties: the lobby no longer reloads itself over and over (it froze Rubenium and blocked online mode)',
+               "Jackpot: bots fill every empty seat, and once you're in you stay on the Jackpot screen until it ends",
+               'Cases give fewer coins and more Basic badges']),
     ("5.7.1", ['Fixed "Could not check for updates": updates are found even when GitHub limits how often it can be asked']),
     ("5.7", ['Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)',
              'Fixes and polish everywhere']),
@@ -13213,7 +13220,28 @@ def claim_lock(ctx, seconds: float) -> None:
     ctx.claim_until = time.monotonic() + seconds if seconds > 0 else 0.0
 
 
+def jackpot_holds(ctx) -> bool:
+    """5.7.2: you joined a jackpot that is still running (or you are picking your prize): you stay on its screen."""
+    d = getattr(ctx, "jackpot_data", None)
+    if not isinstance(d, dict) or not d.get("mine") or d.get("state") not in ("open", "locked", "picking"):
+        return False
+    try:
+        now = jp_now(ctx)
+        if now - float(getattr(ctx, "jp_got_at", 0) or 0) > 20:     # no answer for a while: never trap anyone
+            return False
+        return now < float(d.get("pick_until") or 0) + 3
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def claim_blocked(ctx) -> bool:
+    if jackpot_holds(ctx):
+        try:
+            ctx.toast(tr("You're in this jackpot: stay until it ends"), "warn")
+            sfx.play("off")
+        except Exception:  # noqa: BLE001
+            pass
+        return True
     if time.monotonic() < float(getattr(ctx, "claim_until", 0.0) or 0.0):
         try:
             ctx.toast(tr("Claim your prize first!"), "warn")
@@ -26804,10 +26832,14 @@ def build_golf_party(page, lay) -> None:
             if d.get("mine") and not getattr(ctx, "party_id", None):
                 ctx.party_id = d["mine"]
                 return ctx.reload_page("games")
-            if d != getattr(ctx, "party_lobby", None):
-                ctx.party_lobby = d
-                if ctx.window.showing("games") and getattr(ctx, "golf_party", False):
-                    ctx.reload_page("games")
+
+            def shape(x):                                # 5.7.2: the countdown alone never rebuilds the page
+                return tuple((r.get("id"), r.get("players"), r.get("bet")) for r in (x or {}).get("open") or [])
+            old = getattr(ctx, "party_lobby", None)
+            ctx.party_lobby = d
+            if old is None or shape(old) != shape(d):
+                if ctx.window.showing("games") and getattr(ctx, "golf_party", False) and getattr(ctx, "games_sub", "") == "duels":
+                    QTimer.singleShot(200, lambda: ctx.reload_page("games"))
         ctx.online.ask("rb_party_list", {}, got)
     lay.addWidget(_Poll(3000, load))
     lay.addWidget(Label(tr("START A PARTY"), 10, TEXT_DIM, weight=QFont.Weight.Bold))

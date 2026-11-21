@@ -1,6 +1,8 @@
-Rubenium 5.7.1
+Rubenium 5.7.2
 
-- Fixed "Could not check for updates": updates are found even when GitHub limits how often it can be asked
-- Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)
+- Mini Golf parties: the lobby no longer reloads itself over and over (it froze Rubenium and blocked online mode)
+- Jackpot: bots fill every empty seat, and once you're in you stay on the Jackpot screen until it ends
+- Cases give fewer coins and more Basic badges
+- Fixed "Could not check for updates" (5.7.1)
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
