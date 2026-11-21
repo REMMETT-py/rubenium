@@ -34,3 +34,4 @@
 32. 5.4: `038` changes were run live on 21/11/2026 (Shiny Case 8 000, Elite Mythic 1 in 60 000, cosmetics -20%, mini games: a daily limit of `game_day_cap` per game, resets at midnight Paris). When the 5.4 release is published, run `039_v54_items.sql` (6 Mythics, 6 banners) and set `min_build` = 2026112102.
 33. 5.5: `040_v55_swaps.sql` (already run live on 21/11/2026): item swaps (rb_item_swaps; `rb_swaps` is the admin asset table, a different thing), 3 listings and 3 swaps at most, COINFLIP and GOLF titles. When 5.5 is published set `min_build` = 2026112103.
 34. 5.6: `041_v56_golf_party.sql` (already run live on 21/11/2026): Mini Golf parties of 3 or 4 (rb_golf_parties, rb_golf_party_seats). When 5.6 is published set `min_build` = 2026112104.
+35. 5.7: `042_v57_fake_players` (run live on 21/11/2026): the admin can log a fake player in or out at once (bot_cfg.force), and fake players put items in open jackpots. Set `min_build` = 2026112105 when 5.7 is published.

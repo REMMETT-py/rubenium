@@ -1,7 +1,6 @@
-Rubenium 5.6
+Rubenium 5.7
 
-- NEW: Mini Golf PARTIES for 3 or 4 players. Everyone plays their own ball at the same time, you see the other balls and a dashed line where each player is aiming. Bots fill the empty seats after 90 seconds
-- Party bets are only between players: the best player takes them all (5% fee). Everyone earns coins by strokes
-- Also in 5.5: Market SWAPS, selling from the Market, COINFLIP and GOLF leaderboard titles
+- Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)
+- Fixes and polish everywhere
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

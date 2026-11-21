@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.6"         # the version people see
-BUILD = "2026.11.21.4"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.7"         # the version people see
+BUILD = "2026.11.21.5"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -6557,6 +6557,10 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({                                   # 5.7
+    'Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)': 'Wave Rush est plus fluide : la vague et la caméra sont dessinées entre les étapes physiques, elle glisse à n’importe quelle fréquence d’images (même parcours, mêmes collisions)',
+    'Fixes and polish everywhere': 'Corrections et finitions partout',
+})
 FR.update({                                   # 5.6
     'NEW: Mini Golf PARTIES for 3 or 4 players. Everyone plays their own ball at the same time, you see the other balls and a dashed line where each player is aiming. Bots fill the empty seats after 90 seconds': 'NOUVEAU : des PARTIES de Mini Golf à 3 ou 4 joueurs. Chacun joue sa balle en même temps, tu vois les autres balles et une ligne pointillée là où chacun vise. Des bots prennent les places vides après 90 secondes',
     'Party bets are only between players: the best player takes them all (5% fee). Everyone earns coins by strokes': 'Les mises d’une partie se jouent entre joueurs seulement : le meilleur joueur prend tout (5 % de frais). Tout le monde gagne des pièces selon ses coups',
@@ -11217,6 +11221,8 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.7", ['Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)',
+             'Fixes and polish everywhere']),
     ("5.6", ['NEW: Mini Golf PARTIES for 3 or 4 players. Everyone plays their own ball at the same time, you see the other balls and a dashed line where each player is aiming. Bots fill the empty seats after 90 seconds',
              'Party bets are only between players: the best player takes them all (5% fee). Everyone earns coins by strokes']),
     ("5.5", ['NEW: SWAPS in the Market. Put an item up, choose up to 3 items you would take for it, and anyone who has one swaps in one click. No coins, no fee',
@@ -34964,6 +34970,16 @@ class AdminPage(Page):
         for w in (pic, rnd, past):
             line.addWidget(w, 1)
         lay.addLayout(line)
+        force = cfg.get("force")                         # 5.7: log a bot in or out at once
+        lay.addWidget(Label(en("Online: {m}", m={"on": en("forced on"), "off": en("forced off")}.get(force, en("on its own schedule"))),
+                            10.5, TEXT_DIM))
+        line = hbox(spacing=6)
+        for text, val in ((en("Log in now"), "on"), (en("Log out now"), "off"), (en("Own schedule"), None)):
+            bt = Button(text, "primary" if force == val else "ghost", 30)
+            bt.clicked.connect(lambda _=False, v=val: self.do("rb_admin_bot_set", {"name": b["username"], "cfg": {"force": v}},
+                                                              en("Saved")))
+            line.addWidget(bt, 1)
+        lay.addLayout(line)
 
     @staticmethod
     def _bot_random() -> dict:
@@ -47277,7 +47293,13 @@ class WaveView(QWidget):
             return self._replay_t(now) * WAVE_VX
         if self.watch is not None:
             return max(self._watch_t(0, now), self._watch_t(1, now)) * WAVE_VX
-        return self.x
+        return self.x + self._sub() * WAVE_VX              # 5.7: smooth between two physics steps
+
+    def _sub(self) -> float:
+        """5.7: how far into the next 1/60 s step we are (0-1), to draw between steps: smooth at any frame rate."""
+        if self.state != "run":
+            return 0.0
+        return max(0.0, min(1.0, self.acc * WAVE_TPS))
 
     def _replay_t(self, now: float) -> int:
         rp = self.replay
@@ -47411,13 +47433,18 @@ class WaveView(QWidget):
         p.setOpacity(1.0)
 
     def _paint_wave(self, p, r, cam, sc, col, now) -> None:
+        f = self._sub()
+        hx = self.x + f * WAVE_VX                          # 5.7: the head drawn between steps (never ahead of a wall hit)
+        hy = self.y + f * (-WAVE_VX if self.held_in else WAVE_VX) if self.state == "run" else self.y
         pts = [QPointF((tx - cam) * sc, ty * sc) for tx, ty in self.trail if (tx - cam) * sc > -S(10)]
+        if self.state == "run":
+            pts.append(QPointF((hx - cam) * sc, hy * sc))
         if len(pts) >= 2:                                  # the trail: the zigzag you drew
             for w, a in ((S(7), 0.12), (S(3), 0.85)):
                 p.setPen(QPen(alpha(mix(col, QColor("#FFFFFF"), 0.55), a), w, Qt.PenStyle.SolidLine,
                               Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.MiterJoin))
                 p.drawPolyline(QPolygonF(pts))
-        c = QPointF((self.x - cam) * sc, self.y * sc)
+        c = QPointF((hx - cam) * sc, hy * sc)
         if self.state in ("wait",) and self.result:
             return
         if self.state == "dead":
