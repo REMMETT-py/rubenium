@@ -1,9 +1,9 @@
-Rubenium 5.8
+Rubenium 5.9
 
-- Mini Golf, rebuilt: one simple screen. Play alone, or create / join an online match for 2, 3 or 4 players right there
-- Online golf is turn by turn now, 25 seconds a shot, and the course only appears when the match starts
-- You choose the power: move the mouse away from your ball (further = harder) and click. The dotted line shows exactly how far it rolls on flat grass
-- More realistic ball: grass slows it evenly, so what you aim is what you get
-- Also: jackpot lobbies always full, you stay in a running jackpot, cases give fewer coins and more Basic badges, update check fixed
+- The OG tag is one of a kind now: a turning rainbow edge, a bright glow and sparkles
+- Keys are back in the games: any casino bet of 50 coins or more, and mini games, can drop a key (up to 6 a day). You always see it land
+- Daily case: once opened it moves to the bottom with its timer, no Open button until it is ready again
+- Jackpot: 5 players at most. Bots now and then put in something much cheaper or much better than everyone else
+- Mini Golf: the waiting room is clean again (no more overlapping text or broken buttons). Colour pickers no longer go off screen
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

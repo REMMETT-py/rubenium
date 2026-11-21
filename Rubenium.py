@@ -1482,8 +1482,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "5.8"         # the version people see
-BUILD = "2026.11.21.8"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "5.9"         # the version people see
+BUILD = "2026.11.21.9"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -3264,7 +3264,8 @@ class Econ(QObject):
 
     # 5.1: Ruben's cheats again. A right click (instead of a left click) arms one for the next move; secret god mode
     # arms one for every move that has one.
-    CHEATS = {"rb_mines": ("pick",), "rb_tower": ("pick",), "rb_hilo": ("higher", "lower"), "rb_blackjack": ("hit",),
+    CHEATS = {"rb_mines": ("pick",), "rb_tower": ("pick",), "rb_hilo": ("higher", "lower"),
+              "rb_blackjack": ("hit", "stand", "double"),
               "rb_dice": None, "rb_slots": None, "rb_spin": None, "rb_scratch": None, "rb_flip_vs_bot": None}
 
     def _cheat_for(self, fn: str, args: dict):
@@ -3285,7 +3286,9 @@ class Econ(QObject):
                                                "rb_blackjack": "blackjack"}[fn]}
         import random as _r
         kind, data = {"rb_dice": ("dice", {"win": True}), "rb_flip_vs_bot": ("flip", {"win": True}),
-                      "rb_slots": ("slots", {"reels": [_r.choice(["seven", "gem", "bell"])] * 3}),
+                      "rb_slots": ("slots", {"reels": _r.choice([[k] * 3 for k in ("cherry", "cherry", "lemon", "lemon", "bell", "seven")]
+                                                                 + [_r.sample([b, b, _r.choice(["cherry", "lemon"])], 3)
+                                                                    for b in ("bell", "seven", "gem")])}),
                       "rb_spin": ("wheel", {"slot": 8}), "rb_scratch": ("scratch", {"tier": _r.choice(["exotic", "golden"])})}[fn]
         return "rb_admin_rig", {"name": me, "kind": kind, "key": "", "data": data}
 
@@ -6557,6 +6560,15 @@ FR = {
     'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam': 'Blackjack, Bombes et Plus ou moins plus clairs, barre de chances du pile ou face réparée, le choix de taille du menu en ligne s’affiche à nouveau, limites contre le spam',
 }
 
+FR.update({                                   # 5.9
+    'The OG tag is one of a kind now: a turning rainbow edge, a bright glow and sparkles': 'Le tag OG est unique maintenant : un bord arc-en-ciel qui tourne, une lueur vive et des étincelles',
+    'Keys are back in the games: any casino bet of 50 coins or more, and mini games, can drop a key (up to 6 a day). You always see it land': 'Les clés reviennent dans les jeux : toute mise de 50 pièces ou plus au casino, et les mini-jeux, peuvent donner une clé (jusqu’à 6 par jour). Tu la vois toujours arriver',
+    'Daily case: once opened it moves to the bottom with its timer, no Open button until it is ready again': 'Caisse du jour : une fois ouverte, elle passe en bas avec son minuteur, pas de bouton Ouvrir avant qu’elle soit prête',
+    'Jackpot: 5 players at most. Bots now and then put in something much cheaper or much better than everyone else': 'Jackpot : 5 joueurs au plus. Les bots mettent parfois quelque chose de bien moins cher ou de bien meilleur que les autres',
+    'Mini Golf: the waiting room is clean again (no more overlapping text or broken buttons). Colour pickers no longer go off screen': 'Mini Golf : la salle d’attente est propre à nouveau (plus de texte superposé ni de boutons cassés). Les choix de couleur ne sortent plus de l’écran',
+    'Next free case in {t}': 'Prochaine caisse gratuite dans {t}',
+})
+
 FR.update({                                   # 5.8
     'Mini Golf, rebuilt: one simple screen. Play alone, or create / join an online match for 2, 3 or 4 players right there': 'Mini Golf refait : un seul écran simple. Joue seul, ou crée / rejoins une partie en ligne de 2, 3 ou 4 joueurs au même endroit',
     'Online golf is turn by turn now, 25 seconds a shot, and the course only appears when the match starts': 'Le golf en ligne se joue chacun son tour, 25 secondes par coup, et le parcours n’apparaît qu’au début de la partie',
@@ -6743,11 +6755,11 @@ FR.update({                                   # 5.2
     'Nobody yet: be the first (the first player has a 100% chance until others join).': 'Personne encore : sois le premier (le premier a 100 % de chances tant que personne ne le rejoint).',
     'OPEN · join in the next {t}': 'OUVERT · rejoins dans les {t}',
     'Pick 1 to 3 items (at least {n} in all)': 'Choisis 1 à 3 objets (au moins {n} en tout)',
-    'Players ({n}/6)': 'Joueurs ({n}/6)', 'SPINNING': 'ÇA TOURNE',
+    'Players ({n}/5)': 'Joueurs ({n}/5)', 'SPINNING': 'ÇA TOURNE',
     'The next jackpot opens in {t}': 'Le prochain jackpot ouvre dans {t}',
     'The next jackpot opens in {t}. Every 15 minutes, 2 minutes to join.': 'Le prochain jackpot ouvre dans {t}. Toutes les 15 minutes, 2 minutes pour entrer.',
     'The wheel is spinning: watch it': 'La roue tourne : regarde',
-    'This jackpot is full (6 players). Watch it spin!': 'Ce jackpot est complet (6 joueurs). Regarde-le tourner !',
+    'This jackpot is full (5 players). Watch it spin!': 'Ce jackpot est complet (5 joueurs). Regarde-le tourner !',
     'Titles': 'Titres', 'Too small: at least {n} to join': 'Trop petit : au moins {n} pour entrer',
     'Up to 3 · gold, silver and bronze while you are top 3': 'Jusqu’à 3 · or, argent et bronze tant que tu es dans le top 3',
     'WINNER': 'GAGNANT', 'Watching. The jackpot locks when the timer runs out.': 'Tu regardes. Le jackpot se ferme à la fin du compte à rebours.',
@@ -11258,6 +11270,11 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("5.9", ['The OG tag is one of a kind now: a turning rainbow edge, a bright glow and sparkles',
+             'Keys are back in the games: any casino bet of 50 coins or more, and mini games, can drop a key (up to 6 a day). You always see it land',
+             'Daily case: once opened it moves to the bottom with its timer, no Open button until it is ready again',
+             'Jackpot: 5 players at most. Bots now and then put in something much cheaper or much better than everyone else',
+             'Mini Golf: the waiting room is clean again (no more overlapping text or broken buttons). Colour pickers no longer go off screen']),
     ("5.8", ['Mini Golf, rebuilt: one simple screen. Play alone, or create / join an online match for 2, 3 or 4 players right there',
              'Online golf is turn by turn now, 25 seconds a shot, and the course only appears when the match starts',
              'You choose the power: move the mouse away from your ball (further = harder) and click. The dotted line shows exactly how far it rolls on flat grass',
@@ -16569,6 +16586,56 @@ def paint_tag(p: QPainter, x: float, cy: float, item: str, now: float = 0.0, siz
     if centre:
         x -= w / 2
     box = QRectF(x, cy - hgt / 2, w, hgt)
+    rad = hgt * 0.32
+    if parts(item)[1] == "og":                                 # 5.9: the OG tag is one of a kind: obsidian, a
+        from PyQt6.QtGui import QBrush, QConicalGradient
+        t = now or 0.0                                         # rainbow edge that turns, a breathing glow, sparkles
+        pulse = 0.5 + 0.5 * math.sin(t * 2.4)
+        for k in range(4, 0, -1):                              # the glow, stronger than any other tag
+            grow = hgt * (0.10 + 0.09 * k) * (0.85 + 0.3 * pulse)
+            col = QColor.fromHsvF((t * 0.08 + k * 0.07) % 1.0, 0.75, 1.0)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.10 + 0.05 * pulse))
+            p.drawRoundedRect(box.adjusted(-grow, -grow, grow, grow), rad + grow, rad + grow)
+        body = QLinearGradient(box.topLeft(), box.bottomLeft())
+        body.setColorAt(0.0, QColor("#2B1748"))
+        body.setColorAt(1.0, QColor("#0A0614"))
+        ring = QConicalGradient(box.center(), (t * 120) % 360)
+        for k in range(7):
+            ring.setColorAt(k / 6, QColor.fromHsvF((k / 6) % 1.0, 0.8, 1.0))
+        p.setPen(QPen(QBrush(ring), max(1.2, hgt * 0.11)))
+        p.setBrush(body)
+        p.drawRoundedRect(box, rad, rad)
+        txt = QLinearGradient(box.topLeft(), box.bottomRight())
+        sh = (t * 0.25) % 1.0
+        txt.setColorAt(0.0, QColor("#FFE9A8"))
+        txt.setColorAt(min(0.99, 0.2 + sh * 0.6), QColor("#FFFFFF"))
+        txt.setColorAt(1.0, QColor("#7FE8FF"))
+        path = QPainterPath()
+        fm = p.fontMetrics()
+        tw = fm.horizontalAdvance(text)
+        path.addText(QPointF(box.center().x() - tw / 2, box.center().y() + fm.ascent() / 2 - fm.descent() / 2), p.font(), text)
+        p.setPen(QPen(alpha("#000000", 0.35), max(0.8, hgt * 0.04)))
+        p.setBrush(QBrush(txt))
+        p.drawPath(path)
+        for k, (fx, fy) in enumerate(((0.08, 0.12), (0.93, 0.85))):   # two twinkles on the corners
+            tw_ = max(0.0, math.sin(t * 3.1 + k * 2.3))
+            if tw_ <= 0.05:
+                continue
+            c_ = QPointF(box.left() + box.width() * fx, box.top() + box.height() * fy)
+            r_ = hgt * 0.32 * tw_
+            star = QPainterPath()
+            for n in range(8):
+                ang = math.radians(45 * n)
+                rr = r_ if n % 2 == 0 else r_ * 0.25
+                pt = QPointF(c_.x() + math.cos(ang) * rr, c_.y() + math.sin(ang) * rr)
+                star.lineTo(pt) if n else star.moveTo(pt)
+            star.closeSubpath()
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.95))
+            p.drawPath(star)
+        p.restore()
+        return w
     g = QLinearGradient(box.topLeft(), box.bottomRight())
     g.setColorAt(0.0, QColor("#FFE9A8"))
     g.setColorAt(0.5, QColor("#E8B13A"))
@@ -19221,19 +19288,20 @@ class ColourRow(QWidget):
     def __init__(self, page, kind: str, key: str) -> None:
         super().__init__()
         self.page, self.ctx, self.kind, self.key = page, page.ctx, kind, key
-        self.setFixedSize(page.W, S(26))
+        w = page.W - S(22)                          # 5.9: room for the page margins (the swatches went off screen)
+        self.setFixedSize(w, S(26))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMouseTracking(True)
         self.dim = False
         self.blocked = False                       # second colours wait for every first colour
         self._hover = -1
         self.sq = S(18)
-        self.gap = (page.W - self.N * self.sq) / (self.N - 1)
+        self.gap = (w - self.N * self.sq) / (self.N - 1)
         self.melt = Tween(self, 0.0, self.update, QEasingCurve.Type.InOutCubic)
         self.melt.finished.connect(self._melted)
         self.line = HueLine(self.ctx.cfg[key] or "#2D9CFF")
         self.line.setParent(self)
-        self.line.setGeometry(0, 0, int(page.W - 2 * (self.sq + S(6))), self.height())
+        self.line.setGeometry(0, 0, int(w - 2 * (self.sq + S(6))), self.height())
         self.line.picked.connect(lambda col: self.page.set_colour(self.kind, col))
         self.fused = self.ctx.wallet.all_colours(kind)
         self.line.setVisible(self.fused)
@@ -19618,7 +19686,9 @@ class ShopPage(StylePart, Page):
                 lay.addWidget(CaseShelf(self, owned))
                 lay.addWidget(Label(tr("Click a case to open it. Opening uses 1 key (style cases need none)."), 10.5, TEXT_DIM,
                                     wrap_w=self.W))
-            lay.addWidget(CaseCard(self, self.DAILY))
+            daily_ready = self.daily_wait() in (0, None)
+            if daily_ready:                                   # 5.9: an opened daily case waits at the bottom
+                lay.addWidget(CaseCard(self, self.DAILY))
             if case_kind("starter"):
                 groups = (("hunt", tr("Rare badge cases"), tr("Fewer coins, much better odds for rare badges.")),   # 4.3: first
                           ("coins", tr("Coin cases"), tr("Mostly coins, and badges of every rarity too.")),
@@ -19635,6 +19705,9 @@ class ShopPage(StylePart, Page):
             else:
                 for case in ec.cases:
                     lay.addWidget(CaseCard(self, case))
+            if not daily_ready:
+                lay.addWidget(heading(tr("Daily case")))
+                lay.addWidget(CaseCard(self, self.DAILY))
             lay.addWidget(Label(tr("1 key every {m} min, up to {n}.", m=int(float(ec.cfg.get("key_every_min", 30) or 30)),
                                    n=int(float(ec.cfg.get("key_cap", 12) or 12))), 10.5, TEXT_DIM, wrap_w=self.W))
             return
@@ -19655,6 +19728,20 @@ class ShopPage(StylePart, Page):
             self.open_btn.clicked.connect(lambda: self._open(case))
             lay.addWidget(self.open_btn)
             self.buy_btn = None
+            wait_lbl = Label("", 12, "#FFC94D", bold=True)      # 5.9: no Open button while it can't be opened
+            lay.addWidget(wait_lbl)
+
+            def sync_daily() -> None:
+                try:
+                    w = self.daily_wait()
+                    ready = w == 0
+                    self.open_btn.setVisible(ready)
+                    wait_lbl.setVisible(not ready and w is not None)
+                    if w:
+                        wait_lbl.set_text(tr("Next free case in {t}", t=f"{w // 3600}h {w % 3600 // 60:02d}m {w % 60:02d}s"))
+                except RuntimeError:
+                    pass
+            lay.addWidget(_Poll(1000, sync_daily))
         else:
             self.have_lbl = Label("", 11.5, TEXT, bold=True)
             lay.addWidget(self.have_lbl)
@@ -26837,32 +26924,37 @@ class GolfPartyView(QWidget):
 
 
 class PartyWaiting(QWidget):
-    """5.8: before the match starts: who is in, the empty seats, the countdown. No course yet."""
+    """5.8: before the match starts: who is in, the empty seats, the countdown. No course yet.
+    5.9: drawn in one fixed card (the text overlapped and the buttons were half hidden)."""
 
     def __init__(self, page, pid: str) -> None:
         super().__init__()
         self.page, self.ctx, self.pid = page, page.ctx, pid
         self.g: dict = {}
         self.got_at = time.monotonic()
-        lay = vbox(self, 8)
-        self.title = Label(tr("Waiting for players…"), 15, "#3DDC84", bold=True)
-        lay.addWidget(self.title)
-        self.list = Label("", 12, TEXT, wrap_w=page.W)
-        lay.addWidget(self.list)
-        self.when = Label("", 10.5, TEXT_DIM, wrap_w=page.W)
-        lay.addWidget(self.when)
-        row = hbox(spacing=6)
-        self.go = Button(tr("Start now"), "primary", 38)
+        self.row_h = S(34)
+        self.setFixedSize(page.W, S(96) + 4 * self.row_h + S(56))
+        self.go = Button(tr("Start now"), "primary", 40)
+        self.go.setParent(self)
         self.go.clicked.connect(self._go)
-        self.out = Button(tr("Leave"), "ghost", 38)
+        self.out = Button(tr("Leave"), "ghost", 40)
+        self.out.setParent(self)
         self.out.clicked.connect(self._leave)
-        row.addWidget(self.go, 2)
-        row.addWidget(self.out, 1)
-        lay.addLayout(row)
         self._t = QTimer(self)
         self._t.setInterval(1000)
         self._t.timeout.connect(self.ask)
+        self._place()
         self.ask()
+
+    def _place(self) -> None:
+        y = self.height() - S(46)
+        host = bool(self.g.get("host"))
+        if host:
+            self.go.setGeometry(0, y, int(self.width() * 0.64), S(40))
+            self.out.setGeometry(int(self.width() * 0.66), y, int(self.width() * 0.34), S(40))
+        else:
+            self.out.setGeometry(0, y, self.width(), S(40))
+        self.go.setVisible(host)
 
     def showEvent(self, _e) -> None:
         self._t.start()
@@ -26883,22 +26975,48 @@ class PartyWaiting(QWidget):
                     self.ctx.party_id = None
                 return self.ctx.reload_page("games")
             self.g, self.got_at = d, time.monotonic()
-            self._show()
+            self._place()
+            self.update()
         self.ctx.online.ask("rb_party_state", {"pid": self.pid}, got)
 
-    def _show(self) -> None:
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
         g = self.g
+        card = QRectF(0, 0, self.width(), self.height() - S(54))
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(alpha("#FFFFFF", 0.04))
+        p.drawRoundedRect(card, S(12), S(12))
+        p.setPen(QColor("#3DDC84"))
+        p.setFont(font(15, QFont.Weight.Black))
+        p.drawText(QRectF(S(16), S(10), card.width() - S(32), S(26)), int(Qt.AlignmentFlag.AlignVCenter), tr("Waiting for players…"))
+        left = max(0, int(float(g.get("starts_in") or 0) - (time.monotonic() - self.got_at)))
+        bet = int(g.get("bet") or 0)
+        info = tr("{h} holes", h=len(g.get("holes") or [])) + ("  ·  " + tr("Bet {n}", n=coins_text(bet)) if bet else "")
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.drawText(QRectF(S(16), S(36), card.width() - S(32), S(20)), int(Qt.AlignmentFlag.AlignVCenter), info)
         seats = {s.get("seat"): s for s in g.get("seats") or []}
-        lines = []
+        y = S(62)
         for k in range(int(g.get("size") or 2)):
             s = seats.get(k)
-            lines.append(("●  " + (tr("You") if s.get("mine") else str(s.get("name")))) if s else "○  " + tr("free seat"))
-        self.list.set_text("\n".join(lines))
-        left = int(float(g.get("starts_in") or 0))
-        bet = int(g.get("bet") or 0)
-        self.when.set_text(tr("{h} holes", h=len(g.get("holes") or [])) + ("  ·  " + tr("Bet {n}", n=coins_text(bet)) if bet else "")
-                           + "  ·  " + tr("Starts in {s} s: bots take the free seats", s=left))
-        self.go.setVisible(bool(g.get("host")))
+            col = QColor(PARTY_COLOURS[k % 4])
+            row = QRectF(S(12), y, card.width() - S(24), self.row_h - S(6))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.14) if s else alpha("#FFFFFF", 0.03))
+            p.drawRoundedRect(row, S(8), S(8))
+            p.setBrush(col if s else Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(col, S(2)))
+            p.drawEllipse(QPointF(row.left() + S(16), row.center().y()), S(6), S(6))
+            p.setPen(QColor(TEXT) if s else QColor(TEXT_DIM))
+            p.setFont(font(12, QFont.Weight.Bold if s else QFont.Weight.Normal))
+            name = (tr("You") if s.get("mine") else str(s.get("name"))) if s else tr("free seat")
+            p.drawText(row.adjusted(S(32), 0, -S(8), 0), int(Qt.AlignmentFlag.AlignVCenter), name)
+            y += self.row_h
+        p.setPen(QColor("#FFC94D"))
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.drawText(QRectF(S(16), card.bottom() - S(28), card.width() - S(32), S(22)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("Starts in {s} s: bots take the free seats", s=left))
 
     def _go(self) -> None:
         self.ctx.online.ask("rb_party_go", {"pid": self.pid},
@@ -33895,24 +34013,35 @@ class FormDialog(QWidget):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.setFixedWidth(S(340))
+        cols = 1 if len(fields) <= 8 else (2 if len(fields) <= 16 else 3)    # 5.9: long forms in columns, never off screen
+        inner = S(300) if cols == 1 else S(200) * cols + S(12) * (cols - 1)
+        self.setFixedWidth(inner + S(40))
         lay = vbox(self, 6, (18, 16, 18, 16))
-        lay.addWidget(Label(title, 15, bold=True, wrap_w=S(300)))
+        lay.addWidget(Label(title, 15, bold=True, wrap_w=inner))
         if note:
-            lay.addWidget(Label(note, 10.5, TEXT_DIM, wrap_w=S(300)))
+            lay.addWidget(Label(note, 10.5, TEXT_DIM, wrap_w=inner))
         self.edits: dict = {}
         style = (f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
                  f" border-radius: {S(8)}px; padding: 0 {S(9)}px; color: {TEXT}; font-size: {S(12)}px; }}"
                  f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
-        for key, label, default in fields:
-            lay.addWidget(Label(label, 10.5, TEXT_DIM))
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(S(12))
+        grid.setVerticalSpacing(S(3))
+        rows = (len(fields) + cols - 1) // cols
+        for i, (key, label, default) in enumerate(fields):
+            c, r_ = i // rows, i % rows
+            box = vbox(spacing=3)
+            box.addWidget(Label(label, 10.5, TEXT_DIM, wrap_w=(inner - S(12) * (cols - 1)) // cols))
             e = QLineEdit(str(default))
             e.setFixedHeight(S(30))
             e.setStyleSheet(style)
             e.returnPressed.connect(self._go)
-            lay.addWidget(e)
+            box.addWidget(e)
+            box.addStretch(1)
+            grid.addLayout(box, r_, c)
             self.edits[key] = e
-        self.note = Label("", 11, DANGER, wrap_w=S(300))
+        lay.addLayout(grid)
+        self.note = Label("", 11, DANGER, wrap_w=inner)
         lay.addWidget(self.note)
         line = hbox(spacing=6)
         cancel = Button("Cancel", "ghost", 32)
@@ -35109,12 +35238,19 @@ class AdminPage(Page):
     BOT_FIELDS = [("hours", "Hours played", "40"), ("days", "Account age in days", "30"), ("coins", "Coins", "8000"),
                   ("keys", "Keys", "6"), ("streak", "Login streak (days)", "5"), ("badges", "Badges to own (0 to 60)", "12"),
                   ("active", "How often online, % (0 to 100)", "60"), ("from", "Online from (hour, 0 to 23)", "16"),
-                  ("to", "Online until (hour, 0 to 23)", "23")]
+                  ("to", "Online until (hour, 0 to 23)", "23"), ("level", "Level (0 to 100)", "12")]
+    # 5.9: numbers shown on the bot's profile and in the leaderboards, added on top of what it really did
+    BOT_STATS = [("friends", "Friends"), ("cases", "Cases opened"), ("trades", "Trades"), ("rounds", "Casino bets"),
+                 ("won", "Casino coins won"), ("best", "Best casino win"), ("spins", "Free spins"), ("duels", "Duels won"),
+                 ("flip", "Coinflips won"), ("jackpot", "Jackpots won"), ("golf", "Mini Golf wins"),
+                 ("wave", "Wave Rush best (m)"), ("blocks", "Block Blast best"), ("mini", "Beat Tap games"),
+                 ("park", "Parking games"), ("memory", "Memory games"), ("sweeper", "Minesweeper wins"),
+                 ("tower", "Tower best floor")]
 
     def _bot_cfg(self, v: dict, dlg) -> dict:
         cfg = {}
         limits = {"hours": (0, 20000), "days": (0, 3650), "coins": (0, 10000000), "keys": (0, 48), "streak": (0, 3650),
-                  "badges": (0, 60), "active": (0, 100), "from": (0, 23), "to": (0, 23)}
+                  "badges": (0, 60), "active": (0, 100), "from": (0, 23), "to": (0, 23), "level": (0, 100)}
         for key, (lo, hi) in limits.items():
             n = _int(v.get(key, ""), None)
             if n is None or not lo <= n <= hi:
@@ -35146,7 +35282,8 @@ class AdminPage(Page):
         cfg = b.get("cfg") or {}
         paused = bool(cfg.get("paused"))
         lay.addWidget(heading(b["username"] + ("  ·  " + en("Paused") if paused else "")))
-        lay.addWidget(Label(en("{h} h played · {c} coins · {k} keys · {s}-day streak · {n} badges · online {a}% from {f}:00 to {t}:00",
+        lay.addWidget(Label(en("Level {lv} · {h} h played · {c} coins · {k} keys · {s}-day streak · {n} badges · online {a}% from {f}:00 to {t}:00 · last seen {seen}",
+                               lv=int(b.get("level") or 0), seen=ago_text(b.get("seen")) or "-",
                                h=int(b.get("minutes") or 0) // 60, c=coins_text(int(b.get("coins") or 0)),
                                k=int(b.get("keys") or 0), s=int(b.get("streak") or 0), n=int(b.get("badges") or 0),
                                a=int(cfg.get("active", 60)), f=int(cfg.get("from", 16)), t=int(cfg.get("to", 23))),
@@ -35176,6 +35313,18 @@ class AdminPage(Page):
         for w in (pic, rnd, past):
             line.addWidget(w, 1)
         lay.addLayout(line)
+        line = hbox(spacing=6)                           # 5.9: a look and numbers for every game
+        look = Button(en("Random look"), "ghost", 30)
+        look.clicked.connect(lambda: self.do("rb_admin_bot_set", {"name": b["username"], "cfg": {"look": "random"}},
+                                             en("New look: banner, frame, ball, trail, theme, font")))
+        games = Button(en("Game stats"), "ghost", 30)
+        games.clicked.connect(lambda: self._bot_stats(b))
+        rstats = Button(en("Random game stats"), "ghost", 30)
+        rstats.clicked.connect(lambda: self.do("rb_admin_bot_set", {"name": b["username"], "cfg": {"stats": self._bot_random_stats(
+            int(b.get("minutes") or 0) // 60)}}, en("Saved")))
+        for w in (look, games, rstats):
+            line.addWidget(w, 1)
+        lay.addLayout(line)
         force = cfg.get("force")                         # 5.7: log a bot in or out at once
         lay.addWidget(Label(en("Online: {m}", m={"on": en("forced on"), "off": en("forced off")}.get(force, en("on its own schedule"))),
                             10.5, TEXT_DIM))
@@ -35196,7 +35345,38 @@ class AdminPage(Page):
         return {"hours": hours, "days": max(1, int(hours / random.uniform(1.5, 5))), "coins": int(random.triangular(200, 80000, 6000)),
                 "keys": random.randint(0, 5), "streak": random.choice([0, 1, 2, 3, 4, 5, 7, 9, 12, 15, 21, 30]),
                 "badges": random.randint(3, 30), "active": random.randint(35, 90), "from": start,
-                "to": min(23, start + random.randint(3, 7))}
+                "to": min(23, start + random.randint(3, 7)),
+                "level": max(1, min(100, int(random.triangular(2, 70, 14) * min(1.0, 0.35 + hours / 300))))}
+
+    @staticmethod
+    def _bot_random_stats(hours: int) -> dict:
+        """Believable numbers for every game, bigger for a bot that played longer."""
+        import random
+        h = max(5, hours)
+        f = lambda lo, hi: int(random.uniform(lo, hi) * h)              # noqa: E731
+        won = f(40, 260)
+        return {"friends": random.randint(1, 14), "cases": f(0.4, 2.2), "trades": f(0.02, 0.25), "rounds": f(1, 6),
+                "won": won, "best": int(won * random.uniform(0.05, 0.25)), "spins": f(0.1, 0.5), "duels": f(0.02, 0.2),
+                "flip": f(0.03, 0.3), "jackpot": f(0.0, 0.04), "golf": f(0.02, 0.2),
+                "wave": int(random.triangular(120, 1600, 420)), "blocks": int(random.triangular(300, 9000, 1800)),
+                "mini": f(0.2, 1.2), "park": f(0.1, 0.8), "memory": f(0.1, 0.6), "sweeper": f(0.02, 0.3),
+                "tower": random.randint(2, 11)}
+
+    def _bot_stats(self, b: dict) -> None:
+        extra = dict((b.get("cfg") or {}).get("stats") or {})
+        fields = [(k, en(t), str(int(extra.get(k) or 0))) for k, t in self.BOT_STATS]
+
+        def go(v: dict, dlg) -> None:
+            out = {}
+            for k, t in self.BOT_STATS:
+                n = _int(v.get(k, ""), None)
+                if n is None or not 0 <= n <= 100000000:
+                    return dlg.say(en("{what}: a number from {a} to {b}", what=en(t), a=0, b=100000000))
+                out[k] = n
+            dlg.close()
+            self.do("rb_admin_bot_set", {"name": b["username"], "cfg": {"stats": out}}, en("Saved"))
+        FormDialog(self.ctx, en("{name}: game stats (added on top of what it really did)", name=b["username"]), fields,
+                   en("Save"), go)
 
     def _bot_picture(self, name: str) -> None:
         import base64
@@ -35259,7 +35439,8 @@ class AdminPage(Page):
     def _bot_edit(self, b: dict) -> None:
         cfg = dict(b.get("cfg") or {})
         now = {"hours": int(b.get("minutes") or 0) // 60, "coins": int(b.get("coins") or 0), "keys": int(b.get("keys") or 0),
-               "streak": int(b.get("streak") or 0), "badges": int(b.get("badges") or 0), "days": 30}
+               "streak": int(b.get("streak") or 0), "badges": int(b.get("badges") or 0), "days": 30,
+               "level": int(b.get("level") or 0)}
         try:
             from datetime import datetime, timezone
             since = datetime.fromisoformat(str(b.get("since")).replace("Z", "+00:00"))
@@ -36983,8 +37164,9 @@ def door_pixmap(size, accent: QColor) -> QPixmap:
     return pm
 
 
-GAME_NAMES = {"wave": "Wave Rush", "mini": "Beat Tap", "park": "Parking", "memory": "Memory", "blocks": "Block Blast",
-              "sweep": "Minesweeper", "sweeper": "Minesweeper", "golf_solo": "Mini Golf", "quest": "a quest"}
+GAME_NAMES.update({"wave": "Wave Rush", "mini": "Beat Tap", "park": "Parking", "memory": "Memory", "blocks": "Block Blast",
+                   "sweep": "Minesweeper", "sweeper": "Minesweeper", "golf_solo": "Mini Golf", "quest": "a quest",
+                   "keno": "Keno", "limbo": "Limbo", "jackpot": "Jackpot"})   # 5.9: adds to the list, never replaces it
 
 
 def show_key_found(ctx, game: str = "") -> None:
@@ -38175,8 +38357,8 @@ def build_jackpot(page, lay) -> None:
     # joining (while it is open and you are not in yet)
     if state == "open" and not d.get("mine") and wheel.server_now() < float(d.get("lock_at") or 0):
         n = len(entries)
-        if n >= 6:
-            lay.addWidget(Label(tr("This jackpot is full (6 players). Watch it spin!"), 11.5, TEXT_DIM, wrap_w=page.W))
+        if n >= 5:
+            lay.addWidget(Label(tr("This jackpot is full (5 players). Watch it spin!"), 11.5, TEXT_DIM, wrap_w=page.W))
         else:
             minj = int(d.get("min_join") or 500)
             maxj = int(d.get("max_join") or 0)
@@ -38229,7 +38411,7 @@ def build_jackpot(page, lay) -> None:
     elif state == "open":
         lay.addWidget(Label(tr("Watching. The jackpot locks when the timer runs out."), 11, TEXT_DIM, wrap_w=page.W))
     # everybody in it
-    lay.addWidget(heading(tr("Players ({n}/6)", n=len(entries))))
+    lay.addWidget(heading(tr("Players ({n}/5)", n=len(entries))))
     for e in entries:
         lay.addWidget(JackpotRow(ctx, e, total, page.W, d.get("winner"), bool(landed)))
     if not entries:
@@ -41220,7 +41402,7 @@ def _mg_cap(ctx) -> int:
 # title, how to play, best way to play, payouts and chances. {x} values are filled from the live settings.
 HELP = {
     "jackpot": ("Jackpot", [
-        "A jackpot opens every 15 minutes. For 2 minutes you can put in 1 to 3 items (6 players at most).",
+        "A jackpot opens every 15 minutes. For 2 minutes you can put in 1 to 3 items (5 players at most).",
         "Your chance is your share of everything put in. Then the lobby locks, bots fill the empty seats and the wheel spins.",
         "The winner gets their own items back and picks half of everyone else's items. The rest leaves the game."], [
         "More worth in = a bigger slice of the wheel, but more to lose.",
