@@ -2753,6 +2753,7 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
           "rb_too_soon": "Not ready yet", "rb_bad_bet": "This bet is too high or too low",
           "rb_pawn_no_deal": "He never agreed to that price: ask him again",
+          "rb_pawn_nothing": "He has nothing to offer for that right now", "rb_not_your_turn": "Wait for your turn",
           "rb_row_not_full": "You need every colour of that row (not on sale or in a trade)",
           "rb_have_them_all": "You already have all of those",
           "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
@@ -6585,6 +6586,12 @@ FR.update({'Click as many picks as you like (up to 12): your bet goes on each on
 FR.update({'NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5': 'NOUVEAU : le jeu des gobelets. Une pièce Rubenium passe sous un gobelet, ils se mélangent, retrouve la pièce. Facile (3) ×1,4, Moyen (6) ×2,2, Difficile (9) ×3,3, Expert (9, très rapide) ×5', 'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25': 'Roulette : choisis autant de paris que tu veux en un tour (ta mise va sur chacun), vois ta chance de gagner. L’or paie maintenant ×25', 'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each': 'Plus ou moins est plus clair : deux grands choix PLUS HAUT / PLUS BAS à côté de la carte, avec la chance et le multiplicateur', 'No more daily coin limit in mini games, and up to 16 keys a day from games': 'Plus de limite de pièces par jour dans les mini-jeux, et jusqu’à 16 clés par jour grâce aux jeux', "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)": 'Jackpot : tu peux réduire Rubenium pendant que tu y participes (sans pouvoir ouvrir d’autres onglets)', 'Cups': 'Gobelets', 'Cup Game': 'Jeu des gobelets', 'Watch the coin, follow its cup, then click it.': 'Regarde la pièce, suis son gobelet, puis clique dessus.', 'Watch the coin…': 'Regarde la pièce…', 'Follow the cup!': 'Suis le gobelet !', 'Which cup hides the coin?': 'Quel gobelet cache la pièce ?', 'Found it!': 'Trouvée !', 'It was here': 'Elle était ici', 'Your pick': 'Ton choix', 'Click the cup with the coin': 'Clique sur le gobelet avec la pièce', 'Play  ·  {m} cups': 'Jouer  ·  {m} gobelets', 'Easy': 'Facile', 'Medium': 'Moyen', 'Hard': 'Difficile', 'Expert': 'Expert', 'Daily Cup Game limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte aux gobelets : une victoire rend ta mise jusqu’à minuit', 'A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.': 'Une pièce Rubenium tombe sur la table et les gobelets la recouvrent. Puis ils se mélangent.', 'Follow the cup with the coin and click it when they stop.': 'Suis le gobelet avec la pièce et clique dessus quand ils s’arrêtent.', 'Watch only the cup with the coin, never the others.': 'Regarde seulement le gobelet avec la pièce, jamais les autres.', 'Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves.': 'Facile : 3 gobelets, lent. Moyen : 6. Difficile : 9. Expert : 9 gobelets, très rapide et beaucoup plus de mouvements.', 'Easy ×1.4 · Medium ×2.2 · Hard ×3.3 · Expert ×5.': 'Facile ×1,4 · Moyen ×2,2 · Difficile ×3,3 · Expert ×5.', 'Once you are up 6 000 coins in a day, a win gives your bet back until midnight.': 'Une fois 6 000 pièces gagnées dans la journée, une victoire rend ta mise jusqu’à minuit.', 'Click the cup with the coin.': 'Clique sur le gobelet avec la pièce.'})
 
 FR.update({"NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back": 'NOUVEAU : Puissance 4 contre un vrai bot qui réfléchit sur notre serveur (impossible de le tromper). Facile ×1,5, Moyen ×2,2, Difficile ×4, Professionnel ×10 (il commence et voit loin). Un match nul rend ta mise', 'Connect 4': 'Puissance 4', 'Professional': 'Professionnel', 'Play  ·  {lvl}': 'Jouer  ·  {lvl}', 'Your turn: click a column': 'À toi : clique une colonne', 'Bot is thinking…': 'Le bot réfléchit…', 'Give up': 'Abandonner', 'Give up this game? You lose your bet.': 'Abandonner cette partie ? Tu perds ta mise.', 'You win!': 'Tu gagnes !', 'The bot wins': 'Le bot gagne', 'Draw: bet back': 'Nul : mise rendue', 'Line up 4 to win ×{m}': 'Aligne 4 pour gagner ×{m}', 'Your turn': 'À toi', 'Thinking': 'Il réfléchit', 'Win: {n}': 'Gain : {n}', 'Bot': 'Bot', 'You': 'Toi', 'Daily Connect 4 limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte au Puissance 4 : une victoire rend ta mise jusqu’à minuit', 'Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.': 'Lâche des jetons dans les colonnes. Aligne 4 des tiens (en ligne, en colonne ou en diagonale) avant le bot.', 'The bot really plays: it looks ahead, blocks you and attacks. On Professional it moves first.': 'Le bot joue vraiment : il anticipe, te bloque et attaque. En Professionnel il commence.', 'Take the middle column early, block every line of 3, and set up two threats at once.': 'Prends la colonne du milieu tôt, bloque chaque ligne de 3 et prépare deux menaces à la fois.', 'Easy ×1.5 · Medium ×2.2 · Hard ×4 · Professional ×10. A draw gives your bet back.': 'Facile ×1,5 · Moyen ×2,2 · Difficile ×4 · Professionnel ×10. Un nul rend ta mise.', 'Leaving a game or giving up loses the bet. Once you are up 15 000 coins in a day, a win gives your bet back.': 'Quitter ou abandonner fait perdre la mise. Une fois 15 000 pièces gagnées dans la journée, une victoire rend ta mise.', 'Drop a disc in a column': 'Lâche un jeton dans une colonne'})
+
+FR.update({'Propose exchange': 'Proposer un échange', 'Accept the exchange': 'Accepter l’échange', 'Refuse': 'Refuser', "He won't go higher": 'Il n’ira pas plus haut', 'Sure? {c}% yes': 'Sûr ? {c} % de oui', 'A better one? {c}% chance I say yes. If I say no: +{r} anger.': 'Un meilleur ? {c} % de chance que je dise oui. Si je dis non : +{r} de colère.', 'No. Take it or leave it.': 'Non. C’est à prendre ou à laisser.', "I'll swap it for this {what}.": 'Je te l’échange contre ce {what}.', 'Fine. This {what} then.': 'D’accord. Ce {what} alors.', 'Deal. Enjoy your {what}.': 'Marché conclu. Profite de ton {what}.', 'You got {what}': 'Tu as reçu {what}', 'His offer · worth {n}': 'Son offre · vaut {n}', 'Yours · worth {n}': 'Le tien · vaut {n}'})
+
+FR.update({"Pawn shop: PROPOSE EXCHANGE. He puts one of his items on a plate for yours. Accept, refuse, or ask for a better one: you see the chance he says yes and how angry a no makes him. The market's Swaps tab is gone": 'Prêteur sur gages : PROPOSER UN ÉCHANGE. Il pose un de ses objets sur un plateau contre le tien. Accepte, refuse ou demande mieux : tu vois la chance qu’il dise oui et la colère qu’un non lui donne. L’onglet Échanges du marché disparaît'})
+
+FR.update({'Exchange: yours for his {what}': 'Échange : le tien contre son {what}', 'This is his best offer': 'C’est sa meilleure offre', 'Ask for more: {c}% chance he says yes, a no adds {r} anger (the faint part of the bar)': 'Demander mieux : {c} % de chance qu’il dise oui, un non ajoute {r} de colère (la partie pâle de la barre)'})
 
 FR.update({                                   # 5.10
     'Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own': 'Les mises à jour s’installent de nouveau toutes seules. Un bug depuis la 5.0.1 vérifiait la mise à jour en boucle, et le bouton Mettre à jour ne faisait rien. Maintenant elle se télécharge et redémarre toute seule',
@@ -11330,7 +11337,8 @@ def close_app(exe: str) -> bool:
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
-    ("5.12", ["NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back"]),
+    ("5.12", ["NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back",
+              "Pawn shop: PROPOSE EXCHANGE. He puts one of his items on a plate for yours. Accept, refuse, or ask for a better one: you see the chance he says yes and how angry a no makes him. The market's Swaps tab is gone"]),
     ("5.11", ['NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5',
               'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25',
               'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each',
@@ -23544,10 +23552,15 @@ def build_market(page, lay) -> None:
     tab = int(getattr(ctx, "mk_tab", 0) or 0)
     offers = int(ec.live.get("offers") or 0)
     # 5.5: Buy · Swaps · Sell · My sales · Offers (selling starts here now, not in the inventory)
-    seg = Segmented([tr("Buy"), tr("Swaps"), tr("Sell"), tr("My sales"), tr("Offers") + (f" ({offers})" if offers else "")], tab)
+    # 5.12: no more Swaps tab (the pawn shop's Propose exchange replaces it). Tabs keep their old numbers.
+    if tab == 1:
+        tab = 0
+    shown = [0, 2, 3, 4]
+    seg = Segmented([tr("Buy"), tr("Sell"), tr("My sales"), tr("Offers") + (f" ({offers})" if offers else "")],
+                    shown.index(tab))
 
     def switch(i: int) -> None:
-        ctx.mk_tab, ctx.mk_at = i, 0
+        ctx.mk_tab, ctx.mk_at = shown[i], 0
         ctx.reload_page()
     seg.changed.connect(switch)
     lay.addWidget(seg)
@@ -47429,7 +47442,26 @@ class PawnShop(QWidget):
         self.more.clicked.connect(lambda: self._set_ask(True))
         r1.addWidget(self.take, 3)
         r1.addWidget(self.more, 2)
+        self.swap_btn = Button(tr("Propose exchange"), "ghost", 40)     # 5.12: he offers one of his items for yours
+        self.swap_btn.clicked.connect(lambda: self._trade("offer"))
+        self.swap_btn.setVisible(len(self.ids) == 1)
+        r1.addWidget(self.swap_btn, 2)
         lay.addWidget(self.row_offer)
+        self.trade = None
+        self.trade_confirm = False
+        self.row_trade = QWidget()
+        rt = hbox(self.row_trade, 8)
+        self.trade_yes = Button(tr("Accept the exchange"), "primary", 40, icon="check")
+        self.trade_yes.clicked.connect(lambda: self._trade("accept"))
+        self.trade_more = Button(tr("Ask for more"), "ghost", 40)
+        self.trade_more.clicked.connect(self._trade_more)
+        self.trade_no = Button(tr("Refuse"), "ghost", 40)
+        self.trade_no.clicked.connect(lambda: self._trade("refuse"))
+        rt.addWidget(self.trade_yes, 3)
+        rt.addWidget(self.trade_more, 3)
+        rt.addWidget(self.trade_no, 2)
+        lay.addWidget(self.row_trade)
+        self.row_trade.hide()
         self.row_ask = QWidget()
         r2 = vbox(self.row_ask, 8)
         self.slider = Slider(0, 1, 0, 1)
@@ -47478,6 +47510,27 @@ class PawnShop(QWidget):
 
     def _refresh_texts(self) -> None:
         self.take.set_text(tr("Sell for {n}", n=coins_text(self.base)))
+        trading = self.trade is not None
+        self.row_trade.setVisible(trading)
+        if trading:
+            more = self.trade.get("more")
+            self.trade_more.setEnabled(bool(more) and not self.busy)
+            if not more:
+                self.trade_more.set_text(tr("He won't go higher"))
+            elif self.trade_confirm:
+                self.trade_more.set_text(tr("Sure? {c}% yes", c=int(round(float(more.get("chance") or 0) * 100))))
+                self.trade_more.set_kind("danger")
+            else:
+                self.trade_more.set_text(tr("Ask for more"))
+                self.trade_more.set_kind("ghost")
+            for b in (self.trade_yes, self.trade_no):
+                b.setEnabled(not self.busy)
+            self.row_offer.setVisible(False)
+            self.row_ask.setVisible(False)
+            self.row_deal.setVisible(False)
+            self.leave_btn.setEnabled(not self.busy)
+            return
+        self.swap_btn.setEnabled(not self.busy)
         self.row_offer.setVisible(not self.ask_mode and not self.deal)
         self.row_ask.setVisible(self.ask_mode and not self.deal)
         self.row_deal.setVisible(bool(self.deal))
@@ -47607,6 +47660,86 @@ class PawnShop(QWidget):
             except RuntimeError:
                 pass
         self.ctx.econ.call("rb_pawn_sell", {"ids": self.ids, "ask": ask if ask and ask > self.base else None}, done, once=True)
+
+    def _trade_more(self) -> None:
+        """Asking for more needs a second click: the first shows the chance and the anger he would gain."""
+        if self.busy or not self.trade or not self.trade.get("more"):
+            return
+        if not self.trade_confirm:
+            self.trade_confirm = True
+            sfx.play("pick")
+            m = self.trade["more"]
+            self.line = tr("A better one? {c}% chance I say yes. If I say no: +{r} anger.",
+                           c=int(round(float(m.get("chance") or 0) * 100)), r=int(round(float(m.get("rage") or 0))))
+            self.line_at = time.monotonic()
+            self._refresh_texts()
+            return self.update()
+        self.trade_confirm = False
+        self._trade("more")
+
+    def _trade(self, action: str) -> None:
+        """5.12: swap your item for one of his (offer, more, accept, refuse)."""
+        if self.busy or self.phase != "shop":
+            return
+        self.busy = True
+        self.trade_confirm = False
+        self._refresh_texts()
+        sfx.play("pick")
+
+        def done(ok: bool, data) -> None:
+            self.busy = False
+            try:
+                if not ok or not isinstance(data, dict):
+                    self.ctx.toast(tr(str(data)), "warn")
+                    return self._refresh_texts()
+                res = data.get("result")
+                self.anger = float(data.get("anger") or self.anger)
+                if res in ("offer", "no"):
+                    first = self.trade is None
+                    self.trade = data
+                    if res == "no":
+                        sfx.play("off")
+                        self.line = (tr("No. Take it or leave it.") if self.anger < 45 else tr("You're pushing it.")
+                                     if self.anger < 75 else tr("One more and you're out."))
+                    else:
+                        sfx.play("on")
+                        self.line = (tr("I'll swap it for this {what}.", what=item_name(data.get("item", ""))) if first
+                                     else tr("Fine. This {what} then.", what=item_name(data.get("item", ""))))
+                    self.line_at = time.monotonic()
+                elif res == "refused":
+                    self.trade = None
+                    self.line, self.line_at = tr("Suit yourself."), time.monotonic()
+                elif res == "swapped":
+                    sfx.play("on")
+                    ec = self.ctx.econ
+                    ec.items = [i for i in ec.items if i["id"] not in set(self.ids)]
+                    ec._index()
+                    ec.refresh()
+                    got = data.get("item", "")
+                    self.item, self.what, self.trade = got, item_name(got), None
+                    self.line, self.line_at = tr("Deal. Enjoy your {what}.", what=item_name(got)), time.monotonic()
+                    self.after = lambda: (self.ctx.toast(tr("You got {what}", what=item_name(got))),
+                                          setattr(self.ctx, "inv_pick", ""), self.ctx.reload_page())
+                    self._controls(False)
+                    QTimer.singleShot(1800, lambda: self._go("leave_close"))
+                elif res == "kicked":
+                    self.anger, self.trade = 100.0, None
+                    self.line, self.line_at = tr("That's it. GET OUT!"), time.monotonic()
+                    self.after = lambda: self.ctx.toast(tr("Thrown out of the pawn shop for 30 minutes"), "warn")
+                    self._controls(False)
+                    sfx.play("off")
+                    QTimer.singleShot(500, self._crack)
+                    return
+                elif res == "banned":
+                    self.ban_left = int(data.get("ban_left") or 0)
+                    self.ban_end = time.monotonic() + self.ban_left
+                    self._controls(False)
+                    return self._go("ban_close")
+                self._refresh_texts()
+                self.update()
+            except RuntimeError:
+                pass
+        self.ctx.econ.call("rb_pawn_trade", {"ids": self.ids, "action": action}, done, once=True)
 
     def _ask(self, ask: int) -> None:
         """4.7: only asks. A yes keeps the price for you; the item stays yours until you press Sell."""
@@ -47966,6 +48099,27 @@ class PawnShop(QWidget):
             p.fillRect(box.adjusted(-S(30), -S(30), S(30), S(30)), glow)
             show_item(p, self.item, box, now)
             p.setOpacity(1.0)
+            if self.trade:                                   # 5.12: his item on a plate, on his side of the counter
+                plate = QRectF(pn.center().x() + pn.width() * 0.26 - S(56), cy - S(16), S(112), S(20))
+                g3 = QLinearGradient(plate.topLeft(), plate.bottomLeft())
+                g3.setColorAt(0, QColor("#E6EEF5"))
+                g3.setColorAt(1, QColor("#8C98A3"))
+                p.setPen(QPen(alpha("#000000", 0.4), 1))
+                p.setBrush(g3)
+                p.drawEllipse(plate)
+                his = QRectF(plate.center().x() - S(28), plate.top() - S(50), S(56), S(56))
+                glow2 = QRadialGradient(his.center(), S(60))
+                glow2.setColorAt(0, alpha("#7FE8FF", 0.25))
+                glow2.setColorAt(1, alpha("#7FE8FF", 0.0))
+                p.fillRect(his.adjusted(-S(30), -S(30), S(30), S(30)), glow2)
+                show_item(p, self.trade.get("item", ""), his, now)
+                p.setPen(QColor(TEXT))
+                p.setFont(font(10, QFont.Weight.Bold))
+                p.drawText(QRectF(plate.left() - S(40), plate.bottom() + S(2), plate.width() + S(80), S(16)),
+                           int(Qt.AlignmentFlag.AlignCenter), tr("His offer · worth {n}", n=coins_text(int(self.trade.get("worth") or 0))))
+                p.setPen(QColor(TEXT_DIM))
+                p.drawText(QRectF(pad.left() - S(40), pad.bottom() + S(2), pad.width() + S(80), S(16)),
+                           int(Qt.AlignmentFlag.AlignCenter), tr("Yours · worth {n}", n=coins_text(int(self.trade.get("mine_worth") or 0))))
             if len(self.ids) > 1:
                 p.setPen(QColor(TEXT))
                 p.setFont(font(12, QFont.Weight.Black))
@@ -47999,8 +48153,13 @@ class PawnShop(QWidget):
         p.setClipPath(path)
         a = max(0.0, min(100.0, self.shown_anger)) / 100
         p.setPen(Qt.PenStyle.NoPen)
+        rage = None
         if self.ask_mode and self.phase == "shop" and self.base:           # the next no, if he says no at this price
-            nxt = min(1.0, a + pawn_rage(self.ask / self.base) / 100)
+            rage = pawn_rage(self.ask / self.base)
+        elif self.trade_confirm and self.trade and self.trade.get("more"):  # 5.12: asking him for a better item
+            rage = float(self.trade["more"].get("rage") or 0)
+        if rage is not None:
+            nxt = min(1.0, a + rage / 100)
             p.setOpacity(0.32 + 0.1 * math.sin(now * 5))
             p.setBrush(grad)
             p.drawRect(QRectF(bar.left(), bar.top(), bar.width() * nxt, bar.height()))
@@ -48083,6 +48242,20 @@ class PawnShop(QWidget):
             p.setPen(QColor("#3DDC84"))
             p.drawText(QRectF(pn.left(), y + S(32), pn.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("Sold for {n} coins", n=coins_text(getattr(self, "paid", 0))))
+        elif self.trade:                                    # 5.12: the exchange, in plain words
+            his = item_name(self.trade.get("item", ""))
+            p.setPen(QColor("#7FE8FF"))
+            p.drawText(QRectF(pn.left(), y + S(32), pn.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Exchange: yours for his {what}", what=his))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            more = self.trade.get("more")
+            line = (tr("Ask for more: {c}% chance he says yes, a no adds {r} anger (the faint part of the bar)",
+                       c=int(round(float(more.get("chance") or 0) * 100)), r=int(round(float(more.get("rage") or 0))))
+                    if more else tr("This is his best offer"))
+            p.drawText(QRectF(pn.left(), y + S(56), pn.width(), S(36)),
+                       int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), line)
+            return
         elif self.deal:
             p.setPen(QColor("#3DDC84"))
             p.drawText(QRectF(pn.left(), y + S(32), pn.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),

@@ -1,5 +1,6 @@
 Rubenium 5.12
 
 - NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back
+- Pawn shop: PROPOSE EXCHANGE. He puts one of his items on a plate for yours. Accept, refuse, or ask for a better one: you see the chance he says yes and how angry a no makes him. The market's Swaps tab is gone
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
