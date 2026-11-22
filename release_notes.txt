@@ -1,5 +1,5 @@
-Rubenium 6.2.5
+Rubenium 6.2.6
 
-- Quick sell: if the pawn shop throws you out, the ban lasts 5 minutes instead of 30
+- The pawn shop takes 5 offers or refusals an hour, so you can't spam refuse to keep swapping offers
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
