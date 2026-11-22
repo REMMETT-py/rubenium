@@ -1,0 +1,2 @@
+-- 6.2.8: the pawn shop allows 10 exchange proposals an hour (was 5). Applied live: rb_pawn_props (10 - count, limit 10,
+-- props_max 10, full at count >= 10) and the check in rb_pawn_trade (count >= 10).
