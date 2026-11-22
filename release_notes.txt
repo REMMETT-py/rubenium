@@ -1,9 +1,8 @@
-Rubenium 6.4
+Rubenium 6.5
 
-- NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more
-- NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too
-- Wave Rush duels: the other player now moves smoothly instead of lagging and running into walls (you see them a moment behind, exactly as they really flew)
-- Wave Rush duels: when you crash you keep watching the other player until they crash too, then the result comes up
-- Wave Rush duels: a Rematch button after the duel. When both players press it, a new duel starts with the same bet
+- NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too
+- Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%
+- Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse's wins. Hover anywhere to see the details
+- Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

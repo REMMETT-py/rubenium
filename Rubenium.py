@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.4"         # the version people see
-BUILD = "2026.11.22.11"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.5"         # the version people see
+BUILD = "2026.11.22.12"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -10898,6 +10898,171 @@ def _shop_scene_63(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: 
             p.drawEllipse(QPointF(w * rnd.random(), h * rnd.random()), _s * 0.5, _s * 0.5)
 
 
+# --------------------------------------------------------------------------- #
+# 6.5: the pictures behind ten more app colour themes
+# --------------------------------------------------------------------------- #
+_SCENES_65 = ("peach", "slate", "honey", "berry", "twilight", "coral", "wasabi", "solar", "nightbloom", "cyber")
+
+
+def _shop_scene_65(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QColor, unit: float, rnd) -> None:
+    from PyQt6.QtCore import QPointF
+    from PyQt6.QtGui import QLinearGradient, QPainterPath, QPolygonF, QRadialGradient
+    p.setPen(Qt.PenStyle.NoPen)
+    full = QRectF(0, 0, w, h)
+
+    def sky(top, a_top, a_bot, bottom=None) -> None:
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha(top, a_top))
+        g.setColorAt(1, alpha(bottom if bottom is not None else c1, a_bot))
+        p.fillRect(full, g)
+
+    if style == "peach":                                   # soft light and big round shapes
+        sky("#7A3B3B", 0.45, 0.4, c2)
+        for k in range(8):
+            r = h * rnd.uniform(0.2, 0.6)
+            cen = QPointF(w * rnd.random(), h * rnd.random())
+            g = QRadialGradient(cen, r)
+            g.setColorAt(0, alpha(mix(c1, c2, rnd.random()), 0.45))
+            g.setColorAt(1, alpha(c1, 0.0))
+            p.setBrush(g)
+            p.drawEllipse(cen, r, r)
+    elif style == "slate":                                 # layered grey-blue shards
+        p.fillRect(full, alpha("#10151B", 0.75))
+        for k in range(14):
+            x = w * rnd.random()
+            poly = QPolygonF([QPointF(x, 0), QPointF(x + w * rnd.uniform(0.1, 0.3), 0), QPointF(x + w * rnd.uniform(-0.2, 0.1), h)])
+            p.setBrush(alpha(mix(c1, c2, rnd.random()), rnd.uniform(0.08, 0.3)))
+            p.setPen(QPen(alpha(c1, 0.15), 1.0 * unit))
+            p.drawPolygon(poly)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif style == "honey":                                 # a hexagon comb full of amber light
+        sky("#2A1A04", 0.7, 0.45, c2)
+        s = h * 0.17
+        for row in range(-1, int(h / (s * 1.5)) + 2):
+            for col in range(-1, int(w / (s * 1.75)) + 2):
+                cx = col * s * 1.75 + (s * 0.87 if row % 2 else 0)
+                cy = row * s * 1.5
+                hexa = QPolygonF([QPointF(cx + math.cos(math.radians(60 * i + 30)) * s * 0.92, cy + math.sin(math.radians(60 * i + 30)) * s * 0.92) for i in range(6)])
+                p.setBrush(alpha(c1, rnd.uniform(0.04, 0.34)))
+                p.setPen(QPen(alpha("#FFE08A", 0.3), 1.0 * unit))
+                p.drawPolygon(hexa)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif style == "berry":                                 # clusters of glossy berries
+        sky("#2A0830", 0.7, 0.4, c2)
+        for k in range(5):
+            cx, cy = w * rnd.uniform(0.1, 0.9), h * rnd.uniform(0.2, 0.8)
+            for j in range(9):
+                r = h * rnd.uniform(0.04, 0.07)
+                pt = QPointF(cx + rnd.uniform(-1, 1) * h * 0.14, cy + rnd.uniform(-1, 1) * h * 0.14)
+                g = QRadialGradient(QPointF(pt.x() - r * 0.3, pt.y() - r * 0.3), r * 1.4)
+                g.setColorAt(0, alpha("#F6C8FF", 0.6))
+                g.setColorAt(0.4, alpha(c1, 0.6))
+                g.setColorAt(1, alpha("#3A0A4A", 0.7))
+                p.setBrush(g)
+                p.drawEllipse(pt, r, r)
+    elif style == "twilight":                              # dusk sky, a first moon and star, dark hills
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha("#1B1050", 0.8))
+        g.setColorAt(0.6, alpha(c1, 0.5))
+        g.setColorAt(1, alpha(c2, 0.5))
+        p.fillRect(full, g)
+        for k in range(30):
+            p.setBrush(alpha("#FFFFFF", rnd.uniform(0.2, 0.8)))
+            p.drawEllipse(QPointF(w * rnd.random(), h * rnd.random() * 0.55), 1.0 * unit, 1.0 * unit)
+        p.setBrush(QColor("#FFF1C8"))
+        p.drawEllipse(QPointF(w * 0.78, h * 0.25), h * 0.08, h * 0.08)
+        for k, y0 in enumerate((0.68, 0.8)):
+            path = QPainterPath(QPointF(0, h))
+            for x in range(0, int(w) + 10, 10):
+                path.lineTo(x, h * y0 + math.sin(x / w * 5 + k * 2) * h * 0.06)
+            path.lineTo(w, h)
+            p.setBrush(alpha("#0C0620", 0.7 + 0.2 * k))
+            p.drawPath(path)
+    elif style == "coral":                                 # branching coral on a teal sea floor
+        sky("#03323A", 0.6, 0.5, c2)
+        for k in range(6):
+            x0 = w * (0.08 + 0.16 * k)
+            stack = [(QPointF(x0, h), -90.0, h * 0.3, 3.2 * unit, 0)]
+            while stack:
+                pt, ang, ln, wd, dep = stack.pop()
+                end = QPointF(pt.x() + math.cos(math.radians(ang)) * ln, pt.y() + math.sin(math.radians(ang)) * ln)
+                p.setPen(QPen(alpha(mix(c1, c2, dep / 4), 0.75), wd, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawLine(pt, end)
+                if dep < 3:
+                    stack.append((end, ang - rnd.uniform(15, 40), ln * 0.7, wd * 0.7, dep + 1))
+                    stack.append((end, ang + rnd.uniform(15, 40), ln * 0.7, wd * 0.7, dep + 1))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif style == "wasabi":                                # a lime sunburst
+        sky("#103A0A", 0.55, 0.4, c2)
+        cen = QPointF(w * 0.5, h * 0.5)
+        for k in range(18):
+            a0 = math.radians(k * 20)
+            tri = QPolygonF([cen, QPointF(cen.x() + math.cos(a0) * w, cen.y() + math.sin(a0) * w),
+                             QPointF(cen.x() + math.cos(a0 + 0.17) * w, cen.y() + math.sin(a0 + 0.17) * w)])
+            p.setBrush(alpha(c1 if k % 2 else "#FFFFFF", 0.12))
+            p.drawPolygon(tri)
+        core = QRadialGradient(cen, h * 0.5)
+        core.setColorAt(0, alpha("#F4FFD0", 0.7))
+        core.setColorAt(1, alpha(c1, 0.0))
+        p.setBrush(core)
+        p.drawEllipse(cen, h * 0.5, h * 0.5)
+    elif style == "solar":                                 # a sun with flares
+        sky("#1A0602", 0.85, 0.6, c2)
+        cen = QPointF(w * 0.7, h * 0.5)
+        for k in range(14):
+            a = math.radians(k * 25.7)
+            ln = h * rnd.uniform(0.5, 0.95)
+            p.setPen(QPen(alpha(c1, 0.35), 2.4 * unit, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(QPointF(cen.x() + math.cos(a) * h * 0.3, cen.y() + math.sin(a) * h * 0.3),
+                       QPointF(cen.x() + math.cos(a) * ln, cen.y() + math.sin(a) * ln))
+        p.setPen(Qt.PenStyle.NoPen)
+        glow = QRadialGradient(cen, h * 0.7)
+        glow.setColorAt(0, alpha("#FFF2B0", 0.95))
+        glow.setColorAt(0.3, alpha(c1, 0.7))
+        glow.setColorAt(1, alpha(c2, 0.0))
+        p.setBrush(glow)
+        p.drawEllipse(cen, h * 0.7, h * 0.7)
+    elif style == "nightbloom":                            # glowing flowers in the dark
+        p.fillRect(full, alpha("#05030F", 0.85))
+        for k in range(6):
+            cen = QPointF(w * rnd.uniform(0.08, 0.92), h * rnd.uniform(0.25, 0.8))
+            r = h * rnd.uniform(0.12, 0.22)
+            glow = QRadialGradient(cen, r * 2)
+            glow.setColorAt(0, alpha(c1, 0.35))
+            glow.setColorAt(1, alpha(c1, 0.0))
+            p.setBrush(glow)
+            p.drawEllipse(cen, r * 2, r * 2)
+            for j in range(8):
+                p.save()
+                p.translate(cen)
+                p.rotate(j * 45)
+                p.setBrush(alpha(mix(c1, c2, j / 8), 0.45))
+                p.setPen(QPen(alpha("#FFFFFF", 0.25), 0.8 * unit))
+                p.drawEllipse(QPointF(r * 0.55, 0), r * 0.55, r * 0.22)
+                p.restore()
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFF6C8", 0.8))
+            p.drawEllipse(cen, r * 0.12, r * 0.12)
+    elif style == "cyber":                                 # circuit traces with glowing nodes
+        p.fillRect(full, alpha("#04081A", 0.85))
+        for k in range(16):
+            x, y = w * rnd.random(), h * rnd.random()
+            path = QPainterPath(QPointF(x, y))
+            for j in range(4):
+                if rnd.random() < 0.5:
+                    x += rnd.choice((-1, 1)) * w * rnd.uniform(0.05, 0.2)
+                else:
+                    y += rnd.choice((-1, 1)) * h * rnd.uniform(0.1, 0.3)
+                path.lineTo(x, y)
+            col = c1 if k % 2 else c2
+            p.setPen(QPen(alpha(col, 0.55), 1.4 * unit))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.95))
+            p.drawEllipse(QPointF(x, y), 2.4 * unit, 2.4 * unit)
+
+
 def _shop_scene(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QColor, unit: float) -> None:
     """3.1: the shop themes each have their own picture, not the night sky. The dearer, the richer."""
     import random
@@ -10905,6 +11070,19 @@ def _shop_scene(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QCo
     from PyQt6.QtGui import QLinearGradient, QPainterPath, QPolygonF, QRadialGradient
     p.setPen(Qt.PenStyle.NoPen)
     rnd = random.Random(hash(style) & 0xFFFF)
+    cw = _CW.get(("theme", style))
+    if cw:                                                     # 6.5: a colourway: the scene, recoloured (drawn at half size)
+        bt = next(t for t in THEME_LOOKS if t[0] == cw[0])
+        img, ip = _cw_layer(p, w, h, 0.5)
+        _shop_scene(ip, cw[0], w, h, QColor(bt[2]), QColor(bt[3]), unit)
+        ip.end()
+        p.save()
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        p.drawImage(QRectF(0, 0, w, h), recolour_image(img, cw[1]))
+        p.restore()
+        return
+    if style in _SCENES_65:
+        return _shop_scene_65(p, style, w, h, c1, c2, unit, random.Random(sum(map(ord, style))))
     if style in _SCENES_63:
         return _shop_scene_63(p, style, w, h, c1, c2, unit, random.Random(sum(map(ord, style))))
     if style == "sunset":                                 # warm sky, a striped sun on the horizon, dark hills
@@ -11851,6 +12029,40 @@ FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match
 FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'Preview': 'Essai', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
 FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
 FR.update({'Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run.': 'Les paris ferment 2 minutes après l’arrivée du premier joueur. Puis les bots prennent les chevaux libres, 3, 2, 1, le coup de feu, et ils partent.', 'Chance to win = your bet ÷ all the money on the horses.': 'Chance de gagner = ta mise ÷ tout l’argent misé sur les chevaux.', 'Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start.': 'Les chevaux à l’arrière de la file partent en premier, pour qu’ils passent tous la ligne de départ ensemble : personne n’a d’avance.', 'Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Pendant 2 minutes tu peux mettre 1 à 3 objets (5 joueurs au plus).', 'Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.': 'Le Jackpot et la Course de chevaux alternent : chacun ouvre 15 minutes après la fin de l’autre.', 'Nobody joins? The bots race on their own and the next event comes 15 minutes later.': 'Personne ne rejoint ? Les bots courent seuls et l’événement suivant arrive 15 minutes plus tard.', 'Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).': 'Choisis un cheval libre sur le tableau et mise des pièces dessus (un cheval chacun, 5 chevaux).', "The more you bet, the better your horse's chance, but the more you can lose.": 'Plus tu mises, plus ton cheval a de chances, mais plus tu peux perdre.', "The winner gets their bet back plus 80% of everybody else's bets (bots' too).": 'Le gagnant récupère sa mise plus 80 % des mises de tous les autres (bots compris).', 'Bet {n} coins on this round? That is {p}% of your coins.': 'Miser {n} pièces sur cette manche ? C’est {p} % de tes pièces.', 'Careful: you could lose a big part of your coins.': 'Attention : tu pourrais perdre une grosse partie de tes pièces.', 'Bet it': 'Miser', 'FINISH': 'ARRIVÉE', 'BETS CLOSE IN {t}': 'PARIS FERMÉS DANS {t}', 'Pick a horse and bet. Bots take the empty horses at 0:00.': 'Choisis un cheval et mise. Les bots prennent les chevaux libres à 0:00.', 'The clock restarts at 2:00 when the first player joins': 'Le chrono repart à 2:00 quand le premier joueur rejoint', 'BOTS TAKE THE EMPTY HORSES': 'LES BOTS PRENNENT LES CHEVAUX LIBRES', 'Get ready…': 'Préparez-vous…', 'GO!': 'PARTEZ !', 'YOU WON {n}!': 'TU AS GAGNÉ {n} !', 'YOU WON!': 'TU AS GAGNÉ !', '#{n} {name} WINS': 'N°{n} {name} GAGNE', 'Ridden for {who}': 'Monté pour {who}', 'Desert': 'Désert', 'Forest': 'Forêt', 'Snow': 'Neige', 'RACE BOARD': 'TABLEAU DES COURSES', '{n} on the horses': '{n} misés sur les chevaux', 'Free: click to pick': 'Libre : clique pour choisir', 'Free': 'Libre', 'Your pick': 'Ton choix', 'HORSE RACING': 'COURSE DE CHEVAUX', 'Horse Racing': 'Course de chevaux', 'OPEN · bets close in {t}': 'OUVERT · paris fermés dans {t}', "They're racing: watch it": 'Ils courent : regarde', 'Next race in {t}': 'Prochaine course dans {t}', '5 horses, bet on one': '5 chevaux, mise sur un', 'Horse Racing is paused for a moment. Nothing you own is lost.': 'La Course de chevaux est en pause un moment. Tu ne perds rien.', 'The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.': 'La prochaine course ouvre dans environ {t}. Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart.', 'Last race': 'Dernière course', 'Every horse is taken. Watch the race!': 'Tous les chevaux sont pris. Regarde la course !', 'You need at least {n} to bet.': 'Il te faut au moins {n} pour miser.', 'Bet on this horse': 'Miser sur ce cheval', 'Click a free horse on the board': 'Clique un cheval libre sur le tableau', 'Too late: the bets are closed': 'Trop tard : les paris sont fermés', '#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)': 'N°{n} : {p} de chances · s’il gagne tu reçois {w} (ta mise + {s} % des autres)', 'Bet {n} coins on #{h} {name}? That is {p}% of your coins.': 'Miser {n} pièces sur le n°{h} {name} ? C’est {p} % de tes pièces.', "You're on #{n} {name}. Good luck!": 'Tu es sur le n°{n} {name}. Bonne chance !', "Your chance to win is your share of all the money on the horses. The winner gets their bet back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.": 'Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. Le gagnant récupère sa mise plus {s} % de celles des autres. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.', 'HORSE RACE IS OPEN': 'LA COURSE DE CHEVAUX EST OUVERTE', 'Bets close in about {t}. Bet in Games > Horse Racing': 'Les paris ferment dans environ {t}. Mise dans Jeux > Course de chevaux', 'Red Rocket': 'Fusée Rouge', 'Blue Thunder': 'Tonnerre Bleu', 'Green Clover': 'Trèfle Vert', 'Golden Sun': 'Soleil d’Or', 'Purple Storm': 'Tempête Violette', 'The bets for this race are closed': 'Les paris de cette course sont fermés', 'Someone just took this horse: pick another': 'Quelqu’un vient de prendre ce cheval : choisis-en un autre', 'You already have a horse in this race': 'Tu as déjà un cheval dans cette course', 'Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.': 'Limitée (calendrier de l’Avent) : aussi bonne que la Caisse Top Tier. Toujours un badge Épique ou Légendaire, avec une chance de Mythique.', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 999 fois ta mise.', "NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's": 'NOUVEAU : Course de chevaux. 5 chevaux, choisis-en un et mise : ta chance est ta part de l’argent. Le gagnant récupère sa mise plus 80 % de celles des autres', 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Si personne ne rejoint, les bots jouent quand même', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)': 'Mises jusqu’à la moitié de tes pièces. Au-delà de 10 000, on te demande d’abord, en or (en rouge si c’est une grosse part de tes pièces)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5': 'Puissance 4 Professionnel paie ×999. Jeu des gobelets : Facile ×1,2, Moyen ×2, Difficile ×3, Expert ×5', "A coloured app font now colours the app's text too": 'Une police colorée colore maintenant aussi le texte de l’app', 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)': 'Bots du Mini Golf corrigés : plus de passage à travers les murs ni de glissade sur tout le parcours, et ils jouent chacun leur tour (tu attends leur balle)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar': 'Mini Golf et Wave Rush sont dans Gagner des pièces ; Coinflip est sous le calendrier de l’Avent', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case': 'Anciennes caisses retirées (ceux qui en avaient ont reçu leur prix en pièces). Les caisses Hiver et Cadeau sont maintenant aussi bonnes que la Caisse Top Tier'})      # 6.3
+FR.update({'NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too': 'NOUVEAU : 10 bannières, cadres et thèmes de plus (Lagoon, Pêche, Forme d’onde, Radar, Or rose…) et chaque bannière, cadre et thème existe maintenant jusqu’à 6 autres couleurs : plus de 900 nouveaux looks. Choisis la couleur dans chaque design de la boutique, ils sont aussi dans les caisses', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%': 'La Course de chevaux paie maintenant les trois premiers : le 1er récupère 100 % de sa mise et 70 % des gains, le 2e 25 % et 20 %, le 3e 5 % et 10 %', "Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse's wins. Hover anywhere to see the details": 'Course de chevaux : un Historique sous le menu avec les vainqueurs, un graphique façon bourse des cagnottes, une bougie par course et les victoires de chaque cheval. Survole pour voir les détails', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)': 'La Course de chevaux et le Jackpot ne peuvent plus être ouverts avant leur ouverture (l’historique reste visible)'})      # 6.5 news
+FR.update({
+ "The next race opens in about {t}": "La prochaine course ouvre dans environ {t}",
+ "{p} PLACE: +{n}": "{p} PLACE : +{n}", "2ND": "2E", "3RD": "3E",
+ "#{n}: {p} chance · 1st place pays about {w} · 2nd and 3rd get a smaller share": "N°{n} : {p} de chances · la 1re place paie environ {w} · la 2e et la 3e reçoivent une part plus petite",
+ "Your chance to win is your share of all the money on the horses. 1st place gets their whole bet back and 70% of the winnings, 2nd gets 25% of their bet back and 20%, 3rd gets 5% back and 10%. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.":
+ "Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. La 1re place récupère toute sa mise et 70 % des gains, la 2e récupère 25 % de sa mise et 20 %, la 3e récupère 5 % et 10 %. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.",
+ "1st place: 100% of their bet back and 70% of the winnings. 2nd: 25% back and 20%. 3rd: 5% back and 10%. (The winnings are all the money that is not given back.)":
+ "1re place : 100 % de sa mise et 70 % des gains. 2e : 25 % de sa mise et 20 %. 3e : 5 % et 10 %. (Les gains sont tout l’argent qui n’est pas rendu.)",
+ "RACE HISTORY": "HISTORIQUE DES COURSES",
+ "The races will be listed here once the first one is over.": "Les courses apparaîtront ici dès que la première sera terminée.",
+ "{n} races · {c} bet in total": "{n} courses · {c} misés au total",
+ "Winners, newest first": "Vainqueurs, du plus récent au plus ancien",
+ "Pot of each race": "Cagnotte de chaque course",
+ "HIGH {v}": "HAUT {v}", "LOW {v}": "BAS {v}",
+ "Bets: smallest to biggest · average to the winner's": "Mises : de la plus petite à la plus grande · de la moyenne à celle du gagnant",
+ "Money on each horse": "Argent sur chaque cheval",
+ "Wins by horse, all {n} races": "Victoires par cheval, sur {n} courses",
+ "#{n} {name} won": "N°{n} {name} a gagné",
+ "1st #{a} · 2nd #{b} · 3rd #{c}": "1er n°{a} · 2e n°{b} · 3e n°{c}",
+ "Pot {v}": "Cagnotte {v}",
+ "Biggest bet {a} · smallest {b}": "Plus grosse mise {a} · plus petite {b}",
+ "Average bet {a} · winner's {b}": "Mise moyenne {a} · celle du gagnant {b}",
+ "Favourite: #{n} ({v}){s}": "Favori : n°{n} ({v}){s}",
+ " · it won": " · il a gagné", " · UPSET": " · SURPRISE",
+ "That day: {n} races · pot high {a} · low {b}": "Ce jour-là : {n} courses · cagnotte max {a} · min {b}",
+ "Winner's pay: ×{m}": "Gain du vainqueur : ×{m}",
+ "{a} wins · {b} second · {c} third": "{a} victoires · {b} deuxièmes places · {c} troisièmes",
+ "Win rate {p}% (fair: 20%)": "Taux de victoire {p} % (équitable : 20 %)",
+ "Best streak {n} · now {m}": "Meilleure série {n} · actuelle {m}",
+ "Average bet on it {v}": "Mise moyenne dessus {v}",
+ "Biggest bet on it {v}": "Plus grosse mise dessus {v}",
+ "Biggest pot it won {v}": "Plus grosse cagnotte gagnée {v}",
+})      # 6.5
 FR.update({'NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more': 'NOUVEAU : 12 bannières, 12 cadres de profil et 12 thèmes de couleurs d’app, aucun saisonnier : Prairie, Glitch, Kaléidoscope, Or liquide, Ailes, Plasma, Abysses, Or rose et plus', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too': 'NOUVEAU : un sixième badge Nature, la Feuille, dans la Caisse Nature (et toutes ses couleurs). La boutique et les Caisses Bannière, Cadre et Couleurs d’app ont aussi les nouveautés', 'Meadow': 'Prairie', 'Paper': 'Papier', 'Clouds': 'Nuages', 'Bokeh': 'Bokeh', 'Pixels': 'Pixels', 'Ribbons': 'Rubans', 'Sunbeams': 'Rayons de soleil', 'Starry Desert': 'Désert étoilé', 'Kaleidoscope': 'Kaléidoscope', 'Liquid Gold': 'Or liquide', 'Meteor Shower': 'Pluie de météores', 'Daisy': 'Pâquerette', 'Spectrum': 'Spectre', 'Void': 'Néant', 'Wings': 'Ailes', 'Mocha': 'Moka', 'Cobalt': 'Cobalt', 'Lavender': 'Lavande', 'Rust': 'Rouille', 'Graphite': 'Graphite', 'Gold Rush': 'Ruée vers l’or', 'Abyss': 'Abysses', 'Rose Gold': 'Or rose', 'Rematch': 'Revanche', 'Waiting for {name}…': 'En attente de {name}…', 'You are ready. The duel starts when {name} is ready too.': 'Tu es prêt. Le duel commence quand {name} est prêt aussi.', 'Accept the rematch': 'Accepter la revanche', '{name} wants a rematch!': '{name} veut une revanche !', 'Ready up and play again with {name}': 'Sois prêt et rejoue avec {name}', 'You crashed at {n} m  ·  watching {name}': 'Tu as crashé à {n} m  ·  tu regardes {name}', 'Wave Rush duels: the other player now moves smoothly instead of lagging and running into walls (you see them a moment behind, exactly as they really flew)': 'Duels Wave Rush : l’autre joueur bouge maintenant de façon fluide au lieu de ramer et de foncer dans les murs (tu le vois un instant en retard, exactement comme il a volé)', 'Wave Rush duels: when you crash you keep watching the other player until they crash too, then the result comes up': 'Duels Wave Rush : quand tu crashes, tu continues de regarder l’autre joueur jusqu’à son crash, puis le résultat s’affiche', 'Wave Rush duels: a Rematch button after the duel. When both players press it, a new duel starts with the same bet': 'Duels Wave Rush : un bouton Revanche après le duel. Quand les deux joueurs l’appuient, un nouveau duel commence avec la même mise'})      # 6.4
 FR.update({'The pawn shop allows 10 exchanges an hour, not 5': 'Le prêteur sur gages accepte 10 échanges par heure, pas 5'})      # 6.2.8
 FR.update({'Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works': 'Prêteur sur gages : vends plusieurs exemplaires d’un objet d’un coup, un gros compteur de 5 échanges par heure, et Refuser marche toujours', 'Exchange · {n}/10 left': 'Échange · {n}/10 restants', 'No exchanges left': 'Plus d’échange', 'No exchanges left this hour': 'Plus d’échange cette heure', 'EXCHANGES THIS HOUR': 'ÉCHANGES CETTE HEURE', 'Pawn shop: take {n} of {m}': 'Prêteur sur gages : en prendre {n} sur {m}', 'Quick sell ×{n}': 'Vente rapide ×{n}', 'All': 'Tous'})      # 6.2.7
@@ -11866,6 +12078,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.5", ['NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%', 'Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse\'s wins. Hover anywhere to see the details', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)']),
     ("6.4", ['NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too', 'Wave Rush duels: the other player now moves smoothly instead of lagging and running into walls (you see them a moment behind, exactly as they really flew)', 'Wave Rush duels: when you crash you keep watching the other player until they crash too, then the result comes up', 'Wave Rush duels: a Rematch button after the duel. When both players press it, a new duel starts with the same bet']),
     ("6.3", ["NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's", 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5', "A coloured app font now colours the app's text too", 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case']),
     ("6.2.8", ['The pawn shop allows 10 exchanges an hour, not 5']),
@@ -15468,7 +15681,18 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("goldrush", "Gold Rush", "#FFC93C", "#FF9F1C", dict(glow=3, stars=56, links=12, comets=5, sparkles=12, edge="goldshine")),
                ("pulse", "Pulse", "#FF2BD6", "#7C4DFF", dict(glow=3, stars=60, links=14, comets=6, aurora=True, sparkles=10, edge="shine")),
                ("abyss", "Abyss", "#2FE0FF", "#0A2A6B", dict(glow=3, stars=64, comets=6, aurora=True, sparkles=8, edge="shine")),
-               ("rosegold", "Rose Gold", "#F7B7A3", "#E08FA0", dict(glow=3, stars=58, sparkles=14, edge="goldshine"))]
+               ("rosegold", "Rose Gold", "#F7B7A3", "#E08FA0", dict(glow=3, stars=58, sparkles=14, edge="goldshine")),
+               # 6.5: ten more (Rare, Special, Epic)
+               ("peach", "Peach", "#FFB08A", "#FFE0C8", dict(glow=2, stars=18, sparkles=3)),
+               ("slate", "Slate", "#8FA3B8", "#4A5A6C", dict(glow=2, stars=26, links=6)),
+               ("honey", "Honey", "#FFB627", "#FFE08A", dict(glow=2, stars=22, sparkles=5)),
+               ("berry", "Berry", "#C03AD8", "#FF6FA8", dict(glow=3, stars=36, sparkles=7, comets=2)),
+               ("twilight", "Twilight", "#7C6BFF", "#FF8FB1", dict(glow=3, stars=48, comets=3, links=8)),
+               ("coral", "Coral", "#FF7A6B", "#20C6B6", dict(glow=3, stars=34, aurora=True, sparkles=6)),
+               ("wasabi", "Wasabi", "#9AE62E", "#E8FFB0", dict(glow=3, stars=40, links=10, edge="shine")),
+               ("solar", "Solar Flare", "#FF8A1F", "#FFD84D", dict(glow=3, stars=52, comets=6, sparkles=12, edge="goldshine")),
+               ("nightbloom", "Night Bloom", "#E04BFF", "#4FD8FF", dict(glow=3, stars=60, aurora=True, sparkles=12, comets=4, edge="shine")),
+               ("cyber", "Cyber", "#35E6FF", "#FF2BD6", dict(glow=3, stars=64, links=14, comets=6, sparkles=10, edge="shine"))]
 # profile looks (2.6): a banner behind your profile, a frame around your picture, a tag after your name
 BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("stripes", "Stripes"), ("dots", "Dots"),
            ("carbon", "Carbon"), ("dunes", "Dunes"),
@@ -15486,7 +15710,9 @@ BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Ros
            ("sunrise", "Sunrise"), ("bubbles", "Bubbles"), ("plasma", "Plasma"), ("rain", "Neon Rain"),
            ("fireworks", "Fireworks"), ("hyperspace", "Hyperspace"),
            # 6.4: twelve more, none seasonal
-           ("meadow", "Meadow"), ("paper", "Paper"), ("clouds", "Clouds"), ("bokeh", "Bokeh"), ("pixels", "Pixels"), ("ribbons", "Ribbons"), ("glitch", "Glitch"), ("sunbeams", "Sunbeams"), ("stardesert", "Starry Desert"), ("kaleido", "Kaleidoscope"), ("liquidgold", "Liquid Gold"), ("meteors", "Meteor Shower")]
+           ("meadow", "Meadow"), ("paper", "Paper"), ("clouds", "Clouds"), ("bokeh", "Bokeh"), ("pixels", "Pixels"), ("ribbons", "Ribbons"), ("glitch", "Glitch"), ("sunbeams", "Sunbeams"), ("stardesert", "Starry Desert"), ("kaleido", "Kaleidoscope"), ("liquidgold", "Liquid Gold"), ("meteors", "Meteor Shower"),
+           # 6.5: ten more
+           ("lagoon", "Lagoon"), ("peach", "Peach"), ("zigzag", "Zigzag"), ("waveform", "Waveform"), ("radar", "Radar"), ("constellations", "Star Maps"), ("equalizer", "Equalizer"), ("orbit", "Orbit"), ("spirograph", "Spirograph"), ("goldveins", "Gold Veins")]
 FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
           ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine"),
@@ -15495,18 +15721,421 @@ FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "
           ("firstfrost", "First Frost 2026"),
           ("chrome", "Chrome"), ("ripple", "Ripple"), ("comet", "Comet"), ("eclipse", "Eclipse"),
           # 6.4: twelve more, none seasonal
-          ("gold", "Gold"), ("emerald", "Emerald"), ("sapphire", "Sapphire"), ("beads", "Beads"), ("chain", "Chain"), ("daisy", "Daisy"), ("plasma", "Plasma"), ("sparks", "Sparks"), ("constellation", "Constellation"), ("spectrum", "Spectrum"), ("void", "Void"), ("wings", "Wings")]
+          ("gold", "Gold"), ("emerald", "Emerald"), ("sapphire", "Sapphire"), ("beads", "Beads"), ("chain", "Chain"), ("daisy", "Daisy"), ("plasma", "Plasma"), ("sparks", "Sparks"), ("constellation", "Constellation"), ("spectrum", "Spectrum"), ("void", "Void"), ("wings", "Wings"),
+          # 6.5: ten more
+          ("rosegold", "Rose Gold"), ("onyx", "Onyx"), ("copper", "Copper"), ("rope", "Rope"), ("bubbles", "Bubbles"), ("pixel", "Pixel"), ("lightning", "Lightning"), ("orbitals", "Orbitals"), ("galaxy", "Galaxy"), ("diamond", "Diamond")]
 TAGS = [("og", "OG")]
-MOVING = {"meadow", "paper", "clouds", "bokeh", "pixels", "ribbons", "glitch", "sunbeams", "stardesert", "kaleido", "liquidgold", "meteors",
+MOVING = {"lagoon", "peach", "zigzag", "waveform", "radar", "constellations", "equalizer", "orbit", "spirograph", "goldveins",
+          "rosegold", "onyx", "copper", "rope", "bubbles", "pixel", "lightning", "orbitals", "galaxy", "diamond",
+          "meadow", "paper", "clouds", "bokeh", "pixels", "ribbons", "glitch", "sunbeams", "stardesert", "kaleido", "liquidgold", "meteors",
           "gold", "emerald", "sapphire", "beads", "chain", "daisy", "plasma", "sparks", "constellation", "spectrum", "void", "wings",
           "sunrise", "bubbles", "plasma", "rain", "fireworks", "hyperspace", "reef", "thunder", "blackhole", "crystal", "ripple", "comet", "eclipse", "firstfrost", "yuletide", "tides", "koi", "synthwave", "supernova", "dragon", "hearth", "northstar", "wreath", "pulse", "thorns", "gears",
           "phoenix", "snowflake", "holly", "waves", "stripes", "aurora", "circuit", "galaxy", "lava", "matrix", "prism", "dashed", "flame", "orbit",
           "rainbow", "neon", "og", "snow", "ember", "nebula", "frost", "star", "halo", "jungle", "sakura", "vine",
           "honeycomb", "comet", "deepsea", "city", "fireflies", "storm", "vortex"}
+_CW_ROWS: dict = {
+    "banner": [
+        ("blackhole-azure", "blackhole", "Azure", "p120"), ("blackhole-lime", "blackhole", "Lime", "p201"), ("blackhole-emerald", "blackhole", "Emerald", "p102"),
+        ("blackhole-orange", "blackhole", "Orange", "p021"), ("blackhole-violet", "blackhole", "Violet", "p210"), ("blackhole-silver", "blackhole", "Silver", "tD6DEE6"),
+        ("bokeh-teal", "bokeh", "Teal", "p120"), ("bokeh-gold", "bokeh", "Gold", "p201"), ("bokeh-azure", "bokeh", "Azure", "t3D8BFF"),
+        ("bokeh-rose", "bokeh", "Rose", "tFF6FA8"), ("bokeh-silver", "bokeh", "Silver", "tD6DEE6"), ("bubbles-lime", "bubbles", "Lime", "p120"),
+        ("bubbles-magenta", "bubbles", "Magenta", "p201"), ("bubbles-violet", "bubbles", "Violet", "p102"), ("bubbles-teal", "bubbles", "Teal", "p021"),
+        ("bubbles-gold", "bubbles", "Gold", "p210"), ("bubbles-silver", "bubbles", "Silver", "tD6DEE6"), ("canyon-violet", "canyon", "Violet", "p120"),
+        ("canyon-emerald", "canyon", "Emerald", "p201"), ("canyon-lime", "canyon", "Lime", "p102"), ("canyon-rose", "canyon", "Rose", "p021"),
+        ("canyon-azure", "canyon", "Azure", "p210"), ("canyon-silver", "canyon", "Silver", "tD6DEE6"), ("carbon-violet", "carbon", "Violet", "tA65CFF"),
+        ("carbon-magenta", "carbon", "Magenta", "tE64CD9"), ("carbon-crimson", "carbon", "Crimson", "tFF3B4E"), ("carbon-gold", "carbon", "Gold", "tFFC83D"),
+        ("carbon-lime", "carbon", "Lime", "tA8E63D"), ("carbon-silver", "carbon", "Silver", "tD6DEE6"), ("circuit-orange", "circuit", "Orange", "p120"),
+        ("circuit-violet", "circuit", "Violet", "p201"), ("circuit-rose", "circuit", "Rose", "p102"), ("circuit-azure", "circuit", "Azure", "p021"),
+        ("circuit-lime", "circuit", "Lime", "p210"), ("circuit-silver", "circuit", "Silver", "tD6DEE6"), ("city-emerald", "city", "Emerald", "p120"),
+        ("city-crimson", "city", "Crimson", "p201"), ("city-cyan", "city", "Cyan", "t33D6FF"), ("city-magenta", "city", "Magenta", "tE64CD9"),
+        ("city-gold", "city", "Gold", "tFFC83D"), ("city-silver", "city", "Silver", "tD6DEE6"), ("clouds-lime", "clouds", "Lime", "p120"),
+        ("clouds-rose", "clouds", "Rose", "p201"), ("clouds-violet", "clouds", "Violet", "p102"), ("clouds-emerald", "clouds", "Emerald", "p021"),
+        ("clouds-orange", "clouds", "Orange", "p210"), ("clouds-silver", "clouds", "Silver", "tD6DEE6"), ("comet-lime", "comet", "Lime", "p120"),
+        ("comet-rose", "comet", "Rose", "p201"), ("comet-indigo", "comet", "Indigo", "p102"), ("comet-emerald", "comet", "Emerald", "p021"),
+        ("comet-orange", "comet", "Orange", "p210"), ("comet-silver", "comet", "Silver", "tD6DEE6"), ("crystal-lime", "crystal", "Lime", "p120"),
+        ("crystal-rose", "crystal", "Rose", "p201"), ("crystal-violet", "crystal", "Violet", "p102"), ("crystal-emerald", "crystal", "Emerald", "p021"),
+        ("crystal-orange", "crystal", "Orange", "p210"), ("crystal-silver", "crystal", "Silver", "tD6DEE6"), ("deepsea-lime", "deepsea", "Lime", "p120"),
+        ("deepsea-magenta", "deepsea", "Magenta", "p201"), ("deepsea-violet", "deepsea", "Violet", "p102"), ("deepsea-teal", "deepsea", "Teal", "p021"),
+        ("deepsea-gold", "deepsea", "Gold", "p210"), ("deepsea-silver", "deepsea", "Silver", "tD6DEE6"), ("dots-gold", "dots", "Gold", "p120"),
+        ("dots-magenta", "dots", "Magenta", "p201"), ("dots-azure", "dots", "Azure", "t3D8BFF"), ("dots-rose", "dots", "Rose", "tFF6FA8"),
+        ("dots-silver", "dots", "Silver", "tD6DEE6"), ("dragon-indigo", "dragon", "Indigo", "p120"), ("dragon-emerald", "dragon", "Emerald", "p201"),
+        ("dragon-gold", "dragon", "Gold", "tFFC83D"), ("dragon-lime", "dragon", "Lime", "tA8E63D"), ("dragon-teal", "dragon", "Teal", "t19C9B0"),
+        ("dragon-silver", "dragon", "Silver", "tD6DEE6"), ("dunes-violet", "dunes", "Violet", "p120"), ("dunes-emerald", "dunes", "Emerald", "p201"),
+        ("dunes-lime", "dunes", "Lime", "p102"), ("dunes-rose", "dunes", "Rose", "p021"), ("dunes-azure", "dunes", "Azure", "p210"),
+        ("dunes-silver", "dunes", "Silver", "tD6DEE6"), ("dusk-cyan", "dusk", "Cyan", "p120"), ("dusk-lime", "dusk", "Lime", "p201"),
+        ("dusk-crimson", "dusk", "Crimson", "tFF3B4E"), ("dusk-emerald", "dusk", "Emerald", "t2FD27A"), ("dusk-indigo", "dusk", "Indigo", "t6A5CFF"),
+        ("dusk-silver", "dusk", "Silver", "tD6DEE6"), ("ember-indigo", "ember", "Indigo", "p120"), ("ember-emerald", "ember", "Emerald", "p201"),
+        ("ember-lime", "ember", "Lime", "p102"), ("ember-rose", "ember", "Rose", "p021"), ("ember-azure", "ember", "Azure", "p210"),
+        ("ember-silver", "ember", "Silver", "tD6DEE6"), ("fireflies-crimson", "fireflies", "Crimson", "p120"), ("fireflies-indigo", "fireflies", "Indigo", "p201"),
+        ("fireflies-magenta", "fireflies", "Magenta", "tE64CD9"), ("fireflies-gold", "fireflies", "Gold", "tFFC83D"), ("fireflies-lime", "fireflies", "Lime", "tA8E63D"),
+        ("fireflies-silver", "fireflies", "Silver", "tD6DEE6"), ("fireworks-gold", "fireworks", "Gold", "tFFC83D"), ("fireworks-lime", "fireworks", "Lime", "tA8E63D"),
+        ("fireworks-emerald", "fireworks", "Emerald", "t2FD27A"), ("fireworks-cyan", "fireworks", "Cyan", "t33D6FF"), ("fireworks-indigo", "fireworks", "Indigo", "t6A5CFF"),
+        ("fireworks-silver", "fireworks", "Silver", "tD6DEE6"), ("galaxy-emerald", "galaxy", "Emerald", "p120"), ("galaxy-orange", "galaxy", "Orange", "p201"),
+        ("galaxy-azure", "galaxy", "Azure", "p102"), ("galaxy-lime", "galaxy", "Lime", "p021"), ("galaxy-rose", "galaxy", "Rose", "p210"),
+        ("galaxy-silver", "galaxy", "Silver", "tD6DEE6"), ("glitch-emerald", "glitch", "Emerald", "p120"), ("glitch-crimson", "glitch", "Crimson", "p201"),
+        ("glitch-gold", "glitch", "Gold", "tFFC83D"), ("glitch-lime", "glitch", "Lime", "tA8E63D"), ("glitch-teal", "glitch", "Teal", "t19C9B0"),
+        ("glitch-silver", "glitch", "Silver", "tD6DEE6"), ("grid-lime", "grid", "Lime", "p120"), ("grid-rose", "grid", "Rose", "p201"),
+        ("grid-violet", "grid", "Violet", "p102"), ("grid-emerald", "grid", "Emerald", "p021"), ("grid-orange", "grid", "Orange", "p210"),
+        ("grid-silver", "grid", "Silver", "tD6DEE6"), ("honeycomb-violet", "honeycomb", "Violet", "p120"), ("honeycomb-teal", "honeycomb", "Teal", "p201"),
+        ("honeycomb-lime", "honeycomb", "Lime", "p102"), ("honeycomb-magenta", "honeycomb", "Magenta", "p021"), ("honeycomb-cyan", "honeycomb", "Cyan", "p210"),
+        ("honeycomb-silver", "honeycomb", "Silver", "tD6DEE6"), ("hyperspace-lime", "hyperspace", "Lime", "p120"), ("hyperspace-rose", "hyperspace", "Rose", "p201"),
+        ("hyperspace-indigo", "hyperspace", "Indigo", "p102"), ("hyperspace-emerald", "hyperspace", "Emerald", "p021"), ("hyperspace-orange", "hyperspace", "Orange", "p210"),
+        ("hyperspace-silver", "hyperspace", "Silver", "tD6DEE6"), ("jungle-orange", "jungle", "Orange", "p120"), ("jungle-violet", "jungle", "Violet", "p201"),
+        ("jungle-rose", "jungle", "Rose", "p102"), ("jungle-azure", "jungle", "Azure", "p021"), ("jungle-lime", "jungle", "Lime", "p210"),
+        ("jungle-silver", "jungle", "Silver", "tD6DEE6"), ("kaleido-crimson", "kaleido", "Crimson", "tFF3B4E"), ("kaleido-gold", "kaleido", "Gold", "tFFC83D"),
+        ("kaleido-lime", "kaleido", "Lime", "tA8E63D"), ("kaleido-emerald", "kaleido", "Emerald", "t2FD27A"), ("kaleido-cyan", "kaleido", "Cyan", "t33D6FF"),
+        ("kaleido-silver", "kaleido", "Silver", "tD6DEE6"), ("koi-gold", "koi", "Gold", "p120"), ("koi-magenta", "koi", "Magenta", "p201"),
+        ("koi-azure", "koi", "Azure", "t3D8BFF"), ("koi-rose", "koi", "Rose", "tFF6FA8"), ("koi-silver", "koi", "Silver", "tD6DEE6"),
+        ("lava-violet", "lava", "Violet", "p120"), ("lava-emerald", "lava", "Emerald", "p201"), ("lava-lime", "lava", "Lime", "p102"),
+        ("lava-rose", "lava", "Rose", "p021"), ("lava-azure", "lava", "Azure", "p210"), ("lava-silver", "lava", "Silver", "tD6DEE6"),
+        ("liquidgold-violet", "liquidgold", "Violet", "p120"), ("liquidgold-teal", "liquidgold", "Teal", "p201"), ("liquidgold-lime", "liquidgold", "Lime", "p102"),
+        ("liquidgold-magenta", "liquidgold", "Magenta", "p021"), ("liquidgold-cyan", "liquidgold", "Cyan", "p210"), ("liquidgold-silver", "liquidgold", "Silver", "tD6DEE6"),
+        ("matrix-orange", "matrix", "Orange", "p120"), ("matrix-indigo", "matrix", "Indigo", "p201"), ("matrix-rose", "matrix", "Rose", "p102"),
+        ("matrix-azure", "matrix", "Azure", "p021"), ("matrix-lime", "matrix", "Lime", "p210"), ("matrix-silver", "matrix", "Silver", "tD6DEE6"),
+        ("meadow-gold", "meadow", "Gold", "p120"), ("meadow-violet", "meadow", "Violet", "p201"), ("meadow-azure", "meadow", "Azure", "t3D8BFF"),
+        ("meadow-rose", "meadow", "Rose", "tFF6FA8"), ("meadow-silver", "meadow", "Silver", "tD6DEE6"), ("meteors-emerald", "meteors", "Emerald", "p120"),
+        ("meteors-crimson", "meteors", "Crimson", "p201"), ("meteors-cyan", "meteors", "Cyan", "t33D6FF"), ("meteors-magenta", "meteors", "Magenta", "tE64CD9"),
+        ("meteors-gold", "meteors", "Gold", "tFFC83D"), ("meteors-silver", "meteors", "Silver", "tD6DEE6"), ("mint-gold", "mint", "Gold", "p120"),
+        ("mint-violet", "mint", "Violet", "p201"), ("mint-rose", "mint", "Rose", "tFF6FA8"), ("mint-lime", "mint", "Lime", "tA8E63D"),
+        ("mint-azure", "mint", "Azure", "t3D8BFF"), ("mint-silver", "mint", "Silver", "tD6DEE6"), ("mosaic-lime", "mosaic", "Lime", "p120"),
+        ("mosaic-rose", "mosaic", "Rose", "p201"), ("mosaic-violet", "mosaic", "Violet", "p102"), ("mosaic-emerald", "mosaic", "Emerald", "p021"),
+        ("mosaic-orange", "mosaic", "Orange", "p210"), ("mosaic-silver", "mosaic", "Silver", "tD6DEE6"), ("nebula-emerald", "nebula", "Emerald", "p120"),
+        ("nebula-crimson", "nebula", "Crimson", "p201"), ("nebula-violet", "nebula", "Violet", "tA65CFF"), ("nebula-magenta", "nebula", "Magenta", "tE64CD9"),
+        ("nebula-gold", "nebula", "Gold", "tFFC83D"), ("nebula-silver", "nebula", "Silver", "tD6DEE6"), ("neon-gold", "neon", "Gold", "tFFC83D"),
+        ("neon-lime", "neon", "Lime", "tA8E63D"), ("neon-emerald", "neon", "Emerald", "t2FD27A"), ("neon-cyan", "neon", "Cyan", "t33D6FF"),
+        ("neon-magenta", "neon", "Magenta", "tE64CD9"), ("neon-silver", "neon", "Silver", "tD6DEE6"), ("paper-azure", "paper", "Azure", "t3D8BFF"),
+        ("paper-violet", "paper", "Violet", "tA65CFF"), ("paper-magenta", "paper", "Magenta", "tE64CD9"), ("paper-crimson", "paper", "Crimson", "tFF3B4E"),
+        ("paper-gold", "paper", "Gold", "tFFC83D"), ("paper-silver", "paper", "Silver", "tD6DEE6"), ("pastel-crimson", "pastel", "Crimson", "tFF3B4E"),
+        ("pastel-gold", "pastel", "Gold", "tFFC83D"), ("pastel-lime", "pastel", "Lime", "tA8E63D"), ("pastel-emerald", "pastel", "Emerald", "t2FD27A"),
+        ("pastel-cyan", "pastel", "Cyan", "t33D6FF"), ("pastel-silver", "pastel", "Silver", "tD6DEE6"), ("peaks-lime", "peaks", "Lime", "p120"),
+        ("peaks-rose", "peaks", "Rose", "p201"), ("peaks-indigo", "peaks", "Indigo", "p102"), ("peaks-emerald", "peaks", "Emerald", "p021"),
+        ("peaks-orange", "peaks", "Orange", "p210"), ("peaks-silver", "peaks", "Silver", "tD6DEE6"), ("pixels-lime", "pixels", "Lime", "p120"),
+        ("pixels-rose", "pixels", "Rose", "p201"), ("pixels-indigo", "pixels", "Indigo", "p102"), ("pixels-emerald", "pixels", "Emerald", "p021"),
+        ("pixels-orange", "pixels", "Orange", "p210"), ("pixels-silver", "pixels", "Silver", "tD6DEE6"), ("plasma-azure", "plasma", "Azure", "p120"),
+        ("plasma-lime", "plasma", "Lime", "p201"), ("plasma-emerald", "plasma", "Emerald", "p102"), ("plasma-gold", "plasma", "Gold", "p021"),
+        ("plasma-violet", "plasma", "Violet", "p210"), ("plasma-silver", "plasma", "Silver", "tD6DEE6"), ("prism-violet", "prism", "Violet", "tA65CFF"),
+        ("prism-magenta", "prism", "Magenta", "tE64CD9"), ("prism-crimson", "prism", "Crimson", "tFF3B4E"), ("prism-gold", "prism", "Gold", "tFFC83D"),
+        ("prism-lime", "prism", "Lime", "tA8E63D"), ("prism-silver", "prism", "Silver", "tD6DEE6"), ("rain-emerald", "rain", "Emerald", "p120"),
+        ("rain-crimson", "rain", "Crimson", "p201"), ("rain-gold", "rain", "Gold", "tFFC83D"), ("rain-lime", "rain", "Lime", "tA8E63D"),
+        ("rain-teal", "rain", "Teal", "t19C9B0"), ("rain-silver", "rain", "Silver", "tD6DEE6"), ("reef-lime", "reef", "Lime", "p120"),
+        ("reef-magenta", "reef", "Magenta", "p201"), ("reef-violet", "reef", "Violet", "p102"), ("reef-teal", "reef", "Teal", "p021"),
+        ("reef-gold", "reef", "Gold", "p210"), ("reef-silver", "reef", "Silver", "tD6DEE6"), ("ribbons-emerald", "ribbons", "Emerald", "p120"),
+        ("ribbons-orange", "ribbons", "Orange", "p201"), ("ribbons-azure", "ribbons", "Azure", "p102"), ("ribbons-lime", "ribbons", "Lime", "p021"),
+        ("ribbons-rose", "ribbons", "Rose", "p210"), ("ribbons-silver", "ribbons", "Silver", "tD6DEE6"), ("rose-azure", "rose", "Azure", "p120"),
+        ("rose-lime", "rose", "Lime", "p201"), ("rose-emerald", "rose", "Emerald", "p102"), ("rose-orange", "rose", "Orange", "p021"),
+        ("rose-violet", "rose", "Violet", "p210"), ("rose-silver", "rose", "Silver", "tD6DEE6"), ("sakura-azure", "sakura", "Azure", "p120"),
+        ("sakura-lime", "sakura", "Lime", "p201"), ("sakura-emerald", "sakura", "Emerald", "p102"), ("sakura-orange", "sakura", "Orange", "p021"),
+        ("sakura-violet", "sakura", "Violet", "p210"), ("sakura-silver", "sakura", "Silver", "tD6DEE6"), ("slate-gold", "slate", "Gold", "tFFC83D"),
+        ("slate-lime", "slate", "Lime", "tA8E63D"), ("slate-emerald", "slate", "Emerald", "t2FD27A"), ("slate-indigo", "slate", "Indigo", "t6A5CFF"),
+        ("slate-magenta", "slate", "Magenta", "tE64CD9"), ("slate-silver", "slate", "Silver", "tD6DEE6"), ("stardesert-emerald", "stardesert", "Emerald", "p120"),
+        ("stardesert-orange", "stardesert", "Orange", "p201"), ("stardesert-azure", "stardesert", "Azure", "p102"), ("stardesert-lime", "stardesert", "Lime", "p021"),
+        ("stardesert-rose", "stardesert", "Rose", "p210"), ("stardesert-silver", "stardesert", "Silver", "tD6DEE6"), ("steel-lime", "steel", "Lime", "p120"),
+        ("steel-rose", "steel", "Rose", "p201"), ("steel-violet", "steel", "Violet", "p102"), ("steel-emerald", "steel", "Emerald", "p021"),
+        ("steel-orange", "steel", "Orange", "p210"), ("steel-silver", "steel", "Silver", "tD6DEE6"), ("storm-lime", "storm", "Lime", "p120"),
+        ("storm-rose", "storm", "Rose", "p201"), ("storm-indigo", "storm", "Indigo", "p102"), ("storm-emerald", "storm", "Emerald", "p021"),
+        ("storm-orange", "storm", "Orange", "p210"), ("storm-silver", "storm", "Silver", "tD6DEE6"), ("stripes-indigo", "stripes", "Indigo", "p120"),
+        ("stripes-emerald", "stripes", "Emerald", "p201"), ("stripes-lime", "stripes", "Lime", "p102"), ("stripes-rose", "stripes", "Rose", "p021"),
+        ("stripes-azure", "stripes", "Azure", "p210"), ("stripes-silver", "stripes", "Silver", "tD6DEE6"), ("sunbeams-lime", "sunbeams", "Lime", "p120"),
+        ("sunbeams-magenta", "sunbeams", "Magenta", "p201"), ("sunbeams-violet", "sunbeams", "Violet", "p102"), ("sunbeams-teal", "sunbeams", "Teal", "p021"),
+        ("sunbeams-gold", "sunbeams", "Gold", "p210"), ("sunbeams-silver", "sunbeams", "Silver", "tD6DEE6"), ("sunrise-azure", "sunrise", "Azure", "p120"),
+        ("sunrise-lime", "sunrise", "Lime", "p201"), ("sunrise-emerald", "sunrise", "Emerald", "p102"), ("sunrise-orange", "sunrise", "Orange", "p021"),
+        ("sunrise-violet", "sunrise", "Violet", "p210"), ("sunrise-silver", "sunrise", "Silver", "tD6DEE6"), ("sunset-indigo", "sunset", "Indigo", "p120"),
+        ("sunset-emerald", "sunset", "Emerald", "p201"), ("sunset-gold", "sunset", "Gold", "tFFC83D"), ("sunset-lime", "sunset", "Lime", "tA8E63D"),
+        ("sunset-teal", "sunset", "Teal", "t19C9B0"), ("sunset-silver", "sunset", "Silver", "tD6DEE6"), ("supernova-violet", "supernova", "Violet", "p120"),
+        ("supernova-emerald", "supernova", "Emerald", "p201"), ("supernova-lime", "supernova", "Lime", "p102"), ("supernova-rose", "supernova", "Rose", "p021"),
+        ("supernova-azure", "supernova", "Azure", "p210"), ("supernova-silver", "supernova", "Silver", "tD6DEE6"), ("synthwave-lime", "synthwave", "Lime", "p120"),
+        ("synthwave-crimson", "synthwave", "Crimson", "p201"), ("synthwave-orange", "synthwave", "Orange", "tFF8A2B"), ("synthwave-emerald", "synthwave", "Emerald", "t2FD27A"),
+        ("synthwave-cyan", "synthwave", "Cyan", "t33D6FF"), ("synthwave-silver", "synthwave", "Silver", "tD6DEE6"), ("thunder-lime", "thunder", "Lime", "p120"),
+        ("thunder-rose", "thunder", "Rose", "p201"), ("thunder-emerald", "thunder", "Emerald", "t2FD27A"), ("thunder-violet", "thunder", "Violet", "tA65CFF"),
+        ("thunder-magenta", "thunder", "Magenta", "tE64CD9"), ("thunder-silver", "thunder", "Silver", "tD6DEE6"), ("tides-lime", "tides", "Lime", "p120"),
+        ("tides-magenta", "tides", "Magenta", "p201"), ("tides-violet", "tides", "Violet", "tA65CFF"), ("tides-crimson", "tides", "Crimson", "tFF3B4E"),
+        ("tides-emerald", "tides", "Emerald", "t2FD27A"), ("tides-silver", "tides", "Silver", "tD6DEE6"), ("vortex-lime", "vortex", "Lime", "p120"),
+        ("vortex-crimson", "vortex", "Crimson", "p201"), ("vortex-gold", "vortex", "Gold", "tFFC83D"), ("vortex-emerald", "vortex", "Emerald", "t2FD27A"),
+        ("vortex-violet", "vortex", "Violet", "tA65CFF"), ("vortex-silver", "vortex", "Silver", "tD6DEE6"), ("waves-lime", "waves", "Lime", "p120"),
+        ("waves-rose", "waves", "Rose", "p201"), ("waves-violet", "waves", "Violet", "p102"), ("waves-emerald", "waves", "Emerald", "p021"),
+        ("waves-orange", "waves", "Orange", "p210"), ("waves-silver", "waves", "Silver", "tD6DEE6"), ("lagoon-gold", "lagoon", "Gold", "p120"),
+        ("lagoon-magenta", "lagoon", "Magenta", "p201"), ("lagoon-crimson", "lagoon", "Crimson", "tFF3B4E"), ("lagoon-azure", "lagoon", "Azure", "t3D8BFF"),
+        ("lagoon-silver", "lagoon", "Silver", "tD6DEE6"), ("peach-violet", "peach", "Violet", "p120"), ("peach-emerald", "peach", "Emerald", "p201"),
+        ("peach-lime", "peach", "Lime", "p102"), ("peach-rose", "peach", "Rose", "p021"), ("peach-azure", "peach", "Azure", "p210"),
+        ("peach-silver", "peach", "Silver", "tD6DEE6"), ("zigzag-emerald", "zigzag", "Emerald", "p120"), ("zigzag-orange", "zigzag", "Orange", "p201"),
+        ("zigzag-azure", "zigzag", "Azure", "p102"), ("zigzag-lime", "zigzag", "Lime", "p021"), ("zigzag-rose", "zigzag", "Rose", "p210"),
+        ("zigzag-silver", "zigzag", "Silver", "tD6DEE6"), ("waveform-emerald", "waveform", "Emerald", "p120"), ("waveform-crimson", "waveform", "Crimson", "p201"),
+        ("waveform-teal", "waveform", "Teal", "t19C9B0"), ("waveform-violet", "waveform", "Violet", "tA65CFF"), ("waveform-magenta", "waveform", "Magenta", "tE64CD9"),
+        ("waveform-silver", "waveform", "Silver", "tD6DEE6"), ("radar-orange", "radar", "Orange", "p120"), ("radar-violet", "radar", "Violet", "p201"),
+        ("radar-rose", "radar", "Rose", "p102"), ("radar-azure", "radar", "Azure", "p021"), ("radar-lime", "radar", "Lime", "p210"),
+        ("radar-silver", "radar", "Silver", "tD6DEE6"), ("constellations-lime", "constellations", "Lime", "p120"), ("constellations-crimson", "constellations", "Crimson", "p201"),
+        ("constellations-orange", "constellations", "Orange", "tFF8A2B"), ("constellations-emerald", "constellations", "Emerald", "t2FD27A"), ("constellations-cyan", "constellations", "Cyan", "t33D6FF"),
+        ("constellations-silver", "constellations", "Silver", "tD6DEE6"), ("equalizer-cyan", "equalizer", "Cyan", "t33D6FF"), ("equalizer-indigo", "equalizer", "Indigo", "t6A5CFF"),
+        ("equalizer-magenta", "equalizer", "Magenta", "tE64CD9"), ("equalizer-crimson", "equalizer", "Crimson", "tFF3B4E"), ("equalizer-gold", "equalizer", "Gold", "tFFC83D"),
+        ("equalizer-silver", "equalizer", "Silver", "tD6DEE6"), ("orbit-rose", "orbit", "Rose", "tFF6FA8"), ("orbit-orange", "orbit", "Orange", "tFF8A2B"),
+        ("orbit-lime", "orbit", "Lime", "tA8E63D"), ("orbit-emerald", "orbit", "Emerald", "t2FD27A"), ("orbit-cyan", "orbit", "Cyan", "t33D6FF"),
+        ("orbit-silver", "orbit", "Silver", "tD6DEE6"), ("spirograph-teal", "spirograph", "Teal", "p120"), ("spirograph-gold", "spirograph", "Gold", "p201"),
+        ("spirograph-cyan", "spirograph", "Cyan", "p102"), ("spirograph-lime", "spirograph", "Lime", "p021"), ("spirograph-magenta", "spirograph", "Magenta", "p210"),
+        ("spirograph-silver", "spirograph", "Silver", "tD6DEE6"), ("goldveins-violet", "goldveins", "Violet", "p120"), ("goldveins-teal", "goldveins", "Teal", "p201"),
+        ("goldveins-lime", "goldveins", "Lime", "p102"), ("goldveins-magenta", "goldveins", "Magenta", "p021"), ("goldveins-cyan", "goldveins", "Cyan", "p210"),
+        ("goldveins-silver", "goldveins", "Silver", "tD6DEE6"),
+    ],
+    "frame": [
+        ("beads-crimson", "beads", "Crimson", "tFF3B4E"), ("beads-gold", "beads", "Gold", "tFFC83D"), ("beads-lime", "beads", "Lime", "tA8E63D"),
+        ("beads-emerald", "beads", "Emerald", "t2FD27A"), ("beads-cyan", "beads", "Cyan", "t33D6FF"), ("beads-silver", "beads", "Silver", "tD6DEE6"),
+        ("bronze-violet", "bronze", "Violet", "p120"), ("bronze-emerald", "bronze", "Emerald", "p201"), ("bronze-lime", "bronze", "Lime", "p102"),
+        ("bronze-rose", "bronze", "Rose", "p021"), ("bronze-azure", "bronze", "Azure", "p210"), ("bronze-silver", "bronze", "Silver", "tD6DEE6"),
+        ("chain-magenta", "chain", "Magenta", "tE64CD9"), ("chain-crimson", "chain", "Crimson", "tFF3B4E"), ("chain-gold", "chain", "Gold", "tFFC83D"),
+        ("chain-lime", "chain", "Lime", "tA8E63D"), ("chain-emerald", "chain", "Emerald", "t2FD27A"), ("chain-silver", "chain", "Silver", "tD6DEE6"),
+        ("chrome-lime", "chrome", "Lime", "tA8E63D"), ("chrome-emerald", "chrome", "Emerald", "t2FD27A"), ("chrome-cyan", "chrome", "Cyan", "t33D6FF"),
+        ("chrome-indigo", "chrome", "Indigo", "t6A5CFF"), ("chrome-magenta", "chrome", "Magenta", "tE64CD9"), ("chrome-silver", "chrome", "Silver", "tD6DEE6"),
+        ("comet-lime", "comet", "Lime", "p120"), ("comet-rose", "comet", "Rose", "p201"), ("comet-violet", "comet", "Violet", "p102"),
+        ("comet-emerald", "comet", "Emerald", "p021"), ("comet-orange", "comet", "Orange", "p210"), ("comet-silver", "comet", "Silver", "tD6DEE6"),
+        ("constellation-lime", "constellation", "Lime", "p120"), ("constellation-crimson", "constellation", "Crimson", "p201"), ("constellation-orange", "constellation", "Orange", "tFF8A2B"),
+        ("constellation-emerald", "constellation", "Emerald", "t2FD27A"), ("constellation-cyan", "constellation", "Cyan", "t33D6FF"), ("constellation-silver", "constellation", "Silver", "tD6DEE6"),
+        ("crown-violet", "crown", "Violet", "p120"), ("crown-teal", "crown", "Teal", "p201"), ("crown-lime", "crown", "Lime", "p102"),
+        ("crown-magenta", "crown", "Magenta", "p021"), ("crown-cyan", "crown", "Cyan", "p210"), ("crown-silver", "crown", "Silver", "tD6DEE6"),
+        ("daisy-rose", "daisy", "Rose", "tFF6FA8"), ("daisy-orange", "daisy", "Orange", "tFF8A2B"), ("daisy-teal", "daisy", "Teal", "t19C9B0"),
+        ("daisy-azure", "daisy", "Azure", "t3D8BFF"), ("daisy-violet", "daisy", "Violet", "tA65CFF"), ("daisy-silver", "daisy", "Silver", "tD6DEE6"),
+        ("dashed-emerald", "dashed", "Emerald", "t2FD27A"), ("dashed-cyan", "dashed", "Cyan", "t33D6FF"), ("dashed-indigo", "dashed", "Indigo", "t6A5CFF"),
+        ("dashed-magenta", "dashed", "Magenta", "tE64CD9"), ("dashed-crimson", "dashed", "Crimson", "tFF3B4E"), ("dashed-silver", "dashed", "Silver", "tD6DEE6"),
+        ("eclipse-violet", "eclipse", "Violet", "p120"), ("eclipse-emerald", "eclipse", "Emerald", "p201"), ("eclipse-lime", "eclipse", "Lime", "p102"),
+        ("eclipse-rose", "eclipse", "Rose", "p021"), ("eclipse-azure", "eclipse", "Azure", "p210"), ("eclipse-silver", "eclipse", "Silver", "tD6DEE6"),
+        ("emerald-gold", "emerald", "Gold", "p120"), ("emerald-violet", "emerald", "Violet", "p201"), ("emerald-rose", "emerald", "Rose", "p102"),
+        ("emerald-azure", "emerald", "Azure", "p021"), ("emerald-lime", "emerald", "Lime", "p210"), ("emerald-silver", "emerald", "Silver", "tD6DEE6"),
+        ("flame-violet", "flame", "Violet", "p120"), ("flame-emerald", "flame", "Emerald", "p201"), ("flame-lime", "flame", "Lime", "p102"),
+        ("flame-rose", "flame", "Rose", "p021"), ("flame-azure", "flame", "Azure", "p210"), ("flame-silver", "flame", "Silver", "tD6DEE6"),
+        ("gears-crimson", "gears", "Crimson", "tFF3B4E"), ("gears-gold", "gears", "Gold", "tFFC83D"), ("gears-lime", "gears", "Lime", "tA8E63D"),
+        ("gears-emerald", "gears", "Emerald", "t2FD27A"), ("gears-cyan", "gears", "Cyan", "t33D6FF"), ("gears-silver", "gears", "Silver", "tD6DEE6"),
+        ("gold-violet", "gold", "Violet", "p120"), ("gold-teal", "gold", "Teal", "p201"), ("gold-lime", "gold", "Lime", "p102"),
+        ("gold-magenta", "gold", "Magenta", "p021"), ("gold-cyan", "gold", "Cyan", "p210"), ("gold-silver", "gold", "Silver", "tD6DEE6"),
+        ("halo-magenta", "halo", "Magenta", "tE64CD9"), ("halo-crimson", "halo", "Crimson", "tFF3B4E"), ("halo-gold", "halo", "Gold", "tFFC83D"),
+        ("halo-lime", "halo", "Lime", "tA8E63D"), ("halo-emerald", "halo", "Emerald", "t2FD27A"), ("halo-silver", "halo", "Silver", "tD6DEE6"),
+        ("ink-lime", "ink", "Lime", "tA8E63D"), ("ink-emerald", "ink", "Emerald", "t2FD27A"), ("ink-indigo", "ink", "Indigo", "t6A5CFF"),
+        ("ink-magenta", "ink", "Magenta", "tE64CD9"), ("ink-crimson", "ink", "Crimson", "tFF3B4E"), ("ink-silver", "ink", "Silver", "tD6DEE6"),
+        ("laurel-violet", "laurel", "Violet", "p120"), ("laurel-teal", "laurel", "Teal", "p201"), ("laurel-lime", "laurel", "Lime", "p102"),
+        ("laurel-magenta", "laurel", "Magenta", "p021"), ("laurel-cyan", "laurel", "Cyan", "p210"), ("laurel-silver", "laurel", "Silver", "tD6DEE6"),
+        ("neon-lime", "neon", "Lime", "p120"), ("neon-magenta", "neon", "Magenta", "p201"), ("neon-orange", "neon", "Orange", "tFF8A2B"),
+        ("neon-emerald", "neon", "Emerald", "t2FD27A"), ("neon-indigo", "neon", "Indigo", "t6A5CFF"), ("neon-silver", "neon", "Silver", "tD6DEE6"),
+        ("orbit-emerald", "orbit", "Emerald", "p120"), ("orbit-orange", "orbit", "Orange", "p201"), ("orbit-azure", "orbit", "Azure", "p102"),
+        ("orbit-lime", "orbit", "Lime", "p021"), ("orbit-rose", "orbit", "Rose", "p210"), ("orbit-silver", "orbit", "Silver", "tD6DEE6"),
+        ("phoenix-violet", "phoenix", "Violet", "p120"), ("phoenix-emerald", "phoenix", "Emerald", "p201"), ("phoenix-lime", "phoenix", "Lime", "p102"),
+        ("phoenix-rose", "phoenix", "Rose", "p021"), ("phoenix-azure", "phoenix", "Azure", "p210"), ("phoenix-silver", "phoenix", "Silver", "tD6DEE6"),
+        ("plasma-emerald", "plasma", "Emerald", "t2FD27A"), ("plasma-cyan", "plasma", "Cyan", "t33D6FF"), ("plasma-indigo", "plasma", "Indigo", "t6A5CFF"),
+        ("plasma-rose", "plasma", "Rose", "tFF6FA8"), ("plasma-orange", "plasma", "Orange", "tFF8A2B"), ("plasma-silver", "plasma", "Silver", "tD6DEE6"),
+        ("pulse-orange", "pulse", "Orange", "p120"), ("pulse-violet", "pulse", "Violet", "p201"), ("pulse-rose", "pulse", "Rose", "p102"),
+        ("pulse-azure", "pulse", "Azure", "p021"), ("pulse-lime", "pulse", "Lime", "p210"), ("pulse-silver", "pulse", "Silver", "tD6DEE6"),
+        ("rainbow-gold", "rainbow", "Gold", "tFFC83D"), ("rainbow-lime", "rainbow", "Lime", "tA8E63D"), ("rainbow-emerald", "rainbow", "Emerald", "t2FD27A"),
+        ("rainbow-violet", "rainbow", "Violet", "tA65CFF"), ("rainbow-magenta", "rainbow", "Magenta", "tE64CD9"), ("rainbow-silver", "rainbow", "Silver", "tD6DEE6"),
+        ("ripple-lime", "ripple", "Lime", "p120"), ("ripple-magenta", "ripple", "Magenta", "p201"), ("ripple-indigo", "ripple", "Indigo", "t6A5CFF"),
+        ("ripple-crimson", "ripple", "Crimson", "tFF3B4E"), ("ripple-emerald", "ripple", "Emerald", "t2FD27A"), ("ripple-silver", "ripple", "Silver", "tD6DEE6"),
+        ("sapphire-lime", "sapphire", "Lime", "p120"), ("sapphire-rose", "sapphire", "Rose", "p201"), ("sapphire-indigo", "sapphire", "Indigo", "p102"),
+        ("sapphire-emerald", "sapphire", "Emerald", "p021"), ("sapphire-orange", "sapphire", "Orange", "p210"), ("sapphire-silver", "sapphire", "Silver", "tD6DEE6"),
+        ("silver-teal", "silver", "Teal", "t19C9B0"), ("silver-azure", "silver", "Azure", "t3D8BFF"), ("silver-violet", "silver", "Violet", "tA65CFF"),
+        ("silver-magenta", "silver", "Magenta", "tE64CD9"), ("silver-crimson", "silver", "Crimson", "tFF3B4E"), ("sparks-indigo", "sparks", "Indigo", "p120"),
+        ("sparks-emerald", "sparks", "Emerald", "p201"), ("sparks-magenta", "sparks", "Magenta", "tE64CD9"), ("sparks-lime", "sparks", "Lime", "tA8E63D"),
+        ("sparks-teal", "sparks", "Teal", "t19C9B0"), ("sparks-silver", "sparks", "Silver", "tD6DEE6"), ("spectrum-lime", "spectrum", "Lime", "tA8E63D"),
+        ("spectrum-emerald", "spectrum", "Emerald", "t2FD27A"), ("spectrum-indigo", "spectrum", "Indigo", "t6A5CFF"), ("spectrum-magenta", "spectrum", "Magenta", "tE64CD9"),
+        ("spectrum-crimson", "spectrum", "Crimson", "tFF3B4E"), ("spectrum-silver", "spectrum", "Silver", "tD6DEE6"), ("spikes-indigo", "spikes", "Indigo", "t6A5CFF"),
+        ("spikes-magenta", "spikes", "Magenta", "tE64CD9"), ("spikes-crimson", "spikes", "Crimson", "tFF3B4E"), ("spikes-gold", "spikes", "Gold", "tFFC83D"),
+        ("spikes-lime", "spikes", "Lime", "tA8E63D"), ("spikes-silver", "spikes", "Silver", "tD6DEE6"), ("star-violet", "star", "Violet", "p120"),
+        ("star-teal", "star", "Teal", "p201"), ("star-lime", "star", "Lime", "p102"), ("star-magenta", "star", "Magenta", "p021"),
+        ("star-cyan", "star", "Cyan", "p210"), ("star-silver", "star", "Silver", "tD6DEE6"), ("thorns-magenta", "thorns", "Magenta", "p120"),
+        ("thorns-teal", "thorns", "Teal", "p201"), ("thorns-azure", "thorns", "Azure", "t3D8BFF"), ("thorns-rose", "thorns", "Rose", "tFF6FA8"),
+        ("thorns-silver", "thorns", "Silver", "tD6DEE6"), ("twin-emerald", "twin", "Emerald", "p120"), ("twin-orange", "twin", "Orange", "p201"),
+        ("twin-rose", "twin", "Rose", "tFF6FA8"), ("twin-lime", "twin", "Lime", "tA8E63D"), ("twin-teal", "twin", "Teal", "t19C9B0"),
+        ("twin-silver", "twin", "Silver", "tD6DEE6"), ("vine-crimson", "vine", "Crimson", "p120"), ("vine-indigo", "vine", "Indigo", "p201"),
+        ("vine-teal", "vine", "Teal", "t19C9B0"), ("vine-magenta", "vine", "Magenta", "tE64CD9"), ("vine-gold", "vine", "Gold", "tFFC83D"),
+        ("vine-silver", "vine", "Silver", "tD6DEE6"), ("void-emerald", "void", "Emerald", "p120"), ("void-orange", "void", "Orange", "p201"),
+        ("void-azure", "void", "Azure", "p102"), ("void-lime", "void", "Lime", "p021"), ("void-rose", "void", "Rose", "p210"),
+        ("void-silver", "void", "Silver", "tD6DEE6"), ("wings-violet", "wings", "Violet", "p120"), ("wings-teal", "wings", "Teal", "p201"),
+        ("wings-lime", "wings", "Lime", "tA8E63D"), ("wings-azure", "wings", "Azure", "t3D8BFF"), ("wings-rose", "wings", "Rose", "tFF6FA8"),
+        ("wings-silver", "wings", "Silver", "tD6DEE6"), ("wood-violet", "wood", "Violet", "p120"), ("wood-emerald", "wood", "Emerald", "p201"),
+        ("wood-lime", "wood", "Lime", "p102"), ("wood-rose", "wood", "Rose", "p021"), ("wood-azure", "wood", "Azure", "p210"),
+        ("wood-silver", "wood", "Silver", "tD6DEE6"), ("rosegold-indigo", "rosegold", "Indigo", "p120"), ("rosegold-emerald", "rosegold", "Emerald", "p201"),
+        ("rosegold-lime", "rosegold", "Lime", "tA8E63D"), ("rosegold-teal", "rosegold", "Teal", "t19C9B0"), ("rosegold-magenta", "rosegold", "Magenta", "tE64CD9"),
+        ("rosegold-silver", "rosegold", "Silver", "tD6DEE6"), ("onyx-teal", "onyx", "Teal", "t19C9B0"), ("onyx-azure", "onyx", "Azure", "t3D8BFF"),
+        ("onyx-violet", "onyx", "Violet", "tA65CFF"), ("onyx-magenta", "onyx", "Magenta", "tE64CD9"), ("onyx-crimson", "onyx", "Crimson", "tFF3B4E"),
+        ("onyx-silver", "onyx", "Silver", "tD6DEE6"), ("copper-violet", "copper", "Violet", "p120"), ("copper-emerald", "copper", "Emerald", "p201"),
+        ("copper-lime", "copper", "Lime", "p102"), ("copper-rose", "copper", "Rose", "p021"), ("copper-azure", "copper", "Azure", "p210"),
+        ("copper-silver", "copper", "Silver", "tD6DEE6"), ("rope-violet", "rope", "Violet", "p120"), ("rope-teal", "rope", "Teal", "p201"),
+        ("rope-lime", "rope", "Lime", "p102"), ("rope-magenta", "rope", "Magenta", "p021"), ("rope-cyan", "rope", "Cyan", "p210"),
+        ("rope-silver", "rope", "Silver", "tD6DEE6"), ("bubbles-lime", "bubbles", "Lime", "p120"), ("bubbles-magenta", "bubbles", "Magenta", "p201"),
+        ("bubbles-indigo", "bubbles", "Indigo", "t6A5CFF"), ("bubbles-crimson", "bubbles", "Crimson", "tFF3B4E"), ("bubbles-emerald", "bubbles", "Emerald", "t2FD27A"),
+        ("bubbles-silver", "bubbles", "Silver", "tD6DEE6"), ("pixel-orange", "pixel", "Orange", "tFF8A2B"), ("pixel-lime", "pixel", "Lime", "tA8E63D"),
+        ("pixel-cyan", "pixel", "Cyan", "t33D6FF"), ("pixel-indigo", "pixel", "Indigo", "t6A5CFF"), ("pixel-magenta", "pixel", "Magenta", "tE64CD9"),
+        ("pixel-silver", "pixel", "Silver", "tD6DEE6"), ("lightning-lime", "lightning", "Lime", "p120"), ("lightning-rose", "lightning", "Rose", "p201"),
+        ("lightning-violet", "lightning", "Violet", "p102"), ("lightning-emerald", "lightning", "Emerald", "p021"), ("lightning-orange", "lightning", "Orange", "p210"),
+        ("lightning-silver", "lightning", "Silver", "tD6DEE6"), ("orbitals-crimson", "orbitals", "Crimson", "tFF3B4E"), ("orbitals-gold", "orbitals", "Gold", "tFFC83D"),
+        ("orbitals-lime", "orbitals", "Lime", "tA8E63D"), ("orbitals-emerald", "orbitals", "Emerald", "t2FD27A"), ("orbitals-cyan", "orbitals", "Cyan", "t33D6FF"),
+        ("orbitals-silver", "orbitals", "Silver", "tD6DEE6"), ("galaxy-emerald", "galaxy", "Emerald", "p120"), ("galaxy-crimson", "galaxy", "Crimson", "p201"),
+        ("galaxy-teal", "galaxy", "Teal", "t19C9B0"), ("galaxy-magenta", "galaxy", "Magenta", "tE64CD9"), ("galaxy-gold", "galaxy", "Gold", "tFFC83D"),
+        ("galaxy-silver", "galaxy", "Silver", "tD6DEE6"), ("diamond-lime", "diamond", "Lime", "p120"), ("diamond-rose", "diamond", "Rose", "p201"),
+        ("diamond-violet", "diamond", "Violet", "p102"), ("diamond-emerald", "diamond", "Emerald", "p021"), ("diamond-orange", "diamond", "Orange", "p210"),
+        ("diamond-silver", "diamond", "Silver", "tD6DEE6"),
+    ],
+    "theme": [
+        ("abyss-lime", "abyss", "Lime", "p120"), ("abyss-rose", "abyss", "Rose", "p201"), ("abyss-violet", "abyss", "Violet", "p102"),
+        ("abyss-emerald", "abyss", "Emerald", "p021"), ("abyss-orange", "abyss", "Orange", "p210"), ("abyss-silver", "abyss", "Silver", "tD6DEE6"),
+        ("candy-cyan", "candy", "Cyan", "p120"), ("candy-lime", "candy", "Lime", "p201"), ("candy-indigo", "candy", "Indigo", "t6A5CFF"),
+        ("candy-crimson", "candy", "Crimson", "tFF3B4E"), ("candy-emerald", "candy", "Emerald", "t2FD27A"), ("candy-silver", "candy", "Silver", "tD6DEE6"),
+        ("cherry-azure", "cherry", "Azure", "p120"), ("cherry-lime", "cherry", "Lime", "p201"), ("cherry-magenta", "cherry", "Magenta", "tE64CD9"),
+        ("cherry-orange", "cherry", "Orange", "tFF8A2B"), ("cherry-emerald", "cherry", "Emerald", "t2FD27A"), ("cherry-silver", "cherry", "Silver", "tD6DEE6"),
+        ("cobalt-lime", "cobalt", "Lime", "p120"), ("cobalt-rose", "cobalt", "Rose", "p201"), ("cobalt-violet", "cobalt", "Violet", "p102"),
+        ("cobalt-emerald", "cobalt", "Emerald", "p021"), ("cobalt-orange", "cobalt", "Orange", "p210"), ("cobalt-silver", "cobalt", "Silver", "tD6DEE6"),
+        ("emerald-gold", "emerald", "Gold", "p120"), ("emerald-violet", "emerald", "Violet", "p201"), ("emerald-indigo", "emerald", "Indigo", "t6A5CFF"),
+        ("emerald-rose", "emerald", "Rose", "tFF6FA8"), ("emerald-lime", "emerald", "Lime", "tA8E63D"), ("emerald-silver", "emerald", "Silver", "tD6DEE6"),
+        ("forest-orange", "forest", "Orange", "p120"), ("forest-indigo", "forest", "Indigo", "p201"), ("forest-lime", "forest", "Lime", "tA8E63D"),
+        ("forest-teal", "forest", "Teal", "t19C9B0"), ("forest-azure", "forest", "Azure", "t3D8BFF"), ("forest-silver", "forest", "Silver", "tD6DEE6"),
+        ("glacier-lime", "glacier", "Lime", "p120"), ("glacier-rose", "glacier", "Rose", "p201"), ("glacier-violet", "glacier", "Violet", "p102"),
+        ("glacier-emerald", "glacier", "Emerald", "p021"), ("glacier-gold", "glacier", "Gold", "p210"), ("glacier-silver", "glacier", "Silver", "tD6DEE6"),
+        ("goldrush-violet", "goldrush", "Violet", "p120"), ("goldrush-emerald", "goldrush", "Emerald", "p201"), ("goldrush-lime", "goldrush", "Lime", "p102"),
+        ("goldrush-rose", "goldrush", "Rose", "p021"), ("goldrush-azure", "goldrush", "Azure", "p210"), ("goldrush-silver", "goldrush", "Silver", "tD6DEE6"),
+        ("graphite-emerald", "graphite", "Emerald", "t2FD27A"), ("graphite-cyan", "graphite", "Cyan", "t33D6FF"), ("graphite-indigo", "graphite", "Indigo", "t6A5CFF"),
+        ("graphite-magenta", "graphite", "Magenta", "tE64CD9"), ("graphite-crimson", "graphite", "Crimson", "tFF3B4E"), ("graphite-silver", "graphite", "Silver", "tD6DEE6"),
+        ("inferno-indigo", "inferno", "Indigo", "p120"), ("inferno-emerald", "inferno", "Emerald", "p201"), ("inferno-magenta", "inferno", "Magenta", "tE64CD9"),
+        ("inferno-lime", "inferno", "Lime", "tA8E63D"), ("inferno-teal", "inferno", "Teal", "t19C9B0"), ("inferno-silver", "inferno", "Silver", "tD6DEE6"),
+        ("jade-orange", "jade", "Orange", "p120"), ("jade-indigo", "jade", "Indigo", "p201"), ("jade-lime", "jade", "Lime", "tA8E63D"),
+        ("jade-teal", "jade", "Teal", "t19C9B0"), ("jade-azure", "jade", "Azure", "t3D8BFF"), ("jade-silver", "jade", "Silver", "tD6DEE6"),
+        ("lagoon-lime", "lagoon", "Lime", "p120"), ("lagoon-magenta", "lagoon", "Magenta", "p201"), ("lagoon-indigo", "lagoon", "Indigo", "t6A5CFF"),
+        ("lagoon-crimson", "lagoon", "Crimson", "tFF3B4E"), ("lagoon-emerald", "lagoon", "Emerald", "t2FD27A"), ("lagoon-silver", "lagoon", "Silver", "tD6DEE6"),
+        ("lavender-emerald", "lavender", "Emerald", "p120"), ("lavender-orange", "lavender", "Orange", "p201"), ("lavender-azure", "lavender", "Azure", "p102"),
+        ("lavender-lime", "lavender", "Lime", "p021"), ("lavender-rose", "lavender", "Rose", "p210"), ("lavender-silver", "lavender", "Silver", "tD6DEE6"),
+        ("midnight-lime", "midnight", "Lime", "p120"), ("midnight-crimson", "midnight", "Crimson", "p201"), ("midnight-teal", "midnight", "Teal", "t19C9B0"),
+        ("midnight-violet", "midnight", "Violet", "tA65CFF"), ("midnight-magenta", "midnight", "Magenta", "tE64CD9"), ("midnight-silver", "midnight", "Silver", "tD6DEE6"),
+        ("mint-gold", "mint", "Gold", "p120"), ("mint-violet", "mint", "Violet", "p201"), ("mint-rose", "mint", "Rose", "tFF6FA8"),
+        ("mint-lime", "mint", "Lime", "tA8E63D"), ("mint-azure", "mint", "Azure", "t3D8BFF"), ("mint-silver", "mint", "Silver", "tD6DEE6"),
+        ("mirage-indigo", "mirage", "Indigo", "p120"), ("mirage-emerald", "mirage", "Emerald", "p201"), ("mirage-lime", "mirage", "Lime", "p102"),
+        ("mirage-rose", "mirage", "Rose", "p021"), ("mirage-azure", "mirage", "Azure", "p210"), ("mirage-silver", "mirage", "Silver", "tD6DEE6"),
+        ("mocha-violet", "mocha", "Violet", "p120"), ("mocha-emerald", "mocha", "Emerald", "p201"), ("mocha-lime", "mocha", "Lime", "p102"),
+        ("mocha-rose", "mocha", "Rose", "p021"), ("mocha-azure", "mocha", "Azure", "p210"), ("mocha-silver", "mocha", "Silver", "tD6DEE6"),
+        ("nebula-lime", "nebula", "Lime", "p120"), ("nebula-crimson", "nebula", "Crimson", "p201"), ("nebula-orange", "nebula", "Orange", "tFF8A2B"),
+        ("nebula-emerald", "nebula", "Emerald", "t2FD27A"), ("nebula-cyan", "nebula", "Cyan", "t33D6FF"), ("nebula-silver", "nebula", "Silver", "tD6DEE6"),
+        ("obsidian-emerald", "obsidian", "Emerald", "p120"), ("obsidian-orange", "obsidian", "Orange", "p201"), ("obsidian-cyan", "obsidian", "Cyan", "t33D6FF"),
+        ("obsidian-magenta", "obsidian", "Magenta", "tE64CD9"), ("obsidian-lime", "obsidian", "Lime", "tA8E63D"), ("obsidian-silver", "obsidian", "Silver", "tD6DEE6"),
+        ("ocean-lime", "ocean", "Lime", "p120"), ("ocean-magenta", "ocean", "Magenta", "p201"), ("ocean-violet", "ocean", "Violet", "p102"),
+        ("ocean-teal", "ocean", "Teal", "p021"), ("ocean-gold", "ocean", "Gold", "p210"), ("ocean-silver", "ocean", "Silver", "tD6DEE6"),
+        ("prism-emerald", "prism", "Emerald", "t2FD27A"), ("prism-cyan", "prism", "Cyan", "t33D6FF"), ("prism-magenta", "prism", "Magenta", "tE64CD9"),
+        ("prism-crimson", "prism", "Crimson", "tFF3B4E"), ("prism-gold", "prism", "Gold", "tFFC83D"), ("prism-silver", "prism", "Silver", "tD6DEE6"),
+        ("pulse-teal", "pulse", "Teal", "p120"), ("pulse-gold", "pulse", "Gold", "p201"), ("pulse-rose", "pulse", "Rose", "tFF6FA8"),
+        ("pulse-lime", "pulse", "Lime", "tA8E63D"), ("pulse-azure", "pulse", "Azure", "t3D8BFF"), ("pulse-silver", "pulse", "Silver", "tD6DEE6"),
+        ("retro-teal", "retro", "Teal", "p120"), ("retro-gold", "retro", "Gold", "p201"), ("retro-lime", "retro", "Lime", "tA8E63D"),
+        ("retro-azure", "retro", "Azure", "t3D8BFF"), ("retro-rose", "retro", "Rose", "tFF6FA8"), ("retro-silver", "retro", "Silver", "tD6DEE6"),
+        ("rosegold-indigo", "rosegold", "Indigo", "p120"), ("rosegold-emerald", "rosegold", "Emerald", "p201"), ("rosegold-magenta", "rosegold", "Magenta", "tE64CD9"),
+        ("rosegold-teal", "rosegold", "Teal", "t19C9B0"), ("rosegold-silver", "rosegold", "Silver", "tD6DEE6"), ("rust-indigo", "rust", "Indigo", "p120"),
+        ("rust-emerald", "rust", "Emerald", "p201"), ("rust-lime", "rust", "Lime", "p102"), ("rust-rose", "rust", "Rose", "p021"),
+        ("rust-azure", "rust", "Azure", "p210"), ("rust-silver", "rust", "Silver", "tD6DEE6"), ("storm-lime", "storm", "Lime", "p120"),
+        ("storm-crimson", "storm", "Crimson", "p201"), ("storm-teal", "storm", "Teal", "t19C9B0"), ("storm-violet", "storm", "Violet", "tA65CFF"),
+        ("storm-magenta", "storm", "Magenta", "tE64CD9"), ("storm-silver", "storm", "Silver", "tD6DEE6"), ("sunset-azure", "sunset", "Azure", "p120"),
+        ("sunset-lime", "sunset", "Lime", "p201"), ("sunset-emerald", "sunset", "Emerald", "p102"), ("sunset-orange", "sunset", "Orange", "p021"),
+        ("sunset-violet", "sunset", "Violet", "p210"), ("sunset-silver", "sunset", "Silver", "tD6DEE6"), ("peach-indigo", "peach", "Indigo", "p120"),
+        ("peach-emerald", "peach", "Emerald", "p201"), ("peach-lime", "peach", "Lime", "p102"), ("peach-rose", "peach", "Rose", "p021"),
+        ("peach-azure", "peach", "Azure", "p210"), ("peach-silver", "peach", "Silver", "tD6DEE6"), ("slate-lime", "slate", "Lime", "p120"),
+        ("slate-rose", "slate", "Rose", "p201"), ("slate-violet", "slate", "Violet", "p102"), ("slate-emerald", "slate", "Emerald", "p021"),
+        ("slate-orange", "slate", "Orange", "p210"), ("slate-silver", "slate", "Silver", "tD6DEE6"), ("honey-violet", "honey", "Violet", "p120"),
+        ("honey-teal", "honey", "Teal", "p201"), ("honey-lime", "honey", "Lime", "p102"), ("honey-magenta", "honey", "Magenta", "p021"),
+        ("honey-cyan", "honey", "Cyan", "p210"), ("honey-silver", "honey", "Silver", "tD6DEE6"), ("berry-cyan", "berry", "Cyan", "p120"),
+        ("berry-lime", "berry", "Lime", "p201"), ("berry-indigo", "berry", "Indigo", "t6A5CFF"), ("berry-crimson", "berry", "Crimson", "tFF3B4E"),
+        ("berry-emerald", "berry", "Emerald", "t2FD27A"), ("berry-silver", "berry", "Silver", "tD6DEE6"), ("twilight-emerald", "twilight", "Emerald", "p120"),
+        ("twilight-orange", "twilight", "Orange", "p201"), ("twilight-rose", "twilight", "Rose", "tFF6FA8"), ("twilight-lime", "twilight", "Lime", "tA8E63D"),
+        ("twilight-teal", "twilight", "Teal", "t19C9B0"), ("twilight-silver", "twilight", "Silver", "tD6DEE6"), ("coral-gold", "coral", "Gold", "p120"),
+        ("coral-magenta", "coral", "Magenta", "p201"), ("coral-azure", "coral", "Azure", "t3D8BFF"), ("coral-rose", "coral", "Rose", "tFF6FA8"),
+        ("coral-silver", "coral", "Silver", "tD6DEE6"), ("wasabi-rose", "wasabi", "Rose", "p120"), ("wasabi-azure", "wasabi", "Azure", "p201"),
+        ("wasabi-orange", "wasabi", "Orange", "p102"), ("wasabi-violet", "wasabi", "Violet", "p021"), ("wasabi-emerald", "wasabi", "Emerald", "p210"),
+        ("wasabi-silver", "wasabi", "Silver", "tD6DEE6"), ("solar-violet", "solar", "Violet", "p120"), ("solar-emerald", "solar", "Emerald", "p201"),
+        ("solar-lime", "solar", "Lime", "p102"), ("solar-rose", "solar", "Rose", "p021"), ("solar-azure", "solar", "Azure", "p210"),
+        ("solar-silver", "solar", "Silver", "tD6DEE6"), ("nightbloom-emerald", "nightbloom", "Emerald", "p120"), ("nightbloom-orange", "nightbloom", "Orange", "p201"),
+        ("nightbloom-azure", "nightbloom", "Azure", "p102"), ("nightbloom-lime", "nightbloom", "Lime", "p021"), ("nightbloom-rose", "nightbloom", "Rose", "p210"),
+        ("nightbloom-silver", "nightbloom", "Silver", "tD6DEE6"), ("cyber-lime", "cyber", "Lime", "p120"), ("cyber-crimson", "cyber", "Crimson", "p201"),
+        ("cyber-orange", "cyber", "Orange", "tFF8A2B"), ("cyber-emerald", "cyber", "Emerald", "t2FD27A"), ("cyber-cyan", "cyber", "Cyan", "t33D6FF"),
+        ("cyber-silver", "cyber", "Silver", "tD6DEE6"),
+    ],
+}      # 6.5: banner, frame and theme colourways (id, picture, colour, recolouring)
 EVENT_LOOKS = {"banner:snow", "banner:aurora", "frame:frost", "banner:wreath", "banner:hearth", "banner:northstar",
                "frame:holly", "frame:snowflake", "frame:northstar"}      # the Christmas looks (advent calendar, Winter Case)
 KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "banner": "Banner",
               "frame": "Frame", "tag": "Tag"}
+# --------------------------------------------------------------------------- #
+# 6.5: colourways. Every banner, frame and theme comes in more colours: the same picture, recoloured. The picture is
+# drawn as usual, then every colour is mixed from the three channels (a permutation turns the hues around, a tint makes
+# it a single colour). Each colourway is its own shop / case / market item (its own id), named by its colour.
+# --------------------------------------------------------------------------- #
+_CW: dict = {}                       # (kind, id) -> (base id, ((rr, rg, rb), (gr, gg, gb), (br, bg, bb)))
+_CW_GROUP: dict = {}                 # (kind, base id) -> [colourway ids]
+_CW_COLOUR_FR = {"Crimson": "Cramoisi", "Orange": "Orange", "Gold": "Or", "Lime": "Citron vert", "Emerald": "Émeraude",
+                 "Teal": "Sarcelle", "Cyan": "Cyan", "Azure": "Azur", "Indigo": "Indigo", "Violet": "Violet",
+                 "Magenta": "Magenta", "Rose": "Rose", "Silver": "Argent"}
+_CW_LUT: dict = {}
+
+
+def cw_matrix(code: str) -> tuple:
+    """"p120" (out channel i = in channel digit i) or "tRRGGBB" (a single colour, as bright as the picture was)."""
+    if code[0] == "p":
+        return tuple(tuple(1.0 if j == int(code[1 + i]) else 0.0 for j in range(3)) for i in range(3))
+    r, g, b = (int(code[1 + 2 * k: 3 + 2 * k], 16) for k in range(3))
+    m = max(r, g, b) or 1
+    return tuple(tuple(t / m * w for w in (0.30, 0.59, 0.11)) for t in (r, g, b))
+
+
+def cw_colour(c, mat) -> str:
+    q = QColor(c)
+    v = (q.red(), q.green(), q.blue())
+    return QColor(*(max(0, min(255, int(sum(mat[i][j] * v[j] for j in range(3))))) for i in range(3))).name()
+
+
+def recolour_image(img: QImage, mat) -> QImage:
+    """Every output channel is a weighted sum of the input channels (weights >= 0, a row adds up to 1 at most, so
+    nothing overflows and a premultiplied image stays valid). Done with byte tables and big-integer sums: fast."""
+    img = img.convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+    w, h = img.width(), img.height()
+    n = w * h
+    ptr = img.constBits()
+    ptr.setsize(img.sizeInBytes())
+    raw = bytes(ptr)
+    planes = (raw[2::4], raw[1::4], raw[0::4])
+    out = bytearray(len(raw))
+    out[3::4] = raw[3::4]
+    for i, dst in enumerate((2, 1, 0)):
+        s = 0
+        for wt, pl in zip(mat[i], planes):
+            if wt <= 0.001:
+                continue
+            k = int(round(wt * 1000))
+            lut = _CW_LUT.get(k)
+            if lut is None:
+                lut = _CW_LUT[k] = bytes(min(255, i2 * k // 1000) for i2 in range(256))
+            s += int.from_bytes(pl.translate(lut), "little")
+        out[dst::4] = s.to_bytes(n, "little")
+    return QImage(bytes(out), w, h, w * 4, QImage.Format.Format_ARGB32_Premultiplied).copy()
+
+
+def _cw_layer(p: QPainter, w: float, h: float, scale: float = 1.0) -> tuple:
+    dpr = max(1.0, p.device().devicePixelRatioF()) * scale
+    img = QImage(max(2, int(w * dpr)), max(2, int(h * dpr)), QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    ip = QPainter(img)
+    ip.setRenderHint(QPainter.RenderHint.Antialiasing)
+    ip.scale(img.width() / max(1.0, w), img.height() / max(1.0, h))
+    return img, ip
+
+
+def _cw_register(rows: dict) -> None:
+    """rows: {"banner": [(id, base, "Colour", code)], "frame": [...], "theme": [...]} from the generated table."""
+    for kind, lst in rows.items():
+        for cid, base, colour, code in lst:
+            _CW[(kind, cid)] = (base, cw_matrix(code))
+            _CW_GROUP.setdefault((kind, base), []).append(cid)
+            bname = next((n for i, n in (BANNERS if kind == "banner" else FRAMES if kind == "frame" else
+                                          [(t[0], t[1]) for t in THEME_LOOKS]) if i == base), base)
+            name = f"{bname} {colour}"
+            FR.setdefault(name, f"{FR.get(bname, bname)} {_CW_COLOUR_FR.get(colour, colour)}")
+            if kind == "banner":
+                BANNERS.append((cid, name))
+            elif kind == "frame":
+                FRAMES.append((cid, name))
+            else:
+                bt = next(t for t in THEME_LOOKS if t[0] == base)
+                m = _CW[(kind, cid)][1]
+                THEME_LOOKS.append((cid, name, cw_colour(bt[2], m), cw_colour(bt[3], m), bt[4]))
+            MOVING.add(cid) if base in MOVING else None
+
+
+_cw_register(_CW_ROWS)
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
           "theme": {t[0]: t[1] for t in THEME_LOOKS}, "banner": dict(BANNERS), "frame": dict(FRAMES), "tag": dict(TAGS)}
 _themes: dict = {}
@@ -15978,6 +16607,10 @@ _BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), 
                 "hearth": ("#1C0A05", "#FF8A3D"), "northstar": ("#050B1E", "#1B3A6B"),
                 "mosaic": ("#1B2230", "#5A6B8A"), "reef": ("#03263A", "#12A3B8"), "thunder": ("#0B1022", "#2A3A6B"),
                 "blackhole": ("#020205", "#120A24"), "crystal": ("#0A1424", "#2A4A7A"),
+                "lagoon": ("#0FA3B8", "#7FE8D8"), "peach": ("#FFB48A", "#FFE3CC"), "zigzag": ("#2A1A5A", "#6B3FA8"),
+                "waveform": ("#0A0F24", "#1A1A44"), "radar": ("#03130A", "#062414"), "constellations": ("#070B24", "#14204A"),
+                "equalizer": ("#0A0612", "#1A0F2A"), "orbit": ("#04050F", "#0E1030"), "spirograph": ("#08040F", "#150A24"),
+                "goldveins": ("#0A0805", "#1C150A"),
                 "meadow": ("#8FD3FF", "#E9F8FF"), "paper": ("#F3E9D6", "#D9C7A5"), "clouds": ("#2F7BFF", "#9AD0FF"),
                 "bokeh": ("#120A24", "#2A1448"), "pixels": ("#0B1020", "#1B2A5A"), "ribbons": ("#1A0B3A", "#4A1A7A"),
                 "glitch": ("#0A0A12", "#1A1030"), "sunbeams": ("#0D6E8C", "#06233A"), "stardesert": ("#0A0F2E", "#3A2358"),
@@ -16183,6 +16816,160 @@ def _paint_banner_63(p: QPainter, base: str, rect: QRectF, c1: QColor, c2: QColo
                 p.drawEllipse(QPointF(x + f * w * 0.12, y - f * h * 0.22), rr, rr)
 
 
+# --------------------------------------------------------------------------- #
+# 6.5: ten more profile banners (not seasonal)
+# --------------------------------------------------------------------------- #
+_BANNERS_65 = ("lagoon", "peach", "zigzag", "waveform", "radar", "constellations", "equalizer", "orbit", "spirograph", "goldveins")
+
+
+def _paint_banner_65(p: QPainter, base: str, rect: QRectF, c1: QColor, c2: QColor, now: float) -> None:
+    w, h = rect.width(), rect.height()
+    L, T = rect.left(), rect.top()
+    p.setPen(Qt.PenStyle.NoPen)
+    bg = QLinearGradient(rect.topLeft(), rect.bottomRight())
+    bg.setColorAt(0.0, c1)
+    bg.setColorAt(1.0, c2)
+    p.fillRect(rect, bg)
+    if base == "lagoon":                                       # Common: turquoise water, light rippling on the surface
+        for k in range(5):
+            path = QPainterPath()
+            for x in range(0, int(w) + 6, 6):
+                y = T + h * (0.2 + 0.16 * k) + math.sin(x / w * 7 + now * 0.9 + k) * h * 0.04
+                path.lineTo(L + x, y) if x else path.moveTo(L + x, y)
+            p.setPen(QPen(alpha("#E6FFFB", 0.25), 1.6))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k in range(14):
+            p.setBrush(alpha("#FFFFFF", 0.25 * abs(math.sin(now * 1.3 + k * 2.1))))
+            p.drawEllipse(QPointF(L + w * _rand(k, 1), T + h * _rand(k, 2)), 1.6, 1.6)
+    elif base == "peach":                                      # Common: soft peach light with slowly drifting round shapes
+        for k in range(7):
+            cx = L + w * ((_rand(k, 1) + math.sin(now * 0.1 + k) * 0.04) % 1.0)
+            r = h * (0.3 + 0.5 * _rand(k, 2))
+            g = QRadialGradient(QPointF(cx, T + h * _rand(k, 3)), r)
+            col = ["#FFD2B0", "#FF9E8A", "#FFE9C8"][k % 3]
+            g.setColorAt(0, alpha(col, 0.55))
+            g.setColorAt(1, alpha(col, 0.0))
+            p.setBrush(g)
+            p.drawEllipse(QPointF(cx, T + h * _rand(k, 3)), r, r)
+    elif base == "zigzag":                                     # Common: chevrons sliding sideways
+        step = h * 0.5
+        off = (now * 18) % (step * 2)
+        for row in range(int(h / step) + 2):
+            path = QPainterPath()
+            for i in range(-2, int(w / step) + 4):
+                x = L + i * step - off
+                y = T + row * step + (step * 0.5 if i % 2 else 0)
+                path.lineTo(x, y) if i > -2 else path.moveTo(x, y)
+            p.setPen(QPen(alpha("#FFFFFF" if row % 2 else c2, 0.22), 2.0))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "waveform":                                   # Rare: sound bars that move with a made-up song
+        n = max(20, int(w / 7))
+        for i in range(n):
+            amp = abs(math.sin(i * 0.37 + now * 2.2) * math.cos(i * 0.11 - now * 1.1)) * 0.8 + 0.1
+            bh = h * 0.8 * amp
+            col = mix(QColor("#FF5CB8"), QColor("#4FD8FF"), i / n)
+            p.setBrush(alpha(col, 0.85))
+            p.drawRoundedRect(QRectF(L + i * w / n + 1, T + (h - bh) / 2, w / n - 2, bh), 1.5, 1.5)
+    elif base == "radar":                                      # Rare: a green sweep over rings, blips appearing
+        cen = QPointF(L + w * 0.5, T + h * 0.5)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for k in range(1, 5):
+            p.setPen(QPen(alpha("#3DFF9A", 0.22), 1.0))
+            p.drawEllipse(cen, h * 0.28 * k, h * 0.28 * k)
+        p.setPen(QPen(alpha("#3DFF9A", 0.18), 1.0))
+        p.drawLine(QPointF(L, cen.y()), QPointF(L + w, cen.y()))
+        p.drawLine(QPointF(cen.x(), T), QPointF(cen.x(), T + h))
+        ang = (now * 90) % 360
+        sweep = QConicalGradient(cen, -ang)
+        sweep.setColorAt(0.0, alpha("#3DFF9A", 0.55))
+        sweep.setColorAt(0.2, alpha("#3DFF9A", 0.0))
+        sweep.setColorAt(1.0, alpha("#3DFF9A", 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(sweep)
+        p.drawEllipse(cen, w, w)
+        for k in range(5):
+            a = _rand(k, 1) * 360
+            f = ((ang - a) % 360) / 360
+            p.setBrush(alpha("#B8FFD8", max(0.0, 1.0 - f * 2)))
+            r = h * 0.12 + h * 0.8 * _rand(k, 2)
+            p.drawEllipse(QPointF(cen.x() + math.cos(math.radians(a)) * r * 1.4, cen.y() + math.sin(math.radians(a)) * r * 0.45), 2.6, 2.6)
+    elif base == "constellations":                             # Rare: stars joined into drifting shapes
+        pts = [QPointF(L + w * ((_rand(k, 1) + now * 0.004 * (1 + k % 3)) % 1.0), T + h * (0.15 + 0.7 * _rand(k, 2)
+               + math.sin(now * 0.5 + k) * 0.03)) for k in range(18)]
+        p.setPen(QPen(alpha("#BFD8FF", 0.28), 1.0))
+        for i in range(len(pts)):
+            for j in range(i + 1, len(pts)):
+                if math.hypot(pts[i].x() - pts[j].x(), pts[i].y() - pts[j].y()) < w * 0.17:
+                    p.drawLine(pts[i], pts[j])
+        p.setPen(Qt.PenStyle.NoPen)
+        for k, pt in enumerate(pts):
+            p.setBrush(alpha("#FFFFFF", 0.55 + 0.4 * math.sin(now * 2 + k)))
+            p.drawEllipse(pt, 1.7, 1.7)
+    elif base == "equalizer":                                  # Special: stacked colour blocks bouncing like a club equalizer
+        n = max(10, int(w / 14))
+        blocks = 8
+        for i in range(n):
+            lvl = int(blocks * (0.25 + 0.75 * abs(math.sin(i * 0.9 + now * (2.0 + (i % 3) * 0.6)))))
+            for b in range(blocks):
+                if b >= lvl:
+                    continue
+                col = QColor("#3DFF7A") if b < 4 else QColor("#FFD84D") if b < 6 else QColor("#FF4D4D")
+                p.setBrush(alpha(col, 0.9))
+                bh = h / blocks
+                p.drawRect(QRectF(L + i * w / n + 1, T + h - (b + 1) * bh + 1, w / n - 3, bh - 2))
+    elif base == "orbit":                                      # Special: planets circling a glowing sun
+        cen = QPointF(L + w * 0.5, T + h * 0.5)
+        sun = QRadialGradient(cen, h * 0.5)
+        sun.setColorAt(0, alpha("#FFE8A0", 0.95))
+        sun.setColorAt(0.25, alpha("#FFB627", 0.6))
+        sun.setColorAt(1, alpha("#FFB627", 0.0))
+        p.setBrush(sun)
+        p.drawEllipse(cen, h * 0.5, h * 0.5)
+        for k, (rx, ry, col, sz, sp) in enumerate(((0.18, 0.3, "#4FD8FF", 3.5, 1.4), (0.28, 0.4, "#FF7A9C", 4.5, 0.9),
+                                                    (0.4, 0.46, "#B36BFF", 5.5, 0.6), (0.52, 0.49, "#7CFFB0", 4.0, 0.35))):
+            p.setPen(QPen(alpha("#FFFFFF", 0.12), 1.0))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(cen, w * rx, h * ry)
+            a = now * sp + k * 1.7
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(col))
+            p.drawEllipse(QPointF(cen.x() + math.cos(a) * w * rx, cen.y() + math.sin(a) * h * ry), sz, sz)
+    elif base == "spirograph":                                 # Epic: a drawing machine weaving glowing curves
+        cen = QPointF(L + w * 0.5, T + h * 0.5)
+        for layer, (R, r, d, col) in enumerate(((0.48, 0.17, 0.3, "#FF5CB8"), (0.44, 0.11, 0.22, "#4FD8FF"), (0.4, 0.23, 0.35, "#FFD84D"))):
+            path = QPainterPath()
+            k = R / r
+            for i in range(0, 721):
+                t = math.radians(i) + now * 0.25 * (1 + layer * 0.3)
+                x = (R - r) * math.cos(t) + d * math.cos((R - r) / r * t)
+                y = (R - r) * math.sin(t) - d * math.sin((R - r) / r * t)
+                pt = QPointF(cen.x() + x * h * 1.1, cen.y() + y * h * 1.1)
+                path.lineTo(pt) if i else path.moveTo(pt)
+            for width, a in ((5, 0.10), (1.4, 0.8)):
+                p.setPen(QPen(alpha(col, a), width))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "goldveins":                                  # Epic: black stone with veins of gold that pulse
+        for k in range(7):
+            path = QPainterPath(QPointF(L + w * _rand(k, 1), T))
+            x, y = L + w * _rand(k, 1), T
+            for s in range(10):
+                x += (math.sin(k * 3.1 + s * 1.7) * 0.07 + (_rand(k, 5) - 0.5) * 0.04) * w
+                y += h / 9
+                path.lineTo(x, y)
+            pulse = 0.45 + 0.35 * math.sin(now * 1.5 + k)
+            for width, a in ((6, 0.08), (2.2, 0.35 * pulse + 0.2), (0.9, 0.95)):
+                p.setPen(QPen(alpha("#FFD36B" if width < 3 else "#FFB627", a), width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+
+
 def look_moves(item: str) -> bool:
     return parts(item)[1] in MOVING
 
@@ -16197,6 +16984,9 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
                  gold: int = 0) -> None:
     """A profile banner filling `rect` (rounded corners). `gold` 1-3: it turned gold with the hours it was worn."""
     base = parts(item)[1]
+    cw = _CW.get(("banner", base))
+    if cw:                                                     # 6.5: a colourway: the picture, recoloured
+        return _paint_banner_cw(p, rect, cw, now, radius, dim, gold)
     c1, c2 = (QColor(c) for c in _BANNER_COLS.get(base, ("#1A2026", "#3A4650")))
     w, h = rect.width(), rect.height()
     p.save()
@@ -16685,6 +17475,8 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(core)
         p.drawEllipse(cen, h * 0.4, h * 0.4)
+    elif base in _BANNERS_65:
+        _paint_banner_65(p, base, rect, c1, c2, now)
     elif base in _BANNERS_63:
         _paint_banner_63(p, base, rect, c1, c2, now)
     elif base in ("mosaic", "reef", "thunder", "blackhole", "crystal"):
@@ -16699,6 +17491,23 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
     p.fillRect(rect, shade)
     p.restore()
 
+
+
+def _paint_banner_cw(p: QPainter, rect: QRectF, cw: tuple, now: float, radius: float, dim: float, gold: int) -> None:
+    img, ip = _cw_layer(p, rect.width(), rect.height())
+    paint_banner(ip, QRectF(0, 0, rect.width(), rect.height()), "banner:" + cw[0], now, 0.0, 1.0, 0)
+    ip.end()
+    img = recolour_image(img, cw[1])
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+    clip = QPainterPath()
+    clip.addRoundedRect(rect, radius, radius)
+    p.setClipPath(clip)
+    p.setOpacity(p.opacity() * dim)
+    p.drawImage(rect, img)
+    if gold > 0:
+        paint_gold(p, rect, gold, now)
+    p.restore()
 
 
 def _paint_banner_32(p: QPainter, base: str, rect: QRectF, c1: QColor, c2: QColor, now: float) -> None:
@@ -17100,7 +17909,11 @@ _FRAME_COLS = {"silver": ("#F2F6FA", "#8A96A3"), "bronze": ("#FFB067", "#8A4B1E"
                "gold": ("#FFE08A", "#B8862B"), "emerald": ("#5CF0B0", "#0B7A4F"), "sapphire": ("#7FB2FF", "#1A3FA8"),
                "beads": ("#FF8FB1", "#7FD8FF"), "chain": ("#D9DEE3", "#6E7C88"), "daisy": ("#FFFFFF", "#FFD84D"),
                "plasma": ("#FF2BD6", "#35D6E6"), "sparks": ("#FFC14D", "#FF4B1F"), "constellation": ("#BFD8FF", "#6E8BFF"),
-               "spectrum": ("#FF5CC8", "#2EC5FF"), "void": ("#B36BFF", "#0B0716"), "wings": ("#FFE08A", "#FFFFFF")}
+               "spectrum": ("#FF5CC8", "#2EC5FF"), "void": ("#B36BFF", "#0B0716"), "wings": ("#FFE08A", "#FFFFFF"),
+               "rosegold": ("#FFD0C0", "#B76E79"), "onyx": ("#5A5F68", "#0B0C10"), "copper": ("#FFB07A", "#8C4A22"),
+               "rope": ("#E8D3A0", "#8A6A3A"), "bubbles": ("#BFF2FF", "#4FD8FF"), "pixel": ("#3DFF7A", "#FF4DD2"),
+               "lightning": ("#9FD8FF", "#4F7BFF"), "orbitals": ("#4FD8FF", "#FF7A9C"), "galaxy": ("#B36BFF", "#4FD8FF"),
+               "diamond": ("#BFEFFF", "#7FB2FF")}
 
 
 def _snowflake(p: QPainter, at: QPointF, size: float, turn: float, col: QColor) -> None:
@@ -17305,6 +18118,20 @@ def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: flo
     base = parts(item)[1]
     if not base:
         return
+    cw = _CW.get(("frame", base))
+    if cw:                                                     # 6.5: a colourway: the picture, recoloured
+        m = face.width()
+        box = face.adjusted(-m, -m, m, m)
+        img, ip = _cw_layer(p, box.width(), box.height())
+        ip.translate(-box.left(), -box.top())
+        paint_frame(ip, face, "frame:" + cw[0], now, 1.0)
+        ip.end()
+        p.save()
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        p.setOpacity(p.opacity() * dim)
+        p.drawImage(box, recolour_image(img, cw[1]))
+        p.restore()
+        return
     c1, c2 = (QColor(c) for c in _FRAME_COLS.get(base, ("#FFFFFF", "#9AA4AD")))
     d = face.width()
     wd = max(1.6, d * 0.085)
@@ -17446,6 +18273,8 @@ def paint_frame(p: QPainter, face: QRectF, item: str, now: float = 0.0, dim: flo
         _paint_frame_45(p, base, c, r, wd, c1, c2, now)
     if base in _FRAMES_63:
         _paint_frame_63(p, base, c, r, wd, c1, c2, now)
+    if base in _FRAMES_65:
+        _paint_frame_65(p, base, c, r, wd, c1, c2, now)
     if base == "firstfrost":
         _paint_firstfrost(p, c, r, wd, now)
     if base == "yuletide":
@@ -18074,6 +18903,113 @@ def _paint_frame_63(p: QPainter, base: str, c: QPointF, r: float, wd: float, c1:
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.setPen(QPen(g, wd))
         p.drawEllipse(ring)
+
+
+
+# --------------------------------------------------------------------------- #
+# 6.5: ten more profile frames (not seasonal)
+# --------------------------------------------------------------------------- #
+_FRAMES_65 = ("rosegold", "onyx", "copper", "rope", "bubbles", "pixel", "lightning", "orbitals", "galaxy", "diamond")
+
+
+def _paint_frame_65(p: QPainter, base: str, c: QPointF, r: float, wd: float, c1: QColor, c2: QColor, now: float) -> None:
+    ring = QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+
+    def at(a: float, rr: float = 0.0) -> QPointF:
+        return QPointF(c.x() + math.cos(a) * (r + rr), c.y() + math.sin(a) * (r + rr))
+
+    if base in ("rosegold", "onyx", "copper"):                 # Common: polished metal rings with a moving shine
+        g = QConicalGradient(c, now * 40)
+        for k, col in enumerate((c1, c2, c1, c2, c1)):
+            g.setColorAt(k / 4, col)
+        p.setPen(QPen(g, wd * 1.15))
+        p.drawEllipse(ring)
+        p.setPen(QPen(alpha("#FFFFFF", 0.35), max(1.0, wd * 0.18)))
+        p.drawEllipse(ring.adjusted(wd * 0.3, wd * 0.3, -wd * 0.3, -wd * 0.3))
+    elif base == "rope":                                       # Rare: a twisted rope
+        for off, col in ((0.0, c1), (3.0, c2)):
+            pen = QPen(col, wd * 0.95)
+            pen.setDashPattern([3.0, 3.0])
+            pen.setDashOffset(-now * 1.5 + off)
+            p.setPen(pen)
+            p.drawEllipse(ring.adjusted(wd * 0.15 * (1 if off else -1), wd * 0.15 * (1 if off else -1),
+                                        -wd * 0.15 * (1 if off else -1), -wd * 0.15 * (1 if off else -1)))
+    elif base == "bubbles":                                    # Rare: bubbles drifting around the picture
+        p.setPen(QPen(alpha(c2, 0.5), wd * 0.3))
+        p.drawEllipse(ring)
+        for k in range(12):
+            a = k * math.tau / 12 + now * 0.3
+            rr = wd * (0.35 + 0.35 * abs(math.sin(now * 0.9 + k * 1.3)))
+            p.setPen(QPen(alpha(c1, 0.85), max(1.0, wd * 0.14)))
+            p.setBrush(alpha(c1, 0.15))
+            p.drawEllipse(at(a, math.sin(now + k) * wd * 0.4), rr, rr)
+    elif base == "pixel":                                      # Rare: a ring of 8-bit blocks that blink
+        n = 20
+        for k in range(n):
+            a = k * math.tau / n
+            on = (int(now * 2 + k * 7) % 3) != 0
+            p.save()
+            p.translate(at(a))
+            p.rotate(math.degrees(a) + 90)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(c1 if k % 2 else c2)
+            p.setOpacity(p.opacity() * (1.0 if on else 0.3))
+            p.drawRect(QRectF(-wd * 0.5, -wd * 0.5, wd, wd))
+            p.restore()
+    elif base == "lightning":                                  # Special: electric arcs crackling round the ring
+        p.setPen(QPen(alpha(c2, 0.5), wd * 0.7))
+        p.drawEllipse(ring)
+        step = int(now * 9)
+        for k in range(6):
+            a0 = _rand(step + k * 5, 1) * math.tau
+            pts = []
+            for j in range(7):
+                a = a0 + j * 0.12
+                pts.append(at(a, (_rand(step + k, j + 3) - 0.5) * wd * 2.6))
+            p.setPen(QPen(alpha("#FFFFFF", 0.95), max(1.0, wd * 0.22), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            p.drawPolyline(QPolygonF(pts))
+            p.setPen(QPen(alpha(c1, 0.35), wd * 0.8))
+            p.drawPolyline(QPolygonF(pts))
+    elif base == "orbitals":                                   # Special: three lights circling at different speeds, with tails
+        p.setPen(QPen(alpha(c2, 0.35), wd * 0.35))
+        p.drawEllipse(ring)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k, (sp, col) in enumerate(((1.6, c1), (-1.1, c2), (0.7, QColor("#FFFFFF")))):
+            for j in range(16):
+                a = now * sp + k * 2.1 - j * 0.07 * (1 if sp > 0 else -1)
+                p.setBrush(alpha(col, (1 - j / 16) * 0.9))
+                rr = wd * 0.6 * (1 - j / 22)
+                p.drawEllipse(at(a, (k - 1) * wd * 0.9), rr, rr)
+    elif base == "galaxy":                                     # Epic: a spiral of stardust turning round the picture
+        p.setPen(Qt.PenStyle.NoPen)
+        for arm in range(3):
+            for j in range(40):
+                f = j / 40
+                a = arm * math.tau / 3 + f * 2.4 + now * 0.5
+                rr = (f - 0.5) * wd * 3.2
+                col = mix(c1, c2, f)
+                p.setBrush(alpha(col, 0.15 + 0.7 * (1 - abs(f - 0.5) * 2)))
+                s = wd * (0.18 + 0.28 * _rand(j + arm * 40, 3))
+                p.drawEllipse(at(a, rr), s, s)
+        p.setPen(QPen(alpha(c1, 0.5), wd * 0.4))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(ring)
+    elif base == "diamond":                                    # Epic: a ring of cut gems that flash in turn
+        p.setPen(QPen(alpha(c2, 0.9), wd * 0.5))
+        p.drawEllipse(ring)
+        n = 10
+        for k in range(n):
+            a = k * math.tau / n
+            flash = max(0.0, math.sin(now * 2.4 - k * 0.6))
+            p.save()
+            p.translate(at(a))
+            p.rotate(math.degrees(a) + 90)
+            gem = QPolygonF([QPointF(0, -wd * 0.95), QPointF(wd * 0.75, -wd * 0.1), QPointF(0, wd * 0.8), QPointF(-wd * 0.75, -wd * 0.1)])
+            p.setPen(QPen(alpha("#FFFFFF", 0.8), max(1.0, wd * 0.12)))
+            p.setBrush(mix(c1, QColor("#FFFFFF"), flash * 0.8))
+            p.drawPolygon(gem)
+            p.restore()
 
 
 # ==================================================================================================
@@ -24314,18 +25250,21 @@ def build_cosmetics(page, lay) -> None:
                                 10.5, TEXT_DIM, wrap_w=page.W))
         entries = []
         for base, name in _designs(kind):
+            if (kind, base) in _CW:                                  # 6.5: colourways are picked inside their design
+                continue
             if kind in ("banner", "frame") and not _on_sale(ec, f"{kind}:{base}"):
                 continue
             if kind not in ("banner", "frame") and not _design_shown(ec, kind, base):
                 continue
             item = f"{kind}:{base}" if kind in ("theme", "banner", "frame") else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
             cheapest = item if kind in ("theme", "banner", "frame") else f"{kind}:{base}:grey"
-            owned = any(k.startswith(f"{kind}:{base}") for k in ec._owned)
+            owned = any(k.startswith(f"{kind}:{base}") for k in ec._owned) or \
+                any(f"{kind}:{c}" in ec._owned for c in _CW_GROUP.get((kind, base), ()))
             pct = max((ec.sale(k) for k in ec.catalog if k.startswith(f"{kind}:{base}")), default=0)
             entries.append({"item": item, "price": ec.shop_price(cheapest), "tag": tr(name),
                             "mark": "sale" if pct else ("worn" if owned else ""), "pct": pct})
-        designs = [d for d in _designs(kind) if (_on_sale(ec, f"{kind}:{d[0]}") if kind in ("banner", "frame")
-                                                 else _design_shown(ec, kind, d[0]))]
+        designs = [d for d in _designs(kind) if (kind, d[0]) not in _CW and
+                   (_on_sale(ec, f"{kind}:{d[0]}") if kind in ("banner", "frame") else _design_shown(ec, kind, d[0]))]
         if True:                                           # 5.3: every kind cheapest first, Common to Legendary
             order = sorted(range(len(entries)), key=lambda i: (entries[i]["price"] or 0, i))
             entries, designs = [entries[i] for i in order], [designs[i] for i in order]
@@ -24344,11 +25283,19 @@ def build_cosmetics(page, lay) -> None:
         return
     # one design: preview, colours, buy or wear
     names = dict(_designs(kind))
-    variants = [""] if kind in ("theme", "banner", "frame") else [c for c in COLOUR_ORDER if f"{kind}:{design}:{c}" in ec.catalog]
+    cwbase = _CW.get((kind, design), (design,))[0]                   # 6.5: banners, frames and themes have colourways
+    group = [cwbase] + [c for c in _CW_GROUP.get((kind, cwbase), ()) if _on_sale(ec, f"{kind}:{c}")] \
+        if kind in ("theme", "banner", "frame") else []
+    if len(group) < 2:
+        group = []
+    variants = group or ([""] if kind in ("theme", "banner", "frame") else
+                         [c for c in COLOUR_ORDER if f"{kind}:{design}:{c}" in ec.catalog])
     colour = getattr(ctx, "shop_colour", "") or ""
-    if colour not in variants:
+    if group:
+        colour = design if design in group else group[0]
+    elif colour not in variants:
         colour = next((c for c in variants if ec.owns(_cid(kind, design, c))), variants[0] if variants else "")
-    item = _cid(kind, design, colour)
+    item = f"{kind}:{colour}" if group else _cid(kind, design, colour)
     top = hbox(spacing=8)
     back = IconButton("back", 32, tip=tr("Back"))
 
@@ -24368,14 +25315,17 @@ def build_cosmetics(page, lay) -> None:
     if kind == "theme":
         ctx.start_preview(item)
     if len(variants) > 1:
-        lay.addWidget(Label(tr(COLOUR_NAMES.get(colour, colour)), 12, bold=True))
-        entries = [{"item": _cid(kind, design, c), "mark": "worn" if ec.owns(_cid(kind, design, c)) else
-                    ("sale" if ec.sale(_cid(kind, design, c)) else ""), "pct": ec.sale(_cid(kind, design, c))}
+        vid = (lambda c: f"{kind}:{c}") if group else (lambda c: _cid(kind, design, c))
+        lay.addWidget(Label(tr(names.get(colour, colour)) if group else tr(COLOUR_NAMES.get(colour, colour)), 12, bold=True))
+        entries = [{"item": vid(c), "mark": "worn" if ec.owns(vid(c)) else
+                    ("sale" if ec.sale(vid(c)) else ""), "pct": ec.sale(vid(c))}
                    for c in variants]
         grid = ItemGrid(ctx, entries, page.W, 6, 52, variants.index(colour))
 
         def pick_colour(i: int) -> None:
             sfx.play("pick")
+            if group:
+                ctx.shop_design = variants[i]
             ctx.shop_colour = variants[i]
             ctx.reload_page()
         grid.picked.connect(pick_colour)
@@ -41000,7 +41950,7 @@ def load_race(ctx, then=None) -> None:
     ctx.online.ask("rb_race_state", {}, got)
 
 
-def race_plan(seed: int, winner) -> dict:
+def race_plan(seed: int, winner, places=None) -> dict:
     """The whole race from the server's seed and winner, the same on every PC: the line-up (front to back), the
     finishing order and times, and each horse's surges and fades. Each horse runs p(u) = u + a1 sin(pi u) +
     a2 sin(2 pi u) + a3 sin(3 pi u) (u = time / its finishing time): with |a1| pi + 2|a2| pi + 3|a3| pi < 1 it never
@@ -41012,6 +41962,11 @@ def race_plan(seed: int, winner) -> dict:
         return plan
     w = int(winner)
     order = [w] + rnd.sample([k for k in range(5) if k != w], 4)
+    try:                                                   # 6.4: the server draws the whole finishing order
+        if places and sorted(int(x) for x in places) == [0, 1, 2, 3, 4] and int(places[0]) == w:
+            order = [int(x) for x in places]
+    except (TypeError, ValueError):
+        pass
     t = RACE_RUN
     for i, k in enumerate(order):
         if i:
@@ -41193,10 +42148,10 @@ class RaceView(QWidget):
 
     def set_data(self, d: dict) -> None:
         self.d = d or {}
-        key = (self.d.get("seed"), self.d.get("winner"))
+        key = (self.d.get("seed"), self.d.get("winner"), tuple(self.d.get("places") or ()))
         if key != self._plan_key:
             self._plan_key = key
-            self.plan = race_plan(self.d.get("seed") or 0, self.d.get("winner"))
+            self.plan = race_plan(self.d.get("seed") or 0, self.d.get("winner"), self.d.get("places"))
         self.update()
 
     def t(self) -> float:
@@ -41420,12 +42375,16 @@ class RaceView(QWidget):
             w = plan["order"][0]
             mine = d.get("mine")
             won = mine is not None and mine == w
+            place = (plan["order"].index(mine) + 1) if mine is not None and mine in plan["order"] else 0
+            sub = tr("Ridden for {who}", who=next((b.get("name") for b in d.get("bets") or [] if b.get("lane") == w), "?"))
             if won:
                 text = tr("YOU WON {n}!", n=coins_text(int(d.get("my_paid") or 0))) if d.get("my_paid") else tr("YOU WON!")
+            elif place in (2, 3):                              # 6.4: second and third place are paid too
+                text = tr("{p} PLACE: +{n}", p=tr("2ND") if place == 2 else tr("3RD"), n=coins_text(int(d.get("my_paid") or 0)))
+                sub = tr("#{n} {name} WINS", n=w + 1, name=tr(HORSE_NAMES[w]).upper())
             else:
                 text = tr("#{n} {name} WINS", n=w + 1, name=tr(HORSE_NAMES[w]).upper())
-            banner(text, tr("Ridden for {who}", who=next((b.get("name") for b in d.get("bets") or [] if b.get("lane") == w), "?")),
-                   "#3DDC84" if won else HORSE_COLOURS[w], 15)
+            banner(text, sub, "#3DDC84" if won else ("#FFD34D" if place in (2, 3) else HORSE_COLOURS[w]), 15)
         elif live and RACE_ROLL <= t < RACE_ROLL + RACE_RUN:      # the running order, small, top left
             xs = sorted(range(5), key=lambda k: -race_pos(plan, k, t)[0])
             x0 = r.left() + S(10)
@@ -41599,6 +42558,10 @@ class HorseCard(QWidget):
     def mouseReleaseEvent(self, e) -> None:
         if not self.rect().contains(e.position().toPoint()):
             return
+        phase, left = race_phase(self.ctx)
+        if phase == "closed":                                  # 6.4: no peeking until the bets are open
+            sfx.play("off")
+            return self.ctx.toast(tr("The next race opens in about {t}", t=jp_words(left)), "warn")
         sfx.play("pick")
         self.page.open_sub("horses")
 
@@ -41649,6 +42612,520 @@ class HorseCard(QWidget):
         p.drawText(QRectF(r.left() + S(78), r.top() + S(38), r.width() - S(88), S(22)), int(Qt.AlignmentFlag.AlignVCenter), text)
 
 
+def load_race_history(ctx, then=None) -> None:
+    """6.5: the finished races, newest first. Cached for a few seconds, asked again when a race has finished."""
+    if getattr(ctx, "_rh_asking", False):
+        return
+    ctx._rh_asking = True
+
+    def got(ok: bool, data) -> None:
+        ctx._rh_asking = False
+        if ok and isinstance(data, dict) and isinstance(data.get("races"), list):
+            ctx.race_hist = data["races"]
+            ctx.race_hist_at = time.time()
+            ctx.race_hist_n = len(data["races"])
+            if then:
+                then()
+    ctx.online.ask("rb_race_history", {"lim": 400}, got)
+
+
+class RaceHistory(QWidget):
+    """6.5: a trading-screen for Horse Racing, all of it read by hovering. From the top: the last winners (a disc each,
+    in the winner's colour and number), the pot of every race as a price line with its moving average, a candle for
+    every race (the wick runs from the smallest to the biggest bet, the body from the average bet to the winner's bet:
+    green when a favourite won, red when an outsider did), the money each horse took and how often each one won.
+    The cross-hair follows the mouse over everything and a card shows that race in full."""
+
+    def __init__(self, ctx, w: int) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.rs: list = []                                   # oldest first
+        self.hover = None                                    # index into self.rs
+        self.hover_x = 0.0
+        self.hover_h = None                                  # a horse (its bar or its legend row)
+        self.W = w
+        self.setFixedWidth(w)
+        self.setMouseTracking(True)
+        self.set_data(getattr(ctx, "race_hist", None) or [])
+
+    # ---- data ------------------------------------------------------------------------------------------------------
+    def set_data(self, races: list) -> None:
+        rs = []
+        for r in reversed(races or []):
+            try:
+                amt = [0] * 5
+                names = [""] * 5
+                bots = [True] * 5
+                mine = None
+                paid = [0] * 5
+                for b in r.get("bets") or []:
+                    k = int(b.get("lane"))
+                    amt[k] = int(b.get("amount") or 0)
+                    names[k] = str(b.get("name") or "")
+                    bots[k] = bool(b.get("bot"))
+                    paid[k] = int(b.get("paid") or 0)
+                    if b.get("me"):
+                        mine = k
+                pl = [int(x) for x in (r.get("places") or [])]
+                w = int(r["winner"])
+                if sorted(pl) != [0, 1, 2, 3, 4] or pl[0] != w:
+                    pl = [w] + [k for k in range(5) if k != w]
+                pot = int(r.get("total") or sum(amt))
+                live = [a for a in amt if a > 0] or [0]
+                avg = pot / max(1, len(live))
+                rs.append({"t": float(r.get("t") or 0), "w": w, "pl": pl, "pot": pot, "amt": amt, "names": names,
+                           "bots": bots, "paid": paid, "mine": mine, "avg": avg, "hi": max(live), "lo": min(live),
+                           "wb": amt[w], "fav": max(range(5), key=lambda k: amt[k])})
+            except (KeyError, TypeError, ValueError, IndexError):
+                continue
+        self.rs = rs
+        if self.hover is not None and self.hover >= len(rs):
+            self.hover = None
+        self.setFixedHeight(self._layout())
+        self.update()
+
+    # ---- geometry --------------------------------------------------------------------------------------------------
+    def _layout(self) -> int:
+        w = self.W
+        self.pad = S(12)
+        self.axis = S(50)                                    # the price axis on the right
+        top = S(34)
+        self.disc = S(20)
+        self.gap = S(5)
+        per = max(1, int((w - 2 * self.pad + self.gap) // (self.disc + self.gap)))
+        self.per = per
+        n = len(self.rs)
+        rows = max(1, min(8, -(-n // per))) if n else 1
+        self.strip_n = min(n, rows * per)
+        self.strip_r = QRectF(self.pad, top + S(16), w - 2 * self.pad, rows * (self.disc + self.gap))
+        y = self.strip_r.bottom() + S(14)
+        self.pot_r = QRectF(self.pad, y + S(14), w - 2 * self.pad - self.axis, S(150))
+        y = self.pot_r.bottom() + S(22)
+        self.can_r = QRectF(self.pad, y + S(14), w - 2 * self.pad - self.axis, S(120))
+        y = self.can_r.bottom() + S(22)
+        self.vol_r = QRectF(self.pad, y + S(14), w - 2 * self.pad - self.axis, S(56))
+        y = self.vol_r.bottom() + S(22)
+        self.leg_r = QRectF(self.pad, y + S(14), w - 2 * self.pad, 5 * S(26))
+        return int(self.leg_r.bottom() + S(16))
+
+    def _shown(self) -> list:
+        return self.rs[-160:]
+
+    def _xs(self, i: int, n: int, r: QRectF) -> float:
+        return r.left() + (r.width() * (i + 0.5) / max(1, n))
+
+    def _idx_at(self, x: float):
+        sh = self._shown()
+        if not sh:
+            return None
+        r = self.pot_r
+        i = int((x - r.left()) / max(1.0, r.width()) * len(sh))
+        off = len(self.rs) - len(sh)
+        return off + max(0, min(len(sh) - 1, i))
+
+    def _strip_idx(self, pos):
+        if not self.strip_r.contains(pos):
+            return None
+        col = int((pos.x() - self.strip_r.left()) // (self.disc + self.gap))
+        row = int((pos.y() - self.strip_r.top()) // (self.disc + self.gap))
+        k = row * self.per + col
+        if col >= self.per or k >= self.strip_n:
+            return None
+        return len(self.rs) - 1 - k
+
+    def mouseMoveEvent(self, e) -> None:
+        pos = e.position()
+        old = (self.hover, self.hover_h)
+        self.hover, self.hover_h = None, None
+        si = self._strip_idx(pos)
+        if si is not None:
+            self.hover = si
+            self.hover_x = -1.0
+        else:
+            for r in (self.pot_r, self.can_r, self.vol_r):
+                if r.adjusted(0, -S(8), 0, S(8)).contains(pos):
+                    self.hover = self._idx_at(pos.x())
+                    self.hover_x = pos.x()
+                    break
+            else:
+                for k in range(5):
+                    if self._leg_row(k).contains(pos):
+                        self.hover_h = k
+        self.hover_pos = pos
+        self.setCursor(Qt.CursorShape.CrossCursor if (self.hover is not None) else Qt.CursorShape.ArrowCursor)
+        if old != (self.hover, self.hover_h) or self.hover is not None:
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = self.hover_h = None
+        self.update()
+
+    def _leg_row(self, k: int) -> QRectF:
+        return QRectF(self.leg_r.left(), self.leg_r.top() + k * S(26), self.leg_r.width(), S(24))
+
+    # ---- helpers ---------------------------------------------------------------------------------------------------
+    @staticmethod
+    def _k(v: float) -> str:
+        v = float(v)
+        for lim, suf in ((1e9, "B"), (1e6, "M"), (1e3, "K")):
+            if abs(v) >= lim:
+                return f"{v / lim:.1f}".rstrip("0").rstrip(".") + suf
+        return f"{v:.0f}"
+
+    @staticmethod
+    def _when(t: float) -> str:
+        return time.strftime("%d/%m %H:%M", time.localtime(t))
+
+    @staticmethod
+    def _day(t: float) -> tuple:
+        lt = time.localtime(t)
+        return lt[0], lt[1], lt[2]
+
+    def _scale(self, lo: float, hi: float):
+        if hi <= lo:
+            hi = lo + 1
+        pad = (hi - lo) * 0.12
+        return max(0.0, lo - pad), hi + pad
+
+    def _y(self, v: float, lo: float, hi: float, r: QRectF) -> float:
+        return r.bottom() - (v - lo) / max(1e-9, hi - lo) * r.height()
+
+    def _grid(self, p: QPainter, r: QRectF, lo: float, hi: float, title: str) -> None:
+        p.setPen(QPen(alpha("#FFFFFF", 0.10), 1))
+        p.setBrush(alpha("#000000", 0.18))
+        p.drawRoundedRect(r.adjusted(-S(4), -S(6), self.axis - S(2), S(6)), S(6), S(6))
+        p.setFont(font(9.5))
+        for k in range(5):
+            f = k / 4
+            y = r.bottom() - f * r.height()
+            p.setPen(QPen(alpha("#FFFFFF", 0.07), 1, Qt.PenStyle.DashLine))
+            p.drawLine(QPointF(r.left(), y), QPointF(r.right(), y))
+            p.setPen(alpha(TEXT_DIM, 0.9))
+            p.drawText(QRectF(r.right() + S(4), y - S(7), self.axis - S(8), S(14)),
+                       int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), self._k(lo + (hi - lo) * f))
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QPointF(r.left(), r.top() - S(12)), title)
+
+    def _time_axis(self, p: QPainter, r: QRectF, sh: list) -> None:
+        p.setFont(font(8.5))
+        p.setPen(alpha(TEXT_FAINT, 1.0))
+        n = len(sh)
+        last_day = None
+        steps = max(1, n // 5)
+        for i in range(0, n, steps):
+            d = self._day(sh[i]["t"])
+            txt = time.strftime("%H:%M", time.localtime(sh[i]["t"]))
+            if d != last_day:
+                txt = time.strftime("%d/%m %H:%M", time.localtime(sh[i]["t"]))
+                last_day = d
+            x = self._xs(i, n, r)
+            p.drawText(QRectF(x - S(34), r.bottom() + S(8), S(68), S(12)), int(Qt.AlignmentFlag.AlignHCenter), txt)
+
+    # ---- painting --------------------------------------------------------------------------------------------------
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w = self.width()
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(alpha("#0B0F10", 0.55))
+        p.drawRoundedRect(QRectF(1, 1, w - 2, self.height() - 2), S(14), S(14))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(14, QFont.Weight.Bold))
+        p.drawText(QPointF(self.pad, S(24)), tr("RACE HISTORY"))
+        if not self.rs:
+            p.setFont(font(11))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(self.pad, S(40), w - 2 * self.pad, S(60)), int(Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap),
+                       tr("The races will be listed here once the first one is over."))
+            return
+        rs, sh = self.rs, self._shown()
+        off = len(rs) - len(sh)
+        p.setFont(font(10))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(self.pad, S(8), w - 2 * self.pad, S(20)),
+                   int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                   tr("{n} races · {c} bet in total", n=len(rs), c=coins_text(sum(r["pot"] for r in rs))))
+        # --- the winners
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QPointF(self.pad, self.strip_r.top() - S(6)), tr("Winners, newest first"))
+        for k in range(self.strip_n):
+            i = len(rs) - 1 - k
+            row, col = divmod(k, self.per)
+            c = QPointF(self.strip_r.left() + col * (self.disc + self.gap) + self.disc / 2,
+                        self.strip_r.top() + row * (self.disc + self.gap) + self.disc / 2)
+            colr = QColor(HORSE_COLOURS[rs[i]["w"]])
+            hot = (self.hover == i)
+            g = QRadialGradient(QPointF(c.x() - self.disc * 0.15, c.y() - self.disc * 0.2), self.disc * 0.7)
+            g.setColorAt(0, mix(colr, QColor("#FFFFFF"), 0.45))
+            g.setColorAt(1, mix(colr, QColor("#000000"), 0.2))
+            p.setBrush(g)
+            p.setPen(QPen(QColor("#FFFFFF") if hot else alpha("#000000", 0.5), S(2) if hot else 1))
+            p.drawEllipse(c, self.disc / 2 - (0 if hot else 1), self.disc / 2 - (0 if hot else 1))
+            if rs[i]["mine"] is not None and rs[i]["paid"][rs[i]["mine"]] > 0:
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#FFD34D"))
+                p.drawEllipse(QPointF(c.x() + self.disc * 0.38, c.y() - self.disc * 0.38), S(3), S(3))
+            p.setPen(QColor("#10161A"))
+            p.setFont(font(11, QFont.Weight.Black))
+            p.drawText(QRectF(c.x() - self.disc / 2, c.y() - self.disc / 2, self.disc, self.disc), int(Qt.AlignmentFlag.AlignCenter),
+                       str(rs[i]["w"] + 1))
+        n = len(sh)
+        # --- 1. the pot as a price line
+        pots = [r["pot"] for r in sh]
+        lo, hi = self._scale(min(pots), max(pots))
+        r = self.pot_r
+        self._grid(p, r, lo, hi, tr("Pot of each race"))
+        pts = [QPointF(self._xs(i, n, r), self._y(v, lo, hi, r)) for i, v in enumerate(pots)]
+        area = QPainterPath(QPointF(pts[0].x(), r.bottom()))
+        for q in pts:
+            area.lineTo(q)
+        area.lineTo(QPointF(pts[-1].x(), r.bottom()))
+        area.closeSubpath()
+        g = QLinearGradient(r.topLeft(), r.bottomLeft())
+        g.setColorAt(0, alpha("#5BE37D", 0.38))
+        g.setColorAt(1, alpha("#5BE37D", 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawPath(area)
+        line = QPainterPath(pts[0])
+        for q in pts[1:]:
+            line.lineTo(q)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor("#5BE37D"), S(1.6), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        p.drawPath(line)
+        win = 5                                              # the moving average of the last 5 races
+        if n >= 3:
+            ma = QPainterPath()
+            for i in range(n):
+                seg = pots[max(0, i - win + 1): i + 1]
+                q = QPointF(pts[i].x(), self._y(sum(seg) / len(seg), lo, hi, r))
+                ma.moveTo(q) if i == 0 else ma.lineTo(q)
+            p.setPen(QPen(QColor("#FFC94D"), S(1.3), Qt.PenStyle.DashLine))
+            p.drawPath(ma)
+        # the highest and lowest pot, marked on the line
+        ihi, ilo = max(range(n), key=lambda k: pots[k]), min(range(n), key=lambda k: pots[k])
+        p.setFont(font(9, QFont.Weight.Bold))
+        for ix, txt, col in ((ihi, tr("HIGH {v}", v=self._k(pots[ihi])), "#5BE37D"), (ilo, tr("LOW {v}", v=self._k(pots[ilo])), "#FF6B6B")):
+            if ix == ihi and ix == ilo:
+                continue
+            q = pts[ix]
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(col))
+            p.drawEllipse(q, S(3), S(3))
+            p.setPen(QColor(col))
+            tw = p.fontMetrics().horizontalAdvance(txt)
+            x = min(max(q.x() - tw / 2, r.left()), r.right() - tw)
+            p.drawText(QPointF(x, q.y() + (-S(7) if ix == ihi else S(15))), txt)
+        for i, q in enumerate(pts):                          # one dot per race, in the winner's colour
+            p.setPen(QPen(alpha("#000000", 0.5), 1))
+            p.setBrush(QColor(HORSE_COLOURS[sh[i]["w"]]))
+            p.drawEllipse(q, S(2.6) if n < 80 else S(1.8), S(2.6) if n < 80 else S(1.8))
+        lastv = pots[-1]
+        yl = self._y(lastv, lo, hi, r)
+        p.setPen(QPen(alpha("#5BE37D", 0.8), 1, Qt.PenStyle.DotLine))
+        p.drawLine(QPointF(r.left(), yl), QPointF(r.right(), yl))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#5BE37D"))
+        p.drawRoundedRect(QRectF(r.right() + S(2), yl - S(7), self.axis - S(6), S(14)), S(4), S(4))
+        p.setPen(QColor("#06210F"))
+        p.setFont(font(9, QFont.Weight.Bold))
+        p.drawText(QRectF(r.right() + S(2), yl - S(7), self.axis - S(6), S(14)), int(Qt.AlignmentFlag.AlignCenter), self._k(lastv))
+        self._time_axis(p, r, sh)
+        # --- 2. a candle for every race
+        r = self.can_r
+        lo2, hi2 = self._scale(min(x["lo"] for x in sh), max(x["hi"] for x in sh))
+        self._grid(p, r, lo2, hi2, tr("Bets: smallest to biggest · average to the winner's"))
+        cw = max(1.5, min(S(12), r.width() / n * 0.62))
+        for i, x in enumerate(sh):
+            cx = self._xs(i, n, r)
+            up = x["wb"] >= x["avg"]
+            col = QColor("#3DDC84" if up else "#FF5C5C")
+            p.setPen(QPen(col, 1))
+            p.drawLine(QPointF(cx, self._y(x["hi"], lo2, hi2, r)), QPointF(cx, self._y(x["lo"], lo2, hi2, r)))
+            y1, y2 = self._y(x["avg"], lo2, hi2, r), self._y(x["wb"], lo2, hi2, r)
+            p.setBrush(col if not up else alpha(col, 0.85))
+            p.drawRect(QRectF(cx - cw / 2, min(y1, y2), cw, max(1.5, abs(y1 - y2))))
+        self._time_axis(p, r, sh)
+        # --- 3. the money on each horse: stacked bars
+        r = self.vol_r
+        tops = [sum(x["amt"]) for x in sh]
+        lo3, hi3 = 0.0, max(tops) * 1.1
+        self._grid(p, r, lo3, hi3, tr("Money on each horse"))
+        bw = max(1.5, r.width() / n * 0.74)
+        for i, x in enumerate(sh):
+            cx = self._xs(i, n, r)
+            yb = r.bottom()
+            for k in range(5):
+                hgt = x["amt"][k] / max(1e-9, hi3) * r.height()
+                col = QColor(HORSE_COLOURS[k])
+                if k == x["w"]:
+                    col = mix(col, QColor("#FFFFFF"), 0.25)
+                else:
+                    col.setAlphaF(0.55)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(col)
+                p.drawRect(QRectF(cx - bw / 2, yb - hgt, bw, hgt))
+                yb -= hgt
+        # --- 4. the horses: wins, share, pot won
+        wins = [0] * 5
+        took = [0] * 5
+        for x in rs:
+            wins[x["w"]] += 1
+            for k in range(5):
+                took[k] += x["amt"][k]
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QPointF(self.pad, self.leg_r.top() - S(6)), tr("Wins by horse, all {n} races", n=len(rs)))
+        topw = max(max(wins), 1)
+        for k in range(5):
+            rr = self._leg_row(k)
+            hot = self.hover_h == k
+            if hot:
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#FFFFFF", 0.07))
+                p.drawRoundedRect(rr, S(6), S(6))
+            c = QPointF(rr.left() + S(12), rr.center().y())
+            p.setPen(QPen(alpha("#000000", 0.5), 1))
+            p.setBrush(QColor(HORSE_COLOURS[k]))
+            p.drawEllipse(c, S(9), S(9))
+            p.setPen(QColor("#10161A"))
+            p.setFont(font(10.5, QFont.Weight.Black))
+            p.drawText(QRectF(c.x() - S(9), c.y() - S(9), S(18), S(18)), int(Qt.AlignmentFlag.AlignCenter), str(k + 1))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(rr.left() + S(28), rr.top(), S(100), rr.height()), int(Qt.AlignmentFlag.AlignVCenter), tr(HORSE_NAMES[k]))
+            bx = rr.left() + S(128)
+            bwid = rr.right() - bx - S(92)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.07))
+            p.drawRoundedRect(QRectF(bx, rr.center().y() - S(4), bwid, S(8)), S(4), S(4))
+            p.setBrush(QColor(HORSE_COLOURS[k]))
+            p.drawRoundedRect(QRectF(bx, rr.center().y() - S(4), max(S(3), bwid * wins[k] / topw), S(8)), S(4), S(4))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10))
+            p.drawText(QRectF(rr.right() - S(88), rr.top(), S(88), rr.height()),
+                       int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                       f"{wins[k]} · {100 * wins[k] / max(1, len(rs)):.0f}%")
+        # --- the cross-hair and the card
+        if self.hover is not None and 0 <= self.hover < len(rs):
+            i = self.hover - off
+            x = rs[self.hover]
+            if 0 <= i < n:
+                cx = self._xs(i, n, self.pot_r)
+                p.setPen(QPen(alpha("#FFFFFF", 0.55), 1, Qt.PenStyle.DashLine))
+                for rr in (self.pot_r, self.can_r, self.vol_r):
+                    p.drawLine(QPointF(cx, rr.top() - S(6)), QPointF(cx, rr.bottom() + S(6)))
+                yv = self._y(x["pot"], lo, hi, self.pot_r)
+                p.drawLine(QPointF(self.pot_r.left(), yv), QPointF(self.pot_r.right(), yv))
+                p.setPen(QPen(QColor("#FFFFFF"), S(1.6)))
+                p.setBrush(QColor(HORSE_COLOURS[x["w"]]))
+                p.drawEllipse(QPointF(cx, yv), S(5), S(5))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#FFFFFF"))
+                p.drawRoundedRect(QRectF(self.pot_r.right() + S(2), yv - S(7), self.axis - S(6), S(14)), S(4), S(4))
+                p.setPen(QColor("#10161A"))
+                p.setFont(font(9, QFont.Weight.Bold))
+                p.drawText(QRectF(self.pot_r.right() + S(2), yv - S(7), self.axis - S(6), S(14)), int(Qt.AlignmentFlag.AlignCenter),
+                           self._k(x["pot"]))
+            self._card(p, x, rs)
+        elif self.hover_h is not None:
+            self._horse_card(p, self.hover_h, rs)
+        p.end()
+
+    def _lines(self, x: dict, rs: list) -> list:
+        """[(text, colour, bold)] for one race."""
+        day = self._day(x["t"])
+        same = [y for y in rs if self._day(y["t"]) == day]
+        pots = [y["pot"] for y in same]
+        w = x["w"]
+        mult = (x["paid"][w] / x["amt"][w]) if x["amt"][w] and x["paid"][w] else 0
+        out = [(tr("#{n} {name} won", n=w + 1, name=tr(HORSE_NAMES[w])), HORSE_COLOURS[w], True),
+               (self._when(x["t"]), TEXT_DIM, False),
+               (tr("1st #{a} · 2nd #{b} · 3rd #{c}", a=x["pl"][0] + 1, b=x["pl"][1] + 1, c=x["pl"][2] + 1), TEXT, False),
+               (tr("Pot {v}", v=coins_text(x["pot"])), "#5BE37D", True),
+               (tr("Biggest bet {a} · smallest {b}", a=coins_text(x["hi"]), b=coins_text(x["lo"])), TEXT, False),
+               (tr("Average bet {a} · winner's {b}", a=coins_text(int(x["avg"])), b=coins_text(x["wb"])),
+                "#3DDC84" if x["wb"] >= x["avg"] else "#FF5C5C", False),
+               (tr("Favourite: #{n} ({v}){s}", n=x["fav"] + 1, v=coins_text(x["amt"][x["fav"]]),
+                   s=tr(" · it won") if x["fav"] == w else tr(" · UPSET")), "#FFC94D" if x["fav"] != w else TEXT_DIM, x["fav"] != w),
+               (tr("That day: {n} races · pot high {a} · low {b}", n=len(same), a=self._k(max(pots)), b=self._k(min(pots))), TEXT_DIM, False)]
+        for k in x["pl"]:
+            nm = x["names"][k] or "?"
+            out.append((f"#{k + 1} {nm}{' ★' if x['mine'] == k else ''}: {coins_text(x['amt'][k])}"
+                        + (f" → {coins_text(x['paid'][k])}" if x["paid"][k] else ""), HORSE_COLOURS[k], x["mine"] == k))
+        if mult:
+            out.append((tr("Winner's pay: ×{m}", m=f"{mult:.2f}"), "#FFD34D", False))
+        return out
+
+    def _card_at(self, p: QPainter, lines: list, pos: QPointF) -> None:
+        p.setFont(font(10.5))
+        fm = p.fontMetrics()
+        cw = min(self.width() - S(16), max(fm.horizontalAdvance(t) for t, _c, _b in lines) + S(22))
+        ch = len(lines) * S(16) + S(14)
+        x = pos.x() + S(16)
+        if x + cw > self.width() - S(6):
+            x = pos.x() - cw - S(16)
+        x = max(S(6), min(self.width() - cw - S(6), x))
+        y = max(S(6), min(self.height() - ch - S(6), pos.y() - ch / 2))
+        p.setPen(QPen(alpha("#FFFFFF", 0.25), 1))
+        p.setBrush(alpha("#0B1012", 0.96))
+        p.drawRoundedRect(QRectF(x, y, cw, ch), S(8), S(8))
+        for j, (t, c, b) in enumerate(lines):
+            p.setFont(font(10.5, QFont.Weight.Bold if b else QFont.Weight.Normal))
+            p.setPen(QColor(c))
+            p.drawText(QRectF(x + S(10), y + S(7) + j * S(16), cw - S(14), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(t, Qt.TextElideMode.ElideRight, int(cw - S(16))))
+
+    def _card(self, p: QPainter, x: dict, rs: list) -> None:
+        self._card_at(p, self._lines(x, rs), getattr(self, "hover_pos", QPointF(self.width() / 2, self.height() / 2)))
+
+    def _horse_card(self, p: QPainter, k: int, rs: list) -> None:
+        wins = [x for x in rs if x["w"] == k]
+        seconds = sum(1 for x in rs if x["pl"][1] == k)
+        thirds = sum(1 for x in rs if x["pl"][2] == k)
+        took = [x["amt"][k] for x in rs if x["amt"][k]]
+        streak = best = 0
+        for x in rs:
+            streak = streak + 1 if x["w"] == k else 0
+            best = max(best, streak)
+        cur = 0
+        for x in reversed(rs):
+            if x["w"] != k:
+                break
+            cur += 1
+        lines = [(f"#{k + 1} {tr(HORSE_NAMES[k])}", HORSE_COLOURS[k], True),
+                 (tr("{a} wins · {b} second · {c} third", a=len(wins), b=seconds, c=thirds), TEXT, False),
+                 (tr("Win rate {p}% (fair: 20%)", p=f"{100 * len(wins) / max(1, len(rs)):.1f}"), TEXT, False),
+                 (tr("Best streak {n} · now {m}", n=best, m=cur), TEXT_DIM, False),
+                 (tr("Average bet on it {v}", v=coins_text(int(sum(took) / max(1, len(took))))), TEXT_DIM, False),
+                 (tr("Biggest bet on it {v}", v=coins_text(max(took) if took else 0)), TEXT_DIM, False),
+                 (tr("Biggest pot it won {v}", v=coins_text(max((x["pot"] for x in wins), default=0))), "#5BE37D", False)]
+        self._card_at(p, lines, getattr(self, "hover_pos", QPointF(self.width() / 2, self.height() / 2)))
+
+
+def add_race_history(page, lay) -> None:
+    """6.5: the history under the Horse Racing menu: asked now, and again every 15 seconds (cheap and cached)."""
+    ctx = page.ctx
+    view = RaceHistory(ctx, page.W)
+    page._race_hist = view
+
+    def fresh() -> None:
+        try:
+            view.set_data(ctx.race_hist)
+        except RuntimeError:
+            pass
+
+    def tick() -> None:
+        if time.time() - float(getattr(ctx, "race_hist_at", 0) or 0) > 14:
+            load_race_history(ctx, fresh)
+        elif getattr(ctx, "race_hist_n", None) != len(view.rs):
+            fresh()
+    lay.addWidget(view)
+    lay.addWidget(_Poll(5000, tick))
+
+
 def build_horses(page, lay) -> None:
     """6.3: Horse Racing. Pick a free horse on the board, choose your bet, join. Bets close 2 minutes after the first
     player joins (or 2 minutes after it opens if nobody does: the bots race anyway). Then 3, 2, 1, the gun, the race."""
@@ -41686,12 +43163,7 @@ def build_horses(page, lay) -> None:
         nxt = float(d.get("next_at") or 0) - float(d.get("now") or time.time())
         lay.addWidget(Label(tr("The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.",
                                t=jp_clock(nxt)), 12, TEXT, wrap_w=page.W))
-        last = d.get("last") or {}
-        if not last.get("bets"):
-            return
-        lay.addWidget(heading(tr("Last race")))
-        d = last
-        state = d.get("state")
+        return add_race_history(page, lay)               # 6.4: nothing to look at until it opens (6.5: but the history)
     view = RaceView(page, page.W)
     view.set_data(d)
     page._race_view = view
@@ -41733,10 +43205,10 @@ def build_horses(page, lay) -> None:
                         join.setEnabled(False)
                         return
                     others = cur
-                    win = v + int(share * others)
+                    win = v + int(0.65 * others)               # 1st: the bet back + 70% of the winnings (about 65% of the others' money)
                     info.set_text(tr("Too late: the bets are closed") if late else
-                                  tr("#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)",
-                                     n=board.sel + 1, p=pct(v / max(1, cur + v)), w=coins_text(win), s=int(share * 100)))
+                                  tr("#{n}: {p} chance · 1st place pays about {w} · 2nd and 3rd get a smaller share",
+                                     n=board.sel + 1, p=pct(v / max(1, cur + v)), w=coins_text(win)))
                     amount.val.set_color(LOSE if v > BIG_BET and v * 4 >= max(1, ctx.wallet.balance()) else
                                          GOLD_TEXT if v > BIG_BET else TEXT)
                     join.setEnabled(not late)
@@ -41786,10 +43258,11 @@ def build_horses(page, lay) -> None:
         if state == "open":
             lay.addWidget(Label(tr("You're on #{n} {name}. Good luck!", n=int(d["mine"]) + 1, name=tr(HORSE_NAMES[int(d["mine"])])),
                                 11.5, "#3DDC84", bold=True, wrap_w=page.W))
-    lay.addWidget(Label(tr("Your chance to win is your share of all the money on the horses. The winner gets their bet "
-                           "back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then "
-                           "bots take the empty horses and the race starts, with or without players.",
-                           s=int(float(d.get("share") or 0.8) * 100)), 10, TEXT_FAINT, wrap_w=page.W))
+    lay.addWidget(Label(tr("Your chance to win is your share of all the money on the horses. 1st place gets their whole bet "
+                           "back and 70% of the winnings, 2nd gets 25% of their bet back and 20%, 3rd gets 5% back and 10%. "
+                           "Bets close 2 minutes after the first player joins; then bots take the empty horses and the "
+                           "race starts, with or without players."), 10, TEXT_FAINT, wrap_w=page.W))
+    add_race_history(page, lay)
 
 
 def build_jackpot(page, lay) -> None:
@@ -41826,13 +43299,7 @@ def build_jackpot(page, lay) -> None:
         nxt = float(d.get("next_at") or 0) - float(d.get("now") or time.time())
         lay.addWidget(Label(tr("The next jackpot opens in {t}. 2 minutes to join once a player is in.", t=jp_clock(nxt)),
                             12, TEXT, wrap_w=page.W))
-        last = d.get("last") or {}
-        if last.get("entries"):
-            lay.addWidget(heading(tr("Last jackpot")))
-            d = last
-            state = d.get("state")
-        else:
-            return
+        return                                           # 6.4: nothing to look at until it opens
     wheel = JackpotWheel(page, min(page.W, S(330)))
     wheel.set_data(d)
     page._jp_wheel = wheel
@@ -44943,7 +46410,7 @@ HELP = {
         "The more you bet, the better your horse's chance, but the more you can lose.",
         "Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start."], [
         "Chance to win = your bet ÷ all the money on the horses.",
-        "The winner gets their bet back plus 80% of everybody else's bets (bots' too).",
+        "1st place: 100% of their bet back and 70% of the winnings. 2nd: 25% back and 20%. 3rd: 5% back and 10%. (The winnings are all the money that is not given back.)",
         "Nobody joins? The bots race on their own and the next event comes 15 minutes later."]),
     "jackpot": ("Jackpot", [
         "Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).",
