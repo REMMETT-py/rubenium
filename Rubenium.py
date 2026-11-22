@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.7"         # the version people see
-BUILD = "2026.11.22.14"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.8"         # the version people see
+BUILD = "2026.11.22.15"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12341,6 +12341,7 @@ FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match
 FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'Preview': 'Essai', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
 FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
 FR.update({'Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run.': 'Les paris ferment 2 minutes après l’arrivée du premier joueur. Puis les bots prennent les chevaux libres, 3, 2, 1, le coup de feu, et ils partent.', 'Chance to win = your bet ÷ all the money on the horses.': 'Chance de gagner = ta mise ÷ tout l’argent misé sur les chevaux.', 'Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start.': 'Les chevaux à l’arrière de la file partent en premier, pour qu’ils passent tous la ligne de départ ensemble : personne n’a d’avance.', 'Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Pendant 2 minutes tu peux mettre 1 à 3 objets (5 joueurs au plus).', 'Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.': 'Le Jackpot et la Course de chevaux alternent : chacun ouvre 15 minutes après la fin de l’autre.', 'Nobody joins? The bots race on their own and the next event comes 15 minutes later.': 'Personne ne rejoint ? Les bots courent seuls et l’événement suivant arrive 15 minutes plus tard.', 'Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).': 'Choisis un cheval libre sur le tableau et mise des pièces dessus (un cheval chacun, 5 chevaux).', "The more you bet, the better your horse's chance, but the more you can lose.": 'Plus tu mises, plus ton cheval a de chances, mais plus tu peux perdre.', "The winner gets their bet back plus 80% of everybody else's bets (bots' too).": 'Le gagnant récupère sa mise plus 80 % des mises de tous les autres (bots compris).', 'Bet {n} coins on this round? That is {p}% of your coins.': 'Miser {n} pièces sur cette manche ? C’est {p} % de tes pièces.', 'Careful: you could lose a big part of your coins.': 'Attention : tu pourrais perdre une grosse partie de tes pièces.', 'Bet it': 'Miser', 'FINISH': 'ARRIVÉE', 'BETS CLOSE IN {t}': 'PARIS FERMÉS DANS {t}', 'Pick a horse and bet. Bots take the empty horses at 0:00.': 'Choisis un cheval et mise. Les bots prennent les chevaux libres à 0:00.', 'The clock restarts at 2:00 when the first player joins': 'Le chrono repart à 2:00 quand le premier joueur rejoint', 'BOTS TAKE THE EMPTY HORSES': 'LES BOTS PRENNENT LES CHEVAUX LIBRES', 'Get ready…': 'Préparez-vous…', 'GO!': 'PARTEZ !', 'YOU WON {n}!': 'TU AS GAGNÉ {n} !', 'YOU WON!': 'TU AS GAGNÉ !', '#{n} {name} WINS': 'N°{n} {name} GAGNE', 'Ridden for {who}': 'Monté pour {who}', 'Desert': 'Désert', 'Forest': 'Forêt', 'Snow': 'Neige', 'RACE BOARD': 'TABLEAU DES COURSES', '{n} on the horses': '{n} misés sur les chevaux', 'Free: click to pick': 'Libre : clique pour choisir', 'Free': 'Libre', 'Your pick': 'Ton choix', 'HORSE RACING': 'COURSE DE CHEVAUX', 'Horse Racing': 'Course de chevaux', 'OPEN · bets close in {t}': 'OUVERT · paris fermés dans {t}', "They're racing: watch it": 'Ils courent : regarde', 'Next race in {t}': 'Prochaine course dans {t}', '5 horses, bet on one': '5 chevaux, mise sur un', 'Horse Racing is paused for a moment. Nothing you own is lost.': 'La Course de chevaux est en pause un moment. Tu ne perds rien.', 'The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.': 'La prochaine course ouvre dans environ {t}. Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart.', 'Last race': 'Dernière course', 'Every horse is taken. Watch the race!': 'Tous les chevaux sont pris. Regarde la course !', 'You need at least {n} to bet.': 'Il te faut au moins {n} pour miser.', 'Bet on this horse': 'Miser sur ce cheval', 'Click a free horse on the board': 'Clique un cheval libre sur le tableau', 'Too late: the bets are closed': 'Trop tard : les paris sont fermés', '#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)': 'N°{n} : {p} de chances · s’il gagne tu reçois {w} (ta mise + {s} % des autres)', 'Bet {n} coins on #{h} {name}? That is {p}% of your coins.': 'Miser {n} pièces sur le n°{h} {name} ? C’est {p} % de tes pièces.', "You're on #{n} {name}. Good luck!": 'Tu es sur le n°{n} {name}. Bonne chance !', "Your chance to win is your share of all the money on the horses. The winner gets their bet back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.": 'Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. Le gagnant récupère sa mise plus {s} % de celles des autres. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.', 'HORSE RACE IS OPEN': 'LA COURSE DE CHEVAUX EST OUVERTE', 'Bets close in about {t}. Bet in Games > Horse Racing': 'Les paris ferment dans environ {t}. Mise dans Jeux > Course de chevaux', 'Red Rocket': 'Fusée Rouge', 'Blue Thunder': 'Tonnerre Bleu', 'Green Clover': 'Trèfle Vert', 'Golden Sun': 'Soleil d’Or', 'Purple Storm': 'Tempête Violette', 'The bets for this race are closed': 'Les paris de cette course sont fermés', 'Someone just took this horse: pick another': 'Quelqu’un vient de prendre ce cheval : choisis-en un autre', 'You already have a horse in this race': 'Tu as déjà un cheval dans cette course', 'Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.': 'Limitée (calendrier de l’Avent) : aussi bonne que la Caisse Top Tier. Toujours un badge Épique ou Légendaire, avec une chance de Mythique.', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 999 fois ta mise.', "NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's": 'NOUVEAU : Course de chevaux. 5 chevaux, choisis-en un et mise : ta chance est ta part de l’argent. Le gagnant récupère sa mise plus 80 % de celles des autres', 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Si personne ne rejoint, les bots jouent quand même', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)': 'Mises jusqu’à la moitié de tes pièces. Au-delà de 10 000, on te demande d’abord, en or (en rouge si c’est une grosse part de tes pièces)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5': 'Puissance 4 Professionnel paie ×999. Jeu des gobelets : Facile ×1,2, Moyen ×2, Difficile ×3, Expert ×5', "A coloured app font now colours the app's text too": 'Une police colorée colore maintenant aussi le texte de l’app', 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)': 'Bots du Mini Golf corrigés : plus de passage à travers les murs ni de glissade sur tout le parcours, et ils jouent chacun leur tour (tu attends leur balle)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar': 'Mini Golf et Wave Rush sont dans Gagner des pièces ; Coinflip est sous le calendrier de l’Avent', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case': 'Anciennes caisses retirées (ceux qui en avaient ont reçu leur prix en pièces). Les caisses Hiver et Cadeau sont maintenant aussi bonnes que la Caisse Top Tier'})      # 6.3
+FR.update({'Horse Racing: the race is now 3 times longer (about a minute) with many more lead changes, and 5 new maps (Beach, Canyon, Night City, Volcano, Moon) join Desert, Forest and Snow': 'Course de chevaux : la course dure maintenant 3 fois plus longtemps (environ une minute) avec beaucoup plus de changements de tête, et 5 nouvelles cartes (Plage, Canyon, Ville de nuit, Volcan, Lune) rejoignent Désert, Forêt et Neige'})      # 6.8
 FR.update({'Ripples': 'Ondulations', 'Pinwheel': 'Moulinet', 'Ticker': 'Téléscripteur', 'Light Leaks': 'Fuites de lumière', 'Nixie': 'Nixie', 'Static': 'Neige TV', 'Vinyl': 'Vinyle', 'Pendulum': 'Pendule', 'Hologram': 'Hologramme', 'Mandala': 'Mandala', 'Monsoon': 'Mousson', 'Sahara': 'Sahara', 'Bamboo': 'Bambou', 'Neon Rain': 'Pluie néon', 'Lanterns': 'Lanternes', 'Quartz': 'Quartz', 'Lava Lamp': 'Lampe à lave', 'Wormhole': 'Trou de ver', 'Polar Lights': 'Aurores polaires', 'Liquid Chrome': 'Chrome liquide', 'NEW: 10 more animated banners (Ripples, Pinwheel, Ticker, Light Leaks, Nixie, Static, Vinyl, Pendulum, Hologram, Mandala) and 10 more moving app themes (Monsoon, Sahara, Bamboo, Neon Rain, Lanterns, Quartz, Lava Lamp, Wormhole, Polar Lights, Liquid Chrome), each in up to 6 more colours. In the shop and the cases': 'NOUVEAU : 10 bannières animées de plus (Ondulations, Moulinet, Téléscripteur, Fuites de lumière, Nixie, Neige TV, Vinyle, Pendule, Hologramme, Mandala) et 10 thèmes animés de plus (Mousson, Sahara, Bambou, Pluie néon, Lanternes, Quartz, Lampe à lave, Trou de ver, Aurores polaires, Chrome liquide), chacun jusqu’à 6 autres couleurs. Dans la boutique et les caisses'})      # 6.7
 FR.update({'1st': '1er', '2nd': '2e', '3rd': '3e', '4th': '4e', '5th': '5e', 'Average bet {v}': 'Mise moyenne {v}', 'Best round': 'Meilleure manche', 'Best round {a} · worst {b}': 'Meilleure manche {a} · pire {b}', 'Best winning streak {n}': 'Meilleure série de victoires {n}', 'Bet {a} · paid {b}': 'Mise {a} · payé {b}', 'Bet {a} → paid {b}': 'Mise {a} → payé {b}', 'Coins won or lost in each round': 'Pièces gagnées ou perdues à chaque manche', 'EVEN': 'ÉGALITÉ', 'Every round of every game will be drawn here.': 'Chaque manche de chaque jeu sera dessinée ici.', 'Games: won, lost and even rounds': 'Jeux : manches gagnées, perdues et à égalité', 'LOSS': 'PERTE', 'Multiplier ×{m}': 'Multiplicateur ×{m}', 'Net coins each day': 'Pièces nettes par jour', 'Net coins over time (last {n} rounds)': 'Pièces nettes dans le temps ({n} dernières manches)', 'Net result': 'Résultat net', 'Net {v}': 'Net {v}', 'PLAY HISTORY': 'HISTORIQUE DE JEU', 'Played: {g}': 'Joué : {g}', 'Podium of the last races': 'Podium des dernières courses', 'Pot': 'Cagnotte', 'Rounds, newest first': 'Manches, de la plus récente à la plus ancienne', 'Running net {v}': 'Net cumulé {v}', 'That day: {n} rounds · net {v}': 'Ce jour-là : {n} manches · net {v}', 'Total bet': 'Total misé', 'Total bet {a} · paid {b}': 'Total misé {a} · payé {b}', 'Total paid': 'Total payé', 'WIN': 'GAIN', 'Win rate (last 20 rounds, %)': 'Taux de victoire (20 dernières manches, %)', 'Win rate then {p}%': 'Taux de victoire alors {p} %', 'Win rate {p}%': 'Taux de victoire {p} %', 'Won / lost': 'Gagnées / perdues', 'Worst round': 'Pire manche', '{n} rounds · {p}% won': '{n} manches · {p} % gagnées', '{n} rounds · {w} won · {l} lost': '{n} manches · {w} gagnées · {l} perdues', '{n} rounds · {w} won · {l} lost · {e} even': '{n} manches · {w} gagnées · {l} perdues · {e} égalités', "NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover": 'NOUVEAU : un graphique Historique de jeu en haut des Stats de chaque joueur (les tiennes et celles de tes amis) : pièces nettes dans le temps, résultat de chaque manche, taux de victoire, chaque jour et chaque jeu, tout en détail au survol', 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place': 'Historique de la Course de chevaux : une liste Podium montre le 1er, le 2e et le 3e de chaque course (or, argent, bronze) et la carte au survol nomme chaque place'})      # 6.6
 FR.update({'NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too': 'NOUVEAU : 10 bannières, cadres et thèmes de plus (Lagoon, Pêche, Forme d’onde, Radar, Or rose…) et chaque bannière, cadre et thème existe maintenant jusqu’à 6 autres couleurs : plus de 900 nouveaux looks. Choisis la couleur dans chaque design de la boutique, ils sont aussi dans les caisses', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%': 'La Course de chevaux paie maintenant les trois premiers : le 1er récupère 100 % de sa mise et 70 % des gains, le 2e 25 % et 20 %, le 3e 5 % et 10 %', "Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse's wins. Hover anywhere to see the details": 'Course de chevaux : un Historique sous le menu avec les vainqueurs, un graphique façon bourse des cagnottes, une bougie par course et les victoires de chaque cheval. Survole pour voir les détails', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)': 'La Course de chevaux et le Jackpot ne peuvent plus être ouverts avant leur ouverture (l’historique reste visible)'})      # 6.5 news
@@ -12392,6 +12393,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.8", ['Horse Racing: the race is now 3 times longer (about a minute) with many more lead changes, and 5 new maps (Beach, Canyon, Night City, Volcano, Moon) join Desert, Forest and Snow']),
     ("6.7", ['NEW: 10 more animated banners (Ripples, Pinwheel, Ticker, Light Leaks, Nixie, Static, Vinyl, Pendulum, Hologram, Mandala) and 10 more moving app themes (Monsoon, Sahara, Bamboo, Neon Rain, Lanterns, Quartz, Lava Lamp, Wormhole, Polar Lights, Liquid Chrome), each in up to 6 more colours. In the shop and the cases']),
     ("6.6", ["NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover", 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place']),
     ("6.5", ['NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%', 'Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse\'s wins. Hover anywhere to see the details', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)']),
@@ -39354,6 +39356,37 @@ class AdminPage(Page):
                 t + "?", lambda: self.do("rb_admin_arena", {"kind": k}, en("Started")), yes=en("Yes")))
             rl.addWidget(b)
         lay.addWidget(row)
+        rig = self.fetch("rb_admin_race_rig", {}) or {}                  # 6.8: rig the finishing order of a Horse Race
+        if rig:
+            cur = rig.get("rig")
+            names = [str(int(x) + 1) for x in cur] if cur else []
+            lay.addWidget(Label(en("Race rig: {r}", r=(" → ".join("#" + n for n in names) + en(" (after {n} race(s))", n=int(rig.get("skip") or 0))
+                                                      if int(rig.get("skip") or 0) else " → ".join("#" + n for n in names)) if names else en("none")),
+                                12, GOLD_TEXT if names else TEXT_DIM, wrap_w=self.W))
+            rrow = QWidget()
+            rrl = QHBoxLayout(rrow)
+            rrl.setContentsMargins(0, 0, 0, 0)
+            setb = Button(en("Rig the Horse Race"), "ghost", 30, icon="refresh")
+            setb.setToolTip(en("Choose who wins (and 2nd, 3rd) in a Horse Race, and which race. Players are not told."))
+
+            def do_rig(v, dlg) -> None:
+                try:
+                    order = [int(x) - 1 for x in (v.get("a"), v.get("b"), v.get("c")) if str(x).strip()]
+                    skip = int(str(v.get("s") or "0").strip() or 0)
+                except ValueError:
+                    return dlg.say(en("Numbers from 1 to 5"))
+                if not order or len(set(order)) != len(order) or any(x < 0 or x > 4 for x in order) or skip < 0:
+                    return dlg.say(en("Pick different horses from 1 to 5, the first one is needed"))
+                dlg.close()
+                self.do("rb_admin_race_rig", {"places": order, "skip": skip, "clear": False}, en("Rigged"))
+            setb.clicked.connect(lambda: FormDialog(self.ctx, en("Rig the Horse Race"), [
+                ("a", en("1st place: horse 1 to 5"), ""), ("b", en("2nd place (optional)"), ""), ("c", en("3rd place (optional)"), ""),
+                ("s", en("Races to let pass first (0 = the race that locks next)"), "0")], en("Rig it"), do_rig))
+            rrl.addWidget(setb)
+            clr = Button(en("Remove the rig"), "ghost", 30)
+            clr.clicked.connect(lambda: self.do("rb_admin_race_rig", {"places": None, "skip": 0, "clear": True}, en("Removed")))
+            rrl.addWidget(clr)
+            lay.addWidget(rrow)
         force = Button(en("Everyone must update to my version"), "ghost", 30, icon="refresh")
         force.setToolTip(en("Older versions can no longer play online until they update"))
         force.clicked.connect(lambda: self.ctx.window.confirm(
@@ -42511,7 +42544,7 @@ HORSE_COLOURS = ["#FF4D4D", "#4FA3FF", "#3DDC84", "#FFD34D", "#C77BFF"]      # s
 HORSE_COATS = ["#7A4521", "#26201C", "#D8D2C8", "#B5562A", "#E0B86A"]        # bay, black, grey, chestnut, palomino
 HORSE_MANES = ["#2A160A", "#0C0A09", "#F4F1EC", "#6E2A10", "#FFF1CC"]
 HORSE_NAMES = ["Red Rocket", "Blue Thunder", "Green Clover", "Golden Sun", "Purple Storm"]
-RACE_ROLL, RACE_RUN, RACE_LEAD = 3.0, 20.0, 7.0      # the rolling start, the winner's race time, lock -> gun (s)
+RACE_ROLL, RACE_RUN, RACE_LEAD = 3.0, 60.0, 7.0      # the rolling start, the winner's race time, lock -> gun (s)
 RACE_GAP = 0.022                                     # the line-up: one horse behind the other (track = 1.0 long)
 RACE_VIEW = 0.30                                     # how much of the track the camera shows
 
@@ -42583,13 +42616,13 @@ def race_plan(seed: int, winner, places=None) -> dict:
     t = RACE_RUN
     for i, k in enumerate(order):
         if i:
-            t += rnd.uniform(0.22, 0.95)
+            t += rnd.uniform(0.5, 2.2)                       # 6.8: the race is 3 times longer, so the gaps are bigger
         plan["fin"][k] = t
-    for k in range(5):
-        a1, a2, a3 = rnd.uniform(-0.09, 0.09), rnd.uniform(-0.045, 0.045), rnd.uniform(-0.02, 0.02)
-        room = math.pi * (abs(a1) + 2 * abs(a2) + 3 * abs(a3))
-        scale = min(1.0, 0.78 / max(room, 1e-9))
-        plan["waves"][k] = (a1 * scale, a2 * scale, a3 * scale)
+    for k in range(5):                                       # 6.8: six waves each, so there are many more lead changes
+        co = [rnd.uniform(-1, 1) * 0.11 / j for j in range(1, 7)]
+        room = math.pi * sum((j + 1) * abs(a) for j, a in enumerate(co))
+        scale = min(1.0, 0.82 / max(room, 1e-9))
+        plan["waves"][k] = tuple(a * scale for a in co)
     plan["order"] = order
     return plan
 
@@ -42599,8 +42632,8 @@ def race_pos(plan: dict, k: int, t: float) -> tuple:
     up from the back: the last horse goes first, then the next one, and all of them reach the start line together."""
     ci = plan["column"].index(k)                           # 0 = the front of the line-up
     fin = plan["fin"].get(k, RACE_RUN)
-    a1, a2, a3 = plan["waves"].get(k, (0.0, 0.0, 0.0))
-    v0 = (1 + math.pi * (a1 + 2 * a2 + 3 * a3)) / fin       # its speed when the race proper begins
+    co = plan["waves"].get(k, ())
+    v0 = (1 + math.pi * sum((j + 1) * a for j, a in enumerate(co))) / fin       # its speed when the race proper begins
     x0 = -(ci + 1) * RACE_GAP
     if t <= 0 or not plan["fin"]:
         return x0, 0.0
@@ -42617,11 +42650,10 @@ def race_pos(plan: dict, k: int, t: float) -> tuple:
     tau = t - RACE_ROLL
     if tau <= fin:
         u = tau / fin
-        x = u + a1 * math.sin(math.pi * u) + a2 * math.sin(2 * math.pi * u) + a3 * math.sin(3 * math.pi * u)
-        v = (1 + math.pi * (a1 * math.cos(math.pi * u) + 2 * a2 * math.cos(2 * math.pi * u)
-                            + 3 * a3 * math.cos(3 * math.pi * u))) / fin
+        x = u + sum(a * math.sin((j + 1) * math.pi * u) for j, a in enumerate(co))
+        v = (1 + math.pi * sum((j + 1) * a * math.cos((j + 1) * math.pi * u) for j, a in enumerate(co))) / fin
         return x, v
-    vend = (1 + math.pi * (-a1 + 2 * a2 - 3 * a3)) / fin    # past the line: it slows down
+    vend = (1 + math.pi * sum((j + 1) * a * (-1) ** (j + 1) for j, a in enumerate(co))) / fin    # past the line: it slows down
     c = 0.9
     return 1.0 + vend * (1 - math.exp(-c * (tau - fin))) / c, vend * math.exp(-c * (tau - fin))
 
@@ -42733,6 +42765,196 @@ def paint_horse(p: QPainter, x: float, y: float, sz: float, lane: int, phase: fl
 RACE_SKIES = {"desert": ("#FFB46B", "#FFE6B8", "#E9B96E", "#C98F4A", "#D9A35B"),
               "forest": ("#6FB7FF", "#CDEBFF", "#3E7A3A", "#2C5A2A", "#7A5A36"),
               "snow": ("#9FB8D6", "#E9F2FB", "#DDE7F2", "#B9C9DB", "#F4F8FC")}
+
+
+RACE_EXTRA = ("beach", "canyon", "night", "volcano", "moon")
+RACE_SKIES.update({"beach": ("#58C4F5", "#E8F8FF", "#7FD3E8", "#2FA36B", "#F0D9A0"),
+                   "canyon": ("#F29A62", "#FFD9A8", "#B5532F", "#8A3A20", "#C96F3F"),
+                   "night": ("#050818", "#27306B", "#151B3D", "#7A86C8", "#3A3F55"),
+                   "volcano": ("#2A0A0A", "#B53A14", "#1B0F10", "#FF6A1F", "#3A2A28"),
+                   "moon": ("#000208", "#141B33", "#555B6B", "#8A90A0", "#9EA3B0")})
+RACE_MAP_NAMES = {"desert": "Desert", "forest": "Forest", "snow": "Snow", "beach": "Beach", "canyon": "Canyon", "night": "Night City",
+                  "volcano": "Volcano", "moon": "Moon"}
+FR.update({"Beach": "Plage", "Canyon": "Canyon", "Night City": "Ville de nuit", "Volcano": "Volcan", "Moon": "Lune"})
+
+
+def _paint_race_map_extra(p: QPainter, r: QRectF, mp: str, cam: float, now: float) -> None:
+    """6.8: five more race maps: Beach, Canyon, Night City, Volcano and the Moon."""
+    sky1, sky2, far, mid, track = RACE_SKIES[mp]
+    W, H = r.width(), r.height()
+    base = r.top() + H * 0.46
+    g = QLinearGradient(r.topLeft(), QPointF(r.left(), base))
+    g.setColorAt(0, QColor(sky1))
+    g.setColorAt(1, QColor(sky2))
+    p.fillRect(r, g)
+    p.setPen(Qt.PenStyle.NoPen)
+    rnd = random.Random({"beach": 11, "canyon": 12, "night": 13, "volcano": 14, "moon": 15}[mp])
+    if mp in ("night", "moon", "volcano"):                      # stars (twinkling) or drifting embers
+        for k in range(46 if mp != "volcano" else 0):
+            x = r.left() + W * rnd.random()
+            y = r.top() + H * 0.42 * rnd.random()
+            p.setBrush(alpha("#FFFFFF", 0.25 + 0.6 * abs(math.sin(now * 1.1 + k * 1.7))))
+            p.drawEllipse(QPointF(x, y), S(1.1), S(1.1))
+    if mp == "beach" or mp == "canyon":                         # a big sun
+        p.setBrush(alpha("#FFF4C9", 0.9))
+        p.drawEllipse(QPointF(r.left() + W * 0.2, r.top() + H * 0.14), H * 0.075, H * 0.075)
+        gl = QRadialGradient(QPointF(r.left() + W * 0.2, r.top() + H * 0.14), H * 0.3)
+        gl.setColorAt(0, alpha("#FFF4C9", 0.35))
+        gl.setColorAt(1, alpha("#FFF4C9", 0.0))
+        p.setBrush(gl)
+        p.drawEllipse(QPointF(r.left() + W * 0.2, r.top() + H * 0.14), H * 0.3, H * 0.3)
+    elif mp == "night":                                         # a full moon
+        mc = QPointF(r.left() + W * 0.8, r.top() + H * 0.14)
+        gl = QRadialGradient(mc, H * 0.25)
+        gl.setColorAt(0, alpha("#DDE6FF", 0.4))
+        gl.setColorAt(1, alpha("#DDE6FF", 0.0))
+        p.setBrush(gl)
+        p.drawEllipse(mc, H * 0.25, H * 0.25)
+        p.setBrush(QColor("#F3F6FF"))
+        p.drawEllipse(mc, H * 0.065, H * 0.065)
+    elif mp == "moon":                                          # the Earth hanging in the black sky
+        ec = QPointF(r.left() + W * 0.22, r.top() + H * 0.17)
+        p.setBrush(QColor("#2A6FD6"))
+        p.drawEllipse(ec, H * 0.11, H * 0.11)
+        p.setBrush(alpha("#4DBE6A", 0.85))
+        p.drawEllipse(QPointF(ec.x() - H * 0.03, ec.y() - H * 0.02), H * 0.045, H * 0.06)
+        p.drawEllipse(QPointF(ec.x() + H * 0.05, ec.y() + H * 0.05), H * 0.03, H * 0.025)
+        p.setBrush(alpha("#FFFFFF", 0.45))
+        p.drawEllipse(QPointF(ec.x() + H * 0.02, ec.y() - H * 0.07), H * 0.05, H * 0.015)
+    elif mp == "volcano":
+        for k in range(18):
+            u = (now * 0.12 * (0.5 + rnd.random()) + rnd.random()) % 1.0
+            p.setBrush(alpha("#FFB04D", 0.7 * (1 - u)))
+            p.drawEllipse(QPointF(r.left() + W * ((rnd.random() + math.sin(now * 0.4 + k) * 0.02) % 1.0), base - u * H * 0.45), S(1.6), S(1.6))
+    # the far layer (slow)
+    off = cam * W * 0.4
+    if mp == "beach":                                           # the sea, with its waves rolling in
+        sea = QRectF(r.left(), base - H * 0.1, W, H * 0.1)
+        g3 = QLinearGradient(sea.topLeft(), sea.bottomLeft())
+        g3.setColorAt(0, QColor("#4AB8E8"))
+        g3.setColorAt(1, QColor("#1E7FB8"))
+        p.fillRect(sea, g3)
+        p.setPen(QPen(alpha("#FFFFFF", 0.5), S(1.2)))
+        for j in range(4):
+            y = sea.top() + sea.height() * (j + 0.5) / 4
+            path = QPainterPath()
+            for x in range(0, int(W) + 8, 8):
+                yy = y + math.sin(x / W * 14 + now * 1.4 + j * 1.7 - off * 0.01) * S(1.6)
+                path.lineTo(r.left() + x, yy) if x else path.moveTo(r.left() + x, yy)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+    path = QPainterPath(QPointF(r.left(), base))
+    n = 41
+    for i in range(n):
+        x = r.left() + i * W / 20 - (off % (W))
+        if mp == "canyon":                                      # flat-topped mesas
+            hh = (0.08 + 0.2 * (((i // 3) * 37) % 5) / 5) * H
+            path.lineTo(x, base - (hh if i % 3 else hh * 0.55))
+        elif mp == "night":                                     # a skyline
+            hh = (0.06 + 0.22 * (((i // 2) * 53) % 7) / 7) * H
+            path.lineTo(x, base - hh)
+            path.lineTo(x + W / 20, base - hh)
+        elif mp == "volcano":
+            hh = abs(((i * 0.23) % 1.0) - 0.5) * H * 0.9 + H * 0.03
+            path.lineTo(x, base - hh)
+        elif mp == "moon":
+            hh = (math.sin(i * 0.8) * 0.5 + 0.5) * H * 0.07 + H * 0.02
+            path.lineTo(x, base - hh)
+        else:
+            hh = (math.sin(i * 0.7 + 1) * 0.5 + 0.5) * H * 0.045 + H * 0.01
+            path.lineTo(x, base - hh)
+    path.lineTo(r.right(), base)
+    path.closeSubpath()
+    p.setBrush(QColor(far))
+    p.drawPath(path)
+    if mp == "night":                                           # lit windows
+        p.setBrush(alpha("#FFD98A", 0.75))
+        for i in range(0, 60):
+            x = r.left() + ((i * 47) % 100) / 100 * W
+            y = base - H * (0.03 + 0.2 * (((i * 31) % 17) / 17))
+            if (int(now * 0.3 + i) % 5) != 0:
+                p.drawRect(QRectF(x, y, S(2), S(2.6)))
+    if mp == "volcano":                                         # a glowing crater and lava on the slopes
+        p.setPen(QPen(alpha("#FF6A1F", 0.5 + 0.3 * math.sin(now * 2)), S(1.8)))
+        p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+    # the middle layer (faster)
+    step = W / 6
+    off2 = (cam * W * 1.6) % step
+    for i in range(-1, 8):
+        x = r.left() + i * step - off2
+        k = int((cam * W * 1.6) // step) + i
+        s = 0.7 + 0.5 * ((k * 37) % 7) / 7
+        y0 = base
+        if mp == "beach":                                       # palm trees
+            sway = math.sin(now * 1.2 + k) * S(2)
+            p.setPen(QPen(QColor("#7A5230"), S(4) * s, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(QPointF(x, y0), QPointF(x + S(4) * s + sway * 0.3, y0 - S(34) * s))
+            p.setPen(QPen(QColor("#2FA36B"), S(3) * s, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            tip = QPointF(x + S(4) * s + sway * 0.3, y0 - S(34) * s)
+            for a in (-150, -120, -90, -60, -30):
+                ar = math.radians(a)
+                p.drawLine(tip, QPointF(tip.x() + math.cos(ar) * S(18) * s + sway, tip.y() + math.sin(ar) * S(10) * s + S(6) * s))
+            p.setPen(Qt.PenStyle.NoPen)
+        elif mp == "canyon":                                    # boulders and dry bushes
+            p.setBrush(QColor(mid))
+            p.drawEllipse(QPointF(x, y0 - S(5) * s), S(16) * s, S(9) * s)
+            p.setBrush(QColor(mid).darker(120))
+            p.drawEllipse(QPointF(x + S(14) * s, y0 - S(3) * s), S(9) * s, S(6) * s)
+            p.setPen(QPen(QColor("#7A5A2A"), S(1.2)))
+            for a in (-70, -90, -110):
+                ar = math.radians(a)
+                p.drawLine(QPointF(x - S(18) * s, y0), QPointF(x - S(18) * s + math.cos(ar) * S(12) * s, y0 + math.sin(ar) * S(12) * s))
+            p.setPen(Qt.PenStyle.NoPen)
+        elif mp == "night":                                     # street lamps with glowing light
+            p.setBrush(QColor("#1A1F33"))
+            p.drawRect(QRectF(x - S(1.5), y0 - S(40) * s, S(3), S(40) * s))
+            lg = QRadialGradient(QPointF(x, y0 - S(40) * s), S(34) * s)
+            lg.setColorAt(0, alpha("#FFE7A8", 0.8))
+            lg.setColorAt(1, alpha("#FFE7A8", 0.0))
+            p.setBrush(lg)
+            p.drawEllipse(QPointF(x, y0 - S(40) * s), S(34) * s, S(34) * s)
+            p.setBrush(QColor("#FFF3C8"))
+            p.drawEllipse(QPointF(x, y0 - S(40) * s), S(3.4) * s, S(3.4) * s)
+        elif mp == "volcano":                                   # black rock spikes with glowing cracks
+            p.setBrush(QColor("#140B0C"))
+            p.drawPolygon(QPolygonF([QPointF(x, y0 - S(34) * s), QPointF(x - S(13) * s, y0), QPointF(x + S(13) * s, y0)]))
+            p.setPen(QPen(alpha("#FF7A2E", 0.5 + 0.4 * math.sin(now * 3 + k)), S(1.4)))
+            p.drawLine(QPointF(x, y0 - S(30) * s), QPointF(x - S(2) * s, y0 - S(12) * s))
+            p.setPen(Qt.PenStyle.NoPen)
+        else:                                                   # moon rocks
+            p.setBrush(QColor(mid))
+            p.drawEllipse(QPointF(x, y0 - S(4) * s), S(12) * s, S(6) * s)
+            p.setBrush(QColor(mid).darker(125))
+            p.drawEllipse(QPointF(x + S(10) * s, y0 - S(2) * s), S(6) * s, S(3.4) * s)
+    # the track
+    tr_ = QRectF(r.left(), base, W, H - (base - r.top()))
+    g2 = QLinearGradient(tr_.topLeft(), tr_.bottomLeft())
+    g2.setColorAt(0, QColor(track).lighter(108))
+    g2.setColorAt(1, QColor(track).darker(112))
+    p.fillRect(tr_, g2)
+    if mp == "moon":                                            # craters on the ground
+        p.setPen(QPen(alpha("#000000", 0.25), S(1)))
+        p.setBrush(alpha("#000000", 0.12))
+        for i in range(-1, 9):
+            cx = r.left() + ((i * 0.31) % 1.0) * W * 1.2 - ((cam * W / RACE_VIEW * 0.5) % (W * 1.2)) + W * 0.1
+            p.drawEllipse(QPointF(cx % (W * 1.2), base + H * (0.08 + 0.4 * ((i * 53) % 7) / 7)), S(14), S(4))
+        p.setPen(Qt.PenStyle.NoPen)
+    lane_h = (H * 0.50) / 5
+    p.setPen(QPen(alpha("#FFFFFF", 0.22), S(1), Qt.PenStyle.DashLine))
+    for i in range(1, 5):
+        y = base + i * lane_h
+        p.drawLine(QPointF(r.left(), y), QPointF(r.right(), y))
+    rail = QColor({"beach": "#FFFFFF", "canyon": "#F4E7CF", "night": "#9FB3FF", "volcano": "#FF9A4D", "moon": "#DDE3EE"}[mp])
+    p.setPen(QPen(rail, S(2.5)))
+    p.drawLine(QPointF(r.left(), base - S(8)), QPointF(r.right(), base - S(8)))
+    p.setPen(QPen(rail, S(2)))
+    pst = W / 10
+    off3 = (cam * W / RACE_VIEW) % pst
+    for i in range(-1, 12):
+        x = r.left() + i * pst - off3
+        p.drawLine(QPointF(x, base - S(8)), QPointF(x, base))
 
 
 class RaceView(QWidget):
@@ -42854,7 +43076,7 @@ class RaceView(QWidget):
             x, v = xs[k]
             hx = X(x) - sz * 0.25
             hy = top + (k + 0.5) * lane_h - sz * 0.22
-            moving = min(1.0, v * 22) if live and t > 0 else 0.0
+            moving = min(1.0, v * 66) if live and t > 0 else 0.0
             phase = (x * 150 + k * 0.7) * 2 * math.pi / 6 if moving else 0.0
             if moving > 0.1:                                    # dust / snow spray
                 p.setPen(Qt.PenStyle.NoPen)
@@ -42876,6 +43098,8 @@ class RaceView(QWidget):
         self._paint_overlay(p, r, t, live, plan)
 
     def _paint_map(self, p, r, mp, cam, now) -> None:
+        if mp in RACE_EXTRA:                                     # 6.8: five more maps
+            return _paint_race_map_extra(p, r, mp, cam, now)
         sky1, sky2, far, mid, track = RACE_SKIES[mp]
         W, H = r.width(), r.height()
         g = QLinearGradient(r.topLeft(), QPointF(r.left(), r.top() + H * 0.46))
@@ -43076,7 +43300,7 @@ class RaceBoard(QWidget):
                 p.setBrush(QColor("#C9C2B8"))
                 p.drawEllipse(QPointF(cx, cy), S(3), S(3))
         d = self.d
-        mp = {"desert": tr("Desert"), "forest": tr("Forest"), "snow": tr("Snow")}.get(d.get("map"), "")
+        mp = tr(RACE_MAP_NAMES.get(d.get("map"), "")) if d.get("map") in RACE_MAP_NAMES else ""
         p.setPen(QColor("#FFE7B0"))
         p.setFont(font(15, QFont.Weight.Black, 2))
         p.drawText(QRectF(r.left(), r.top() + S(8), r.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter), tr("RACE BOARD"))
