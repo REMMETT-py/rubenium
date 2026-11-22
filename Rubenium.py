@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.8"         # the version people see
-BUILD = "2026.11.22.15"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.9"         # the version people see
+BUILD = "2026.11.22.16"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12342,6 +12342,7 @@ FR.update({'The reward depends only on your accuracy, the same on every level: 9
 FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
 FR.update({'Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run.': 'Les paris ferment 2 minutes après l’arrivée du premier joueur. Puis les bots prennent les chevaux libres, 3, 2, 1, le coup de feu, et ils partent.', 'Chance to win = your bet ÷ all the money on the horses.': 'Chance de gagner = ta mise ÷ tout l’argent misé sur les chevaux.', 'Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start.': 'Les chevaux à l’arrière de la file partent en premier, pour qu’ils passent tous la ligne de départ ensemble : personne n’a d’avance.', 'Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Pendant 2 minutes tu peux mettre 1 à 3 objets (5 joueurs au plus).', 'Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.': 'Le Jackpot et la Course de chevaux alternent : chacun ouvre 15 minutes après la fin de l’autre.', 'Nobody joins? The bots race on their own and the next event comes 15 minutes later.': 'Personne ne rejoint ? Les bots courent seuls et l’événement suivant arrive 15 minutes plus tard.', 'Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).': 'Choisis un cheval libre sur le tableau et mise des pièces dessus (un cheval chacun, 5 chevaux).', "The more you bet, the better your horse's chance, but the more you can lose.": 'Plus tu mises, plus ton cheval a de chances, mais plus tu peux perdre.', "The winner gets their bet back plus 80% of everybody else's bets (bots' too).": 'Le gagnant récupère sa mise plus 80 % des mises de tous les autres (bots compris).', 'Bet {n} coins on this round? That is {p}% of your coins.': 'Miser {n} pièces sur cette manche ? C’est {p} % de tes pièces.', 'Careful: you could lose a big part of your coins.': 'Attention : tu pourrais perdre une grosse partie de tes pièces.', 'Bet it': 'Miser', 'FINISH': 'ARRIVÉE', 'BETS CLOSE IN {t}': 'PARIS FERMÉS DANS {t}', 'Pick a horse and bet. Bots take the empty horses at 0:00.': 'Choisis un cheval et mise. Les bots prennent les chevaux libres à 0:00.', 'The clock restarts at 2:00 when the first player joins': 'Le chrono repart à 2:00 quand le premier joueur rejoint', 'BOTS TAKE THE EMPTY HORSES': 'LES BOTS PRENNENT LES CHEVAUX LIBRES', 'Get ready…': 'Préparez-vous…', 'GO!': 'PARTEZ !', 'YOU WON {n}!': 'TU AS GAGNÉ {n} !', 'YOU WON!': 'TU AS GAGNÉ !', '#{n} {name} WINS': 'N°{n} {name} GAGNE', 'Ridden for {who}': 'Monté pour {who}', 'Desert': 'Désert', 'Forest': 'Forêt', 'Snow': 'Neige', 'RACE BOARD': 'TABLEAU DES COURSES', '{n} on the horses': '{n} misés sur les chevaux', 'Free: click to pick': 'Libre : clique pour choisir', 'Free': 'Libre', 'Your pick': 'Ton choix', 'HORSE RACING': 'COURSE DE CHEVAUX', 'Horse Racing': 'Course de chevaux', 'OPEN · bets close in {t}': 'OUVERT · paris fermés dans {t}', "They're racing: watch it": 'Ils courent : regarde', 'Next race in {t}': 'Prochaine course dans {t}', '5 horses, bet on one': '5 chevaux, mise sur un', 'Horse Racing is paused for a moment. Nothing you own is lost.': 'La Course de chevaux est en pause un moment. Tu ne perds rien.', 'The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.': 'La prochaine course ouvre dans environ {t}. Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart.', 'Last race': 'Dernière course', 'Every horse is taken. Watch the race!': 'Tous les chevaux sont pris. Regarde la course !', 'You need at least {n} to bet.': 'Il te faut au moins {n} pour miser.', 'Bet on this horse': 'Miser sur ce cheval', 'Click a free horse on the board': 'Clique un cheval libre sur le tableau', 'Too late: the bets are closed': 'Trop tard : les paris sont fermés', '#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)': 'N°{n} : {p} de chances · s’il gagne tu reçois {w} (ta mise + {s} % des autres)', 'Bet {n} coins on #{h} {name}? That is {p}% of your coins.': 'Miser {n} pièces sur le n°{h} {name} ? C’est {p} % de tes pièces.', "You're on #{n} {name}. Good luck!": 'Tu es sur le n°{n} {name}. Bonne chance !', "Your chance to win is your share of all the money on the horses. The winner gets their bet back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.": 'Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. Le gagnant récupère sa mise plus {s} % de celles des autres. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.', 'HORSE RACE IS OPEN': 'LA COURSE DE CHEVAUX EST OUVERTE', 'Bets close in about {t}. Bet in Games > Horse Racing': 'Les paris ferment dans environ {t}. Mise dans Jeux > Course de chevaux', 'Red Rocket': 'Fusée Rouge', 'Blue Thunder': 'Tonnerre Bleu', 'Green Clover': 'Trèfle Vert', 'Golden Sun': 'Soleil d’Or', 'Purple Storm': 'Tempête Violette', 'The bets for this race are closed': 'Les paris de cette course sont fermés', 'Someone just took this horse: pick another': 'Quelqu’un vient de prendre ce cheval : choisis-en un autre', 'You already have a horse in this race': 'Tu as déjà un cheval dans cette course', 'Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.': 'Limitée (calendrier de l’Avent) : aussi bonne que la Caisse Top Tier. Toujours un badge Épique ou Légendaire, avec une chance de Mythique.', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 999 fois ta mise.', "NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's": 'NOUVEAU : Course de chevaux. 5 chevaux, choisis-en un et mise : ta chance est ta part de l’argent. Le gagnant récupère sa mise plus 80 % de celles des autres', 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Si personne ne rejoint, les bots jouent quand même', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)': 'Mises jusqu’à la moitié de tes pièces. Au-delà de 10 000, on te demande d’abord, en or (en rouge si c’est une grosse part de tes pièces)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5': 'Puissance 4 Professionnel paie ×999. Jeu des gobelets : Facile ×1,2, Moyen ×2, Difficile ×3, Expert ×5', "A coloured app font now colours the app's text too": 'Une police colorée colore maintenant aussi le texte de l’app', 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)': 'Bots du Mini Golf corrigés : plus de passage à travers les murs ni de glissade sur tout le parcours, et ils jouent chacun leur tour (tu attends leur balle)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar': 'Mini Golf et Wave Rush sont dans Gagner des pièces ; Coinflip est sous le calendrier de l’Avent', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case': 'Anciennes caisses retirées (ceux qui en avaient ont reçu leur prix en pièces). Les caisses Hiver et Cadeau sont maintenant aussi bonnes que la Caisse Top Tier'})      # 6.3
 FR.update({'Horse Racing: the race is now 3 times longer (about a minute) with many more lead changes, and 5 new maps (Beach, Canyon, Night City, Volcano, Moon) join Desert, Forest and Snow': 'Course de chevaux : la course dure maintenant 3 fois plus longtemps (environ une minute) avec beaucoup plus de changements de tête, et 5 nouvelles cartes (Plage, Canyon, Ville de nuit, Volcan, Lune) rejoignent Désert, Forêt et Neige'})      # 6.8
+FR.update({'NEW: 4 Mythic ANIMATIONS (Supernova, Shatter, Rift, Phoenix), each in Prismatic, Gold, Black Titan and White Titan: buy the originals in the Shop (Animations) or win any of them from the Profile Case. Click anywhere or press Esc to skip one, or switch back to the simple animation any time. The default animation is now simple: the banner floats up into nothing and drops back down. Lines now sit with the Balls in the Shop, and the Coin history moved to the Profile tab of your Inventory (whose old Coins button is now Animations)': 'NOUVEAU : 4 ANIMATIONS Mythiques (Supernova, Éclat, Faille, Phénix), chacune en Prismatique, Or, Titan noir et Titan blanc : achète les originales dans la Boutique (Animations) ou gagne-les dans la Caisse Profil. Clique n’importe où ou appuie sur Échap pour en passer une, ou reviens à l’animation simple quand tu veux. L’animation par défaut est maintenant simple : la bannière monte dans le vide et retombe. Les lignes sont maintenant avec les balles dans la Boutique, et l’historique des pièces est passé dans l’onglet Profil de ton Inventaire (l’ancien bouton Pièces est maintenant Animations)', 'Animations': 'Animations', 'Animation': 'Animation', 'Simple (free)': 'Simple (gratuite)', 'Now: {name}': 'Actuelle : {name}', 'Use the simple one': 'Utiliser la simple', 'Turns the special animation off: the banner just floats up and drops back down': 'Désactive l’animation spéciale : la bannière monte simplement puis retombe', 'How Rubenium leaves and comes back. The simple one is free and always works.': 'Comment Rubenium part et revient. La simple est gratuite et marche toujours.', 'This finish only comes from Profile cases, and it is super rare.': 'Cette finition vient uniquement des caisses Profil, et elle est super rare.', 'Nothing here yet. Buy one in the Shop or win one in a Profile case.': 'Rien ici pour l’instant. Achètes-en une dans la Boutique ou gagne-en une dans une caisse Profil.', 'If an animation ever glitches: click anywhere or press Esc to skip it, or press "Use the simple one".': 'Si une animation bugue : clique n’importe où ou appuie sur Échap pour la passer, ou appuie sur « Utiliser la simple ».', 'Base': 'Base', 'Prismatic': 'Prismatique', 'Black': 'Noir', 'White': 'Blanc', 'Original': 'Originale', 'Black Titan': 'Titan noir', 'White Titan': 'Titan blanc', 'Supernova': 'Supernova', 'Shatter': 'Éclat de verre', 'Rift': 'Faille', 'Prismatic Supernova': 'Supernova Prismatique', 'Prismatic Shatter': 'Éclat de verre Prismatique', 'Prismatic Rift': 'Faille Prismatique', 'Prismatic Phoenix': 'Phénix Prismatique', 'Gold Supernova': 'Supernova Or', 'Gold Shatter': 'Éclat de verre Or', 'Gold Rift': 'Faille Or', 'Gold Phoenix': 'Phénix Or', 'Black Titan Supernova': 'Supernova Titan noir', 'Black Titan Shatter': 'Éclat de verre Titan noir', 'Black Titan Rift': 'Faille Titan noir', 'Black Titan Phoenix': 'Phénix Titan noir', 'White Titan Supernova': 'Supernova Titan blanc', 'White Titan Shatter': 'Éclat de verre Titan blanc', 'White Titan Rift': 'Faille Titan blanc', 'White Titan Phoenix': 'Phénix Titan blanc', 'Animations (animation)': 'Animations (animation)'})  # 6.9
 FR.update({'Ripples': 'Ondulations', 'Pinwheel': 'Moulinet', 'Ticker': 'Téléscripteur', 'Light Leaks': 'Fuites de lumière', 'Nixie': 'Nixie', 'Static': 'Neige TV', 'Vinyl': 'Vinyle', 'Pendulum': 'Pendule', 'Hologram': 'Hologramme', 'Mandala': 'Mandala', 'Monsoon': 'Mousson', 'Sahara': 'Sahara', 'Bamboo': 'Bambou', 'Neon Rain': 'Pluie néon', 'Lanterns': 'Lanternes', 'Quartz': 'Quartz', 'Lava Lamp': 'Lampe à lave', 'Wormhole': 'Trou de ver', 'Polar Lights': 'Aurores polaires', 'Liquid Chrome': 'Chrome liquide', 'NEW: 10 more animated banners (Ripples, Pinwheel, Ticker, Light Leaks, Nixie, Static, Vinyl, Pendulum, Hologram, Mandala) and 10 more moving app themes (Monsoon, Sahara, Bamboo, Neon Rain, Lanterns, Quartz, Lava Lamp, Wormhole, Polar Lights, Liquid Chrome), each in up to 6 more colours. In the shop and the cases': 'NOUVEAU : 10 bannières animées de plus (Ondulations, Moulinet, Téléscripteur, Fuites de lumière, Nixie, Neige TV, Vinyle, Pendule, Hologramme, Mandala) et 10 thèmes animés de plus (Mousson, Sahara, Bambou, Pluie néon, Lanternes, Quartz, Lampe à lave, Trou de ver, Aurores polaires, Chrome liquide), chacun jusqu’à 6 autres couleurs. Dans la boutique et les caisses'})      # 6.7
 FR.update({'1st': '1er', '2nd': '2e', '3rd': '3e', '4th': '4e', '5th': '5e', 'Average bet {v}': 'Mise moyenne {v}', 'Best round': 'Meilleure manche', 'Best round {a} · worst {b}': 'Meilleure manche {a} · pire {b}', 'Best winning streak {n}': 'Meilleure série de victoires {n}', 'Bet {a} · paid {b}': 'Mise {a} · payé {b}', 'Bet {a} → paid {b}': 'Mise {a} → payé {b}', 'Coins won or lost in each round': 'Pièces gagnées ou perdues à chaque manche', 'EVEN': 'ÉGALITÉ', 'Every round of every game will be drawn here.': 'Chaque manche de chaque jeu sera dessinée ici.', 'Games: won, lost and even rounds': 'Jeux : manches gagnées, perdues et à égalité', 'LOSS': 'PERTE', 'Multiplier ×{m}': 'Multiplicateur ×{m}', 'Net coins each day': 'Pièces nettes par jour', 'Net coins over time (last {n} rounds)': 'Pièces nettes dans le temps ({n} dernières manches)', 'Net result': 'Résultat net', 'Net {v}': 'Net {v}', 'PLAY HISTORY': 'HISTORIQUE DE JEU', 'Played: {g}': 'Joué : {g}', 'Podium of the last races': 'Podium des dernières courses', 'Pot': 'Cagnotte', 'Rounds, newest first': 'Manches, de la plus récente à la plus ancienne', 'Running net {v}': 'Net cumulé {v}', 'That day: {n} rounds · net {v}': 'Ce jour-là : {n} manches · net {v}', 'Total bet': 'Total misé', 'Total bet {a} · paid {b}': 'Total misé {a} · payé {b}', 'Total paid': 'Total payé', 'WIN': 'GAIN', 'Win rate (last 20 rounds, %)': 'Taux de victoire (20 dernières manches, %)', 'Win rate then {p}%': 'Taux de victoire alors {p} %', 'Win rate {p}%': 'Taux de victoire {p} %', 'Won / lost': 'Gagnées / perdues', 'Worst round': 'Pire manche', '{n} rounds · {p}% won': '{n} manches · {p} % gagnées', '{n} rounds · {w} won · {l} lost': '{n} manches · {w} gagnées · {l} perdues', '{n} rounds · {w} won · {l} lost · {e} even': '{n} manches · {w} gagnées · {l} perdues · {e} égalités', "NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover": 'NOUVEAU : un graphique Historique de jeu en haut des Stats de chaque joueur (les tiennes et celles de tes amis) : pièces nettes dans le temps, résultat de chaque manche, taux de victoire, chaque jour et chaque jeu, tout en détail au survol', 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place': 'Historique de la Course de chevaux : une liste Podium montre le 1er, le 2e et le 3e de chaque course (or, argent, bronze) et la carte au survol nomme chaque place'})      # 6.6
 FR.update({'NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too': 'NOUVEAU : 10 bannières, cadres et thèmes de plus (Lagoon, Pêche, Forme d’onde, Radar, Or rose…) et chaque bannière, cadre et thème existe maintenant jusqu’à 6 autres couleurs : plus de 900 nouveaux looks. Choisis la couleur dans chaque design de la boutique, ils sont aussi dans les caisses', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%': 'La Course de chevaux paie maintenant les trois premiers : le 1er récupère 100 % de sa mise et 70 % des gains, le 2e 25 % et 20 %, le 3e 5 % et 10 %', "Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse's wins. Hover anywhere to see the details": 'Course de chevaux : un Historique sous le menu avec les vainqueurs, un graphique façon bourse des cagnottes, une bougie par course et les victoires de chaque cheval. Survole pour voir les détails', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)': 'La Course de chevaux et le Jackpot ne peuvent plus être ouverts avant leur ouverture (l’historique reste visible)'})      # 6.5 news
@@ -12393,6 +12394,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.9", ['NEW: 4 Mythic ANIMATIONS (Supernova, Shatter, Rift, Phoenix), each in Prismatic, Gold, Black Titan and White Titan: buy the originals in the Shop (Animations) or win any of them from the Profile Case. Click anywhere or press Esc to skip one, or switch back to the simple animation any time. The default animation is now simple: the banner floats up into nothing and drops back down. Lines now sit with the Balls in the Shop, and the Coin history moved to the Profile tab of your Inventory (whose old Coins button is now Animations)']),
     ("6.8", ['Horse Racing: the race is now 3 times longer (about a minute) with many more lead changes, and 5 new maps (Beach, Canyon, Night City, Volcano, Moon) join Desert, Forest and Snow']),
     ("6.7", ['NEW: 10 more animated banners (Ripples, Pinwheel, Ticker, Light Leaks, Nixie, Static, Vinyl, Pendulum, Hologram, Mandala) and 10 more moving app themes (Monsoon, Sahara, Bamboo, Neon Rain, Lanterns, Quartz, Lava Lamp, Wormhole, Polar Lights, Liquid Chrome), each in up to 6 more colours. In the shop and the cases']),
     ("6.6", ["NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover", 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place']),
@@ -16382,7 +16384,7 @@ _CW_ROWS: dict = {
 EVENT_LOOKS = {"banner:snow", "banner:aurora", "frame:frost", "banner:wreath", "banner:hearth", "banner:northstar",
                "frame:holly", "frame:snowflake", "frame:northstar"}      # the Christmas looks (advent calendar, Winter Case)
 KIND_NAMES = {"ball": "Ball", "line": "Line", "font": "Font", "theme": "Theme", "badge": "Badge", "banner": "Banner",
-              "frame": "Frame", "tag": "Tag"}
+              "frame": "Frame", "tag": "Tag", "anim": "Animation"}
 # --------------------------------------------------------------------------- #
 # 6.5: colourways. Every banner, frame and theme comes in more colours: the same picture, recoloured. The picture is
 # drawn as usual, then every colour is mixed from the three channels (a permutation turns the hues around, a tint makes
@@ -16518,8 +16520,451 @@ _CW_ROWS_67: dict = {
 }      # 6.7: colourways of the twenty new looks
 _cw_register(_CW_ROWS)
 _cw_register(_CW_ROWS_67)
+# --------------------------------------------------------------------------- #
+# 6.9: animations. How the Rubenium banner leaves (and comes back): the simple default, or one of four Mythic ones,
+# each in five finishes. Every one is drawn from the same two pictures: the banner and the ball.
+# --------------------------------------------------------------------------- #
+from PyQt6.QtGui import QPolygonF, QRadialGradient  # noqa: E402
+
+ANIMS = (("nova", "Supernova"), ("shatter", "Shatter"), ("rift", "Rift"), ("phoenix", "Phoenix"))
+ANIM_IDS = tuple(a[0] for a in ANIMS)
+ANIM_FINS = (("", "Original"), ("prismatic", "Prismatic"), ("gold", "Gold"), ("blacktitan", "Black Titan"),
+             ("whitetitan", "White Titan"))
+ANIM_FIN_IDS = tuple(f[0] for f in ANIM_FINS)
+ANIM_SHORT = {"": "Base", "prismatic": "Prismatic", "gold": "Gold", "blacktitan": "Black", "whitetitan": "White"}
+ANIM_LOOK = {"nova": ("#FF8A2B", "#FFD27A"), "shatter": ("#4FD8FF", "#B4F0FF"), "rift": ("#9B5CFF", "#E0C8FF"),
+             "phoenix": ("#FF4A1C", "#FFB627")}
+
+
+def anim_id(design: str, fin: str = "") -> str:
+    return "anim:" + design + ("-" + fin if fin else "")
+
+
+def _e3_safe(x: float) -> float:
+    x = max(0.0, min(1.0, x))
+    return x * x * (3 - 2 * x)
+
+
+def anim_split(item: str):
+    """"anim:nova-gold" -> ("nova", "gold"); None when it is not one of ours."""
+    kind, base, _ = parts(item)
+    if kind != "anim":
+        return None
+    design, _, fin = base.partition("-")
+    if design not in ANIM_IDS or fin not in ANIM_FIN_IDS:
+        return None
+    return design, fin
+
+
+def _e3(x: float) -> float:
+    x = max(0.0, min(1.0, x))
+    return x * x * (3 - 2 * x)
+
+
+def _lerp(a: QPointF, b: QPointF, t: float) -> QPointF:
+    return QPointF(a.x() + (b.x() - a.x()) * t, a.y() + (b.y() - a.y()) * t)
+
+
+def anim_cols(design: str, fin: str, now: float, i: float = 0.0):
+    """(main, light, core) colours of an animation in a finish."""
+    if fin == "prismatic":
+        h = (now * 0.3 + i * 0.11) % 1.0
+        return QColor.fromHsvF(h, 0.78, 1.0), QColor.fromHsvF((h + 0.14) % 1.0, 0.45, 1.0), QColor("#FFFFFF")
+    if fin == "gold":
+        return QColor("#FFC83D"), QColor("#FFF0A8"), QColor("#FFFFFF")
+    if fin == "blacktitan":
+        return QColor("#2A2142"), QColor("#B9A6FF"), QColor("#EDE6FF")
+    if fin == "whitetitan":
+        return QColor("#F2F6FF"), QColor("#9FC4FF"), QColor("#FFFFFF")
+    a, b = ANIM_LOOK.get(design, ANIM_LOOK["nova"])
+    return QColor(a), QColor(b), QColor("#FFFFFF")
+
+
+def _a_glow(p: QPainter, c: QPointF, r: float, col: QColor, a: float, fin: str = "") -> None:
+    if r < 1 or a <= 0.01:
+        return
+    p.setPen(Qt.PenStyle.NoPen)
+    if fin == "blacktitan":                                    # a dark hole with a violet rim
+        g = QRadialGradient(c, r)
+        g.setColorAt(0, QColor(6, 4, 14, int(255 * min(1, a * 1.2))))
+        g.setColorAt(0.6, QColor(6, 4, 14, int(200 * min(1, a))))
+        g.setColorAt(0.85, alpha(col, 0.55 * a))
+        g.setColorAt(1, alpha(col, 0.0))
+    else:
+        g = QRadialGradient(c, r)
+        g.setColorAt(0, alpha(col, min(1.0, a)))
+        g.setColorAt(0.45, alpha(col, 0.35 * a))
+        g.setColorAt(1, alpha(col, 0.0))
+    p.setBrush(g)
+    p.drawEllipse(c, r, r)
+
+
+def _a_dot(p: QPainter, pt: QPointF, r: float, a: QColor, b: QColor, fin: str, op: float, star: bool = False) -> None:
+    if r < 0.3 or op <= 0.02:
+        return
+    if fin == "blacktitan":
+        p.setPen(QPen(alpha(b, 0.9 * op), max(0.8, r * 0.4)))
+    else:
+        p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha(a, op))
+    p.drawEllipse(pt, r, r)
+    if star and fin in ("gold", "prismatic", "whitetitan"):          # a little glint
+        p.setPen(QPen(alpha("#FFFFFF", 0.9 * op), max(0.8, r * 0.3)))
+        p.drawLine(QPointF(pt.x() - r * 2.4, pt.y()), QPointF(pt.x() + r * 2.4, pt.y()))
+        p.drawLine(QPointF(pt.x(), pt.y() - r * 2.4), QPointF(pt.x(), pt.y() + r * 2.4))
+        p.setPen(Qt.PenStyle.NoPen)
+
+
+def _a_ring(p: QPainter, c: QPointF, r: float, col: QColor, a: float, w: float) -> None:
+    if r < 1 or a <= 0.01:
+        return
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.setPen(QPen(alpha(col, 0.18 * a), w * 3))
+    p.drawEllipse(c, r, r)
+    p.setPen(QPen(alpha(col, min(1.0, a)), w))
+    p.drawEllipse(c, r, r)
+    p.setPen(Qt.PenStyle.NoPen)
+
+
+# ---- 1. Supernova: the banner caves into a star that blows up, and the ball is born from the flash
+def _anim_nova(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    c = m.center()
+    te = 0.44
+    e = _e3(k / te)
+    a, b, core = anim_cols("nova", fin, now)
+    if k < te + 0.02:
+        s = 1.0 - 0.97 * e
+        w, h = m.width() * s, m.height() * s
+        banner(QRectF(c.x() - w / 2, c.y() - h / 2, w, h), 1.0 - 0.45 * e)
+        rnd = random.Random(5)
+        for i in range(28):                                    # light streaming into the core
+            ang = rnd.uniform(0, math.tau)
+            r0 = m.width() * rnd.uniform(0.25, 0.5)
+            f = (e * 1.2 + rnd.random() * 0.3) % 1.0
+            r1 = r0 * (1 - f)
+            col = anim_cols("nova", fin, now, i)[1] if fin == "prismatic" else b
+            p.setPen(QPen(alpha(col, 0.7 * (1 - f)), S(1.4)))
+            p.drawLine(QPointF(c.x() + math.cos(ang) * r1, c.y() + math.sin(ang) * r1 * 0.55),
+                       QPointF(c.x() + math.cos(ang) * (r1 + S(16) * (1 - f)), c.y() + math.sin(ang) * (r1 + S(16) * (1 - f)) * 0.55))
+        p.setPen(Qt.PenStyle.NoPen)
+        _a_glow(p, c, S(14) + m.height() * 0.8 * e, a, 0.55 * e + 0.1, fin)
+        _a_glow(p, c, S(8) + m.height() * 0.35 * e, core, 0.9 * e, "")
+    q = (k - te) / (1 - te)
+    if q > 0:
+        flash = max(0.0, 1.0 - q * 3.5)
+        _a_glow(p, c, m.width() * 0.5 * (0.3 + q), core, flash, "")
+        _a_glow(p, c, m.width() * 0.35 * (0.3 + q), a, 0.6 * max(0.0, 1 - q * 1.6), fin)
+        for j, (sp, wd) in enumerate(((0.62, 6.0), (0.42, 3.5))):          # two shock rings
+            qq = max(0.0, q - j * 0.08)
+            if qq > 0:
+                col = anim_cols("nova", fin, now, j * 3)[0] if fin == "prismatic" else (b if j else a if fin != "blacktitan" else b)
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                _a_ring(p, c, m.width() * sp * (qq ** 0.55), col, 1.0 - qq, S(wd) * (1 - qq))
+        rnd = random.Random(9)
+        for i in range(80):                                    # the debris
+            ang = rnd.uniform(0, math.tau)
+            sp = rnd.uniform(0.15, 0.62)
+            r = m.width() * sp * (q ** 0.6)
+            pt = QPointF(c.x() + math.cos(ang) * r, c.y() + math.sin(ang) * r * 0.6 + q * q * S(14))
+            aa, bb, _ = anim_cols("nova", fin, now, i)
+            _a_dot(p, pt, S(rnd.uniform(1.2, 3.4)) * (1 - q * 0.6), aa if i % 3 else bb, bb, fin, max(0.0, 1.0 - q) ** 0.8, i % 7 == 0)
+    t = _e3((k - 0.5) / 0.5)
+    op = min(1.0, max(0.0, (k - 0.46) / 0.14))
+    if op > 0:
+        pos = _lerp(c, hole, t)
+        grow = 0.35 + 0.65 * min(1.0, (k - 0.46) / 0.3) + 0.12 * math.sin(min(1.0, (k - 0.46) / 0.3) * math.pi)
+        ball(pos, d * grow, op)
+
+
+# ---- 2. Shatter: the banner breaks into glass that bursts out, then every piece is pulled into the ball
+def _shard_polys(m: QRectF):
+    cols, rows = 9, 3
+    cw, ch = m.width() / cols, m.height() / rows
+    rnd = random.Random(31)
+    pts = [[QPointF(m.left() + i * cw + (rnd.uniform(-0.3, 0.3) * cw if 0 < i < cols else 0),
+                    m.top() + j * ch + (rnd.uniform(-0.3, 0.3) * ch if 0 < j < rows else 0)) for i in range(cols + 1)]
+           for j in range(rows + 1)]
+    out = []
+    for j in range(rows):
+        for i in range(cols):
+            tl, tr_, bl, br = pts[j][i], pts[j][i + 1], pts[j + 1][i], pts[j + 1][i + 1]
+            out.append(QPolygonF([tl, tr_, bl]))
+            out.append(QPolygonF([tr_, br, bl]))
+    return out
+
+
+def _anim_shatter(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    c = m.center()
+    a, b, core = anim_cols("shatter", fin, now)
+    u = _e3(k / 0.5)
+    v = _e3((k - 0.42) / 0.5)
+    polys = _shard_polys(m)
+    rnd = random.Random(77)
+    if k < 0.06:                                               # the crack of impact
+        _a_glow(p, c, m.width() * 0.35 * (k / 0.06), core, 0.6 * (1 - k / 0.06), "")
+    for i, poly in enumerate(polys):
+        cen = poly.boundingRect().center()
+        ang = math.atan2(cen.y() - c.y(), cen.x() - c.x()) + rnd.uniform(-0.5, 0.5)
+        dist = rnd.uniform(0.12, 0.42) * m.width()
+        rot = rnd.uniform(-220, 220)
+        lift = rnd.uniform(0.0, S(30))
+        blown = QPointF(cen.x() + math.cos(ang) * dist * u, cen.y() + math.sin(ang) * dist * 0.55 * u - lift * u + u * u * S(18))
+        cur = _lerp(blown, hole, v ** 1.3)
+        sc = (1.0 - 0.15 * u) * (1.0 - 0.93 * v)
+        op = (1.0 - 0.3 * u) * max(0.0, 1.0 - max(0.0, v - 0.7) / 0.3)
+        if op <= 0.01 or sc <= 0.02:
+            continue
+        p.save()
+        p.translate(cur)
+        p.rotate(rot * u * (1 - v))
+        p.scale(sc, sc)
+        p.translate(-cen.x(), -cen.y())
+        path = QPainterPath()
+        path.addPolygon(poly)
+        path.closeSubpath()
+        p.setClipPath(path)
+        banner(m, op, True)
+        p.setClipping(False)
+        edge = b if fin != "blacktitan" else b
+        p.setPen(QPen(alpha(edge, 0.75 * op * (0.4 + 0.6 * u)), S(1.2) / max(0.2, sc)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPolygon(poly)
+        p.restore()
+    p.setPen(Qt.PenStyle.NoPen)
+    rnd = random.Random(12)
+    for i in range(46):                                        # dust and glints thrown off
+        ang = rnd.uniform(0, math.tau)
+        r = m.width() * rnd.uniform(0.1, 0.5) * u * (1 - v * 0.6)
+        pt = _lerp(QPointF(c.x() + math.cos(ang) * r, c.y() + math.sin(ang) * r * 0.55), hole, v * 0.9)
+        aa, bb, _ = anim_cols("shatter", fin, now, i)
+        _a_dot(p, pt, S(rnd.uniform(1.0, 2.6)), bb, bb, fin, (1 - v) * 0.9 * min(1, u * 3), i % 5 == 0)
+    if v > 0:
+        _a_glow(p, hole, d * (0.8 + 1.4 * v) * (1 - v * 0.2), a if fin != "blacktitan" else b, 0.5 * v * (1 - max(0.0, v - 0.8) * 4), fin)
+        _a_ring(p, hole, d * 2.2 * v, b, (1 - v) * 0.9, S(2.4) * (1 - v))
+    op = min(1.0, max(0.0, (k - 0.78) / 0.18))
+    if op > 0:
+        ball(hole, d * (0.5 + 0.5 * _e3((k - 0.78) / 0.22) + 0.08 * math.sin(min(1.0, (k - 0.78) / 0.22) * math.pi)), op)
+
+
+# ---- 3. Rift: lightning cracks the banner open, both halves are squeezed into the slit, and the ball steps out
+def _bolt(rnd, a: QPointF, b: QPointF, n: int, jag: float) -> QPainterPath:
+    path = QPainterPath(a)
+    for i in range(1, n):
+        t = i / n
+        path.lineTo(QPointF(a.x() + (b.x() - a.x()) * t + rnd.uniform(-jag, jag), a.y() + (b.y() - a.y()) * t + rnd.uniform(-jag, jag) * 0.4))
+    path.lineTo(b)
+    return path
+
+
+def _anim_rift(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    cx = m.center().x()
+    cy = m.center().y()
+    a, b, core = anim_cols("rift", fin, now)
+    top, bot = m.top() - S(4), m.bottom() + S(4)
+    grow = _e3(k / 0.3)
+    sq = _e3((k - 0.25) / 0.5)
+    close = _e3((k - 0.72) / 0.28)
+    # the two halves of the banner, squeezed towards the slit
+    if sq < 0.995:
+        for half in (0, 1):
+            p.save()
+            r = QRectF(m.left(), top - S(8), cx - m.left(), bot - top + S(16)) if half == 0 else \
+                QRectF(cx, top - S(8), m.right() - cx, bot - top + S(16))
+            p.setClipRect(r)
+            p.translate(cx, 0)
+            p.scale(max(0.005, 1 - sq), 1.0)
+            p.translate(-cx, 0)
+            banner(m, 1.0 - 0.3 * sq)
+            p.restore()
+    slit_h = (m.height() * 0.5 + S(4)) * (1 - close)
+    if slit_h > 1:
+        wdt = (S(3) + sq * S(15)) * (1 - close * 0.7)
+        _a_glow(p, QPointF(cx, cy), max(slit_h, wdt * 4), a if fin != "blacktitan" else b, 0.45 * min(1, grow * 1.5), fin)
+        # the slit itself: a tall pointed shape
+        sl = QPainterPath()
+        sl.moveTo(cx, cy - slit_h * grow)
+        sl.quadTo(cx + wdt * 2.2, cy, cx, cy + slit_h * grow)
+        sl.quadTo(cx - wdt * 2.2, cy, cx, cy - slit_h * grow)
+        p.setPen(QPen(alpha(b, 0.9), S(1.4)))
+        p.setBrush(QColor(4, 3, 10, 250) if fin != "whitetitan" else QColor(250, 252, 255, 250))
+        p.drawPath(sl)
+        p.setPen(Qt.PenStyle.NoPen)
+    # lightning along and around the crack
+    rnd = random.Random(int(now * 16))
+    for i in range(6 if k < 0.9 else 2):
+        if k < 0.04:
+            break
+        ang = rnd.uniform(-1.2, 1.2) + (0 if i % 2 else math.pi)
+        ln = m.width() * rnd.uniform(0.08, 0.28) * (0.4 + sq) * min(1, grow * 2)
+        beg = QPointF(cx, cy + rnd.uniform(-1, 1) * slit_h * 0.7)
+        end = QPointF(cx + math.cos(ang) * ln, beg.y() + math.sin(ang) * ln * 0.7)
+        path = _bolt(rnd, beg, end, 6, S(5))
+        col = anim_cols("rift", fin, now, i)[1] if fin == "prismatic" else b
+        for w_, al in ((S(5), 0.16), (S(2.2), 0.55), (S(1), 1.0)):
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(alpha(core if w_ < S(1.5) else col, al * (1 - close)), w_, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawPath(path)
+    p.setPen(Qt.PenStyle.NoPen)
+    # the long vertical crack
+    if k < 0.75:
+        h = (m.height() * 0.5 + S(10)) * grow
+        path = _bolt(random.Random(3), QPointF(cx, cy - h), QPointF(cx, cy + h), 14, S(3.5) * (1 - sq * 0.6))
+        for w_, al in ((S(6), 0.14), (S(2.6), 0.5), (S(1.1), 1.0)):
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(alpha(core if w_ < S(2) else b, al), w_, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+    rnd = random.Random(21)
+    for i in range(40):                                        # sparks pulled into the slit
+        f = (now * 0.9 + rnd.random()) % 1.0
+        side = -1 if i % 2 else 1
+        x = cx + side * m.width() * 0.45 * (1 - f) * rnd.uniform(0.3, 1.0)
+        y = cy + rnd.uniform(-1, 1) * m.height() * 0.5
+        aa, bb, _ = anim_cols("rift", fin, now, i)
+        _a_dot(p, QPointF(x, y), S(rnd.uniform(1, 2.2)), bb, bb, fin, 0.85 * sq * (1 - close) * (1 - f * 0.4), i % 6 == 0)
+    t = _e3((k - 0.66) / 0.34)
+    op = min(1.0, max(0.0, (k - 0.64) / 0.12))
+    if op > 0:
+        pos = _lerp(QPointF(cx, cy), hole, t)
+        _a_glow(p, pos, d * 1.7, b if fin != "blacktitan" else a, 0.45 * (1 - t * 0.8), fin)
+        ball(pos, d * (0.5 + 0.5 * min(1.0, (k - 0.64) / 0.25)), op)
+        _a_ring(p, QPointF(cx, cy), m.width() * 0.3 * close, b, (1 - close) * 0.8, S(2.2))
+
+
+# ---- 4. Phoenix: fire climbs the banner and burns it into feathers; two flaming wings carry it to the ball
+def _anim_phoenix(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    a, b, core = anim_cols("phoenix", fin, now)
+    burn = _e3(k / 0.5)
+    yb = m.bottom() - m.height() * burn
+    if burn < 0.995:
+        p.save()
+        p.setClipRect(QRectF(m.left() - S(4), m.top() - S(40), m.width() + S(8), yb - m.top() + S(40)))
+        banner(m.translated(0, -S(14) * burn), 1.0 - 0.35 * burn)
+        p.restore()
+    p.setPen(Qt.PenStyle.NoPen)
+    if 0.0 < k < 0.58:                                          # the flames along the burning edge
+        fade = 1.0 - max(0.0, (k - 0.46) / 0.12)
+        n = 46
+        for i in range(n):
+            x = m.left() + m.width() * (i + 0.5) / n
+            hh = S(14 + 30 * abs(math.sin(i * 1.7 + now * 9 + k * 6))) * fade
+            wd = m.width() / n * 1.2
+            aa, bb, cc = anim_cols("phoenix", fin, now, i * 0.6)
+            tongue = QPainterPath()
+            tongue.moveTo(x - wd / 2, yb + S(4))
+            tongue.quadTo(x - wd * 0.2, yb - hh * 0.5, x + math.sin(now * 7 + i) * wd * 0.3, yb - hh)
+            tongue.quadTo(x + wd * 0.2, yb - hh * 0.5, x + wd / 2, yb + S(4))
+            g = QLinearGradient(x, yb + S(4), x, yb - hh)
+            g.setColorAt(0, alpha(bb if fin != "blacktitan" else cc, 0.95))
+            g.setColorAt(0.5, alpha(aa, 0.8))
+            g.setColorAt(1, alpha(aa, 0.0))
+            p.setBrush(g)
+            p.drawPath(tongue)
+    rnd = random.Random(44)
+    for i in range(110):                                       # embers spiralling up into the ball's place
+        tb = rnd.uniform(0.0, 0.55)
+        life = rnd.uniform(0.3, 0.5)
+        uu = (k - tb) / life
+        if not 0 < uu < 1:
+            continue
+        sx = m.left() + m.width() * rnd.random()
+        sy = m.bottom() - m.height() * _e3(tb / 0.5)
+        pt = _lerp(QPointF(sx, sy), hole, uu ** 1.6)
+        sw = math.sin(uu * math.pi * 2 + i) * S(26) * (1 - uu)
+        pt = QPointF(pt.x() + sw, pt.y())
+        aa, bb, _ = anim_cols("phoenix", fin, now, i)
+        _a_dot(p, pt, S(rnd.uniform(1.2, 3.2)) * (1 - uu * 0.5), aa if i % 2 else bb, bb, fin, math.sin(uu * math.pi) * 0.95, i % 9 == 0)
+    # two wings of feathers made of fire
+    wing = _e3((k - 0.42) / 0.3) * (1.0 - _e3((k - 0.82) / 0.18))
+    if wing > 0.01:
+        flap = math.sin(now * 8.0) * 0.07
+        for side in (-1, 1):
+            for j in range(9):
+                f = j / 8
+                ang = math.radians(-8 - 70 * f) + flap * (0.4 + f)
+                ln = (m.width() * 0.34) * (0.55 + 0.45 * math.sin(f * math.pi * 0.8 + 0.35)) * wing
+                dx, dy = math.cos(ang) * side, math.sin(ang)
+                tip = QPointF(hole.x() + dx * ln, hole.y() + dy * ln * 0.8)
+                mid = QPointF(hole.x() + dx * ln * 0.55, hole.y() + dy * ln * 0.55 * 0.8 - ln * 0.12)
+                w0 = S(7) * (1 - f * 0.4) * wing
+                feather = QPainterPath()
+                feather.moveTo(hole.x(), hole.y() - w0 * 0.2)
+                feather.quadTo(mid.x(), mid.y() - w0, tip.x(), tip.y())
+                feather.quadTo(mid.x(), mid.y() + w0, hole.x(), hole.y() + w0 * 0.2)
+                aa, bb, cc = anim_cols("phoenix", fin, now, j * side)
+                g = QLinearGradient(hole, tip)
+                g.setColorAt(0, alpha(cc if fin != "blacktitan" else bb, 0.95 * wing))
+                g.setColorAt(0.45, alpha(bb, 0.85 * wing))
+                g.setColorAt(1, alpha(aa, 0.0))
+                p.setBrush(g)
+                p.setPen(QPen(alpha(bb if fin == "blacktitan" else cc, 0.35 * wing), S(0.8)))
+                p.drawPath(feather)
+        p.setPen(Qt.PenStyle.NoPen)
+        _a_glow(p, hole, d * 2.0 * wing, a if fin != "blacktitan" else b, 0.5 * wing, fin)
+    op = min(1.0, max(0.0, (k - 0.58) / 0.22))
+    if op > 0:
+        e = _e3((k - 0.58) / 0.3)
+        ball(hole, d * (0.55 + 0.45 * e + 0.1 * math.sin(e * math.pi)), op)
+
+
+_ANIM_PAINT = {"nova": _anim_nova, "shatter": _anim_shatter, "rift": _anim_rift, "phoenix": _anim_phoenix}
+
+
+def paint_anim(p: QPainter, design: str, fin: str, k: float, now: float, m: QRectF, hole: QPointF, d: float, banner, ball) -> None:
+    """k 0 = the banner is showing, 1 = only the ball is. banner(box, opacity, light) and ball(centre, size, opacity)
+    draw the two pictures."""
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setPen(Qt.PenStyle.NoPen)
+    try:
+        _ANIM_PAINT[design](p, max(0.0, min(1.0, k)), now, m, hole, d, fin, banner, ball)
+    finally:
+        p.restore()
+
+
+def paint_anim_thumb(p: QPainter, item: str, box: QRectF, now: float) -> None:
+    """The small picture of an animation (shop, inventory, cases, market): a glowing ball in its colours."""
+    sp = anim_split(item) or ("nova", "")
+    design, fin = sp
+    a, b, core = anim_cols(design, fin, now)
+    c = box.center()
+    r = box.width() * 0.5
+    p.save()
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    pulse = 0.5 + 0.5 * math.sin(now * 2.4)
+    _a_glow(p, c, r * (0.95 + 0.08 * pulse), a if fin != "blacktitan" else b, 0.55, fin)
+    p.setPen(Qt.PenStyle.NoPen)
+    g = QRadialGradient(QPointF(c.x() - r * 0.12, c.y() - r * 0.15), r * 0.55)
+    g.setColorAt(0, core)
+    g.setColorAt(0.5, b if fin != "blacktitan" else a)
+    g.setColorAt(1, a)
+    p.setBrush(g)
+    p.drawEllipse(c, r * 0.36, r * 0.36)
+    if fin == "blacktitan":
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(alpha(b, 0.9), max(1.0, r * 0.05)))
+        p.drawEllipse(c, r * 0.36, r * 0.36)
+    p.setPen(QPen(alpha(b, 0.7), max(1.0, r * 0.04)))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    if design == "nova":
+        p.drawEllipse(c, r * (0.55 + 0.15 * pulse), r * (0.55 + 0.15 * pulse))
+    elif design == "shatter":
+        for i in range(6):
+            ang = i * math.pi / 3 + 0.3
+            p.drawLine(QPointF(c.x() + math.cos(ang) * r * 0.5, c.y() + math.sin(ang) * r * 0.5),
+                       QPointF(c.x() + math.cos(ang + 0.3) * r * 0.82, c.y() + math.sin(ang + 0.3) * r * 0.82))
+    elif design == "rift":
+        p.drawLine(QPointF(c.x(), c.y() - r * 0.85), QPointF(c.x(), c.y() + r * 0.85))
+    else:
+        for side in (-1, 1):
+            p.drawArc(QRectF(c.x() + (0 if side > 0 else -r * 0.9), c.y() - r * 0.5, r * 0.9, r * 0.9), 16 * (20 if side > 0 else 110), 16 * 50)
+    p.restore()
+
+
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
           "theme": {t[0]: t[1] for t in THEME_LOOKS}, "banner": dict(BANNERS), "frame": dict(FRAMES), "tag": dict(TAGS)}
+ANIM_DESIGNS = [(d + ("-" + f if f else ""), (tn + " " + n if f else n)) for d, n in ANIMS for f, tn in ANIM_FINS]
+_NAMES["anim"] = dict(ANIM_DESIGNS)
 _themes: dict = {}
 
 
@@ -16931,6 +17376,13 @@ def paint_cosmetic(p: QPainter, item: str, rect: QRectF, now: float = 0.0, effec
         return show_item(p, item, rect, now, effects, dim)
     if kind in ("banner", "frame", "tag"):
         return paint_look_icon(p, item, rect, now if effects else 0.0, dim)
+    if kind == "anim":
+        p.save()
+        p.setOpacity(p.opacity() * dim)
+        dd = min(rect.width(), rect.height())
+        paint_anim_thumb(p, item, QRectF(rect.center().x() - dd / 2, rect.center().y() - dd / 2, dd, dd), now if effects else 0.6)
+        p.restore()
+        return
     d = min(rect.width(), rect.height())
     box = QRectF(rect.center().x() - d / 2, rect.center().y() - d / 2, d, d)
     p.save()
@@ -25228,7 +25680,7 @@ from PyQt6.QtWidgets import QWidget
 
 
 KINDS = ["", "badge", "ball", "line", "font", "theme", "banner", "frame"]
-LOOKS = ("banner", "frame", "tag")             # profile looks: worn on the server, seen by everyone
+LOOKS = ("banner", "frame", "tag", "anim")             # profile looks: worn on the server, seen by everyone
 REASONS = {"time": "Time with Rubenium", "shop": "Shop", "vendor": "Sold to the vendor", "case": "Case opened",
            "case_coins": "Coins from a case", "daily_case": "Daily case", "spin": "Free spin", "bet": "Bet",
            "win": "Casino win", "quest": "Quest", "minigame": "Beat Tap", "market_buy": "Bought on the market",
@@ -25670,7 +26122,8 @@ class SaleBanner(QWidget):
         if bits[0] == "badge" and len(bits) > 1:
             ctx.shop_tab, ctx.shop_badge = 2, bits[1]
         elif bits[0] in ("ball", "line", "font", "theme"):
-            ctx.shop_tab, ctx.shop_kind = 1, ("ball", "line", "font", "theme").index(bits[0])
+            ctx.shop_tab, ctx.shop_kind = 1, {"ball": 0, "line": 0, "font": 2, "theme": 3}[bits[0]]
+            ctx.shop_sub = "line" if bits[0] == "line" else ""
             ctx.shop_design = bits[1] if len(bits) > 1 else None
             ctx.shop_colour = bits[2] if len(bits) > 2 else ""
         sfx.play("pick")
@@ -25796,10 +26249,10 @@ class Preview(QWidget):
 
 def _designs(kind: str) -> list:
     return {"ball": BALLS, "line": LINES, "font": [(f[0], f[1]) for f in FONTS],
-            "theme": [(t[0], t[1]) for t in THEME_LOOKS], "banner": BANNERS, "frame": FRAMES}[kind]
+            "theme": [(t[0], t[1]) for t in THEME_LOOKS], "banner": BANNERS, "frame": FRAMES, "anim": ANIM_DESIGNS}[kind]
 
 
-SHOP_KINDS = ("ball", "line", "font", "theme", "banner", "frame")
+SHOP_KINDS = ("ball", "anim", "font", "theme", "banner", "frame")
 
 
 def _on_sale(ec, item: str) -> bool:
@@ -25842,55 +26295,71 @@ def build_cosmetics(page, lay) -> None:
     pass
     kind_i = min(int(getattr(ctx, "shop_kind", 0) or 0), len(SHOP_KINDS) - 1)
     kind = SHOP_KINDS[kind_i]
+    if kind == "ball" and getattr(ctx, "shop_sub", "") == "line":          # 6.9: lines sit with the balls
+        kind = "line"
+    if kind == "anim":
+        ctx.shop_design = None
     design = getattr(ctx, "shop_design", None)
     if design is not None and kind in ("banner", "frame") and f"{kind}:{design}" not in ec.catalog:
         design = None
     if design is None:
         for sale in (ec.live.get("sales") or [])[:2]:
             lay.addWidget(SaleBanner(page, sale))
-        seg = GamePicker([tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Banners"), tr("Frames")], kind_i)
+        seg = GamePicker([tr("Balls"), tr("Animations"), tr("Fonts"), tr("Themes"), tr("Banners"), tr("Frames")], kind_i)
 
         def switch(i: int) -> None:
             ctx.shop_kind = i
+            ctx.shop_sub = ""
             ctx.shop_design = None
             ctx.reload_page()
         seg.changed.connect(switch)
         lay.addWidget(seg)
+        if kind == "anim":
+            return build_animations(page, lay, True)
         if kind in ("banner", "frame"):
             if not any(k.startswith(kind + ":") for k in ec.catalog):         # the server has not had 2.6 yet
                 pass
                 return lay.addWidget(WaitCard(page.W))
             lay.addWidget(Label(tr("Visible on your profile, in lists and in chat."),
                                 10.5, TEXT_DIM, wrap_w=page.W))
-        entries = []
-        for base, name in _designs(kind):
-            if (kind, base) in _CW:                                  # 6.5: colourways are picked inside their design
-                continue
-            if kind in ("banner", "frame") and not _on_sale(ec, f"{kind}:{base}"):
-                continue
-            if kind not in ("banner", "frame") and not _design_shown(ec, kind, base):
-                continue
-            item = f"{kind}:{base}" if kind in ("theme", "banner", "frame") else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
-            cheapest = item if kind in ("theme", "banner", "frame") else f"{kind}:{base}:grey"
-            owned = any(k.startswith(f"{kind}:{base}") for k in ec._owned) or \
-                any(f"{kind}:{c}" in ec._owned for c in _CW_GROUP.get((kind, base), ()))
-            pct = max((ec.sale(k) for k in ec.catalog if k.startswith(f"{kind}:{base}")), default=0)
-            entries.append({"item": item, "price": ec.shop_price(cheapest), "tag": tr(name),
-                            "mark": "sale" if pct else ("worn" if owned else ""), "pct": pct})
-        designs = [d for d in _designs(kind) if (kind, d[0]) not in _CW and
-                   (_on_sale(ec, f"{kind}:{d[0]}") if kind in ("banner", "frame") else _design_shown(ec, kind, d[0]))]
-        if True:                                           # 5.3: every kind cheapest first, Common to Legendary
-            order = sorted(range(len(entries)), key=lambda i: (entries[i]["price"] or 0, i))
-            entries, designs = [entries[i] for i in order], [designs[i] for i in order]
-        grid = ItemGrid(ctx, entries, page.W, 3 if kind in ("theme", "banner") else 4 if kind == "frame" else 5,
-                        96 if kind in ("theme", "banner") else 86)
+        def grid_for(kind: str) -> None:
+            entries = []
+            for base, name in _designs(kind):
+                if (kind, base) in _CW:                                  # 6.5: colourways are picked inside their design
+                    continue
+                if kind in ("banner", "frame") and not _on_sale(ec, f"{kind}:{base}"):
+                    continue
+                if kind not in ("banner", "frame") and not _design_shown(ec, kind, base):
+                    continue
+                item = f"{kind}:{base}" if kind in ("theme", "banner", "frame") else f"{kind}:{base}:{'white' if kind == 'font' else 'sky'}"
+                cheapest = item if kind in ("theme", "banner", "frame") else f"{kind}:{base}:grey"
+                owned = any(k.startswith(f"{kind}:{base}") for k in ec._owned) or \
+                    any(f"{kind}:{c}" in ec._owned for c in _CW_GROUP.get((kind, base), ()))
+                pct = max((ec.sale(k) for k in ec.catalog if k.startswith(f"{kind}:{base}")), default=0)
+                entries.append({"item": item, "price": ec.shop_price(cheapest), "tag": tr(name),
+                                "mark": "sale" if pct else ("worn" if owned else ""), "pct": pct})
+            designs = [d for d in _designs(kind) if (kind, d[0]) not in _CW and
+                       (_on_sale(ec, f"{kind}:{d[0]}") if kind in ("banner", "frame") else _design_shown(ec, kind, d[0]))]
+            if True:                                           # 5.3: every kind cheapest first, Common to Legendary
+                order = sorted(range(len(entries)), key=lambda i: (entries[i]["price"] or 0, i))
+                entries, designs = [entries[i] for i in order], [designs[i] for i in order]
+            grid = ItemGrid(ctx, entries, page.W, 3 if kind in ("theme", "banner") else 4 if kind == "frame" else 5,
+                            96 if kind in ("theme", "banner") else 86)
 
-        def pick(i: int) -> None:
-            sfx.play("pick")
-            ctx.shop_design, ctx.shop_colour = designs[i][0], ""
-            ctx.reload_page()
-        grid.picked.connect(pick)
-        lay.addWidget(grid)
+            def pick(i: int) -> None:
+                sfx.play("pick")
+                ctx.shop_design, ctx.shop_colour = designs[i][0], ""
+                ctx.shop_sub = "line" if kind == "line" else ""
+                ctx.reload_page()
+            grid.picked.connect(pick)
+            lay.addWidget(grid)
+
+        if kind in ("ball", "line"):
+            grid_for("ball")
+            lay.addWidget(heading(tr("Lines")))
+            grid_for("line")
+        else:
+            grid_for(kind)
         lay.addWidget(Label(tr("Every item can be worn, traded and sold."), 10.5,
                             TEXT_DIM, wrap_w=page.W))
         lay.addWidget(tax_explainer(ctx, page.W))
@@ -26190,7 +26659,7 @@ def build_inventory(page, lay) -> None:
     tab = 8 if raw == "levels" else int(raw or 0)
     ctx.inv_tab = tab
     picker = GamePicker([tr("All"), tr("Badges"), tr("Balls"), tr("Lines"), tr("Fonts"), tr("Themes"), tr("Profile"),
-                         tr("Coins"), tr("Levels")], tab)
+                         tr("Animations"), tr("Levels")], tab)
 
     def switch(i: int) -> None:
         ctx.inv_tab, ctx.inv_pick = i, ""
@@ -26201,30 +26670,44 @@ def build_inventory(page, lay) -> None:
     if tab == 8:                                         # 4.0: your level, badges and XP coupons
         pass
         return build_levels(page, lay)
-    if tab == 7:
-        rows = getattr(ctx, "ledger_rows", None)
-        if rows is None or time.monotonic() - getattr(ctx, "ledger_at", 0) > 8:
-            ctx.ledger_at = time.monotonic()
+    if tab == 7:                                         # 6.9: animations
+        return build_animations(page, lay, False)
+    if tab == 6:                                         # 6.9: the coin history moved here
+        _inventory_items(page, lay, tab)
+        return _coin_history(page, lay)
+    return _inventory_items(page, lay, tab)
 
-            def got(ok: bool, data) -> None:
-                if ok and isinstance(data, list) and data != getattr(ctx, "ledger_rows", None):
-                    ctx.ledger_rows = data
-                    if ctx.window.showing("themes") and getattr(ctx, "inv_tab", 0) == 7:
-                        ctx.reload_page("themes")
-            ec.online.ask("rb_ledger_list", {}, got)
-        lay.addWidget(heading(tr("Coin history")))
-        if rows:
-            lay.addWidget(LedgerList(rows, page.W))
-        else:
-            lay.addWidget(Label(tr("Loading…") if rows is None else tr("Nothing here yet"), 12, TEXT_DIM))
-        return
+
+def _coin_history(page, lay) -> None:
+    """6.9: the coin history lives at the end of the Profile tab."""
+    ctx, ec = page.ctx, page.ctx.econ
+    rows = getattr(ctx, "ledger_rows", None)
+    if rows is None or time.monotonic() - getattr(ctx, "ledger_at", 0) > 8:
+        ctx.ledger_at = time.monotonic()
+
+        def got(ok: bool, data) -> None:
+            if ok and isinstance(data, list) and data != getattr(ctx, "ledger_rows", None):
+                ctx.ledger_rows = data
+                if ctx.window.showing("themes") and getattr(ctx, "inv_tab", 0) == 6:
+                    ctx.reload_page("themes")
+        ec.online.ask("rb_ledger_list", {}, got)
+    lay.addWidget(heading(tr("Coin history")))
+    if rows:
+        lay.addWidget(LedgerList(rows, page.W))
+    else:
+        lay.addWidget(Label(tr("Loading…") if rows is None else tr("Nothing here yet"), 12, TEXT_DIM))
+    return
+
+
+def _inventory_items(page, lay, tab: int) -> None:
+    ctx, ec = page.ctx, page.ctx.econ
     want = ["", "badge", "ball", "line", "font", "theme", "look"][tab]
     groups: dict = {}
     for it in ec.items:
         k = it["item"].split(":")[0]
         if k == "coupon":                                 # XP coupons live in Levels
             continue
-        if not want or k == want or (want == "look" and k in LOOKS):
+        if not want or k == want or (want == "look" and k in LOOKS and k != "anim"):
             groups.setdefault(it["item"], []).append(it)
     total = sum(value_of(ctx, k) * len(v) for k, v in groups.items())
     count = sum(len(v) for v in groups.values())
@@ -26261,6 +26744,178 @@ def build_inventory(page, lay) -> None:
         ctx.reload_page()
     grid.picked.connect(choose)
     lay.addWidget(grid)
+
+
+# --------------------------------------------------------------------------- #
+# 6.9: the Animations page (Shop and Inventory)
+# --------------------------------------------------------------------------- #
+class AnimPreview(QWidget):
+    """A looping picture of one animation: the banner leaves, the ball waits, the banner comes back."""
+
+    def __init__(self, ctx, design: str, fin: str, width: int) -> None:
+        super().__init__()
+        self.ctx, self.design, self.fin = ctx, design, fin
+        self.setFixedSize(width, S(112))
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._t0 = time.monotonic()
+        self._timer = QTimer(self)
+        self._timer.setInterval(33)
+        self._timer.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._timer.start()
+
+    def hideEvent(self, _e) -> None:
+        self._timer.stop()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        clip = QPainterPath()
+        clip.addRoundedRect(r, S(12), S(12))
+        p.setPen(QPen(alpha("#FFFFFF", 0.1), 1))
+        p.setBrush(QColor("#090B0E"))
+        p.drawPath(clip)
+        p.setClipPath(clip)
+        now = time.monotonic()
+        t = (now - self._t0) % 4.8
+        if t < 0.5:
+            k = 0.0
+        elif t < 1.9:
+            k = (t - 0.5) / 1.4
+        elif t < 2.8:
+            k = 1.0
+        elif t < 4.2:
+            k = 1.0 - (t - 2.8) / 1.4
+        else:
+            k = 0.0
+        m = QRectF(r.center().x() - r.width() * 0.3, r.center().y() - S(17) + S(10), r.width() * 0.6, S(34))
+        hole = QPointF(r.center().x(), r.top() + S(24))
+        d = S(26)
+        acc = QColor(ui.accent)
+
+        def banner(box: QRectF, op: float, light: bool = False) -> None:
+            p.setOpacity(max(0.0, min(1.0, op)))
+            g = QLinearGradient(box.topLeft(), box.bottomRight())
+            g.setColorAt(0, mix(acc, QColor("#0B0E10"), 0.55))
+            g.setColorAt(1, mix(acc, QColor("#0B0E10"), 0.8))
+            p.setPen(QPen(alpha(acc, 0.8), 1))
+            p.setBrush(g)
+            p.drawRoundedRect(box, S(9), S(9))
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(font(max(7, 9 * box.height() / max(1.0, m.height())), QFont.Weight.Bold))
+            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "Rubenium")
+            p.setOpacity(1.0)
+
+        def ball(pos: QPointF, size: float, op: float) -> None:
+            p.setOpacity(max(0.0, min(1.0, op)))
+            g = QRadialGradient(QPointF(pos.x() - size * 0.15, pos.y() - size * 0.2), size * 0.7)
+            g.setColorAt(0, mix(acc, QColor("#FFFFFF"), 0.55))
+            g.setColorAt(1, mix(acc, QColor("#000000"), 0.35))
+            p.setPen(QPen(alpha("#FFFFFF", 0.35), 1))
+            p.setBrush(g)
+            p.drawEllipse(pos, size / 2, size / 2)
+            p.setPen(QColor("#FFFFFF"))
+            p.setFont(font(max(6, size * 0.34), QFont.Weight.ExtraBold))
+            p.drawText(QRectF(pos.x() - size / 2, pos.y() - size / 2, size, size), int(Qt.AlignmentFlag.AlignCenter), "R")
+            p.setOpacity(1.0)
+        try:
+            paint_anim(p, self.design, self.fin, k, now, m, hole, d, banner, ball)
+        except Exception:  # noqa: BLE001
+            log.exception("animation preview failed")
+            self._timer.stop()
+
+
+def anim_set(ctx, item: str) -> None:
+    def done(ok: bool, d) -> None:
+        if not ok:
+            ctx.toast(tr(str(d)), "warn")
+        else:
+            ctx.econ.looks_changed.emit()
+        ctx.reload_page()
+    sfx.play("pick")
+    ctx.econ.wear("anim", item, done)
+
+
+def build_animations(page, lay, shop: bool) -> None:
+    ctx, ec = page.ctx, page.ctx.econ
+    if not ec.ready or not ec.catalog:
+        return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the shop"), 12, TEXT_DIM))
+    cur = ec.worn("anim")
+    cursp = anim_split(cur) if cur and ec.can_wear(cur) else None
+    lay.addWidget(Label(tr("How Rubenium leaves and comes back. The simple one is free and always works."), 10.5, TEXT_DIM, wrap_w=page.W))
+    row = hbox(spacing=8)
+    now_name = item_name(cur).split(" (")[0] if cursp else tr("Simple (free)")
+    row.addWidget(Label(tr("Now: {name}", name=now_name), 12, bold=True), 1)
+    off = Button(tr("Use the simple one"), "primary" if cursp else "ghost", 30)
+    off.setEnabled(cursp is not None)
+    off.setToolTip(tr("Turns the special animation off: the banner just floats up and drops back down"))
+    off.clicked.connect(lambda: anim_set(ctx, ""))
+    row.addWidget(off)
+    lay.addLayout(row)
+    state = getattr(ctx, "anim_fin", None)
+    if not isinstance(state, dict):
+        state = ctx.anim_fin = {}
+    shown = 0
+    for design, name in ANIMS:
+        if shop:
+            avail = [f for f in ANIM_FIN_IDS if anim_id(design, f) in ec.catalog]
+        else:
+            avail = [f for f in ANIM_FIN_IDS if ec.owns(anim_id(design, f))]
+        if not avail:
+            continue
+        shown += 1
+        fin = state.get(design, avail[0])
+        if fin not in avail:
+            fin = avail[0]
+        item = anim_id(design, fin)
+        lay.addSpacing(S(8))
+        head = hbox(spacing=8)
+        head.addWidget(Label(tr(name), 14, bold=True), 1)
+        head.addWidget(Label(rarity_line(ctx, item), 11, RARITY_COLOURS.get(ec.rarity(item), TEXT_DIM), bold=True))
+        lay.addLayout(head)
+        lay.addWidget(AnimPreview(ctx, design, fin, page.W))
+        if len(avail) > 1:
+            chips = hbox(spacing=4)
+            for f in avail:
+                b = Button(tr(ANIM_SHORT[f]), "primary" if f == fin else "ghost", 26)
+                b.setToolTip(tr(dict(ANIM_FINS)[f]))
+                b.clicked.connect(lambda _c=False, d_=design, f_=f: (sfx.play("pick"), state.__setitem__(d_, f_), ctx.reload_page()))
+                chips.addWidget(b, 1)
+            lay.addLayout(chips)
+        if ec.owns(item):
+            on = ec.worn("anim") == item
+            b = Button(tr("Take off") if on else tr("Wear"), "ghost" if on else "primary", 36)
+            b.clicked.connect(lambda _c=False, it=item, on_=on: anim_set(ctx, "" if on_ else it))
+            lay.addWidget(b)
+        elif fin == "" and ec.shop_price(item) is not None:
+            price = ec.shop_price(item)
+            b = Button(tr("Buy for {n} coins", n=coins_text(price)) + (f"  (-{ec.sale(item)}%)" if ec.sale(item) else ""), "primary", 36)
+
+            def buy(it=item, pr=price, bt=b) -> None:
+                if pr > ec.coins:
+                    return ctx.toast(tr("Not enough coins: {n} more needed", n=coins_text(pr - ec.coins)), "warn")
+
+                def done(ok: bool, data) -> None:
+                    if not ok:
+                        sfx.play("off")
+                        return ctx.toast(tr(str(data)), "warn")
+                    sfx.play("on")
+                    ctx.toast(tr("Bought: {what}", what=item_name(it)))
+                    ctx.reload_page()
+                ctx.window.confirm(tr("Buy {name} for {n} coins?", name=item_name(it), n=coins_text(pr)),
+                                   lambda: (bt.setEnabled(False), ec.buy(it, done)), yes=tr("Buy"))
+            b.clicked.connect(buy)
+            lay.addWidget(b)
+            lay.addWidget(TaxNote(ctx, item, page.W))
+        else:
+            lay.addWidget(Label(tr("This finish only comes from Profile cases, and it is super rare."), 10.5, TEXT_DIM, wrap_w=page.W))
+    if not shown:
+        lay.addWidget(Label(tr("Nothing here yet. Buy one in the Shop or win one in a Profile case."), 12, TEXT_DIM, wrap_w=page.W))
+    lay.addSpacing(S(6))
+    lay.addWidget(Label(tr("If an animation ever glitches: click anywhere or press Esc to skip it, or press \"Use the simple one\"."),
+                        10, TEXT_DIM, wrap_w=page.W))
 
 
 def _inventory_detail(page, lay, item: str, copies: list) -> None:
@@ -26954,7 +27609,7 @@ def _swap_new(page, lay) -> None:
 
 MARKET_FILTERS = {"q": "", "kind": "", "rarity": "", "cls": None, "sort": "new"}
 MARKET_SORTS = [("new", "Newest"), ("cheap", "Cheapest"), ("dear", "Priciest"), ("deal", "Best deals")]
-MARKET_KINDS = [("", "All"), ("badge", "Badges"), ("banner", "Banners"), ("frame", "Frames"), ("ball", "Balls"),
+MARKET_KINDS = [("", "All"), ("badge", "Badges"), ("banner", "Banners"), ("frame", "Frames"), ("anim", "Animations"), ("ball", "Balls"),
                 ("line", "Lines"), ("theme", "Themes"), ("font", "Fonts")]
 
 
@@ -38343,8 +38998,8 @@ class CaseGrid(QWidget):
 
 
 ITEM_KINDS = [("badge", "Badges"), ("ball", "Balls"), ("line", "Lines"), ("font", "Fonts"), ("theme", "Themes"),
-              ("banner", "Banners"), ("frame", "Frames"), ("tag", "Tags"), ("coupon", "XP coupons")]
-SINGLE_KINDS = ("theme", "banner", "frame", "tag", "coupon")          # one item per design, no colours or finishes
+              ("banner", "Banners"), ("frame", "Frames"), ("anim", "Animations"), ("tag", "Tags"), ("coupon", "XP coupons")]
+SINGLE_KINDS = ("theme", "banner", "frame", "anim", "tag", "coupon")          # one item per design, no colours or finishes
 
 
 def item_picker(page, lay, state: dict, multi: int = 1) -> None:
@@ -53465,7 +54120,8 @@ def _make_class():
             self._place()
             self.morph.jump(1.0)
             self.chrome.jump(1.0)
-            self.drop.setEasingCurve(QEasingCurve.Type.OutBack)
+            self._anim_in = self._anim_pick()
+            self.drop.setEasingCurve(QEasingCurve.Type.Linear if self._anim_in else QEasingCurve.Type.OutBack)
             self.drop.jump(0.0)
             self._layout_body()
             self.body.show()
@@ -53482,7 +54138,7 @@ def _make_class():
             self.show()
             if win.IS_WIN:
                 win.set_topmost(int(self.winId()))
-            self.drop.to(1.0, 620)
+            self.drop.to(1.0, 1100 if self._anim_in else 620)
             self._retime()
             self.ctx.on_visibility()
 
@@ -53493,6 +54149,7 @@ def _make_class():
         def _drop_done(self) -> None:
             if self.phase == "dropping":
                 self.phase = "shown"
+                self._anim_in = None
                 self._pm = None
                 self._layout_body()
                 self.body.show()
@@ -53554,9 +54211,10 @@ def _make_class():
             self.expanded = False
             self.ctx.cfg["card_open"] = False
             self.phase = "stowing"
+            self._anim = self._anim_pick()
             self.suck.setEasingCurve(QEasingCurve.Type.Linear)
             self.suck.jump(0.0)
-            self.suck.to(1.0, 560)
+            self.suck.to(1.0, 1250 if self._anim else 700)
             for page in self.each_page():
                 page.on_hide()
             sfx.play("off")
@@ -53709,6 +54367,14 @@ def _make_class():
                 return self._paint_leave(p)
             if self.phase == "stowing":
                 return self._paint_stow(p, now)
+            if self.phase == "dropping" and getattr(self, "_anim_in", None) is not None and self._pm is not None:
+                try:
+                    return self._paint_special(p, now, 1.0 - self.drop.level, self._anim_in)
+                except Exception:  # noqa: BLE001
+                    log.exception("animation failed: back to the simple drop")
+                    self._anim_bad, self._anim_in = True, None
+                    p.setOpacity(1.0)
+                    p.setClipping(False)
             shape, radius = self._shape()
             level = self.ctx.glow_level()
             path = paint_shape(p, self.ctx, shape, radius, level, self.devicePixelRatioF())
@@ -53752,60 +54418,98 @@ def _make_class():
             box = QRectF(m.center().x() - w / 2, m.top() - lift + (m.height() - h) * 0.15, w, h)
             self._banner(p, box, 1.0 - k)
 
-        def _paint_stow(self, p: QPainter, now: float) -> None:
-            """Shoots up into a wide black hole (an accretion band across the top), which closes on the R."""
-            k = self.suck.level
+        def _anim_pick(self):
+            """6.9: the animation you wear, when it is yours and has not bugged out: (design, finish) or None."""
+            try:
+                ec = self.ctx.econ
+                if getattr(self, "_anim_bad", False) or not ec.ready:
+                    return None
+                it = ec.worn("anim")
+                sp = anim_split(it) if it else None
+                if sp and ec.can_wear(it):
+                    return sp
+            except Exception:  # noqa: BLE001
+                log.exception("animation lookup failed")
+            return None
+
+        def _paint_special(self, p: QPainter, now: float, k: float, anim) -> None:
+            """6.9: one of the Mythic animations. k: 0 = the banner, 1 = only the ball."""
             m = self._max_l
             hole = QPointF(m.center().x(), m.top() + S(30))
-            e = min(1.0, k / 0.55) ** 2                               # fast: most of the move in the first half
-            if e < 1.0:
-                h = m.height() * (1 - 0.88 * e)
-                w = m.width() * (1 - 0.15 * e)
-                box = QRectF(m.center().x() - w / 2, m.top() - (m.height() * 0.15) * e, w, h)
-                self._banner(p, box, 1.0 - e * 0.8)
-            # the wide black hole: opens fast, holds, closes onto the R
-            open_k = math.sin(min(1.0, k / 0.9) * math.pi) ** 0.7
-            hw, hh = m.width() * 0.46 * open_k, S(22) * open_k
-            if hw > 1:
-                p.setPen(Qt.PenStyle.NoPen)
-                halo = QRadialGradient(hole, hw)
-                halo.setColorAt(0, alpha(ui.accent, 0.0))
-                halo.setColorAt(0.55, alpha(ui.accent, 0.38 * open_k))
-                halo.setColorAt(1, alpha(ui.accent, 0.0))
-                p.save()
-                p.translate(hole)
-                p.scale(1.0, max(0.05, hh * 2.6 / max(1.0, hw)))
-                p.setBrush(halo)
-                p.drawEllipse(QPointF(0, 0), hw, hw)
-                p.restore()
-                rnd = random.Random(11)                               # matter streaming along the band
-                for i in range(70):
-                    a0 = rnd.uniform(0, math.tau)
-                    rad = rnd.uniform(0.35, 1.0)
-                    ang = a0 + now * (4.0 / max(0.4, rad))
-                    pc = mix(ui.accent, QColor("#FFFFFF"), rnd.uniform(0.0, 0.7))
-                    pc.setAlphaF(0.8 * open_k)
-                    p.setBrush(pc)
-                    p.drawEllipse(QPointF(hole.x() + math.cos(ang) * hw * rad, hole.y() + math.sin(ang) * hh * rad * 1.6),
-                                  S(1.5), S(1.5))
-                core = QRadialGradient(hole, hw * 0.55)
-                core.setColorAt(0, QColor(0, 0, 0, 255))
-                core.setColorAt(0.8, QColor(0, 0, 0, 230))
-                core.setColorAt(1, QColor(0, 0, 0, 0))
-                p.save()
-                p.translate(hole)
-                p.scale(1.0, max(0.05, hh / max(1.0, hw * 0.55)))
-                p.setBrush(core)
-                p.drawEllipse(QPointF(0, 0), hw * 0.55, hw * 0.55)
-                p.restore()
-                p.setBrush(Qt.BrushStyle.NoBrush)
-                p.setPen(QPen(alpha(mix(ui.accent, QColor("#FFFFFF"), 0.45), 0.85 * open_k), S(1.6)))
-                p.drawEllipse(hole, hw * 0.56, hh * 1.02)
-            # the R appears in the middle as the hole closes
+            d = float(BD())
+            dpr = self.devicePixelRatioF()
+
+            def banner(box: QRectF, op: float, light: bool = False) -> None:
+                if self._pm is None:
+                    return
+                op = max(0.0, min(1.0, op))
+                if light:
+                    p.setOpacity(op)
+                    p.fillRect(box, QColor(12, 14, 18))
+                    p.drawPixmap(box, self._pm, QRectF(self._pm.rect()))
+                    p.setOpacity(1.0)
+                else:
+                    self._banner(p, box, op)
+
+            def ball(pos: QPointF, size: float, op: float) -> None:
+                size = max(2.0, size)
+                shape = QRectF(pos.x() - size / 2, pos.y() - size / 2, size, size)
+                p.setOpacity(max(0.0, min(1.0, op)))
+                level = self.ctx.glow_level(0.6)
+                paint_shape(p, self.ctx, shape, size / 2, level, dpr)
+                paint_ball_face(p, self.ctx, shape, 1.0)
+                paint_edge(p, self.ctx, shape, size / 2, level)
+                p.setOpacity(1.0)
+            paint_anim(p, anim[0], anim[1], k, now, m, hole, d, banner, ball)
+
+        def _skip_anim(self) -> bool:
+            """6.9: a click or Esc ends a special animation right now (in case one is slow or bugs out)."""
+            if self.phase == "stowing" and getattr(self, "_anim", None) is not None:
+                self.suck.stop()
+                self.suck.jump(1.0)
+                self._suck_done()
+                return True
+            if self.phase == "dropping" and getattr(self, "_anim_in", None) is not None:
+                self.drop.stop()
+                self.drop.jump(1.0)
+                self._drop_done()
+                return True
+            return False
+
+        def mousePressEvent(self, e) -> None:
+            if self._skip_anim():
+                return
+            super().mousePressEvent(e)
+
+        def keyPressEvent(self, e) -> None:
+            if e.key() == Qt.Key.Key_Escape and self._skip_anim():
+                return
+            super().keyPressEvent(e)
+
+        def _paint_stow(self, p: QPainter, now: float) -> None:
+            """The simple default: the banner floats up into nothing and fades; the R appears where it went. (Coming
+            back it just drops down.) A Mythic animation replaces this when one is worn."""
+            k = self.suck.level
+            m = self._max_l
+            anim = getattr(self, "_anim", None)
+            if anim is not None:
+                try:
+                    return self._paint_special(p, now, k, anim)
+                except Exception:  # noqa: BLE001
+                    log.exception("animation failed: back to the simple one")
+                    self._anim_bad, self._anim = True, None
+                    p.setOpacity(1.0)
+                    p.setClipping(False)
+            e = min(1.0, k / 0.72)
+            e = e * e * (3 - 2 * e)
+            s = 1.0 - 0.06 * e
+            w, h = m.width() * s, m.height() * s
+            box = QRectF(m.center().x() - w / 2, m.top() - S(110) * e * e + (m.height() - h) * 0.3, w, h)
+            self._banner(p, box, (1.0 - e) ** 1.2)
             if k > 0.55:
-                pass
-                r_k = min(1.0, (k - 0.55) / 0.45)
-                d = BD() * (0.4 + 0.6 * r_k)
+                r_k = _e3_safe((k - 0.55) / 0.45)
+                hole = QPointF(m.center().x(), m.top() + S(30))
+                d = BD() * (0.75 + 0.25 * r_k)
                 shape = QRectF(hole.x() - d / 2, hole.y() - d / 2, d, d)
                 p.setOpacity(r_k)
                 level = self.ctx.glow_level(0.6)

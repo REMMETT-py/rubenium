@@ -1,5 +1,5 @@
-Rubenium 6.8
+Rubenium 6.9
 
-- Horse Racing: the race is now 3 times longer (about a minute) with many more lead changes, and 5 new maps (Beach, Canyon, Night City, Volcano, Moon) join Desert, Forest and Snow
+- NEW: 4 Mythic ANIMATIONS (Supernova, Shatter, Rift, Phoenix), each in Prismatic, Gold, Black Titan and White Titan: buy the originals in the Shop (Animations) or win any of them from the Profile Case. Click anywhere or press Esc to skip one, or switch back to the simple animation any time. The default animation is now simple: the banner floats up into nothing and drops back down. Lines now sit with the Balls in the Shop, and the Coin history moved to the Profile tab of your Inventory (whose old Coins button is now Animations)
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
