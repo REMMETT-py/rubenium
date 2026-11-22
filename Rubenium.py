@@ -1489,7 +1489,7 @@ from PyQt6.QtGui import QColor, QFont
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "6.4"         # the version people see
-BUILD = "2026.11.22.10"       # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.22.11"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2927,6 +2927,7 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_race_closed": "The bets for this race are closed", "rb_race_taken": "Someone just took this horse: pick another",
           "rb_race_in": "You already have a horse in this race",
           "rb_pawn_limit": "10 proposals an hour at the pawn shop: wait a little",
+          "rb_arena_busy": "A Jackpot or Horse Race is running: wait for it to end", "rb_arena_same": "That one is already running",
           "rb_pawn_nothing": "He has nothing to offer for that right now",
           "rb_roulette_opposite": "Red and Black (or Low and High) can't both be picked", "rb_not_your_turn": "Wait for your turn",
           "rb_row_not_full": "You need every colour of that row (not on sale or in a trade)",
@@ -11850,7 +11851,7 @@ FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match
 FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'Preview': 'Essai', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
 FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
 FR.update({'Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run.': 'Les paris ferment 2 minutes après l’arrivée du premier joueur. Puis les bots prennent les chevaux libres, 3, 2, 1, le coup de feu, et ils partent.', 'Chance to win = your bet ÷ all the money on the horses.': 'Chance de gagner = ta mise ÷ tout l’argent misé sur les chevaux.', 'Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start.': 'Les chevaux à l’arrière de la file partent en premier, pour qu’ils passent tous la ligne de départ ensemble : personne n’a d’avance.', 'Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Pendant 2 minutes tu peux mettre 1 à 3 objets (5 joueurs au plus).', 'Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.': 'Le Jackpot et la Course de chevaux alternent : chacun ouvre 15 minutes après la fin de l’autre.', 'Nobody joins? The bots race on their own and the next event comes 15 minutes later.': 'Personne ne rejoint ? Les bots courent seuls et l’événement suivant arrive 15 minutes plus tard.', 'Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).': 'Choisis un cheval libre sur le tableau et mise des pièces dessus (un cheval chacun, 5 chevaux).', "The more you bet, the better your horse's chance, but the more you can lose.": 'Plus tu mises, plus ton cheval a de chances, mais plus tu peux perdre.', "The winner gets their bet back plus 80% of everybody else's bets (bots' too).": 'Le gagnant récupère sa mise plus 80 % des mises de tous les autres (bots compris).', 'Bet {n} coins on this round? That is {p}% of your coins.': 'Miser {n} pièces sur cette manche ? C’est {p} % de tes pièces.', 'Careful: you could lose a big part of your coins.': 'Attention : tu pourrais perdre une grosse partie de tes pièces.', 'Bet it': 'Miser', 'FINISH': 'ARRIVÉE', 'BETS CLOSE IN {t}': 'PARIS FERMÉS DANS {t}', 'Pick a horse and bet. Bots take the empty horses at 0:00.': 'Choisis un cheval et mise. Les bots prennent les chevaux libres à 0:00.', 'The clock restarts at 2:00 when the first player joins': 'Le chrono repart à 2:00 quand le premier joueur rejoint', 'BOTS TAKE THE EMPTY HORSES': 'LES BOTS PRENNENT LES CHEVAUX LIBRES', 'Get ready…': 'Préparez-vous…', 'GO!': 'PARTEZ !', 'YOU WON {n}!': 'TU AS GAGNÉ {n} !', 'YOU WON!': 'TU AS GAGNÉ !', '#{n} {name} WINS': 'N°{n} {name} GAGNE', 'Ridden for {who}': 'Monté pour {who}', 'Desert': 'Désert', 'Forest': 'Forêt', 'Snow': 'Neige', 'RACE BOARD': 'TABLEAU DES COURSES', '{n} on the horses': '{n} misés sur les chevaux', 'Free: click to pick': 'Libre : clique pour choisir', 'Free': 'Libre', 'Your pick': 'Ton choix', 'HORSE RACING': 'COURSE DE CHEVAUX', 'Horse Racing': 'Course de chevaux', 'OPEN · bets close in {t}': 'OUVERT · paris fermés dans {t}', "They're racing: watch it": 'Ils courent : regarde', 'Next race in {t}': 'Prochaine course dans {t}', '5 horses, bet on one': '5 chevaux, mise sur un', 'Horse Racing is paused for a moment. Nothing you own is lost.': 'La Course de chevaux est en pause un moment. Tu ne perds rien.', 'The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.': 'La prochaine course ouvre dans environ {t}. Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart.', 'Last race': 'Dernière course', 'Every horse is taken. Watch the race!': 'Tous les chevaux sont pris. Regarde la course !', 'You need at least {n} to bet.': 'Il te faut au moins {n} pour miser.', 'Bet on this horse': 'Miser sur ce cheval', 'Click a free horse on the board': 'Clique un cheval libre sur le tableau', 'Too late: the bets are closed': 'Trop tard : les paris sont fermés', '#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)': 'N°{n} : {p} de chances · s’il gagne tu reçois {w} (ta mise + {s} % des autres)', 'Bet {n} coins on #{h} {name}? That is {p}% of your coins.': 'Miser {n} pièces sur le n°{h} {name} ? C’est {p} % de tes pièces.', "You're on #{n} {name}. Good luck!": 'Tu es sur le n°{n} {name}. Bonne chance !', "Your chance to win is your share of all the money on the horses. The winner gets their bet back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.": 'Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. Le gagnant récupère sa mise plus {s} % de celles des autres. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.', 'HORSE RACE IS OPEN': 'LA COURSE DE CHEVAUX EST OUVERTE', 'Bets close in about {t}. Bet in Games > Horse Racing': 'Les paris ferment dans environ {t}. Mise dans Jeux > Course de chevaux', 'Red Rocket': 'Fusée Rouge', 'Blue Thunder': 'Tonnerre Bleu', 'Green Clover': 'Trèfle Vert', 'Golden Sun': 'Soleil d’Or', 'Purple Storm': 'Tempête Violette', 'The bets for this race are closed': 'Les paris de cette course sont fermés', 'Someone just took this horse: pick another': 'Quelqu’un vient de prendre ce cheval : choisis-en un autre', 'You already have a horse in this race': 'Tu as déjà un cheval dans cette course', 'Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.': 'Limitée (calendrier de l’Avent) : aussi bonne que la Caisse Top Tier. Toujours un badge Épique ou Légendaire, avec une chance de Mythique.', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 999 fois ta mise.', "NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's": 'NOUVEAU : Course de chevaux. 5 chevaux, choisis-en un et mise : ta chance est ta part de l’argent. Le gagnant récupère sa mise plus 80 % de celles des autres', 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Si personne ne rejoint, les bots jouent quand même', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)': 'Mises jusqu’à la moitié de tes pièces. Au-delà de 10 000, on te demande d’abord, en or (en rouge si c’est une grosse part de tes pièces)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5': 'Puissance 4 Professionnel paie ×999. Jeu des gobelets : Facile ×1,2, Moyen ×2, Difficile ×3, Expert ×5', "A coloured app font now colours the app's text too": 'Une police colorée colore maintenant aussi le texte de l’app', 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)': 'Bots du Mini Golf corrigés : plus de passage à travers les murs ni de glissade sur tout le parcours, et ils jouent chacun leur tour (tu attends leur balle)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar': 'Mini Golf et Wave Rush sont dans Gagner des pièces ; Coinflip est sous le calendrier de l’Avent', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case': 'Anciennes caisses retirées (ceux qui en avaient ont reçu leur prix en pièces). Les caisses Hiver et Cadeau sont maintenant aussi bonnes que la Caisse Top Tier'})      # 6.3
-FR.update({'NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more': 'NOUVEAU : 12 bannières, 12 cadres de profil et 12 thèmes de couleurs d’app, aucun saisonnier : Prairie, Glitch, Kaléidoscope, Or liquide, Ailes, Plasma, Abysses, Or rose et plus', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too': 'NOUVEAU : un sixième badge Nature, la Feuille, dans la Caisse Nature (et toutes ses couleurs). La boutique et les Caisses Bannière, Cadre et Couleurs d’app ont aussi les nouveautés', 'Meadow': 'Prairie', 'Paper': 'Papier', 'Clouds': 'Nuages', 'Bokeh': 'Bokeh', 'Pixels': 'Pixels', 'Ribbons': 'Rubans', 'Sunbeams': 'Rayons de soleil', 'Starry Desert': 'Désert étoilé', 'Kaleidoscope': 'Kaléidoscope', 'Liquid Gold': 'Or liquide', 'Meteor Shower': 'Pluie de météores', 'Daisy': 'Pâquerette', 'Spectrum': 'Spectre', 'Void': 'Néant', 'Wings': 'Ailes', 'Mocha': 'Moka', 'Cobalt': 'Cobalt', 'Lavender': 'Lavande', 'Rust': 'Rouille', 'Graphite': 'Graphite', 'Gold Rush': 'Ruée vers l’or', 'Abyss': 'Abysses', 'Rose Gold': 'Or rose'})      # 6.4
+FR.update({'NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more': 'NOUVEAU : 12 bannières, 12 cadres de profil et 12 thèmes de couleurs d’app, aucun saisonnier : Prairie, Glitch, Kaléidoscope, Or liquide, Ailes, Plasma, Abysses, Or rose et plus', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too': 'NOUVEAU : un sixième badge Nature, la Feuille, dans la Caisse Nature (et toutes ses couleurs). La boutique et les Caisses Bannière, Cadre et Couleurs d’app ont aussi les nouveautés', 'Meadow': 'Prairie', 'Paper': 'Papier', 'Clouds': 'Nuages', 'Bokeh': 'Bokeh', 'Pixels': 'Pixels', 'Ribbons': 'Rubans', 'Sunbeams': 'Rayons de soleil', 'Starry Desert': 'Désert étoilé', 'Kaleidoscope': 'Kaléidoscope', 'Liquid Gold': 'Or liquide', 'Meteor Shower': 'Pluie de météores', 'Daisy': 'Pâquerette', 'Spectrum': 'Spectre', 'Void': 'Néant', 'Wings': 'Ailes', 'Mocha': 'Moka', 'Cobalt': 'Cobalt', 'Lavender': 'Lavande', 'Rust': 'Rouille', 'Graphite': 'Graphite', 'Gold Rush': 'Ruée vers l’or', 'Abyss': 'Abysses', 'Rose Gold': 'Or rose', 'Rematch': 'Revanche', 'Waiting for {name}…': 'En attente de {name}…', 'You are ready. The duel starts when {name} is ready too.': 'Tu es prêt. Le duel commence quand {name} est prêt aussi.', 'Accept the rematch': 'Accepter la revanche', '{name} wants a rematch!': '{name} veut une revanche !', 'Ready up and play again with {name}': 'Sois prêt et rejoue avec {name}', 'You crashed at {n} m  ·  watching {name}': 'Tu as crashé à {n} m  ·  tu regardes {name}', 'Wave Rush duels: the other player now moves smoothly instead of lagging and running into walls (you see them a moment behind, exactly as they really flew)': 'Duels Wave Rush : l’autre joueur bouge maintenant de façon fluide au lieu de ramer et de foncer dans les murs (tu le vois un instant en retard, exactement comme il a volé)', 'Wave Rush duels: when you crash you keep watching the other player until they crash too, then the result comes up': 'Duels Wave Rush : quand tu crashes, tu continues de regarder l’autre joueur jusqu’à son crash, puis le résultat s’affiche', 'Wave Rush duels: a Rematch button after the duel. When both players press it, a new duel starts with the same bet': 'Duels Wave Rush : un bouton Revanche après le duel. Quand les deux joueurs l’appuient, un nouveau duel commence avec la même mise'})      # 6.4
 FR.update({'The pawn shop allows 10 exchanges an hour, not 5': 'Le prêteur sur gages accepte 10 échanges par heure, pas 5'})      # 6.2.8
 FR.update({'Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works': 'Prêteur sur gages : vends plusieurs exemplaires d’un objet d’un coup, un gros compteur de 5 échanges par heure, et Refuser marche toujours', 'Exchange · {n}/10 left': 'Échange · {n}/10 restants', 'No exchanges left': 'Plus d’échange', 'No exchanges left this hour': 'Plus d’échange cette heure', 'EXCHANGES THIS HOUR': 'ÉCHANGES CETTE HEURE', 'Pawn shop: take {n} of {m}': 'Prêteur sur gages : en prendre {n} sur {m}', 'Quick sell ×{n}': 'Vente rapide ×{n}', 'All': 'Tous'})      # 6.2.7
 FR.update({"The pawn shop takes 5 offers or refusals an hour, so you can't spam refuse": 'Le prêteur sur gages accepte 5 offres ou refus par heure, donc tu ne peux pas spammer le refus', '10 proposals an hour at the pawn shop: wait a little': '10 propositions par heure chez le prêteur sur gages : attends un peu'})      # 6.2.6
@@ -11865,7 +11866,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
-    ("6.4", ['NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too']),
+    ("6.4", ['NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too', 'Wave Rush duels: the other player now moves smoothly instead of lagging and running into walls (you see them a moment behind, exactly as they really flew)', 'Wave Rush duels: when you crash you keep watching the other player until they crash too, then the result comes up', 'Wave Rush duels: a Rematch button after the duel. When both players press it, a new duel starts with the same bet']),
     ("6.3", ["NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's", 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5', "A coloured app font now colours the app's text too", 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case']),
     ("6.2.8", ['The pawn shop allows 10 exchanges an hour, not 5']),
     ("6.2.7", ['Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works']),
@@ -37768,6 +37769,28 @@ class AdminPage(Page):
             return lay.addWidget(Label(en("Loading…"), 12, TEXT_DIM))
         cfg = st.get("config") or {}
         keys = sorted(k for k in cfg if k != "reset_008")
+        ar = self.fetch("rb_admin_arena", {"kind": None}) or {}
+        if ar:
+            def _name(k):
+                return en("Jackpot") if k == "jackpot" else en("Horse Race")
+            left = max(0, int((ar.get("next_at") or 0) - (ar.get("now") or 0)))
+            if ar.get("cur_kind"):
+                line = en("Running now: {k}. Next: {n}, {m} min after it ends.", k=_name(ar["cur_kind"]), n=_name(ar.get("next_kind")),
+                          m=int((ar.get("gap") or 900) // 60))
+            else:
+                line = en("Next: {n} in {t} (always {m} min after the last one).", n=_name(ar.get("next_kind")),
+                          t=f"{left // 60}:{left % 60:02d}", m=int((ar.get("gap") or 900) // 60))
+            lay.addWidget(Label(line, 12, TEXT_DIM))
+        row = QWidget()
+        rl = QHBoxLayout(row)
+        rl.setContentsMargins(0, 0, 0, 0)
+        for kind, label in (("jackpot", en("Start the Jackpot now")), ("race", en("Start a Horse Race now"))):
+            b = Button(label, "ghost", 30, icon="refresh")
+            b.setToolTip(en("Only when no Jackpot or Horse Race is running. The next one follows 15 minutes after this one ends."))
+            b.clicked.connect(lambda _=False, k=kind, t=label: self.ctx.window.confirm(
+                t + "?", lambda: self.do("rb_admin_arena", {"kind": k}, en("Started")), yes=en("Yes")))
+            rl.addWidget(b)
+        lay.addWidget(row)
         force = Button(en("Everyone must update to my version"), "ghost", 30, icon="refresh")
         force.setToolTip(en("Older versions can no longer play online until they update"))
         force.clicked.connect(lambda: self.ctx.window.confirm(
@@ -52237,6 +52260,7 @@ WAVE_H = 1000             # course height
 WAVE_SW = 48              # half width of a spike
 WAVE_TPS = 60             # ticks a second
 WAVE_MAX = 60 * 900
+GHOST_LAG = 84             # 6.4: the other player is shown 1.4 s behind, so we only ever draw what really happened
 WAVE_SLIDE = 150          # 5.1 (033): the first 2.5 s you slide on the walls instead of crashing
 WAVE_SPACE = 130          # 5.1 (033): two spikes in a row are never closer than this (they could close the gap)
 WAVE_HUD = 46             # 5.1: the distance and the difficulty bar sit in their own strip above the course
@@ -52412,6 +52436,10 @@ class WaveRunner:
         self.final = None                    # the last tick of a finished run
         self.shown_y = None
         self.fade_at = 0.0
+        self.disp = None                     # 6.4: where this wave is shown (a smooth tick, always inside what is known)
+        self.stamp = 0.0
+        self.reached = False                 # a finished run: the crash is now shown
+        self.reach_at = 0.0
 
     def set(self, toggles, upto: int, done: bool = False, final=None) -> None:
         tg = sorted({int(t) for t in (toggles or []) if int(t) > 0})
@@ -52472,6 +52500,9 @@ class WaveView(QWidget):
         self.auto_start = False              # duel: both start together when the countdown ends
         self.god = False                     # duel: the other one crashed and you are past them: nothing can hit you
         self.run_t0 = 0.0                    # when tick 0 was (for the other player's position)
+        self.spectate = False                # duel: after you crash, you watch the other player until they crash too
+        self._cam = None
+        self._cam_t = 0.0
         self.watch = None                    # spectating: [runner a, runner b, t0]
         self.replay = None                   # dict: the last seconds before a crash, shown again
         self.can_retry = False               # solo: the next course is in, a press starts again
@@ -52499,6 +52530,7 @@ class WaveView(QWidget):
         self.last = time.monotonic()
         self.dead_at = 0.0
         self.parts: list = []
+        self._cam = None
 
     def load(self, seed: int, count_until: float = 0.0) -> None:
         """A new course: ready to start (after a countdown in a duel)."""
@@ -52847,6 +52879,13 @@ class WaveView(QWidget):
             return self._replay_t(now) * WAVE_VX
         if self.watch is not None:
             return max(self._watch_t(0, now), self._watch_t(1, now)) * WAVE_VX
+        if self._spectating():                             # 6.4: you crashed: the camera moves over to the other player
+            gx = (self.other.disp if self.other.disp is not None else self.x / WAVE_VX) * WAVE_VX
+            if self._cam is None:
+                self._cam, self._cam_t = float(self.x), now
+            self._cam += (gx - self._cam) * min(1.0, max(0.0, now - self._cam_t) * 5.0)
+            self._cam_t = now
+            return self._cam
         return self.x + self._sub() * WAVE_VX              # 5.7: smooth between two physics steps
 
     def _sub(self) -> float:
@@ -52859,35 +52898,70 @@ class WaveView(QWidget):
         rp = self.replay
         return int(min(rp["t1"] + 30, rp["t0"] + max(0.0, now - rp["at"]) * WAVE_TPS))
 
-    def _watch_t(self, i: int, now: float) -> int:
-        """Spectating: where each player is about now (a little behind, so the path shown is the real one)."""
-        a = self.watch[i]
-        if a.done and a.final is not None:
-            return a.final
-        est = int((now - self.watch[2]) * WAVE_TPS) - 40
-        return max(0, min(est, a.upto + 30))
+    def _watch_t(self, i: int, now: float) -> float:
+        """Spectating: where each player is shown (a little behind, so the path shown is the real one)."""
+        return self._ghost_tick(self.watch[i], now, self.watch[2])
+
+    def _ghost_tick(self, o, now: float, t0: float) -> float:
+        """6.4: a smooth tick for another wave. It never goes past what the server told us (no guessing, so no waves
+        running into walls) and it speeds up or slows down a little to stay about GHOST_LAG ticks behind real time."""
+        cap = float(o.final) if (o.done and o.final is not None) else float(o.upto)
+        if o.crash is not None:
+            cap = min(cap, float(o.crash))
+        target = (now - t0) * WAVE_TPS - GHOST_LAG if t0 else 0.0
+        dt = min(0.25, max(0.0, now - o.stamp)) if o.stamp else 0.0
+        o.stamp = now
+        if o.disp is None or target - o.disp > WAVE_TPS * 6 or o.disp - target > WAVE_TPS * 3:
+            o.disp = max(0.0, min(target, cap))
+        else:
+            gap = target - o.disp
+            o.disp += dt * WAVE_TPS * max(0.3, min(2.5, 1.0 + gap / 30.0))
+        o.disp = max(0.0, min(o.disp, cap))
+        if o.done and o.final is not None and o.disp >= o.final - 0.01 and not o.reached:
+            o.reached, o.reach_at, o.fade_at = True, now, now
+        return o.disp
+
+    def _spectating(self) -> bool:
+        return (self.spectate and self.state == "dead" and self.other is not None
+                and time.monotonic() - self.dead_at > 0.9)
+
+    def ghost_ready(self) -> bool:
+        """Duel: have we shown the other player's end (so the result can come up)?"""
+        o = self.other
+        if o is None or not o.done or o.final is None or not (self.spectate and self.state == "dead"):
+            return True
+        return o.reached or time.monotonic() - (o.fade_at or 0.0) > 7.0
 
     def _paint_runner(self, p, r, cam, sc, run: WaveRunner, t: int, col, opacity: float, now: float, boom=False) -> None:
         """Another wave: its trail and its arrow at tick t (or where it crashed)."""
-        end = t
-        if run.done and run.final is not None:
-            end = min(end, run.final)
+        tf = float(t)
+        end = int(tf)
+        frac = tf - end
+        if run.done and run.final is not None and end >= run.final:
+            end, frac = int(run.final), 0.0
         if run.crash is not None and run.crash <= end + 1 and run.crash <= run.upto + 1:
-            end = min(end, run.crash)
+            if end >= run.crash:
+                end, frac = min(end, run.crash), 0.0
+        if frac > 0 and end + 1 > run.upto:
+            frac = 0.0
         first = max(0, end - 160)
         pts = [QPointF((k * WAVE_VX - cam) * sc, run.y(k) * sc) for k in range(first, end + 1, 2)]
         if not pts:
             return
+        if frac > 0:
+            run.y(end + 1)
+            pts.append(QPointF(((end + frac) * WAVE_VX - cam) * sc, (run.y(end) + (run.y(end + 1) - run.y(end)) * frac) * sc))
         p.setOpacity(opacity)
         if len(pts) >= 2:
             for w, a in ((S(6), 0.12), (S(2.6), 0.8)):
                 p.setPen(QPen(alpha(mix(col, QColor("#FFFFFF"), 0.45), a), w, Qt.PenStyle.SolidLine,
                               Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.MiterJoin))
                 p.drawPolyline(QPolygonF(pts))
-        c = QPointF((end * WAVE_VX - cam) * sc, run.y(end) * sc)
+        c = pts[-1] if frac > 0 else QPointF((end * WAVE_VX - cam) * sc, run.y(end) * sc)
         crashed = run.done and run.final is not None and t >= run.final
         if crashed and boom:
-            k = min(1.0, (t - run.final) / 25.0)
+            k = min(1.0, (t - run.final) / 25.0) if t > run.final else (
+                min(1.0, (now - run.reach_at) / 0.5) if run.reach_at else 0.0)
             p.setPen(Qt.PenStyle.NoPen)
             for j in range(12):
                 ang = j * math.tau / 12
@@ -52943,44 +53017,52 @@ class WaveView(QWidget):
         p.setOpacity(1.0)
 
     def _paint_ghost(self, p, r, cam, sc, now) -> None:
-        """Duel: the other player, see-through. When they crash they fade out slowly where they crashed."""
+        """Duel: the other player, see-through (clear when you are watching them after your crash)."""
         o = self.other
-        if o is None or self.state not in ("run", "safe", "dead", "ready", "count"):
+        if o is None or self.state not in ("run", "safe", "dead") or not self.run_t0:
             return
-        if o.done and o.final is not None:
-            t = o.final
-            fade = max(0.0, 1.0 - (now - o.fade_at) / 1.4)
+        spec = self._spectating()
+        tf = self._ghost_tick(o, now, self.run_t0)
+        fade = 1.0
+        if o.reached:                                 # they crashed: they fade out slowly where they crashed
+            fade = max(0.0, 1.0 - (now - o.reach_at) / (3.0 if spec else 1.4))
             if fade <= 0:
                 return
-        else:
-            if self.state not in ("run", "safe", "dead") or not self.run_t0:
-                return
-            t = min(int((now - self.run_t0) * WAVE_TPS), o.upto + 12)        # 5.1: guesses only a moment ahead
-            fade = 1.0
-        o.y(t)
-        if o.crash is not None:                     # 5.1: it stops where its path meets a wall (it used to slide on)
-            t = min(t, o.crash)
-        y = o.y(t)
-        o.shown_y = y if o.shown_y is None else o.shown_y + (y - o.shown_y) * 0.35   # no jump when news comes in
+        t = int(tf)
+        frac = tf - t
+        o.y(t + 1)
+        if o.crash is not None and t >= o.crash:
+            t, frac = o.crash, 0.0
+        y0 = o.y(t)
+        hy = y0 + (o.y(t + 1) - y0) * frac if frac > 0 else y0
         first = max(0, t - 120)
-        pts = [QPointF((k * WAVE_VX - cam) * sc, o.y(k) * sc) for k in range(first, t, 3)]
-        pts.append(QPointF((t * WAVE_VX - cam) * sc, o.shown_y * sc))
+        pts = [QPointF((k * WAVE_VX - cam) * sc, o.y(k) * sc) for k in range(first, t + 1, 3)]
+        pts.append(QPointF(((t + frac) * WAVE_VX - cam) * sc, hy * sc))
         gold = QColor("#FFB627")
-        p.setOpacity(0.38 * fade)
+        base = 0.95 if spec else 0.38
+        p.setOpacity(base * fade)
         if len(pts) >= 2:
-            p.setPen(QPen(gold, S(2.2), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.MiterJoin))
+            p.setPen(QPen(gold, S(3.0 if spec else 2.2), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.MiterJoin))
             p.drawPolyline(QPolygonF(pts))
         c = pts[-1]
-        p.save()
-        p.translate(c)
-        p.rotate(-45 if o.held(t) else 45)
-        size = S(10)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(gold)
-        p.drawPolygon(QPolygonF([QPointF(size, 0), QPointF(-size * 0.8, -size * 0.7), QPointF(-size * 0.35, 0),
-                                 QPointF(-size * 0.8, size * 0.7)]))
-        p.restore()
-        p.setOpacity(0.6 * fade)
+        if o.reached:
+            k = min(1.0, (now - o.reach_at) / 0.5)
+            p.setPen(Qt.PenStyle.NoPen)
+            for j in range(12):
+                ang = j * math.tau / 12
+                p.setBrush(alpha(gold, max(0.0, 1.0 - k)))
+                p.drawEllipse(c + QPointF(math.cos(ang) * S(26) * k, math.sin(ang) * S(26) * k), S(3), S(3))
+        else:
+            p.save()
+            p.translate(c)
+            p.rotate(-45 if o.held(t) else 45)
+            size = S(12 if spec else 10)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(gold)
+            p.drawPolygon(QPolygonF([QPointF(size, 0), QPointF(-size * 0.8, -size * 0.7), QPointF(-size * 0.35, 0),
+                                     QPointF(-size * 0.8, size * 0.7)]))
+            p.restore()
+        p.setOpacity((0.95 if spec else 0.6) * fade)
         p.setPen(gold)
         p.setFont(font(8.5, QFont.Weight.Bold))
         p.drawText(QRectF(c.x() - S(50), c.y() - S(24), S(100), S(12)), int(Qt.AlignmentFlag.AlignCenter), o.name)
@@ -53049,7 +53131,7 @@ class WaveView(QWidget):
         self._paint_difficulty(p, r, self._focus(now), now)
         mid = QRectF(0, r.top() + r.height() * 0.30, r.width(), r.height() * 0.4)
         if self.state in ("ready", "count", "dead", "safe"):
-            dim = 0.0 if self.state in ("dead", "safe") and now - self.dead_at < 0.45 else 0.55
+            dim = 0.0 if (self.state in ("dead", "safe") and now - self.dead_at < 0.45) or self._spectating() else 0.55
             if dim:
                 p.fillRect(r, alpha("#000000", dim))     # 5.1: r is the course only, the HUD strip stays readable
         if self.state == "count":
@@ -53067,6 +53149,9 @@ class WaveView(QWidget):
             self._big(p, mid.adjusted(0, -S(10), 0, -S(10)), tr("You outlasted them!"), "#3DDC84", 18)
             if self.message:
                 self._big(p, mid.adjusted(0, S(20), 0, S(20)), self.message, self.message_col, 11.5)
+        elif self.state == "dead" and self._spectating():
+            self._big(p, QRectF(r.left(), r.top() + S(40), r.width(), S(22)),
+                      tr("You crashed at {n} m  ·  watching {name}", n=metres(self.x), name=self.other.name), "#FFFFFF", 11.5)
         elif self.state == "dead" and now - self.dead_at >= 0.45:
             self._big(p, mid.adjusted(0, -S(22), 0, -S(22)), tr("Crashed at {n} m", n=metres(self.x)), "#FFFFFF", 20)
             if self.message:
@@ -53681,6 +53766,7 @@ def _duel_run(page, lay, did: str, leave_screen) -> None:
     lay.addWidget(bar)
     view = WaveView(page, page.W)
     view.auto_start = True                                  # 4.5: both start together, when the countdown ends
+    view.spectate = True                                    # 6.4: crashed first? You watch the other player to the end
     lay.addWidget(view)
     _controls(page, lay)
     info = {"run": None, "seed": None, "ended": False, "settled": False}
@@ -53704,7 +53790,7 @@ def _duel_run(page, lay, did: str, leave_screen) -> None:
             # they crashed and you are past them: you win, your run stops here (nothing can hit you any more)
             if done and view.state == "run" and view.x > int(st.get(other + "_x") or 0):
                 view.finish_now()
-            if st.get("state") == "done" and not info["settled"]:
+            if st.get("state") == "done" and not info["settled"] and view.ghost_ready():
                 info["settled"] = True
                 title, line, colour, money = _duel_titles(st, me)
                 won = colour == "#3DDC84"
@@ -53765,9 +53851,47 @@ def _duel_run(page, lay, did: str, leave_screen) -> None:
     view.wait(tr("Starting…"))
     finished = getattr(ctx, "wave_done", None) == did
     if finished:
-        back = Button(tr("Back to the duels"), "primary", 34)
+        again = Button(tr("Rematch"), "primary", 34)
+        note = Label("", 11, TEXT_DIM, align=Qt.AlignmentFlag.AlignCenter)
+        lay.addWidget(again)
+        lay.addWidget(note)
+        back = Button(tr("Back to the duels"), "ghost", 30)
         back.clicked.connect(leave_screen)
         lay.addWidget(back)
+        rm = {"mine": False, "bet": 0, "who": "?"}
+
+        def rematch(go: bool) -> None:
+            def got(ok: bool, d) -> None:
+                try:
+                    if not ok or not isinstance(d, dict):
+                        if go:
+                            ctx.toast(tr(str(d)), "warn")
+                        return
+                    if d.get("new_id"):                               # both are ready: straight into the new duel
+                        ctx.wave_duel, ctx.wave_done, ctx.wave_lobby = d["new_id"], None, None
+                        ctx.econ.refresh()
+                        return ctx.reload_page("games")
+                    rm["mine"], rm["bet"], rm["who"] = bool(d.get("mine")), int(d.get("bet") or 0), d.get("other") or "?"
+                    bet = f"  ·  {tr('Bet {n} coins each', n=coins_text(rm['bet']))}" if rm["bet"] else ""
+                    if d.get("mine"):
+                        again.set_text(tr("Waiting for {name}…", name=rm["who"]))
+                        again.set_kind("ghost")
+                        note.set_text(tr("You are ready. The duel starts when {name} is ready too.", name=rm["who"]))
+                    elif d.get("theirs"):
+                        again.set_text(tr("Accept the rematch") + bet)
+                        note.set_text(tr("{name} wants a rematch!", name=rm["who"]))
+                    else:
+                        again.set_text(tr("Rematch") + bet)
+                        note.set_text(tr("Ready up and play again with {name}", name=rm["who"]))
+                except RuntimeError:
+                    pass
+            ctx.online.ask("rb_wave_rematch", {"did": did, "go": go}, got)
+        again.clicked.connect(lambda: None if rm["mine"] else rematch(True))
+        rtimer = QTimer(view)
+        rtimer.setInterval(1500)
+        rtimer.timeout.connect(lambda: rematch(False))
+        rtimer.start()
+        rematch(False)
     else:
         quit_ = Button(tr("Leave the duel"), "ghost", 30)
 
