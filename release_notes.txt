@@ -1,6 +1,5 @@
-Rubenium 6.6
+Rubenium 6.7
 
-- NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover
-- Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place
+- NEW: 10 more animated banners (Ripples, Pinwheel, Ticker, Light Leaks, Nixie, Static, Vinyl, Pendulum, Hologram, Mandala) and 10 more moving app themes (Monsoon, Sahara, Bamboo, Neon Rain, Lanterns, Quartz, Lava Lamp, Wormhole, Polar Lights, Liquid Chrome), each in up to 6 more colours. In the shop and the cases
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.6"         # the version people see
-BUILD = "2026.11.22.13"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.7"         # the version people see
+BUILD = "2026.11.22.14"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -11063,6 +11063,316 @@ def _shop_scene_65(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: 
             p.drawEllipse(QPointF(x, y), 2.4 * unit, 2.4 * unit)
 
 
+# --------------------------------------------------------------------------- #
+# 6.7: the pictures behind ten more app colour themes (all moving)
+# --------------------------------------------------------------------------- #
+_SCENES_66 = ("monsoon", "sahara", "bamboo", "neonrain", "lanterns", "quartz", "lavalamp", "wormhole", "polarlights", "chrome")
+
+
+def _shop_scene_66(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QColor, unit: float, rnd) -> None:
+    from PyQt6.QtCore import QPointF
+    from PyQt6.QtGui import QLinearGradient, QPainterPath, QPolygonF, QRadialGradient
+    t = time.time() % 100000
+    p.setPen(Qt.PenStyle.NoPen)
+    full = QRectF(0, 0, w, h)
+
+    def vgrad(a, b, aa=1.0, ba=1.0) -> None:
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, alpha(a, aa))
+        g.setColorAt(1, alpha(b, ba))
+        p.fillRect(full, g)
+
+    def glow(cx: float, cy: float, r: float, col, a: float) -> None:
+        g = QRadialGradient(QPointF(cx, cy), r)
+        g.setColorAt(0, alpha(col, a))
+        g.setColorAt(1, alpha(col, 0.0))
+        p.setBrush(g)
+        p.drawEllipse(QPointF(cx, cy), r, r)
+
+    if style == "monsoon":                                 # heavy rain on a dark teal sky, rings spreading on the water, far lightning
+        vgrad("#03141B", c2, 0.95, 0.9)
+        fl = max(0.0, math.sin(t * 0.55)) ** 40
+        if fl > 0.02:
+            p.fillRect(full, alpha("#DFF6FF", 0.16 * fl))
+        for k in range(110):
+            x0, sp, ph = w * rnd.random(), rnd.uniform(0.6, 1.4), rnd.random()
+            u = (t * sp * 0.9 + ph) % 1.0
+            y = (u * 1.15 - 0.1) * h
+            ln = h * 0.05 * sp
+            p.setPen(QPen(alpha(mix(c1, QColor("#FFFFFF"), 0.5), 0.15 + 0.3 * sp / 1.4), 1.0 * unit))
+            p.drawLine(QPointF(x0 + y * 0.12, y), QPointF(x0 + (y + ln) * 0.12 - 1, y + ln))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.fillRect(QRectF(0, h * 0.86, w, h * 0.14), alpha(c2, 0.55))
+        for k in range(16):
+            u = (t * 0.55 + rnd.random()) % 1.0
+            cx, cy = w * rnd.random(), h * (0.88 + 0.1 * rnd.random())
+            p.setPen(QPen(alpha(c1, 0.55 * (1 - u)), 1.0 * unit))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(QPointF(cx, cy), u * w * 0.05, u * w * 0.012)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif style == "sahara":                                # a low sun over sand dunes, heat shimmer and blowing sand
+        vgrad("#FFD79A", c2, 0.9, 0.95)
+        glow(w * 0.72, h * 0.3, h * 0.55, "#FFF1C2", 0.7)
+        p.setBrush(alpha("#FFF8DC", 0.95))
+        p.drawEllipse(QPointF(w * 0.72, h * 0.3), h * 0.07, h * 0.07)
+        for j, (by, col) in enumerate(((0.52, "#E9A25A"), (0.62, "#D9823F"), (0.74, "#B8612C"), (0.88, "#8C4521"))):
+            path = QPainterPath(QPointF(0, h))
+            ph = rnd.uniform(0, 6)
+            for x in range(0, int(w) + 10, 10):
+                y = h * by + math.sin(x / w * (2.6 + j) + ph + t * 0.03 * (j + 1)) * h * 0.05 + math.sin(x / w * 7 + ph) * h * 0.012
+                path.lineTo(x, y)
+            path.lineTo(w, h)
+            p.setBrush(QColor(col))
+            p.drawPath(path)
+        for k in range(5):
+            y = h * (0.5 + 0.02 * k)
+            path = QPainterPath()
+            for x in range(0, int(w) + 8, 8):
+                yy = y + math.sin(x / w * 18 + t * 1.6 + k) * h * 0.004
+                path.lineTo(x, yy) if x else path.moveTo(x, yy)
+            p.setPen(QPen(alpha("#FFFFFF", 0.10), 1.6 * unit))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k in range(45):
+            x = (w * rnd.random() + t * w * 0.05 * (0.5 + rnd.random())) % w
+            p.setBrush(alpha("#FFE3B0", 0.35))
+            p.drawEllipse(QPointF(x, h * (0.55 + 0.4 * rnd.random())), 1.3 * unit, 1.0 * unit)
+    elif style == "bamboo":                                # tall stalks swaying in light shafts, leaves drifting down
+        vgrad("#06180C", c2, 0.95, 0.95)
+        for k in range(5):
+            x = w * (0.1 + 0.2 * k) + math.sin(t * 0.3 + k) * w * 0.02
+            poly = QPolygonF([QPointF(x, 0), QPointF(x + w * 0.06, 0), QPointF(x - w * 0.12, h), QPointF(x - w * 0.2, h)])
+            p.setBrush(alpha("#E8FFD0", 0.05 + 0.03 * math.sin(t * 0.8 + k * 2)))
+            p.drawPolygon(poly)
+        for k in range(10):
+            x0 = w * (0.04 + 0.1 * k + rnd.uniform(-0.02, 0.02))
+            sw = w * 0.006 * (1 + rnd.random())
+            seg = 9
+            pts = [QPointF(x0 + math.sin(t * 0.7 + k) * w * 0.012 * (j / seg) ** 2, h * (1 - j / seg)) for j in range(seg + 1)]
+            thick = w * 0.016 * (0.7 + 0.5 * rnd.random())
+            for a, b in zip(pts, pts[1:]):
+                g = QLinearGradient(a.x() - thick, 0, a.x() + thick, 0)
+                g.setColorAt(0, mix(c2, QColor("#000000"), 0.3))
+                g.setColorAt(0.5, c1)
+                g.setColorAt(1, mix(c2, QColor("#000000"), 0.4))
+                p.setPen(QPen(g, thick * 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
+                p.drawLine(a, b)
+            p.setPen(QPen(alpha("#0A2A12", 0.8), 1.6 * unit))
+            for a in pts[1:-1]:
+                p.drawLine(QPointF(a.x() - thick, a.y()), QPointF(a.x() + thick, a.y()))
+            p.setPen(Qt.PenStyle.NoPen)
+            for j in (3, 6):
+                a = pts[j]
+                sway = math.sin(t * 1.3 + k + j) * 8
+                for side in (-1, 1):
+                    p.save()
+                    p.translate(a)
+                    p.rotate(side * (35 + sway))
+                    p.setBrush(alpha(mix(c1, QColor("#C8FFB0"), 0.4), 0.8))
+                    p.drawEllipse(QPointF(side * w * 0.03, 0), w * 0.032, w * 0.007)
+                    p.restore()
+        for k in range(12):
+            u = (t * 0.05 * (0.6 + rnd.random()) + rnd.random()) % 1.0
+            p.save()
+            p.translate(w * ((rnd.random() + u * 0.2) % 1.0), u * h)
+            p.rotate(u * 400 + k * 30)
+            p.setBrush(alpha("#B9F29A", 0.55))
+            p.drawEllipse(QPointF(0, 0), w * 0.012, w * 0.004)
+            p.restore()
+    elif style == "neonrain":                              # a wet night street: neon tubes flickering, coloured rain, reflections
+        p.fillRect(full, QColor("#05020F"))
+        horizon = h * 0.62
+        for k in range(8):
+            x = w * (0.06 + 0.125 * k)
+            col = c1 if k % 2 else c2
+            fl = 0.75 + 0.25 * math.sin(t * (2 + k * 0.7) + k) * (1 if (int(t * 3 + k) % 9) else 0.3)
+            top, bot = h * (0.18 + 0.06 * (k % 3)), horizon - h * 0.02
+            glow(x, (top + bot) / 2, h * 0.3, col, 0.28 * fl)
+            p.setPen(QPen(alpha(col, 0.95 * fl), 3.2 * unit, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(QPointF(x, top), QPointF(x, bot))
+            p.setPen(QPen(alpha("#FFFFFF", 0.7 * fl), 1.0 * unit))
+            p.drawLine(QPointF(x, top), QPointF(x, bot))
+            g = QLinearGradient(0, horizon, 0, h)
+            g.setColorAt(0, alpha(col, 0.38 * fl))
+            g.setColorAt(1, alpha(col, 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(g)
+            p.drawRect(QRectF(x - w * 0.012 + math.sin(t * 2 + k) * 2, horizon, w * 0.024, h - horizon))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.fillRect(QRectF(0, horizon - 1, w, 2 * unit), alpha("#FFFFFF", 0.12))
+        for k in range(90):
+            x0, sp = w * rnd.random(), rnd.uniform(0.8, 1.6)
+            u = (t * sp * 1.2 + rnd.random()) % 1.0
+            y = u * h
+            col = c1 if k % 2 else c2
+            p.setPen(QPen(alpha(col, 0.5), 1.0 * unit))
+            p.drawLine(QPointF(x0, y), QPointF(x0 - 2, y + h * 0.04))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif style == "lanterns":                              # paper lanterns floating up into a night sky
+        vgrad("#080414", c2, 1.0, 0.55)
+        for k in range(50):
+            p.setBrush(alpha("#FFFFFF", 0.25 + 0.3 * abs(math.sin(t * 1.2 + k * 1.7))))
+            p.drawEllipse(QPointF(w * rnd.random(), h * rnd.random() * 0.7), 1.1 * unit, 1.1 * unit)
+        lan = []
+        for k in range(26):
+            depth = rnd.uniform(0.35, 1.0)
+            lan.append((depth, k, rnd.random(), rnd.random(), rnd.uniform(0.03, 0.06)))
+        for depth, k, ph, xr, sp in sorted(lan):
+            u = (t * sp * depth + ph) % 1.0
+            x = w * xr + math.sin(t * 0.5 + k) * w * 0.02
+            y = h * (1.08 - u * 1.2)
+            sz = h * 0.07 * depth
+            glow(x, y, sz * 3.4, c1, 0.34 * depth)
+            body = QRectF(x - sz * 0.62, y - sz, sz * 1.24, sz * 1.7)
+            g = QLinearGradient(body.topLeft(), body.bottomLeft())
+            g.setColorAt(0, mix(c1, QColor("#FFFFFF"), 0.35))
+            g.setColorAt(0.6, c1)
+            g.setColorAt(1, c2)
+            p.setBrush(g)
+            p.drawRoundedRect(body, sz * 0.4, sz * 0.5)
+            p.setBrush(alpha("#5A1E10", 0.7))
+            p.drawRect(QRectF(x - sz * 0.45, y - sz * 1.03, sz * 0.9, sz * 0.12))
+            p.drawRect(QRectF(x - sz * 0.45, y + sz * 0.66, sz * 0.9, sz * 0.12))
+            p.setBrush(alpha("#FFF3B0", 0.8 * depth))
+            p.drawEllipse(QPointF(x, y), sz * 0.16, sz * 0.26)
+    elif style == "quartz":                                # a cluster of crystals with light sweeping across their facets
+        vgrad("#0D0820", c2, 1.0, 0.45)
+        glow(w * 0.5, h * 0.9, h * 0.8, c1, 0.25)
+        crystals = []
+        for k in range(9):
+            crystals.append((rnd.uniform(0.04, 0.96), rnd.uniform(0.18, 0.34), rnd.uniform(0.5, 0.9), rnd.uniform(-0.04, 0.04)))
+        tips = []
+        for x, bw, ht, tilt in sorted(crystals, key=lambda c: -c[2]):
+            cx, bwp, top = w * x, w * bw * 0.45, h * (1 - ht * 0.8)
+            pts = [QPointF(cx - bwp, h), QPointF(cx - bwp * 0.8, top + h * 0.12), QPointF(cx + w * tilt, top),
+                   QPointF(cx + bwp * 0.8, top + h * 0.12), QPointF(cx + bwp, h)]
+            mid = QPointF(cx + w * tilt * 0.4, h)
+            p.setBrush(alpha(mix(c1, QColor("#FFFFFF"), 0.2), 0.62))
+            p.setPen(QPen(alpha("#FFFFFF", 0.3), 1.0 * unit))
+            p.drawPolygon(QPolygonF([pts[0], pts[1], pts[2], mid]))
+            p.setBrush(alpha(mix(c2, QColor("#FFFFFF"), 0.15), 0.62))
+            p.drawPolygon(QPolygonF([mid, pts[2], pts[3], pts[4]]))
+            tips.append(pts[2])
+        sweep = ((t * 0.22) % 1.6 - 0.3) * w
+        p.setPen(Qt.PenStyle.NoPen)
+        g = QLinearGradient(QPointF(sweep - w * 0.12, 0), QPointF(sweep + w * 0.12, h * 0.4))
+        g.setColorAt(0, alpha("#FFFFFF", 0.0))
+        g.setColorAt(0.5, alpha("#FFFFFF", 0.20))
+        g.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.setBrush(g)
+        p.drawPolygon(QPolygonF([QPointF(sweep - w * 0.1, 0), QPointF(sweep + w * 0.1, 0), QPointF(sweep + w * 0.02, h), QPointF(sweep - w * 0.18, h)]))
+        for k, tip in enumerate(tips):
+            a = max(0.0, math.sin(t * 1.5 + k * 1.9))
+            r = h * 0.03 * a
+            p.setBrush(alpha("#FFFFFF", 0.9 * a))
+            p.drawPolygon(QPolygonF([QPointF(tip.x(), tip.y() - r * 2), QPointF(tip.x() + r * 0.5, tip.y()), QPointF(tip.x(), tip.y() + r * 2),
+                                     QPointF(tip.x() - r * 0.5, tip.y())]))
+    elif style == "lavalamp":                              # a lava lamp: warm blobs rising, merging and sinking
+        vgrad(mix(c2, QColor("#000000"), 0.55), c2, 1.0, 0.9)
+        glow(w * 0.5, h * 1.05, h * 0.9, c1, 0.45)
+        for k in range(11):
+            sp, ph = rnd.uniform(0.16, 0.34), rnd.uniform(0, 6.28)
+            x = w * (0.14 + 0.72 * rnd.random()) + math.sin(t * 0.45 + k) * w * 0.04
+            y = h * (0.5 - 0.5 * math.cos(t * sp + ph) * 0.95)
+            r = h * rnd.uniform(0.09, 0.19)
+            sx = 1 + 0.18 * math.sin(t * 0.9 + k)
+            for rr, a in ((1.55, 0.18), (1.2, 0.34), (0.9, 0.9)):
+                g = QRadialGradient(QPointF(x, y), r * rr)
+                g.setColorAt(0, alpha(mix(c1, QColor("#FFE0A0"), 0.25), a))
+                g.setColorAt(1, alpha(c1, 0.0 if rr > 1 else a * 0.7))
+                p.setBrush(g)
+                p.drawEllipse(QPointF(x, y), r * rr * sx, r * rr / sx)
+            p.setBrush(alpha("#FFFFFF", 0.3))
+            p.drawEllipse(QPointF(x - r * 0.3, y - r * 0.3), r * 0.18, r * 0.12)
+    elif style == "wormhole":                              # flying down a tunnel of glowing rings, stars streaking past
+        p.fillRect(full, QColor("#02030C"))
+        cx, cy = w * 0.5, h * 0.5
+        R = math.hypot(w, h) * 0.55
+        for k in range(20):
+            u = (t * 0.32 + k / 20) % 1.0
+            r = (u ** 2.3) * R
+            col = mix(c1, c2, (k / 20 + t * 0.05) % 1.0)
+            p.setPen(QPen(alpha(col, min(1.0, u * 3) * (1 - u * 0.35) * 0.75), (1 + 4 * u) * unit))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(QPointF(cx, cy), r * 1.12, r * 0.86)
+        for k in range(16):
+            a = k * math.pi / 8 + t * 0.15
+            p.setPen(QPen(alpha(c2, 0.10), 1.0 * unit))
+            p.drawLine(QPointF(cx + math.cos(a) * R * 0.1, cy + math.sin(a) * R * 0.1), QPointF(cx + math.cos(a) * R * 1.12, cy + math.sin(a) * R * 0.86))
+        for k in range(70):
+            a, ph = rnd.uniform(0, 6.283), rnd.random()
+            u = (t * 0.5 + ph) % 1.0
+            d0, d1 = (u ** 2) * R, (min(1.0, u + 0.06) ** 2) * R
+            p.setPen(QPen(alpha("#FFFFFF", 0.2 + 0.7 * u), (0.8 + 1.6 * u) * unit, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(QPointF(cx + math.cos(a) * d0 * 1.12, cy + math.sin(a) * d0 * 0.86), QPointF(cx + math.cos(a) * d1 * 1.12, cy + math.sin(a) * d1 * 0.86))
+        p.setPen(Qt.PenStyle.NoPen)
+        glow(cx, cy, h * 0.22 * (1 + 0.1 * math.sin(t * 2)), "#FFFFFF", 0.7)
+        glow(cx, cy, h * 0.5, c1, 0.25)
+    elif style == "polarlights":                           # curtains of green and violet light waving over mountains and stars
+        vgrad("#01040C", "#08122A", 1.0, 1.0)
+        for k in range(70):
+            p.setBrush(alpha("#FFFFFF", 0.2 + 0.5 * abs(math.sin(t * 0.9 + k * 2.3))))
+            p.drawEllipse(QPointF(w * rnd.random(), h * rnd.random() * 0.75), 1.0 * unit, 1.0 * unit)
+        for k in range(4):
+            top, bot = [], []
+            for x in range(0, int(w) + 12, 12):
+                y0 = h * (0.2 + 0.07 * k) + math.sin(x / w * 3.2 + t * 0.35 + k * 1.3) * h * 0.07
+                ht = h * (0.22 + 0.12 * math.sin(x / w * 6.5 - t * 0.6 + k)) + h * 0.05
+                top.append(QPointF(x, y0))
+                bot.append(QPointF(x, y0 + ht))
+            path = QPainterPath(top[0])
+            for q in top[1:]:
+                path.lineTo(q)
+            for q in reversed(bot):
+                path.lineTo(q)
+            path.closeSubpath()
+            col = mix(c1, c2, (k / 4 + 0.15 * math.sin(t * 0.2)) % 1.0)
+            g = QLinearGradient(0, h * 0.15, 0, h * 0.7)
+            g.setColorAt(0, alpha(col, 0.55))
+            g.setColorAt(0.6, alpha(col, 0.22))
+            g.setColorAt(1, alpha(col, 0.0))
+            p.setBrush(g)
+            p.drawPath(path)
+            p.setPen(QPen(alpha(col, 0.14), 1.0 * unit))
+            for q, q2 in list(zip(top, bot))[::2]:
+                p.drawLine(q, q2)
+            p.setPen(Qt.PenStyle.NoPen)
+        ground = QPainterPath(QPointF(0, h))
+        for x in range(0, int(w) + 10, 10):
+            ground.lineTo(x, h * 0.84 - abs(math.sin(x / w * 4.1 + 1)) * h * 0.1 - abs(math.sin(x / w * 9.3)) * h * 0.03)
+        ground.lineTo(w, h)
+        p.setBrush(QColor("#030711"))
+        p.drawPath(ground)
+    elif style == "chrome":                                # liquid chrome: bands of mirror-bright metal flowing past
+        p.fillRect(full, QColor("#080A12"))
+        n = 9
+        waves = []
+        for k in range(n + 1):
+            pts = []
+            for x in range(0, int(w) + 14, 14):
+                y = h * (k / n) + math.sin(x / w * 3.4 + t * 0.5 + k * 0.8) * h * 0.06 + math.sin(x / w * 8 - t * 0.7 + k) * h * 0.02
+                pts.append(QPointF(x, y))
+            waves.append(pts)
+        for k in range(n):
+            path = QPainterPath(waves[k][0])
+            for q in waves[k][1:]:
+                path.lineTo(q)
+            for q in reversed(waves[k + 1]):
+                path.lineTo(q)
+            path.closeSubpath()
+            off = (t * 0.12 + k * 0.13) % 1.0
+            g = QLinearGradient(QPointF(w * (off - 0.5), 0), QPointF(w * (off + 0.5), h * 0.3))
+            for pos, col in ((0.0, QColor("#F4F8FF")), (0.25, c1), (0.5, QColor("#1B2030")), (0.75, c2), (1.0, QColor("#F4F8FF"))):
+                g.setColorAt(pos, col)
+            g.setSpread(QLinearGradient.Spread.ReflectSpread)
+            p.setBrush(g)
+            p.setPen(QPen(alpha("#FFFFFF", 0.35), 1.0 * unit))
+            p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+    p.setPen(Qt.PenStyle.NoPen)
+
+
 def _shop_scene(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QColor, unit: float) -> None:
     """3.1: the shop themes each have their own picture, not the night sky. The dearer, the richer."""
     import random
@@ -11081,6 +11391,8 @@ def _shop_scene(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: QCo
         p.drawImage(QRectF(0, 0, w, h), recolour_image(img, cw[1]))
         p.restore()
         return
+    if style in _SCENES_66:
+        return _shop_scene_66(p, style, w, h, c1, c2, unit, random.Random(sum(map(ord, style))))
     if style in _SCENES_65:
         return _shop_scene_65(p, style, w, h, c1, c2, unit, random.Random(sum(map(ord, style))))
     if style in _SCENES_63:
@@ -12029,6 +12341,7 @@ FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match
 FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'Preview': 'Essai', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
 FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
 FR.update({'Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run.': 'Les paris ferment 2 minutes après l’arrivée du premier joueur. Puis les bots prennent les chevaux libres, 3, 2, 1, le coup de feu, et ils partent.', 'Chance to win = your bet ÷ all the money on the horses.': 'Chance de gagner = ta mise ÷ tout l’argent misé sur les chevaux.', 'Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start.': 'Les chevaux à l’arrière de la file partent en premier, pour qu’ils passent tous la ligne de départ ensemble : personne n’a d’avance.', 'Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Pendant 2 minutes tu peux mettre 1 à 3 objets (5 joueurs au plus).', 'Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.': 'Le Jackpot et la Course de chevaux alternent : chacun ouvre 15 minutes après la fin de l’autre.', 'Nobody joins? The bots race on their own and the next event comes 15 minutes later.': 'Personne ne rejoint ? Les bots courent seuls et l’événement suivant arrive 15 minutes plus tard.', 'Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).': 'Choisis un cheval libre sur le tableau et mise des pièces dessus (un cheval chacun, 5 chevaux).', "The more you bet, the better your horse's chance, but the more you can lose.": 'Plus tu mises, plus ton cheval a de chances, mais plus tu peux perdre.', "The winner gets their bet back plus 80% of everybody else's bets (bots' too).": 'Le gagnant récupère sa mise plus 80 % des mises de tous les autres (bots compris).', 'Bet {n} coins on this round? That is {p}% of your coins.': 'Miser {n} pièces sur cette manche ? C’est {p} % de tes pièces.', 'Careful: you could lose a big part of your coins.': 'Attention : tu pourrais perdre une grosse partie de tes pièces.', 'Bet it': 'Miser', 'FINISH': 'ARRIVÉE', 'BETS CLOSE IN {t}': 'PARIS FERMÉS DANS {t}', 'Pick a horse and bet. Bots take the empty horses at 0:00.': 'Choisis un cheval et mise. Les bots prennent les chevaux libres à 0:00.', 'The clock restarts at 2:00 when the first player joins': 'Le chrono repart à 2:00 quand le premier joueur rejoint', 'BOTS TAKE THE EMPTY HORSES': 'LES BOTS PRENNENT LES CHEVAUX LIBRES', 'Get ready…': 'Préparez-vous…', 'GO!': 'PARTEZ !', 'YOU WON {n}!': 'TU AS GAGNÉ {n} !', 'YOU WON!': 'TU AS GAGNÉ !', '#{n} {name} WINS': 'N°{n} {name} GAGNE', 'Ridden for {who}': 'Monté pour {who}', 'Desert': 'Désert', 'Forest': 'Forêt', 'Snow': 'Neige', 'RACE BOARD': 'TABLEAU DES COURSES', '{n} on the horses': '{n} misés sur les chevaux', 'Free: click to pick': 'Libre : clique pour choisir', 'Free': 'Libre', 'Your pick': 'Ton choix', 'HORSE RACING': 'COURSE DE CHEVAUX', 'Horse Racing': 'Course de chevaux', 'OPEN · bets close in {t}': 'OUVERT · paris fermés dans {t}', "They're racing: watch it": 'Ils courent : regarde', 'Next race in {t}': 'Prochaine course dans {t}', '5 horses, bet on one': '5 chevaux, mise sur un', 'Horse Racing is paused for a moment. Nothing you own is lost.': 'La Course de chevaux est en pause un moment. Tu ne perds rien.', 'The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.': 'La prochaine course ouvre dans environ {t}. Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart.', 'Last race': 'Dernière course', 'Every horse is taken. Watch the race!': 'Tous les chevaux sont pris. Regarde la course !', 'You need at least {n} to bet.': 'Il te faut au moins {n} pour miser.', 'Bet on this horse': 'Miser sur ce cheval', 'Click a free horse on the board': 'Clique un cheval libre sur le tableau', 'Too late: the bets are closed': 'Trop tard : les paris sont fermés', '#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)': 'N°{n} : {p} de chances · s’il gagne tu reçois {w} (ta mise + {s} % des autres)', 'Bet {n} coins on #{h} {name}? That is {p}% of your coins.': 'Miser {n} pièces sur le n°{h} {name} ? C’est {p} % de tes pièces.', "You're on #{n} {name}. Good luck!": 'Tu es sur le n°{n} {name}. Bonne chance !', "Your chance to win is your share of all the money on the horses. The winner gets their bet back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.": 'Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. Le gagnant récupère sa mise plus {s} % de celles des autres. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.', 'HORSE RACE IS OPEN': 'LA COURSE DE CHEVAUX EST OUVERTE', 'Bets close in about {t}. Bet in Games > Horse Racing': 'Les paris ferment dans environ {t}. Mise dans Jeux > Course de chevaux', 'Red Rocket': 'Fusée Rouge', 'Blue Thunder': 'Tonnerre Bleu', 'Green Clover': 'Trèfle Vert', 'Golden Sun': 'Soleil d’Or', 'Purple Storm': 'Tempête Violette', 'The bets for this race are closed': 'Les paris de cette course sont fermés', 'Someone just took this horse: pick another': 'Quelqu’un vient de prendre ce cheval : choisis-en un autre', 'You already have a horse in this race': 'Tu as déjà un cheval dans cette course', 'Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.': 'Limitée (calendrier de l’Avent) : aussi bonne que la Caisse Top Tier. Toujours un badge Épique ou Légendaire, avec une chance de Mythique.', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 999 fois ta mise.', "NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's": 'NOUVEAU : Course de chevaux. 5 chevaux, choisis-en un et mise : ta chance est ta part de l’argent. Le gagnant récupère sa mise plus 80 % de celles des autres', 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Si personne ne rejoint, les bots jouent quand même', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)': 'Mises jusqu’à la moitié de tes pièces. Au-delà de 10 000, on te demande d’abord, en or (en rouge si c’est une grosse part de tes pièces)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5': 'Puissance 4 Professionnel paie ×999. Jeu des gobelets : Facile ×1,2, Moyen ×2, Difficile ×3, Expert ×5', "A coloured app font now colours the app's text too": 'Une police colorée colore maintenant aussi le texte de l’app', 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)': 'Bots du Mini Golf corrigés : plus de passage à travers les murs ni de glissade sur tout le parcours, et ils jouent chacun leur tour (tu attends leur balle)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar': 'Mini Golf et Wave Rush sont dans Gagner des pièces ; Coinflip est sous le calendrier de l’Avent', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case': 'Anciennes caisses retirées (ceux qui en avaient ont reçu leur prix en pièces). Les caisses Hiver et Cadeau sont maintenant aussi bonnes que la Caisse Top Tier'})      # 6.3
+FR.update({'Ripples': 'Ondulations', 'Pinwheel': 'Moulinet', 'Ticker': 'Téléscripteur', 'Light Leaks': 'Fuites de lumière', 'Nixie': 'Nixie', 'Static': 'Neige TV', 'Vinyl': 'Vinyle', 'Pendulum': 'Pendule', 'Hologram': 'Hologramme', 'Mandala': 'Mandala', 'Monsoon': 'Mousson', 'Sahara': 'Sahara', 'Bamboo': 'Bambou', 'Neon Rain': 'Pluie néon', 'Lanterns': 'Lanternes', 'Quartz': 'Quartz', 'Lava Lamp': 'Lampe à lave', 'Wormhole': 'Trou de ver', 'Polar Lights': 'Aurores polaires', 'Liquid Chrome': 'Chrome liquide', 'NEW: 10 more animated banners (Ripples, Pinwheel, Ticker, Light Leaks, Nixie, Static, Vinyl, Pendulum, Hologram, Mandala) and 10 more moving app themes (Monsoon, Sahara, Bamboo, Neon Rain, Lanterns, Quartz, Lava Lamp, Wormhole, Polar Lights, Liquid Chrome), each in up to 6 more colours. In the shop and the cases': 'NOUVEAU : 10 bannières animées de plus (Ondulations, Moulinet, Téléscripteur, Fuites de lumière, Nixie, Neige TV, Vinyle, Pendule, Hologramme, Mandala) et 10 thèmes animés de plus (Mousson, Sahara, Bambou, Pluie néon, Lanternes, Quartz, Lampe à lave, Trou de ver, Aurores polaires, Chrome liquide), chacun jusqu’à 6 autres couleurs. Dans la boutique et les caisses'})      # 6.7
 FR.update({'1st': '1er', '2nd': '2e', '3rd': '3e', '4th': '4e', '5th': '5e', 'Average bet {v}': 'Mise moyenne {v}', 'Best round': 'Meilleure manche', 'Best round {a} · worst {b}': 'Meilleure manche {a} · pire {b}', 'Best winning streak {n}': 'Meilleure série de victoires {n}', 'Bet {a} · paid {b}': 'Mise {a} · payé {b}', 'Bet {a} → paid {b}': 'Mise {a} → payé {b}', 'Coins won or lost in each round': 'Pièces gagnées ou perdues à chaque manche', 'EVEN': 'ÉGALITÉ', 'Every round of every game will be drawn here.': 'Chaque manche de chaque jeu sera dessinée ici.', 'Games: won, lost and even rounds': 'Jeux : manches gagnées, perdues et à égalité', 'LOSS': 'PERTE', 'Multiplier ×{m}': 'Multiplicateur ×{m}', 'Net coins each day': 'Pièces nettes par jour', 'Net coins over time (last {n} rounds)': 'Pièces nettes dans le temps ({n} dernières manches)', 'Net result': 'Résultat net', 'Net {v}': 'Net {v}', 'PLAY HISTORY': 'HISTORIQUE DE JEU', 'Played: {g}': 'Joué : {g}', 'Podium of the last races': 'Podium des dernières courses', 'Pot': 'Cagnotte', 'Rounds, newest first': 'Manches, de la plus récente à la plus ancienne', 'Running net {v}': 'Net cumulé {v}', 'That day: {n} rounds · net {v}': 'Ce jour-là : {n} manches · net {v}', 'Total bet': 'Total misé', 'Total bet {a} · paid {b}': 'Total misé {a} · payé {b}', 'Total paid': 'Total payé', 'WIN': 'GAIN', 'Win rate (last 20 rounds, %)': 'Taux de victoire (20 dernières manches, %)', 'Win rate then {p}%': 'Taux de victoire alors {p} %', 'Win rate {p}%': 'Taux de victoire {p} %', 'Won / lost': 'Gagnées / perdues', 'Worst round': 'Pire manche', '{n} rounds · {p}% won': '{n} manches · {p} % gagnées', '{n} rounds · {w} won · {l} lost': '{n} manches · {w} gagnées · {l} perdues', '{n} rounds · {w} won · {l} lost · {e} even': '{n} manches · {w} gagnées · {l} perdues · {e} égalités', "NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover": 'NOUVEAU : un graphique Historique de jeu en haut des Stats de chaque joueur (les tiennes et celles de tes amis) : pièces nettes dans le temps, résultat de chaque manche, taux de victoire, chaque jour et chaque jeu, tout en détail au survol', 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place': 'Historique de la Course de chevaux : une liste Podium montre le 1er, le 2e et le 3e de chaque course (or, argent, bronze) et la carte au survol nomme chaque place'})      # 6.6
 FR.update({'NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too': 'NOUVEAU : 10 bannières, cadres et thèmes de plus (Lagoon, Pêche, Forme d’onde, Radar, Or rose…) et chaque bannière, cadre et thème existe maintenant jusqu’à 6 autres couleurs : plus de 900 nouveaux looks. Choisis la couleur dans chaque design de la boutique, ils sont aussi dans les caisses', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%': 'La Course de chevaux paie maintenant les trois premiers : le 1er récupère 100 % de sa mise et 70 % des gains, le 2e 25 % et 20 %, le 3e 5 % et 10 %', "Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse's wins. Hover anywhere to see the details": 'Course de chevaux : un Historique sous le menu avec les vainqueurs, un graphique façon bourse des cagnottes, une bougie par course et les victoires de chaque cheval. Survole pour voir les détails', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)': 'La Course de chevaux et le Jackpot ne peuvent plus être ouverts avant leur ouverture (l’historique reste visible)'})      # 6.5 news
 FR.update({
@@ -12079,6 +12392,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.7", ['NEW: 10 more animated banners (Ripples, Pinwheel, Ticker, Light Leaks, Nixie, Static, Vinyl, Pendulum, Hologram, Mandala) and 10 more moving app themes (Monsoon, Sahara, Bamboo, Neon Rain, Lanterns, Quartz, Lava Lamp, Wormhole, Polar Lights, Liquid Chrome), each in up to 6 more colours. In the shop and the cases']),
     ("6.6", ["NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover", 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place']),
     ("6.5", ['NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%', 'Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse\'s wins. Hover anywhere to see the details', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)']),
     ("6.4", ['NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too', 'Wave Rush duels: the other player now moves smoothly instead of lagging and running into walls (you see them a moment behind, exactly as they really flew)', 'Wave Rush duels: when you crash you keep watching the other player until they crash too, then the result comes up', 'Wave Rush duels: a Rematch button after the duel. When both players press it, a new duel starts with the same bet']),
@@ -15694,7 +16008,18 @@ THEME_LOOKS = [("sunset", "Sunset", "#FF8A3D", "#FF3D7F", dict(glow=2, stars=22,
                ("wasabi", "Wasabi", "#9AE62E", "#E8FFB0", dict(glow=3, stars=40, links=10, edge="shine")),
                ("solar", "Solar Flare", "#FF8A1F", "#FFD84D", dict(glow=3, stars=52, comets=6, sparkles=12, edge="goldshine")),
                ("nightbloom", "Night Bloom", "#E04BFF", "#4FD8FF", dict(glow=3, stars=60, aurora=True, sparkles=12, comets=4, edge="shine")),
-               ("cyber", "Cyber", "#35E6FF", "#FF2BD6", dict(glow=3, stars=64, links=14, comets=6, sparkles=10, edge="shine"))]
+               ("cyber", "Cyber", "#35E6FF", "#FF2BD6", dict(glow=3, stars=64, links=14, comets=6, sparkles=10, edge="shine")),
+               # 6.7: ten more, all moving (Rare, Special, Epic)
+               ("monsoon", "Monsoon", "#3FB6C9", "#0E3A4A", dict(glow=2, sparkles=2)),
+               ("sahara", "Sahara", "#FFB347", "#C8501E", dict(glow=2, sparkles=2)),
+               ("bamboo", "Bamboo", "#7BD88F", "#1F6B3B", dict(glow=2, sparkles=3)),
+               ("neonrain", "Neon Rain", "#FF2BD6", "#2BE0FF", dict(glow=3, sparkles=5, edge="shine")),
+               ("lanterns", "Lanterns", "#FFB04D", "#FF5A5A", dict(glow=3, sparkles=6)),
+               ("quartz", "Quartz", "#E8B4FF", "#8FA8FF", dict(glow=3, sparkles=8, edge="shine")),
+               ("lavalamp", "Lava Lamp", "#FF6B3D", "#8A2BE2", dict(glow=3, sparkles=4)),
+               ("wormhole", "Wormhole", "#6A7CFF", "#00E5FF", dict(glow=3, stars=40, sparkles=8, edge="shine")),
+               ("polarlights", "Polar Lights", "#3DFFB0", "#B15CFF", dict(glow=3, stars=30, sparkles=6, edge="shine")),
+               ("chrome", "Liquid Chrome", "#C9D6E8", "#7A5CFF", dict(glow=3, sparkles=5, edge="shine"))]
 # profile looks (2.6): a banner behind your profile, a frame around your picture, a tag after your name
 BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Rose"), ("stripes", "Stripes"), ("dots", "Dots"),
            ("carbon", "Carbon"), ("dunes", "Dunes"),
@@ -15714,7 +16039,9 @@ BANNERS = [("dusk", "Dusk"), ("mint", "Mint"), ("steel", "Steel"), ("rose", "Ros
            # 6.4: twelve more, none seasonal
            ("meadow", "Meadow"), ("paper", "Paper"), ("clouds", "Clouds"), ("bokeh", "Bokeh"), ("pixels", "Pixels"), ("ribbons", "Ribbons"), ("glitch", "Glitch"), ("sunbeams", "Sunbeams"), ("stardesert", "Starry Desert"), ("kaleido", "Kaleidoscope"), ("liquidgold", "Liquid Gold"), ("meteors", "Meteor Shower"),
            # 6.5: ten more
-           ("lagoon", "Lagoon"), ("peach", "Peach"), ("zigzag", "Zigzag"), ("waveform", "Waveform"), ("radar", "Radar"), ("constellations", "Star Maps"), ("equalizer", "Equalizer"), ("orbit", "Orbit"), ("spirograph", "Spirograph"), ("goldveins", "Gold Veins")]
+           ("lagoon", "Lagoon"), ("peach", "Peach"), ("zigzag", "Zigzag"), ("waveform", "Waveform"), ("radar", "Radar"), ("constellations", "Star Maps"), ("equalizer", "Equalizer"), ("orbit", "Orbit"), ("spirograph", "Spirograph"), ("goldveins", "Gold Veins"),
+           # 6.7: ten more
+           ("ripples", "Ripples"), ("pinwheel", "Pinwheel"), ("ticker", "Ticker"), ("lightleaks", "Light Leaks"), ("nixie", "Nixie"), ("tvstatic", "Static"), ("vinyl", "Vinyl"), ("pendulum", "Pendulum"), ("hologram", "Hologram"), ("mandala", "Mandala")]
 FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "Neon"), ("dashed", "Dashed"),
           ("twin", "Twin"), ("laurel", "Laurel"), ("crown", "Crown"), ("spikes", "Spikes"), ("flame", "Flame"),
           ("orbit", "Orbit"), ("rainbow", "Rainbow"), ("frost", "Frost"), ("star", "Star"), ("halo", "Halo"), ("vine", "Vine"),
@@ -15727,7 +16054,9 @@ FRAMES = [("silver", "Silver"), ("bronze", "Bronze"), ("ink", "Ink"), ("neon", "
           # 6.5: ten more
           ("rosegold", "Rose Gold"), ("onyx", "Onyx"), ("copper", "Copper"), ("rope", "Rope"), ("bubbles", "Bubbles"), ("pixel", "Pixel"), ("lightning", "Lightning"), ("orbitals", "Orbitals"), ("galaxy", "Galaxy"), ("diamond", "Diamond")]
 TAGS = [("og", "OG")]
-MOVING = {"lagoon", "peach", "zigzag", "waveform", "radar", "constellations", "equalizer", "orbit", "spirograph", "goldveins",
+MOVING = {"ripples", "pinwheel", "ticker", "lightleaks", "nixie", "tvstatic", "vinyl", "pendulum", "hologram", "mandala",
+          "monsoon", "sahara", "bamboo", "neonrain", "lanterns", "quartz", "lavalamp", "wormhole", "polarlights", "chrome",
+          "lagoon", "peach", "zigzag", "waveform", "radar", "constellations", "equalizer", "orbit", "spirograph", "goldveins",
           "rosegold", "onyx", "copper", "rope", "bubbles", "pixel", "lightning", "orbitals", "galaxy", "diamond",
           "meadow", "paper", "clouds", "bokeh", "pixels", "ribbons", "glitch", "sunbeams", "stardesert", "kaleido", "liquidgold", "meteors",
           "gold", "emerald", "sapphire", "beads", "chain", "daisy", "plasma", "sparks", "constellation", "spectrum", "void", "wings",
@@ -16137,7 +16466,56 @@ def _cw_register(rows: dict) -> None:
             MOVING.add(cid) if base in MOVING else None
 
 
+_CW_ROWS_67: dict = {
+    "banner": [
+        ("ripples-lime", "ripples", "Lime", "p120"), ("ripples-magenta", "ripples", "Magenta", "p201"), ("ripples-emerald", "ripples", "Emerald", "t2FD27A"),
+        ("ripples-indigo", "ripples", "Indigo", "t6A5CFF"), ("ripples-crimson", "ripples", "Crimson", "tFF3B4E"), ("ripples-silver", "ripples", "Silver", "tD6DEE6"),
+        ("pinwheel-azure", "pinwheel", "Azure", "p120"), ("pinwheel-lime", "pinwheel", "Lime", "p201"), ("pinwheel-emerald", "pinwheel", "Emerald", "p102"),
+        ("pinwheel-orange", "pinwheel", "Orange", "p021"), ("pinwheel-violet", "pinwheel", "Violet", "p210"), ("pinwheel-silver", "pinwheel", "Silver", "tD6DEE6"),
+        ("ticker-orange", "ticker", "Orange", "p120"), ("ticker-indigo", "ticker", "Indigo", "p201"), ("ticker-lime", "ticker", "Lime", "tA8E63D"),
+        ("ticker-teal", "ticker", "Teal", "t19C9B0"), ("ticker-azure", "ticker", "Azure", "t3D8BFF"), ("ticker-silver", "ticker", "Silver", "tD6DEE6"),
+        ("lightleaks-indigo", "lightleaks", "Indigo", "p120"), ("lightleaks-emerald", "lightleaks", "Emerald", "p201"), ("lightleaks-lime", "lightleaks", "Lime", "p102"),
+        ("lightleaks-rose", "lightleaks", "Rose", "p021"), ("lightleaks-azure", "lightleaks", "Azure", "p210"), ("lightleaks-silver", "lightleaks", "Silver", "tD6DEE6"),
+        ("nixie-violet", "nixie", "Violet", "p120"), ("nixie-emerald", "nixie", "Emerald", "p201"), ("nixie-lime", "nixie", "Lime", "p102"),
+        ("nixie-rose", "nixie", "Rose", "p021"), ("nixie-azure", "nixie", "Azure", "p210"), ("nixie-silver", "nixie", "Silver", "tD6DEE6"),
+        ("tvstatic-lime", "tvstatic", "Lime", "tA8E63D"), ("tvstatic-emerald", "tvstatic", "Emerald", "t2FD27A"), ("tvstatic-cyan", "tvstatic", "Cyan", "t33D6FF"),
+        ("tvstatic-indigo", "tvstatic", "Indigo", "t6A5CFF"), ("tvstatic-magenta", "tvstatic", "Magenta", "tE64CD9"), ("tvstatic-silver", "tvstatic", "Silver", "tD6DEE6"),
+        ("vinyl-cyan", "vinyl", "Cyan", "p120"), ("vinyl-lime", "vinyl", "Lime", "p201"), ("vinyl-teal", "vinyl", "Teal", "p102"),
+        ("vinyl-gold", "vinyl", "Gold", "p021"), ("vinyl-violet", "vinyl", "Violet", "p210"), ("vinyl-silver", "vinyl", "Silver", "tD6DEE6"),
+        ("pendulum-lime", "pendulum", "Lime", "p120"), ("pendulum-rose", "pendulum", "Rose", "p201"), ("pendulum-violet", "pendulum", "Violet", "p102"),
+        ("pendulum-emerald", "pendulum", "Emerald", "p021"), ("pendulum-orange", "pendulum", "Orange", "p210"), ("pendulum-silver", "pendulum", "Silver", "tD6DEE6"),
+        ("hologram-lime", "hologram", "Lime", "p120"), ("hologram-magenta", "hologram", "Magenta", "p201"), ("hologram-indigo", "hologram", "Indigo", "t6A5CFF"),
+        ("hologram-crimson", "hologram", "Crimson", "tFF3B4E"), ("hologram-emerald", "hologram", "Emerald", "t2FD27A"), ("hologram-silver", "hologram", "Silver", "tD6DEE6"),
+        ("mandala-emerald", "mandala", "Emerald", "p120"), ("mandala-crimson", "mandala", "Crimson", "p201"), ("mandala-gold", "mandala", "Gold", "tFFC83D"),
+        ("mandala-lime", "mandala", "Lime", "tA8E63D"), ("mandala-teal", "mandala", "Teal", "t19C9B0"), ("mandala-silver", "mandala", "Silver", "tD6DEE6"),
+    ],
+    "frame": [
+    ],
+    "theme": [
+        ("monsoon-lime", "monsoon", "Lime", "p120"), ("monsoon-magenta", "monsoon", "Magenta", "p201"), ("monsoon-indigo", "monsoon", "Indigo", "t6A5CFF"),
+        ("monsoon-crimson", "monsoon", "Crimson", "tFF3B4E"), ("monsoon-emerald", "monsoon", "Emerald", "t2FD27A"), ("monsoon-silver", "monsoon", "Silver", "tD6DEE6"),
+        ("sahara-violet", "sahara", "Violet", "p120"), ("sahara-emerald", "sahara", "Emerald", "p201"), ("sahara-lime", "sahara", "Lime", "p102"),
+        ("sahara-rose", "sahara", "Rose", "p021"), ("sahara-azure", "sahara", "Azure", "p210"), ("sahara-silver", "sahara", "Silver", "tD6DEE6"),
+        ("bamboo-orange", "bamboo", "Orange", "p120"), ("bamboo-indigo", "bamboo", "Indigo", "p201"), ("bamboo-rose", "bamboo", "Rose", "p102"),
+        ("bamboo-azure", "bamboo", "Azure", "p021"), ("bamboo-lime", "bamboo", "Lime", "p210"), ("bamboo-silver", "bamboo", "Silver", "tD6DEE6"),
+        ("neonrain-emerald", "neonrain", "Emerald", "p120"), ("neonrain-orange", "neonrain", "Orange", "p201"), ("neonrain-magenta", "neonrain", "Magenta", "tE64CD9"),
+        ("neonrain-lime", "neonrain", "Lime", "tA8E63D"), ("neonrain-teal", "neonrain", "Teal", "t19C9B0"), ("neonrain-silver", "neonrain", "Silver", "tD6DEE6"),
+        ("lanterns-indigo", "lanterns", "Indigo", "p120"), ("lanterns-emerald", "lanterns", "Emerald", "p201"), ("lanterns-gold", "lanterns", "Gold", "tFFC83D"),
+        ("lanterns-lime", "lanterns", "Lime", "tA8E63D"), ("lanterns-teal", "lanterns", "Teal", "t19C9B0"), ("lanterns-silver", "lanterns", "Silver", "tD6DEE6"),
+        ("quartz-emerald", "quartz", "Emerald", "p120"), ("quartz-crimson", "quartz", "Crimson", "p201"), ("quartz-cyan", "quartz", "Cyan", "t33D6FF"),
+        ("quartz-magenta", "quartz", "Magenta", "tE64CD9"), ("quartz-gold", "quartz", "Gold", "tFFC83D"), ("quartz-silver", "quartz", "Silver", "tD6DEE6"),
+        ("lavalamp-cyan", "lavalamp", "Cyan", "p120"), ("lavalamp-lime", "lavalamp", "Lime", "p201"), ("lavalamp-crimson", "lavalamp", "Crimson", "tFF3B4E"),
+        ("lavalamp-emerald", "lavalamp", "Emerald", "t2FD27A"), ("lavalamp-indigo", "lavalamp", "Indigo", "t6A5CFF"), ("lavalamp-silver", "lavalamp", "Silver", "tD6DEE6"),
+        ("wormhole-lime", "wormhole", "Lime", "p120"), ("wormhole-rose", "wormhole", "Rose", "p201"), ("wormhole-violet", "wormhole", "Violet", "p102"),
+        ("wormhole-emerald", "wormhole", "Emerald", "p021"), ("wormhole-orange", "wormhole", "Orange", "p210"), ("wormhole-silver", "wormhole", "Silver", "tD6DEE6"),
+        ("polarlights-lime", "polarlights", "Lime", "p120"), ("polarlights-rose", "polarlights", "Rose", "p201"), ("polarlights-violet", "polarlights", "Violet", "p102"),
+        ("polarlights-emerald", "polarlights", "Emerald", "p021"), ("polarlights-orange", "polarlights", "Orange", "p210"), ("polarlights-silver", "polarlights", "Silver", "tD6DEE6"),
+        ("chrome-emerald", "chrome", "Emerald", "p120"), ("chrome-crimson", "chrome", "Crimson", "p201"), ("chrome-gold", "chrome", "Gold", "tFFC83D"),
+        ("chrome-lime", "chrome", "Lime", "tA8E63D"), ("chrome-teal", "chrome", "Teal", "t19C9B0"), ("chrome-silver", "chrome", "Silver", "tD6DEE6"),
+    ],
+}      # 6.7: colourways of the twenty new looks
 _cw_register(_CW_ROWS)
+_cw_register(_CW_ROWS_67)
 _NAMES = {"ball": dict(BALLS), "line": dict(LINES), "font": {f[0]: f[1] for f in FONTS},
           "theme": {t[0]: t[1] for t in THEME_LOOKS}, "banner": dict(BANNERS), "frame": dict(FRAMES), "tag": dict(TAGS)}
 _themes: dict = {}
@@ -16613,6 +16991,9 @@ _BANNER_COLS = {"dusk": ("#3A2A6B", "#C0587E"), "mint": ("#0F5F55", "#5CE0B8"), 
                 "waveform": ("#0A0F24", "#1A1A44"), "radar": ("#03130A", "#062414"), "constellations": ("#070B24", "#14204A"),
                 "equalizer": ("#0A0612", "#1A0F2A"), "orbit": ("#04050F", "#0E1030"), "spirograph": ("#08040F", "#150A24"),
                 "goldveins": ("#0A0805", "#1C150A"),
+                "ripples": ("#052B3A", "#1FA6B8"), "pinwheel": ("#2B1A5A", "#FF5C8A"), "ticker": ("#06110C", "#2ECC71"), "lightleaks": ("#1A1014", "#FF9A3D"),
+                "nixie": ("#0B0604", "#FF8A2B"), "tvstatic": ("#111417", "#8FA0AD"), "vinyl": ("#120A1A", "#C0587E"), "pendulum": ("#10151F", "#7D8C99"),
+                "hologram": ("#02101A", "#35E6FF"), "mandala": ("#12041F", "#FF5CC8"),
                 "meadow": ("#8FD3FF", "#E9F8FF"), "paper": ("#F3E9D6", "#D9C7A5"), "clouds": ("#2F7BFF", "#9AD0FF"),
                 "bokeh": ("#120A24", "#2A1448"), "pixels": ("#0B1020", "#1B2A5A"), "ribbons": ("#1A0B3A", "#4A1A7A"),
                 "glitch": ("#0A0A12", "#1A1030"), "sunbeams": ("#0D6E8C", "#06233A"), "stardesert": ("#0A0F2E", "#3A2358"),
@@ -16980,6 +17361,233 @@ def _rand(i: int, k: int = 0) -> float:
     """A fixed pseudo random number in [0, 1) (so stars stay where they are between frames)."""
     x = math.sin(i * 12.9898 + k * 78.233) * 43758.5453
     return x - math.floor(x)
+
+
+# --------------------------------------------------------------------------- #
+# 6.7: ten more profile banners (not seasonal), all moving
+# --------------------------------------------------------------------------- #
+_BANNERS_66 = ("ripples", "pinwheel", "ticker", "lightleaks", "nixie", "tvstatic", "vinyl", "pendulum", "hologram", "mandala")
+
+
+def _paint_banner_66(p: QPainter, base: str, rect: QRectF, c1: QColor, c2: QColor, now: float) -> None:
+    w, h = rect.width(), rect.height()
+    L, T = rect.left(), rect.top()
+    p.setPen(Qt.PenStyle.NoPen)
+    bg = QLinearGradient(rect.topLeft(), rect.bottomRight())
+    bg.setColorAt(0.0, c1)
+    bg.setColorAt(1.0, mix(c1, c2, 0.5) if base in ("nixie", "vinyl", "hologram", "ticker", "pendulum") else c2)
+    p.fillRect(rect, bg)
+    if base == "ripples":                                      # Common: rings spreading from drops that land on the water
+        for k in range(6):
+            u = now * 0.28 + k / 6
+            idx, t = int(u), u % 1.0
+            cx, cy = L + w * _rand(k * 13 + idx, 1), T + h * (0.2 + 0.6 * _rand(k * 13 + idx, 2))
+            for ring in range(3):
+                tt = t - ring * 0.12
+                if tt <= 0:
+                    continue
+                r = tt * h * 1.7
+                p.setPen(QPen(alpha("#DFFBFF", 0.55 * (1 - tt) ** 1.5), 1.4))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(QPointF(cx, cy), r * 1.5, r * 0.6)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "pinwheel":                                   # Common: a colour fan that turns, with a second one turning back
+        for cx, R, direction, col in ((0.3, w * 0.6, 1, c2), (0.78, w * 0.45, -1, QColor("#FFD27A"))):
+            c = QPointF(L + w * cx, T + h * 0.5)
+            n = 14
+            rot = now * 0.45 * direction
+            for k in range(n):
+                a0 = rot + k * 2 * math.pi / n
+                a1 = a0 + math.pi / n
+                tri = QPolygonF([c, QPointF(c.x() + math.cos(a0) * R, c.y() + math.sin(a0) * R),
+                                 QPointF(c.x() + math.cos(a1) * R, c.y() + math.sin(a1) * R)])
+                p.setBrush(alpha(col, 0.34 if k % 2 else 0.10))
+                p.drawPolygon(tri)
+            p.setBrush(alpha("#FFFFFF", 0.7))
+            p.drawEllipse(c, h * 0.06, h * 0.06)
+    elif base == "ticker":                                     # Common: a stock chart scrolling past, candle after candle
+        step = 9.0
+        shift = now * 16
+        first = int(shift // step)
+        off = shift % step
+
+        def val(i: int) -> float:
+            return 0.5 + 0.26 * math.sin(i * 0.43) + 0.13 * math.sin(i * 1.13 + 2) + 0.07 * math.sin(i * 2.9)
+        p.setPen(QPen(alpha("#FFFFFF", 0.06), 1, Qt.PenStyle.DashLine))
+        for k in range(1, 4):
+            p.drawLine(QPointF(L, T + h * k / 4), QPointF(rect.right(), T + h * k / 4))
+        for i in range(int(w / step) + 3):
+            idx = first + i
+            a, b = val(idx), val(idx + 1)
+            x = L + i * step - off
+            col = QColor("#3DDC84" if b >= a else "#FF5C5C")
+            p.setPen(QPen(col, 1))
+            hi, lo = max(a, b) + 0.05 * abs(math.sin(idx)), min(a, b) - 0.05 * abs(math.cos(idx))
+            p.drawLine(QPointF(x, T + h * (1 - hi)), QPointF(x, T + h * (1 - lo)))
+            p.setBrush(col)
+            p.drawRect(QRectF(x - 2.5, T + h * (1 - max(a, b)), 5, max(1.5, h * abs(b - a))))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "lightleaks":                                 # Rare: warm film light leaks drifting over grainy film
+        for k, col in enumerate(("#FF9A3D", "#FF3D6E", "#FFD27A", "#FF7A2E", "#FFB0A0")):
+            cx = L + w * (0.5 + 0.55 * math.sin(now * (0.17 + k * 0.05) + k * 2.1))
+            cy = T + h * (0.5 + 0.45 * math.cos(now * (0.21 + k * 0.04) + k))
+            r = h * (0.9 + 0.35 * math.sin(now * 0.4 + k))
+            g = QRadialGradient(QPointF(cx, cy), r)
+            g.setColorAt(0, alpha(col, 0.6))
+            g.setColorAt(1, alpha(col, 0.0))
+            p.setBrush(g)
+            p.drawEllipse(QPointF(cx, cy), r, r)
+        fr = int(now * 14)
+        for k in range(70):
+            p.setBrush(alpha("#FFFFFF", 0.05 + 0.14 * _rand(k + fr * 71, 5)))
+            p.drawEllipse(QPointF(L + w * _rand(k + fr * 71, 3), T + h * _rand(k + fr * 71, 4)), 0.9, 0.9)
+        flick = 0.04 + 0.04 * math.sin(now * 23) * math.sin(now * 7.3)
+        p.fillRect(rect, alpha("#FFE9B0", max(0.0, flick)))
+    elif base == "nixie":                                      # Rare: glass tubes with glowing digits that count and flicker
+        n = max(4, int(w / (h * 0.62)))
+        tw = w / n
+        f = font(20, QFont.Weight.Bold)
+        f.setPixelSize(max(8, int(h * 0.56)))
+        p.setFont(f)
+        for i in range(n):
+            tube = QRectF(L + i * tw + tw * 0.14, T + h * 0.1, tw * 0.72, h * 0.8)
+            p.setPen(QPen(alpha("#FFD9A8", 0.16), 1.2))
+            p.setBrush(alpha("#000000", 0.30))
+            p.drawRoundedRect(tube, tw * 0.3, tw * 0.3)
+            ch = str(int(_rand(i, int(now * 0.9 + i * 0.37) + 11) * 10))
+            fl = 0.8 + 0.2 * math.sin(now * 29 + i * 5) * math.sin(now * 3 + i)
+            glow = QRadialGradient(tube.center(), tw * 0.9)
+            glow.setColorAt(0, alpha("#FF8A2B", 0.35 * fl))
+            glow.setColorAt(1, alpha("#FF8A2B", 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(glow)
+            p.drawEllipse(tube.center(), tw * 0.9, tw * 0.9)
+            for dx, a in ((-1.2, 0.22), (1.2, 0.22), (0, 1.0)):
+                p.setPen(alpha("#FFB04D", a * fl))
+                p.drawText(tube.translated(dx, 0), int(Qt.AlignmentFlag.AlignCenter), ch)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "tvstatic":                                   # Rare: an old TV that lost its signal: snow, scanlines, a rolling bar
+        cell = 5.0
+        fr = int(now * 18)
+        nx, ny = int(w / cell) + 1, int(h / cell) + 1
+        for ix in range(nx):
+            for iy in range(ny):
+                v = _rand(ix + iy * 997 + fr * 131, 6)
+                p.setBrush(QColor(int(120 * v + 20), int(130 * v + 22), int(140 * v + 28), 150))
+                p.drawRect(QRectF(L + ix * cell, T + iy * cell, cell, cell))
+        by = T + ((now * 0.32) % 1.5 - 0.25) * h
+        g = QLinearGradient(QPointF(0, by - h * 0.18), QPointF(0, by + h * 0.18))
+        g.setColorAt(0, alpha("#FFFFFF", 0.0))
+        g.setColorAt(0.5, alpha("#FFFFFF", 0.16))
+        g.setColorAt(1, alpha("#FFFFFF", 0.0))
+        p.fillRect(QRectF(L, by - h * 0.18, w, h * 0.36).intersected(rect), g)
+        p.setPen(QPen(alpha("#000000", 0.22), 1))
+        for y in range(0, int(h), 3):
+            p.drawLine(QPointF(L, T + y), QPointF(rect.right(), T + y))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "vinyl":                                      # Special: a record spinning under the needle, light gliding over the grooves
+        c = QPointF(L + w * 0.74, T + h * 0.5)
+        R = h * 1.05
+        p.setBrush(QColor("#0B0B10"))
+        p.drawEllipse(c, R, R)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for k in range(1, 15):
+            p.setPen(QPen(alpha("#FFFFFF", 0.07 if k % 3 else 0.14), 1))
+            p.drawEllipse(c, R * (0.4 + 0.043 * k), R * (0.4 + 0.043 * k))
+        g = QConicalGradient(c, 35)
+        for pos, a in ((0.0, 0.0), (0.06, 0.22), (0.12, 0.0), (0.5, 0.0), (0.56, 0.22), (0.62, 0.0), (1.0, 0.0)):
+            g.setColorAt(pos, alpha("#FFFFFF", a))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawEllipse(c, R, R)
+        ang = now * 2.3
+        p.setBrush(c2)
+        p.drawEllipse(c, R * 0.34, R * 0.34)
+        p.setBrush(alpha("#FFFFFF", 0.85))
+        p.drawEllipse(QPointF(c.x() + math.cos(ang) * R * 0.22, c.y() + math.sin(ang) * R * 0.22), h * 0.03, h * 0.03)
+        p.setBrush(QColor("#10101A"))
+        p.drawEllipse(c, h * 0.04, h * 0.04)
+        p.setPen(QPen(QColor("#C9D2DA"), 2.6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawLine(QPointF(L + w * 0.97, T + h * 0.05), QPointF(c.x() - R * 0.3, c.y() - R * 0.62))
+        p.setPen(QPen(alpha("#FFFFFF", 0.10 * (1 + math.sin(now * 4))), 1))
+        for k in range(3):
+            u = (now * 0.5 + k / 3) % 1.0
+            p.drawArc(QRectF(L + w * (0.2 - u * 0.15), T + h * (0.5 - 0.4 * u), h * 0.5 * (0.5 + u), h * 0.8 * (0.5 + u)), 120 * 16, 120 * 16)
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "pendulum":                                   # Special: a Newton's cradle, the outer balls swinging in turn
+        s = math.sin(now * 2.4)
+        cx, top, r = L + w * 0.5, T + h * 0.08, h * 0.105
+        ln = h * 0.62
+        p.setPen(QPen(alpha("#FFFFFF", 0.5), 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawLine(QPointF(cx - r * 6, top), QPointF(cx + r * 6, top))
+        for i in range(5):
+            px = cx + (i - 2) * 2 * r
+            ang = -max(0.0, s) * 0.62 if i == 0 else (max(0.0, -s) * 0.62 if i == 4 else 0.0)
+            bx, by = px + math.sin(ang) * ln, top + math.cos(ang) * ln
+            p.setPen(QPen(alpha("#FFFFFF", 0.4), 1.1))
+            p.drawLine(QPointF(px - r * 0.45, top), QPointF(bx, by))
+            p.drawLine(QPointF(px + r * 0.45, top), QPointF(bx, by))
+            g = QRadialGradient(QPointF(bx - r * 0.3, by - r * 0.35), r * 1.3)
+            g.setColorAt(0, QColor("#FFFFFF"))
+            g.setColorAt(0.45, mix(c2, QColor("#FFFFFF"), 0.35))
+            g.setColorAt(1, mix(c1, QColor("#000000"), 0.5))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(g)
+            p.drawEllipse(QPointF(bx, by), r, r)
+            p.setBrush(alpha("#000000", 0.18))
+            p.drawEllipse(QPointF(bx, T + h * 0.97), r * 0.9, r * 0.18)
+    elif base == "hologram":                                   # Epic: wireframe shapes turning in a cyan light, scanlines gliding over them
+        def cube(cx: float, cy: float, size: float, a: float, b: float, col: QColor) -> None:
+            pts = []
+            for x in (-1, 1):
+                for y in (-1, 1):
+                    for z in (-1, 1):
+                        x1, z1 = x * math.cos(a) - z * math.sin(a), x * math.sin(a) + z * math.cos(a)
+                        y1, z2 = y * math.cos(b) - z1 * math.sin(b), y * math.sin(b) + z1 * math.cos(b)
+                        k = 1 / (1 + z2 * 0.18)
+                        pts.append(QPointF(cx + x1 * size * k, cy + y1 * size * k))
+            edges = [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)]
+            for wd, al in ((5.0, 0.10), (2.6, 0.25), (1.1, 0.95)):
+                p.setPen(QPen(alpha(col, al), wd, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                for i, j in edges:
+                    p.drawLine(pts[i], pts[j])
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        cube(L + w * 0.5, T + h * 0.5, h * 0.3, now * 0.9, now * 0.6, c2)
+        cube(L + w * 0.22, T + h * 0.5, h * 0.17, -now * 1.2, now * 0.8, QColor("#7CF5FF"))
+        cube(L + w * 0.78, T + h * 0.5, h * 0.17, now * 1.1, -now * 0.7, QColor("#7CF5FF"))
+        p.setPen(QPen(alpha(c2, 0.35), 1))
+        p.drawEllipse(QPointF(L + w * 0.5, T + h * 0.92), h * 0.9, h * 0.1)
+        sy = T + ((now * 0.35) % 1.0) * h
+        g = QLinearGradient(QPointF(0, sy - h * 0.15), QPointF(0, sy + h * 0.15))
+        g.setColorAt(0, alpha(c2, 0.0))
+        g.setColorAt(0.5, alpha(c2, 0.22))
+        g.setColorAt(1, alpha(c2, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.fillRect(QRectF(L, sy - h * 0.15, w, h * 0.3).intersected(rect), g)
+        p.setPen(QPen(alpha("#000000", 0.18), 1))
+        for y in range(0, int(h), 3):
+            p.drawLine(QPointF(L, T + y), QPointF(rect.right(), T + y))
+        p.setPen(Qt.PenStyle.NoPen)
+    elif base == "mandala":                                    # Epic: layers of petals turning against each other, colours slowly cycling
+        for cxf, scale, direction in ((0.5, 1.0, 1), (0.1, 0.62, -1), (0.9, 0.62, -1)):
+            c = QPointF(L + w * cxf, T + h * 0.5)
+            for j in range(5):
+                n = 8 + j * 2
+                R = h * (0.22 + 0.2 * j) * scale
+                rot = now * 0.22 * direction * (1 if j % 2 else -1) + j
+                for k in range(n):
+                    p.save()
+                    p.translate(c)
+                    p.rotate(math.degrees(rot) + k * 360 / n)
+                    col = QColor.fromHsvF((now * 0.03 + j * 0.13 + k / n * 0.25) % 1.0, 0.65, 1.0)
+                    p.setBrush(alpha(col, 0.30))
+                    p.setPen(QPen(alpha("#FFFFFF", 0.22), 0.8))
+                    p.drawEllipse(QPointF(R * 0.62, 0), R * 0.4, R * 0.15)
+                    p.restore()
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFF3C8", 0.85))
+            p.drawEllipse(c, h * 0.05 * scale, h * 0.05 * scale)
+    p.setPen(Qt.PenStyle.NoPen)
 
 
 def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius: float = 10.0, dim: float = 1.0,
@@ -17477,6 +18085,8 @@ def paint_banner(p: QPainter, rect: QRectF, item: str, now: float = 0.0, radius:
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(core)
         p.drawEllipse(cen, h * 0.4, h * 0.4)
+    elif base in _BANNERS_66:
+        _paint_banner_66(p, base, rect, c1, c2, now)
     elif base in _BANNERS_65:
         _paint_banner_65(p, base, rect, c1, c2, now)
     elif base in _BANNERS_63:
