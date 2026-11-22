@@ -1,8 +1,6 @@
-Rubenium 6.5
+Rubenium 6.6
 
-- NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too
-- Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%
-- Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse's wins. Hover anywhere to see the details
-- Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)
+- NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover
+- Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

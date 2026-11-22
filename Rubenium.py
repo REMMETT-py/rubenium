@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.5"         # the version people see
-BUILD = "2026.11.22.12"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.6"         # the version people see
+BUILD = "2026.11.22.13"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12029,6 +12029,7 @@ FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match
 FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'Preview': 'Essai', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
 FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
 FR.update({'Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run.': 'Les paris ferment 2 minutes après l’arrivée du premier joueur. Puis les bots prennent les chevaux libres, 3, 2, 1, le coup de feu, et ils partent.', 'Chance to win = your bet ÷ all the money on the horses.': 'Chance de gagner = ta mise ÷ tout l’argent misé sur les chevaux.', 'Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start.': 'Les chevaux à l’arrière de la file partent en premier, pour qu’ils passent tous la ligne de départ ensemble : personne n’a d’avance.', 'Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Pendant 2 minutes tu peux mettre 1 à 3 objets (5 joueurs au plus).', 'Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.': 'Le Jackpot et la Course de chevaux alternent : chacun ouvre 15 minutes après la fin de l’autre.', 'Nobody joins? The bots race on their own and the next event comes 15 minutes later.': 'Personne ne rejoint ? Les bots courent seuls et l’événement suivant arrive 15 minutes plus tard.', 'Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).': 'Choisis un cheval libre sur le tableau et mise des pièces dessus (un cheval chacun, 5 chevaux).', "The more you bet, the better your horse's chance, but the more you can lose.": 'Plus tu mises, plus ton cheval a de chances, mais plus tu peux perdre.', "The winner gets their bet back plus 80% of everybody else's bets (bots' too).": 'Le gagnant récupère sa mise plus 80 % des mises de tous les autres (bots compris).', 'Bet {n} coins on this round? That is {p}% of your coins.': 'Miser {n} pièces sur cette manche ? C’est {p} % de tes pièces.', 'Careful: you could lose a big part of your coins.': 'Attention : tu pourrais perdre une grosse partie de tes pièces.', 'Bet it': 'Miser', 'FINISH': 'ARRIVÉE', 'BETS CLOSE IN {t}': 'PARIS FERMÉS DANS {t}', 'Pick a horse and bet. Bots take the empty horses at 0:00.': 'Choisis un cheval et mise. Les bots prennent les chevaux libres à 0:00.', 'The clock restarts at 2:00 when the first player joins': 'Le chrono repart à 2:00 quand le premier joueur rejoint', 'BOTS TAKE THE EMPTY HORSES': 'LES BOTS PRENNENT LES CHEVAUX LIBRES', 'Get ready…': 'Préparez-vous…', 'GO!': 'PARTEZ !', 'YOU WON {n}!': 'TU AS GAGNÉ {n} !', 'YOU WON!': 'TU AS GAGNÉ !', '#{n} {name} WINS': 'N°{n} {name} GAGNE', 'Ridden for {who}': 'Monté pour {who}', 'Desert': 'Désert', 'Forest': 'Forêt', 'Snow': 'Neige', 'RACE BOARD': 'TABLEAU DES COURSES', '{n} on the horses': '{n} misés sur les chevaux', 'Free: click to pick': 'Libre : clique pour choisir', 'Free': 'Libre', 'Your pick': 'Ton choix', 'HORSE RACING': 'COURSE DE CHEVAUX', 'Horse Racing': 'Course de chevaux', 'OPEN · bets close in {t}': 'OUVERT · paris fermés dans {t}', "They're racing: watch it": 'Ils courent : regarde', 'Next race in {t}': 'Prochaine course dans {t}', '5 horses, bet on one': '5 chevaux, mise sur un', 'Horse Racing is paused for a moment. Nothing you own is lost.': 'La Course de chevaux est en pause un moment. Tu ne perds rien.', 'The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.': 'La prochaine course ouvre dans environ {t}. Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart.', 'Last race': 'Dernière course', 'Every horse is taken. Watch the race!': 'Tous les chevaux sont pris. Regarde la course !', 'You need at least {n} to bet.': 'Il te faut au moins {n} pour miser.', 'Bet on this horse': 'Miser sur ce cheval', 'Click a free horse on the board': 'Clique un cheval libre sur le tableau', 'Too late: the bets are closed': 'Trop tard : les paris sont fermés', '#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)': 'N°{n} : {p} de chances · s’il gagne tu reçois {w} (ta mise + {s} % des autres)', 'Bet {n} coins on #{h} {name}? That is {p}% of your coins.': 'Miser {n} pièces sur le n°{h} {name} ? C’est {p} % de tes pièces.', "You're on #{n} {name}. Good luck!": 'Tu es sur le n°{n} {name}. Bonne chance !', "Your chance to win is your share of all the money on the horses. The winner gets their bet back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.": 'Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. Le gagnant récupère sa mise plus {s} % de celles des autres. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.', 'HORSE RACE IS OPEN': 'LA COURSE DE CHEVAUX EST OUVERTE', 'Bets close in about {t}. Bet in Games > Horse Racing': 'Les paris ferment dans environ {t}. Mise dans Jeux > Course de chevaux', 'Red Rocket': 'Fusée Rouge', 'Blue Thunder': 'Tonnerre Bleu', 'Green Clover': 'Trèfle Vert', 'Golden Sun': 'Soleil d’Or', 'Purple Storm': 'Tempête Violette', 'The bets for this race are closed': 'Les paris de cette course sont fermés', 'Someone just took this horse: pick another': 'Quelqu’un vient de prendre ce cheval : choisis-en un autre', 'You already have a horse in this race': 'Tu as déjà un cheval dans cette course', 'Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.': 'Limitée (calendrier de l’Avent) : aussi bonne que la Caisse Top Tier. Toujours un badge Épique ou Légendaire, avec une chance de Mythique.', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 999 fois ta mise.', "NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's": 'NOUVEAU : Course de chevaux. 5 chevaux, choisis-en un et mise : ta chance est ta part de l’argent. Le gagnant récupère sa mise plus 80 % de celles des autres', 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Si personne ne rejoint, les bots jouent quand même', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)': 'Mises jusqu’à la moitié de tes pièces. Au-delà de 10 000, on te demande d’abord, en or (en rouge si c’est une grosse part de tes pièces)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5': 'Puissance 4 Professionnel paie ×999. Jeu des gobelets : Facile ×1,2, Moyen ×2, Difficile ×3, Expert ×5', "A coloured app font now colours the app's text too": 'Une police colorée colore maintenant aussi le texte de l’app', 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)': 'Bots du Mini Golf corrigés : plus de passage à travers les murs ni de glissade sur tout le parcours, et ils jouent chacun leur tour (tu attends leur balle)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar': 'Mini Golf et Wave Rush sont dans Gagner des pièces ; Coinflip est sous le calendrier de l’Avent', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case': 'Anciennes caisses retirées (ceux qui en avaient ont reçu leur prix en pièces). Les caisses Hiver et Cadeau sont maintenant aussi bonnes que la Caisse Top Tier'})      # 6.3
+FR.update({'1st': '1er', '2nd': '2e', '3rd': '3e', '4th': '4e', '5th': '5e', 'Average bet {v}': 'Mise moyenne {v}', 'Best round': 'Meilleure manche', 'Best round {a} · worst {b}': 'Meilleure manche {a} · pire {b}', 'Best winning streak {n}': 'Meilleure série de victoires {n}', 'Bet {a} · paid {b}': 'Mise {a} · payé {b}', 'Bet {a} → paid {b}': 'Mise {a} → payé {b}', 'Coins won or lost in each round': 'Pièces gagnées ou perdues à chaque manche', 'EVEN': 'ÉGALITÉ', 'Every round of every game will be drawn here.': 'Chaque manche de chaque jeu sera dessinée ici.', 'Games: won, lost and even rounds': 'Jeux : manches gagnées, perdues et à égalité', 'LOSS': 'PERTE', 'Multiplier ×{m}': 'Multiplicateur ×{m}', 'Net coins each day': 'Pièces nettes par jour', 'Net coins over time (last {n} rounds)': 'Pièces nettes dans le temps ({n} dernières manches)', 'Net result': 'Résultat net', 'Net {v}': 'Net {v}', 'PLAY HISTORY': 'HISTORIQUE DE JEU', 'Played: {g}': 'Joué : {g}', 'Podium of the last races': 'Podium des dernières courses', 'Pot': 'Cagnotte', 'Rounds, newest first': 'Manches, de la plus récente à la plus ancienne', 'Running net {v}': 'Net cumulé {v}', 'That day: {n} rounds · net {v}': 'Ce jour-là : {n} manches · net {v}', 'Total bet': 'Total misé', 'Total bet {a} · paid {b}': 'Total misé {a} · payé {b}', 'Total paid': 'Total payé', 'WIN': 'GAIN', 'Win rate (last 20 rounds, %)': 'Taux de victoire (20 dernières manches, %)', 'Win rate then {p}%': 'Taux de victoire alors {p} %', 'Win rate {p}%': 'Taux de victoire {p} %', 'Won / lost': 'Gagnées / perdues', 'Worst round': 'Pire manche', '{n} rounds · {p}% won': '{n} manches · {p} % gagnées', '{n} rounds · {w} won · {l} lost': '{n} manches · {w} gagnées · {l} perdues', '{n} rounds · {w} won · {l} lost · {e} even': '{n} manches · {w} gagnées · {l} perdues · {e} égalités', "NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover": 'NOUVEAU : un graphique Historique de jeu en haut des Stats de chaque joueur (les tiennes et celles de tes amis) : pièces nettes dans le temps, résultat de chaque manche, taux de victoire, chaque jour et chaque jeu, tout en détail au survol', 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place': 'Historique de la Course de chevaux : une liste Podium montre le 1er, le 2e et le 3e de chaque course (or, argent, bronze) et la carte au survol nomme chaque place'})      # 6.6
 FR.update({'NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too': 'NOUVEAU : 10 bannières, cadres et thèmes de plus (Lagoon, Pêche, Forme d’onde, Radar, Or rose…) et chaque bannière, cadre et thème existe maintenant jusqu’à 6 autres couleurs : plus de 900 nouveaux looks. Choisis la couleur dans chaque design de la boutique, ils sont aussi dans les caisses', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%': 'La Course de chevaux paie maintenant les trois premiers : le 1er récupère 100 % de sa mise et 70 % des gains, le 2e 25 % et 20 %, le 3e 5 % et 10 %', "Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse's wins. Hover anywhere to see the details": 'Course de chevaux : un Historique sous le menu avec les vainqueurs, un graphique façon bourse des cagnottes, une bougie par course et les victoires de chaque cheval. Survole pour voir les détails', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)': 'La Course de chevaux et le Jackpot ne peuvent plus être ouverts avant leur ouverture (l’historique reste visible)'})      # 6.5 news
 FR.update({
  "The next race opens in about {t}": "La prochaine course ouvre dans environ {t}",
@@ -12078,6 +12079,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.6", ["NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover", 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place']),
     ("6.5", ['NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%', 'Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse\'s wins. Hover anywhere to see the details', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)']),
     ("6.4", ['NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too', 'Wave Rush duels: the other player now moves smoothly instead of lagging and running into walls (you see them a moment behind, exactly as they really flew)', 'Wave Rush duels: when you crash you keep watching the other player until they crash too, then the result comes up', 'Wave Rush duels: a Rematch button after the duel. When both players press it, a new duel starts with the same bet']),
     ("6.3", ["NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's", 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5', "A coloured app font now colours the app's text too", 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case']),
@@ -37077,6 +37079,7 @@ class FriendsPage(Page):
         bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
         seen = tr("Online") if prof.get("online") else (ago_text(prof.get("seen")) or "—")
         self.lay.addWidget(heading(tr("Stats")))
+        add_play_history(self, self.lay, getattr(self.ctx, "friends_profile", None) or "")      # 6.6: the graph
         self.lay.addWidget(Numbers([
             (played_text(int(prof.get("minutes") or 0)), tr("Played")), (seen, tr("Last Seen")),
             (int(st.get("friends") or 0), tr("Friends")),
@@ -42698,7 +42701,9 @@ class RaceHistory(QWidget):
         rows = max(1, min(8, -(-n // per))) if n else 1
         self.strip_n = min(n, rows * per)
         self.strip_r = QRectF(self.pad, top + S(16), w - 2 * self.pad, rows * (self.disc + self.gap))
-        y = self.strip_r.bottom() + S(14)
+        self.pod_n = min(n, 16)                              # 6.5: the podium of the last races, row by row
+        self.pod_r = QRectF(self.pad, self.strip_r.bottom() + S(34), w - 2 * self.pad, self.pod_n * S(26))
+        y = (self.pod_r.bottom() if n else self.strip_r.bottom()) + S(14)
         self.pot_r = QRectF(self.pad, y + S(14), w - 2 * self.pad - self.axis, S(150))
         y = self.pot_r.bottom() + S(22)
         self.can_r = QRectF(self.pad, y + S(14), w - 2 * self.pad - self.axis, S(120))
@@ -42738,6 +42743,8 @@ class RaceHistory(QWidget):
         old = (self.hover, self.hover_h)
         self.hover, self.hover_h = None, None
         si = self._strip_idx(pos)
+        if si is None and self.pod_n and self.pod_r.contains(pos):      # a podium row
+            si = len(self.rs) - 1 - int((pos.y() - self.pod_r.top()) // S(26))
         if si is not None:
             self.hover = si
             self.hover_x = -1.0
@@ -42861,7 +42868,7 @@ class RaceHistory(QWidget):
             g.setColorAt(0, mix(colr, QColor("#FFFFFF"), 0.45))
             g.setColorAt(1, mix(colr, QColor("#000000"), 0.2))
             p.setBrush(g)
-            p.setPen(QPen(QColor("#FFFFFF") if hot else alpha("#000000", 0.5), S(2) if hot else 1))
+            p.setPen(QPen(QColor("#FFFFFF") if hot else QColor("#FFD34D"), S(2) if hot else S(1.6)))
             p.drawEllipse(c, self.disc / 2 - (0 if hot else 1), self.disc / 2 - (0 if hot else 1))
             if rs[i]["mine"] is not None and rs[i]["paid"][rs[i]["mine"]] > 0:
                 p.setPen(Qt.PenStyle.NoPen)
@@ -42872,6 +42879,58 @@ class RaceHistory(QWidget):
             p.drawText(QRectF(c.x() - self.disc / 2, c.y() - self.disc / 2, self.disc, self.disc), int(Qt.AlignmentFlag.AlignCenter),
                        str(rs[i]["w"] + 1))
         n = len(sh)
+        # --- the podium: first, second and third of the last races, row by row
+        if self.pod_n:
+            medal = ("#FFD34D", "#D5DCE3", "#D68A4B")
+            names = (tr("1st"), tr("2nd"), tr("3rd"))
+            top = self.pod_r.top() - S(24)
+            p.setFont(font(10.5, QFont.Weight.Bold))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QPointF(self.pad, top + S(8)), tr("Podium of the last races"))
+            colx = [self.pod_r.left() + S(78) + k * S(86) for k in range(3)]
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            for k in range(3):
+                p.setPen(QColor(medal[k]))
+                p.drawText(QPointF(colx[k] + S(2), top + S(21)), names[k])
+            p.setPen(QColor(TEXT_FAINT))
+            p.drawText(QRectF(self.pod_r.right() - S(70), top + S(10), S(70), S(14)), int(Qt.AlignmentFlag.AlignRight), tr("Pot"))
+            for row in range(self.pod_n):
+                i = len(rs) - 1 - row
+                x = rs[i]
+                rr = QRectF(self.pod_r.left(), self.pod_r.top() + row * S(26), self.pod_r.width(), S(24))
+                if self.hover == i:
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(alpha("#FFFFFF", 0.09))
+                    p.drawRoundedRect(rr, S(6), S(6))
+                elif row % 2 == 0:
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(alpha("#FFFFFF", 0.03))
+                    p.drawRoundedRect(rr, S(6), S(6))
+                p.setPen(QColor(TEXT_DIM))
+                p.setFont(font(9.5))
+                p.drawText(QRectF(rr.left() + S(4), rr.top(), S(72), rr.height()), int(Qt.AlignmentFlag.AlignVCenter), self._when(x["t"]))
+                for k in range(3):
+                    lane = x["pl"][k]
+                    c = QPointF(colx[k] + S(10), rr.center().y())
+                    d = S(10) if k == 0 else S(9)
+                    p.setPen(QPen(QColor(medal[k]), S(2.4) if k == 0 else S(1.8)))
+                    p.setBrush(QColor(HORSE_COLOURS[lane]))
+                    p.drawEllipse(c, d, d)
+                    p.setPen(QColor("#10161A"))
+                    p.setFont(font(10.5 if k == 0 else 9.5, QFont.Weight.Black))
+                    p.drawText(QRectF(c.x() - d, c.y() - d, 2 * d, 2 * d), int(Qt.AlignmentFlag.AlignCenter), str(lane + 1))
+                    mine = x["mine"] == lane
+                    if mine:
+                        p.setPen(Qt.PenStyle.NoPen)
+                        p.setBrush(QColor("#FFFFFF"))
+                        p.drawEllipse(QPointF(c.x() + d * 0.85, c.y() - d * 0.85), S(2.6), S(2.6))
+                    p.setPen(QColor(medal[k]))
+                    p.setFont(font(9, QFont.Weight.Bold))
+                    p.drawText(QRectF(c.x() + d + S(3), rr.top(), S(40), rr.height()), int(Qt.AlignmentFlag.AlignVCenter), self._k(x["amt"][lane]))
+                p.setPen(QColor("#5BE37D"))
+                p.setFont(font(9.5, QFont.Weight.Bold))
+                p.drawText(QRectF(rr.right() - S(70), rr.top(), S(66), rr.height()),
+                           int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), self._k(x["pot"]))
         # --- 1. the pot as a price line
         pots = [r["pot"] for r in sh]
         lo, hi = self._scale(min(pots), max(pots))
@@ -43051,10 +43110,12 @@ class RaceHistory(QWidget):
                (tr("Favourite: #{n} ({v}){s}", n=x["fav"] + 1, v=coins_text(x["amt"][x["fav"]]),
                    s=tr(" · it won") if x["fav"] == w else tr(" · UPSET")), "#FFC94D" if x["fav"] != w else TEXT_DIM, x["fav"] != w),
                (tr("That day: {n} races · pot high {a} · low {b}", n=len(same), a=self._k(max(pots)), b=self._k(min(pots))), TEXT_DIM, False)]
-        for k in x["pl"]:
+        places = (tr("1st"), tr("2nd"), tr("3rd"), tr("4th"), tr("5th"))
+        for pi, k in enumerate(x["pl"]):
             nm = x["names"][k] or "?"
-            out.append((f"#{k + 1} {nm}{' ★' if x['mine'] == k else ''}: {coins_text(x['amt'][k])}"
-                        + (f" → {coins_text(x['paid'][k])}" if x["paid"][k] else ""), HORSE_COLOURS[k], x["mine"] == k))
+            out.append((f"{places[pi]}  #{k + 1} {nm}{' ★' if x['mine'] == k else ''}: {coins_text(x['amt'][k])}"
+                        + (f" → {coins_text(x['paid'][k])}" if x["paid"][k] else ""),
+                        ("#FFD34D", "#D5DCE3", "#D68A4B")[pi] if pi < 3 else TEXT_FAINT, x["mine"] == k or pi == 0))
         if mult:
             out.append((tr("Winner's pay: ×{m}", m=f"{mult:.2f}"), "#FFD34D", False))
         return out
@@ -43124,6 +43185,436 @@ def add_race_history(page, lay) -> None:
             fresh()
     lay.addWidget(view)
     lay.addWidget(_Poll(5000, tick))
+
+
+_GAME_NAMES = {"plinko": "Plinko", "blackjack": "Blackjack", "slots": "Slots", "wave": "Wave Rush", "dice": "Dice", "tower": "Tower",
+               "mines": "Mines", "sweeper": "Sweeper", "rocket": "Rocket", "timing": "Timing", "cups": "Cups", "c4": "Connect 4",
+               "roulette": "Roulette", "hilo": "Hi-Lo", "daily": "Daily reward", "spin": "Free Spin", "colour": "Colour game",
+               "sfx": "Sound game", "golf_party": "Mini Golf", "golf_solo": "Mini Golf", "scratch": "Scratch card",
+               "horses": "Horse Racing", "park": "Parking", "blocks": "Blocks", "gold_wheel": "Gold Wheel", "memory": "Memory",
+               "mini": "Beat Tap", "jackpot": "Jackpot", "flip": "Coinflip", "coinflip": "Coinflip"}
+for _gen, _gfr in (("Plinko", "Plinko"), ("Blackjack", "Blackjack"), ("Slots", "Machine à sous"), ("Wave Rush", "Wave Rush"), ("Dice", "Dés"),
+                 ("Tower", "Tour"), ("Mines", "Mines"), ("Sweeper", "Démineur"), ("Rocket", "Fusée"), ("Timing", "Timing"),
+                 ("Cups", "Gobelets"), ("Connect 4", "Puissance 4"), ("Roulette", "Roulette"), ("Hi-Lo", "Plus ou moins"),
+                 ("Daily reward", "Récompense du jour"), ("Free Spin", "Tour gratuit"), ("Colour game", "Jeu des couleurs"),
+                 ("Sound game", "Jeu des sons"), ("Mini Golf", "Mini-golf"), ("Scratch card", "Carte à gratter"),
+                 ("Horse Racing", "Course de chevaux"), ("Parking", "Parking"), ("Blocks", "Blocs"), ("Gold Wheel", "Roue en or"),
+                 ("Memory", "Mémoire"), ("Beat Tap", "Beat Tap"), ("Jackpot", "Jackpot"), ("Coinflip", "Pile ou face"), ("Cases", "Caisses")):
+    FR.setdefault(_gen, _gfr)
+
+
+def game_label(g: str) -> str:
+    if g.startswith("case:"):
+        return "Cases"
+    return _GAME_NAMES.get(g, g.replace("_", " ").capitalize())
+
+
+def load_play_history(ctx, name: str, then=None) -> None:
+    """6.6: all the finished rounds of a player, newest first (cached 30 s per player)."""
+    key = (name or "").lower()
+    if getattr(ctx, "_ph_asking", None) == key:
+        return
+    ctx._ph_asking = key
+
+    def got(ok: bool, data) -> None:
+        if getattr(ctx, "_ph_asking", None) == key:
+            ctx._ph_asking = None
+        if ok and isinstance(data, dict) and isinstance(data.get("rounds"), list):
+            cache = getattr(ctx, "play_hist", None)
+            if cache is None:
+                cache = ctx.play_hist = {}
+            cache[key] = (time.time(), data["rounds"])
+            if then:
+                then()
+    ctx.online.ask("rb_play_history", {"name": name, "lim": 1500}, got)
+
+
+class PlayHistory(RaceHistory):
+    """6.6: a trading screen for a player: every round of every game. Hover anywhere: the net coins over time, the result
+    of each round, the win rate, each day and each game. Green is a win, red a loss, grey an even round."""
+    WIN, LOSS, EVEN = "#3DDC84", "#FF5C5C", "#8C969A"
+
+    def __init__(self, ctx, w: int, rounds: list) -> None:
+        self.ctx = ctx
+        self.hover_day = None
+        self.hover_g = None
+        super().__init__(ctx, w)
+        self.set_data(rounds)
+
+    # ---- data ----------------------------------------------------------------------------------------------------------
+    def set_data(self, rounds: list) -> None:
+        rs = []
+        for r in reversed(rounds or []):
+            try:
+                b, p = int(r.get("b") or 0), int(r.get("p") or 0)
+                g = str(r.get("g") or "?")
+                rs.append({"t": float(r.get("t") or 0), "g": g, "gl": game_label(g), "b": b, "p": p, "net": p - b,
+                           "res": 1 if p > b else (-1 if p < b else 0)})
+            except (TypeError, ValueError):
+                continue
+        self.rs = rs
+        days: dict = {}
+        for x in rs:
+            d = days.setdefault(self._day(x["t"]), {"t": x["t"], "n": 0, "w": 0, "l": 0, "b": 0, "p": 0, "best": 0, "worst": 0, "g": {}})
+            d["n"] += 1
+            d["w"] += x["res"] > 0
+            d["l"] += x["res"] < 0
+            d["b"] += x["b"]
+            d["p"] += x["p"]
+            d["best"] = max(d["best"], x["net"])
+            d["worst"] = min(d["worst"], x["net"])
+            d["g"][x["gl"]] = d["g"].get(x["gl"], 0) + 1
+        self.days = [days[k] for k in sorted(days)][-45:]
+        games: dict = {}
+        for x in rs:
+            q = games.setdefault(x["gl"], {"name": x["gl"], "n": 0, "w": 0, "l": 0, "e": 0, "b": 0, "p": 0, "best": 0, "worst": 0,
+                                           "streak": 0, "cur": 0})
+            q["n"] += 1
+            q["w"] += x["res"] > 0
+            q["l"] += x["res"] < 0
+            q["e"] += x["res"] == 0
+            q["b"] += x["b"]
+            q["p"] += x["p"]
+            q["best"] = max(q["best"], x["net"])
+            q["worst"] = min(q["worst"], x["net"])
+            q["cur"] = q["cur"] + 1 if x["res"] > 0 else 0
+            q["streak"] = max(q["streak"], q["cur"])
+        self.games = sorted(games.values(), key=lambda q: -q["n"])[:16]
+        self.hover = self.hover_day = self.hover_g = None
+        self.setFixedHeight(self._layout())
+        self.update()
+
+    # ---- geometry ----------------------------------------------------------------------------------------------------
+    def _layout(self) -> int:
+        w = self.W
+        self.pad, self.axis = S(12), S(50)
+        self.disc, self.gap = S(12), S(4)
+        self.per = max(1, int((w - 2 * self.pad + self.gap) // (self.disc + self.gap)))
+        n = len(self.rs)
+        rows = max(1, min(6, -(-n // self.per))) if n else 1
+        self.strip_n = min(n, rows * self.per)
+        self.sum_r = QRectF(self.pad, S(36), w - 2 * self.pad, S(58))
+        self.strip_r = QRectF(self.pad, self.sum_r.bottom() + S(26), w - 2 * self.pad, rows * (self.disc + self.gap))
+        cw = w - 2 * self.pad - self.axis
+        y = self.strip_r.bottom() + S(8)
+        rects = []
+        for hgt in (130, 90, 90, 90):
+            r = QRectF(self.pad, y + S(22), cw, S(hgt))
+            rects.append(r)
+            y = r.bottom() + S(24)
+        self.pot_r, self.can_r, self.vol_r, self.day_r = rects
+        self.leg_r = QRectF(self.pad, y + S(22), w - 2 * self.pad, max(1, len(self.games)) * S(26))
+        return int(self.leg_r.bottom() + S(16))
+
+    def _shown(self) -> list:
+        return self.rs[-240:]
+
+    def _leg_row(self, k: int) -> QRectF:
+        return QRectF(self.leg_r.left(), self.leg_r.top() + k * S(26), self.leg_r.width(), S(24))
+
+    def mouseMoveEvent(self, e) -> None:
+        pos = e.position()
+        self.hover = self.hover_day = self.hover_g = None
+        si = self._strip_idx(pos)
+        if si is not None:
+            self.hover, self.hover_x = si, -1.0
+        else:
+            for r in (self.pot_r, self.can_r, self.vol_r):
+                if r.adjusted(0, -S(8), 0, S(8)).contains(pos):
+                    self.hover, self.hover_x = self._idx_at(pos.x()), pos.x()
+                    break
+            else:
+                if self.day_r.adjusted(0, -S(8), 0, S(8)).contains(pos) and self.days:
+                    i = int((pos.x() - self.day_r.left()) / max(1.0, self.day_r.width()) * len(self.days))
+                    self.hover_day = max(0, min(len(self.days) - 1, i))
+                else:
+                    for k in range(len(self.games)):
+                        if self._leg_row(k).contains(pos):
+                            self.hover_g = k
+        self.hover_pos = pos
+        self.setCursor(Qt.CursorShape.CrossCursor if (self.hover is not None or self.hover_day is not None) else Qt.CursorShape.ArrowCursor)
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = self.hover_day = self.hover_g = None
+        self.update()
+
+    def _idx_at(self, x: float):
+        sh = self._shown()
+        if not sh:
+            return None
+        i = int((x - self.pot_r.left()) / max(1.0, self.pot_r.width()) * len(sh))
+        return len(self.rs) - len(sh) + max(0, min(len(sh) - 1, i))
+
+    @staticmethod
+    def _sg(v: int) -> str:
+        return ("+" if v > 0 else "−" if v < 0 else "") + coins_text(abs(int(v)))
+
+    def _col(self, res: int) -> str:
+        return self.WIN if res > 0 else self.LOSS if res < 0 else self.EVEN
+
+    # ---- painting ----------------------------------------------------------------------------------------------------
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w = self.width()
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(alpha("#0B0F10", 0.55))
+        p.drawRoundedRect(QRectF(1, 1, w - 2, self.height() - 2), S(14), S(14))
+        p.setPen(QColor(TEXT))
+        p.setFont(font(14, QFont.Weight.Bold))
+        p.drawText(QPointF(self.pad, S(24)), tr("PLAY HISTORY"))
+        rs = self.rs
+        if not rs:
+            p.setFont(font(11))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(self.pad, S(40), w - 2 * self.pad, S(60)), int(Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap),
+                       tr("Every round of every game will be drawn here."))
+            return
+        wins, losses = sum(x["res"] > 0 for x in rs), sum(x["res"] < 0 for x in rs)
+        bet, paid = sum(x["b"] for x in rs), sum(x["p"] for x in rs)
+        net = paid - bet
+        p.setFont(font(10))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(self.pad, S(8), w - 2 * self.pad, S(20)), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                   tr("{n} rounds · {p}% won", n=len(rs), p=f"{100 * wins / max(1, len(rs)):.0f}"))
+        # --- the numbers
+        best = max(rs, key=lambda x: x["net"])
+        worst = min(rs, key=lambda x: x["net"])
+        cells = [(tr("Net result"), self._sg(net), self._col(1 if net > 0 else -1 if net < 0 else 0)),
+                 (tr("Won / lost"), f"{wins} / {losses}", TEXT), (tr("Total bet"), coins_text(bet), TEXT),
+                 (tr("Total paid"), coins_text(paid), TEXT), (tr("Best round"), self._sg(best["net"]), self.WIN),
+                 (tr("Worst round"), self._sg(worst["net"]), self.LOSS)]
+        cw3 = self.sum_r.width() / 3
+        for i, (head, val, col) in enumerate(cells):
+            bx = QRectF(self.sum_r.left() + (i % 3) * cw3, self.sum_r.top() + (i // 3) * S(29), cw3, S(29))
+            p.setFont(font(9))
+            p.setPen(QColor(TEXT_FAINT))
+            p.drawText(QRectF(bx.left(), bx.top(), bx.width(), S(12)), int(Qt.AlignmentFlag.AlignLeft), head)
+            p.setFont(font(12, QFont.Weight.Bold))
+            p.setPen(QColor(col))
+            p.drawText(QRectF(bx.left(), bx.top() + S(12), bx.width(), S(16)), int(Qt.AlignmentFlag.AlignLeft), val)
+        # --- the strip
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QPointF(self.pad, self.strip_r.top() - S(8)), tr("Rounds, newest first"))
+        for k in range(self.strip_n):
+            i = len(rs) - 1 - k
+            row, col = divmod(k, self.per)
+            c = QPointF(self.strip_r.left() + col * (self.disc + self.gap) + self.disc / 2,
+                        self.strip_r.top() + row * (self.disc + self.gap) + self.disc / 2)
+            hot = self.hover == i
+            p.setPen(QPen(QColor("#FFFFFF") if hot else alpha("#000000", 0.4), S(1.6) if hot else 1))
+            p.setBrush(QColor(self._col(rs[i]["res"])))
+            p.drawEllipse(c, self.disc / 2 - 0.5, self.disc / 2 - 0.5)
+        sh = self._shown()
+        n = len(sh)
+        off = len(rs) - n
+        cum, run = [], 0
+        for x in sh:
+            run += x["net"]
+            cum.append(run)
+        # --- A. net coins over time
+        r = self.pot_r
+        lo, hi = self._scale(min(0, min(cum)), max(0, max(cum)))
+        self._grid(p, r, lo, hi, tr("Net coins over time (last {n} rounds)", n=n))
+        yz = self._y(0, lo, hi, r)
+        pts = [QPointF(self._xs(i, n, r), self._y(v, lo, hi, r)) for i, v in enumerate(cum)]
+        path = QPainterPath(pts[0])
+        for q in pts[1:]:
+            path.lineTo(q)
+        area = QPainterPath(QPointF(pts[0].x(), yz))
+        for q in pts:
+            area.lineTo(q)
+        area.lineTo(QPointF(pts[-1].x(), yz))
+        area.closeSubpath()
+        for col, clip in ((self.WIN, QRectF(r.left(), r.top() - S(10), r.width(), yz - r.top() + S(10))),
+                          (self.LOSS, QRectF(r.left(), yz, r.width(), r.bottom() - yz + S(10)))):
+            p.save()
+            p.setClipRect(clip)
+            g = QLinearGradient(QPointF(0, yz), QPointF(0, r.top() if col == self.WIN else r.bottom()))
+            g.setColorAt(0, alpha(col, 0.0))
+            g.setColorAt(1, alpha(col, 0.40))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(g)
+            p.drawPath(area)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(QColor(col), S(1.6), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            p.drawPath(path)
+            p.restore()
+        p.setPen(QPen(alpha("#FFFFFF", 0.4), 1, Qt.PenStyle.DashLine))
+        p.drawLine(QPointF(r.left(), yz), QPointF(r.right(), yz))
+        lastc = self.WIN if cum[-1] >= 0 else self.LOSS
+        yl = self._y(cum[-1], lo, hi, r)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(lastc))
+        p.drawRoundedRect(QRectF(r.right() + S(2), yl - S(7), self.axis - S(6), S(14)), S(4), S(4))
+        p.setPen(QColor("#06210F"))
+        p.setFont(font(9, QFont.Weight.Bold))
+        p.drawText(QRectF(r.right() + S(2), yl - S(7), self.axis - S(6), S(14)), int(Qt.AlignmentFlag.AlignCenter), self._k(cum[-1]))
+        self._time_axis(p, r, sh)
+        # --- B. the result of each round
+        r = self.can_r
+        m = max(1, max(abs(x["net"]) for x in sh))
+        self._grid(p, r, -m * 1.1, m * 1.1, tr("Coins won or lost in each round"))
+        yz = self._y(0, -m * 1.1, m * 1.1, r)
+        bw = max(1.5, min(S(10), r.width() / n * 0.7))
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, x in enumerate(sh):
+            cx = self._xs(i, n, r)
+            y2 = self._y(x["net"], -m * 1.1, m * 1.1, r)
+            p.setBrush(QColor(self._col(x["res"])))
+            p.drawRect(QRectF(cx - bw / 2, min(yz, y2), bw, max(1.2, abs(yz - y2))))
+        p.setPen(QPen(alpha("#FFFFFF", 0.4), 1))
+        p.drawLine(QPointF(r.left(), yz), QPointF(r.right(), yz))
+        self._time_axis(p, r, sh)
+        # --- C. the win rate over the last 20 rounds
+        r = self.vol_r
+        self._grid(p, r, 0, 100, tr("Win rate (last 20 rounds, %)"))
+        wr = []
+        for i in range(n):
+            seg = rs[max(0, off + i - 19): off + i + 1]
+            wr.append(100 * sum(x["res"] > 0 for x in seg) / len(seg))
+        pts = [QPointF(self._xs(i, n, r), self._y(v, 0, 100, r)) for i, v in enumerate(wr)]
+        p.setPen(QPen(alpha("#FFFFFF", 0.3), 1, Qt.PenStyle.DashLine))
+        p.drawLine(QPointF(r.left(), self._y(50, 0, 100, r)), QPointF(r.right(), self._y(50, 0, 100, r)))
+        line = QPainterPath(pts[0])
+        for q in pts[1:]:
+            line.lineTo(q)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor("#FFC94D"), S(1.6), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        p.drawPath(line)
+        # --- D. each day
+        r = self.day_r
+        dm = max(1, max(abs(d["p"] - d["b"]) for d in self.days))
+        self._grid(p, r, -dm * 1.1, dm * 1.1, tr("Net coins each day"))
+        yz = self._y(0, -dm * 1.1, dm * 1.1, r)
+        nd = len(self.days)
+        bw = max(2.0, min(S(16), r.width() / nd * 0.7))
+        p.setPen(Qt.PenStyle.NoPen)
+        for i, d in enumerate(self.days):
+            cx = self._xs(i, nd, r)
+            v = d["p"] - d["b"]
+            y2 = self._y(v, -dm * 1.1, dm * 1.1, r)
+            p.setBrush(QColor(self.WIN if v > 0 else self.LOSS if v < 0 else self.EVEN))
+            p.drawRect(QRectF(cx - bw / 2, min(yz, y2), bw, max(1.2, abs(yz - y2))))
+        p.setPen(QPen(alpha("#FFFFFF", 0.4), 1))
+        p.drawLine(QPointF(r.left(), yz), QPointF(r.right(), yz))
+        p.setFont(font(8.5))
+        p.setPen(QColor(TEXT_FAINT))
+        for i in range(0, nd, max(1, nd // 5)):
+            p.drawText(QRectF(self._xs(i, nd, r) - S(24), r.bottom() + S(8), S(48), S(12)), int(Qt.AlignmentFlag.AlignHCenter),
+                       time.strftime("%d/%m", time.localtime(self.days[i]["t"])))
+        # --- the games
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QPointF(self.pad, self.leg_r.top() - S(8)), tr("Games: won, lost and even rounds"))
+        topn = max(q["n"] for q in self.games)
+        for k, q in enumerate(self.games):
+            rr = self._leg_row(k)
+            if self.hover_g == k:
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#FFFFFF", 0.07))
+                p.drawRoundedRect(rr, S(6), S(6))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(rr.left() + S(6), rr.top(), S(104), rr.height()), int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(tr(q["name"]), Qt.TextElideMode.ElideRight, S(100)))
+            bx, bwid = rr.left() + S(112), rr.right() - rr.left() - S(112) - S(92)
+            full = bwid * q["n"] / topn
+            xx = bx
+            p.setPen(Qt.PenStyle.NoPen)
+            for cnt, col in ((q["w"], self.WIN), (q["e"], self.EVEN), (q["l"], self.LOSS)):
+                wd = full * cnt / q["n"]
+                p.setBrush(QColor(col))
+                p.drawRect(QRectF(xx, rr.center().y() - S(4), wd, S(8)))
+                xx += wd
+            v = q["p"] - q["b"]
+            p.setPen(QColor(self.WIN if v > 0 else self.LOSS if v < 0 else TEXT_DIM))
+            p.setFont(font(10))
+            p.drawText(QRectF(rr.right() - S(90), rr.top(), S(90), rr.height()), int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                       f"{q['n']} · {self._k(abs(v))}" if v == 0 else f"{q['n']} · {'+' if v > 0 else '−'}{self._k(abs(v))}")
+        # --- the cross-hair and the card
+        if self.hover is not None and 0 <= self.hover < len(rs):
+            i = self.hover - off
+            x = rs[self.hover]
+            if 0 <= i < n:
+                cx = self._xs(i, n, self.pot_r)
+                p.setPen(QPen(alpha("#FFFFFF", 0.55), 1, Qt.PenStyle.DashLine))
+                for rr in (self.pot_r, self.can_r, self.vol_r):
+                    p.drawLine(QPointF(cx, rr.top() - S(6)), QPointF(cx, rr.bottom() + S(6)))
+                yv = self._y(cum[i], *self._scale(min(0, min(cum)), max(0, max(cum))), self.pot_r)
+                p.setPen(QPen(QColor("#FFFFFF"), S(1.6)))
+                p.setBrush(QColor(self._col(x["res"])))
+                p.drawEllipse(QPointF(cx, yv), S(5), S(5))
+            self._card_at(p, self._round_lines(x, cum[i] if 0 <= i < n else None, wr[i] if 0 <= i < n else None),
+                          getattr(self, "hover_pos", QPointF(w / 2, self.height() / 2)))
+        elif self.hover_day is not None:
+            d = self.days[self.hover_day]
+            cx = self._xs(self.hover_day, nd, self.day_r)
+            p.setPen(QPen(alpha("#FFFFFF", 0.55), 1, Qt.PenStyle.DashLine))
+            p.drawLine(QPointF(cx, self.day_r.top() - S(6)), QPointF(cx, self.day_r.bottom() + S(6)))
+            top3 = sorted(d["g"].items(), key=lambda kv: -kv[1])[:3]
+            v = d["p"] - d["b"]
+            lines = [(time.strftime("%d/%m/%Y", time.localtime(d["t"])), TEXT, True),
+                     (tr("Net {v}", v=self._sg(v)), self.WIN if v > 0 else self.LOSS if v < 0 else TEXT_DIM, True),
+                     (tr("{n} rounds · {w} won · {l} lost", n=d["n"], w=d["w"], l=d["l"]), TEXT, False),
+                     (tr("Bet {a} · paid {b}", a=coins_text(d["b"]), b=coins_text(d["p"])), TEXT_DIM, False),
+                     (tr("Best round {a} · worst {b}", a=self._sg(d["best"]), b=self._sg(d["worst"])), TEXT_DIM, False),
+                     (tr("Played: {g}", g=", ".join(f"{tr(k)} ×{c}" for k, c in top3)), TEXT_DIM, False)]
+            self._card_at(p, lines, getattr(self, "hover_pos", QPointF(w / 2, self.height() / 2)))
+        elif self.hover_g is not None:
+            q = self.games[self.hover_g]
+            v = q["p"] - q["b"]
+            lines = [(tr(q["name"]), TEXT, True), (tr("Net {v}", v=self._sg(v)), self.WIN if v > 0 else self.LOSS if v < 0 else TEXT_DIM, True),
+                     (tr("{n} rounds · {w} won · {l} lost · {e} even", n=q["n"], w=q["w"], l=q["l"], e=q["e"]), TEXT, False),
+                     (tr("Win rate {p}%", p=f"{100 * q['w'] / q['n']:.1f}"), TEXT, False),
+                     (tr("Total bet {a} · paid {b}", a=coins_text(q["b"]), b=coins_text(q["p"])), TEXT_DIM, False),
+                     (tr("Average bet {v}", v=coins_text(q["b"] // q["n"])), TEXT_DIM, False),
+                     (tr("Best round {a} · worst {b}", a=self._sg(q["best"]), b=self._sg(q["worst"])), TEXT_DIM, False),
+                     (tr("Best winning streak {n}", n=q["streak"]), "#FFC94D", False)]
+            self._card_at(p, lines, getattr(self, "hover_pos", QPointF(w / 2, self.height() / 2)))
+        p.end()
+
+    def _round_lines(self, x: dict, cum, wr) -> list:
+        day = self._day(x["t"])
+        same = [y for y in self.rs if self._day(y["t"]) == day]
+        dn = sum(y["net"] for y in same)
+        word = tr("WIN") if x["res"] > 0 else tr("LOSS") if x["res"] < 0 else tr("EVEN")
+        out = [(f"{tr(x['gl'])} · {word}", self._col(x["res"]), True), (self._when(x["t"]), TEXT_DIM, False),
+               (tr("Bet {a} → paid {b}", a=coins_text(x["b"]), b=coins_text(x["p"])), TEXT, False),
+               (tr("Net {v}", v=self._sg(x["net"])), self._col(x["res"]), True)]
+        if x["b"] > 0 and x["p"] > 0:
+            out.append((tr("Multiplier ×{m}", m=f"{x['p'] / x['b']:.2f}"), "#FFD34D", False))
+        if cum is not None:
+            out.append((tr("Running net {v}", v=self._sg(int(cum))), TEXT_DIM, False))
+            out.append((tr("Win rate then {p}%", p=f"{wr:.0f}"), TEXT_DIM, False))
+        out.append((tr("That day: {n} rounds · net {v}", n=len(same), v=self._sg(dn)), TEXT_DIM, False))
+        return out
+
+
+def add_play_history(page, lay, name: str) -> None:
+    """6.6: the graph at the top of a player's stats (yourself, or a friend)."""
+    ctx = page.ctx
+    key = (name or "").lower()
+    cache = getattr(ctx, "play_hist", None) or {}
+    view = PlayHistory(ctx, page.W, (cache.get(key) or (0, []))[1])
+    state = {"n": len(view.rs)}
+
+    def fresh() -> None:
+        try:
+            rounds = (getattr(ctx, "play_hist", None) or {}).get(key, (0, []))[1]
+            view.set_data(rounds)
+            state["n"] = len(view.rs)
+        except RuntimeError:
+            pass
+
+    def tick() -> None:
+        at = (getattr(ctx, "play_hist", None) or {}).get(key, (0, []))[0]
+        if time.time() - at > 30:
+            load_play_history(ctx, name, fresh)
+    lay.addWidget(view)
+    lay.addWidget(_Poll(10000, tick))
 
 
 def build_horses(page, lay) -> None:
