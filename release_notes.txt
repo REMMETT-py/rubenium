@@ -1,5 +1,12 @@
-Rubenium 6.2.8
+Rubenium 6.3
 
-- The pawn shop allows 10 exchanges an hour, not 5
+- NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's
+- Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway
+- Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)
+- Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5
+- A coloured app font now colours the app's text too
+- Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)
+- Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar
+- Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

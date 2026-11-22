@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.2.8"         # the version people see
-BUILD = "2026.11.22.8"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.3"         # the version people see
+BUILD = "2026.11.22.9"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -1551,6 +1551,7 @@ BG_BOTTOM = "#101415"
 SURFACE = "#1A1F20"
 SURFACE_HI = "#282828"
 TEXT = "#FFFFFF"
+TEXT0 = TEXT                          # 6.3: the normal text colour (a coloured app font changes TEXT)
 TEXT_DIM = "#B3B3B3"
 TEXT_FAINT = "#7C8385"
 PLACEHOLDER = "#575757"
@@ -1664,6 +1665,8 @@ class Sfx:
         "cup": ("thud", (150.0, 0.16, 0.070)),
         "putt": ("tap", (980.0, 0.09, 0.070)),
         "lose": ("rumble", (0.38, 0.065)),
+        "gun": ("bang", (0.55, 0.11)),                 # 6.3: the starting pistol of the horse race
+        "beep": ("tone", (880.0, 880.0, 0.12, 0.050)),  # 6.3: 3, 2, 1
     }
 
     # little tunes, note by note (Hz, start s, length s); still soft and short
@@ -1861,6 +1864,18 @@ class Sfx:
             buf = [math.sin(2 * math.pi * f * i / R) * math.exp(-i / R * 30) + 2.5 * nz[i] * math.exp(-i / R * 90)
                    for i in range(n)]
             return fade(buf, 10), g
+        if kind == "bang":                   # 6.3: a pistol shot: a hard crack of noise, a low thump, a short echo
+            ln, g = a
+            n = int(R * ln)
+            src = noise(n)
+            crack = reson(src, 2400, 1.2)
+            body = reson(src, 140, 2.5)
+            buf = []
+            for i in range(n):
+                t = i / R
+                echo = 0.35 * crack[i - int(0.09 * R)] * math.exp(-(t - 0.09) * 40) if t > 0.09 else 0.0
+                buf.append(4.0 * crack[i] * math.exp(-t * 70) + 6.0 * body[i] * math.exp(-t * 18) + echo)
+            return fade(buf, 40), g
         # rumble: a soft low fall for a loss
         ln, g = a
         n = int(R * ln)
@@ -2909,6 +2924,8 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
           "rb_too_soon": "Not ready yet", "rb_game_locked": "This game is paused on your account while it is checked", "rb_bad_bet": "This bet is too high or too low",
           "rb_pawn_no_deal": "He never agreed to that price: ask him again",
+          "rb_race_closed": "The bets for this race are closed", "rb_race_taken": "Someone just took this horse: pick another",
+          "rb_race_in": "You already have a horse in this race",
           "rb_pawn_limit": "10 proposals an hour at the pawn shop: wait a little",
           "rb_pawn_nothing": "He has nothing to offer for that right now",
           "rb_roulette_opposite": "Red and Black (or Low and High) can't both be picked", "rb_not_your_turn": "Wait for your turn",
@@ -3091,13 +3108,13 @@ class Econ(QObject):
         return self.looks.get(name) or {}
 
     def bet_cap(self, coins: int) -> int:
-        """4.5: the biggest casino bet (the server's rb_bet_cap): 1 000, or 5% of your coins, up to 5 000."""
+        """6.3: the biggest casino bet (the server's rb_bet_cap): half of your coins (round tens), at least 1 000."""
         def c(k, d):
             try:
                 return float(self.cfg.get(k, d) or d)
             except (TypeError, ValueError, AttributeError):
                 return d
-        base, rich, pct = int(c("bet_max", 1000)), int(c("bet_max_rich", 5000)), c("bet_rich_pct", 5)
+        base, rich, pct = int(c("bet_max", 1000)), int(c("bet_max_rich", 2000000000)), c("bet_rich_pct", 50)
         return max(base, min(rich, int(coins * pct / 100) // 10 * 10))
 
     def streak_bonus(self) -> int:
@@ -6754,7 +6771,7 @@ FR.update({'LOWER': 'PLUS BAS', 'HIGHER': 'PLUS HAUT', 'or the same': 'ou pareil
 
 FR.update({'Click up to 6 picks: your bet goes on each one. Red or Black, Low or High: never both. Then spin.': 'Clique jusqu’à 6 choix : ta mise va sur chacun. Rouge ou Noir, Bas ou Haut : jamais les deux. Puis lance.', 'More picks = more chances to win something, but more coins on the table.': 'Plus de choix = plus de chances de gagner quelque chose, mais plus de pièces en jeu.', 'One number: ×24, 4% chance. Gold: ×25, 4% chance.': 'Un numéro : ×24, 4 % de chance. Or : ×25, 4 % de chance.'})
 
-FR.update({'NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5': 'NOUVEAU : le jeu des gobelets. Une pièce Rubenium passe sous un gobelet, ils se mélangent, retrouve la pièce. Facile (3) ×1,4, Moyen (6) ×2,2, Difficile (9) ×3,3, Expert (9, très rapide) ×5', 'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25': 'Roulette : choisis autant de paris que tu veux en un tour (ta mise va sur chacun), vois ta chance de gagner. L’or paie maintenant ×25', 'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each': 'Plus ou moins est plus clair : deux grands choix PLUS HAUT / PLUS BAS à côté de la carte, avec la chance et le multiplicateur', 'No more daily coin limit in mini games, and up to 16 keys a day from games': 'Plus de limite de pièces par jour dans les mini-jeux, et jusqu’à 16 clés par jour grâce aux jeux', "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)": 'Jackpot : tu peux réduire Rubenium pendant que tu y participes (sans pouvoir ouvrir d’autres onglets)', 'Cups': 'Gobelets', 'Cup Game': 'Jeu des gobelets', 'Watch the coin, follow its cup, then click it.': 'Regarde la pièce, suis son gobelet, puis clique dessus.', 'Watch the coin…': 'Regarde la pièce…', 'Follow the cup!': 'Suis le gobelet !', 'Which cup hides the coin?': 'Quel gobelet cache la pièce ?', 'Found it!': 'Trouvée !', 'It was here': 'Elle était ici', 'Your pick': 'Ton choix', 'Click the cup with the coin': 'Clique sur le gobelet avec la pièce', 'Play  ·  {m} cups': 'Jouer  ·  {m} gobelets', 'Easy': 'Facile', 'Medium': 'Moyen', 'Hard': 'Difficile', 'Expert': 'Expert', 'Daily Cup Game limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte aux gobelets : une victoire rend ta mise jusqu’à minuit', 'A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.': 'Une pièce Rubenium tombe sur la table et les gobelets la recouvrent. Puis ils se mélangent.', 'Follow the cup with the coin and click it when they stop.': 'Suis le gobelet avec la pièce et clique dessus quand ils s’arrêtent.', 'Watch only the cup with the coin, never the others.': 'Regarde seulement le gobelet avec la pièce, jamais les autres.', 'Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves.': 'Facile : 3 gobelets, lent. Moyen : 6. Difficile : 9. Expert : 9 gobelets, très rapide et beaucoup plus de mouvements.', 'Easy ×1.4 · Medium ×2.2 · Hard ×3.3 · Expert ×5.': 'Facile ×1,4 · Moyen ×2,2 · Difficile ×3,3 · Expert ×5.', 'Once you are up 6 000 coins in a day, a win gives your bet back until midnight.': 'Une fois 6 000 pièces gagnées dans la journée, une victoire rend ta mise jusqu’à minuit.', 'Click the cup with the coin.': 'Clique sur le gobelet avec la pièce.'})
+FR.update({'NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5': 'NOUVEAU : le jeu des gobelets. Une pièce Rubenium passe sous un gobelet, ils se mélangent, retrouve la pièce. Facile (3) ×1,4, Moyen (6) ×2,2, Difficile (9) ×3,3, Expert (9, très rapide) ×5', 'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25': 'Roulette : choisis autant de paris que tu veux en un tour (ta mise va sur chacun), vois ta chance de gagner. L’or paie maintenant ×25', 'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each': 'Plus ou moins est plus clair : deux grands choix PLUS HAUT / PLUS BAS à côté de la carte, avec la chance et le multiplicateur', 'No more daily coin limit in mini games, and up to 16 keys a day from games': 'Plus de limite de pièces par jour dans les mini-jeux, et jusqu’à 16 clés par jour grâce aux jeux', "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)": 'Jackpot : tu peux réduire Rubenium pendant que tu y participes (sans pouvoir ouvrir d’autres onglets)', 'Cups': 'Gobelets', 'Cup Game': 'Jeu des gobelets', 'Watch the coin, follow its cup, then click it.': 'Regarde la pièce, suis son gobelet, puis clique dessus.', 'Watch the coin…': 'Regarde la pièce…', 'Follow the cup!': 'Suis le gobelet !', 'Which cup hides the coin?': 'Quel gobelet cache la pièce ?', 'Found it!': 'Trouvée !', 'It was here': 'Elle était ici', 'Your pick': 'Ton choix', 'Click the cup with the coin': 'Clique sur le gobelet avec la pièce', 'Play  ·  {m} cups': 'Jouer  ·  {m} gobelets', 'Easy': 'Facile', 'Medium': 'Moyen', 'Hard': 'Difficile', 'Expert': 'Expert', 'Daily Cup Game limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte aux gobelets : une victoire rend ta mise jusqu’à minuit', 'A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.': 'Une pièce Rubenium tombe sur la table et les gobelets la recouvrent. Puis ils se mélangent.', 'Follow the cup with the coin and click it when they stop.': 'Suis le gobelet avec la pièce et clique dessus quand ils s’arrêtent.', 'Watch only the cup with the coin, never the others.': 'Regarde seulement le gobelet avec la pièce, jamais les autres.', 'Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves.': 'Facile : 3 gobelets, lent. Moyen : 6. Difficile : 9. Expert : 9 gobelets, très rapide et beaucoup plus de mouvements.', 'Easy ×1.2 · Medium ×2 · Hard ×3 · Expert ×5.': 'Facile ×1,2 · Moyen ×2 · Difficile ×3 · Expert ×5.', 'Once you are up 6 000 coins in a day, a win gives your bet back until midnight.': 'Une fois 6 000 pièces gagnées dans la journée, une victoire rend ta mise jusqu’à minuit.', 'Click the cup with the coin.': 'Clique sur le gobelet avec la pièce.'})
 
 FR.update({"NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back": 'NOUVEAU : Puissance 4 contre un vrai bot qui réfléchit sur notre serveur (impossible de le tromper). Facile ×1,5, Moyen ×2,2, Difficile ×4, Professionnel ×10 (il commence et voit loin). Un match nul rend ta mise', 'Connect 4': 'Puissance 4', 'Professional': 'Professionnel', 'Play  ·  {lvl}': 'Jouer  ·  {lvl}', 'Your turn: click a column': 'À toi : clique une colonne', 'Bot is thinking…': 'Le bot réfléchit…', 'Give up': 'Abandonner', 'Give up this game? You lose your bet.': 'Abandonner cette partie ? Tu perds ta mise.', 'You win!': 'Tu gagnes !', 'The bot wins': 'Le bot gagne', 'Draw: bet back': 'Nul : mise rendue', 'Line up 4 to win ×{m}': 'Aligne 4 pour gagner ×{m}', 'Your turn': 'À toi', 'Thinking': 'Il réfléchit', 'Win: {n}': 'Gain : {n}', 'Bot': 'Bot', 'You': 'Toi', 'Daily Connect 4 limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte au Puissance 4 : une victoire rend ta mise jusqu’à minuit', 'Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.': 'Lâche des jetons dans les colonnes. Aligne 4 des tiens (en ligne, en colonne ou en diagonale) avant le bot.', 'The bot really plays: it looks ahead, blocks you and attacks. On Professional it moves first.': 'Le bot joue vraiment : il anticipe, te bloque et attaque. En Professionnel il commence.', 'Take the middle column early, block every line of 3, and set up two threats at once.': 'Prends la colonne du milieu tôt, bloque chaque ligne de 3 et prépare deux menaces à la fois.', 'Easy ×1.5 · Medium ×2.2 · Hard ×4 · Professional ×10. A draw gives your bet back.': 'Facile ×1,5 · Moyen ×2,2 · Difficile ×4 · Professionnel ×10. Un nul rend ta mise.', 'Leaving a game or giving up loses the bet. Once you are up 15 000 coins in a day, a win gives your bet back.': 'Quitter ou abandonner fait perdre la mise. Une fois 15 000 pièces gagnées dans la journée, une victoire rend ta mise.', 'Drop a disc in a column': 'Lâche un jeton dans une colonne'})
 
@@ -8314,7 +8331,7 @@ class Label(QWidget):
         self._px, self._shrink = px, shrink          # shrink: smallest size a long single line may shrink to
         self._weight = weight or (QFont.Weight.Bold if bold else QFont.Weight.Normal)
         self._font = font(px, self._weight)
-        self._color = QColor(color)
+        self._color = QColor(TEXT if color == TEXT0 else color)      # 6.3: normal text takes the app font's colour
         self._align = align
         self._wrap_w = wrap_w
         self._text = ""
@@ -11630,6 +11647,7 @@ def close_app(exe: str) -> bool:
 FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match (recreate a sound). Easy, Medium and Hard, rewards by accuracy, with their own leaderboards': 'NOUVEAU : Choix de couleur (recrée une couleur de mémoire) et SFX Match (recrée un son). Facile, Moyen et Difficile, gains selon la précision, avec leurs propres classements', 'A big 30 second countdown on every move in Connect 4 and the Cup Game: when it runs out you lose the round': 'Un grand compte à rebours de 30 secondes à chaque coup au Puissance 4 et au jeu des gobelets : à zéro, tu perds la manche', 'Cup Game is much harder: more swaps, and faster': 'Le jeu des gobelets est bien plus dur : plus d’échanges, et plus vite', 'Cases: Mythics are listed in every case as a hidden "?" until you unlock them, and Prismatic chances show above Gold': 'Caisses : les Mythiques sont listés dans chaque caisse sous forme de « ? » caché jusqu’à leur déblocage, et les chances de Prismatique s’affichent au-dessus d’Or', 'Much rarer odds: Mythic 1 / 100 000 in the Top Tier Case and 1 / 250 000 to 1 / 500 000 in the others. Shiny, Titanium and Gold are far rarer too, Painted is the common finish': 'Chances bien plus rares : Mythique 1 / 100 000 dans la caisse Haut de gamme et 1 / 250 000 à 1 / 500 000 dans les autres. Brillant, Titane et Or sont bien plus rares aussi, Peint est la finition courante', 'Updates no longer pop Rubenium open: after an automatic update it slides to the top right as the ball and waits. Open it to see what is new': 'Les mises à jour n’ouvrent plus Rubenium : après une mise à jour automatique, il glisse en haut à droite sous forme de bulle et attend. Ouvre-le pour voir les nouveautés', 'Colour Pick': 'Choix de couleur', 'Previews': 'Essais', 'SFX Match': 'SFX Match', 'Submit': 'Valider', 'Sine': 'Sinus', 'Triangle': 'Triangle', 'Saw': 'Dent de scie', 'Square': 'Carré', 'Pluck': 'Pincé', 'Beep': 'Bip', 'Swell': 'Crescendo', 'Accuracy': 'Précision', 'Colour distance {n}': 'Écart de couleur {n}', 'Daily limit reached: wins give your bet back until midnight': 'Limite du jour atteinte : une victoire rend ta mise jusqu’à minuit', 'Duration': 'Durée', 'Glide': 'Glissando', 'Hear original': 'Écouter l’original', 'Hear yours': 'Écouter le tien', 'Hue': 'Teinte', 'Saturation': 'Saturation', 'Listen closely, then recreate the sound.': 'Écoute bien, puis recrée le son.', 'Listen!': 'Écoute !', 'Listen: {a} s · Answer: {b} s': 'Écoute : {a} s · Réponse : {b} s', 'Look: {a} s · Answer: {b} s': 'Regarde : {a} s · Réponse : {b} s', 'Memorise the colour, then recreate it.': 'Mémorise la couleur, puis recrée-la.', 'Memorise this colour!': 'Mémorise cette couleur !', 'No previews left': 'Plus d’écoutes d’essai', 'Original': 'Original', 'Pitch': 'Hauteur', 'Play sound · {n} left': 'Jouer le son · {n} restantes', 'Plays left: {n}': 'Écoutes restantes : {n}', 'Preview · {n} left': 'Essai · {n} restants', 'Previews left: {n}': 'Essais restants : {n}', 'Recreate the colour': 'Recrée la couleur', 'Recreate the sound': 'Recrée le son', 'The original is gone: you were disconnected': 'L’original a disparu : tu as été déconnecté', 'Time is up!': 'Temps écoulé !', 'Time is up: you lose the game': 'Temps écoulé : tu perds la partie', 'Tone': 'Timbre', 'Wobble': 'Vibrato', 'A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.': 'Une couleur s’affiche quelques secondes, puis disparaît. Recrée-la de mémoire avec les curseurs Teinte, Saturation et Luminosité, puis valide.', 'A short sound plays, then it is gone. Recreate it with the sliders: pitch, duration and tone, and on harder levels glide, shape and wobble.': 'Un court son est joué, puis il disparaît. Recrée-le avec les curseurs : hauteur, durée et timbre, et aux niveaux difficiles glissando, forme et vibrato.', 'After the round you hear both sounds and see how close each setting was.': 'Après la manche, tu entends les deux sons et vois la précision de chaque réglage.', 'Easy shows it for 6 s and gives 45 s, Medium 4 s and 35 s, Hard shows a muted colour for only 2.5 s and gives 25 s.': 'Facile l’affiche 6 s et laisse 45 s, Moyen 4 s et 35 s, Difficile montre une couleur terne seulement 2,5 s et laisse 25 s.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy. Low accuracy gives back part of your bet or nothing.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision. Une faible précision rend une partie de la mise ou rien.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision.', 'Easy: 10 s to listen, 60 s to answer. Medium: 7 s and 45 s. Hard: 5 s and 30 s, with 2 listens and 4 previews.': 'Facile : 10 s pour écouter, 60 s pour répondre. Moyen : 7 s et 45 s. Difficile : 5 s et 30 s, avec 2 écoutes et 4 essais.', 'Find the pitch first, then the length, then the tone: sine is soft, square is buzzy, saw is sharp.': 'Trouve d’abord la hauteur, puis la durée, puis le timbre : le sinus est doux, le carré bourdonne, la dent de scie est vive.', 'Once you are up 12 000 coins in a day, a win gives your bet back.': 'Une fois 12 000 pièces gagnées dans la journée, une victoire rend ta mise.', 'Remember the hue first, then how pale or dark it was. Move the sliders one at a time.': 'Retiens d’abord la teinte, puis si elle était pâle ou sombre. Bouge les curseurs un par un.', 'The colour is shown once and the clock is kept by the server: a late answer scores nothing.': 'La couleur n’est montrée qu’une fois et le serveur garde le chrono : une réponse tardive ne rapporte rien.', 'You can listen to the original a few times while it is available, and to your own sound a limited number of times before you submit.': 'Tu peux écouter l’original quelques fois tant qu’il est disponible, et ton propre son un nombre limité de fois avant de valider.', 'Your accuracy is measured the way the eye sees colour (CIEDE2000): close counts, exact is best.': 'Ta précision est mesurée comme l’œil voit les couleurs (CIEDE2000) : proche compte, exact est le mieux.'})      # 6.2
 FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'Preview': 'Essai', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
 FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
+FR.update({'Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run.': 'Les paris ferment 2 minutes après l’arrivée du premier joueur. Puis les bots prennent les chevaux libres, 3, 2, 1, le coup de feu, et ils partent.', 'Chance to win = your bet ÷ all the money on the horses.': 'Chance de gagner = ta mise ÷ tout l’argent misé sur les chevaux.', 'Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start.': 'Les chevaux à l’arrière de la file partent en premier, pour qu’ils passent tous la ligne de départ ensemble : personne n’a d’avance.', 'Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Pendant 2 minutes tu peux mettre 1 à 3 objets (5 joueurs au plus).', 'Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.': 'Le Jackpot et la Course de chevaux alternent : chacun ouvre 15 minutes après la fin de l’autre.', 'Nobody joins? The bots race on their own and the next event comes 15 minutes later.': 'Personne ne rejoint ? Les bots courent seuls et l’événement suivant arrive 15 minutes plus tard.', 'Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).': 'Choisis un cheval libre sur le tableau et mise des pièces dessus (un cheval chacun, 5 chevaux).', "The more you bet, the better your horse's chance, but the more you can lose.": 'Plus tu mises, plus ton cheval a de chances, mais plus tu peux perdre.', "The winner gets their bet back plus 80% of everybody else's bets (bots' too).": 'Le gagnant récupère sa mise plus 80 % des mises de tous les autres (bots compris).', 'Bet {n} coins on this round? That is {p}% of your coins.': 'Miser {n} pièces sur cette manche ? C’est {p} % de tes pièces.', 'Careful: you could lose a big part of your coins.': 'Attention : tu pourrais perdre une grosse partie de tes pièces.', 'Bet it': 'Miser', 'FINISH': 'ARRIVÉE', 'BETS CLOSE IN {t}': 'PARIS FERMÉS DANS {t}', 'Pick a horse and bet. Bots take the empty horses at 0:00.': 'Choisis un cheval et mise. Les bots prennent les chevaux libres à 0:00.', 'The clock restarts at 2:00 when the first player joins': 'Le chrono repart à 2:00 quand le premier joueur rejoint', 'BOTS TAKE THE EMPTY HORSES': 'LES BOTS PRENNENT LES CHEVAUX LIBRES', 'Get ready…': 'Préparez-vous…', 'GO!': 'PARTEZ !', 'YOU WON {n}!': 'TU AS GAGNÉ {n} !', 'YOU WON!': 'TU AS GAGNÉ !', '#{n} {name} WINS': 'N°{n} {name} GAGNE', 'Ridden for {who}': 'Monté pour {who}', 'Desert': 'Désert', 'Forest': 'Forêt', 'Snow': 'Neige', 'RACE BOARD': 'TABLEAU DES COURSES', '{n} on the horses': '{n} misés sur les chevaux', 'Free: click to pick': 'Libre : clique pour choisir', 'Free': 'Libre', 'Your pick': 'Ton choix', 'HORSE RACING': 'COURSE DE CHEVAUX', 'Horse Racing': 'Course de chevaux', 'OPEN · bets close in {t}': 'OUVERT · paris fermés dans {t}', "They're racing: watch it": 'Ils courent : regarde', 'Next race in {t}': 'Prochaine course dans {t}', '5 horses, bet on one': '5 chevaux, mise sur un', 'Horse Racing is paused for a moment. Nothing you own is lost.': 'La Course de chevaux est en pause un moment. Tu ne perds rien.', 'The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.': 'La prochaine course ouvre dans environ {t}. Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart.', 'Last race': 'Dernière course', 'Every horse is taken. Watch the race!': 'Tous les chevaux sont pris. Regarde la course !', 'You need at least {n} to bet.': 'Il te faut au moins {n} pour miser.', 'Bet on this horse': 'Miser sur ce cheval', 'Click a free horse on the board': 'Clique un cheval libre sur le tableau', 'Too late: the bets are closed': 'Trop tard : les paris sont fermés', '#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)': 'N°{n} : {p} de chances · s’il gagne tu reçois {w} (ta mise + {s} % des autres)', 'Bet {n} coins on #{h} {name}? That is {p}% of your coins.': 'Miser {n} pièces sur le n°{h} {name} ? C’est {p} % de tes pièces.', "You're on #{n} {name}. Good luck!": 'Tu es sur le n°{n} {name}. Bonne chance !', "Your chance to win is your share of all the money on the horses. The winner gets their bet back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.": 'Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. Le gagnant récupère sa mise plus {s} % de celles des autres. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.', 'HORSE RACE IS OPEN': 'LA COURSE DE CHEVAUX EST OUVERTE', 'Bets close in about {t}. Bet in Games > Horse Racing': 'Les paris ferment dans environ {t}. Mise dans Jeux > Course de chevaux', 'Red Rocket': 'Fusée Rouge', 'Blue Thunder': 'Tonnerre Bleu', 'Green Clover': 'Trèfle Vert', 'Golden Sun': 'Soleil d’Or', 'Purple Storm': 'Tempête Violette', 'The bets for this race are closed': 'Les paris de cette course sont fermés', 'Someone just took this horse: pick another': 'Quelqu’un vient de prendre ce cheval : choisis-en un autre', 'You already have a horse in this race': 'Tu as déjà un cheval dans cette course', 'Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.': 'Limitée (calendrier de l’Avent) : aussi bonne que la Caisse Top Tier. Toujours un badge Épique ou Légendaire, avec une chance de Mythique.', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 999 fois ta mise.', "NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's": 'NOUVEAU : Course de chevaux. 5 chevaux, choisis-en un et mise : ta chance est ta part de l’argent. Le gagnant récupère sa mise plus 80 % de celles des autres', 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Si personne ne rejoint, les bots jouent quand même', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)': 'Mises jusqu’à la moitié de tes pièces. Au-delà de 10 000, on te demande d’abord, en or (en rouge si c’est une grosse part de tes pièces)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5': 'Puissance 4 Professionnel paie ×999. Jeu des gobelets : Facile ×1,2, Moyen ×2, Difficile ×3, Expert ×5', "A coloured app font now colours the app's text too": 'Une police colorée colore maintenant aussi le texte de l’app', 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)': 'Bots du Mini Golf corrigés : plus de passage à travers les murs ni de glissade sur tout le parcours, et ils jouent chacun leur tour (tu attends leur balle)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar': 'Mini Golf et Wave Rush sont dans Gagner des pièces ; Coinflip est sous le calendrier de l’Avent', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case': 'Anciennes caisses retirées (ceux qui en avaient ont reçu leur prix en pièces). Les caisses Hiver et Cadeau sont maintenant aussi bonnes que la Caisse Top Tier'})      # 6.3
 FR.update({'The pawn shop allows 10 exchanges an hour, not 5': 'Le prêteur sur gages accepte 10 échanges par heure, pas 5'})      # 6.2.8
 FR.update({'Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works': 'Prêteur sur gages : vends plusieurs exemplaires d’un objet d’un coup, un gros compteur de 5 échanges par heure, et Refuser marche toujours', 'Exchange · {n}/10 left': 'Échange · {n}/10 restants', 'No exchanges left': 'Plus d’échange', 'No exchanges left this hour': 'Plus d’échange cette heure', 'EXCHANGES THIS HOUR': 'ÉCHANGES CETTE HEURE', 'Pawn shop: take {n} of {m}': 'Prêteur sur gages : en prendre {n} sur {m}', 'Quick sell ×{n}': 'Vente rapide ×{n}', 'All': 'Tous'})      # 6.2.7
 FR.update({"The pawn shop takes 5 offers or refusals an hour, so you can't spam refuse": 'Le prêteur sur gages accepte 5 offres ou refus par heure, donc tu ne peux pas spammer le refus', '10 proposals an hour at the pawn shop: wait a little': '10 propositions par heure chez le prêteur sur gages : attends un peu'})      # 6.2.6
@@ -11637,13 +11655,14 @@ FR.update({"Quick sell's pawn shop ban is 5 minutes instead of 30": 'Le bannisse
 FR.update({'SFX Match has a volume bar, so you can turn the sound up or down': 'SFX Match a une barre de volume pour monter ou baisser le son', 'Volume': 'Volume'})      # 6.2.4
 FR.update({'Trophies: tap one you have unlocked to see how you got it, on your profile too': 'Trophées : touche-en un débloqué pour voir comment tu l’as eu, sur ton profil aussi', 'Connect 4 payouts: Easy ×1.2, Medium ×2, Hard ×5, Professional ×250': 'Gains du Puissance 4 : Facile ×1,2, Moyen ×2, Difficile ×5, Professionnel ×250', 'Cup Game tightened: a top bet of 2 000 and a daily profit limit': 'Jeu des gobelets resserré : mise maximale de 2 000 et limite de gain par jour', 'Fair play: the games now watch for results nobody can get by playing normally, and pause that game for the player while it is checked': 'Fair-play : les jeux surveillent les résultats impossibles en jouant normalement et mettent ce jeu en pause pour le joueur le temps d’une vérification'})
 FR.update({'This game is paused on your account while it is checked': 'Ce jeu est en pause sur ton compte le temps d’une vérification'})
-FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 250 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 250 fois ta mise.', 'Easy ×1.2 · Medium ×2 · Hard ×5 · Professional ×250. A draw gives your bet back.': 'Facile ×1,2 · Moyen ×2 · Difficile ×5 · Professionnel ×250. Un nul rend ta mise.'})
+FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 999 fois ta mise.', 'Easy ×1.2 · Medium ×2 · Hard ×5 · Professional ×999. A draw gives your bet back.': 'Facile ×1,2 · Moyen ×2 · Difficile ×5 · Professionnel ×999. Un nul rend ta mise.'})
 
 # --------------------------------------------------------------------------- #
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.3", ["NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's", 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5', "A coloured app font now colours the app's text too", 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case']),
     ("6.2.8", ['The pawn shop allows 10 exchanges an hour, not 5']),
     ("6.2.7", ['Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works']),
     ("6.2.6", ["The pawn shop takes 5 offers or refusals an hour, so you can't spam refuse"]),
@@ -20835,47 +20854,34 @@ from PyQt6.QtWidgets import QWidget
 
 SHOWCASE = 3
 SLOTS = ("badge1", "badge2", "badge3")
-CASE_NAMES = {"lucky": "Coin Rush Case", "frames": "Frame Case", "cosmos": "Cosmic Case", "winter": "Winter Case",
-              "giftbox": "Gift Case", "starter": "Starter Case", "standard": "Standard Case", "gamble": "All or Nothing Case",
-              "painter": "Painter's Case", "premium": "Premium Case", "jackpot": "Jackpot Case",
-              "titan": "Titan Case", "vault": "Vault Case", "mythic": "Top Tier Case", "daily": "Daily Case",
-              "style": "Ball, Line & Font Case", "themes": "Theme Case", "profile": "Banner & Frame Case",
-              "pocket": "Pocket Case", "elite": "Elite Case", "royal": "Royal Case", "shiny": "Shiny Case",
+CASE_NAMES = {"frames": "Frame Case", "cosmos": "Cosmic Case", "winter": "Winter Case",
+              "giftbox": "Gift Case", "starter": "Starter Case", "standard": "Standard Case",
+              "painter": "Painter's Case", "premium": "Premium Case", "mythic": "Top Tier Case", "daily": "Daily Case",
+              "style": "Ball, Line & Font Case", "themes": "Theme Case", "profile": "Banner & Frame Case", "royal": "Royal Case", "shiny": "Shiny Case",
               "banners": "Banner Case", "medieval": "Medieval Case", "nature": "Nature Case",
               "ocean": "Ocean Case", "spooky": "Spooky Case", "arcade": "Arcade Case", "treasure": "Treasure Case"}
 CASE_NAMES["themes"] = "App Colour Case"                 # 5.15: its items colour the whole app (not the themed cases)            # 4.1: every one is a "Case", and no name promises what it cannot keep
-CASE_COLOURS = {"lucky": "#57E389", "frames": "#C99BFF", "cosmos": "#5B6CFF", "winter": "#9FE3FF", "giftbox": "#FF4F6D",
-                "starter": "#7FA3B8", "standard": "#4FA8FF", "gamble": "#FF5C5C", "painter": "#FF8A3D",
-                "premium": "#B36BFF", "jackpot": "#F2C14E", "titan": "#DDE6EE", "vault": "#FF5CC8", "mythic": "#35E0D0",
-                "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF",
-                "pocket": "#9AD27A", "elite": "#3DE0A0", "royal": "#E8C26A", "shiny": "#E6F2FF", "banners": "#FF6FA8",
+CASE_COLOURS = {"frames": "#C99BFF", "cosmos": "#5B6CFF", "winter": "#9FE3FF", "giftbox": "#FF4F6D",
+                "starter": "#7FA3B8", "standard": "#4FA8FF", "painter": "#FF8A3D",
+                "premium": "#B36BFF", "mythic": "#35E0D0",
+                "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF", "royal": "#E8C26A", "shiny": "#E6F2FF", "banners": "#FF6FA8",
                 "medieval": "#D9A45B", "nature": "#5BD47A", "ocean": "#2FA8FF", "spooky": "#9B5CFF",
                 "arcade": "#FF4FD8", "treasure": "#FFC94D"}
-CASE_FRONT = {"lucky": ("clover", "dice", "clover"), "frames": ("crown", "star", "crown"), "cosmos": ("planet", "comet", "saturn"),
+CASE_FRONT = {"frames": ("crown", "star", "crown"), "cosmos": ("planet", "comet", "saturn"),
               "winter": ("snowflake", "star", "snowflake"), "giftbox": ("$", "heart", "$"),
-              "starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"),
-              "gamble": ("dice", "skull", "dice"), "painter": ("feather", "quill", "drop"),
-              "premium": ("sword", "bolt", "flame"), "jackpot": ("$", "$", "$"), "titan": ("shield", "rook", "anchor"),
-              "vault": ("crown", "trophy", "comet"), "mythic": ("?", "?", "?"),
-              "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame"),
-              "pocket": ("clover", "heart", "note"), "elite": ("bolt", "crown", "comet"), "royal": ("crown", "trophy", "crown"),
+              "starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"), "painter": ("feather", "quill", "drop"),
+              "premium": ("sword", "bolt", "flame"), "mythic": ("?", "?", "?"),
+              "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame"), "royal": ("crown", "trophy", "crown"),
               "shiny": ("drop", "comet", "drop"), "banners": ("flame", "crown", "feather"),
               "medieval": ("sword", "castle", "shield"), "nature": ("flower", "tree", "butterfly"),
               "ocean": ("fish", "anchor", "wave"), "spooky": ("ghost", "skull", "eye"), "arcade": ("gamepad", "rocket", "dice"),
               "treasure": ("key", "crown", "diamond")}
 CASE_NOTES = {                    # 4.0: checked against the real odds of every case (the numbers are shown below)
-    "pocket": "The cheapest case: mostly coins, sometimes a Basic or Painted badge.",
     "starter": "The cheapest case: always a badge, mostly Common, Basic or Painted.",
-    "lucky": "Mostly coins back, Basic and Painted badges, and a small Shiny chance.",
     "standard": "Always a badge, mostly Common, with a small chance of Rare or better, and of Shiny or Gold.",
     "premium": "Always a badge of any rarity, with better odds than the Standard Case, up to Shiny, Titanium and Gold.",
-    "jackpot": "Coins only, never a badge. Most opens pay less than the price; a few pay up to 32 times it.",
-    "titan": "Every finish, Titanium and Gold included, up to Epic Gold.",
-    "elite": "Every rarity in every finish, Epic Gold included.",
     "royal": "Always an Epic or Legendary badge, never Basic, with the best Gold and Mythic odds.",
-    "gamble": "High risk: mostly a few coins, otherwise Rare or Special, up to Titanium and Gold.",
     "painter": "Always a badge, never Basic: Painted, Shiny, Titanium or Gold.",
-    "vault": "No Common badges: Rare to Epic in every finish.",
     "cosmos": "Always a space badge: moons, suns, stars, comets, planets, rockets and aliens. A real chance of a Mythic.",
     "medieval": "Always a medieval badge: swords, shields, castles, helmets, bows, crowns, goblets, scrolls. 6 found only here.",
     "nature": "Always a nature badge: flowers, trees, butterflies, cacti, mushrooms, the lotus, the rainbow. 5 found only here.",
@@ -20885,16 +20891,16 @@ CASE_NOTES = {                    # 4.0: checked against the real odds of every 
     "treasure": "Always a treasure badge: keys, crowns, diamonds, shields, swords and gold stars.",
     "shiny": "Always a badge, never Basic: mostly Painted, with a good chance of Shiny, Titanium and Gold.",
     "mythic": "The best case: always an Epic or Legendary badge, never Basic, with the best Shiny and Titanium odds.",
-    "winter": "Limited: Christmas looks you cannot buy anywhere else, or coins.",
-    "giftbox": "Limited: a present full of coins, sometimes a badge.",
+    "winter": "Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.",
+    "giftbox": "Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.",
     "style": "Balls, song lines and fonts, or coins.",
     "themes": "App colours (they change how Rubenium looks), Rare or better, or coins. Not badges.",
     "frames": "Profile frames, or coins.",
     "profile": "Banners and frames, or coins.",
     "banners": "Banners, or coins."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
-COIN_CASES = ("pocket", "starter", "standard", "premium", "jackpot", "titan", "elite", "royal", "lucky")
-HUNT_CASES = ("gamble", "painter", "vault", "shiny", "mythic")
+COIN_CASES = ("starter", "standard", "premium", "royal")
+HUNT_CASES = ("painter", "shiny", "mythic")
 THEME_CASES = ("nature", "ocean", "spooky", "treasure", "arcade", "medieval", "cosmos")
 STYLE_CASES = ("style", "themes", "banners", "profile", "frames")
 
@@ -26875,7 +26881,7 @@ class BigCard(QWidget):
             p.drawText(r.adjusted(0, S(8), -S(12), 0), int(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight), self.extra)
 
 
-MINI_GAME_COUNT = 5                                   # 5.0: Beat Tap, Parking, Memory, Block Blast, Minesweeper
+MINI_GAME_COUNT = 7                                   # 6.3: + Mini Golf and Wave Rush
 
 
 def build_minigames(page, lay) -> None:
@@ -26899,6 +26905,8 @@ def build_minigames(page, lay) -> None:
         card = BigCard(tr(name), sub, icon, cols, go, 78)
         card.extra = tr("{n} coins", n=pay)
         lay.addWidget(card)
+    lay.addWidget(DuelTile(page, "golf"))                   # 6.3: Mini Golf and Wave Rush live here now
+    lay.addWidget(DuelTile(page, "wave"))
 
 
 # ==================================================================================================
@@ -28043,19 +28051,31 @@ def bot_golf_shot(h: dict, start, seed: str, must_hole: bool):
                 ins.append((0.0, True, frames, (x, y)))
         if ins:
             got = (ins[0][2], h["cup"], True)
-        else:                                            # none found: roll to the edge, then a short tap in
+        else:
+            # 6.3: none found: the best real shot, then real putts (same physics, so never through a wall), with a short
+            # stop between them. It used to creep around the course in one long slide.
             bot_golf_shot.fallbacks = getattr(bot_golf_shot, "fallbacks", 0) + 1
             best = min(tries, key=lambda t: t[0])
             fr = list(best[2])
-            ex, ey = best[3]
-            for _k in range(400):                        # then it rolls on around the walls into the cup
-                if math.hypot(cx - ex, cy - ey) < 0.008:
+            pos, holed_ = best[3], False
+            for _j in range(12):
+                d = math.hypot(cx - pos[0], cy - pos[1])
+                dr = math.atan2(cy - pos[1], cx - pos[0])
+                opts = []
+                for q in range(48):
+                    if q < 18:
+                        ang, pw = dr + rnd.gauss(0, 0.07), max(0.02, min(1.0, (d + rnd.uniform(0.0, 0.08)) / GOLF_DMAX))
+                    else:
+                        ang, pw = rnd.uniform(-math.pi, math.pi), rnd.uniform(0.05, 0.8)
+                    f2, x, y, hol = simulate(h, pos[0], pos[1], ang, pw)
+                    opts.append((0.0 if hol else far(x, y), hol, f2, (x, y)))
+                o = min(opts, key=lambda t: t[0])
+                fr += [fr[-1]] * 20 + list(o[2])
+                pos, holed_ = o[3], o[1]
+                if holed_:
                     break
-                cands = [(ex + math.cos(a) * 0.005, ey + math.sin(a) * 0.005) for a in
-                         (math.tau * q / 24 for q in range(24))]
-                ex, ey = min(cands, key=lambda c: far(*c) + 0.3 * math.hypot(cx - c[0], cy - c[1]))
-                fr.append((ex, ey))
-            fr.append((cx, cy))
+            if not holed_:
+                fr += [fr[-1]] * 20 + [(cx, cy)]
             got = (fr, h["cup"], True)
     else:
         outs = sorted((t for t in tries if not t[1] and t[0] < here), key=lambda t: t[0]) or \
@@ -28097,6 +28117,7 @@ class GolfPartyView(QWidget):
         self.seen: dict = {}
         self.bot_seen: dict = {}
         self.bot_aims: dict = {}
+        self.bot_queue: list = []            # 6.3: bot shots are shown one after the other, in the order they were played
         self.aim = None
         self.sending = False
         self._asking = False
@@ -28156,6 +28177,8 @@ class GolfPartyView(QWidget):
         if self._hole_was is not None and self._hole_was != g.get("hole") and g.get("state") == "live":
             self._banner, self._banner_at = tr("Hole {n} of {t}", n=g.get("hole"), t=g.get("n_holes")), time.monotonic()
             self.anims.clear()
+            self.bot_queue.clear()
+            self.bot_aims.clear()
             sfx.play("on")
         self._hole_was = g.get("hole")
         if g.get("turn") != self._turn_was:
@@ -28166,7 +28189,7 @@ class GolfPartyView(QWidget):
         h = self.hole()
         for s in g.get("seats") or []:
             k = s.get("seat")
-            if k in self.anims or k in self.bot_aims:
+            if k in self.anims or k in self.bot_aims or any(q[0] == k for q in self.bot_queue):
                 continue
             if s.get("bot"):                              # 5.10: a bot really shoots, and you see its ball roll
                 n, holed = int(s.get("now") or 0), bool(s.get("in"))
@@ -28180,9 +28203,9 @@ class GolfPartyView(QWidget):
                     tgt = next((fr for fr in frames if math.hypot(fr[0] - start[0], fr[1] - start[1]) > 0.02), frames[-1])
                     ang = math.atan2(tgt[1] - start[1], tgt[0] - start[0])
                     far = math.hypot(frames[-1][0] - start[0], frames[-1][1] - start[1])
-                    self.bot_aims[k] = (start, ang, min(1.0, 0.25 + far / GOLF_DMAX), time.monotonic())
-                    self.balls[k] = start
-                    QTimer.singleShot(900, lambda k=k, frames=frames: self._bot_roll(k, frames))   # 5.15: you see it aim first
+                    self.bot_queue.append((k, start, ang, min(1.0, 0.25 + far / GOLF_DMAX), frames))
+                    if k not in self.balls:
+                        self.balls[k] = start
                 elif holed:
                     self.balls[k] = None
                 else:
@@ -28205,12 +28228,23 @@ class GolfPartyView(QWidget):
                 self.balls[k] = party_tee(h, k)
         if g.get("state") == "done" and old == "live":
             sfx.tune("levelup") if int(self.seat(self.me()).get("paid") or 0) else sfx.play("off")
+        self._pump()
         self.update()
+
+    def _pump(self) -> None:
+        """6.3: start the next bot shot once nothing else is moving (it aims for 0.9 s, then rolls)."""
+        if self.anims or self.bot_aims or not self.bot_queue:
+            return
+        k, start, ang, pw, frames = self.bot_queue.pop(0)
+        self.bot_aims[k] = (start, ang, pw, time.monotonic())
+        self.balls[k] = start
+        QTimer.singleShot(900, lambda k=k, frames=frames: self._bot_roll(k, frames))   # 5.15: you see it aim first
 
     def my_turn(self) -> bool:
         me = self.me()
         return (self.g.get("state") == "live" and me is not None and self.g.get("turn") == me
-                and not self.seat(me).get("in") and not self.sending and not self.anims and self.balls.get(me) is not None)
+                and not self.seat(me).get("in") and not self.sending and not self.anims and not self.bot_aims
+                and not self.bot_queue and self.balls.get(me) is not None)
 
     def field(self) -> QRectF:
         return QRectF(0, self.head_h, self.width(), self.width() * FIELD_H)
@@ -28287,6 +28321,7 @@ class GolfPartyView(QWidget):
                 if inside:
                     sfx.play("on")
                 QTimer.singleShot(50, lambda: self.set_state(self.g))
+                QTimer.singleShot(60, self._pump)
             else:
                 self.anims[k][1] = i
                 self.balls[k] = frames[i]
@@ -28297,6 +28332,8 @@ class GolfPartyView(QWidget):
 
     def _bot_roll(self, k, frames: list) -> None:
         try:
+            if k not in self.bot_aims:                   # 6.3: the hole changed meanwhile
+                return
             self.bot_aims.pop(k, None)
             self.anims[k] = [frames, 0]
             sfx.play("putt")
@@ -28964,7 +29001,7 @@ def build_golf(page, lay) -> None:
             ctx.golf_solo_id = None
             ctx.golf_lobby = None
             return ctx.reload_page("games")
-        page.open_sub(None)
+        page.open_sub("minigames")              # 6.3: back to Earn coins
     back.clicked.connect(leave_screen)
     top.addWidget(back)
     top.addWidget(Label(tr("Mini Golf"), 16, bold=True), 1)
@@ -29215,6 +29252,20 @@ class Game(QWidget):
             return False
         if bet <= 0 or bet > self.econ.coins:
             self.ctx.toast(tr("Not enough coins"), "warn")
+            return False
+        if bet > BIG_BET and getattr(self.ctx, "big_bet_ok", 0) != bet and hasattr(self.ctx, "confirm"):
+            # 6.3: a big stake is asked once (again whenever the amount changes)
+            again = getattr(self, sys._getframe(1).f_code.co_name, None)
+            pct = bet * 100 / max(1, self.econ.coins)
+            text = tr("Bet {n} coins on this round? That is {p}% of your coins.", n=coins_text(bet), p=f"{pct:.0f}")
+            if pct >= 25:
+                text += "\n" + tr("Careful: you could lose a big part of your coins.")
+
+            def yes() -> None:
+                self.ctx.big_bet_ok = bet
+                if callable(again) and not self.busy and not self.waiting:
+                    again()
+            self.ctx.confirm(text, yes, tr("Bet it"), tr("Cancel"))
             return False
         self.stake = bet
         self.busy = True
@@ -31628,6 +31679,8 @@ class GamesPage(Page):
                 return build_flip(self, lay)
             if sub == "jackpot":                                     # 5.2
                 return build_jackpot(self, lay)
+            if sub == "horses":                                      # 6.3
+                return build_horses(self, lay)
             if sub == "advent":
                 pass
                 return build_advent(self, lay)
@@ -31652,6 +31705,7 @@ class GamesPage(Page):
             return lock_strip(self.ctx, lay, "casino", self.W)
         names = [n for k, n in (("casino", "Casino games"), ("roulette", "Roulette"), ("minigames", "Mini games"),
                                 ("golf", "Mini Golf"), ("wave", "Wave Rush"), ("coinflip", "Coinflip"), ("wheel", "Free spin"),
+                                ("horses", "Horse Racing"),
                                 ("scratch", "Scratch cards"), ("advent", "Advent calendar"), ("quests", "Quests"))
                  if ec.is_locked(k)]
         if names:
@@ -31670,6 +31724,7 @@ class GamesPage(Page):
         QuestNudge(self.ctx, quests)                          # 6.0: glows and shakes when a quest can be claimed
         lay.addWidget(top)
         lay.addWidget(JackpotCard(self))                      # 5.2: Jackpot at the top of the games
+        lay.addWidget(HorseCard(self))                        # 6.3: Horse Racing takes turns with it
         free = QWidget()                                      # 4.3: the three freebies, side by side
         fl = hbox(free, 6)
         pass
@@ -31683,6 +31738,7 @@ class GamesPage(Page):
         lay.addWidget(earn)                                  # 3.1: one long bar
         pass
         advent_card(self, lay)                               # December (and the admin): the advent calendar
+        lay.addWidget(DuelTile(self, "flip"))                # 6.3: Coinflip sits under the advent calendar
         lay.addWidget(heading(tr("Casino")))
         grid = QWidget()
         gl = QGridLayout(grid)
@@ -31692,11 +31748,6 @@ class GamesPage(Page):
         for k, (i, name) in enumerate(tiles):
             gl.addWidget(GameTile(self, i, name), k // 2, k % 2)
         lay.addWidget(grid)
-        pass
-        lay.addWidget(heading(tr("Duels")))
-        lay.addWidget(DuelTile(self, "golf"))
-        lay.addWidget(DuelTile(self, "wave"))
-        lay.addWidget(DuelTile(self, "flip"))
 
     # -- quests: small goals for coins, counted by the server
     QUESTS = {"h_rounds": "Play {n} casino rounds", "h_mini": "Play a mini game", "h_bet": "Bet {n} coins in the casino",
@@ -32061,9 +32112,17 @@ class GamesPage(Page):
 
     # -- bet
     def max_bet(self) -> int:
-        """4.5: the most you can bet: your balance, up to a limit that grows with it (the server's rb_bet_cap)."""
+        """4.5: the most you can bet: your balance, up to a limit that grows with it (the server's rb_bet_cap).
+        6.3: half of your coins; a game with its own limit (Cup Game) keeps it."""
         bal = int(self.ctx.wallet.balance())
-        return min(bal, self.ctx.econ.bet_cap(bal))
+        top = min(bal, self.ctx.econ.bet_cap(bal))
+        own = getattr(self.game, "BET_CFG", None)
+        if own:
+            try:
+                top = min(top, int(float(self.ctx.econ.cfg.get(own[0], own[1]) or own[1])))
+            except (TypeError, ValueError, AttributeError):
+                top = min(top, own[1])
+        return top
 
     def bet(self) -> int:
         """The bet, never more than you can."""
@@ -32087,9 +32146,18 @@ class GamesPage(Page):
         self.bet_slider = AmountSlider(tr("Bet"), 10, top, self.bet() or 10, coins_text, label_w=40)
         self.bet_slider.changed.connect(self._bet_set)
         self.bet_lay.addWidget(self.bet_slider, 1)
+        self._bet_warn()
 
     def _bet_set(self, v: int) -> None:
         self.ctx.casino_bet = int(v)
+        self._bet_warn()
+
+    def _bet_warn(self) -> None:
+        """6.3: a big bet shows in gold (over 10 000) and red (a quarter of your coins or more)."""
+        if self.bet_slider is None:
+            return
+        v, bal = self.bet(), max(1, int(self.ctx.wallet.balance()))
+        self.bet_slider.val.set_color(LOSE if v > BIG_BET and v * 4 >= bal else GOLD_TEXT if v > BIG_BET else TEXT)
 
     def _casino_key(self, name: str, down: bool) -> None:
         if not down or self.game is None or not self.game.isVisible() or isinstance(self.game, Daily):
@@ -38524,11 +38592,11 @@ def go(ctx, action) -> None:
         ctx.shop_tab = {"market": 4, "inventory": 5, "shop": 1, "cases": 3, "levels": 5, "notifications": 0}[key]
         if key == "levels":
             ctx.inv_tab = "levels"
-    elif key in ("golf", "flip", "advent", "minigames", "wave", "jackpot"):
+    elif key in ("golf", "flip", "advent", "minigames", "wave", "jackpot", "horses"):
         target = "games"
         ctx.casino = False
         ctx.games_sub = {"golf": "duels", "flip": "flip", "advent": "advent", "minigames": "minigames", "wave": "wave",
-                         "jackpot": "jackpot"}[key]
+                         "jackpot": "jackpot", "horses": "horses"}[key]
         if key == "wave":
             ctx.wave_mode = "duel"
     elif key == "spin":
@@ -40258,6 +40326,857 @@ def glow_jackpot(ctx) -> None:
     fx.add(2.4, paint)
 
 
+# ==================================================================================================
+# SECTION: horse racing (6.3)
+# ==================================================================================================
+HORSE_COLOURS = ["#FF4D4D", "#4FA3FF", "#3DDC84", "#FFD34D", "#C77BFF"]      # silks and saddle cloths, numbers 1 to 5
+HORSE_COATS = ["#7A4521", "#26201C", "#D8D2C8", "#B5562A", "#E0B86A"]        # bay, black, grey, chestnut, palomino
+HORSE_MANES = ["#2A160A", "#0C0A09", "#F4F1EC", "#6E2A10", "#FFF1CC"]
+HORSE_NAMES = ["Red Rocket", "Blue Thunder", "Green Clover", "Golden Sun", "Purple Storm"]
+RACE_ROLL, RACE_RUN, RACE_LEAD = 3.0, 20.0, 7.0      # the rolling start, the winner's race time, lock -> gun (s)
+RACE_GAP = 0.022                                     # the line-up: one horse behind the other (track = 1.0 long)
+RACE_VIEW = 0.30                                     # how much of the track the camera shows
+
+
+def race_now(ctx) -> float:
+    return time.time() + float(getattr(ctx, "race_offset", 0.0) or 0.0)
+
+
+def race_phase(ctx):
+    """('open', s left to bet), ('running', 0), ('done', 0) or ('closed', s until the next race)."""
+    d = getattr(ctx, "race_data", None)
+    now = race_now(ctx)
+    if isinstance(d, dict) and d.get("now") and now - float(getattr(ctx, "race_got_at", 0) or 0) < 30:
+        st = d.get("state")
+        if st == "open":
+            return "open", max(0.0, float(d.get("lock_at") or 0) - now)
+        if st == "live":
+            return "running", 0.0
+        if st == "done":
+            return "done", 0.0
+        return "closed", max(0.0, float(d.get("next_at") or 0) - now)
+    return "unknown", 0.0
+
+
+def _race_shape(d) -> tuple:
+    if not isinstance(d, dict):
+        return ()
+    return (d.get("id"), d.get("state"), len(d.get("bets") or []), d.get("mine"), bool(d.get("feature", True)))
+
+
+def load_race(ctx, then=None) -> None:
+    if getattr(ctx, "_race_asking", False):
+        return
+    ctx._race_asking = True
+
+    def got(ok: bool, data) -> None:
+        ctx._race_asking = False
+        if not ok or not isinstance(data, dict):
+            if "race" in str(data).lower() or server_missing(data):
+                ctx.race_missing = True
+            return
+        old = getattr(ctx, "race_data", None)
+        ctx.race_data = data
+        if data.get("now"):
+            ctx.race_offset = float(data["now"]) - time.time()
+            ctx.race_got_at = race_now(ctx)
+        if then:
+            then(_race_shape(old) != _race_shape(data))
+    ctx.online.ask("rb_race_state", {}, got)
+
+
+def race_plan(seed: int, winner) -> dict:
+    """The whole race from the server's seed and winner, the same on every PC: the line-up (front to back), the
+    finishing order and times, and each horse's surges and fades. Each horse runs p(u) = u + a1 sin(pi u) +
+    a2 sin(2 pi u) + a3 sin(3 pi u) (u = time / its finishing time): with |a1| pi + 2|a2| pi + 3|a3| pi < 1 it never
+    runs backwards and crosses the line exactly at its finishing time, so the winner the server drew always wins."""
+    rnd = random.Random(int(seed or 0) * 7919 + 17)
+    column = rnd.sample(range(5), 5)
+    plan = {"column": column, "fin": {}, "waves": {}, "order": []}
+    if winner is None:
+        return plan
+    w = int(winner)
+    order = [w] + rnd.sample([k for k in range(5) if k != w], 4)
+    t = RACE_RUN
+    for i, k in enumerate(order):
+        if i:
+            t += rnd.uniform(0.22, 0.95)
+        plan["fin"][k] = t
+    for k in range(5):
+        a1, a2, a3 = rnd.uniform(-0.09, 0.09), rnd.uniform(-0.045, 0.045), rnd.uniform(-0.02, 0.02)
+        room = math.pi * (abs(a1) + 2 * abs(a2) + 3 * abs(a3))
+        scale = min(1.0, 0.78 / max(room, 1e-9))
+        plan["waves"][k] = (a1 * scale, a2 * scale, a3 * scale)
+    plan["order"] = order
+    return plan
+
+
+def race_pos(plan: dict, k: int, t: float) -> tuple:
+    """(where horse k is on the track, its speed) t seconds after the gun. Before the race proper the line-up rolls
+    up from the back: the last horse goes first, then the next one, and all of them reach the start line together."""
+    ci = plan["column"].index(k)                           # 0 = the front of the line-up
+    fin = plan["fin"].get(k, RACE_RUN)
+    a1, a2, a3 = plan["waves"].get(k, (0.0, 0.0, 0.0))
+    v0 = (1 + math.pi * (a1 + 2 * a2 + 3 * a3)) / fin       # its speed when the race proper begins
+    x0 = -(ci + 1) * RACE_GAP
+    if t <= 0 or not plan["fin"]:
+        return x0, 0.0
+    if t < RACE_ROLL:
+        ts = (4 - ci) / 5 * RACE_ROLL                       # back to front
+        if t <= ts:
+            return x0, 0.0
+        T = RACE_ROLL - ts
+        s = (t - ts) / T
+        m1 = v0 * T
+        x = (2 * s ** 3 - 3 * s ** 2 + 1) * x0 + (s ** 3 - s ** 2) * m1
+        v = ((6 * s ** 2 - 6 * s) * x0 + (3 * s ** 2 - 2 * s) * m1) / T
+        return x, max(0.0, v)
+    tau = t - RACE_ROLL
+    if tau <= fin:
+        u = tau / fin
+        x = u + a1 * math.sin(math.pi * u) + a2 * math.sin(2 * math.pi * u) + a3 * math.sin(3 * math.pi * u)
+        v = (1 + math.pi * (a1 * math.cos(math.pi * u) + 2 * a2 * math.cos(2 * math.pi * u)
+                            + 3 * a3 * math.cos(3 * math.pi * u))) / fin
+        return x, v
+    vend = (1 + math.pi * (-a1 + 2 * a2 - 3 * a3)) / fin    # past the line: it slows down
+    c = 0.9
+    return 1.0 + vend * (1 - math.exp(-c * (tau - fin))) / c, vend * math.exp(-c * (tau - fin))
+
+
+def paint_horse(p: QPainter, x: float, y: float, sz: float, lane: int, phase: float, moving: float, me: bool = False) -> None:
+    """A racehorse seen from the side, running to the right: coat, mane and tail, four galloping legs, the saddle cloth
+    in its colour with its big number, and the jockey in the same silks. (x, y) = the middle of the body."""
+    coat = QColor(HORSE_COATS[lane])
+    dark = coat.darker(135)
+    mane = QColor(HORSE_MANES[lane])
+    silk = QColor(HORSE_COLOURS[lane])
+    p.save()
+    bob = math.sin(phase * 2) * sz * 0.025 * moving
+    y += bob
+    # shadow
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha("#000000", 0.22))
+    p.drawEllipse(QPointF(x, y + sz * 0.62 - bob), sz * 0.55, sz * 0.07)
+    # legs (far pair first, darker)
+    def leg(hx, hy, off, near):
+        a = math.sin(phase + off) * 0.75 * moving
+        b = (math.sin(phase + off - 1.2) * 0.6 - 0.35) * moving
+        l1, l2 = sz * 0.30, sz * 0.30
+        kx, ky = hx + math.sin(a) * l1, hy + math.cos(a) * l1
+        fx, fy = kx + math.sin(a + b) * l2, ky + math.cos(a + b) * l2
+        col = coat if near else dark
+        p.setPen(QPen(col, sz * 0.075, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        path = QPainterPath(QPointF(hx, hy))
+        path.lineTo(kx, ky)
+        path.lineTo(fx, fy)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#1A1410"))
+        p.drawEllipse(QPointF(fx, fy), sz * 0.045, sz * 0.035)
+    fx_, bx_ = x + sz * 0.30, x - sz * 0.30
+    leg(fx_ - sz * 0.04, y + sz * 0.12, 0.0, False)
+    leg(bx_ - sz * 0.04, y + sz * 0.12, math.pi * 0.85, False)
+    # tail
+    p.setPen(QPen(mane, sz * 0.07, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    tail = QPainterPath(QPointF(x - sz * 0.48, y - sz * 0.08))
+    sw = math.sin(phase * 1.0) * sz * 0.06 * moving
+    tail.cubicTo(x - sz * 0.66, y - sz * 0.04 + sw, x - sz * 0.74, y + sz * 0.10 - sw, x - sz * 0.80, y + sz * 0.22 + sw)
+    p.drawPath(tail)
+    # body
+    p.setPen(Qt.PenStyle.NoPen)
+    g = QLinearGradient(QPointF(x, y - sz * 0.22), QPointF(x, y + sz * 0.22))
+    g.setColorAt(0, coat.lighter(118))
+    g.setColorAt(1, dark)
+    p.setBrush(g)
+    p.drawEllipse(QPointF(x, y), sz * 0.52, sz * 0.22)
+    # neck and head
+    neck = QPainterPath(QPointF(x + sz * 0.30, y - sz * 0.14))
+    neck.lineTo(x + sz * 0.56, y - sz * 0.50)
+    neck.lineTo(x + sz * 0.72, y - sz * 0.44)
+    neck.lineTo(x + sz * 0.50, y + sz * 0.06)
+    neck.closeSubpath()
+    p.setBrush(coat)
+    p.drawPath(neck)
+    p.save()
+    p.translate(x + sz * 0.70, y - sz * 0.42)
+    p.rotate(28)
+    p.drawRoundedRect(QRectF(-sz * 0.08, -sz * 0.09, sz * 0.32, sz * 0.17), sz * 0.08, sz * 0.08)
+    p.setBrush(QColor("#111111"))
+    p.drawEllipse(QPointF(sz * 0.03, -sz * 0.03), sz * 0.022, sz * 0.022)      # eye
+    p.restore()
+    ear = QPolygonF([QPointF(x + sz * 0.62, y - sz * 0.52), QPointF(x + sz * 0.60, y - sz * 0.64),
+                     QPointF(x + sz * 0.67, y - sz * 0.54)])
+    p.setBrush(dark)
+    p.drawPolygon(ear)
+    p.setPen(QPen(mane, sz * 0.06, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    p.drawLine(QPointF(x + sz * 0.34, y - sz * 0.20), QPointF(x + sz * 0.58, y - sz * 0.52))
+    # near legs
+    leg(fx_ + sz * 0.04, y + sz * 0.12, math.pi * 0.35, True)
+    leg(bx_ + sz * 0.04, y + sz * 0.12, math.pi * 1.2, True)
+    # saddle cloth with the number
+    p.setPen(QPen(alpha("#FFFFFF", 0.85), max(1.0, sz * 0.015)))
+    p.setBrush(silk)
+    cloth = QRectF(x - sz * 0.22, y - sz * 0.20, sz * 0.38, sz * 0.27)
+    p.drawRoundedRect(cloth, sz * 0.04, sz * 0.04)
+    p.setPen(QColor("#FFFFFF") if lane != 3 else QColor("#1A1A1A"))
+    p.setFont(font(max(6.0, sz / S(1) * 0.17), QFont.Weight.Black))
+    p.drawText(cloth, int(Qt.AlignmentFlag.AlignCenter), str(lane + 1))
+    # jockey
+    jx, jy = x + sz * 0.02, y - sz * 0.36
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(silk.darker(110))
+    body = QPainterPath(QPointF(jx - sz * 0.10, jy + sz * 0.16))
+    body.lineTo(jx + sz * 0.02, jy - sz * 0.06)
+    body.lineTo(jx + sz * 0.16, jy - sz * 0.02)
+    body.lineTo(jx + sz * 0.08, jy + sz * 0.18)
+    body.closeSubpath()
+    p.drawPath(body)
+    p.setPen(QPen(silk, sz * 0.05, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+    p.drawLine(QPointF(jx + sz * 0.10, jy), QPointF(jx + sz * 0.30, jy + sz * 0.08))       # arm to the reins
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor("#F1C9A5"))
+    p.drawEllipse(QPointF(jx + sz * 0.10, jy - sz * 0.12), sz * 0.065, sz * 0.065)
+    p.setBrush(silk)
+    p.drawChord(QRectF(jx + sz * 0.035, jy - sz * 0.20, sz * 0.13, sz * 0.13), 0, 180 * 16)    # helmet
+    if me:                                                  # your horse: a small arrow over it
+        p.setBrush(QColor("#FFFFFF"))
+        tip = QPointF(jx + sz * 0.10, jy - sz * 0.30)
+        p.drawPolygon(QPolygonF([tip, tip + QPointF(-sz * 0.07, -sz * 0.10), tip + QPointF(sz * 0.07, -sz * 0.10)]))
+    p.restore()
+
+
+RACE_SKIES = {"desert": ("#FFB46B", "#FFE6B8", "#E9B96E", "#C98F4A", "#D9A35B"),
+              "forest": ("#6FB7FF", "#CDEBFF", "#3E7A3A", "#2C5A2A", "#7A5A36"),
+              "snow": ("#9FB8D6", "#E9F2FB", "#DDE7F2", "#B9C9DB", "#F4F8FC")}
+
+
+class RaceView(QWidget):
+    """The race track: the map (desert, forest or snow) with its own sky and scenery, the five horses lined up one
+    behind the other, 3 2 1 and the gun, the rolling start, the race with its lead changes, and the finish."""
+
+    def __init__(self, page, w: int) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedSize(w, int(S(250)))
+        self.d: dict = {}
+        self.plan = None
+        self._plan_key = None
+        self._said = set()
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self._tick)
+        rnd = random.Random(5)
+        self.flakes = [(rnd.random(), rnd.random(), rnd.uniform(0.5, 1.4)) for _ in range(70)]
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def set_data(self, d: dict) -> None:
+        self.d = d or {}
+        key = (self.d.get("seed"), self.d.get("winner"))
+        if key != self._plan_key:
+            self._plan_key = key
+            self.plan = race_plan(self.d.get("seed") or 0, self.d.get("winner"))
+        self.update()
+
+    def t(self) -> float:
+        """Seconds since the gun (negative before)."""
+        if not self.d.get("start_at"):
+            return -99.0
+        return race_now(self.ctx) - float(self.d["start_at"])
+
+    def _tick(self) -> None:
+        t = self.t()
+        st = self.d.get("state")
+        if st in ("live", "done") and self.d.get("start_at"):
+            rid = self.d.get("id")
+            for n in (3, 2, 1):                              # 3, 2, 1 ...
+                if -n <= t < -n + 0.5 and (rid, n) not in self._said:
+                    self._said.add((rid, n))
+                    sfx.play("beep")
+            if 0 <= t < 0.6 and (rid, "gun") not in self._said:  # ... and the gun
+                self._said.add((rid, "gun"))
+                sfx.play("gun")
+            if t >= RACE_ROLL + RACE_RUN and (rid, "fin") not in self._said and t < RACE_ROLL + RACE_RUN + 3:
+                self._said.add((rid, "fin"))
+                mine = self.d.get("mine")
+                if mine is not None and mine == self.d.get("winner"):
+                    sfx.tune("bigwin")
+                else:
+                    sfx.tune("win")
+        self.update()
+
+    # -- drawing
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect())
+        clip = QPainterPath()
+        clip.addRoundedRect(r, S(14), S(14))
+        p.setClipPath(clip)
+        d = self.d
+        mp = d.get("map") if d.get("map") in RACE_SKIES else "forest"
+        t = self.t()
+        plan = self.plan or race_plan(0, None)
+        live = d.get("state") in ("live", "done") and plan["fin"]
+        xs = {}
+        for k in range(5):
+            xs[k] = race_pos(plan, k, t if live else -1.0)
+        lead = max(x for x, _v in xs.values())
+        cam = max(-0.17, min(1.0 + 0.12 - RACE_VIEW, lead - RACE_VIEW * 0.68))
+        self._paint_map(p, r, mp, cam, time.monotonic())
+        W = r.width()
+        top = r.top() + r.height() * 0.46
+        lane_h = (r.height() * 0.50) / 5
+
+        def X(x):
+            return r.left() + (x - cam) / RACE_VIEW * W
+        # the start and finish lines
+        for line, chk in ((0.0, False), (1.0, True)):
+            lx = X(line)
+            if -S(20) < lx < W + S(20):
+                if chk:
+                    sq = lane_h / 3
+                    for j in range(int(r.height() * 0.5 / sq) + 1):
+                        for i in range(2):
+                            p.fillRect(QRectF(lx + i * sq, top + j * sq, sq, sq),
+                                       QColor("#FFFFFF") if (i + j) % 2 == 0 else QColor("#111111"))
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(QColor("#E8C26A"))
+                    p.drawRect(QRectF(lx - S(3), top - S(46), S(4), S(46)))
+                    p.setFont(font(9, QFont.Weight.Black, 1))
+                    p.setPen(QColor("#FFFFFF"))
+                    p.drawText(QRectF(lx - S(40), top - S(62), S(80), S(14)), int(Qt.AlignmentFlag.AlignCenter), tr("FINISH"))
+                else:
+                    p.fillRect(QRectF(lx - S(1.5), top, S(3), r.height() * 0.5), alpha("#FFFFFF", 0.9))
+        # distance posts
+        for i in range(1, 10):
+            px = X(i / 10)
+            if -S(10) < px < W + S(10):
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#FFFFFF", 0.85))
+                p.drawRect(QRectF(px - S(1.5), top - S(16), S(3), S(16)))
+                p.setFont(font(7.5, QFont.Weight.Black))
+                p.setPen(alpha("#000000", 0.6))
+                p.drawText(QRectF(px - S(20), top - S(28), S(40), S(12)), int(Qt.AlignmentFlag.AlignCenter), f"{(10 - i) * 100}")
+        # horses, back lane first (depth)
+        sz = lane_h * 2.0
+        mine = d.get("mine")
+        for k in range(5):
+            x, v = xs[k]
+            hx = X(x) - sz * 0.25
+            hy = top + (k + 0.5) * lane_h - sz * 0.22
+            moving = min(1.0, v * 22) if live and t > 0 else 0.0
+            phase = (x * 150 + k * 0.7) * 2 * math.pi / 6 if moving else 0.0
+            if moving > 0.1:                                    # dust / snow spray
+                p.setPen(Qt.PenStyle.NoPen)
+                col = QColor("#FFFFFF") if mp == "snow" else QColor(RACE_SKIES[mp][4])
+                for j in range(4):
+                    k2 = (time.monotonic() * 3 + j * 0.25 + k * 0.13) % 1.0
+                    p.setBrush(alpha(col, 0.35 * (1 - k2) * moving))
+                    p.drawEllipse(QPointF(hx - sz * (0.45 + k2 * 0.6), hy + sz * 0.55 - k2 * sz * 0.15),
+                                  sz * 0.08 * (0.5 + k2), sz * 0.05 * (0.5 + k2))
+            paint_horse(p, hx, hy, sz, k, phase, moving, me=(mine == k))
+        if mp == "snow":                                        # falling snow in front
+            now = time.monotonic()
+            p.setPen(Qt.PenStyle.NoPen)
+            for fx, fy, spd in self.flakes:
+                yy = (fy + now * 0.08 * spd) % 1.0
+                xx = (fx - cam * 0.9 + math.sin(now + fy * 9) * 0.01) % 1.0
+                p.setBrush(alpha("#FFFFFF", 0.75))
+                p.drawEllipse(QPointF(r.left() + xx * W, r.top() + yy * r.height()), S(1.6) * spd, S(1.6) * spd)
+        self._paint_overlay(p, r, t, live, plan)
+
+    def _paint_map(self, p, r, mp, cam, now) -> None:
+        sky1, sky2, far, mid, track = RACE_SKIES[mp]
+        W, H = r.width(), r.height()
+        g = QLinearGradient(r.topLeft(), QPointF(r.left(), r.top() + H * 0.46))
+        g.setColorAt(0, QColor(sky1))
+        g.setColorAt(1, QColor(sky2))
+        p.fillRect(r, g)
+        if mp == "desert":                                       # a big sun
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFF4C9", 0.9))
+            p.drawEllipse(QPointF(r.left() + W * 0.78, r.top() + H * 0.14), H * 0.08, H * 0.08)
+        # far hills / dunes / mountains (slow)
+        rnd = random.Random({"desert": 1, "forest": 2, "snow": 3}[mp])
+        base = r.top() + H * 0.46
+        off = cam * W * 0.4
+        path = QPainterPath(QPointF(r.left(), base))
+        for i in range(0, 41):
+            x = r.left() + i * W / 20 - (off % (W / 20 * 20))
+            h = (math.sin(i * 0.9 + 1) * 0.5 + 0.5) * H * (0.10 if mp == "desert" else 0.16) + H * 0.04
+            if mp == "snow":
+                h = abs(((i * 0.37) % 1.0) - 0.5) * H * 0.5 + H * 0.05
+            path.lineTo(x, base - h)
+        path.lineTo(r.right(), base)
+        path.closeSubpath()
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(far))
+        p.drawPath(path)
+        if mp == "snow":                                         # snowy peaks
+            p.setBrush(alpha("#FFFFFF", 0.6))
+            p.drawPath(path.translated(0, -S(2)))
+        # middle scenery (faster): cacti, trees or snowy pines
+        step = W / 6
+        off2 = (cam * W * 1.6) % step
+        for i in range(-1, 8):
+            x = r.left() + i * step - off2
+            k = int((cam * W * 1.6) // step) + i
+            s = 0.7 + 0.5 * ((k * 37) % 7) / 7
+            y0 = base
+            if mp == "desert":
+                p.setBrush(QColor("#4E8A3E"))
+                p.drawRoundedRect(QRectF(x - S(5) * s, y0 - S(38) * s, S(10) * s, S(38) * s), S(5) * s, S(5) * s)
+                p.drawRoundedRect(QRectF(x - S(16) * s, y0 - S(28) * s, S(7) * s, S(16) * s), S(3) * s, S(3) * s)
+                p.drawRoundedRect(QRectF(x + S(9) * s, y0 - S(32) * s, S(7) * s, S(18) * s), S(3) * s, S(3) * s)
+            elif mp == "forest":
+                p.setBrush(QColor("#5A3A22"))
+                p.drawRect(QRectF(x - S(3) * s, y0 - S(18) * s, S(6) * s, S(18) * s))
+                p.setBrush(QColor(mid))
+                p.drawEllipse(QPointF(x, y0 - S(30) * s), S(18) * s, S(18) * s)
+                p.setBrush(QColor("#3F7F3A"))
+                p.drawEllipse(QPointF(x - S(8) * s, y0 - S(36) * s), S(11) * s, S(11) * s)
+            else:
+                p.setBrush(QColor("#2F5A46"))
+                tri = QPolygonF([QPointF(x, y0 - S(46) * s), QPointF(x - S(16) * s, y0), QPointF(x + S(16) * s, y0)])
+                p.drawPolygon(tri)
+                p.setBrush(alpha("#FFFFFF", 0.85))
+                cap = QPolygonF([QPointF(x, y0 - S(46) * s), QPointF(x - S(7) * s, y0 - S(26) * s), QPointF(x + S(7) * s, y0 - S(26) * s)])
+                p.drawPolygon(cap)
+        # the track
+        tr_ = QRectF(r.left(), base, W, H - (base - r.top()))
+        g2 = QLinearGradient(tr_.topLeft(), tr_.bottomLeft())
+        g2.setColorAt(0, QColor(track).lighter(108))
+        g2.setColorAt(1, QColor(track).darker(112))
+        p.fillRect(tr_, g2)
+        lane_h = (H * 0.50) / 5
+        p.setPen(QPen(alpha("#FFFFFF", 0.22 if mp != "snow" else 0.0), S(1), Qt.PenStyle.DashLine))
+        for i in range(1, 5):
+            y = base + i * lane_h
+            p.drawLine(QPointF(r.left(), y), QPointF(r.right(), y))
+        # the rails (move with the track)
+        rail = QColor("#FFFFFF") if mp != "desert" else QColor("#F4E7CF")
+        p.setPen(QPen(rail, S(2.5)))
+        p.drawLine(QPointF(r.left(), base - S(8)), QPointF(r.right(), base - S(8)))
+        p.setPen(QPen(rail, S(2)))
+        pst = W / 10
+        off3 = (cam * W / RACE_VIEW) % pst
+        for i in range(-1, 12):
+            x = r.left() + i * pst - off3
+            p.drawLine(QPointF(x, base - S(8)), QPointF(x, base))
+
+    def _paint_overlay(self, p, r, t, live, plan) -> None:
+        d = self.d
+        st = d.get("state")
+        now = race_now(self.ctx)
+
+        def banner(text, sub="", col="#FFFFFF", big=30):
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#000000", 0.45))
+            p.drawRoundedRect(QRectF(r.center().x() - S(150), r.top() + S(14), S(300), S(64) if sub else S(46)), S(12), S(12))
+            p.setPen(QColor(col))
+            p.setFont(font(big if len(text) < 6 else 15, QFont.Weight.Black, 1))
+            p.drawText(QRectF(r.left(), r.top() + S(14), r.width(), S(46)), int(Qt.AlignmentFlag.AlignCenter), text)
+            if sub:
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(9.5, QFont.Weight.Bold))
+                p.drawText(QRectF(r.left(), r.top() + S(54), r.width(), S(20)), int(Qt.AlignmentFlag.AlignCenter), sub)
+        if st == "open":
+            left = max(0.0, float(d.get("lock_at") or 0) - now)
+            humans = sum(1 for b in d.get("bets") or [] if not b.get("bot"))
+            banner(tr("BETS CLOSE IN {t}", t=jp_clock(left)),
+                   tr("Pick a horse and bet. Bots take the empty horses at 0:00.") if humans else
+                   tr("The clock restarts at 2:00 when the first player joins"), "#FFD34D", 15)
+        elif st in ("live", "done") and t < 0:
+            n = int(math.ceil(-t))
+            if n <= 3:
+                banner(str(n), "", "#FFD34D", 40)
+            else:
+                banner(tr("BOTS TAKE THE EMPTY HORSES"), tr("Get ready…"), "#FFFFFF", 15)
+        elif live and t < 1.0:
+            banner(tr("GO!"), "", "#3DDC84", 40)
+        elif live and t >= RACE_ROLL + RACE_RUN and plan["order"]:
+            w = plan["order"][0]
+            mine = d.get("mine")
+            won = mine is not None and mine == w
+            if won:
+                text = tr("YOU WON {n}!", n=coins_text(int(d.get("my_paid") or 0))) if d.get("my_paid") else tr("YOU WON!")
+            else:
+                text = tr("#{n} {name} WINS", n=w + 1, name=tr(HORSE_NAMES[w]).upper())
+            banner(text, tr("Ridden for {who}", who=next((b.get("name") for b in d.get("bets") or [] if b.get("lane") == w), "?")),
+                   "#3DDC84" if won else HORSE_COLOURS[w], 15)
+        elif live and RACE_ROLL <= t < RACE_ROLL + RACE_RUN:      # the running order, small, top left
+            xs = sorted(range(5), key=lambda k: -race_pos(plan, k, t)[0])
+            x0 = r.left() + S(10)
+            for i, k in enumerate(xs):
+                c = QPointF(x0 + i * S(22) + S(9), r.top() + S(16))
+                p.setPen(QPen(QColor("#FFFFFF"), S(1.2)))
+                p.setBrush(QColor(HORSE_COLOURS[k]))
+                p.drawEllipse(c, S(9), S(9))
+                p.setPen(QColor("#FFFFFF") if k != 3 else QColor("#1A1A1A"))
+                p.setFont(font(8.5, QFont.Weight.Black))
+                p.drawText(QRectF(c.x() - S(9), c.y() - S(9), S(18), S(18)), int(Qt.AlignmentFlag.AlignCenter), str(k + 1))
+
+
+class RaceBoard(QWidget):
+    """The big wooden board: the five horses, who rides for them, the money on each and its chance to win.
+    While bets are open, a free horse can be clicked to pick it."""
+    picked = pyqtSignal(int)
+
+    def __init__(self, page, w: int) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.d: dict = {}
+        self.sel = None
+        self.extra = 0                                       # your bet, not placed yet: its chance is shown
+        self.setFixedSize(w, int(S(54) + 5 * S(40) + S(16)))
+        self.setMouseTracking(True)
+
+    def set_data(self, d: dict) -> None:
+        self.d = d or {}
+        self.update()
+
+    def _row(self, k: int) -> QRectF:
+        return QRectF(S(14), S(54) + k * S(40), self.width() - S(28), S(36))
+
+    def _free(self, k: int) -> bool:
+        return self.d.get("state") == "open" and self.d.get("mine") is None and \
+            not any(b.get("lane") == k for b in self.d.get("bets") or [])
+
+    def mouseMoveEvent(self, e) -> None:
+        hit = any(self._row(k).contains(e.position()) and self._free(k) for k in range(5))
+        self.setCursor(Qt.CursorShape.PointingHandCursor if hit else Qt.CursorShape.ArrowCursor)
+
+    def mouseReleaseEvent(self, e) -> None:
+        for k in range(5):
+            if self._row(k).contains(e.position()) and self._free(k):
+                sfx.play("pick")
+                self.sel = k
+                self.picked.emit(k)
+                self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        # planks
+        p.setPen(QPen(QColor("#3B2412"), S(2)))
+        g = QLinearGradient(r.topLeft(), r.bottomLeft())
+        g.setColorAt(0, QColor("#8A5A30"))
+        g.setColorAt(1, QColor("#6A4122"))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(10), S(10))
+        ph = r.height() / 7
+        rnd = random.Random(3)
+        for i in range(1, 7):
+            y = r.top() + i * ph
+            p.setPen(QPen(alpha("#2A170A", 0.55), S(1.4)))
+            p.drawLine(QPointF(r.left() + S(4), y), QPointF(r.right() - S(4), y))
+            p.setPen(QPen(alpha("#C08A55", 0.25), S(1)))
+            for _j in range(3):                                # wood grain
+                gy = y - ph * rnd.uniform(0.2, 0.8)
+                gx = r.left() + rnd.uniform(0, r.width() * 0.7)
+                p.drawLine(QPointF(gx, gy), QPointF(gx + rnd.uniform(S(30), S(120)), gy + rnd.uniform(-1, 1)))
+        for cx in (r.left() + S(10), r.right() - S(10)):       # nails
+            for cy in (r.top() + S(10), r.bottom() - S(10)):
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#C9C2B8"))
+                p.drawEllipse(QPointF(cx, cy), S(3), S(3))
+        d = self.d
+        mp = {"desert": tr("Desert"), "forest": tr("Forest"), "snow": tr("Snow")}.get(d.get("map"), "")
+        p.setPen(QColor("#FFE7B0"))
+        p.setFont(font(15, QFont.Weight.Black, 2))
+        p.drawText(QRectF(r.left(), r.top() + S(8), r.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter), tr("RACE BOARD"))
+        p.setFont(font(9, QFont.Weight.Bold))
+        p.setPen(alpha("#FFE7B0", 0.8))
+        total = int(d.get("total") or 0)
+        bets = {int(b.get("lane")): b for b in d.get("bets") or []}
+        extra = self.extra if self.sel is not None and self.sel not in bets else 0
+        pot = total + extra
+        p.drawText(QRectF(r.left(), r.top() + S(32), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                   (mp + " · " if mp else "") + tr("{n} on the horses", n=coins_text(pot)))
+        winner = d.get("winner") if d.get("state") == "done" else None
+        for k in range(5):
+            row = self._row(k)
+            b = bets.get(k)
+            sel = self.sel == k and b is None
+            p.setPen(QPen(QColor("#FFD34D"), S(2)) if sel or (b and b.get("me")) else Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#000000", 0.32 if (b or sel) else 0.18))
+            p.drawRoundedRect(row, S(8), S(8))
+            if winner == k:
+                p.setPen(QPen(QColor("#3DDC84"), S(2.5)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(row, S(8), S(8))
+            c = QPointF(row.left() + S(20), row.center().y())
+            p.setPen(QPen(QColor("#FFFFFF"), S(1.5)))
+            p.setBrush(QColor(HORSE_COLOURS[k]))
+            p.drawEllipse(c, S(13), S(13))
+            p.setPen(QColor("#FFFFFF") if k != 3 else QColor("#1A1A1A"))
+            p.setFont(font(12, QFont.Weight.Black))
+            p.drawText(QRectF(c.x() - S(13), c.y() - S(13), S(26), S(26)), int(Qt.AlignmentFlag.AlignCenter), str(k + 1))
+            p.setPen(QColor("#FFF6E0"))
+            p.setFont(font(11, QFont.Weight.Black))
+            nx = row.left() + S(40)
+            p.drawText(QRectF(nx, row.top() + S(2), row.width() * 0.45, S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                       tr(HORSE_NAMES[k]))
+            p.setFont(font(9, QFont.Weight.Bold))
+            if b:
+                who = tr("You") if b.get("me") else str(b.get("name") or "?")
+                p.setPen(QColor("#FFD34D") if b.get("me") else alpha("#FFF6E0", 0.8))
+                text = who + ("  ·  BOT" if b.get("bot") else "")
+            elif sel:
+                p.setPen(QColor("#FFD34D"))
+                text = tr("Your pick")
+            else:
+                p.setPen(alpha("#FFF6E0", 0.55))
+                text = tr("Free: click to pick") if self._free(k) else tr("Free")
+            p.drawText(QRectF(nx, row.top() + S(18), row.width() * 0.45, S(16)), int(Qt.AlignmentFlag.AlignVCenter), text)
+            amt = int(b.get("amount") or 0) if b else (extra if sel else 0)
+            if amt and pot:
+                share = amt / pot
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(11, QFont.Weight.Black))
+                p.drawText(QRectF(row.left(), row.top() + S(2), row.width() - S(10), S(18)),
+                           int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), pct(share))
+                p.setFont(font(9, QFont.Weight.Bold))
+                p.setPen(alpha("#FFF6E0", 0.8))
+                p.drawText(QRectF(row.left(), row.top() + S(18), row.width() - S(10), S(16)),
+                           int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), coins_text(amt))
+                bar = QRectF(row.left() + row.width() * 0.52, row.bottom() - S(6), row.width() * 0.30, S(3))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#000000", 0.35))
+                p.drawRoundedRect(bar, S(1.5), S(1.5))
+                p.setBrush(QColor(HORSE_COLOURS[k]))
+                p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * share, bar.height()), S(1.5), S(1.5))
+            if b and b.get("paid"):
+                p.setPen(QColor("#3DDC84"))
+                p.setFont(font(9, QFont.Weight.Black))
+                p.drawText(QRectF(row.left(), row.top() + S(18), row.width() * 0.80, S(16)),
+                           int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), "+" + coins_text(int(b["paid"])))
+
+
+class HorseCard(QWidget):
+    """6.3: the Horse Racing button in the Games lobby, under the Jackpot: green and running while bets are open."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedHeight(S(74))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._t = QTimer(self)
+        self._t.setInterval(60)
+        self._t.timeout.connect(self.update)
+        if getattr(self.ctx, "race_data", None) is None:
+            load_race(self.ctx)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if not self.rect().contains(e.position().toPoint()):
+            return
+        sfx.play("pick")
+        self.page.open_sub("horses")
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        now = time.monotonic()
+        phase, left = race_phase(self.ctx)
+        live = phase in ("open", "running", "done")
+        green = QColor("#5BE37D")
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        if live:
+            g.setColorAt(0, QColor("#163A1E"))
+            g.setColorAt(1, QColor("#0A160C"))
+        else:
+            g.setColorAt(0, QColor("#1A1C1F"))
+            g.setColorAt(1, QColor("#0E0F11"))
+        pulse = 0.5 + 0.5 * math.sin(now * 3)
+        p.setPen(QPen(alpha(green, 0.55 + 0.35 * pulse) if live else alpha("#FFFFFF", 0.12), S(1.6)))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+        clip = QPainterPath()
+        clip.addRoundedRect(r, S(14), S(14))
+        p.save()
+        p.setClipPath(clip)
+        p.setOpacity(1.0 if live else 0.45)
+        paint_horse(p, r.left() + S(36), r.center().y() + S(2), S(40), int(now / 4) % 5 if live else 0,
+                    now * 9 if live else 0.0, 1.0 if live else 0.0)
+        p.restore()
+        p.setPen(green if live else QColor(TEXT_FAINT))
+        p.setFont(font(18, QFont.Weight.Black, 3))
+        p.drawText(QRectF(r.left() + S(78), r.top() + S(10), r.width() - S(88), S(28)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("HORSE RACING"))
+        p.setFont(font(11, QFont.Weight.Bold))
+        if phase == "open":
+            p.setPen(QColor("#FFFFFF"))
+            text = tr("OPEN · bets close in {t}", t=jp_clock(left))
+        elif phase in ("running", "done"):
+            p.setPen(QColor("#FFFFFF"))
+            text = tr("They're racing: watch it")
+        elif phase == "closed":
+            p.setPen(QColor(TEXT_DIM))
+            text = tr("Next race in {t}", t=jp_clock(left))
+        else:
+            p.setPen(QColor(TEXT_DIM))
+            text = tr("5 horses, bet on one")
+        p.drawText(QRectF(r.left() + S(78), r.top() + S(38), r.width() - S(88), S(22)), int(Qt.AlignmentFlag.AlignVCenter), text)
+
+
+def build_horses(page, lay) -> None:
+    """6.3: Horse Racing. Pick a free horse on the board, choose your bet, join. Bets close 2 minutes after the first
+    player joins (or 2 minutes after it opens if nobody does: the bots race anyway). Then 3, 2, 1, the gun, the race."""
+    ctx = page.ctx
+    top = hbox(spacing=8)
+    back = IconButton("back", 32, tip=tr("Back"))
+    back.clicked.connect(lambda: page.open_sub(None))
+    top.addWidget(back)
+    top.addWidget(Label(tr("HORSE RACING"), 16, "#5BE37D", bold=True), 1)
+    top.addWidget(HelpButton(ctx, "horses"))
+    lay.addLayout(top)
+    if getattr(ctx, "race_missing", False):
+        return server_wait(ctx, lay, page.W)
+    d = getattr(ctx, "race_data", None)
+
+    def refresh(changed: bool) -> None:
+        try:
+            if ctx.window.showing("games") and getattr(ctx, "games_sub", "") == "horses":
+                if changed:
+                    ctx.reload_page("games")
+                else:
+                    for w in (getattr(page, "_race_view", None), getattr(page, "_race_board", None)):
+                        if w is not None:
+                            w.set_data(ctx.race_data)
+        except RuntimeError:
+            pass
+    lay.addWidget(_Poll(1000, lambda: load_race(ctx, refresh)))
+    if d is None:
+        return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+    if not d.get("feature", True):
+        return lay.addWidget(LockStrip(tr("Horse Racing is paused for a moment. Nothing you own is lost."), page.W))
+    lay.addWidget(CoinBar(ctx))
+    state = d.get("state")
+    if state == "closed":
+        nxt = float(d.get("next_at") or 0) - float(d.get("now") or time.time())
+        lay.addWidget(Label(tr("The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.",
+                               t=jp_clock(nxt)), 12, TEXT, wrap_w=page.W))
+        last = d.get("last") or {}
+        if not last.get("bets"):
+            return
+        lay.addWidget(heading(tr("Last race")))
+        d = last
+        state = d.get("state")
+    view = RaceView(page, page.W)
+    view.set_data(d)
+    page._race_view = view
+    lay.addWidget(view)
+    board = RaceBoard(page, page.W)
+    board.set_data(d)
+    page._race_board = board
+    if state == "open" and d.get("mine") is None:
+        taken = {int(b.get("lane")) for b in d.get("bets") or []}
+        if len(taken) >= 5:
+            lay.addWidget(board)
+            lay.addWidget(Label(tr("Every horse is taken. Watch the race!"), 11.5, TEXT_DIM, wrap_w=page.W))
+        else:
+            lo = int(d.get("min_bet") or 100)
+            hi = int(d.get("max_bet") or 0)
+            if hi < lo:
+                lay.addWidget(board)
+                lay.addWidget(Label(tr("You need at least {n} to bet.", n=coins_text(lo)), 11.5, TEXT_DIM, wrap_w=page.W))
+            else:
+                pick = getattr(ctx, "race_pick", None)
+                if pick in taken:
+                    pick = None
+                board.sel = pick
+                amount = AmountSlider(tr("Bet"), lo, hi, max(lo, min(hi, int(getattr(ctx, "race_bet", 1000) or 1000))),
+                                      coins_text, label_w=40)
+                info = Label("", 11.5, TEXT, bold=True, wrap_w=page.W)
+                join = Button(tr("Bet on this horse"), "primary", 42)
+                share = float(d.get("share") or 0.8)
+
+                def update() -> None:
+                    v = amount.value()
+                    ctx.race_bet = v
+                    board.extra = v
+                    board.update()
+                    cur = int((ctx.race_data or d).get("total") or 0)
+                    late = race_now(ctx) >= float((ctx.race_data or d).get("lock_at") or 0) - 0.5
+                    if board.sel is None:
+                        info.set_text(tr("Click a free horse on the board"))
+                        join.setEnabled(False)
+                        return
+                    others = cur
+                    win = v + int(share * others)
+                    info.set_text(tr("Too late: the bets are closed") if late else
+                                  tr("#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)",
+                                     n=board.sel + 1, p=pct(v / max(1, cur + v)), w=coins_text(win), s=int(share * 100)))
+                    amount.val.set_color(LOSE if v > BIG_BET and v * 4 >= max(1, ctx.wallet.balance()) else
+                                         GOLD_TEXT if v > BIG_BET else TEXT)
+                    join.setEnabled(not late)
+
+                def picked(k: int) -> None:
+                    ctx.race_pick = k
+                    update()
+                board.picked.connect(picked)
+                amount.changed.connect(lambda _v: update())
+
+                def send() -> None:
+                    join.setEnabled(False)
+
+                    def done(ok: bool, data) -> None:
+                        if not ok:
+                            update()
+                            return ctx.toast(tr(str(data)), "warn")
+                        sfx.play("on")
+                        ctx.econ.refresh()
+                        ctx.race_data = data
+                        ctx.reload_page("games")
+                    ctx.econ.call("rb_race_join", {"lane": int(board.sel), "amount": int(amount.value())}, done, once=True)
+
+                def go() -> None:
+                    v = amount.value()
+                    if board.sel is None:
+                        return
+                    if v > BIG_BET:                               # a big stake: asked first
+                        pc = v * 100 / max(1, ctx.wallet.balance())
+                        text = tr("Bet {n} coins on #{h} {name}? That is {p}% of your coins.", n=coins_text(v), h=board.sel + 1,
+                                  name=tr(HORSE_NAMES[board.sel]), p=f"{pc:.0f}")
+                        if pc >= 25:
+                            text += "\n" + tr("Careful: you could lose a big part of your coins.")
+                        return ctx.confirm(text, send, tr("Bet it"), tr("Cancel"))
+                    send()
+                join.clicked.connect(go)
+                lay.addWidget(board)
+                lay.addWidget(amount)
+                row = hbox(spacing=8)
+                row.addWidget(info, 1)
+                lay.addLayout(row)
+                lay.addWidget(join)
+                lay.addWidget(_Poll(500, update))
+                update()
+    else:
+        lay.addWidget(board)
+        if state == "open":
+            lay.addWidget(Label(tr("You're on #{n} {name}. Good luck!", n=int(d["mine"]) + 1, name=tr(HORSE_NAMES[int(d["mine"])])),
+                                11.5, "#3DDC84", bold=True, wrap_w=page.W))
+    lay.addWidget(Label(tr("Your chance to win is your share of all the money on the horses. The winner gets their bet "
+                           "back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then "
+                           "bots take the empty horses and the race starts, with or without players.",
+                           s=int(float(d.get("share") or 0.8) * 100)), 10, TEXT_FAINT, wrap_w=page.W))
+
+
 def build_jackpot(page, lay) -> None:
     ctx = page.ctx
     top = hbox(spacing=8)
@@ -40437,7 +41356,7 @@ from PyQt6.QtWidgets import QWidget
 
 WHEEL_GOLD = "#E8C26A"
 # 4.7: the server's slots, in the same order (rb_gold_wheel)
-WHEEL_SLOTS = ["10000", "elite", "20000", "vault", "40000", "mythic", "100000", "royal", "250000"]
+WHEEL_SLOTS = ["10000", "shiny", "20000", "premium", "40000", "mythic", "100000", "royal", "250000"]   # 6.3
 WHEEL_ODDS = [26, 14, 20, 10, 12, 8, 4, 5, 1]
 SPIN_S = 5.5
 
@@ -43402,8 +44321,17 @@ def _mg_cap(ctx) -> int:
 
 # title, how to play, best way to play, payouts and chances. {x} values are filled from the live settings.
 HELP = {
+    "horses": ("Horse Racing", [
+        "Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.",
+        "Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).",
+        "Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run."], [
+        "The more you bet, the better your horse's chance, but the more you can lose.",
+        "Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start."], [
+        "Chance to win = your bet ÷ all the money on the horses.",
+        "The winner gets their bet back plus 80% of everybody else's bets (bots' too).",
+        "Nobody joins? The bots race on their own and the next event comes 15 minutes later."]),
     "jackpot": ("Jackpot", [
-        "A jackpot opens every 15 minutes. For 2 minutes you can put in 1 to 3 items (5 players at most).",
+        "Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).",
         "Your chance is your share of everything put in. Then the lobby locks, bots fill the empty seats and the wheel spins.",
         "The winner gets their own items back and picks 75% of everyone else's items. The rest leaves the game."], [
         "More worth in = a bigger slice of the wheel, but more to lose.",
@@ -43481,9 +44409,9 @@ HELP = {
     "connect4": ("Connect 4", [
         "Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.",
         "Easy is quick and makes mistakes. Medium sees a few moves ahead. Hard moves first and looks far ahead.",
-        "Professional moves first and plays perfectly: it has never lost. Beat it and you win 250 times your bet."], [
+        "Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet."], [
         "Take the middle column early, block every line of 3, and set up two threats at once."], [
-        "Easy ×1.2 · Medium ×2 · Hard ×5 · Professional ×250. A draw gives your bet back.",
+        "Easy ×1.2 · Medium ×2 · Hard ×5 · Professional ×999. A draw gives your bet back.",
         "Leaving a game or giving up loses the bet."]),
     "colour": ("Colour Pick", [
         "A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.",
@@ -43506,7 +44434,7 @@ HELP = {
         "Follow the cup with the coin and click it when they stop."], [
         "Watch only the cup with the coin, never the others.",
         "Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves."], [
-        "Easy ×1.4 · Medium ×2.2 · Hard ×3.3 · Expert ×5."]),
+        "Easy ×1.2 · Medium ×2 · Hard ×3 · Expert ×5."]),
     "tower": ("Tower", [
         "Climb 8 rows. On each row, pick a tile: a safe one takes you up, a bomb ends the round.",
         "Cash out whenever you like from the first row on."], [
@@ -44242,7 +45170,8 @@ class Roulette(Game):
 class CupGame(Game):
     """A Rubenium coin lands on the table, the cups drop over the spots and shuffle. Click the cup you think hides the
     coin. Easy 3 cups, Medium 6, Hard 9, Expert 9 cups and much faster."""
-    MODES = [("Easy", 3, 1.4), ("Medium", 6, 2.2), ("Hard", 9, 3.3), ("Expert", 9, 5.0)]
+    BET_CFG = ("cups_max_bet", 2000)          # 6.3: the Cup Game keeps its own top bet
+    MODES = [("Easy", 3, 1.2), ("Medium", 6, 2.0), ("Hard", 9, 3.0), ("Expert", 9, 5.0)]     # 6.3
 
     def __init__(self, page) -> None:
         super().__init__(page)
@@ -44481,7 +45410,7 @@ class CupGame(Game):
 class ConnectFour(Game):
     """Drop discs, line up 4 (across, down or diagonal) before the bot does. Easy, Medium, Hard and Professional:
     the bot really plays (it looks ahead and blocks); Hard and Professional move first, Professional plays perfectly."""
-    MODES = [("Easy", "easy", 1.2), ("Medium", "medium", 2.0), ("Hard", "hard", 5.0), ("Professional", "pro", 250.0)]
+    MODES = [("Easy", "easy", 1.2), ("Medium", "medium", 2.0), ("Hard", "hard", 5.0), ("Professional", "pro", 999.0)]
     COLS, ROWS = 7, 6
 
     def __init__(self, page) -> None:
@@ -49624,6 +50553,9 @@ def pawn_ease_in(t: float) -> float:
     return t * t * t
 
 
+BIG_BET = 10000                      # 6.3: bets above this are confirmed and shown in gold / red
+
+
 def pawn_clock(s: int) -> str:
     s = max(0, int(s))
     return f"{s // 60}:{s % 60:02d}"
@@ -51669,7 +52601,7 @@ def build_wave(page, lay) -> None:
             ctx.wave_duel = None
             ctx.wave_lobby = None
             return ctx.reload_page("games")
-        page.open_sub(None)
+        page.open_sub("minigames")              # 6.3: back to Earn coins
     _head(page, lay, tr("WATCHING") if getattr(ctx, "wave_watch", None) and not did else tr("SOLO") if solo else tr("DUEL"),
           (lambda: (setattr(ctx, "wave_watch", None), ctx.reload_page("games"))) if getattr(ctx, "wave_watch", None) and not did
           else leave_screen, live=bool(did))
@@ -55758,11 +56690,13 @@ class App(QObject):
         return item in (self.cfg["ball_style"], self.cfg["ring_style"], self.cfg["theme"], self.cfg["font_item"])
 
     def apply_font(self, rebuild: bool = False) -> None:
-        pass
+        global TEXT
         item = self.cfg["font_item"]
         want = (font_families(item) if item and self.wallet.owns("font:" + item) else []) + list(FONT_DEFAULT)
-        if want != FONT_FAMILIES:
+        col = self.title_colour()                    # 6.3: a coloured font colours the app's text, not only its shape
+        if want != FONT_FAMILIES or col != TEXT:
             FONT_FAMILIES[:] = want
+            TEXT = col
             if rebuild:
                 self.rebuild_ui()
 
@@ -55772,8 +56706,8 @@ class App(QObject):
         item = self.cfg["font_item"]
         if item and self.wallet.owns("font:" + item):
             var = item.split(":")[-1]
-            return "#C9D2DA" if var in ("black", "grey") else SHOP_COLOURS.get(var, TEXT)
-        return TEXT
+            return "#C9D2DA" if var in ("black", "grey") else SHOP_COLOURS.get(var, TEXT0)
+        return TEXT0
 
     def _shop_items_check(self) -> None:
         """Something worn from the shop was sold or traded away: back to the normal look."""
@@ -56240,6 +57174,17 @@ class App(QObject):
         self._jp_tick = n
         if n % 2 == 0 and not (self.window.showing("games") and getattr(self, "games_sub", "") == "jackpot"):
             load_jackpot(self)                            # 5.3: the card, the bell and the page read the server
+        if n % 2 == 1 and not (self.window.showing("games") and getattr(self, "games_sub", "") == "horses"):
+            load_race(self)                               # 6.3: Horse Racing rings the same bell
+        rph, rleft = race_phase(self)
+        rd = getattr(self, "race_data", None) or {}
+        if rph == "open" and rleft >= 20 and rd.get("id") and getattr(self, "_race_told", None) != rd.get("id"):
+            self._race_told = rd.get("id")
+            try:
+                self.notifier.push("duel", tr("HORSE RACE IS OPEN"),
+                                   tr("Bets close in about {t}. Bet in Games > Horse Racing", t=jp_words(rleft)), "horses")
+            except Exception:  # noqa: BLE001
+                log.exception("race bell")
         phase, left = jp_phase(self)
         d = getattr(self, "jackpot_data", None) or {}
         slot = d.get("id") or int(jp_now(self) // JP_EVERY)

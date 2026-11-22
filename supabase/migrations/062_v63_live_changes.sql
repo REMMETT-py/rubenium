@@ -1,0 +1,12 @@
+-- 6.3: changes applied live (text swaps on the live functions, see each line). Backups: rb_bak63_cases,
+-- rb_bak63_case_stock.
+-- * rb_c4_mult: Professional 250.0 -> 999.0
+-- * rb_bet_cap(coins): half of your coins (round tens), at least bet_max; rb_config bet_rich_pct 50,
+--   bet_max_rich 2000000000, win_max 2000000000 (a win is no longer cut at 50 000)
+-- * rb_scan_round: luck games (cases, plinko, blackjack, slots, dice, roulette, mines, tower, hilo, rocket, spin,
+--   scratch, daily, gold_wheel, horses) are not flagged for profit: big bets are allowed now
+-- * rb_cups: multipliers 1.4/2.2/3.3/5.0 -> 1.2/2.0/3.0/5.0
+-- * rb_party_tick: after a bot shoots, the next turn starts 5 s later (its ball rolls on screen first)
+-- * cases pocket, jackpot, titan, gamble, elite, lucky, vault removed; anyone holding one got its price in coins
+--   (rb_pay reason case_refund). Winter and Gift cases: the Top Tier Case's grid, odds, variants and Mythic chance.
+-- * rb_gold_wheel: the elite and vault slots give a Shiny and a Premium case
