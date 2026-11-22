@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.2.6"         # the version people see
-BUILD = "2026.11.22.6"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "6.2.7"         # the version people see
+BUILD = "2026.11.22.7"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -11630,6 +11630,7 @@ def close_app(exe: str) -> bool:
 FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match (recreate a sound). Easy, Medium and Hard, rewards by accuracy, with their own leaderboards': 'NOUVEAU : Choix de couleur (recrée une couleur de mémoire) et SFX Match (recrée un son). Facile, Moyen et Difficile, gains selon la précision, avec leurs propres classements', 'A big 30 second countdown on every move in Connect 4 and the Cup Game: when it runs out you lose the round': 'Un grand compte à rebours de 30 secondes à chaque coup au Puissance 4 et au jeu des gobelets : à zéro, tu perds la manche', 'Cup Game is much harder: more swaps, and faster': 'Le jeu des gobelets est bien plus dur : plus d’échanges, et plus vite', 'Cases: Mythics are listed in every case as a hidden "?" until you unlock them, and Prismatic chances show above Gold': 'Caisses : les Mythiques sont listés dans chaque caisse sous forme de « ? » caché jusqu’à leur déblocage, et les chances de Prismatique s’affichent au-dessus d’Or', 'Much rarer odds: Mythic 1 / 100 000 in the Top Tier Case and 1 / 250 000 to 1 / 500 000 in the others. Shiny, Titanium and Gold are far rarer too, Painted is the common finish': 'Chances bien plus rares : Mythique 1 / 100 000 dans la caisse Haut de gamme et 1 / 250 000 à 1 / 500 000 dans les autres. Brillant, Titane et Or sont bien plus rares aussi, Peint est la finition courante', 'Updates no longer pop Rubenium open: after an automatic update it slides to the top right as the ball and waits. Open it to see what is new': 'Les mises à jour n’ouvrent plus Rubenium : après une mise à jour automatique, il glisse en haut à droite sous forme de bulle et attend. Ouvre-le pour voir les nouveautés', 'Colour Pick': 'Choix de couleur', 'Previews': 'Essais', 'SFX Match': 'SFX Match', 'Submit': 'Valider', 'Sine': 'Sinus', 'Triangle': 'Triangle', 'Saw': 'Dent de scie', 'Square': 'Carré', 'Pluck': 'Pincé', 'Beep': 'Bip', 'Swell': 'Crescendo', 'Accuracy': 'Précision', 'Colour distance {n}': 'Écart de couleur {n}', 'Daily limit reached: wins give your bet back until midnight': 'Limite du jour atteinte : une victoire rend ta mise jusqu’à minuit', 'Duration': 'Durée', 'Glide': 'Glissando', 'Hear original': 'Écouter l’original', 'Hear yours': 'Écouter le tien', 'Hue': 'Teinte', 'Saturation': 'Saturation', 'Listen closely, then recreate the sound.': 'Écoute bien, puis recrée le son.', 'Listen!': 'Écoute !', 'Listen: {a} s · Answer: {b} s': 'Écoute : {a} s · Réponse : {b} s', 'Look: {a} s · Answer: {b} s': 'Regarde : {a} s · Réponse : {b} s', 'Memorise the colour, then recreate it.': 'Mémorise la couleur, puis recrée-la.', 'Memorise this colour!': 'Mémorise cette couleur !', 'No previews left': 'Plus d’écoutes d’essai', 'Original': 'Original', 'Pitch': 'Hauteur', 'Play sound · {n} left': 'Jouer le son · {n} restantes', 'Plays left: {n}': 'Écoutes restantes : {n}', 'Preview · {n} left': 'Essai · {n} restants', 'Previews left: {n}': 'Essais restants : {n}', 'Recreate the colour': 'Recrée la couleur', 'Recreate the sound': 'Recrée le son', 'The original is gone: you were disconnected': 'L’original a disparu : tu as été déconnecté', 'Time is up!': 'Temps écoulé !', 'Time is up: you lose the game': 'Temps écoulé : tu perds la partie', 'Tone': 'Timbre', 'Wobble': 'Vibrato', 'A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.': 'Une couleur s’affiche quelques secondes, puis disparaît. Recrée-la de mémoire avec les curseurs Teinte, Saturation et Luminosité, puis valide.', 'A short sound plays, then it is gone. Recreate it with the sliders: pitch, duration and tone, and on harder levels glide, shape and wobble.': 'Un court son est joué, puis il disparaît. Recrée-le avec les curseurs : hauteur, durée et timbre, et aux niveaux difficiles glissando, forme et vibrato.', 'After the round you hear both sounds and see how close each setting was.': 'Après la manche, tu entends les deux sons et vois la précision de chaque réglage.', 'Easy shows it for 6 s and gives 45 s, Medium 4 s and 35 s, Hard shows a muted colour for only 2.5 s and gives 25 s.': 'Facile l’affiche 6 s et laisse 45 s, Moyen 4 s et 35 s, Difficile montre une couleur terne seulement 2,5 s et laisse 25 s.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy. Low accuracy gives back part of your bet or nothing.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision. Une faible précision rend une partie de la mise ou rien.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision.', 'Easy: 10 s to listen, 60 s to answer. Medium: 7 s and 45 s. Hard: 5 s and 30 s, with 2 listens and 4 previews.': 'Facile : 10 s pour écouter, 60 s pour répondre. Moyen : 7 s et 45 s. Difficile : 5 s et 30 s, avec 2 écoutes et 4 essais.', 'Find the pitch first, then the length, then the tone: sine is soft, square is buzzy, saw is sharp.': 'Trouve d’abord la hauteur, puis la durée, puis le timbre : le sinus est doux, le carré bourdonne, la dent de scie est vive.', 'Once you are up 12 000 coins in a day, a win gives your bet back.': 'Une fois 12 000 pièces gagnées dans la journée, une victoire rend ta mise.', 'Remember the hue first, then how pale or dark it was. Move the sliders one at a time.': 'Retiens d’abord la teinte, puis si elle était pâle ou sombre. Bouge les curseurs un par un.', 'The colour is shown once and the clock is kept by the server: a late answer scores nothing.': 'La couleur n’est montrée qu’une fois et le serveur garde le chrono : une réponse tardive ne rapporte rien.', 'You can listen to the original a few times while it is available, and to your own sound a limited number of times before you submit.': 'Tu peux écouter l’original quelques fois tant qu’il est disponible, et ton propre son un nombre limité de fois avant de valider.', 'Your accuracy is measured the way the eye sees colour (CIEDE2000): close counts, exact is best.': 'Ta précision est mesurée comme l’œil voit les couleurs (CIEDE2000) : proche compte, exact est le mieux.'})      # 6.2
 FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'Preview': 'Essai', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
 FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
+FR.update({'Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works': 'Prêteur sur gages : vends plusieurs exemplaires d’un objet d’un coup, un gros compteur de 5 échanges par heure, et Refuser marche toujours', 'Exchange · {n}/5 left': 'Échange · {n}/5 restants', 'No exchanges left': 'Plus d’échange', 'No exchanges left this hour': 'Plus d’échange cette heure', 'EXCHANGES THIS HOUR': 'ÉCHANGES CETTE HEURE', 'Pawn shop: take {n} of {m}': 'Prêteur sur gages : en prendre {n} sur {m}', 'Quick sell ×{n}': 'Vente rapide ×{n}', 'All': 'Tous'})      # 6.2.7
 FR.update({"The pawn shop takes 5 offers or refusals an hour, so you can't spam refuse": 'Le prêteur sur gages accepte 5 offres ou refus par heure, donc tu ne peux pas spammer le refus', '5 proposals an hour at the pawn shop: wait a little': '5 propositions par heure chez le prêteur sur gages : attends un peu'})      # 6.2.6
 FR.update({"Quick sell's pawn shop ban is 5 minutes instead of 30": 'Le bannissement du prêteur sur gages (vente rapide) dure 5 minutes au lieu de 30'})      # 6.2.5
 FR.update({'SFX Match has a volume bar, so you can turn the sound up or down': 'SFX Match a une barre de volume pour monter ou baisser le son', 'Volume': 'Volume'})      # 6.2.4
@@ -11642,6 +11643,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("6.2.7", ['Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works']),
     ("6.2.6", ["The pawn shop takes 5 offers or refusals an hour, so you can't spam refuse"]),
     ("6.2.5", ["Quick sell's pawn shop ban is 5 minutes instead of 30"]),
     ("6.2.4", ['SFX Match has a volume bar, so you can turn the sound up or down']),
@@ -24151,7 +24153,13 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
     quick.setEnabled(sellable and ec.quick_value(item) > 0)
     quick.setToolTip(tr("Sell it right now for about {n} coins",
                         n=coins_text(ec.quick_value(item))))
-    quick.clicked.connect(lambda: quick_sell(ctx, [free[-1]["id"]], item_name(item)))
+    qty = [1]                                              # 6.2.7: how many copies go to the pawn shop
+
+    def quick_go() -> None:
+        n = max(1, min(qty[0], len(free)))
+        ids = [c["id"] for c in free[-n:]]
+        quick_sell(ctx, ids, item_name(item) if n == 1 else f"{n}× {item_name(item)}")
+    quick.clicked.connect(quick_go)
     line2.addWidget(quick, 1)
     if free and item != "tag:og":                         # 5.1: the trash can, asked twice
         bin_ = IconButton("trash", 32, tip=tr("Delete for good"))
@@ -24177,6 +24185,40 @@ def _inventory_detail(page, lay, item: str, copies: list) -> None:
         tick()
     lay.addLayout(line)
     lay.addLayout(line2)
+    if sellable and len(free) > 1:                         # 6.2.7: take several copies to the pawn shop at once
+        row = hbox(spacing=6)
+        sub = Label("", 10.5, TEXT_DIM)
+        minus = Button("−", "ghost", 28)
+        plus = Button("+", "ghost", 28)
+        every = Button(tr("All"), "ghost", 28)
+        for b_ in (minus, plus):
+            b_.setFixedWidth(S(34))
+
+        def shown() -> None:
+            n = max(1, min(qty[0], len(free)))
+            qty[0] = n
+            sub.set_text(tr("Pawn shop: take {n} of {m}", n=n, m=len(free)))
+            minus.setEnabled(n > 1)
+            plus.setEnabled(n < len(free))
+            every.setEnabled(n < len(free))
+            if getattr(ctx, "pawn_ban_until", 0) <= time.time():
+                quick.set_text(tr("Quick sell") if n == 1 else tr("Quick sell ×{n}", n=n))
+                quick.sub = tr("About {n} coins now", n=coins_text(ec.quick_value(item) * n))
+                quick.update()
+
+        def step(d: int) -> None:
+            sfx.play("pick")
+            qty[0] += d
+            shown()
+        minus.clicked.connect(lambda: step(-1))
+        plus.clicked.connect(lambda: step(1))
+        every.clicked.connect(lambda: step(len(free) - qty[0]))
+        row.addWidget(sub, 1)
+        row.addWidget(minus)
+        row.addWidget(plus)
+        row.addWidget(every)
+        lay.addLayout(row)
+        shown()
 
 
 class SellButton(QAbstractButton):
@@ -49611,6 +49653,7 @@ class PawnShop(QWidget):
         self.snap = None
         self.sold_at = 0.0
         self.ban_end = 0.0
+        self.props_left, self.props_end = 5, 0.0     # 6.2.7: exchanges you can still propose this hour
         self.setMouseTracking(True)
         self._build_controls()
         self._place()
@@ -49746,7 +49789,11 @@ class PawnShop(QWidget):
             self.row_deal.setVisible(False)
             self.leave_btn.setEnabled(not self.busy)
             return
-        self.swap_btn.setEnabled(not self.busy)
+        if self.props_left > 0:
+            self.swap_btn.set_text(tr("Exchange · {n}/5 left", n=self.props_left))
+        else:
+            self.swap_btn.set_text(tr("No exchanges left"))
+        self.swap_btn.setEnabled(not self.busy and self.props_left > 0)
         self.row_offer.setVisible(not self.ask_mode and not self.deal)
         self.row_ask.setVisible(self.ask_mode and not self.deal)
         self.row_deal.setVisible(bool(self.deal))
@@ -49791,6 +49838,21 @@ class PawnShop(QWidget):
         self._refresh_texts()
         self.update()
 
+    def _props(self, data) -> None:
+        """6.2.7: how many exchange proposals are left this hour (the server counts), and when one comes back."""
+        if not isinstance(data, dict) or data.get("props_left") is None:
+            return
+        self.props_left = int(data.get("props_left") or 0)
+        reset = int(data.get("props_reset") or 0)
+        self.props_end = time.time() + reset if self.props_left <= 0 and reset > 0 else 0.0
+        try:
+            self._refresh_texts()
+        except RuntimeError:
+            pass
+
+    def _props_reload(self) -> None:
+        self.ctx.econ.call("rb_pawn_props_left", {}, lambda ok, d: self._props(d) if ok else None)
+
     # -- the server
     def _entered(self, ok: bool, data) -> None:
         if not ok or not isinstance(data, dict):
@@ -49800,6 +49862,7 @@ class PawnShop(QWidget):
         self.anger = self.shown_anger = float(data.get("anger") or 0)
         self.ban_left = int(data.get("ban_left") or 0)
         self.max_ratio = float(data.get("max_ratio") or 1.5)
+        self._props(data)
         self.loaded = True
         if self.ban_left > 0:
             self.ban_end = time.monotonic() + self.ban_left
@@ -49905,6 +49968,8 @@ class PawnShop(QWidget):
         def done(ok: bool, data) -> None:
             self.busy = False
             try:
+                if action == "offer" or not ok:
+                    self._props_reload()
                 if not ok or not isinstance(data, dict):
                     self.ctx.toast(tr(str(data)), "warn")
                     return self._refresh_texts()
@@ -50054,6 +50119,13 @@ class PawnShop(QWidget):
         now = time.monotonic()
         t = now - self.t0
         ph = self.phase
+        if self.props_left <= 0 and self.props_end:
+            if time.time() >= self.props_end:                   # an exchange came back: ask the server
+                self.props_end = 0.0
+                self._props_reload()
+            elif int(time.time()) != getattr(self, "_props_sec", 0):
+                self._props_sec = int(time.time())
+                self._refresh_texts()
         if ph == "fade" and t >= 0.3:
             self._go("close")
         elif ph == "close" and t >= 0.45:
@@ -50167,6 +50239,32 @@ class PawnShop(QWidget):
         self._paint_bar(p, now)
         self._paint_texts(p, pn, cy, now)
         self._paint_bubble(p, pn, now)
+        if self.loaded and self.phase == "shop":
+            self._paint_props(p, r)
+
+    def _paint_props(self, p, r) -> None:
+        """6.2.7: the exchange allowance, big and always on screen: 5 pips for 5 proposals an hour."""
+        left = self.props_left
+        w, h = S(236), S(34)
+        box = QRectF(r.right() - S(16) - w, r.top() + S(16), w, h)
+        col = QColor(LOSE) if left <= 0 else QColor(GOLD_TEXT) if left <= 2 else QColor("#FFFFFF")
+        p.save()
+        p.setPen(QPen(alpha(col, 0.8), S(1.5)))
+        p.setBrush(alpha("#000000", 0.55))
+        p.drawRoundedRect(box, S(10), S(10))
+        p.setFont(font(8.5, QFont.Weight.ExtraBold, 0.6))
+        p.setPen(alpha(col, 0.95))
+        back = ""
+        if left <= 0 and self.props_end:
+            back = " · " + pawn_clock(int(self.props_end - time.time()))
+        p.drawText(QRectF(box.left() + S(10), box.top(), box.width() - S(96), h), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("EXCHANGES THIS HOUR") + back)
+        for i in range(5):
+            c = QPointF(box.right() - S(14) - (4 - i) * S(15), box.center().y())
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col if i < left else alpha("#FFFFFF", 0.18))
+            p.drawEllipse(c, S(5.5), S(5.5))
+        p.restore()
 
     def _paint_shelves(self, p, r, cy) -> None:
         rnd = random.Random(7)

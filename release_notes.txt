@@ -1,5 +1,7 @@
-Rubenium 6.2.6
+Rubenium 6.2.7
 
-- The pawn shop takes 5 offers or refusals an hour, so you can't spam refuse to keep swapping offers
+- Pawn shop: sell several copies of an item at once (pick how many, or All)
+- A big exchange counter in the shop: 5 proposals an hour
+- Refuse always works, even after your 5 exchanges are used
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

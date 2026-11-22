@@ -1,0 +1,3 @@
+-- 6.2.7: only a new exchange proposal ("offer") counts against the 5 an hour; Refuse is free so nobody is stuck in the exchange.
+-- Applied live: rb_pawn_trade checks `action = 'offer'` (was offer or refuse); rb_pawn_props(uid) (internal) and the RPC
+-- rb_pawn_props_left() give {props_left, props_max, props_reset}; rb_pawn_enter returns them too.
