@@ -1,5 +1,5 @@
-Rubenium 6.9.1
+Rubenium 7.0
 
-- Horse Racing: the horses run at a normal pace again (the race is still 3 times longer, the speed is just doubled on screen). The Animations tab is locked for now.
+- Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

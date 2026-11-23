@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "6.9.1"         # the version people see
-BUILD = "2026.11.22.17"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "7.0"         # the version people see
+BUILD = "2026.11.23.1"       # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12395,6 +12395,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("7.0", ['Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.']),
     ("6.9.1", ["Horse Racing: the horses run at a normal pace again (the race is still 3 times longer, the speed is just doubled on screen). The Animations tab is locked for now."]),
     ("6.9", ['NEW: 4 Mythic ANIMATIONS (Supernova, Shatter, Rift, Phoenix), each in Prismatic, Gold, Black Titan and White Titan: buy the originals in the Shop (Animations) or win any of them from the Profile Case. Click anywhere or press Esc to skip one, or switch back to the simple animation any time. The default animation is now simple: the banner floats up into nothing and drops back down. Lines now sit with the Balls in the Shop, and the Coin history moved to the Profile tab of your Inventory (whose old Coins button is now Animations)']),
     ("6.8", ['Horse Racing: the race is now 3 times longer (about a minute) with many more lead changes, and 5 new maps (Beach, Canyon, Night City, Volcano, Moon) join Desert, Forest and Snow']),
@@ -43207,8 +43208,9 @@ HORSE_COLOURS = ["#FF4D4D", "#4FA3FF", "#3DDC84", "#FFD34D", "#C77BFF"]      # s
 HORSE_COATS = ["#7A4521", "#26201C", "#D8D2C8", "#B5562A", "#E0B86A"]        # bay, black, grey, chestnut, palomino
 HORSE_MANES = ["#2A160A", "#0C0A09", "#F4F1EC", "#6E2A10", "#FFF1CC"]
 HORSE_NAMES = ["Red Rocket", "Blue Thunder", "Green Clover", "Golden Sun", "Purple Storm"]
-RACE_ROLL, RACE_RUN, RACE_LEAD = 3.0, 60.0, 7.0      # the rolling start, the race clock, lock -> gun (s)
-RACE_SPEED = 2.0                                     # 6.9: the horses run at a normal pace: the race proper is RACE_RUN / 2
+RACE_ROLL, RACE_RUN, RACE_LEAD = 3.0, 240.0, 7.0     # the rolling start, the race clock, lock -> gun (s)
+RACE_LEN = 4.0                                       # 7.0: the track is 4 times longer (the camera follows the leaders)
+RACE_SPEED = 2.0                                     # the horses run at a normal pace: the race proper is RACE_RUN / 2
 RACE_FINISH = RACE_RUN / RACE_SPEED                  # when the winner crosses the line (s after the rolling start)
 RACE_GAP = 0.022                                     # the line-up: one horse behind the other (track = 1.0 long)
 RACE_VIEW = 0.30                                     # how much of the track the camera shows
@@ -43293,7 +43295,16 @@ def race_plan(seed: int, winner, places=None) -> dict:
 
 
 def race_pos(plan: dict, k: int, t: float) -> tuple:
-    """(where horse k is on the track, its speed) t seconds after the gun. Before the race proper the line-up rolls
+    """7.0: (where horse k is on the track, its speed), the track being RACE_LEN long. The race proper is scaled so the
+    horses keep their pace on screen while the track is longer; the line-up before the gun is not stretched."""
+    x, v = _race_pos_unit(plan, k, t)
+    if t >= RACE_ROLL:
+        x *= RACE_LEN
+    return x, v * RACE_LEN
+
+
+def _race_pos_unit(plan: dict, k: int, t: float) -> tuple:
+    """(where horse k is on a track 1.0 long, its speed) t seconds after the gun. Before the race proper the line-up rolls
     up from the back: the last horse goes first, then the next one, and all of them reach the start line together."""
     ci = plan["column"].index(k)                           # 0 = the front of the line-up
     fin = plan["fin"].get(k, RACE_FINISH)
@@ -43698,7 +43709,7 @@ class RaceView(QWidget):
         for k in range(5):
             xs[k] = race_pos(plan, k, t if live else -1.0)
         lead = max(x for x, _v in xs.values())
-        cam = max(-0.17, min(1.0 + 0.12 - RACE_VIEW, lead - RACE_VIEW * 0.68))
+        cam = max(-0.17, min(RACE_LEN + 0.12 - RACE_VIEW, lead - RACE_VIEW * 0.68))
         self._paint_map(p, r, mp, cam, time.monotonic())
         W = r.width()
         top = r.top() + r.height() * 0.46
@@ -43707,7 +43718,7 @@ class RaceView(QWidget):
         def X(x):
             return r.left() + (x - cam) / RACE_VIEW * W
         # the start and finish lines
-        for line, chk in ((0.0, False), (1.0, True)):
+        for line, chk in ((0.0, False), (RACE_LEN, True)):
             lx = X(line)
             if -S(20) < lx < W + S(20):
                 if chk:
