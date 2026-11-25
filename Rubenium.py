@@ -2056,6 +2056,9 @@ DEFAULTS: dict = {
     "game_mouse": False,                    # 5.15: off: outside game mode the ball always answers the first click
     "badge_size": 100,
     "badge_pos": "above",
+    "badge_layout": "row",               # 9.1: row / stack / apart / pyramid (what fits the number of badges)
+    "badge_align": "left",               # 9.1: left / center / right
+    "badge_gap": 1,                      # 9.1: 0 tight, 1 normal, 2 wide
     "hotkey": "rshift",
     "lyrics_size": 15,
     "tutorial_done": False,
@@ -14882,6 +14885,8 @@ class TapKey(QObject):
 # ================================================================ badges on the music tab: size and place
 BADGE_SIZES = [(70, "Small"), (100, "Normal"), (130, "Large"), (160, "Huge")]
 BADGE_PLACES = [("above", "Above the title"), ("below", "Under the artist"), ("hidden", "Hidden")]
+BADGE_LAYOUTS = [("row", "In a row"), ("apart", "Spread out"), ("stack", "Stacked"), ("pyramid", "Pyramid")]   # 9.1
+BADGE_ALIGNS = [("left", "Left"), ("center", "Centre"), ("right", "Right")]
 
 
 def badge_menu(ctx, on_change) -> None:
@@ -14902,6 +14907,33 @@ def badge_menu(ctx, on_change) -> None:
         a.setChecked(ctx.cfg["badge_pos"] == k)
         a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("badge_pos", k), on_change()))
         m.addAction(a)
+    n = len(ctx.econ.badges_worn()[:3])              # 9.1: layouts that fit how many badges you show
+    layouts = {2: BADGE_LAYOUTS[:3], 3: BADGE_LAYOUTS}.get(n, ())
+    cur = ctx.cfg["badge_layout"] if ctx.cfg["badge_layout"] in [k for k, _ in layouts] else "row"
+    if layouts:
+        m.addSection(tr("Badge layout"))
+        for k, name in layouts:
+            a = QAction(tr(name), m)
+            a.setCheckable(True)
+            a.setChecked(cur == k)
+            a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("badge_layout", k), on_change()))
+            m.addAction(a)
+    if cur != "apart":
+        m.addSection(tr("Badge alignment"))
+        for k, name in BADGE_ALIGNS:
+            a = QAction(tr(name), m)
+            a.setCheckable(True)
+            a.setChecked(ctx.cfg["badge_align"] == k)
+            a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("badge_align", k), on_change()))
+            m.addAction(a)
+    if n > 1:
+        m.addSection(tr("Badge spacing"))
+        for k, name in enumerate(("Tight", "Normal", "Wide")):
+            a = QAction(tr(name), m)
+            a.setCheckable(True)
+            a.setChecked(int(ctx.cfg["badge_gap"] or 0) == k)
+            a.triggered.connect(lambda _c=False, k=k: (ctx.cfg.__setitem__("badge_gap", k), on_change()))
+            m.addAction(a)
     m.exec(QCursor.pos())
 
 
@@ -20568,10 +20600,42 @@ class Flair(QWidget):
     def _unit(self) -> float:
         return S(16) * max(50, min(200, int(self.ctx.cfg["badge_size"]))) / 100
 
+    def _gap(self) -> float:
+        return S((1.5, 3, 7)[max(0, min(2, int(self.ctx.cfg["badge_gap"] or 0)))])
+
+    def layout_kind(self) -> str:
+        """9.1: the layout picked, if it fits the number of badges (else a plain row)."""
+        n, kind = len(self._parts()), str(self.ctx.cfg["badge_layout"] or "row")
+        ok = {1: ("row",), 2: ("row", "stack", "apart"), 3: ("row", "stack", "apart", "pyramid")}.get(n, ("row",))
+        return kind if kind in ok else "row"
+
+    def _spots(self) -> list:
+        """Where each badge goes, from the top left of the widget."""
+        n, u, g = len(self._parts()), self._unit(), self._gap()
+        kind = self.layout_kind()
+        if kind == "stack":
+            return [QPointF(0, k * (u + g)) for k in range(n)]
+        if kind == "pyramid":                      # one on top, two under it
+            return [QPointF((u + g) / 2, 0), QPointF(0, u + g), QPointF(u + g, u + g)]
+        if kind == "apart":                        # spread along the whole line
+            w = max(self.width(), n * (u + g))
+            return [QPointF(0 if n == 1 else k * (w - u - S(2)) / (n - 1), 0) for k in range(n)]
+        return [QPointF(k * (u + g), 0) for k in range(n)]
+
     def fit(self) -> None:
         n = len(self._parts())
-        u = self._unit()
-        self.setFixedSize(max(1, int(n * (u + S(3)))), int(u + S(2)))
+        u, g = self._unit(), self._gap()
+        kind = self.layout_kind()
+        if kind == "stack":
+            self.setFixedSize(int(u + S(2)), max(1, int(n * (u + g) - g + S(2))))
+        elif kind == "pyramid":
+            self.setFixedSize(int(2 * u + g + S(2)), int(2 * u + g + S(2)))
+        elif kind == "apart":
+            self.setMinimumWidth(max(1, int(n * (u + g))))
+            self.setMaximumWidth(16777215)
+            self.setFixedHeight(int(u + S(2)))
+        else:
+            self.setFixedSize(max(1, int(n * (u + g))), int(u + S(2)))
         self.setVisible(bool(n) and self.ctx.cfg["badge_pos"] != "hidden")
         pass
         moving = self.isVisible() and self.fade > 0.01 and any(item_animated(i) for i in self._parts())
@@ -20589,8 +20653,8 @@ class Flair(QWidget):
         p.setOpacity(self.fade)
         now = time.monotonic()
         u = self._unit()
-        for k, item in enumerate(self._parts()):
-            paint_item(p, item, QRectF(k * (u + S(3)) + S(1), S(1), u, u), now)
+        for item, at in zip(self._parts(), self._spots()):
+            paint_item(p, item, QRectF(at.x() + S(1), at.y() + S(1), u, u), now)
 
 
 class HoldButton(QAbstractButton):
@@ -20890,6 +20954,9 @@ class HomePage(Page):
         if self.info.indexOf(self.flair) != want:
             self.info.removeWidget(self.flair)
             self.info.insertWidget(want, self.flair)
+        align = {"center": Qt.AlignmentFlag.AlignHCenter, "right": Qt.AlignmentFlag.AlignRight}.get(
+            str(self.ctx.cfg["badge_align"] or "left"), Qt.AlignmentFlag.AlignLeft)       # 9.1
+        self.info.setAlignment(self.flair, Qt.AlignmentFlag(0) if self.flair.layout_kind() == "apart" else align)
         self.flair.fade = 1.0
         self.flair.fit()
         self.flair.update()
