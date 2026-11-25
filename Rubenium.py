@@ -15100,14 +15100,15 @@ def claim_blocked(ctx, minimize: bool = False) -> bool:
 # Its own window in the middle of the screen (it used to sit inside the menu and shrank or vanished with it). Every
 # step has a small moving picture, two lines at most, and on some steps the settings to choose. No skipping: each
 # step is confirmed, and everything can be changed later in Settings.
-TUTORIAL = [
-    ("welcome", "Welcome to Rubenium 5.3", "Everyone starts fresh. This quick guide shows the main parts and sets up the few things that matter. The menu opens when you finish."),
+TUTORIAL = [      # 9.1: the guide follows the app as it is now (Play, mini games that pay by skill, tiers, Stats)
+    ("welcome", "Welcome to Rubenium", "This quick guide shows the main parts and sets up the few things that matter. The menu opens when you finish."),
     ("ball", "The ball", "The R on your screen is Rubenium. Click it to open the menu, click the R again to fold it away. Pick the key that shows or hides it:"),
-    ("music", "Music", "The first tab shows what is playing (Spotify, YouTube Music and more) with lyrics."),
+    ("music", "Music", "The first tab shows what is playing (Spotify, YouTube Music and more) with lyrics in time. The buttons take the colours of the song's cover."),
     ("alerts", "Notifications and sounds", "Small pop-ups tell you about trades, gifts, keys found and level ups. Choose what you want:"),
-    ("coins", "Coins and keys", "Coins and keys come in just by having Rubenium open. Keys open cases. Mini games, quests and the daily rewards give more."),
-    ("games", "Games and cases", "Games has the mini games, the casino and your quests. Cases open in the Shop."),
-    ("online", "ONLINE mode", "The ONLINE button opens the big menu: coinflips, duels, golf, Wave Rush, trading, the market and your friends."),
+    ("coins", "Coins and keys", "Coins and keys come in just by having Rubenium open. Keys open cases in the Shop. Rewards has a free spin, a scratch card, a daily reward and quests."),
+    ("online", "ONLINE mode", "The ONLINE button opens the big menu, with Play, Rewards, Stats, the Shop, trading and your friends."),
+    ("play", "Play", "Mini games are free and pay by how well you do. The casino is behind its doors: there you bet coins."),
+    ("tiers", "Tiers and Stats", "Your coins set your tier, from Poor to Casino Legend. A tier you reach is yours for good and pays more. Stats shows graphs of everything you play."),
     ("done", "You're all set!", "Everything you chose can be changed any time in Settings. Have fun!"),
 ]
 TUTORIAL_CHOICE_KEYS = ("rshift", "rctrl", "ralt", "f9", "off")
@@ -15306,6 +15307,25 @@ class Tutorial(QWidget):
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawArc(QRectF(c.x() - rad * 1.3, c.y() - rad * 1.3, rad * 2.6, rad * 2.6), int(now * 160 * 16) % 5760, 90 * 16)
 
+    @staticmethod
+    def _doors(p: QPainter, box: QRectF, k: float, col) -> None:
+        """The doors drawn on their own little picture, so nothing of them shows outside the box."""
+        from PyQt6.QtGui import QPixmap
+        dpr = p.device().devicePixelRatioF() if p.device() is not None else 1.0
+        pm = QPixmap(max(1, int(box.width() * dpr)), max(1, int(box.height() * dpr)))
+        pm.setDevicePixelRatio(dpr)
+        pm.fill(Qt.GlobalColor.transparent)
+        q = QPainter(pm)
+        q.setRenderHint(QPainter.RenderHint.Antialiasing)
+        paint_doors(q, QRectF(0, 0, box.width(), box.height()), k, QColor(col))
+        q.end()
+        clip = QPainterPath()
+        clip.addRoundedRect(box, S(10), S(10))
+        p.save()
+        p.setClipPath(clip, Qt.ClipOperation.IntersectClip)
+        p.drawPixmap(box.topLeft(), pm)
+        p.restore()
+
     def _paint_pic(self, p: QPainter, r: QRectF, t: float) -> None:
         kind = TUTORIAL[self.step][0]
         c = r.center()
@@ -15374,6 +15394,45 @@ class Tutorial(QWidget):
                 x = c.x() + (i - 4) * r.width() * 0.07
                 paint_coin(p, QPointF(x, r.top() + ph * u * 0.9), u * 0.07)
             paint_key(p, QPointF(c.x() + r.width() * 0.33, c.y()), u * 0.35, QColor("#FFD27A"))
+        elif kind == "play":                             # 9.1: three mini game icons hop, the casino doors breathe
+            names = ("Connect 4", "Timing", "Memory")
+            for i, name in enumerate(names):
+                lift = max(0.0, math.sin(now * 3.2 - i * 0.9)) * u * 0.06
+                paint_mini_badge(p, name, QPointF(c.x() - r.width() * 0.3 + i * u * 0.32, c.y()), u * 0.26, lift)
+            door = QRectF(c.x() + r.width() * 0.12, r.top() + u * 0.14, u * 0.62, u * 0.72)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(20, 16, 10))
+            p.drawRoundedRect(door, S(10), S(10))
+            self._doors(p, door, 0.15 + 0.15 * (math.sin(now * 1.6) + 1) / 2, QColor("#F5C04A"))
+        elif kind == "tiers":                            # 9.1: the tier bar charges, the next tier lights up
+            n = len(WEALTH_TIERS)
+            k = (t * 0.35) % 1.0
+            bar = QRectF(r.left() + r.width() * 0.1, c.y() - u * 0.05, r.width() * 0.8, u * 0.1)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 255, 255, 18))
+            p.drawRoundedRect(bar, bar.height() / 2, bar.height() / 2)
+            g = QLinearGradient(bar.topLeft(), bar.topRight())
+            for i, (_n, _at, _m, col) in enumerate(WEALTH_TIERS):
+                g.setColorAt(i / (n - 1), QColor(col))
+            p.setBrush(g)
+            p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * k), bar.height()),
+                              bar.height() / 2, bar.height() / 2)
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            for i, (name, _at, _m, col) in enumerate(WEALTH_TIERS):
+                x = bar.left() + bar.width() * i / (n - 1)
+                lit = k >= i / (n - 1) - 1e-6
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(col) if lit else QColor(60, 66, 72))
+                p.drawEllipse(QPointF(x, bar.center().y()), bar.height() * 0.9, bar.height() * 0.9)
+                p.setPen(QColor(col) if lit else alpha(TEXT_DIM, 0.7))
+                p.drawText(QRectF(x - S(60), bar.bottom() + S(10), S(120), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                           tr(name))
+            for i in range(7):                           # a little stats graph above
+                hgt = u * (0.08 + 0.18 * (0.5 + 0.5 * math.sin(i * 1.3 + now * 1.5)))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha(STAT_SERIES[0], 0.85))
+                p.drawRoundedRect(QRectF(c.x() - u * 0.42 + i * u * 0.12, bar.top() - S(12) - hgt, u * 0.08, hgt),
+                                  S(2), S(2))
         elif kind == "games":                            # a case that shakes, then sparkles
             cyc = t % 2.4
             sh = math.sin(now * 40) * S(4) if cyc < 1.2 else 0.0
@@ -15398,10 +15457,7 @@ class Tutorial(QWidget):
             p.setPen(QColor("#3DDC84"))
             p.setFont(font(16, QFont.Weight.Black, 2))
             p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), tr("ONLINE"))
-            p.save()
-            p.setClipRect(box, Qt.ClipOperation.IntersectClip)
-            paint_doors(p, box, k, ui.accent)
-            p.restore()
+            self._doors(p, box, k, ui.accent)
 
 
 # ==================================================================================================
