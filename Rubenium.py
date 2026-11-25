@@ -47597,9 +47597,10 @@ class Tile(QWidget):
     """9.0: a big rounded tile: a coloured glow, an icon or a picture, a title and one short status. Lit when ready."""
 
     def __init__(self, title: str, status, icon, colours: tuple, on_click, height: int = 118, ready=None,
-                 art=None) -> None:
+                 art=None, note: str = "") -> None:
         super().__init__()
         self.title, self.status, self.icon, self.colours, self.on_click = title, status, icon, colours, on_click
+        self.note = note                                      # 9.1: one short line on top: how often it comes
         self.ready, self.art = ready, art                     # status / ready can be functions (live)
         self.setFixedHeight(S(height))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -47663,6 +47664,11 @@ class Tile(QWidget):
             draw_icon(p, self.icon, alpha("#FFFFFF", 0.9))
             p.restore()
         p.restore()
+        if self.note:
+            p.setPen(alpha("#FFFFFF", 0.62))
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left() + S(16), r.top() + S(12), r.width() * 0.6, S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(self.note, Qt.TextElideMode.ElideRight, int(r.width() * 0.6)))
         p.setPen(QColor(TEXT))
         p.setFont(font(15, QFont.Weight.ExtraBold))
         p.drawText(QRectF(r.left() + S(16), r.bottom() - S(52), r.width() * 0.75, S(24)), int(Qt.AlignmentFlag.AlignVCenter),
@@ -47920,22 +47926,34 @@ class RewardsPage(Page):
             left = int(getattr(ec, "scratch_in", 0) or 0)
             return tr("Ready") if left <= 0 else clock_text(left)
 
-        lay.addWidget(tile_grid([
+        def hours(key: str, default: float) -> str:
+            try:
+                h = float(ec.cfg.get(key, default) or default)
+            except (TypeError, ValueError, AttributeError):
+                h = default
+            return tr("Every hour") if h == 1 else tr("Every {n} hours", n=f"{h:g}")
+        lay.addWidget(tile_grid([                     # 9.1: each tile says how often it comes back
             Tile(tr("Free spin"), spin_status, "", GAME_COLOURS["Free spin"],
                  lambda: open_game(ctx, GamesPage.PICKER, "rewards"), height=132, ready=lambda: w.daily_wait() == 0,
-                 art=game_art("Free spin")),
+                 art=game_art("Free spin"), note=hours("spin_hours", 2)),
             Tile(tr("Scratch card"), scratch_status, "gift", ("#FF6FA8", "#5A1A7A"),
                  lambda: open_games_part(ctx, "scratch", back="rewards"), height=132,
-                 ready=lambda: int(getattr(ec, "scratch_in", 0) or 0) <= 0),
+                 ready=lambda: int(getattr(ec, "scratch_in", 0) or 0) <= 0, note=hours("scratch_hours", 12)),
             Tile(tr("Daily reward"), lambda: tr("Claim") if streak_ready() else tr("Day {n}", n=max(1, int(ec.streak or 0))),
-                 "flame", ("#FF8A3D", "#7A1F0A"), lambda: check_login_reward(ctx, force=True), height=132, ready=streak_ready),
+                 "flame", ("#FF8A3D", "#7A1F0A"), lambda: check_login_reward(ctx, force=True), height=132, ready=streak_ready,
+                 note=tr("Once a day: more each day in a row")),
             Tile(tr("Quests"), lambda: (tr("{n} to claim", n=quests_ready(getattr(ctx, "quests_data", None)))
                                         if quests_ready(getattr(ctx, "quests_data", None)) else tr("Goals")),
                  "spark", ("#35E0A1", "#0B4A5A"), lambda: open_games_part(ctx, None, "quests_open", back="rewards"),
-                 height=132, ready=lambda: quests_ready(getattr(ctx, "quests_data", None)) > 0),
+                 height=132, ready=lambda: quests_ready(getattr(ctx, "quests_data", None)) > 0,
+                 note=tr("New every hour, day and week")),
         ], 2))
         if getattr(ec, "tier", None):                 # a 9.0 server
             lay.addWidget(KeyForge(ctx))
+        graph = Button(tr("See your rewards graph"), "ghost", 36, icon="chart")      # 9.1: in the Stats tab
+        graph.clicked.connect(lambda: (setattr(ctx, "stats_part", 3), ctx.window.nav("stats"))
+                              if hasattr(ctx.window, "nav") else None)
+        lay.addWidget(graph)
         lay.addStretch(1)
 
 
