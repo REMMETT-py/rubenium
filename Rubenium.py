@@ -32448,12 +32448,21 @@ class Game(QWidget):
     def hideEvent(self, _e) -> None:
         self._frames.stop()
 
+    FREE = False                                  # 9.1: a mini game (skill): no bet, the server pays by how well you did
+
     def take(self) -> bool:
         """Take the bet for a new round (on screen; the server takes it for real with the request)."""
         bet = self.page.bet()
         if not self.econ.ready:
             self.ctx.toast(tr("No internet connection"), "warn")
             return False
+        if self.FREE:
+            self.stake = 0
+            self.busy = True
+            self._srv_coins = None
+            self.econ.hold_round(True)
+            self.page.sync()
+            return True
         if bet <= 0 or bet > self.econ.coins:
             self.ctx.toast(tr("Not enough coins"), "warn")
             return False
@@ -33750,6 +33759,11 @@ class Timing(Game):
     4.2: the round's clock is checked against the PC's real clock; an app that slows Rubenium down is caught here and
     on the server (which then judges the stop with its own clock)."""
     ZONES = (("perfect", 0.008, 4.0, "#FFD36B"), ("good", 0.025, 1.8, "#3DDC84"), ("close", 0.05, 0.9, "#2E9BFF"))
+    FREE = True
+
+    def pay_line(self) -> str:
+        return tr("Perfect {a} · Good {b} · Close {c}", a=coins_text(skill_pay(self.ctx, "timing", "perfect")),
+                  b=coins_text(skill_pay(self.ctx, "timing", "good")), c=coins_text(skill_pay(self.ctx, "timing", "close")))
 
     def __init__(self, page) -> None:
         super().__init__(page)
@@ -33850,9 +33864,8 @@ class Timing(Game):
                        tr("How to play Timing"))
             p.setFont(font(11, QFont.Weight.DemiBold))
             p.setPen(QColor(TEXT_DIM))
-            lines = [tr("1. Choose your bet and press Start."), tr("2. A needle runs along the bar, a little faster as time goes."),
-                     tr("3. Press STOP when it is on the target."),
-                     tr("Perfect ×4 · Good ×1.8 · Close ×0.9 · Miss ×0")]
+            lines = [tr("1. Press Start. It is free: no bet."), tr("2. A needle runs along the bar, a little faster as time goes."),
+                     tr("3. Press STOP when it is on the target."), self.pay_line()]
             y = r.top() + S(48)
             for text in lines:
                 box = p.fontMetrics().boundingRect(0, 0, int(r.width() - S(36)), 1000, int(Qt.TextFlag.TextWordWrap), text)
@@ -33895,7 +33908,7 @@ class Timing(Game):
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(r.left(), bar.bottom() + S(18), r.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
-                   tr("Perfect ×4 · Good ×1.8 · Close ×0.9"))
+                   self.pay_line())
         x = r.left() + S(16)
         p.setFont(font(9, QFont.Weight.Bold))
         for grade in self.history[:8]:
@@ -34464,7 +34477,7 @@ class KeyCard(QWidget):
 
 def game_feature(name: str) -> str:
     """4.0: the part of Rubenium a casino game belongs to (what the admins can pause)."""
-    return {"Roulette": "roulette", "Free spin": "wheel"}.get(name, "casino")
+    return {"Roulette": "roulette", "Free spin": "wheel"}.get(name, "minigames" if name in SKILL_GAMES else "casino")
 
 
 SUB_FEATURES = {"casino": "casino", "minigames": "minigames", "memory": "minigames", "blocks": "minigames", "sweeper": "minigames",
@@ -34620,7 +34633,10 @@ class GameTile(QWidget):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._hover = Tween(self, on_change=self.update)
         self._in = Tween(self, 0.0, self.update, QEasingCurve.Type.OutBack)      # 9.1: the hall's tiles come in one by one
-        QTimer.singleShot(int(delay), lambda: self._in.to(1.0, 460))
+        self._intro = QTimer(self)                          # a child timer: it dies with the tile
+        self._intro.setSingleShot(True)
+        self._intro.timeout.connect(lambda: self._in.to(1.0, 460))
+        self._intro.start(int(delay))
 
     def enterEvent(self, _e) -> None:
         self._hover.to(1.0, 140)
@@ -34846,7 +34862,10 @@ class MiniTile(QWidget):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._hover = Tween(self, on_change=self.update)
         self._in = Tween(self, 0.0, self.update, QEasingCurve.Type.OutBack)
-        QTimer.singleShot(int(delay), lambda: self._in.to(1.0, 420))
+        self._intro = QTimer(self)                          # a child timer: it dies with the tile
+        self._intro.setSingleShot(True)
+        self._intro.timeout.connect(lambda: self._in.to(1.0, 420))
+        self._intro.start(int(delay))
 
     def enterEvent(self, _e) -> None:
         self._hover.to(1.0, 140)
@@ -35831,7 +35850,7 @@ class GamesPage(Page):
         if not down or self.game is None or not self.game.isVisible() or isinstance(self.game, Daily):
             return
         if name in ("Left", "Right"):
-            return self._step(-1 if name == "Left" else 1)
+            return None if getattr(self.game, "FREE", False) else self._step(-1 if name == "Left" else 1)
         i = 0 if name in ("Space", "1") else int(name) - 1
         if i < len(self.act_buttons) and self.act_buttons[i].isEnabled() and self.act_buttons[i].isVisible():
             self.act_buttons[i].click()
@@ -35866,7 +35885,7 @@ class GamesPage(Page):
         self.game = self.games[i]
         if getattr(self, "game_title", None) is not None:
             self.game_title.set_text(tr(self.NAMES[i]))
-        self.bet_row.setVisible(self.NAMES[i] != "Free spin")       # the free spin has no bet
+        self.bet_row.setVisible(self.NAMES[i] != "Free spin" and not getattr(self.game, "FREE", False))   # 9.1: mini games: no bet
         if getattr(self, "controls_bar", None) is not None:          # 6.0: no casino keys on the free spin / scratch card
             self.controls_bar.setVisible(not isinstance(self.game, Daily))
         self.sync()
@@ -47518,6 +47537,21 @@ def scaled(n: int, m: float) -> int:
     return int(math.floor(x / step + 0.5)) * step
 
 
+SKILL_PAY = {"timing": {"perfect": 120, "good": 50, "close": 15}, "cups": {0: 25, 1: 50, 2: 90, 3: 150},
+             "c4": {"easy": 40, "medium": 90, "hard": 200, "pro": 600}, "colour": {0: 40, 1: 60, 2: 90},
+             "sfx": {0: 50, 1: 75, 2: 110}}          # 9.1: the server's rb_skill_base (full pay, before the tier)
+
+
+def skill_pay(ctx, game: str, key, factor: float = 1.0) -> int:
+    """9.1: what a skill round pays at full pay: the base (times an accuracy factor) times your tier, rounded the way
+    the server rounds it."""
+    try:
+        m = float(tier_info(ctx).get("mult") or 1.0)
+    except Exception:  # noqa: BLE001
+        m = 1.0
+    return scaled(int(round(SKILL_PAY.get(game, {}).get(key, 0) * factor)), m)
+
+
 def tier_info(ctx) -> dict:
     """9.0: the wealth tier (from the server when it has 9.0, else worked out from the coins)."""
     t = getattr(ctx.econ, "tier", None)
@@ -50051,11 +50085,9 @@ HELP = {
         "The needle speeds up a little the longer you wait. The target moves every round."], [
         "Stop early, while the needle is still slow.",
         "Watch one bounce to feel the speed, then press a little before it reaches the target."], [
-        "Perfect (the centre): ×4.",
-        "Good: ×1.8.",
-        "Close: ×0.9 (most of your bet back).",
-        "Miss, or after 9 seconds: nothing.",
-        "The server keeps its own clock: slowing Rubenium down does not help."]),
+        "Perfect (the centre): 120 coins. Good: 50. Close: 15. Miss, or after 9 seconds: nothing.",
+        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "The server keeps its own clock and judges the stop: slowing Rubenium down does not help."]),
     "rocket": ("Rocket", [
         "Launch: the multiplier climbs while the rocket flies.",
         "Press Cash out before it blows up to win your bet times the multiplier.",
@@ -50075,32 +50107,37 @@ HELP = {
     "connect4": ("Connect 4", [
         "Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.",
         "Easy is quick and makes mistakes. Medium sees a few moves ahead. Hard moves first and looks far ahead.",
-        "Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet."], [
+        "Professional moves first and plays perfectly: it has never lost. Beat it for 600 coins."], [
         "Take the middle column early, block every line of 3, and set up two threats at once."], [
-        "Easy ×1.2 · Medium ×2 · Hard ×5 · Professional ×999. A draw gives your bet back.",
-        "Leaving a game or giving up loses the bet."]),
+        "A win: Easy 40 · Medium 90 · Hard 200 · Professional 600 coins. A draw pays a quarter of it.",
+        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "The bot plays on the server, which decides who won. Leaving a game or giving up pays nothing."]),
     "colour": ("Colour Pick", [
         "A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.",
         "Your accuracy is measured the way the eye sees colour (CIEDE2000): close counts, exact is best.",
         "Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s."], [
         "Remember the hue first, then how pale or dark it was. Move the sliders one at a time.",
         "The colour is shown once and the clock is kept by the server: a late answer scores nothing."], [
-        "The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.",
-        "Once you are up 12 000 coins in a day, a win gives your bet back."]),
+        "Pay = the level's pay (Easy 40, Medium 60, Hard 90) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.",
+        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "The server picks the colour and scores your answer."]),
     "sfxmatch": ("SFX Match", [
         "A short sound plays, then it is gone. Recreate it with the sliders: pitch, duration and tone, and on harder levels glide, shape and wobble.",
         "You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.",
         "After the round you hear both sounds and see how close each setting was."], [
         "Find the pitch first, then the length, then the tone: sine is soft, square is buzzy, saw is sharp.",
         "Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited."], [
-        "The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.",
-        "Once you are up 12 000 coins in a day, a win gives your bet back."]),
+        "Pay = the level's pay (Easy 50, Medium 75, Hard 110) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.",
+        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "The server makes the sound and scores your answer."]),
     "cups": ("Cup Game", [
         "A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.",
         "Follow the cup with the coin and click it when they stop."], [
         "Watch only the cup with the coin, never the others.",
         "Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves."], [
-        "Easy ×1.2 · Medium ×2 · Hard ×3 · Expert ×5."]),
+        "Finding the coin: Easy 25 · Medium 50 · Hard 90 · Expert 150 coins.",
+        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "The server hides the coin and checks your pick and its time."]),
     "tower": ("Tower", [
         "Climb 8 rows. On each row, pick a tile: a safe one takes you up, a bomb ends the round.",
         "Cash out whenever you like from the first row on."], [
@@ -50202,13 +50239,14 @@ HELP = {
 }
 
 _CASINO = [("Space", "Main button"), (["2", "3"], "Other buttons"), (["Left", "Right"], "Change the bet")]
+_SKILL = [("Space", "Main button"), (["2", "3"], "Other buttons")]          # 9.1: mini games have no bet to change
 CONTROLS = {
-    "blackjack": _CASINO, "plinko": _CASINO, "dice": _CASINO + [("Drag", "Set your chance")], "timing": _CASINO,
+    "blackjack": _CASINO, "plinko": _CASINO, "dice": _CASINO + [("Drag", "Set your chance")], "timing": _SKILL,
     "rocket": _CASINO, "hilo": _CASINO, "slots": _CASINO,
     "bombs": _CASINO + [("LMB", "Open a tile")], "tower": _CASINO + [("LMB", "Pick a tile")],
     "roulette": _CASINO + [("LMB", "Pick what you bet on")],
-    "cups": _CASINO + [("LMB", "Click the cup with the coin")],
-    "connect4": _CASINO + [("LMB", "Drop a disc in a column")],
+    "cups": _SKILL + [("LMB", "Click the cup with the coin")],
+    "connect4": _SKILL + [("LMB", "Drop a disc in a column")],
     "spin": [("LMB", "Spin the wheel")], "scratch": [("Drag", "Scratch the card")],
     "beat": [(["D", "F", "J", "K"], "Hit a lane"), ("LMB", "Hit a lane"), ("Space", "Start")],
     "memory": [("LMB", "Turn a card")], "parking": [("Drag", "Slide a car along its lane")],
@@ -50974,8 +51012,8 @@ class Roulette(Game):
 class CupGame(Game):
     """A Rubenium coin lands on the table, the cups drop over the spots and shuffle. Click the cup you think hides the
     coin. Easy 3 cups, Medium 6, Hard 9, Expert 9 cups and much faster."""
-    BET_CFG = ("cups_max_bet", 2000)          # 6.3: the Cup Game keeps its own top bet
     MODES = [("Easy", 3, 1.2), ("Medium", 6, 2.0), ("Hard", 9, 3.0), ("Expert", 9, 5.0)]     # 6.3
+    FREE = True                                # 9.1: no bet; a found coin pays by the level
 
     def __init__(self, page) -> None:
         super().__init__(page)
@@ -50998,7 +51036,7 @@ class CupGame(Game):
         self._tries = 0
 
     def options(self):
-        return [f"{tr(m)} ×{x:g}" for m, _n, x in self.MODES], self.mode
+        return [f"{tr(m)} · {coins_text(skill_pay(self.ctx, 'cups', i))}" for i, (m, _n, _x) in enumerate(self.MODES)], self.mode
 
     def set_option(self, i: int) -> None:
         if not self.busy:
@@ -51235,8 +51273,13 @@ class ConnectFour(Game):
         self._tries = 0
         self.setMouseTracking(True)
 
+    FREE = True                                # 9.1: no bet; a win pays by the level, a draw a quarter of it
+
+    def win_pay(self) -> int:
+        return skill_pay(self.ctx, "c4", self.MODES[self.mode][1])
+
     def options(self):
-        return [f"{tr(m)} ×{x:g}" for m, _k, x in self.MODES], self.mode
+        return [f"{tr(m)} · {coins_text(skill_pay(self.ctx, 'c4', k))}" for m, k, _x in self.MODES], self.mode
 
     def set_option(self, i: int) -> None:
         if not self.busy:
@@ -51474,9 +51517,9 @@ class ConnectFour(Game):
         y = side.top() + S(60)
         if self.outcome:
             text, colr = {"win": (tr("You win!"), WIN), "lose": (tr("The bot wins"), LOSE),
-                          "draw": (tr("Draw: bet back"), TEXT)}.get(self.outcome, ("", TEXT))
+                          "draw": (tr("Draw"), TEXT)}.get(self.outcome, ("", TEXT))
         elif not self.busy:
-            text, colr = tr("Line up 4 to win ×{m}", m=f"{self.MODES[self.mode][2]:g}"), TEXT_DIM
+            text, colr = tr("Line up 4 to win {n}", n=coins_text(self.win_pay())), TEXT_DIM
         elif self.my_turn():
             text, colr = tr("Your turn"), WIN
         else:
@@ -51489,7 +51532,7 @@ class ConnectFour(Game):
             p.setPen(QColor(TEXT_DIM))
             p.setFont(font(10, QFont.Weight.DemiBold))
             p.drawText(QRectF(side.left(), y + S(46), side.width(), S(36)), int(Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap),
-                       tr("Win: {n}", n=coins_text(int(self.stake * self.MODES[self.mode][2]))))
+                       tr("Win: {n}", n=coins_text(self.win_pay())))
         if self.my_turn():
             self.paint_clock(p, QPointF(side.center().x(), side.bottom() - S(34)), S(30))
 
@@ -51620,6 +51663,7 @@ class MatchGame(Game):
     CFG = ""
     MODES: list = []          # (name, best multiplier, seconds to look, seconds to answer)
     SLIDER_ROWS = 3
+    FREE = True               # 9.1: no bet; the closer you get, the more it pays
 
     def __init__(self, page) -> None:
         super().__init__(page)
@@ -51639,7 +51683,9 @@ class MatchGame(Game):
 
     # -- the choice row
     def options(self):
-        return [tr(m[0]) for m in self.MODES], self.mode                 # the same rewards on every level: no ×
+        key = "colour" if self.RPC == "rb_colour" else "sfx"           # 9.1: the most a level pays
+        return [f"{tr(m[0])} · {tr('up to')} {coins_text(skill_pay(self.ctx, key, i, 1.5))}"
+                for i, m in enumerate(self.MODES)], self.mode
 
     def set_option(self, i: int) -> None:
         if not self.busy:
@@ -51924,10 +51970,11 @@ class ColourPick(MatchGame):
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.drawText(QRectF(mid.left(), mid.top() + S(58), mid.width(), S(18)), int(Qt.AlignmentFlag.AlignCenter),
                    tr("Colour distance {n}", n=f"{float(res.get('de') or 0):g}"))
-        mult = float(res.get("mult") or 0)
-        p.setPen(QColor(GOLD_TEXT if mult > 1 else TEXT))
+        paid = int(res.get("paid") or 0)                       # 9.1: the coins it paid (no bet any more)
+        p.setPen(QColor(GOLD_TEXT if paid > 0 else TEXT))
         p.setFont(font(13, QFont.Weight.ExtraBold))
-        p.drawText(QRectF(mid.left(), mid.top() + S(82), mid.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter), f"×{mult:g}")
+        p.drawText(QRectF(mid.left(), mid.top() + S(82), mid.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                   "+" + coins_text(paid))
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(9.5, QFont.Weight.DemiBold))
         for rect, vals in ((QRectF(r.left() + S(8), top + sh + S(6), sw + S(20), S(16)), (res.get("h"), res.get("s"), res.get("v"))),
@@ -52144,10 +52191,11 @@ class SfxMatch(MatchGame):
         p.setFont(font(30, QFont.Weight.Black))
         p.drawText(QRectF(r.left() + S(10), r.top() + S(30), S(110), S(44)), int(Qt.AlignmentFlag.AlignCenter),
                    f"{acc * min(1.0, age / 0.6):.0f}%")
-        mult = float(res.get("mult") or 0)
-        p.setPen(QColor(GOLD_TEXT if mult > 1 else TEXT))
+        paid = int(res.get("paid") or 0)
+        p.setPen(QColor(GOLD_TEXT if paid > 0 else TEXT))
         p.setFont(font(13, QFont.Weight.ExtraBold))
-        p.drawText(QRectF(r.left() + S(10), r.top() + S(76), S(110), S(22)), int(Qt.AlignmentFlag.AlignCenter), f"×{mult:g}")
+        p.drawText(QRectF(r.left() + S(10), r.top() + S(76), S(110), S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                   "+" + coins_text(paid))
         parts = res.get("parts") or {}
         orig = {"pitch": 12.0 * math.log2(max(1.0, float(res.get("f") or 110)) / 110.0), "dur": float(res.get("d") or 0),
                 "wave": float(res.get("w") or 0), "glide": float(res.get("g") or 0), "shape": float(res.get("sh") or 0),
