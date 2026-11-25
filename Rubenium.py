@@ -44364,9 +44364,9 @@ class RaceView(QWidget):
             place = (plan["order"].index(mine) + 1) if mine is not None and mine in plan["order"] else 0
             sub = tr("Ridden for {who}", who=next((b.get("name") for b in d.get("bets") or [] if b.get("lane") == w), "?"))
             if won:
-                text = tr("YOU WON {n}!", n=coins_text(int(d.get("my_paid") or 0))) if d.get("my_paid") else tr("YOU WON!")
+                text = tr("YOU WON {n}!", n=coins_text(race_my_pay(d, plan["order"])))
             elif place in (2, 3):                              # 6.4: second and third place are paid too
-                text = tr("{p} PLACE: +{n}", p=tr("2ND") if place == 2 else tr("3RD"), n=coins_text(int(d.get("my_paid") or 0)))
+                text = tr("{p} PLACE: +{n}", p=tr("2ND") if place == 2 else tr("3RD"), n=coins_text(race_my_pay(d, plan["order"])))
                 sub = tr("#{n} {name} WINS", n=w + 1, name=tr(HORSE_NAMES[w]).upper())
             else:
                 text = tr("#{n} {name} WINS", n=w + 1, name=tr(HORSE_NAMES[w]).upper())
@@ -44519,6 +44519,23 @@ class RaceBoard(QWidget):
                 p.setFont(font(9, QFont.Weight.Black))
                 p.drawText(QRectF(row.left(), row.top() + S(18), row.width() * 0.80, S(16)),
                            int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter), "+" + coins_text(int(b["paid"])))
+
+
+def race_my_pay(d: dict, order: list) -> int:
+    """9.1: what the race pays me. The server pays when it closes the race, a moment after the finish line, so until
+    then the same sum is worked out here (the bet back for 1st, 25% for 2nd, 5% for 3rd, plus 70/20/10% of the rest)."""
+    if d.get("my_paid"):
+        return int(d["my_paid"])
+    mine = d.get("mine")
+    places = list(d.get("places") or order or [])
+    if mine is None or mine not in places[:3]:
+        return 0
+    amt = {int(b.get("lane", -1)): int(b.get("amount") or 0) for b in d.get("bets") or []}
+    total = sum(amt.values())
+    r1, r2, r3 = (amt.get(places[i], 0) if len(places) > i else 0 for i in range(3))
+    pool = total - r1 - int(0.25 * r2) - int(0.05 * r3)
+    k = places.index(mine)
+    return int((1.0, 0.25, 0.05)[k] * amt.get(mine, 0)) + int((0.70, 0.20, 0.10)[k] * pool)
 
 
 class HorseCard(QWidget):
