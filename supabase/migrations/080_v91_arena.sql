@@ -491,9 +491,10 @@ begin
     out_ := jsonb_build_object('id', g.id, 'kind', g.kind, 'level', g.level, 'bet', g.bet, 'state', g.state,
         'side', side, 'turn', g.turn, 'n', jsonb_array_length(g.moves),
         'last', case when jsonb_array_length(g.moves) > 0 then g.moves -> (jsonb_array_length(g.moves) - 1) end,
-        'winner', g.winner, 'why', g.why, 'paid', g.paid, 'bot', g.b is null,
+        'winner', g.winner, 'why', g.why, 'paid', g.paid, 'bot', g.level is not null,     -- an open duel has no b yet
         'a', (select username from public.profiles where id = g.a),
-        'b', case when g.b is null then initcap(coalesce(g.level, '')) || ' bot' else (select username from public.profiles where id = g.b) end,
+        'b', case when g.b is not null then (select username from public.profiles where id = g.b)
+                  when g.level is not null then initcap(g.level) || ' bot' end,
         'secs', case when g.state = 'live' then greatest(0, ceil(extract(epoch from g.turn_at
                        + make_interval(secs => public.rb_bg_turn_secs(g.kind)) - now())))::int end);
     if g.kind = 'ships' then
@@ -507,7 +508,7 @@ begin
             out_ := out_ || jsonb_build_object('their', case when side = 2 then g.secret -> 'f1' else g.secret -> 'f2' end);
         end if;
     else
-        out_ := out_ || jsonb_build_object('b', g.board -> 'b');
+        out_ := out_ || jsonb_build_object('board', g.board -> 'b');      -- 'a' and 'b' are the names
         if g.kind = 'reversi' and g.state = 'live' and side = g.turn then
             out_ := out_ || jsonb_build_object('legal', to_jsonb(public.rv_moves(g.board ->> 'b', side::text)));
         end if;
@@ -834,7 +835,7 @@ declare g public.rb_bg%rowtype; n integer := 0;
 begin
     if f not in ('arena', 'online', 'all', 'minigames') then return 0; end if;
     for g in select * from public.rb_bg where state in ('open', 'live')
-                                         and (f <> 'minigames' or b is null) and (f <> 'arena' or b is not null) for update loop
+                                         and (f <> 'minigames' or level is not null) and (f <> 'arena' or level is null) for update loop
         update public.rb_bg set state = 'cancelled', why = 'lockdown', done_at = now() where id = g.id;
         if g.bet > 0 then
             perform public.rb_pay(g.a, g.bet, 0, 'arena_back', g.id::text);
@@ -960,7 +961,7 @@ begin
     with
     arena as (
         select 'arena' k, g.id::text id, coalesce(g.done_at, g.at) at, array_remove(array[g.a, g.b], null) ids,
-               g.kind || case when g.b is null then ' vs ' || g.level || ' bot' else ' duel' end
+               g.kind || case when g.level is not null then ' vs ' || g.level || ' bot' else ' duel' end
                       || case when g.bet > 0 then ' · bet ' || g.bet else '' end what,
                case g.winner when 1 then 'won by side 1' when 2 then 'won by side 2' when 0 then 'draw' else g.state end
                       || coalesce(' (' || g.why || ')', '') res,
@@ -1008,10 +1009,13 @@ begin
                        and least(x.a, x.b) = least(f.a, f.b) and greatest(x.a, x.b) = greatest(f.a, f.b)) >= 3
                     then 'same pair again' end], null)
           from public.rb_flips f where f.state = 'done' and (who is null or f.a = who or f.b = who) order by f.at desc limit lim_n),
-    casino as (
-        select 'casino' k, r.id::text, r.at, array[r.owner], r.game || ' · bet ' || r.bet, 'paid ' || r.paid,
+    casino as (                                                   -- casino bets, and the mini games that pay by skill
+        select case when r.bet > 0 then 'casino' else 'mini' end k, r.id::text, r.at, array[r.owner],
+               r.game || case when r.bet > 0 then ' · bet ' || r.bet else ' · ' || coalesce(r.secret ->> 'level', '') end,
+               'paid ' || r.paid,
                array_remove(array[case when r.bet > 0 and r.paid >= r.bet * 50 then 'huge win' end], null)
-          from public.rb_rounds r where not r.open and r.bet > 0 and (who is null or r.owner = who)
+          from public.rb_rounds r where not r.open and (r.bet > 0 or r.game in ('timing', 'cups', 'colour', 'sfx'))
+           and (who is null or r.owner = who)
          order by r.at desc limit lim_n),
     held as (
         select 'held' k, h.id::text, h.at, array[h.owner], h.game || ' · ' || h.coins || ' coins waiting', h.state, array[h.why]
@@ -1020,7 +1024,8 @@ begin
              union all select * from flip union all select * from casino union all select * from held)
     select coalesce(jsonb_agg(jsonb_build_object('kind', x.k, 'id', x.id, 'at', x.at, 'what', x.what, 'result', x.res,
                                                  'flags', to_jsonb(x.flags),
-                                                 'who', (select jsonb_agg(p.username) from public.profiles p where p.id = any (x.ids)))
+                                                 'who', (select jsonb_agg(p.username order by array_position(x.ids, p.id)) from public.profiles p
+                                                        where p.id = any (x.ids)))
                               order by x.at desc), '[]'::jsonb)
       into out_
       from (select * from allr a(k, id, at, ids, what, res, flags)
@@ -1052,6 +1057,8 @@ begin
                             from public.rb_flips f where f.id::text = rid)
         when 'casino' then (select to_jsonb(r) || jsonb_build_object('name', (select username from public.profiles where id = r.owner))
                               from public.rb_rounds r where r.id::text = rid)
+        when 'mini' then (select to_jsonb(r) || jsonb_build_object('name', (select username from public.profiles where id = r.owner))
+                            from public.rb_rounds r where r.id::text = rid)
         when 'held' then (select to_jsonb(h) || jsonb_build_object('name', (select username from public.profiles where id = h.owner),
                                  'recent', (select jsonb_agg(jsonb_build_object('base', l.base, 'pay', l.pay, 'held', l.held, 'at', l.at)
                                                              order by l.at desc)

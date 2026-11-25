@@ -35,6 +35,7 @@ begin
     assert (select jsonb_array_length(moves) from public.rb_bg where id = gid) > 30, 'every move kept';
 
     -- Battleships against the Easy bot: firing at every cell in turn always ends it
+    delete from public.rb_rate_hits;                 -- one transaction is one minute: the move limit starts again
     perform t.act(pa);
     r := public.rb_bg_bot('ships', 'easy');
     gid := (r ->> 'id')::uuid;
@@ -58,6 +59,7 @@ begin
     end if;
 
     -- a Connect 4 duel for 100: Alice wins the pot less 5%
+    delete from public.rb_rate_hits;
     update public.profiles set coins = 5000 where id in (pa, pb);
     perform t.act(pa);
     r := public.rb_bg_create('c4', 100);

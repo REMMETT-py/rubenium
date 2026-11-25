@@ -1491,8 +1491,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.0.1"       # the version people see
-BUILD = "2026.11.25.24"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "9.1"         # the version people see
+BUILD = "2026.11.25.25"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -3094,6 +3094,9 @@ def server_missing(data) -> bool:
             or "server is being updated" in text or ("function" in text and "does not exist" in text))
 
 
+ONLINE_PAUSED = [lambda: False]      # 9.1: the ONLINE button is greyed out and locked for players in a lockdown
+
+
 class Econ(QObject):
     changed = pyqtSignal()          # coins, keys, items or what is worn changed
     loaded = pyqtSignal()           # the first full answer from the server arrived
@@ -3106,6 +3109,8 @@ class Econ(QObject):
         super().__init__()
         self.ctx, self.online = ctx, ctx.online
         self.ready = False
+        ONLINE_PAUSED[0] = lambda: bool(self.ready and (self.lockdown_cover() or
+                                                         (self.live.get("locked") and not self.admin)))
         self.coins = self.keys = self.minutes = 0
         self.coin_min = self.key_min = self.day_coins = 0
         self.items: list = []                    # [{id, item, locked, origin}]
@@ -3545,7 +3550,10 @@ class Econ(QObject):
         return not self.admin and (bool(self.locks.get("lockdown")) or "online" in (self.locks.get("locked") or []))
 
     def is_locked(self, feature: str) -> bool:
-        """The admin switched this part off (or Rubenium is in lockdown). The server refuses it anyway."""
+        """The admin switched this part off (or Rubenium is in lockdown). The server refuses it anyway.
+        9.1: never for an admin: admins keep every part of Rubenium during a lockdown (the server lets them)."""
+        if self.admin:
+            return False
         return bool(self.locks.get("lockdown")) or feature in (self.locks.get("locked") or [])
 
     def hold_round(self, on: bool) -> None:
@@ -9076,13 +9084,24 @@ class TabBar(QWidget):
             if key == "online":                             # 9.0: Go online, a glowing brand pill, always labelled
                 import time as _t
                 pulse = 0.5 + 0.5 * math.sin(_t.monotonic() * 2.4)
-                g = QLinearGradient(pill.topLeft(), pill.topRight())
-                g.setColorAt(0, c1)
-                g.setColorAt(1, c2)
-                p.setPen(QPen(alpha("#FFFFFF", 0.10 + 0.12 * pulse + 0.2 * h), S(1)))
-                p.setBrush(QBrush(g))
-                p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
-                fg = cta_fg()
+                try:
+                    paused = bool(ONLINE_PAUSED[0]())
+                except Exception:  # noqa: BLE001
+                    paused = False
+                if paused:                                  # 9.1: a lockdown: grey, with a lock, and it does nothing
+                    p.setPen(QPen(alpha("#FFFFFF", 0.10), S(1)))
+                    p.setBrush(QColor(52, 56, 60))
+                    p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
+                    fg = QColor(TEXT_FAINT)
+                    locked = True
+                else:
+                    g = QLinearGradient(pill.topLeft(), pill.topRight())
+                    g.setColorAt(0, c1)
+                    g.setColorAt(1, c2)
+                    p.setPen(QPen(alpha("#FFFFFF", 0.10 + 0.12 * pulse + 0.2 * h), S(1)))
+                    p.setBrush(QBrush(g))
+                    p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
+                    fg = cta_fg()
                 w = 1.0
                 if not hasattr(self, "_on_t"):
                     self._on_t = QTimer(self)
@@ -9121,6 +9140,8 @@ class TabBar(QWidget):
                 p.setFont(self._font)
                 p.setPen(QColor("#FFFFFF"))
                 p.setFont(font(11.5, QFont.Weight.Bold))
+                if key == "online" and locked:
+                    p.setPen(QColor(TEXT_FAINT))
                 p.drawText(QRectF(r.left() + slot - S(3), 0, self._lw[i], self._full_h),
                            int(Qt.AlignmentFlag.AlignVCenter), label)
                 p.restore()
@@ -9212,6 +9233,10 @@ def lock_strip(ctx, lay, features, width: int) -> bool:
     if isinstance(features, str):
         features = [features]
     ec = ctx.econ
+    if ec.admin:                                    # 9.1: admins play through a lockdown (and see that it is on)
+        if ec.locks.get("lockdown") or any(f in (ec.locks.get("locked") or []) for f in features):
+            lay.addWidget(LockStrip(en("Paused for players. You are an admin: everything still works for you."), width))
+        return False
     if ec.locks.get("lockdown"):
         text = tr("Rubenium is paused for a moment by its team. Nothing you own is lost: open trades and games "
                   "were given back.")
@@ -12628,6 +12653,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.1", ['A fresh start for everyone: coins and keys go back to 0. Your level, your Common and Rare basic items and the OG tag stay', 'Five wealth tiers, from Poor to Casino Legend: a tier you reach is yours for good, and it multiplies every free reward', 'Leaderboards have their own tab in the side menu, with every game: casino, mini games, Horse Racing and every duel', 'A new Stats tab: your wealth, casino results by game, mini game coins and where your free coins came from, all in graphs', 'Play is now an ENTER CASINO door (casino games, Jackpot, Horse Racing, Coinflip behind it) and the mini games', 'Mini games are free and pay by how well you play, judged on the server. No daily limit: your first 8 rounds of each game every day pay double', "NEW: Reversi and Battleships against bots from Easy to Insane. The bots play on the server, so they can't be tricked", 'NEW: Duels. Connect 4, Reversi and Battleships 1 v 1 against other players, free or for the same bet (the winner takes the pot, less 5%), next to Mini Golf and Wave Rush', 'Separate cases for each kind of item, and the Crown Vault (20 000) that holds them all. The Key Forge gives more keys at higher tiers', '5 animations, each with versions you unlock by owning the original', 'Badge layouts that fit how many badges you show: a row, spread out, stacked or a pyramid', "The online doors are Rubenium doors now, buttons take the colours of the song's cover, and the menu widens while you play a game", 'Lyrics stay in time with the song, and the lyrics picked match the version you are playing', 'Horse Racing shows wins properly, scratch cards never get stuck, and Rewards says how often each one comes back', 'The tutorial shows the app as it is now', 'Rubenium installs in one place (AppData\\Local\\Rubenium\\App), and Settings > UPDATE can uninstall it: hold the red button. Your online account is never touched', 'One account per PC']),
     ("9.0.1", ["The online side menu works again (it could not be clicked)", "Leaving a free game takes you back to Rewards, not an old games list"]),
     ("9.0", ['A whole new look: a side menu, a top bar with your coins and level, and big clear tiles everywhere', 'Home shows what is ready for you, the games you played last and what is live', 'Rewards: the free spin, scratch card, daily reward and quests in one place', 'Wealth tiers: free rewards grow with what you own, from Rookie to Diamond', 'The Key Forge: turn coins into keys, a few a day', 'A fresh start: everyone begins again with the same coins and keys. Cosmetics, levels and friends stay', 'New prices, odds and taxes across the whole game', 'The player market is gone. Quick sell stays', 'No more automatic game locks', 'Less text: tap a golden ? when you want the details', 'Bet faster with ½, 2× and Max, and your bet is remembered']),
     ("8.0", ['Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one', 'Solo Mini Golf online needs Rubenium 8.0', 'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players', 'A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing', 'Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer', 'Empty pages now say what goes there and how to fill them (inventory, market, offers, chat, trades, Mini Golf matches, jackpot)', 'Game tabs show their full names, and every row of buttons is even', 'Lighter: Rubenium uses much less processor while it rests', 'Clearer numbers: "100 h played · member since 25 Nov 2026", long coinflip waits as 3:43:17']),
@@ -13131,6 +13157,212 @@ FR.update({  # 9.0 start
     'The online side menu works again (it could not be clicked)': 'Le menu latéral en ligne marche de nouveau (on ne pouvait pas cliquer dessus)',
     'Leaving a free game takes you back to Rewards, not an old games list': 'Quitter un jeu gratuit te ramène aux Récompenses, plus à une ancienne liste de jeux',
 })  # 9.0 end
+FR.update({  # 9.1
+    'Badge layout': 'Disposition des badges',
+    'Badge alignment': 'Alignement des badges',
+    'Badge spacing': 'Espacement des badges',
+    'Keep holding… {n}': 'Continue d’appuyer… {n}',
+    'Uninstall': 'Désinstaller',
+    "Removes Rubenium from this PC: the program, your settings, backups, saved lyrics, logs, shortcuts and start with Windows. Rocket League swaps and the game start screen are put back to the game's own files first.": 'Retire Rubenium de ce PC : le programme, tes réglages, sauvegardes, paroles enregistrées, journaux, raccourcis et le lancement avec Windows. Les swaps Rocket League et l’écran de démarrage du jeu sont d’abord remis aux fichiers du jeu.',
+    'Your online account is NOT deleted: coins, keys, items, levels and friends stay saved online. If you are logged in, your settings are backed up online first, so you can restore them if you install Rubenium again.': 'Ton compte en ligne n’est PAS supprimé : pièces, clés, objets, niveaux et amis restent enregistrés en ligne. Si tu es connecté, tes réglages sont d’abord sauvegardés en ligne, pour les récupérer si tu réinstalles Rubenium.',
+    'This cannot be undone on this PC. Hold the button until it is full (4 seconds).': 'Impossible à annuler sur ce PC. Maintiens le bouton jusqu’à ce qu’il soit plein (4 secondes).',
+    'Hold to uninstall Rubenium': 'Maintiens pour désinstaller Rubenium',
+    'Always a badge, never coins. Cheapest at the top, best odds at the bottom.': 'Toujours un badge, jamais des pièces. Les moins chères en haut, les meilleures chances en bas.',
+    'One kind per case. The Crown Vault holds them all. No key needed.': 'Un type par caisse. Le Coffre de la Couronne les contient tous. Pas besoin de clé.',
+    'Own {name} first to unlock this version.': 'Possède d’abord {name} pour débloquer cette version.',
+    'Not for sale.': 'Pas à vendre.',
+    'Nothing here yet. Buy one in the Shop or win one in the Crown Vault.': 'Rien ici pour l’instant. Achètes-en une dans la Boutique ou gagne-la dans le Coffre de la Couronne.',
+    'Perfect {a} · Good {b} · Close {c}': 'Parfait {a} · Bien {b} · Proche {c}',
+    '1. Press Start. It is free: no bet.': '1. Appuie sur Démarrer. C’est gratuit : aucune mise.',
+    'THEIR WATERS: click to fire': 'SES EAUX : clique pour tirer',
+    'YOUR FLEET': 'TA FLOTTE',
+    'Waiting for a player to join…': 'En attente d’un joueur…',
+    'Cancelled: nothing was lost': 'Annulé : rien n’a été perdu',
+    'four in a row': 'quatre alignés',
+    'most discs': 'plus de pions',
+    'resigned': 'abandon',
+    'time ran out': 'temps écoulé',
+    'board full': 'grille pleine',
+    'fleet sunk': 'flotte coulée',
+    'A draw': 'Égalité',
+    '{name} is thinking…': '{name} réfléchit…',
+    'Discs: you {a} · them {b}': 'Pions : toi {a} · lui {b}',
+    'Play a move': 'Jouer un coup',
+    'vs': 'contre',
+    'Move my ships': 'Replacer mes bateaux',
+    'Give up this game?': 'Abandonner cette partie ?',
+    'This win is paid after a quick check by the Rubenium team.': 'Cette victoire est payée après une petite vérification par l’équipe Rubenium.',
+    'Against the bot. Free, no bet: a win pays by the level and by how well you win.': 'Contre le bot. Gratuit, sans mise : une victoire paie selon le niveau et selon ta façon de gagner.',
+    'A win pays up to {n} coins': 'Une victoire paie jusqu’à {n} pièces',
+    'Fresh bonus ×2: {n} left today': 'Bonus du jour ×2 : encore {n} aujourd’hui',
+    'Your wins': 'Tes victoires',
+    'Play a person instead': 'Jouer contre une personne',
+    '1 v 1 against another player. Free for fun, or both bet the same coins: the winner takes the pot (less 5%).': '1 contre 1 face à un autre joueur. Gratuit pour le plaisir, ou chacun mise la même somme : le gagnant prend le pot (moins 5 %).',
+    'Open duels': 'Duels ouverts',
+    'Nobody is waiting. Open one and a player can join it.': 'Personne n’attend. Ouvres-en un et un joueur pourra le rejoindre.',
+    'Play a bot instead': 'Jouer contre un bot',
+    'ENTER CASINO': 'ENTRER AU CASINO',
+    'Blackjack, Slots, Roulette, Jackpot, Horse Racing and more': 'Blackjack, Machine à sous, Roulette, Jackpot, Course de chevaux et plus',
+    'All free, no bet. They pay by how well you do, with no daily limit: your first 8 rounds of each game every day pay double.': 'Tous gratuits, sans mise. Ils paient selon ta performance, sans limite par jour : tes 8 premières parties de chaque jeu, chaque jour, paient le double.',
+    '1 v 1 against another player, for fun or for the same bet each: the winner takes the pot (less a small fee).': '1 contre 1 face à un autre joueur, pour le plaisir ou avec la même mise chacun : le gagnant prend le pot (moins de petits frais).',
+    'Battleships wins': 'Victoires à la Bataille navale',
+    'Reversi wins': 'Victoires au Reversi',
+    'Insane bots beaten': 'Bots Démentiels battus',
+    'Best horse win': 'Meilleur gain aux chevaux',
+    'Duels won': 'Duels gagnés',
+    'Mini game coins': 'Pièces des mini-jeux',
+    '{name} joined your {game} duel: your move!': '{name} a rejoint ton duel de {game} : à toi de jouer !',
+    '{game} with {name}: a draw': '{game} contre {name} : égalité',
+    'You beat {name} at {game}!': 'Tu as battu {name} au {game} !',
+    '{name} won the {game} duel': '{name} a gagné le duel de {game}',
+    'CHECKED': 'VÉRIFIÉ',
+    'Your held mini game coins were paid: thanks for waiting!': 'Tes pièces de mini-jeux en attente ont été payées : merci d’avoir attendu !',
+    'A held mini game win was checked and not paid': 'Un gain de mini-jeu en attente a été vérifié et n’a pas été payé',
+    'Free rewards (spins, scratch cards, daily rewards, quests, mini games and AFK coins) are multiplied by your tier. Your tier comes from everything you own: coins and items. Once you reach a tier you keep it.': 'Les récompenses gratuites (roues, cartes à gratter, récompenses du jour, quêtes, mini-jeux et pièces AFK) sont multipliées par ton rang. Ton rang vient de tout ce que tu possèdes : pièces et objets. Un rang atteint est gardé.',
+    '{name} at {n}': '{name} à {n}',
+    'Every hour': 'Toutes les heures',
+    'Every {n} hours': 'Toutes les {n} heures',
+    'Once a day: more each day in a row': 'Une fois par jour : plus chaque jour d’affilée',
+    'New every hour, day and week': 'Nouvelles chaque heure, jour et semaine',
+    'See your rewards graph': 'Voir le graphique de tes récompenses',
+    'Pay coins, get a key. The price is 0.5% of your wealth (at least 250 coins). Higher tiers can forge more keys a day.': 'Paie des pièces, reçois une clé. Le prix est 0,5 % de ta richesse (au moins 250 pièces). Les rangs plus hauts forgent plus de clés par jour.',
+    'Forge a key': 'Forger une clé',
+    '{c} coins → 1 key': '{c} pièces → 1 clé',
+    '{n} of {cap} left today': '{n} sur {cap} restantes aujourd’hui',
+    'Come back tomorrow': 'Reviens demain',
+    'Total': 'Total',
+    'Nothing played in this period yet': 'Rien joué sur cette période pour l’instant',
+    'Be top 3 of a board to wear its title': 'Sois dans le top 3 d’un classement pour porter son titre',
+    'Your own numbers, worked out on the server. Nobody else sees them.': 'Tes propres chiffres, calculés par le serveur. Personne d’autre ne les voit.',
+    'Log in to see your stats': 'Connecte-toi pour voir tes stats',
+    'Coins now': 'Pièces maintenant',
+    'Change in {n} days': 'Évolution sur {n} jours',
+    'Tier': 'Rang',
+    'Your coins': 'Tes pièces',
+    'at the end of each day': 'à la fin de chaque jour',
+    'Coins in and out each day': 'Pièces gagnées et dépensées chaque jour',
+    'XP each day': 'XP chaque jour',
+    'Rounds': 'Parties',
+    'Came back': 'Revenu',
+    'Result': 'Résultat',
+    'Casino result each day': 'Résultat du casino chaque jour',
+    'won minus bet, Horse Racing included': 'gains moins mises, Course de chevaux comprise',
+    'Coins earned': 'Pièces gagnées',
+    'Mini game coins each day': 'Pièces des mini-jeux chaque jour',
+    'By game': 'Par jeu',
+    'coins earned': 'pièces gagnées',
+    'result': 'résultat',
+    'Rounds won': 'Parties gagnées',
+    'Biggest win': 'Plus gros gain',
+    'Last {n} rounds': '{n} dernières parties',
+    'oldest on the left': 'les plus anciennes à gauche',
+    'Free coins in {n} days': 'Pièces gratuites sur {n} jours',
+    'Best day': 'Meilleur jour',
+    'Keys earned': 'Clés gagnées',
+    'Your tier boost': 'Le bonus de ton rang',
+    'Free coins each day': 'Pièces gratuites chaque jour',
+    'Where they came from': 'D’où elles viennent',
+    'Keys earned each day': 'Clés gagnées chaque jour',
+    'Line up 4 to win {n}': 'Aligne-en 4 pour gagner {n}',
+    'up to': 'jusqu’à',
+    'Finish the round first': 'Termine d’abord la partie',
+    'CASINO · COINS ONLY': 'CASINO · PIÈCES UNIQUEMENT',
+    'MINI GAME · FREE': 'MINI-JEU · GRATUIT',
+    'HOW IT PAYS': 'CE QUE ÇA PAIE',
+    'THIS SESSION': 'CETTE SESSION',
+    'No round yet': 'Aucune partie pour l’instant',
+    'CASINO GAMES': 'JEUX DU CASINO',
+    'MINI GAMES': 'MINI-JEUX',
+    'Uninstall works on Windows only': 'La désinstallation ne marche que sous Windows',
+    'Finish your round first, then uninstall': 'Termine ta partie, puis désinstalle',
+    'Rocket League items are being changed: try again in a moment': 'Des objets Rocket League sont en cours de changement : réessaie dans un instant',
+    'Close Rocket League first, so its own files can be put back': 'Ferme d’abord Rocket League pour que ses fichiers puissent être remis',
+    'Saving…': 'Sauvegarde…',
+    'Putting game files back…': 'Remise des fichiers du jeu…',
+    "Rocket League's own files could not be put back, so nothing was removed. Turn your swaps off in Rocket League, then try again.": 'Les fichiers de Rocket League n’ont pas pu être remis, donc rien n’a été retiré. Désactive tes swaps dans Rocket League, puis réessaie.',
+    'Uninstalling…': 'Désinstallation…',
+    'Windows did not let Rubenium uninstall. Use Windows Settings > Apps instead.': 'Windows n’a pas laissé Rubenium se désinstaller. Passe plutôt par Paramètres Windows > Applications.',
+    'Online is paused for a moment by the Rubenium team. Nothing you own is lost.': 'Le mode en ligne est en pause un instant par l’équipe Rubenium. Tu ne perds rien.',
+    'A win: Easy 30 · Medium 80 · Hard 180 · Insane 450 coins, up to 50% more if you used few shots.': 'Une victoire : Facile 30 · Moyen 80 · Difficile 180 · Démentiel 450 pièces, jusqu’à 50 % de plus avec peu de tirs.',
+    'A win: Easy 40 · Medium 100 · Hard 250 · Insane 700 coins, up to 50% more for a big win. A draw pays a quarter.': 'Une victoire : Facile 40 · Moyen 100 · Difficile 250 · Démentiel 700 pièces, jusqu’à 50 % de plus pour une large victoire. Une égalité paie un quart.',
+    'A win: Easy 40 · Medium 90 · Hard 200 · Professional 600 coins. A draw pays a quarter of it.': 'Une victoire : Facile 40 · Moyen 90 · Difficile 200 · Professionnel 600 pièces. Une égalité en paie un quart.',
+    'After a hit, find the direction first, then follow the line.': 'Après une touche, trouve d’abord la direction, puis suis la ligne.',
+    'All duels': 'Tous les duels',
+    'An open duel nobody joins in 10 minutes is cancelled and the bet comes back.': 'Un duel ouvert que personne ne rejoint en 10 minutes est annulé et la mise revient.',
+    'Arena': 'Arène',
+    'Arena duel': 'Duel d’arène',
+    'Battleships': 'Bataille navale',
+    'Battleships duels': 'Duels de Bataille navale',
+    'Click a cell of their waters to fire. A hit lets you fire again. Sink all 17 cells of their fleet before they sink yours.': 'Clique une case de ses eaux pour tirer. Une touche te laisse tirer encore. Coule les 17 cases de sa flotte avant qu’il coule la tienne.',
+    'Coins and keys come in just by having Rubenium open. Keys open cases in the Shop. Rewards has a free spin, a scratch card, a daily reward and quests.': 'Les pièces et les clés arrivent juste en gardant Rubenium ouvert. Les clés ouvrent des caisses dans la Boutique. Récompenses a une roue gratuite, une carte à gratter, une récompense du jour et des quêtes.',
+    'Connect 4 duels': 'Duels de Puissance 4',
+    "Corners can never be turned back: take them, and don't give them away by playing next to them.": 'Les coins ne peuvent jamais être retournés : prends-les, et ne les offre pas en jouant à côté.',
+    'Duel a player': 'Défier un joueur',
+    'Duel or practice': 'Duel ou entraînement',
+    'Duel or solo': 'Duel ou solo',
+    'Early on, fewer discs is often better: keep your moves free and leave the bot few.': 'Au début, moins de pions vaut souvent mieux : garde tes coups libres et laisse-en peu au bot.',
+    'Easy fires at random, Medium hunts around hits, Hard hunts in a pattern, Insane works out where ships can still be.': 'Facile tire au hasard, Moyen chasse autour des touches, Difficile chasse en motif, Démentiel calcule où les bateaux peuvent encore être.',
+    'Easy plays at random, Medium grabs discs, Hard knows the board, Insane looks ahead and plays the end perfectly.': 'Facile joue au hasard, Moyen prend des pions, Difficile connaît le plateau, Démentiel anticipe et joue la fin parfaitement.',
+    'Every move is kept on the server, so a game can always be checked.': 'Chaque coup est gardé sur le serveur, donc une partie peut toujours être vérifiée.',
+    'Finding the coin: Easy 25 · Medium 50 · Hard 90 · Expert 150 coins.': 'Trouver la pièce : Facile 25 · Moyen 50 · Difficile 90 · Expert 150 pièces.',
+    'Fire at a cell': 'Tirer sur une case',
+    "Fire in a checker pattern: the smallest ship is 2 long, so it can't hide between the dots.": 'Tire en damier : le plus petit bateau fait 2 cases, il ne peut donc pas se cacher entre les points.',
+    'Free coins': 'Pièces gratuites',
+    'Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).': 'Gratuit : aucune mise. Tes 8 premières parties de chaque jeu, chaque jour, paient le double, puis plein tarif sans limite par jour (le tout multiplié par ton rang).',
+    "If you can't move, you pass. When neither side can move, the one with more discs wins.": 'Si tu ne peux pas jouer, tu passes. Quand personne ne peut jouer, celui qui a le plus de pions gagne.',
+    'Mini Golf party': 'Partie de Mini Golf',
+    'Mini games are free and pay by how well you do. The casino is behind its doors: there you bet coins.': 'Les mini-jeux sont gratuits et paient selon ta performance. Le casino est derrière ses portes : là, tu mises des pièces.',
+    'One free card every {h} hours. Scratch it to see your prize.': 'Une carte gratuite toutes les {h} heures. Gratte-la pour voir ton prix.',
+    'Only the server knows where the ships are: their fleet is shown once the game ends.': 'Seul le serveur sait où sont les bateaux : sa flotte est montrée à la fin de la partie.',
+    'Open a duel (free, or with a bet) and wait for someone to join, or join one that is open.': 'Ouvre un duel (gratuit ou avec mise) et attends qu’on le rejoigne, ou rejoins-en un ouvert.',
+    "Pay = the level's pay (Easy 40, Medium 60, Hard 90) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.": 'Gain = le gain du niveau (Facile 40, Moyen 60, Difficile 90) × ta précision : 95 % ou plus ×1,5, 85 % ×1,25, 70 % ×1, 55 % ×0,7, 40 % ×0,4, en dessous rien.',
+    "Pay = the level's pay (Easy 50, Medium 75, Hard 110) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.": 'Gain = le gain du niveau (Facile 50, Moyen 75, Difficile 110) × ta précision : 95 % ou plus ×1,5, 85 % ×1,25, 70 % ×1, 55 % ×0,7, 40 % ×0,4, en dessous rien.',
+    'Pays by skill': 'Paie selon ton niveau',
+    'Perfect (the centre): 120 coins. Good: 50. Close: 15. Miss, or after 9 seconds: nothing.': 'Parfait (le centre) : 120 pièces. Bien : 50. Proche : 15. Raté, ou après 9 secondes : rien.',
+    'Place a disc': 'Poser un pion',
+    "Place a disc so that it closes a line of the bot's discs between it and one of yours: they all turn to your colour.": 'Pose un pion pour enfermer une ligne de pions du bot entre lui et un des tiens : ils prennent tous ta couleur.',
+    'Practise against the bots first: they play the same rules.': 'Entraîne-toi d’abord contre les bots : ils suivent les mêmes règles.',
+    'Professional moves first and plays perfectly: it has never lost. Beat it for 600 coins.': 'Professionnel joue en premier et parfaitement : il n’a jamais perdu. Bats-le pour 600 pièces.',
+    'Reversi': 'Reversi',
+    'Reversi duels': 'Duels de Reversi',
+    'The ONLINE button opens the big menu, with Play, Rewards, Stats, the Shop, trading and your friends.': 'Le bouton EN LIGNE ouvre le grand menu, avec Jouer, Récompenses, Stats, la Boutique, les échanges et tes amis.',
+    'The bot plays on the server, which decides who won. Leaving a game or giving up pays nothing.': 'Le bot joue sur le serveur, qui décide du gagnant. Quitter ou abandonner ne paie rien.',
+    "The first tab shows what is playing (Spotify, YouTube Music and more) with lyrics in time. The buttons take the colours of the song's cover.": 'Le premier onglet montre ce qui joue (Spotify, YouTube Music et plus) avec les paroles en rythme. Les boutons prennent les couleurs de la pochette.',
+    'The server hides the coin and checks your pick and its time.': 'Le serveur cache la pièce et vérifie ton choix et son temps.',
+    'The server keeps its own clock and judges the stop: slowing Rubenium down does not help.': 'Le serveur garde sa propre horloge et juge l’arrêt : ralentir Rubenium ne sert à rien.',
+    'The server makes the sound and scores your answer.': 'Le serveur crée le son et note ta réponse.',
+    'The server picks the colour and scores your answer.': 'Le serveur choisit la couleur et note ta réponse.',
+    'This quick guide shows the main parts and sets up the few things that matter. The menu opens when you finish.': 'Ce petit guide montre l’essentiel et règle les quelques points importants. Le menu s’ouvre quand tu as fini.',
+    'Tiers and Stats': 'Rangs et Stats',
+    'Welcome to Rubenium': 'Bienvenue sur Rubenium',
+    'What you own (coins and items) sets your tier, from Poor to Casino Legend. A tier you reach is yours for good and pays more. Stats shows graphs of everything you play.': 'Ce que tu possèdes (pièces et objets) fixe ton rang, de Pauvre à Légende du casino. Un rang atteint est à toi pour de bon et paie plus. Stats montre des graphiques de tout ce que tu joues.',
+    'With a bet, both put in the same coins and the winner takes the pot, less a 5% fee. A draw gives both bets back.': 'Avec une mise, chacun met les mêmes pièces et le gagnant prend le pot, moins 5 % de frais. Une égalité rend les deux mises.',
+    'You take turns. Each move has a clock (30 s, 45 s for Reversi): if it runs out, you lose.': 'Vous jouez chacun votre tour. Chaque coup a un chrono (30 s, 45 s au Reversi) : s’il arrive à zéro, tu perds.',
+    'Your fleet (5 ships) is placed for you: press Move my ships before the first shot to place it again.': 'Ta flotte (5 bateaux) est placée pour toi : appuie sur Replacer mes bateaux avant le premier tir pour la replacer.',
+    'Poor': 'Pauvre',
+    'Average': 'Moyen',
+    'Investor': 'Investisseur',
+    'Businessman': 'Homme d’affaires',
+    'Casino Legend': 'Légende du casino',
+    'Crown Vault': 'Coffre de la Couronne',
+    'A fresh start for everyone: coins and keys go back to 0. Your level, your Common and Rare basic items and the OG tag stay': 'Un nouveau départ pour tous : pièces et clés reviennent à 0. Ton niveau, tes objets de base Communs et Rares et le tag OG restent',
+    'Five wealth tiers, from Poor to Casino Legend: a tier you reach is yours for good, and it multiplies every free reward': 'Cinq rangs de richesse, de Pauvre à Légende du casino : un rang atteint est à toi pour de bon, et il multiplie chaque récompense gratuite',
+    'Leaderboards have their own tab in the side menu, with every game: casino, mini games, Horse Racing and every duel': 'Les classements ont leur propre onglet dans le menu latéral, avec tous les jeux : casino, mini-jeux, Course de chevaux et tous les duels',
+    'A new Stats tab: your wealth, casino results by game, mini game coins and where your free coins came from, all in graphs': 'Un nouvel onglet Stats : ta richesse, tes résultats au casino par jeu, tes pièces de mini-jeux et d’où viennent tes pièces gratuites, le tout en graphiques',
+    'Play is now an ENTER CASINO door (casino games, Jackpot, Horse Racing, Coinflip behind it) and the mini games': 'Jouer, c’est maintenant une porte ENTRER AU CASINO (jeux du casino, Jackpot, Course de chevaux, Pile ou face derrière) et les mini-jeux',
+    'Mini games are free and pay by how well you play, judged on the server. No daily limit: your first 8 rounds of each game every day pay double': 'Les mini-jeux sont gratuits et paient selon ta performance, jugée par le serveur. Sans limite par jour : tes 8 premières parties de chaque jeu, chaque jour, paient le double',
+    "NEW: Reversi and Battleships against bots from Easy to Insane. The bots play on the server, so they can't be tricked": 'NOUVEAU : Reversi et Bataille navale contre des bots de Facile à Démentiel. Les bots jouent sur le serveur, impossible de les tromper',
+    'NEW: Duels. Connect 4, Reversi and Battleships 1 v 1 against other players, free or for the same bet (the winner takes the pot, less 5%), next to Mini Golf and Wave Rush': 'NOUVEAU : les Duels. Puissance 4, Reversi et Bataille navale en 1 contre 1 face à d’autres joueurs, gratuits ou avec la même mise (le gagnant prend le pot, moins 5 %), à côté du Mini Golf et de Wave Rush',
+    'Separate cases for each kind of item, and the Crown Vault (20 000) that holds them all. The Key Forge gives more keys at higher tiers': 'Une caisse pour chaque type d’objet, et le Coffre de la Couronne (20 000) qui les contient tous. La Forge à clés en donne plus aux rangs élevés',
+    '5 animations, each with versions you unlock by owning the original': '5 animations, chacune avec des versions débloquées en possédant l’originale',
+    'Badge layouts that fit how many badges you show: a row, spread out, stacked or a pyramid': 'Des dispositions de badges selon leur nombre : en ligne, espacés, empilés ou en pyramide',
+    "The online doors are Rubenium doors now, buttons take the colours of the song's cover, and the menu widens while you play a game": 'Les portes du mode en ligne sont maintenant des portes Rubenium, les boutons prennent les couleurs de la pochette, et le menu s’élargit pendant une partie',
+    'Lyrics stay in time with the song, and the lyrics picked match the version you are playing': 'Les paroles restent en rythme avec la chanson, et correspondent à la version que tu écoutes',
+    'Horse Racing shows wins properly, scratch cards never get stuck, and Rewards says how often each one comes back': 'La Course de chevaux affiche bien les gains, les cartes à gratter ne bloquent plus, et Récompenses indique quand chacune revient',
+    'The tutorial shows the app as it is now': 'Le tutoriel montre l’appli telle qu’elle est maintenant',
+    'Rubenium installs in one place (AppData\\Local\\Rubenium\\App), and Settings > UPDATE can uninstall it: hold the red button. Your online account is never touched': 'Rubenium s’installe à un seul endroit (AppData\\Local\\Rubenium\\App), et Réglages > MISE À JOUR peut le désinstaller : maintiens le bouton rouge. Ton compte en ligne n’est jamais touché',
+    'One account per PC': 'Un seul compte par PC',
+})  # 9.1 end
 
 # --------------------------------------------------------------------------- #
 # Rocket League: find the game, swap item files, keep the originals safe
@@ -15108,7 +15340,7 @@ TUTORIAL = [      # 9.1: the guide follows the app as it is now (Play, mini game
     ("coins", "Coins and keys", "Coins and keys come in just by having Rubenium open. Keys open cases in the Shop. Rewards has a free spin, a scratch card, a daily reward and quests."),
     ("online", "ONLINE mode", "The ONLINE button opens the big menu, with Play, Rewards, Stats, the Shop, trading and your friends."),
     ("play", "Play", "Mini games are free and pay by how well you do. The casino is behind its doors: there you bet coins."),
-    ("tiers", "Tiers and Stats", "Your coins set your tier, from Poor to Casino Legend. A tier you reach is yours for good and pays more. Stats shows graphs of everything you play."),
+    ("tiers", "Tiers and Stats", "What you own (coins and items) sets your tier, from Poor to Casino Legend. A tier you reach is yours for good and pays more. Stats shows graphs of everything you play."),
     ("done", "You're all set!", "Everything you chose can be changed any time in Settings. Have fun!"),
 ]
 TUTORIAL_CHOICE_KEYS = ("rshift", "rctrl", "ralt", "f9", "off")
@@ -22698,6 +22930,11 @@ class SettingsPage(StylePart, Page):
         def note(text: str) -> None:                    # a short explanation under a setting, never off the edge
             lay.addWidget(Label(text, 10, TEXT_DIM, wrap_w=self.W))
 
+        if sec == 0 and ctx.online.logged_in() and ctx.econ.admin:     # 9.1: the admin's LOCKDOWN, also offline
+            lay.addWidget(heading(en("Admin")))
+            lockdown_row(ctx, lay)
+            note(en("Stops every online part for players at once (open games, trades and coinflips are given back). "
+                    "Players cannot press ONLINE while it is on. You keep everything."))
         if sec == 0:                                    # ---------------------------------------------- General
             lay.addWidget(heading(tr("Opening")))           # 4.7: hold to open and the keys live in the game mode window
             gm_btn = Button(tr("Open"), "ghost", 30, icon="pad")
@@ -34842,8 +35079,746 @@ def game_feature(name: str) -> str:
     return {"Roulette": "roulette", "Free spin": "wheel"}.get(name, "minigames" if name in SKILL_GAMES else "casino")
 
 
+# ================================================================ 9.1: the Arena (Reversi, Battleships, duels)
+ARENA_KINDS = {"reversi": "Reversi", "ships": "Battleships", "c4": "Connect 4"}
+ARENA_LEVELS = [("easy", "Easy"), ("medium", "Medium"), ("hard", "Hard"), ("insane", "Insane")]
+ARENA_PAY = {"reversi": {"easy": 40, "medium": 100, "hard": 250, "insane": 700},
+             "ships": {"easy": 30, "medium": 80, "hard": 180, "insane": 450}}
+ARENA_BETS = [0, 100, 500, 1000, 5000]
+ARENA_SIDES = ("#FF5C5C", "#F5C04A")            # Connect 4: side 1 red, side 2 yellow
+
+
+class ArenaBoard(QWidget):
+    """The board of an Arena game, drawn from what the server sent. A click sends a move (the server checks it)."""
+    moved = pyqtSignal(int)
+
+    def __init__(self, kind: str, width: int) -> None:
+        super().__init__()
+        self.kind, self.d = kind, {}
+        self.hover = -1
+        self._last_n = -1
+        self._flash = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        w = int(min(width, S(440)))
+        if kind == "c4":
+            self.setFixedSize(w, int(w * 6 / 7) + S(8))
+        elif kind == "reversi":
+            self.setFixedSize(w, w)
+        else:
+            g = int(min(width, S(360)))
+            self.setFixedSize(w, g + S(22) + int(g * 0.5) + S(22))
+
+    def set_data(self, d: dict) -> None:
+        self.d = dict(d or {})
+        n = int(self.d.get("n") or 0)
+        if n != self._last_n:
+            if self._last_n >= 0:
+                self._flash.jump(1.0)
+                self._flash.to(0.0, 900)
+            self._last_n = n
+        self.update()
+
+    def my_turn(self) -> bool:
+        d = self.d
+        return d.get("state") == "live" and int(d.get("turn") or 0) == int(d.get("side") or -1)
+
+    # -- geometry
+    def _c4_cell(self):
+        w = self.width() / 7
+        return w, (self.height() - S(8)) / 6
+
+    def _ships_rects(self):
+        g = min(self.width(), S(360))
+        big = QRectF((self.width() - g) / 2, S(18), g, g)
+        sg = g * 0.5
+        small = QRectF((self.width() - sg) / 2, big.bottom() + S(22) + S(18) - S(18), sg, sg)
+        small.moveTop(big.bottom() + S(24))
+        return big, small
+
+    def _at(self, pos) -> int:
+        x, y = pos.x(), pos.y()
+        if self.kind == "c4":
+            cw, _ch = self._c4_cell()
+            c = int(x // cw)
+            return c if 0 <= c < 7 else -1
+        if self.kind == "reversi":
+            cs = self.width() / 8
+            r, c = int(y // cs), int(x // cs)
+            return r * 8 + c if 0 <= r < 8 and 0 <= c < 8 else -1
+        big, _small = self._ships_rects()
+        if not big.contains(pos):
+            return -1
+        cs = big.width() / 10
+        r, c = int((y - big.top()) // cs), int((x - big.left()) // cs)
+        return r * 10 + c if 0 <= r < 10 and 0 <= c < 10 else -1
+
+    def _legal(self, m: int) -> bool:
+        if m < 0 or not self.my_turn():
+            return False
+        if self.kind == "c4":
+            b = str(self.d.get("board") or "")
+            return any(b[r * 7 + m] == "." for r in range(6)) if len(b) == 42 else False
+        if self.kind == "reversi":
+            return m in (self.d.get("legal") or [])
+        shots = str(self.d.get("shots") or "")
+        return len(shots) == 100 and shots[m] == "."
+
+    def mouseMoveEvent(self, e) -> None:
+        h = self._at(e.position())
+        if h != self.hover:
+            self.hover = h
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def mouseReleaseEvent(self, e) -> None:
+        m = self._at(e.position())
+        if self._legal(m):
+            sfx.play("drop" if self.kind == "c4" else "chip" if self.kind == "reversi" else "putt")
+            self.moved.emit(m)
+
+    # -- drawing
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        try:
+            (self._paint_c4 if self.kind == "c4" else self._paint_rv if self.kind == "reversi" else self._paint_sh)(p)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("arena paint: %s", exc)
+
+    def _last_cell(self) -> int:
+        last = self.d.get("last") or {}
+        try:
+            m = int(last.get("m"))
+        except (TypeError, ValueError):
+            return -1
+        if self.kind == "c4":
+            b = str(self.d.get("board") or "")
+            top = -1
+            for r in range(6):
+                if len(b) == 42 and b[r * 7 + m] != ".":
+                    top = r * 7 + m
+            return top
+        return m
+
+    def _paint_c4(self, p: QPainter) -> None:
+        cw, ch = self._c4_cell()
+        r = QRectF(0, 0, self.width(), self.height() - S(8))
+        g = QLinearGradient(r.topLeft(), r.bottomLeft())
+        g.setColorAt(0, QColor("#2A3BC0"))
+        g.setColorAt(1, QColor("#1A2580"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+        if self.hover >= 0 and self._legal(self.hover):
+            p.setBrush(QColor(255, 255, 255, 22))
+            p.drawRoundedRect(QRectF(self.hover * cw + S(3), S(3), cw - S(6), r.height() - S(6)), S(10), S(10))
+        b = str(self.d.get("board") or "." * 42)
+        last = self._last_cell()
+        rad = min(cw, ch) * 0.38
+        for row in range(6):
+            for col in range(7):
+                c = QPointF(col * cw + cw / 2, (5 - row) * ch + ch / 2)
+                v = b[row * 7 + col] if len(b) == 42 else "."
+                p.setPen(Qt.PenStyle.NoPen)
+                if v == ".":
+                    p.setBrush(QColor(8, 12, 40))
+                else:
+                    col_ = QColor(ARENA_SIDES[int(v) - 1])
+                    rg = QRadialGradient(c - QPointF(rad * 0.3, rad * 0.3), rad * 1.4)
+                    rg.setColorAt(0, col_.lighter(135))
+                    rg.setColorAt(1, col_.darker(115))
+                    p.setBrush(rg)
+                p.drawEllipse(c, rad, rad)
+                if row * 7 + col == last and self._flash.level > 0.01:
+                    p.setPen(QPen(alpha("#FFFFFF", 0.8 * self._flash.level), S(3)))
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+                    p.drawEllipse(c, rad + S(3), rad + S(3))
+
+    def _paint_rv(self, p: QPainter) -> None:
+        cs = self.width() / 8
+        r = QRectF(self.rect())
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#0E6B3A"))
+        p.drawRoundedRect(r, S(12), S(12))
+        p.setPen(QPen(QColor(0, 0, 0, 90), 1))
+        for i in range(1, 8):
+            p.drawLine(QPointF(i * cs, 0), QPointF(i * cs, self.height()))
+            p.drawLine(QPointF(0, i * cs), QPointF(self.width(), i * cs))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(0, 0, 0, 120))
+        for x, y in ((2, 2), (6, 2), (2, 6), (6, 6)):
+            p.drawEllipse(QPointF(x * cs, y * cs), S(3), S(3))
+        b = str(self.d.get("board") or "")
+        legal = set(self.d.get("legal") or []) if self.my_turn() else set()
+        last = self._last_cell()
+        rad = cs * 0.4
+        for i in range(64):
+            c = QPointF((i % 8) * cs + cs / 2, (i // 8) * cs + cs / 2)
+            v = b[i] if len(b) == 64 else "."
+            if v in "12":
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(0, 0, 0, 80))
+                p.drawEllipse(c + QPointF(0, S(2)), rad, rad)
+                rg = QRadialGradient(c - QPointF(rad * 0.35, rad * 0.35), rad * 1.5)
+                if v == "1":
+                    rg.setColorAt(0, QColor("#5A6068"))
+                    rg.setColorAt(1, QColor("#0B0D10"))
+                else:
+                    rg.setColorAt(0, QColor("#FFFFFF"))
+                    rg.setColorAt(1, QColor("#C9CED6"))
+                p.setBrush(rg)
+                p.drawEllipse(c, rad, rad)
+                if i == last and self._flash.level > 0.01:
+                    p.setPen(QPen(alpha("#FFD34D", 0.9 * self._flash.level), S(2.5)))
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+                    p.drawEllipse(c, rad + S(3), rad + S(3))
+            elif i in legal:
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(255, 255, 255, 110 if i == self.hover else 45))
+                p.drawEllipse(c, rad * (0.45 if i == self.hover else 0.22), rad * (0.45 if i == self.hover else 0.22))
+
+    def _grid(self, p: QPainter, r: QRectF, cells: str, fleet: list, clickable: bool, label: str, sunk_all: list = None) -> None:
+        cs = r.width() / 10
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9.5, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left(), r.top() - S(17), r.width(), S(14)), int(Qt.AlignmentFlag.AlignLeft), label)
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, QColor("#0C3A5A"))
+        g.setColorAt(1, QColor("#082236"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(8), S(8))
+        p.setPen(QPen(QColor(120, 200, 255, 35), 1))
+        for i in range(1, 10):
+            p.drawLine(QPointF(r.left() + i * cs, r.top()), QPointF(r.left() + i * cs, r.bottom()))
+            p.drawLine(QPointF(r.left(), r.top() + i * cs), QPointF(r.right(), r.top() + i * cs))
+        p.setPen(Qt.PenStyle.NoPen)
+        for ship in fleet or []:                        # your ships (or theirs, at the end)
+            cells_ = sorted(int(x) for x in ship)
+            if not cells_:
+                continue
+            r0, c0, r1, c1 = cells_[0] // 10, cells_[0] % 10, cells_[-1] // 10, cells_[-1] % 10
+            box = QRectF(r.left() + c0 * cs + cs * 0.12, r.top() + r0 * cs + cs * 0.12,
+                         (c1 - c0 + 1) * cs - cs * 0.24, (r1 - r0 + 1) * cs - cs * 0.24)
+            p.setBrush(QColor("#8A96A3"))
+            p.drawRoundedRect(box, cs * 0.35, cs * 0.35)
+        last = self._last_cell() if clickable else -1
+        for i in range(100):
+            v = cells[i] if len(cells) == 100 else "."
+            c = QPointF(r.left() + (i % 10) * cs + cs / 2, r.top() + (i // 10) * cs + cs / 2)
+            if v == "o":
+                p.setBrush(QColor(255, 255, 255, 90))
+                p.drawEllipse(c, cs * 0.12, cs * 0.12)
+            elif v in "xs":
+                p.setBrush(QColor("#FF5C3A") if v == "x" else QColor("#8E1A10"))
+                p.drawEllipse(c, cs * 0.32, cs * 0.32)
+                if v == "x":
+                    p.setBrush(QColor(255, 210, 120, 160))
+                    p.drawEllipse(c, cs * 0.14, cs * 0.14)
+            if i == last and self._flash.level > 0.01:
+                p.setPen(QPen(alpha("#FFFFFF", 0.85 * self._flash.level), S(2)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(c, cs * 0.45, cs * 0.45)
+                p.setPen(Qt.PenStyle.NoPen)
+        if clickable and self.hover >= 0 and self._legal(self.hover):
+            c = QPointF(r.left() + (self.hover % 10) * cs + cs / 2, r.top() + (self.hover // 10) * cs + cs / 2)
+            p.setPen(QPen(QColor("#FFD34D"), S(2)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(c, cs * 0.36, cs * 0.36)
+            p.drawLine(c - QPointF(cs * 0.5, 0), c + QPointF(cs * 0.5, 0))
+            p.drawLine(c - QPointF(0, cs * 0.5), c + QPointF(0, cs * 0.5))
+
+    def _paint_sh(self, p: QPainter) -> None:
+        big, small = self._ships_rects()
+        d = self.d
+        self._grid(p, big, str(d.get("shots") or ""), d.get("their") or [], True, tr("THEIR WATERS: click to fire"))
+        self._grid(p, small, str(d.get("taken") or ""), d.get("fleet") or [], False, tr("YOUR FLEET"))
+
+
+def arena_status(ctx, d: dict) -> tuple:
+    """(text, colour) for the line above the board."""
+    st, side = d.get("state"), int(d.get("side") or 0)
+    other = d.get("b") if side == 1 else d.get("a")
+    if st == "open":
+        return tr("Waiting for a player to join…"), TEXT_DIM
+    if st == "cancelled":
+        return tr("Cancelled: nothing was lost"), TEXT_DIM
+    if st == "done":
+        w = d.get("winner")
+        why = {"time": tr("time ran out"), "resign": tr("resigned"), "four": tr("four in a row"), "discs": tr("most discs"),
+               "fleet": tr("fleet sunk"), "full": tr("board full")}.get(d.get("why"), "")
+        paid = int(d.get("paid") or 0)
+        if w == 0:
+            return tr("A draw") + (f"  ·  +{coins_text(paid)}" if paid and d.get("bot") else ""), TEXT
+        if w == side:
+            return (tr("You won!") + (f" ({why})" if why else "") +
+                    (f"  ·  +{coins_text(paid)}" if paid else "")), "#5BE08A"
+        return tr("{name} won", name=other) + (f" ({why})" if why else ""), "#FF7A7A"
+    secs = int(d.get("secs") or 0)
+    if int(d.get("turn") or 0) == side:
+        return tr("Your turn") + f"  ·  {secs} s", "#FFD34D"
+    return tr("{name} is thinking…", name=other) + f"  ·  {secs} s", TEXT_DIM
+
+
+def arena_discs(d: dict) -> str:
+    bd, side = str(d.get("board") or ""), int(d.get("side") or 1)
+    me, they = (bd.count("1"), bd.count("2")) if side == 1 else (bd.count("2"), bd.count("1"))
+    return tr("Discs: you {a} · them {b}", a=me, b=they)
+
+
+def arena_call(page, fn: str, args: dict, then=None) -> None:
+    ctx = page.ctx
+
+    def done(ok: bool, data) -> None:
+        if not ok:
+            ctx.toast(tr(str(data)), "warn")
+            if then:
+                then(None)
+            return
+        if then:
+            then(data)
+    ctx.econ.call(fn, args, done)
+
+
+def arena_take(page, d) -> None:
+    """A new game state from the server: the board updates in place; a new phase rebuilds the screen."""
+    ctx = page.ctx
+    if not isinstance(d, dict) or not d.get("id"):
+        return
+    old = getattr(ctx, "arena_game", None) or {}
+    ctx.arena_game = d
+    board = getattr(page, "arena_board", None)
+    try:
+        if board is not None and old.get("id") == d.get("id") and old.get("state") == d.get("state"):
+            board.set_data(d)
+            line = getattr(page, "arena_line", None)
+            if line is not None:
+                text, col = arena_status(ctx, d)
+                line.set_text(text)
+                line.set_color(col)
+            discs = getattr(page, "arena_discs", None)
+            if discs is not None:
+                discs.set_text(arena_discs(d))
+            shuf = getattr(page, "arena_shuffle", None)
+            if shuf is not None and int(d.get("n") or 0) > 0:
+                shuf.hide()                              # only before the first shot
+            return
+    except RuntimeError:
+        pass
+    if d.get("state") == "done" and old.get("state") == "live":
+        won = d.get("winner") == d.get("side")
+        sfx.play("coin" if won else "lose")
+        ctx.econ.refresh()
+    if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "arena":
+        ctx.reload_page("games")
+
+
+def build_arena(page, lay) -> None:
+    ctx = page.ctx
+    kind = getattr(ctx, "arena_kind", "reversi") or "reversi"
+    mode = getattr(ctx, "arena_mode", "bot") or "bot"
+    if kind == "c4":
+        mode = "duel"
+
+    def back() -> None:
+        g = getattr(ctx, "arena_game", None) or {}
+        if g.get("state") in ("done", "cancelled"):
+            ctx.arena_game = None
+        page.open_sub(None)
+    page._back_bar(lay, tr(ARENA_KINDS[kind]) + ("  ·  " + tr("Duel") if mode == "duel" else ""), back,
+                   "arena" if mode == "duel" else kind)
+    if server_wait(ctx, lay, page.W):
+        return
+    host = QWidget()                                   # the poll timer dies with this screen
+    hl = vbox(host, 8)
+    lay.addWidget(host)
+    poll = QTimer(host)
+    poll.setInterval(1000)
+    state = {"busy": False, "tick": 0}
+
+    def got_lobby(ok: bool, data) -> None:
+        if not ok or not isinstance(data, dict):
+            return
+        changed = data != getattr(ctx, "arena_lobby", None)
+        ctx.arena_lobby = data
+        mine = data.get("mine")
+        g = getattr(ctx, "arena_game", None)
+        if mine and (not g or g.get("id") != mine.get("id")):
+            ctx.arena_kind = mine.get("kind", kind)
+            ctx.arena_mode = "bot" if mine.get("bot") else "duel"
+            ctx.arena_game = mine
+            changed = True
+        if changed and ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "arena" and g is None:
+            ctx.reload_page("games")
+    g = getattr(ctx, "arena_game", None)
+    if g and g.get("kind") != kind:
+        g = None
+    if not g:
+        ctx.online.ask("rb_bg_lobbies", {}, got_lobby)
+    lobby = getattr(ctx, "arena_lobby", None) or {}
+    if g:
+        _arena_game(page, hl, g, poll, state)
+    elif mode == "bot":
+        _arena_bot_setup(page, hl, kind, lobby)
+    else:
+        _arena_duel_setup(page, hl, kind, lobby, poll)
+    lay.addWidget(ControlsBar([("LMB", tr("Play a move"))], page.W))
+
+
+def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
+    ctx = page.ctx
+    side = int(g.get("side") or 0)
+    names = hbox(spacing=8)
+    me_name = g.get("a") if side == 1 else g.get("b")
+    them = (g.get("b") if side == 1 else g.get("a")) or tr("Waiting…")
+    if g.get("kind") == "c4":
+        mine_col, their_col = ARENA_SIDES[side - 1] if side else TEXT, ARENA_SIDES[2 - side] if side else TEXT
+    elif g.get("kind") == "reversi":
+        mine_col, their_col = ("#9AA4AD", "#FFFFFF") if side == 1 else ("#FFFFFF", "#9AA4AD")
+    else:
+        mine_col, their_col = TEXT, TEXT
+    names.addWidget(Label(f"● {me_name}", 12, mine_col, bold=True), 1)
+    names.addWidget(Label(tr("vs"), 11, TEXT_DIM))
+    vs = Label(f"{them} ●", 12, their_col, bold=True, align=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+    names.addWidget(vs, 1)
+    lay.addLayout(names)
+    text, col = arena_status(ctx, g)
+    line = Label(text, 13, col, bold=True)
+    page.arena_line = line
+    lay.addWidget(line)
+    board = ArenaBoard(g.get("kind"), page.W)
+    board.set_data(g)
+    page.arena_board = board
+    lay.addWidget(board, 0, Qt.AlignmentFlag.AlignHCenter)
+    page.arena_discs = page.arena_shuffle = None
+    if g.get("kind") == "reversi" and g.get("board") and g.get("state") in ("live", "done"):
+        page.arena_discs = Label(arena_discs(g), 11, TEXT_DIM)
+        lay.addWidget(page.arena_discs)
+
+    def move(m: int) -> None:
+        if state["busy"]:
+            return
+        state["busy"] = True
+
+        def after(d) -> None:
+            state["busy"] = False
+            if d:
+                arena_take(page, d)
+        arena_call(page, "rb_bg_move", {"gid": g["id"], "m": int(m), "n": int(board.d.get("n") or 0)}, after)
+    board.moved.connect(move)
+    row = hbox(spacing=8)
+    st = g.get("state")
+    if st == "open":
+        cancel = Button(tr("Cancel"), "ghost", 34)
+        cancel.clicked.connect(lambda: arena_call(page, "rb_bg_cancel", {"gid": g["id"]},
+                                                  lambda d: (setattr(ctx, "arena_game", None), ctx.econ.refresh(),
+                                                             ctx.reload_page("games")) if d else None))
+        row.addWidget(cancel, 1)
+    elif st == "live":
+        if g.get("kind") == "ships" and g.get("bot") and int(g.get("n") or 0) == 0:
+            shuf = Button(tr("Move my ships"), "ghost", 34, icon="refresh")
+            page.arena_shuffle = shuf
+            shuf.clicked.connect(lambda: arena_call(page, "rb_bg_shuffle", {"gid": g["id"]},
+                                                    lambda d: arena_take(page, d) if d else None))
+            row.addWidget(shuf, 1)
+        give = Button(tr("Give up"), "quiet", 34)
+        give.clicked.connect(lambda: ctx.window.confirm(tr("Give up this game?"), lambda: arena_call(
+            page, "rb_bg_resign", {"gid": g["id"]}, lambda d: arena_take(page, d) if d else None), yes=tr("Give up")))
+        row.addWidget(give, 1)
+    else:
+        again = Button(tr("Play again"), "primary", 36)
+
+        def play_again() -> None:
+            ctx.arena_game = None
+            if g.get("bot"):
+                arena_call(page, "rb_bg_bot", {"kind": g.get("kind"), "level": g.get("level") or "easy"},
+                           lambda d: arena_take(page, d) if d else ctx.reload_page("games"))
+            else:
+                ctx.reload_page("games")
+        again.clicked.connect(play_again)
+        done_ = Button(tr("Back"), "ghost", 36)
+        done_.clicked.connect(lambda: (setattr(ctx, "arena_game", None), ctx.reload_page("games")))
+        row.addWidget(done_, 1)
+        row.addWidget(again, 2)
+    lay.addLayout(row)
+    if g.get("bot") and st == "done" and int(g.get("paid") or 0) == 0 and g.get("winner") == side:
+        held = int(((getattr(ctx, "arena_lobby", None) or {}).get("skill") or {}).get("held") or 0)
+        if held:
+            lay.addWidget(Label(tr("This win is paid after a quick check by the Rubenium team."), 10.5, GOLD_TEXT,
+                                wrap_w=page.W))
+
+    def tick() -> None:
+        cur = getattr(ctx, "arena_game", None) or {}
+        if cur.get("id") != g.get("id") or cur.get("state") not in ("open", "live"):
+            poll.stop()
+            return
+        state["tick"] += 1
+        if cur.get("secs") is not None and cur.get("state") == "live":
+            cur["secs"] = max(0, int(cur.get("secs") or 0) - 1)
+            try:
+                text_, col_ = arena_status(ctx, cur)
+                line.set_text(text_)
+                line.set_color(col_)
+            except RuntimeError:
+                return poll.stop()
+        mine_turn = cur.get("state") == "live" and int(cur.get("turn") or 0) == side
+        if state["busy"] or (mine_turn and state["tick"] % 4):
+            return
+        state["busy"] = True
+
+        def got(ok: bool, d) -> None:
+            state["busy"] = False
+            if ok and isinstance(d, dict):
+                arena_take(page, d)
+        ctx.online.ask("rb_bg_state", {"gid": g["id"]}, got)
+    poll.timeout.connect(tick)
+    if st in ("open", "live"):
+        poll.start()
+
+
+def _arena_bot_setup(page, lay, kind: str, lobby: dict) -> None:
+    ctx = page.ctx
+    lvl = int(getattr(ctx, "arena_level_" + kind, 1) or 0)
+    lay.addWidget(Label(tr("Against the bot. Free, no bet: a win pays by the level and by how well you win."), 11,
+                        TEXT_DIM, wrap_w=page.W))
+    seg = Segmented([tr(n) for _k, n in ARENA_LEVELS], lvl)
+    lay.addWidget(seg)
+    skill = (lobby.get("skill") or {}).get(kind) or {}
+    mult = float((lobby.get("skill") or {}).get("mult") or 1.0)
+    fresh = int(skill.get("fresh_left") if skill.get("fresh_left") is not None else 8)
+    pay = Label("", 12, GOLD_TEXT, bold=True)
+    lay.addWidget(pay)
+
+    def show_pay(i: int) -> None:
+        key = ARENA_LEVELS[i][0]
+        best = scaled(int(round(ARENA_PAY[kind][key] * 1.5)), mult) * (2 if fresh > 0 else 1)
+        pay.set_text(tr("A win pays up to {n} coins", n=coins_text(best)) +
+                    ("  ·  " + tr("Fresh bonus ×2: {n} left today", n=fresh) if fresh > 0 else ""))
+    show_pay(lvl)
+    seg.changed.connect(lambda i: (setattr(ctx, "arena_level_" + kind, i), show_pay(i)))
+    rec = (lobby.get("record") or {})
+    parts = []
+    for key, name in ARENA_LEVELS:
+        r = rec.get(f"{kind}:{key}") or {}
+        if r:
+            parts.append(f"{tr(name)} {int(r.get('won') or 0)}/{int(r.get('played') or 0)}")
+    if parts:
+        lay.addWidget(Label(tr("Your wins") + ":  " + "  ·  ".join(parts), 10.5, TEXT_DIM, wrap_w=page.W))
+    go = Button(tr("Play"), "primary", 40, icon="play")
+
+    def start() -> None:
+        go.setEnabled(False)
+        key = ARENA_LEVELS[seg.index() if hasattr(seg, "index") else int(getattr(ctx, "arena_level_" + kind, 1) or 0)][0]
+        arena_call(page, "rb_bg_bot", {"kind": kind, "level": key},
+                   lambda d: arena_take(page, d) if d else go.setEnabled(True))
+    go.clicked.connect(start)
+    lay.addWidget(go)
+    duel = Button(tr("Play a person instead"), "ghost", 32, icon="users")
+    duel.clicked.connect(lambda: (setattr(ctx, "arena_mode", "duel"), ctx.reload_page("games")))
+    lay.addWidget(duel)
+
+
+def _arena_duel_setup(page, lay, kind: str, lobby: dict, poll: QTimer) -> None:
+    ctx = page.ctx
+    lay.addWidget(Label(tr("1 v 1 against another player. Free for fun, or both bet the same coins: the winner takes "
+                           "the pot (less 5%)."), 11, TEXT_DIM, wrap_w=page.W))
+    opens = [o for o in (lobby.get("open") or []) if o.get("kind") == kind and not o.get("mine")]
+    lay.addWidget(heading(tr("Open duels") + f"  ·  {len(opens)}"))
+    if not opens:
+        lay.addWidget(Label(tr("Nobody is waiting. Open one and a player can join it."), 11, TEXT_FAINT, wrap_w=page.W))
+    for o in opens[:12]:
+        row = hbox(spacing=8)
+        name = Label(("★ " if o.get("friend") else "") + str(o.get("name", "?")), 12, TEXT, bold=True)
+        row.addWidget(name, 1)
+        bet = int(o.get("bet") or 0)
+        row.addWidget(Label(tr("Bet {n}", n=coins_text(bet)) if bet else tr("Free"), 11, GOLD_TEXT if bet else TEXT_DIM))
+        join = Button(tr("Join"), "primary", 30)
+        join.setFixedWidth(S(80))
+        join.clicked.connect(lambda _c=False, gid=o["id"]: arena_call(page, "rb_bg_join", {"gid": gid},
+                                                                      lambda d: arena_take(page, d) if d else None))
+        row.addWidget(join)
+        lay.addLayout(row)
+    lay.addWidget(heading(tr("Open a duel")))
+    bi = int(getattr(ctx, "arena_bet", 0) or 0)
+    seg = Segmented([tr("Free") if b == 0 else coins_text(b) for b in ARENA_BETS], bi)
+    seg.changed.connect(lambda i: setattr(ctx, "arena_bet", i))
+    lay.addWidget(seg)
+    go = Button(tr("Open a duel"), "primary", 40, icon="users")
+
+    def create() -> None:
+        go.setEnabled(False)
+        bet = ARENA_BETS[int(getattr(ctx, "arena_bet", 0) or 0)]
+        arena_call(page, "rb_bg_create", {"kind": kind, "bet": bet},
+                   lambda d: arena_take(page, d) if d else go.setEnabled(True))
+    go.clicked.connect(create)
+    lay.addWidget(go)
+    if kind in ARENA_PAY:
+        bot = Button(tr("Play a bot instead"), "ghost", 32, icon="robot")
+        bot.clicked.connect(lambda: (setattr(ctx, "arena_mode", "bot"), ctx.reload_page("games")))
+        lay.addWidget(bot)
+
+    def refresh() -> None:                              # the list of open duels stays fresh
+        ctx.online.ask("rb_bg_lobbies", {}, lambda ok, d: (setattr(ctx, "arena_lobby", d), ctx.reload_page("games"))
+                       if ok and isinstance(d, dict) and d != getattr(ctx, "arena_lobby", None)
+                       and getattr(ctx, "games_sub", None) == "arena" and ctx.window.showing("games")
+                       and not getattr(ctx, "arena_game", None) else None)
+    poll.setInterval(4000)
+    poll.timeout.connect(refresh)
+    poll.start()
+
+
+def open_arena(ctx, kind: str, mode: str) -> None:
+    ctx.arena_kind, ctx.arena_mode = kind, mode
+    g = getattr(ctx, "arena_game", None) or {}
+    if g.get("state") in ("done", "cancelled"):
+        ctx.arena_game = None
+    open_games_part(ctx, "arena", back="")
+
+
+# ---------------------------------------------------------------- 9.1: admin replays (the board, move by move)
+def rv_flips_py(b: str, i: int, p: str) -> list:
+    """Reversi: the discs a move at i by p turns over (same rules as the server's rv_flips)."""
+    if len(b) != 64 or not 0 <= i < 64 or b[i] != ".":
+        return []
+    o, out = ("2" if p == "1" else "1"), []
+    r0, c0 = divmod(i, 8)
+    for dr, dc in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
+        r, c, run = r0 + dr, c0 + dc, []
+        while 0 <= r < 8 and 0 <= c < 8 and b[r * 8 + c] == o:
+            run.append(r * 8 + c)
+            r, c = r + dr, c + dc
+        if run and 0 <= r < 8 and 0 <= c < 8 and b[r * 8 + c] == p:
+            out += run
+    return out
+
+
+def replay_frames(kind: str, moves: list, secret: dict = None) -> list:
+    """Every position of a finished game, from the moves the server kept: [(board data for ArenaBoard, move)]."""
+    frames, secret = [], secret or {}
+    if kind == "c4":
+        b = list("." * 42)
+        frames.append(({"board": "".join(b), "state": "done", "side": 1, "n": 0}, None))
+        for k, mv in enumerate(moves):
+            m, s = int(mv.get("m")), int(mv.get("s"))
+            for r in range(6):
+                if b[r * 7 + m] == ".":
+                    b[r * 7 + m] = str(s)
+                    break
+            frames.append(({"board": "".join(b), "state": "done", "side": 1, "n": k + 1, "last": mv}, mv))
+    elif kind == "reversi":
+        b = list("." * 27 + "21......12" + "." * 27)
+        frames.append(({"board": "".join(b), "state": "done", "side": 1, "n": 0}, None))
+        for k, mv in enumerate(moves):
+            m, s = int(mv.get("m")), str(mv.get("s"))
+            if m >= 0:
+                for x in rv_flips_py("".join(b), m, s) + [m]:
+                    b[x] = s
+            frames.append(({"board": "".join(b), "state": "done", "side": 1, "n": k + 1, "last": mv if m >= 0 else None}, mv))
+    else:                                           # ships: side 1's view, both fleets shown
+        f1, f2 = secret.get("f1") or [], secret.get("f2") or []
+        cells = {1: {int(x) for sh in f2 for x in sh}, 2: {int(x) for sh in f1 for x in sh}}      # what each side aims at
+        ships = {1: [[int(x) for x in sh] for sh in f2], 2: [[int(x) for x in sh] for sh in f1]}
+        h = {1: list("." * 100), 2: list("." * 100)}
+
+        def data(n, last):
+            return {"shots": "".join(h[1]), "taken": "".join(h[2]), "fleet": f1, "their": f2, "state": "done", "side": 1,
+                    "n": n, "last": last}
+        frames.append((data(0, None), None))
+        for k, mv in enumerate(moves):
+            m, s = int(mv.get("m")), int(mv.get("s"))
+            if 0 <= m < 100:
+                g = h[s]
+                g[m] = "x" if m in cells[s] else "o"
+                for sh in ships[s]:
+                    if m in sh and all(g[x] in "xs" for x in sh):
+                        for x in sh:
+                            g[x] = "s"
+            frames.append((data(k + 1, mv if s == 1 else None), mv))
+    return frames
+
+
+def arena_cell_name(kind: str, m: int) -> str:
+    """A move as people say it: column 4 (Connect 4), D3 (Reversi), B7 (Battleships)."""
+    if kind == "c4":
+        return f"column {m + 1}"
+    w = 8 if kind == "reversi" else 10
+    return f"{'ABCDEFGHIJ'[m % w]}{m // w + 1}"
+
+
+def replay_names(text: str, who: list) -> str:
+    who = [str(x) for x in (who or [])]
+    return str(text or "").replace("side 1", who[0] if who else "side 1").replace(
+        "side 2", who[1] if len(who) > 1 else "the bot")
+
+
+class ReplayRows(QWidget):
+    """9.1: the admin list of saved games: what, who, the result and any flags (red), newest first."""
+    picked = pyqtSignal(int)
+
+    def __init__(self, rows: list, width: int) -> None:
+        super().__init__()
+        self.rows = rows
+        self.row_h = S(44)
+        self.hover = -1
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFixedSize(width, max(S(44), self.row_h * len(rows)))
+
+    def mouseMoveEvent(self, e) -> None:
+        i = int(e.position().y() // self.row_h)
+        if i != self.hover:
+            self.hover = i
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        i = int(e.position().y() // self.row_h)
+        if 0 <= i < len(self.rows):
+            sfx.play("pick")
+            self.picked.emit(i)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        for i, r in enumerate(self.rows):
+            box = QRectF(0, i * self.row_h, self.width(), self.row_h).adjusted(0, 1, 0, -1)
+            flags = [f for f in (r.get("flags") or []) if f]
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FF4B6E", 0.10) if flags else alpha("#FFFFFF", 0.05 if i == self.hover else 0.025))
+            p.drawRoundedRect(box, S(7), S(7))
+            p.setFont(font(11, QFont.Weight.Bold))
+            p.setPen(QColor(TEXT))
+            left = box.adjusted(S(10), S(4), -S(10), -box.height() / 2)
+            when = str(r.get("at") or "")[5:16].replace("T", " ")
+            p.drawText(left, int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(str(r.get("what") or ""), Qt.TextElideMode.ElideRight, int(left.width() * 0.62)))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            p.drawText(left, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), when)
+            low = box.adjusted(S(10), box.height() / 2, -S(10), -S(4))
+            who = " vs ".join(str(x) for x in (r.get("who") or [])) or "-"
+            p.drawText(low, int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(f"{who}  ·  {replay_names(r.get('result'), r.get('who'))}", Qt.TextElideMode.ElideRight,
+                                                  int(low.width() * (0.55 if flags else 1))))
+            if flags:
+                p.setPen(QColor("#FF7A8E"))
+                p.setFont(font(10, QFont.Weight.Bold))
+                p.drawText(low, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                           p.fontMetrics().elidedText("⚑ " + replay_names(", ".join(flags), r.get("who")),
+                                                      Qt.TextElideMode.ElideLeft, int(low.width() * 0.44)))
+
+
 SUB_FEATURES = {"casino": "casino", "minigames": "minigames", "memory": "minigames", "blocks": "minigames", "sweeper": "minigames",
-                "duels": "golf", "duel_run": "golf", "flip": "coinflip", "wave": "wave", "advent": "advent", "scratch": "scratch"}
+                "duels": "golf", "duel_run": "golf", "flip": "coinflip", "wave": "wave", "advent": "advent", "scratch": "scratch",
+                "arena": "arena"}
 
 
 def paint_game_art(p: QPainter, name: str, art: QPointF) -> None:
@@ -35062,7 +36037,8 @@ MINI_COLOURS = {"Timing": ("#3DDC84", "#0F5A3A"), "Connect 4": ("#FF5C5C", "#2A2
                 "Colour Pick": ("#FF6FD8", "#4A1AC2"), "SFX Match": ("#35E0A1", "#0B4A6A"),
                 "Beat Tap": ("#FF5C8A", "#6A1FD0"), "Parking": ("#FF9A3D", "#9A2A1F"), "Memory": ("#4FC3FF", "#2E3BC0"),
                 "Block Blast": ("#FFB547", "#C8402A"), "Minesweeper": ("#7BE0A0", "#1F5A4A"),
-                "Mini Golf": ("#8BE36B", "#1F6B2A"), "Wave Rush": ("#5EEAD4", "#1A3A8A")}
+                "Mini Golf": ("#8BE36B", "#1F6B2A"), "Wave Rush": ("#5EEAD4", "#1A3A8A"),
+                "Reversi": ("#3FCF7A", "#0B4A2A"), "Battleships": ("#5AA8FF", "#0A2A5A")}
 
 
 def paint_mini_glyph(p: QPainter, name: str, c: QPointF, size: float) -> None:
@@ -35185,6 +36161,21 @@ def paint_mini_glyph(p: QPainter, name: str, c: QPointF, size: float) -> None:
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(white)
         p.drawPolygon(QPolygonF([QPointF(14, -10), QPointF(5, -9), QPointF(12, -2)]))
+    elif name == "Reversi":                             # four discs in the middle, one being turned
+        for (x, y), dark in (((-6, -6), False), ((6, -6), True), ((-6, 6), True), ((6, 6), False)):
+            p.setBrush(QColor("#10161C") if dark else white)
+            p.drawEllipse(QPointF(x, y), 5.6, 5.6)
+        ring(6, 6, 8.5, 1.6, QColor(255, 255, 255, 130))
+    elif name == "Battleships":                         # a ship on the water and a target
+        p.drawPolygon(QPolygonF([QPointF(-14, 2), QPointF(10, 2), QPointF(6, 9), QPointF(-11, 9)]))
+        p.drawRoundedRect(QRectF(-7, -4, 9, 6), 1.5, 1.5)
+        p.setPen(QPen(white, 2.0, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawLine(QPointF(-2, -4), QPointF(-2, -10))
+        p.setPen(Qt.PenStyle.NoPen)
+        ring(10, -8, 4.5, 2.0, QColor("#FFB0A0"))
+        p.setBrush(QColor("#FF7A5C"))
+        p.drawEllipse(QPointF(10, -8), 1.6, 1.6)
+        p.setBrush(white)
     p.restore()
 
 
@@ -35689,6 +36680,9 @@ class GamesPage(Page):
             if sub == "wave":                                        # 4.3: Wave Rush, solo or 1 v 1
                 build_wave(self, lay)
                 return
+            if sub == "arena":                                       # 9.1: Reversi, Battleships, duels
+                build_arena(self, lay)
+                return
             self._lobby(lay)
             return
         self._casino(lay)
@@ -35696,11 +36690,11 @@ class GamesPage(Page):
     def _paused(self, lay) -> None:
         """4.0: the lobby says which games the admins paused (their tiles are dimmed too)."""
         ec = self.ctx.econ
-        if ec.locks.get("lockdown"):
+        if ec.locks.get("lockdown") and not ec.admin:
             return lock_strip(self.ctx, lay, "casino", self.W)
         names = [n for k, n in (("casino", "Casino games"), ("roulette", "Roulette"), ("minigames", "Mini games"),
                                 ("golf", "Mini Golf"), ("wave", "Wave Rush"), ("coinflip", "Coinflip"), ("wheel", "Free spin"),
-                                ("horses", "Horse Racing"),
+                                ("horses", "Horse Racing"), ("arena", "Arena"),
                                 ("scratch", "Scratch cards"), ("advent", "Advent calendar"), ("quests", "Quests"))
                  if ec.is_locked(k)]
         if names:
@@ -35723,19 +36717,26 @@ class GamesPage(Page):
         lay.addWidget(titled(tr("Play"), "", 24))
         lay.addWidget(CasinoDoor(lambda: self.open_sub("casino")))
         advent_card(self, lay)
-        lay.addWidget(help_row(tr("Mini games"), tr("Skill games take a bet: your skill decides, not luck. The free "
-                                                     "games pay coins: each one pays fully for a few rounds, then less "
-                                                     "until its timer resets.")))
+        lay.addWidget(help_row(tr("Mini games"), tr("All free, no bet. They pay by how well you do, with no daily limit: "
+                                                     "your first 8 rounds of each game every day pay double.")))
         ctx = self.ctx
         games = [(n, "Pays by skill", (lambda i=self.NAMES.index(n): self.enter(i))) for n in SKILL_GAMES]
-        games += [("Beat Tap", "Free coins", lambda: open_games_part(ctx, None, "mini_open", back="games")),
+        games += [("Reversi", "Pays by skill", lambda: open_arena(ctx, "reversi", "bot")),
+                  ("Battleships", "Pays by skill", lambda: open_arena(ctx, "ships", "bot")),
+                  ("Beat Tap", "Free coins", lambda: open_games_part(ctx, None, "mini_open", back="games")),
                   ("Parking", "Free coins", lambda: open_games_part(ctx, None, "park_open", back="games")),
                   ("Memory", "Free coins", lambda: open_games_part(ctx, "memory", back="games")),
                   ("Block Blast", "Free coins", lambda: open_games_part(ctx, "blocks", back="games")),
-                  ("Minesweeper", "Free coins", lambda: open_games_part(ctx, "sweeper", back="games")),
-                  ("Mini Golf", "Duel or practice", lambda: open_games_part(ctx, "duels", back="games")),
-                  ("Wave Rush", "Duel or solo", lambda: open_games_part(ctx, "wave", back="games"))]
+                  ("Minesweeper", "Free coins", lambda: open_games_part(ctx, "sweeper", back="games"))]
         lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(games)], 3))
+        lay.addWidget(help_row(tr("Duels"), tr("1 v 1 against another player, for fun or for the same bet each: the "
+                                               "winner takes the pot (less a small fee).")))
+        duels = [("Connect 4", "Duel a player", lambda: open_arena(ctx, "c4", "duel")),
+                 ("Reversi", "Duel a player", lambda: open_arena(ctx, "reversi", "duel")),
+                 ("Battleships", "Duel a player", lambda: open_arena(ctx, "ships", "duel")),
+                 ("Mini Golf", "Duel or practice", lambda: open_games_part(ctx, "duels", back="games")),
+                 ("Wave Rush", "Duel or solo", lambda: open_games_part(ctx, "wave", back="games"))]
+        lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(duels)], 3))
 
     def _hall(self, lay) -> None:
         """9.1: behind the casino door: the live events, Coinflip and the games of chance."""
@@ -36978,12 +37979,18 @@ BOARDS = [("coins", "Richest"), ("worth", "Worth"), ("level", "Level"), ("badges
           # 6.0: every casino game has a board: the biggest win in one round
           ("g:roulette", "Roulette"), ("g:blackjack", "Blackjack"), ("g:hilo", "Hi-Lo"), ("g:slots", "Slots"),
           ("g:rocket", "Rocket"), ("g:plinko", "Plinko"), ("g:mines", "Bombs"), ("g:tower", "Tower"), ("g:dice", "Dice"),
-          ("g:timing", "Timing"), ("g:colour", "Colour Pick"), ("g:sfx", "SFX Match")]
+          ("g:timing", "Timing"), ("g:colour", "Colour Pick"), ("g:sfx", "SFX Match"),
+          # 9.1: Horse Racing, the Arena games and the duels
+          ("horses", "Horse Racing"), ("reversi", "Reversi"), ("ships", "Battleships"), ("arena", "All duels"),
+          ("a:c4", "Connect 4 duels"), ("a:reversi", "Reversi duels"), ("a:ships", "Battleships duels")]
 # 5.13: the boards in three sections (no more one long row of buttons)
+# 9.1: four sections, the same as the Play screen: the casino, the mini games, the duels
 BOARD_SECTIONS = [("Players", ["coins", "worth", "level", "badges", "trophies", "hours", "streak"]),
-                  ("Games", ["wave", "flips", "golf", "c4", "cups", "g:roulette", "g:blackjack", "g:hilo", "g:slots",
-                             "g:rocket", "g:plinko", "g:mines", "g:tower", "g:dice", "g:timing", "g:colour", "g:sfx"]),
-                  ("Mini games", ["tap", "park", "memory", "blocks", "sweeper"])]
+                  ("Casino", ["g:slots", "g:roulette", "g:blackjack", "g:plinko", "g:mines", "g:rocket", "g:hilo",
+                              "g:tower", "g:dice", "horses", "flips"]),
+                  ("Mini games", ["c4", "reversi", "ships", "cups", "g:timing", "g:colour", "g:sfx", "tap", "park",
+                                  "memory", "blocks", "sweeper"]),
+                  ("Duels", ["arena", "a:c4", "a:reversi", "a:ships", "golf", "wave"])]
 BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are worth", "badges": "Different badges owned",
                "hours": "Hours with Rubenium", "streak": "Days in a row of daily rewards", "tap": "Best Beat Tap score (%)",
                "park": "Parking puzzles solved", "memory": "Memory games finished", "level": "Highest level (by XP)",
@@ -36991,6 +37998,12 @@ BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are w
                "wave": "Furthest Wave Rush run (m)", "flips": "Coinflips won", "golf": "Mini Golf games played",
                "c4": "Connect 4 games won against the bot", "cups": "Cup Game rounds won", "trophies": "Trophies earned"}
 BOARD_NOTES.update({k: "Biggest win in one round (coins won above the bet)" for k, _n in BOARDS if k.startswith("g:")})
+BOARD_NOTES.update({"g:timing": "Best pay in one round", "g:colour": "Best pay in one round", "g:sfx": "Best pay in one round",
+                    "horses": "Biggest Horse Racing win (coins won above the bet)",
+                    "reversi": "Reversi wins against the bots (Easy 1, Medium 2, Hard 4, Insane 10 points)",
+                    "ships": "Battleships wins against the bots (Easy 1, Medium 2, Hard 4, Insane 10 points)",
+                    "arena": "Duels won in the Arena", "a:c4": "Connect 4 duels won", "a:reversi": "Reversi duels won",
+                    "a:ships": "Battleships duels won", "cups": "Cup Game rounds won"})
 
 
 class LeaderRow(QWidget):
@@ -37054,10 +38067,10 @@ class LeaderRow(QWidget):
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        f"{coins_text(v)} m")
             return
-        text = coins_text(v) if self.kind in ("coins", "worth") or self.kind.startswith("g:") else (f"{v}%" if self.kind == "tap" else
+        text = coins_text(v) if self.kind in ("coins", "worth", "horses") or self.kind.startswith("g:") else (f"{v}%" if self.kind == "tap" else
                                                                        (tr("{n} days", n=v) if self.kind == "streak" else
                                                                         (f"{v} h" if self.kind == "hours" else str(v))))
-        p.setPen(QColor(GOLD_TEXT if self.kind in ("coins", "worth") or self.kind.startswith("g:") else TEXT))
+        p.setPen(QColor(GOLD_TEXT if self.kind in ("coins", "worth", "horses") or self.kind.startswith("g:") else TEXT))
         p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
 
 
@@ -37100,8 +38113,8 @@ def build_leaders(page, lay) -> None:
         if ok and isinstance(rows, dict):
             if getattr(ctx, "board_data", None) != (key, rows):
                 ctx.board_data = (key, rows)
-                if ctx.window.showing("friends") and int(getattr(ctx, "social_tab", 0) or 0) == 3:
-                    ctx.reload_page("friends")
+                if ctx.window.showing("leaders"):
+                    ctx.reload_page("leaders")
     if kind in ("blocks", "sweeper"):
         ctx.online.ask("rb_mg_board", {"game": kind, "mode": mode, "friends": friends}, got)
     else:
@@ -39207,20 +40220,18 @@ class FriendsPage(Page):
         tab = int(getattr(ctx, "social_tab", 0) or 0)
         unread = int(getattr(ctx, "msg_unread", 0) or 0)
         asks_n = int(ctx.econ.live.get("asks") or 0)
-        if tab == 1:                                     # 4.3: Users and Friends are one tab now
+        if tab in (1, 3):                                # 4.3: Users and Friends are one tab. 9.1: boards have a rail entry
             tab = ctx.social_tab = 0
-        nav = NavTiles([(tr("Users"), "users"), (tr("Leaderboards"), "trophy"), (tr("Chat"), "chat"), (tr("Trades"), "swap")],
-                       {0: 0, 3: 1, 2: 2, 4: 3}.get(tab, -1), per_row=4, badges={0: asks_n, 2: unread})
+        nav = NavTiles([(tr("Users"), "users"), (tr("Chat"), "chat"), (tr("Trades"), "swap")],
+                       {0: 0, 2: 1, 4: 2}.get(tab, -1), per_row=3, badges={0: asks_n, 1: unread})
 
         def switch(i: int) -> None:
-            ctx.social_tab = [0, 3, 2, 4][i]
+            ctx.social_tab = [0, 2, 4][i]
             ctx.reload_page()
         nav.changed.connect(switch)
         self.lay.addWidget(nav)
         if tab == 2:
             return build_messages(self, self.lay)
-        if tab == 3:
-            return build_leaders(self, self.lay)
         if tab == 4:
             build_activity_trades(self, self.lay)          # 4.6: requests and your open trade, above the history
             return build_trade_history(self, self.lay)
@@ -39626,6 +40637,10 @@ class FriendsPage(Page):
             (f"{coins_text(int(st.get('wave') or 0))} m", tr("Wave Rush best"), "#7FE8FF"),     # 5.13: records
             (int(st.get("flip") or 0), tr("Coinflips won")), (int(st.get("golf") or 0), tr("Golf games")),
             (int(st.get("c4") or 0), tr("Connect 4 wins")), (int(st.get("cups") or 0), tr("Cups won")),
+            (int(st.get("reversi") or 0), tr("Reversi wins")), (int(st.get("ships") or 0), tr("Battleships wins")),   # 9.1
+            (int(st.get("insane") or 0), tr("Insane bots beaten"), "#FF7AD9"),
+            (int(st.get("arena") or 0), tr("Duels won")), (coins_text(int(st.get("horses") or 0)), tr("Best horse win")),
+            (coins_text(int(st.get("skill") or 0)), tr("Mini game coins")),
             (int(st.get("trophies") or 0), tr("Trophies"), "#FFC94D")], self.W))
         eq = prof.get("equip") or {}
         wearing = [eq.get(k) for k in ("ball", "ring", "theme", "font")]
@@ -40446,8 +41461,8 @@ class AdminPage(Page):
     """4.4: the admin panel, rebuilt to be clicked, not typed: pick players and things from lists, see the result
     in the list. English only."""
     key = "admin"
-    SECTIONS = ["Players", "Give", "Rig", "Live", "Economy", "Coinflips", "Cases", "Bots", "Swaps", "Locks", "Log"]
-    ICONS = ["users", "gift", "spark", "timer", "coin", "swap", "folder", "robot", "shuffle", "lock", "refresh"]
+    SECTIONS = ["Players", "Give", "Rig", "Live", "Economy", "Coinflips", "Cases", "Bots", "Swaps", "Locks", "Log", "Replays"]
+    ICONS = ["users", "gift", "spark", "timer", "coin", "swap", "folder", "robot", "shuffle", "lock", "refresh", "eye"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -40457,12 +41472,12 @@ class AdminPage(Page):
             return
         tab = int(getattr(ctx, "admin_tab", 0) or 0)
         tab = tab if 0 <= tab < len(self.SECTIONS) else 0
-        pick = NavTiles(list(zip(self.SECTIONS, self.ICONS)), tab, per_row=6)       # 9.0: 6 + 5
+        pick = NavTiles(list(zip(self.SECTIONS, self.ICONS)), tab, per_row=6)       # 9.1: 6 + 6
         pick.changed.connect(self._section)
         lay.addWidget(pick)
         self._lockdown_row(lay)
         [self._players, self._give, self._rig, self._live, self._settings, self._flips, self._cases,
-         self._bots, self._swaps, self._locks, self._log][tab](lay)
+         self._bots, self._swaps, self._locks, self._log, self._replays][tab](lay)
 
     # -- helpers
     def state(self, name: str) -> dict:
@@ -41444,6 +42459,149 @@ class AdminPage(Page):
                               TEXT_DIM if r.get("undone") else ("#FFC94D" if r.get("can_undo") else TEXT)) for r in rows],
                             self.W, undo))
 
+    # -- 9.1: Replays: every Arena game, bot game, duel, coinflip, casino round and held pay, to look for cheating
+    REPLAY_KINDS = [("all", "All"), ("arena", "Arena"), ("c4", "Connect 4 bot"), ("mini", "Mini games"), ("golf", "Mini Golf"),
+                    ("wave", "Wave Rush"), ("flip", "Coinflip"), ("casino", "Casino"), ("held", "Held pays")]
+
+    def _replays(self, lay) -> None:
+        st = self.state("Replays")
+        if st.get("open"):
+            return self._replay(lay, st)
+        kind = st.get("kind") or "all"
+        ch = Chips([k[1] for k in self.REPLAY_KINDS], [k[0] for k in self.REPLAY_KINDS], kind, per_row=5, height=28)
+        ch.toggled.connect(lambda k: (st.update(kind=k), self.ctx.reload_page("admin")))
+        lay.addWidget(ch)
+        row = hbox(spacing=6)
+        who = st.get("name") or ""
+        pick = Button(f"Player: {who}" if who else "All players", "primary" if who else "ghost", 30, icon="users")
+        pick.clicked.connect(lambda: FormDialog(self.ctx, "Replays of one player", [("n", "Username", who)], "Show",
+                                                lambda v, d: (d.close(), st.update(name=v["n"].strip()),
+                                                              self.ctx.reload_page("admin"))))
+        row.addWidget(pick, 2)
+        if who:
+            clear = Button("Everyone", "ghost", 30)
+            clear.clicked.connect(lambda: (st.update(name=""), self.ctx.reload_page("admin")))
+            row.addWidget(clear, 1)
+        flag = Button("Flagged only", "primary" if st.get("flagged") else "ghost", 30, icon="flag")
+        flag.clicked.connect(lambda: (st.update(flagged=not st.get("flagged")), self.ctx.reload_page("admin")))
+        row.addWidget(flag, 1)
+        ref = IconButton("refresh", 30, tip="Refresh")
+        ref.clicked.connect(self._reload)
+        row.addWidget(ref)
+        lay.addLayout(row)
+        rows = self.fetch("rb_admin_replays", {"kind": kind, "name": who or None, "flagged": bool(st.get("flagged")),
+                                               "lim": 150})
+        if rows is None:
+            return self._loading(lay)
+        if not isinstance(rows, list) or not rows:
+            return lay.addWidget(Label("Nothing saved for this choice yet.", 11, TEXT_FAINT))
+        n_flag = sum(1 for r in rows if r.get("flags"))
+        lay.addWidget(Label(f"{len(rows)} games, newest first  ·  {n_flag} flagged. Click one to see it move by move.",
+                            10.5, TEXT_DIM, wrap_w=self.W))
+        lst = ReplayRows(rows, self.W)
+        lst.picked.connect(lambda i: (st.update(open=rows[i], step=-1), self.ctx.reload_page("admin")))
+        lay.addWidget(lst)
+
+    def _replay(self, lay, st: dict) -> None:
+        row = st["open"]
+        top = hbox(spacing=8)
+        back = IconButton("back", 30, tip="Back")
+        back.clicked.connect(lambda: (st.pop("open", None), self.ctx.reload_page("admin")))
+        top.addWidget(back)
+        top.addWidget(Label(str(row.get("what") or ""), 14, bold=True), 1)
+        lay.addLayout(top)
+        flags = [f for f in (row.get("flags") or []) if f]
+        lay.addWidget(Label(" vs ".join(str(x) for x in (row.get("who") or [])) + "  ·  " +
+                            replay_names(row.get("result"), row.get("who")) +
+                            "  ·  " + str(row.get("at") or "")[:16].replace("T", " "), 11, TEXT_DIM, wrap_w=self.W))
+        if flags:
+            lay.addWidget(Label("⚑ " + replay_names(", ".join(flags), row.get("who")), 11.5, "#FF7A8E", bold=True,
+                                wrap_w=self.W))
+        kind = row.get("kind")
+        d = self.fetch("rb_admin_replay", {"kind": kind, "rid": str(row.get("id"))})
+        if d is None:
+            return self._loading(lay)
+        if not isinstance(d, dict) or not d:
+            return lay.addWidget(Label("This game is gone.", 11, TEXT_FAINT))
+        game = None
+        if kind == "arena":
+            game, moves, secret = d.get("kind"), list(d.get("moves") or []), d.get("secret") or {}
+            names = d.get("names") or ["?", "?"]
+        elif kind == "c4":
+            game, secret = "c4", {}
+            first = 2 if d.get("bot_first") else 1
+            moves = [{"s": first if k % 2 == 0 else 3 - first, "m": int(m)} for k, m in enumerate(d.get("moves") or [])]
+            names = [d.get("name") or "?", f"{str(d.get('level') or '').title()} bot"]
+        if game:
+            frames = replay_frames(game, moves, secret)
+            step = int(st.get("step", -1))
+            step = len(frames) - 1 if step < 0 or step >= len(frames) else step
+            st["step"] = step
+            data, mv = frames[step]
+            side_names = {"c4": f"Red: {names[0]}   ·   Yellow: {names[1]}", "reversi": f"Dark: {names[0]}   ·   Light: {names[1]}"
+                          }.get(game, f"Big grid: {names[0]}'s shots at {names[1]}'s fleet   ·   Small grid: {names[1]}'s shots")
+            lay.addWidget(Label(side_names, 10.5, TEXT_DIM, wrap_w=self.W))
+            info = f"Move {step} of {len(frames) - 1}"
+            if mv:
+                who_ = names[int(mv.get("s") or 1) - 1]
+                think = mv.get("ms")
+                info += f"  ·  {who_}: " + ("passed" if int(mv.get("m", 0)) < 0 else arena_cell_name(game, int(mv.get("m"))))
+                if think is not None:
+                    info += f"  ·  thought {int(think) / 1000:.1f} s"
+                if mv.get("hit") is not None:
+                    info += "  ·  hit" if mv.get("hit") else "  ·  miss"
+            lay.addWidget(Label(info, 12, GOLD_TEXT, bold=True))
+            board = ArenaBoard(game, self.W)
+            board.set_data(data)
+            board._flash.jump(1.0)                       # the last move stays ringed
+            board.setCursor(Qt.CursorShape.ArrowCursor)
+            lay.addWidget(board, 0, Qt.AlignmentFlag.AlignHCenter)
+            nav = hbox(spacing=6)
+            for text, to in (("|<", 0), ("<", max(0, step - 1)), (">", min(len(frames) - 1, step + 1)), (">|", len(frames) - 1)):
+                b = Button(text, "ghost", 30)
+                b.clicked.connect(lambda _c=False, t=to: (st.update(step=t), self.ctx.reload_page("admin")))
+                nav.addWidget(b)
+            lay.addLayout(nav)
+            ms = [int(m.get("ms")) for m in moves if m.get("ms") is not None and int(m.get("s") or 0) == 1]
+            if ms:
+                ms.sort()
+                lay.addWidget(Label(f"{names[0]} thinking: fastest {ms[0] / 1000:.1f} s · middle {ms[len(ms) // 2] / 1000:.1f} s · "
+                                    f"slowest {ms[-1] / 1000:.1f} s over {len(ms)} moves", 10.5, TEXT_DIM, wrap_w=self.W))
+        if kind == "held":
+            self._held_actions(lay, d)
+        # every field the server keeps, for anything the board does not show
+        skip = {"moves", "secret", "board", "names", "recent"} if game else {"recent"}
+        lines = []
+        for k, v in d.items():
+            if k in skip:
+                continue
+            text = json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else str(v)
+            lines.append((k, "", text[:90] + ("…" if len(text) > 90 else ""), TEXT))
+        lay.addWidget(heading("Saved data"))
+        lay.addWidget(Table(lines, self.W))
+        if kind == "held" and d.get("recent"):
+            lay.addWidget(heading("Their last rounds of this game"))
+            lay.addWidget(Table([(f"base {r.get('base')}", "held" if r.get("held") else "", f"pay {r.get('pay')}  ·  " +
+                                  str(r.get("at") or "")[5:19].replace("T", " "), "#FF7A8E" if r.get("held") else TEXT)
+                                 for r in d["recent"]], self.W))
+
+    def _held_actions(self, lay, d: dict) -> None:
+        if d.get("state") != "held":
+            return lay.addWidget(Label(f"Already {d.get('state')}.", 11, TEXT_DIM))
+        lay.addWidget(Label(f"{d.get('coins')} coins from {d.get('game')} are waiting ({d.get('why')}). Look at the rounds "
+                            "below, then:", 11, TEXT, wrap_w=self.W))
+        row = hbox(spacing=6)
+        st = self.state("Replays")
+        for text, kind, pay, trust in (("Pay", "primary", True, False), ("Pay and trust", "ghost", True, True),
+                                       ("Don't pay", "danger", False, False)):
+            b = Button(text, kind, 34)
+            b.clicked.connect(lambda _c=False, pay=pay, trust=trust: self.do(
+                "rb_admin_held", {"hid": d.get("id"), "pay": pay, "trust": trust},
+                "Paid" if pay else "Not paid", lambda: st.pop("open", None)))
+            row.addWidget(b)
+        lay.addLayout(row)
+        lay.addWidget(Label("Trust: pays everything they have waiting and never holds them again.", 10, TEXT_FAINT, wrap_w=self.W))
+
     # -- forgotten passwords: is it really them?
 
     VERDICTS = {"real": ("Looks real: asked from the account's own PC", "#3DDC84"),
@@ -42000,6 +43158,37 @@ class AdminPage(Page):
 # --------------------------------------------------------------------------- #
 # 4.0: the LOCKDOWN button and a row of the live locks
 # --------------------------------------------------------------------------- #
+def lockdown_row(ctx, lay, after=None) -> None:
+    """9.1: the LOCKDOWN bar (Admin menu and the basic Settings). Turning it on asks first."""
+    on = bool(ctx.econ.locks.get("lockdown"))
+    bar = LockdownBar(on)
+
+    def done(lock: bool, ok: bool, data) -> None:
+        if not ok:
+            sfx.play("off")
+            return ctx.toast(en(str(data)), "warn")
+        sfx.play("on")
+        ctx.toast(en("Lockdown on: everything is stopped for players") if lock else en("Lockdown lifted"),
+                  "warn" if lock else "ok")
+        ctx.admin_cache = {}
+        ctx.econ.take_locks({"lockdown": lock, "locked": [f["name"] for f in (data or {}).get("features") or []
+                                                         if not f.get("on")]})
+        ctx.econ.poll_live()
+        QTimer.singleShot(200, after or ctx.reload_page)
+
+    def go(lock: bool) -> None:
+        ctx.econ.call("rb_admin_lockdown", {"lock": lock}, lambda ok, d: done(lock, ok, d))
+
+    def flip() -> None:
+        if on:
+            return ctx.window.confirm(en("Lift the lockdown and open everything again?"), lambda: go(False),
+                                      yes=en("Lift lockdown"))
+        ctx.window.confirm(en("Stop everything for every player now? Open games are given back."),
+                           lambda: go(True), yes=en("LOCKDOWN"))
+    bar.clicked.connect(flip)
+    lay.addWidget(bar)
+
+
 class LockdownBar(QAbstractButton):
     """Off: a red bar with hazard stripes. On: it pulses, and says how to lift it."""
 
@@ -42693,6 +43882,30 @@ class Notifier(QObject):
                 text = tr("You won the duel against {name}!", name=who) if data.get("won") else tr("{name} won the duel", name=who)
             self.ctx.duels_data = None
             self.push("duel", tr("DUEL"), text, "minigames")
+        elif kind in ("arena_join", "arena_end"):                     # 9.1: Arena duels
+            who = data.get("from") or data.get("other", "?")
+            game = tr(ARENA_KINDS.get(data.get("kind"), "Duel"))
+            if kind == "arena_join":
+                text = tr("{name} joined your {game} duel: your move!", name=who, game=game)
+            elif data.get("draw"):
+                text = tr("{game} with {name}: a draw", name=who, game=game)
+            else:
+                text = (tr("You beat {name} at {game}!", name=who, game=game) if data.get("won") else
+                        tr("{name} won the {game} duel", name=who, game=game))
+                self.ctx.econ.refresh()
+            self.ctx.arena_lobby = None
+            if data.get("kind") in ARENA_KINDS:
+                self.ctx.arena_kind, self.ctx.arena_mode = data["kind"], "duel"
+            if self.ctx.window.showing("games") and getattr(self.ctx, "games_sub", None) == "arena" and \
+                    (getattr(self.ctx, "arena_game", None) or {}).get("id") == data.get("id"):
+                self._remember("duel", tr("DUEL"), text, "arena")      # on screen already: no pop-up
+                self.history_changed.emit()
+            else:
+                self.push("duel", tr("DUEL"), text, "arena")
+        elif kind == "held_done":                                     # 9.1: a held mini game pay was checked
+            self.ctx.econ.refresh()
+            self.push("admin", tr("CHECKED"), tr("Your held mini game coins were paid: thanks for waiting!")
+                      if data.get("paid") else tr("A held mini game win was checked and not paid"), "minigames")
         elif kind in ("flip_join", "flip_locked", "flip_end"):         # 3.2: coinflip
             who = data.get("from", "?")
             if kind == "flip_join":
@@ -42815,11 +44028,13 @@ def go(ctx, action) -> None:
         target = "games"
         ctx.games_sub = None
         ctx.casino = False
-    elif key in ("golf", "flip", "advent", "wave", "jackpot", "horses"):
+    elif key in ("golf", "flip", "advent", "wave", "jackpot", "horses", "arena"):
         target = "games"
         ctx.casino = False
         ctx.games_sub = {"golf": "duels", "flip": "flip", "advent": "advent", "wave": "wave",
-                         "jackpot": "jackpot", "horses": "horses"}[key]
+                         "jackpot": "jackpot", "horses": "horses", "arena": "arena"}[key]
+        if key == "arena":
+            ctx.arena_game = None                          # picked up again from the server (your game in play)
         if key == "wave":
             ctx.wave_mode = "duel"
     elif key == "spin":
@@ -43458,7 +44673,8 @@ def door_pixmap(size, accent: QColor) -> QPixmap:
 
 GAME_NAMES.update({"wave": "Wave Rush", "mini": "Beat Tap", "park": "Parking", "memory": "Memory", "blocks": "Block Blast",
                    "sweep": "Minesweeper", "sweeper": "Minesweeper", "golf_solo": "Mini Golf", "quest": "a quest",
-                   "keno": "Keno", "limbo": "Limbo", "jackpot": "Jackpot"})   # 5.9: adds to the list, never replaces it
+                   "keno": "Keno", "limbo": "Limbo", "jackpot": "Jackpot", "c4": "Connect 4", "reversi": "Reversi",
+                   "ships": "Battleships", "arena": "Arena duel"})   # 5.9: adds to the list, never replaces it
 
 
 def show_key_found(ctx, game: str = "") -> None:
@@ -46087,7 +47303,8 @@ _GAME_NAMES = {"plinko": "Plinko", "blackjack": "Blackjack", "slots": "Slots", "
                "roulette": "Roulette", "hilo": "Hi-Lo", "daily": "Daily reward", "spin": "Free Spin", "colour": "Colour game",
                "sfx": "Sound game", "golf_party": "Mini Golf", "golf_solo": "Mini Golf", "scratch": "Scratch card",
                "horses": "Horse Racing", "park": "Parking", "blocks": "Blocks", "gold_wheel": "Gold Wheel", "memory": "Memory",
-               "mini": "Beat Tap", "jackpot": "Jackpot", "flip": "Coinflip", "coinflip": "Coinflip"}
+               "mini": "Beat Tap", "jackpot": "Jackpot", "flip": "Coinflip", "coinflip": "Coinflip", "reversi": "Reversi",
+               "ships": "Battleships", "arena": "Arena duel"}
 for _gen, _gfr in (("Plinko", "Plinko"), ("Blackjack", "Blackjack"), ("Slots", "Machine à sous"), ("Wave Rush", "Wave Rush"), ("Dice", "Dés"),
                  ("Tower", "Tour"), ("Mines", "Mines"), ("Sweeper", "Démineur"), ("Rocket", "Fusée"), ("Timing", "Timing"),
                  ("Cups", "Gobelets"), ("Connect 4", "Puissance 4"), ("Roulette", "Roulette"), ("Hi-Lo", "Plus ou moins"),
@@ -48489,7 +49706,8 @@ CASINO_STAT_NAMES = {"slots": "Slots", "plinko": "Plinko", "dice": "Dice", "mine
                      "blackjack": "Blackjack", "roulette": "Roulette", "hilo": "Hi-Lo", "tower": "Tower"}
 MINI_STAT_NAMES = {"mini": "Beat Tap", "park": "Parking", "memory": "Memory", "blocks": "Block Blast",
                    "sweeper": "Minesweeper", "golf_solo": "Mini Golf", "golf_party": "Mini Golf party", "wave": "Wave Rush",
-                   "timing": "Timing", "cups": "Cups", "c4": "Connect 4", "colour": "Colour Pick", "sfx": "SFX Match"}
+                   "timing": "Timing", "cups": "Cups", "c4": "Connect 4", "colour": "Colour Pick", "sfx": "SFX Match",
+                   "reversi": "Reversi", "ships": "Battleships"}
 
 
 def short_num(v: float) -> str:
@@ -48798,6 +50016,22 @@ class StatBars(QWidget):
                        ("+" if self.signed and v > 0 else "") + coins_text(int(v)))
 
 
+class LeadersPage(Page):
+    """9.1: the leaderboards have their own place on the rail (they were a tab inside Social). Four sections, the
+    same as Play: Players, Casino, Mini games and Duels."""
+    key = "leaders"
+
+    def __init__(self, ctx) -> None:
+        super().__init__(ctx)
+        lay = vbox(self, 6)
+        lay.addWidget(titled(tr("Leaderboards"), tr("Be top 3 of a board to wear its title"), 24))
+        if not ctx.online.logged_in():
+            lay.addWidget(Label(tr("Log in to see other users"), 12, TEXT_DIM))
+        else:
+            build_leaders(self, lay)
+        lay.addStretch(1)
+
+
 class StatsPage(Page):
     """9.1: every graph in one place: your wealth, the casino, the mini games and the rewards, over 7, 30 or 90 days.
     Your own numbers, from the server (nobody else can see them)."""
@@ -48973,7 +50207,7 @@ class PcPage(Combined):
 
 
 PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": ScreenPage, "rl": RocketPage, "perf": PcPage,
-         "hub": HubPage, "rewards": RewardsPage, "stats": StatsPage, "games": GamesPage, "friends": FriendsPage, "themes": ShopPage, "new": NewsPage, "settings": SettingsPage,
+         "hub": HubPage, "rewards": RewardsPage, "stats": StatsPage, "leaders": LeadersPage, "games": GamesPage, "friends": FriendsPage, "themes": ShopPage, "new": NewsPage, "settings": SettingsPage,
          "giveaway": GiveawayPage, "admin": AdminPage}
 # Fixed order: music first, then what you use in a game, then the PC, then fun and looks, settings last.
 # 3.2: Games, Shop and Social (and the Giveaway) live in the online menu: one ONLINE button opens it.
@@ -48982,7 +50216,7 @@ TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", 
         ("online", "globe", tr("Online"))]   # 4.0: ONLINE is the globe alone, far right. 4.5: Admin only in the online menu
 ONLINE_PAGES = ("games", "themes", "friends", "giveaway")
 LIVE_TABS: set = set()      # Giveaway (while one is live) and Admin (the admin account only)
-LOCK_PAGES = {"hub", "rewards", "stats", "games", "themes", "friends", "giveaway"}     # covered while the admin has locked the app
+LOCK_PAGES = {"hub", "rewards", "stats", "leaders", "games", "themes", "friends", "giveaway"}     # covered while the admin has locked the app
 
 
 TEMP_TABS: set = set()      # tabs shown only until the user leaves them
@@ -50970,7 +52204,7 @@ HELP = {
         "Stop early, while the needle is still slow.",
         "Watch one bounce to feel the speed, then press a little before it reaches the target."], [
         "Perfect (the centre): 120 coins. Good: 50. Close: 15. Miss, or after 9 seconds: nothing.",
-        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The server keeps its own clock and judges the stop: slowing Rubenium down does not help."]),
     "rocket": ("Rocket", [
         "Launch: the multiplier climbs while the rocket flies.",
@@ -50994,7 +52228,7 @@ HELP = {
         "Professional moves first and plays perfectly: it has never lost. Beat it for 600 coins."], [
         "Take the middle column early, block every line of 3, and set up two threats at once."], [
         "A win: Easy 40 · Medium 90 · Hard 200 · Professional 600 coins. A draw pays a quarter of it.",
-        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The bot plays on the server, which decides who won. Leaving a game or giving up pays nothing."]),
     "colour": ("Colour Pick", [
         "A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.",
@@ -51003,7 +52237,7 @@ HELP = {
         "Remember the hue first, then how pale or dark it was. Move the sliders one at a time.",
         "The colour is shown once and the clock is kept by the server: a late answer scores nothing."], [
         "Pay = the level's pay (Easy 40, Medium 60, Hard 90) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.",
-        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The server picks the colour and scores your answer."]),
     "sfxmatch": ("SFX Match", [
         "A short sound plays, then it is gone. Recreate it with the sliders: pitch, duration and tone, and on harder levels glide, shape and wobble.",
@@ -51012,7 +52246,7 @@ HELP = {
         "Find the pitch first, then the length, then the tone: sine is soft, square is buzzy, saw is sharp.",
         "Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited."], [
         "Pay = the level's pay (Easy 50, Medium 75, Hard 110) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.",
-        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The server makes the sound and scores your answer."]),
     "cups": ("Cup Game", [
         "A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.",
@@ -51020,7 +52254,7 @@ HELP = {
         "Watch only the cup with the coin, never the others.",
         "Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves."], [
         "Finding the coin: Easy 25 · Medium 50 · Hard 90 · Expert 150 coins.",
-        "Free: no bet. Full pay for the first 6 rounds of the day, then half, then a quarter, up to 900 coins a day for each game (all of it times your tier).",
+        "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The server hides the coin and checks your pick and its time."]),
     "tower": ("Tower", [
         "Climb 8 rows. On each row, pick a tile: a safe one takes you up, a bomb ends the round.",
@@ -51082,6 +52316,31 @@ HELP = {
         "Pick the game you are best at, and a level you know well."], [
         "The winner gets both bets minus a {fee}% fee. A draw gives both bets back.",
         "The bet is at most 80% of the lower balance."]),
+    "reversi": ("Reversi", [
+        "Place a disc so that it closes a line of the bot's discs between it and one of yours: they all turn to your colour.",
+        "If you can't move, you pass. When neither side can move, the one with more discs wins.",
+        "Easy plays at random, Medium grabs discs, Hard knows the board, Insane looks ahead and plays the end perfectly."], [
+        "Corners can never be turned back: take them, and don't give them away by playing next to them.",
+        "Early on, fewer discs is often better: keep your moves free and leave the bot few."], [
+        "A win: Easy 40 · Medium 100 · Hard 250 · Insane 700 coins, up to 50% more for a big win. A draw pays a quarter.",
+        "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
+        "The bot plays on the server, which decides who won. Leaving a game or giving up pays nothing."]),
+    "ships": ("Battleships", [
+        "Your fleet (5 ships) is placed for you: press Move my ships before the first shot to place it again.",
+        "Click a cell of their waters to fire. A hit lets you fire again. Sink all 17 cells of their fleet before they sink yours.",
+        "Easy fires at random, Medium hunts around hits, Hard hunts in a pattern, Insane works out where ships can still be."], [
+        "Fire in a checker pattern: the smallest ship is 2 long, so it can't hide between the dots.",
+        "After a hit, find the direction first, then follow the line."], [
+        "A win: Easy 30 · Medium 80 · Hard 180 · Insane 450 coins, up to 50% more if you used few shots.",
+        "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
+        "Only the server knows where the ships are: their fleet is shown once the game ends."]),
+    "arena": ("Duels", [
+        "Open a duel (free, or with a bet) and wait for someone to join, or join one that is open.",
+        "You take turns. Each move has a clock (30 s, 45 s for Reversi): if it runs out, you lose."], [
+        "Practise against the bots first: they play the same rules."], [
+        "With a bet, both put in the same coins and the winner takes the pot, less a 5% fee. A draw gives both bets back.",
+        "An open duel nobody joins in 10 minutes is cancelled and the bet comes back.",
+        "Every move is kept on the server, so a game can always be checked."]),
     "golf": ("Mini Golf", [
         "Move the mouse away from your ball to aim: the further away, the harder the shot. The arrow shows the direction and the bar the power: how far it rolls is up to you. Click (or Space) to shoot.",
         "Play alone: no bet and no clock.",
@@ -51131,6 +52390,7 @@ CONTROLS = {
     "roulette": _CASINO + [("LMB", "Pick what you bet on")],
     "cups": _SKILL + [("LMB", "Click the cup with the coin")],
     "connect4": _SKILL + [("LMB", "Drop a disc in a column")],
+    "reversi": [("LMB", "Place a disc")], "ships": [("LMB", "Fire at a cell")], "arena": [("LMB", "Play a move")],
     "spin": [("LMB", "Spin the wheel")], "scratch": [("Drag", "Scratch the card")],
     "beat": [(["D", "F", "J", "K"], "Hit a lane"), ("LMB", "Hit a lane"), ("Space", "Start")],
     "memory": [("LMB", "Turn a card")], "parking": [("Drag", "Slide a car along its lane")],
@@ -56136,6 +57396,7 @@ class GoldButton(QWidget):
 # 9.0: the online menu is one focused page at a time, picked from a rail on the left. Each rail entry opens a page
 # (and, for Shop / Collection, which part of it). Coins, keys and the level live in the top bar on every page.
 NAV = [("hub", "home", "Home"), ("games", "dice", "Play"), ("rewards", "gift", "Rewards"), ("stats", "chart", "Stats"),
+       ("leaders", "trophy", "Leaderboards"),
        ("shop", "gem", "Shop"),
        ("collection", "folder", "Collection"), ("friends", "users", "Social"), ("settings", "cog", "Settings")]
 NAV_PAGE = {"shop": "themes", "collection": "themes"}
@@ -56210,8 +57471,8 @@ class NavRail(QWidget):
 
     def rects(self) -> list:
         items = self.items()
-        h = S(58)
         gap = S(4)
+        h = max(S(40), min(S(58), (self.height() - S(10)) / max(1, len(items)) - gap))     # 9.1: always fits
         out = []
         y = S(4)
         for k, icon, title in items:
@@ -56773,7 +58034,7 @@ def _make_class():
             for w in (self.toast_w, self.confirm_w, self.busy_w):
                 w.raise_()
             want = ctx.cfg["online_tab"]
-            self.current = want if want in ("hub", "games", "rewards", "stats", "themes", "friends", "settings") else "hub"
+            self.current = want if want in ("hub", "games", "rewards", "stats", "leaders", "themes", "friends", "settings") else "hub"
             self.drop = Tween(self, 0.0, self._on_drop, QEasingCurve.Type.OutBack)
             self.drop.finished.connect(self._drop_done)
             self.suck = Tween(self, 0.0, self.update, QEasingCurve.Type.InCubic)
@@ -56838,7 +58099,7 @@ def _make_class():
                 return
             old = self.current
             self.current = key
-            if key in ONLINE_KEYS or key in ("hub", "rewards", "stats"):
+            if key in ONLINE_KEYS or key in ("hub", "rewards", "stats", "leaders"):
                 self.ctx.cfg["online_tab"] = key
             sfx.play("pick")
             if old in self.pages and old != key:
@@ -56849,13 +58110,10 @@ def _make_class():
             self.body.update()
 
         def open_leaders(self) -> None:
-            """The leaderboards, in Social."""
-            self.ctx.social_tab = 3
-            self.ctx.friends_profile = None
-            self.ctx.social_edit = False
-            if self.current != "friends":
-                return self.set_pane(0, "friends")
-            self.reload_page("friends")
+            """9.1: the leaderboards have their own place on the rail."""
+            if self.current != "leaders":
+                return self.nav("leaders")
+            self.reload_page("leaders")
 
         def open_levels(self) -> None:
             """The level in the top bar: Collection > Inventory > Levels."""
@@ -57032,7 +58290,7 @@ def _make_class():
         def goto(self, key: str) -> None:
             if claim_blocked(self.ctx):
                 return
-            if key in ("hub", "games", "rewards", "stats", "themes", "friends", "giveaway", "settings", "admin"):
+            if key in ("hub", "games", "rewards", "stats", "leaders", "themes", "friends", "giveaway", "settings", "admin"):
                 if key not in self.tab_keys():
                     self.set_pane(0, key)
                 if not self.expanded:
@@ -57097,7 +58355,7 @@ def _make_class():
             ctx = self.ctx
             cover = self.body.cover
             mode = ("offmode" if ctx.cfg["offline_mode"] and ctx.online.logged_in() else
-                    "locked" if ctx.econ.live.get("locked") else
+                    "locked" if ctx.econ.live.get("locked") and not ctx.econ.admin else
                     "lockdown" if ctx.econ.lockdown_cover() else
                     "offline" if ctx.online.logged_in() and ctx.online.offline else "")
             on = bool(mode) and self.expanded and self.phase == "shown"
@@ -62471,7 +63729,7 @@ class MainWindow(QWidget):
         cover = self.body.cover
         ctx = self.ctx
         mode = ("offmode" if ctx.cfg["offline_mode"] and ctx.online.logged_in() else
-                "locked" if ctx.econ.live.get("locked") else
+                "locked" if ctx.econ.live.get("locked") and not ctx.econ.admin else
                 "lockdown" if ctx.econ.lockdown_cover() else
                 "offline" if ctx.online.logged_in() and ctx.online.offline else "")     # 5.15: no "update" cover
         on = bool(mode) and self.expanded and self.current in LOCK_PAGES
@@ -64844,6 +66102,9 @@ class App(QObject):
             return
         if not self.online.logged_in():
             return self.toast(tr("Log in first"), "warn")
+        if self.econ.lockdown_cover() or (self.econ.live.get("locked") and not self.econ.admin):
+            sfx.play("off")                                # 9.1: in a lockdown the ONLINE button does nothing
+            return self.toast(tr("Online is paused for a moment by the Rubenium team. Nothing you own is lost."), "warn")
         if getattr(self, "outdated", False):              # 5.15: an old version: up into the black hole, back down
             return self._online_refused()
         if (getattr(self, "og_chest", None) or {}).get("due") is not False:
