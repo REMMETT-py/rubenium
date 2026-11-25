@@ -2275,7 +2275,32 @@ def lang() -> str:
     return _lang
 
 
+# 8.0: "1 key", not "1 keys": the singular of a count, used by tr() when n is 1
+ONE = {
+    '{n} cases added to Your cases': '{n} case added to Your cases',
+    '{n} cases to open': '{n} case to open',
+    '{n} changes waiting': '{n} change waiting',
+    '{n} coinflips to join': '{n} coinflip to join',
+    '{n} coins': '{n} coin',
+    '{n} days': '{n} day',
+    '{n} days ago': '{n} day ago',
+    '{n} flips': '{n} flip',
+    '{n} items · worth about {v} coins': '{n} item · worth about {v} coins',
+    '{n} keys': '{n} key',
+    '{n} minutes': '{n} minute',
+    '{n} moves (best possible: {b})': '{n} move (best possible: {b})',
+    '{n} rounds · {p}% won': '{n} round · {p}% won',
+    '{n} rounds · {w} won · {l} lost': '{n} round · {w} won · {l} lost',
+    '{n} rounds · {w} won · {l} lost · {e} even': '{n} round · {w} won · {l} lost · {e} even',
+    '{n} seconds': '{n} second',
+    '{n} strokes': '{n} stroke',
+    '{n} trades': '{n} trade',
+}
+
+
 def tr(text: str, **kw) -> str:
+    if kw and str(kw.get("n", "")) == "1" and text in ONE:
+        text = ONE[text]
     out = _fr.get(text, text) if _lang == "fr" else text
     return out.format(**kw) if kw else out
 
@@ -4932,6 +4957,24 @@ FR = {
     'Type your admin code first': "Tape d'abord ton code admin",
     'Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one': 'Le Mini Golf en ligne est juste pour tout le monde : le serveur joue maintenant chaque coup avec la même physique que le jeu, donc personne ne peut tricher un trou en un',
     'Solo Mini Golf online needs Rubenium 8.0': 'Le Mini Golf solo en ligne demande Rubenium 8.0',
+    '{n} case added to Your cases': '{n} caisse ajoutée à Tes caisses',
+    '{n} case to open': '{n} caisse à ouvrir',
+    '{n} change waiting': '{n} changement en attente',
+    '{n} coinflip to join': '{n} pile ou face à rejoindre',
+    '{n} coin': '{n} pièce',
+    '{n} day': '{n} jour',
+    '{n} day ago': 'il y a {n} jour',
+    '{n} flip': '{n} carte',
+    '{n} item · worth about {v} coins': '{n} objet · vaut environ {v} pièces',
+    '{n} key': '{n} clé',
+    '{n} minute': '{n} minute',
+    '{n} move (best possible: {b})': '{n} coup (meilleur possible : {b})',
+    '{n} round · {p}% won': '{n} manche · {p} % gagnée',
+    '{n} round · {w} won · {l} lost': '{n} manche · {w} gagnée · {l} perdue',
+    '{n} round · {w} won · {l} lost · {e} even': '{n} manche · {w} gagnée · {l} perdue · {e} égalité',
+    '{n} second': '{n} seconde',
+    '{n} stroke': '{n} coup',
+    '{n} trade': '{n} échange',
     'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players': "Comptes plus sûrs : l'aide pour le mot de passe est limitée par PC et par nom, donc personne ne peut l'épuiser pour les autres joueurs",
     'A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing': 'Un look plus net partout : chaque bouton, onglet, carte et champ de texte partage les mêmes coins, surfaces et espacements',
     'Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer': 'Réduire les animations : un nouvel interrupteur dans Réglages > Style rend les animations de l’interface plus courtes et plus calmes',
@@ -12417,13 +12460,13 @@ FR.update({
  "1re place : 100 % de sa mise et 70 % des gains. 2e : 25 % de sa mise et 20 %. 3e : 5 % et 10 %. (Les gains sont tout l’argent qui n’est pas rendu.)",
  "RACE HISTORY": "HISTORIQUE DES COURSES",
  "The races will be listed here once the first one is over.": "Les courses apparaîtront ici dès que la première sera terminée.",
- "{n} races · {c} bet in total": "{n} courses · {c} misés au total",
+ "{n} races · {c} bet in total": "{n} courses · {c} misés au total", "1 race · {c} bet in total": "1 course · {c} misés au total",
  "Winners, newest first": "Vainqueurs, du plus récent au plus ancien",
  "Pot of each race": "Cagnotte de chaque course",
  "HIGH {v}": "HAUT {v}", "LOW {v}": "BAS {v}",
  "Bets: smallest to biggest · average to the winner's": "Mises : de la plus petite à la plus grande · de la moyenne à celle du gagnant",
  "Money on each horse": "Argent sur chaque cheval",
- "Wins by horse, all {n} races": "Victoires par cheval, sur {n} courses",
+ "Wins by horse, all {n} races": "Victoires par cheval, sur {n} courses", "Wins by horse, 1 race": "Victoires par cheval, sur 1 course",
  "#{n} {name} won": "N°{n} {name} a gagné",
  "1st #{a} · 2nd #{b} · 3rd #{c}": "1er n°{a} · 2e n°{b} · 3e n°{c}",
  "Pot {v}": "Cagnotte {v}",
@@ -44556,8 +44599,10 @@ class RaceHistory(QWidget):
         return lt[0], lt[1], lt[2]
 
     def _scale(self, lo: float, hi: float):
-        if hi <= lo:
-            hi = lo + 1
+        span = max(1.0, abs(hi) * 0.2)                    # 8.0: one race (or equal ones) still gets a readable axis
+        if hi - lo < span:
+            mid = (hi + lo) / 2
+            lo, hi = mid - span / 2, mid + span / 2
         pad = (hi - lo) * 0.12
         return max(0.0, lo - pad), hi + pad
 
@@ -44619,7 +44664,8 @@ class RaceHistory(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.drawText(QRectF(self.pad, S(8), w - 2 * self.pad, S(20)),
                    int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
-                   tr("{n} races · {c} bet in total", n=len(rs), c=coins_text(sum(r["pot"] for r in rs))))
+                   (tr("1 race · {c} bet in total", c=coins_text(sum(r["pot"] for r in rs))) if len(rs) == 1 else
+                    tr("{n} races · {c} bet in total", n=len(rs), c=coins_text(sum(r["pot"] for r in rs)))))
         # --- the winners
         p.setFont(font(10.5, QFont.Weight.Bold))
         p.setPen(QColor(TEXT_DIM))
@@ -44803,7 +44849,7 @@ class RaceHistory(QWidget):
                 took[k] += x["amt"][k]
         p.setFont(font(10.5, QFont.Weight.Bold))
         p.setPen(QColor(TEXT_DIM))
-        p.drawText(QPointF(self.pad, self.leg_r.top() - S(6)), tr("Wins by horse, all {n} races", n=len(rs)))
+        p.drawText(QPointF(self.pad, self.leg_r.top() - S(6)), tr("Wins by horse, all {n} races", n=len(rs)) if len(rs) != 1 else tr("Wins by horse, 1 race"))
         topw = max(max(wins), 1)
         for k in range(5):
             rr = self._leg_row(k)
