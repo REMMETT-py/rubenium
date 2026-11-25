@@ -42,7 +42,8 @@ def new_migrations():
 
 
 def build_template():
-    subprocess.run([os.path.join(HERE, "pg_start.sh")], check=True)
+    if "PGHOST" not in os.environ:                     # the throwaway local server; CI brings its own
+        subprocess.run([os.path.join(HERE, "pg_start.sh")], check=True)
     psql("postgres", "-c", f"drop database if exists {TEMPLATE}", "-c", f"create database {TEMPLATE}")
     psql(TEMPLATE, "-c", f"alter database {TEMPLATE} set search_path = \"$user\", public, extensions")
     psql(TEMPLATE, "-1", "-f", os.path.join(HERE, "shim.sql"))

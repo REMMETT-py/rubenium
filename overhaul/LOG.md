@@ -36,3 +36,12 @@ Open questions: see the Checkpoint 1 message.
 - CI: `.github/workflows/overhaul.yml` runs on `overhaul-8` only: compile + ruff (real errors only), the self-test
   on Linux (headless) and Windows (from source), and the server tests on a Postgres 16 service. It never builds,
   publishes, or touches releases or tags.
+- CI first run: lint and the Linux self-test passed; the Windows job looked for the log too early (from source,
+  Rubenium restarts itself under pythonw; `--console` keeps it in place) and the database job tried to start its
+  own server (it now uses the CI service when PGHOST is set). Both fixed.
+- A local stand-in for the server (`overhaul/stub/server.py`): the app's calls go to the local test database with
+  the same roles and rules, so the logged-in pages can be opened without touching the real server.
+- A page crawler (`overhaul/ui/crawl.py`, `run_crawl.sh`): opens every page and every section inside it (three
+  levels down), every casino game and every part of the games lobby, pictures each one and records any error.
+  First full run: offline 27, player 120, admin 139 states, English and French, 0 errors; 58 server functions used,
+  none refused.
