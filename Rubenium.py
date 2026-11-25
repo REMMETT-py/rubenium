@@ -1580,6 +1580,7 @@ class _UI:
     ball = 1.0              # size of the ball, on top of the UI scale
     radius = 18             # card corner radius at 100 %
     motion = 1.0            # 8.0: interface movement time (0.3 with "Reduce motion")
+    song = QColor("#FFFFFF")  # 9.1: the main buttons' colour: the playing song's cover, white when nothing plays
 
 
 ui = _UI()
@@ -1643,11 +1644,20 @@ def brand_gradient(r: QRectF, a: float = 1.0) -> QLinearGradient:
 
 
 def cta_colors() -> tuple:
-    """9.0: the main buttons' two colours: the menu colour when one is picked, the brand sweep on the plain white."""
-    a = ui.accent
-    if a.hslSaturationF() < 0.18:
-        return QColor(BRAND), QColor(BRAND2)
+    """9.1: the main buttons' two colours follow the song that plays (its cover's colour, white for a grey cover), and
+    fade back to white when the music stops or pauses."""
+    a = ui.song
+    if a.hslSaturationF() < 0.12:
+        lit = max(0.80, a.lightnessF())
+        top = QColor.fromHslF(0.6, 0.06, min(1.0, lit + 0.06))
+        return top, QColor.fromHslF(0.6, 0.08, lit - 0.08)
     return mix(a, QColor("#FFFFFF"), 0.10), mix(a, QColor("#000000"), 0.18)
+
+
+def cta_fg() -> QColor:
+    """Text and icons on the main buttons: dark on a light colour, white on a dark one."""
+    c1, c2 = cta_colors()
+    return QColor("#0B0D12") if mix(c1, c2, 0.5).lightnessF() > 0.62 else QColor("#FFFFFF")
 
 
 def paint_surface(p: QPainter, r: QRectF, radius: float, base: float = 0.05, hover: float = 0.0,
@@ -2213,6 +2223,8 @@ class Config(QObject):
         if d["crosshair"]["style"] not in ("cross", "tee", "dot", "circle"):
             d["crosshair"]["style"] = "cross"
         d["crosshair"]["size"] = 100
+        d["halo"] = d["ring"] = True                     # 9.1: always on (no switches any more)
+        d["accent_from_art"] = d["accent_from_screen"] = False   # 9.1: the main buttons follow the song by themselves
         if d["hotkey"] == "f8":                          # 4.5: F8 became Right Alt
             d["hotkey"] = "ralt"
         for slot in ("A", "B"):
@@ -9057,7 +9069,7 @@ class TabBar(QWidget):
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(QBrush(g))
                 p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
-            fg = mix(mix(QColor(TEXT_DIM), QColor(TEXT), h), QColor("#FFFFFF"), w)
+            fg = mix(mix(QColor(TEXT_DIM), QColor(TEXT), h), cta_fg(), w)
             if key == "online":                             # 9.0: Go online, a glowing brand pill, always labelled
                 import time as _t
                 pulse = 0.5 + 0.5 * math.sin(_t.monotonic() * 2.4)
@@ -9067,7 +9079,7 @@ class TabBar(QWidget):
                 p.setPen(QPen(alpha("#FFFFFF", 0.10 + 0.12 * pulse + 0.2 * h), S(1)))
                 p.setBrush(QBrush(g))
                 p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
-                fg = QColor("#FFFFFF")
+                fg = cta_fg()
                 w = 1.0
                 if not hasattr(self, "_on_t"):
                     self._on_t = QTimer(self)
@@ -22191,9 +22203,7 @@ class StylePart:
                          lambda v: f"{int(v)}%", marks=list(BALL_SIZES))
         ball.changed.connect(lambda v: (ctx.set_look("ball_size", int(v)), self.preview.update()))
         lay.addWidget(ball)
-        lay.addWidget(heading(tr("Effects")))
-        toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
-        toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
+        lay.addWidget(heading(tr("Effects")))                # 9.1: the glow and the progress ring are always on
         toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
         toggle(tr("Reduce motion"), "reduce_motion", after=lambda v: setattr(ui, "motion", 0.3 if v else 1.0))
         self._look(lay)
@@ -22203,24 +22213,8 @@ class StylePart:
         """Colours, the progression (R and ring styles) and the themes."""
         from PyQt6.QtWidgets import QGridLayout
         pass
-        ctx, wallet = self.ctx, self.ctx.wallet
-        lay.addWidget(heading(tr("Colour")))
-        self.t_music = Toggle(bool(ctx.cfg["accent_from_art"]) and wallet.owns("music"))
-        self.t_music.toggled_by_user.connect(self._music)
-        self.music_wait = Label("", 10.5, TEXT_DIM)
-        music = QWidget()
-        ml = hbox(music, 8)
-        texts = QWidget()
-        tl = vbox(texts, 0)
-        tl.addWidget(Label(tr("Use the colours of the music"), 12.5))
-        tl.addWidget(self.music_wait)
-        ml.addWidget(texts, 1)
-        ml.addWidget(self.t_music, 0, Qt.AlignmentFlag.AlignVCenter)
-        lay.addWidget(music)
-        self.t_screen = Toggle(bool(ctx.cfg["accent_from_screen"]) and not self.t_music.isChecked())
-        self.t_screen.toggled_by_user.connect(self._screen)
-        lay.addWidget(row(tr("Use screen colours"), self.t_screen))
-        self._music_text()
+        ctx = self.ctx
+        lay.addWidget(heading(tr("Colour")))                 # 9.1: the main buttons follow the song by themselves
         lay.addWidget(Label(tr("Colour 1"), 12.5))
         self.c1 = ColourRow(self, "c1", "custom_accent")
         lay.addWidget(self.c1)
@@ -22259,20 +22253,7 @@ class StylePart:
             grid.addWidget(card, i // 2, i % 2)
             self.cards.append(card)
         lay.addLayout(grid)
-        self._tick = QTimer(self)                      # the music colours count down to their hour
-        self._tick.setInterval(15000)
-        self._tick.timeout.connect(self._music_text)
-        self._tick.start()
         self._refresh_style()
-
-    def _music_text(self) -> None:
-        wait = self.ctx.wallet.music_wait()
-        done = max(0.0, (3600 - wait) / 3600)
-        hours = f"{min(0.9, done):.1f}"
-        self.music_wait.set_text("" if not wait else tr("{x} / 1 hour to unlock",
-                                                        x=hours.replace(".", ",") if lang() == "fr" else hours))
-        self.music_wait.setVisible(bool(wait))
-        self.t_music.setEnabled(not wait)
 
     # -- colours
     def set_colour(self, kind: str, col: str) -> None:
@@ -22282,22 +22263,6 @@ class StylePart:
         else:
             self.ctx.cfg["custom_accent"] = col
         self.ctx.refresh_accent()
-        self._rows()
-
-    def _music(self, on: bool) -> None:
-        if on and not self.ctx.wallet.owns("music"):
-            self.t_music.set_checked(False)
-            return self._music_text()
-        self.ctx.set_colour_source("music" if on else "")
-        if on:
-            self.t_screen.set_checked(False)
-        self._rows()
-
-    def _screen(self, on: bool) -> None:
-        """Only one of the two at a time: no fighting colours."""
-        self.ctx.set_colour_source("screen" if on else "")
-        if on:
-            self.t_music.set_checked(False)
         self._rows()
 
     def _rows(self) -> None:
@@ -29601,16 +29566,33 @@ class ScratchCard(QWidget):
             return
         if not self.asked:
             self.asked = True
+            ask_id = self._ask_id = getattr(self, "_ask_id", 0) + 1
             claim_lock(self.ctx, 8)
 
             def got(ok: bool, data) -> None:
+                try:
+                    self.isVisible()
+                except RuntimeError:
+                    return
+                if ask_id != self._ask_id:
+                    return
                 if not ok or not isinstance(data, dict):
                     self.asked = False
+                    claim_lock(self.ctx, 0)
                     return self.ctx.toast(tr(str(data)) if "countdown" not in str(data) else tr("Not ready yet"), "warn")
                 self.prize = data
                 self.ctx.econ.scratch_in = int(data.get("next") or 43200)
-                claim_lock(self.ctx, 90)                         # 5.3: scratch it all before leaving
+                claim_lock(self.ctx, 0)                          # 9.1: never stuck: leaving early still shows the prize
                 self.update()
+
+            def lost() -> None:                                  # 9.1: no answer: the card can be scratched again
+                try:
+                    if ask_id == self._ask_id and not self.prize:
+                        self.asked = False
+                        claim_lock(self.ctx, 0)
+                except RuntimeError:
+                    pass
+            QTimer.singleShot(12000, lost)
             self.ctx.econ.call("rb_scratch", {}, got, hold=True)
         self.last = e.position()
         self._scratch(e.position())
@@ -29650,7 +29632,13 @@ class ScratchCard(QWidget):
             self._finish()
         self.update()
 
+    def hideEvent(self, _e) -> None:
+        if self.prize and not self.done:                         # 9.1: left before the end: the prize is shown anyway
+            self._finish()
+
     def _finish(self) -> None:
+        if self.done:
+            return
         self.done = True
         self.done_at = time.monotonic()
         claim_lock(self.ctx, 1.2)
@@ -29669,7 +29657,7 @@ class ScratchCard(QWidget):
             pass
             QTimer.singleShot(900, lambda: open_gold_wheel(self.ctx))
             return
-        text = ("+" + coins_text(c)) if c else tr("+{n} key(s)", n=k)
+        text = " · ".join(x for x in (("+" + coins_text(c)) if c else "", tr("+{n} key(s)", n=k) if k else "") if x) or "+0"
         if cp:
             text += "  ·  " + tr("+ {what}", what=tr(COUPONS.get(cp, ("XP coupon",))[0]))
         self.ctx.toast(text)
@@ -29719,7 +29707,8 @@ class ScratchCard(QWidget):
             p.setFont(font(26, QFont.Weight.Black))
             p.drawText(QRectF(r.left(), r.center().y() - S(20), r.width(), S(40)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("Golden Wheel!") if rar == "golden" else
-                       coins_text(c) + " " + tr("coins") if c else tr("{n} key(s)", n=k))
+                       (coins_text(c) + " " + tr("coins") + ("  +  " + tr("{n} key(s)", n=k) if k else "")) if c else
+                       tr("{n} key(s)", n=k))
             if self.prize.get("coupon"):                          # 4.0: and an XP coupon
                 pass
                 p.setFont(font(11, QFont.Weight.Bold))
@@ -35095,17 +35084,25 @@ class GamesPage(Page):
         lay.addWidget(Label(tr("One card every {h} hours.", h=hours),
                             10.5, TEXT_DIM, wrap_w=self.W))
         odds = getattr(self.ctx, "scratch_odds", None)            # 4.0: the server's own odds, never a copy
+        holder = QWidget()                                        # 9.1: filled in place, never by rebuilding the page
+        hl = vbox(holder, 6)                                      # (a rebuild threw away a card being scratched)
+        lay.addWidget(holder)
+
+        def show(rows) -> None:
+            try:
+                if rows and not hl.count():
+                    hl.addWidget(heading(tr("Chances")))
+                    hl.addWidget(ScratchOdds(rows, self.W))
+            except RuntimeError:
+                pass
         if odds is None:
             def got(ok: bool, data) -> None:
                 if ok and isinstance(data, list):
                     self.ctx.scratch_odds = data
-                    if self.ctx.window.showing("games") and getattr(self.ctx, "games_sub", None) == "scratch":
-                        self.ctx.reload_page("games")
+                    show(data)
             self.ctx.online.ask("rb_scratch_odds", {}, got)
-        elif odds:
-            pass
-            lay.addWidget(heading(tr("Chances")))
-            lay.addWidget(ScratchOdds(odds, self.W))
+        else:
+            show(odds)
 
     def load_duels(self, quiet: bool = False) -> None:
         ctx = self.ctx
@@ -37521,12 +37518,7 @@ class GameModeWindow(FloatWindow):
         close.clicked.connect(self.close)
         top.addWidget(close)
         lay.addLayout(top)
-        on = bool(getattr(ctx, "game_lock", False))
-        state = Button(tr("Game mode is ON: turn it off") if on else tr("Turn game mode on now"),
-                       "primary" if not on else "ghost", 36, icon="lock")
-        state.setEnabled(cfg["gm_key"] != "off" or on)
-        state.clicked.connect(lambda: (ctx.toggle_game_lock(), self.close()))
-        lay.addWidget(state)
+        # 9.1: no "turn it on now" button: game mode is only turned on with its key, so nobody locks themselves out
         lay.addWidget(Label(tr("While it is on, Rubenium stays exactly as it is (open or closed) but ignores the mouse "
                                "completely: nothing in it can be clicked or even hovered, and the pointer never shows up "
                                "over it, so nothing gets in the way of your game. A padlock on the ball shows it."),
@@ -49738,7 +49730,7 @@ HELP = {
         "700 coins 9% · 1 200 coins 6% · 2 500 coins 3%",
         "A key 7.7% · the Golden Wheel 5% · an XP coupon 5%"]),
     "scratch": ("Scratch card", [
-        "One free card every {h} hours. Scratch it (or press Reveal) to see your prize."], [
+        "One free card every {h} hours. Scratch it to see your prize."], [
         "It is free: scratch every card as soon as it is ready."], [
         "80 to 160 coins: 30%",
         "220 to 420 coins: 27%",
@@ -53768,12 +53760,9 @@ class CouponOpen(QWidget):
         lay.addWidget(self.card)
         self.result = Label("", 12, TEXT, bold=True, wrap_w=self.width())
         lay.addWidget(self.result)
-        line = hbox(spacing=6)
-        self.reveal_btn = Button(tr("Reveal"), "primary", 32)
-        self.reveal_btn.clicked.connect(self.card.reveal)
+        line = hbox(spacing=6)                               # 9.1: no Reveal button: you scratch it
         self.close_btn = Button(tr("Close"), "ghost", 32)
         self.close_btn.clicked.connect(self._close)
-        line.addWidget(self.reveal_btn, 1)
         line.addWidget(self.close_btn, 1)
         lay.addLayout(line)
         self._sent = False
@@ -53782,7 +53771,6 @@ class CouponOpen(QWidget):
         if self._sent:
             return
         self._sent = True
-        self.reveal_btn.setEnabled(False)
         import uuid
 
         def got(ok: bool, data) -> None:
@@ -62075,6 +62063,46 @@ class App(QObject):
             self.refresh_accent()
         self.window.on_state(st)
         self._sync_audio()
+        self.refresh_song()
+
+    def refresh_song(self) -> None:
+        """9.1: the main buttons take the colours of the song's cover while it plays (white for a grey cover), and
+        glide back to white when the music pauses or stops."""
+        st = getattr(self, "state", None)
+        playing = st is not None and st.status is Status.PLAYING and self.art_pixmap is not None
+        key = self._art_key if playing else None
+        if key == getattr(self, "_song_key", "?"):
+            return
+        self._song_key = key
+        cache = getattr(self, "_song_cache", None)
+        if cache is None or cache[0] != key:
+            col = accent_from_image(self.art_pixmap) if playing else None
+            self._song_cache = cache = (key, col)
+        target = QColor(cache[1]) if cache[1] is not None else QColor("#FFFFFF")
+        tw = getattr(self, "_song_tw", None)
+        if tw is None:
+            tw = self._song_tw = QVariantAnimation(self)
+            tw.setEasingCurve(QEasingCurve.Type.InOutCubic)
+
+            def step(_v) -> None:
+                f = float(tw.currentValue() or 0.0)
+                ui.song = mix(self._song_from, self._song_to, f)
+                for wdg in (getattr(self, "main_window", None), getattr(self, "_online_win", None)):
+                    try:
+                        if wdg is not None and wdg.isVisible():
+                            wdg.update()
+                            for child in wdg.findChildren(QWidget):
+                                if child.isVisible():
+                                    child.update()
+                    except RuntimeError:
+                        pass
+            tw.valueChanged.connect(step)
+        tw.stop()
+        self._song_from, self._song_to = QColor(ui.song), target
+        tw.setStartValue(0.0)
+        tw.setEndValue(1.0)
+        tw.setDuration(int(1200 * ui.motion))
+        tw.start()
 
     def _on_artwork(self, key: str, data: bytes) -> None:
         if key != self._art_key:
@@ -62084,6 +62112,8 @@ class App(QObject):
             self.art_pixmap = pm
             self.window.on_art(pm)
             self.refresh_accent()
+            self._song_key = "?"
+            self.refresh_song()
 
     def position_ms(self) -> float:
         st = self.state
