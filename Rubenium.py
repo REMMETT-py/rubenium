@@ -47329,8 +47329,7 @@ class KeyForge(QWidget):
         f = getattr(self.ctx.econ, "forge", None) or {}
         price, left = int(f.get("price", 0) or 0), int(f.get("left", 0) or 0)
         self.sub.set_text(tr("{c} coins · {n} left today", c=coins_text(price), n=left) if price else "…")
-        self.btn.setEnabled(bool(price) and left > 0 and self.ctx.wallet.balance() >= price
-                            and self.ctx.wallet.keys() < int(float(self.ctx.econ.cfg.get("key_cap", 10) or 10)) * 3)
+        self.btn.setEnabled(bool(price) and left > 0 and self.ctx.wallet.balance() >= price)
 
     def _forge(self) -> None:
         ctx = self.ctx
