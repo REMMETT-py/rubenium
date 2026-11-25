@@ -1576,6 +1576,7 @@ class _UI:
     bg_bottom = QColor(BG_BOTTOM)
     ball = 1.0              # size of the ball, on top of the UI scale
     radius = 18             # card corner radius at 100 %
+    motion = 1.0            # 8.0: interface movement time (0.3 with "Reduce motion")
 
 
 ui = _UI()
@@ -2059,6 +2060,7 @@ DEFAULTS: dict = {
     "godmode": False,                    # 5.1: secret god mode: every move with a cheat uses it
     "tabs_off": {},
     "halo": True,
+    "reduce_motion": False,              # 8.0: shorter interface movements (Settings > Style)
     "autohide": True,
     "ring": True,
     "accent_from_art": True,
@@ -7027,6 +7029,10 @@ FR.update({                                   # 5.2
     'Players ({n}/5)': 'Joueurs ({n}/5)', 'SPINNING': 'ÇA TOURNE',
     'The next jackpot opens in {t}': 'Le prochain jackpot ouvre dans {t}',
     'Open cases': 'Ouvrir des caisses',
+    'Reduce motion': 'Réduire les animations',
+    'Nothing on sale': 'Rien en vente',
+    'No trades yet': 'Aucun échange pour l’instant',
+    'Trade items with a friend from their profile: every trade shows up here.': 'Échange des objets avec un ami depuis son profil : chaque échange apparaît ici.',
     'Open cases or visit the shop: everything you own shows up here.': 'Ouvre des caisses ou passe à la boutique : tout ce que tu possèdes apparaît ici.',
     'Every 15 minutes, 2 minutes to join once a player is in. Put in up to 3 items: your chance is your share of the pot.':
         'Toutes les 15 minutes, 2 minutes pour entrer une fois qu’un joueur est dedans. Mets jusqu’à 3 objets : ta chance est ta part de la cagnotte.',
@@ -7141,6 +7147,8 @@ class Tween(QVariantAnimation):
         if abs(target - self._value) < 1e-6:
             self._handle(target)
             return
+        if ui.motion < 1.0 and self.easingCurve().type() != QEasingCurve.Type.Linear:
+            ms = max(1, int(ms * ui.motion))   # 8.0 reduce motion: eased moves are short (linear ones are clocks)
         self._mute = True                 # re-arming a finished animation makes Qt emit stale values
         start = self._value
         self.setCurrentTime(0)
@@ -8821,6 +8829,18 @@ class TabBar(QWidget):
         self._current = key
         for i, t in enumerate(self._tabs):
             self._w[i].to(1.0 if t[0] == key else 0.0, 320)
+
+    def hideEvent(self, e) -> None:                       # 8.0: the pulsing tabs stop while the menu is closed
+        for t in (getattr(self, "_on_t", None), getattr(self, "_gold_t", None)):
+            if t is not None:
+                t.stop()
+        super().hideEvent(e)
+
+    def showEvent(self, e) -> None:
+        for t in (getattr(self, "_on_t", None), getattr(self, "_gold_t", None)):
+            if t is not None:
+                t.start()
+        super().showEvent(e)
 
     def set_locked(self, key: str, locked: bool) -> None:
         self._tabs = [(k, i, l, locked if k == key else lk) for k, i, l, lk in self._tabs]
@@ -21890,6 +21910,7 @@ class StylePart:
         toggle(tr("Glow"), "halo", after=lambda v: ctx.refresh_look())
         toggle(tr("Progress ring"), "ring", after=lambda v: ctx.refresh_look())
         toggle(tr("Hide menu bar when idle"), "autohide", after=lambda v: ctx.window.chrome_setting())
+        toggle(tr("Reduce motion"), "reduce_motion", after=lambda v: setattr(ui, "motion", 0.3 if v else 1.0))
         self._look(lay)
         ctx.wallet.changed.connect(self._refresh_style)
 
@@ -27483,10 +27504,11 @@ def build_market(page, lay) -> None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     if not rows:
         searching = not tab and market_filters(ctx) != MARKET_FILTERS
-        lay.addWidget(Label(tr("Nothing on sale. Put an item on sale in Sell.") if tab else
-                            tr("Nothing on sale matches this search.") if searching else
-                            tr("Nothing on sale right now. Be the first: put an item on sale in Sell."),
-                            12, TEXT_DIM, wrap_w=page.W))
+        lay.addSpacing(S(4))                              # 8.0: designed empty states
+        lay.addWidget(notice("search" if searching else "market", tr("Nothing on sale"),
+                             tr("Nothing on sale. Put an item on sale in Sell.") if tab else
+                             tr("Nothing on sale matches this search.") if searching else
+                             tr("Nothing on sale right now. Be the first: put an item on sale in Sell."), page.W))
     for row in rows[:40]:
         if is_secret(row.get("item", "")):
             row = dict(row)
@@ -34072,9 +34094,10 @@ class GamePicker(QWidget):
         grid = QGridLayout(self)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(S(4))
-        n = len(labels)                                           # 8.0: full, even rows (14 games: 2 rows of 7)
-        per_row = (n + 1) // 2 if 11 <= n <= 14 else 7 if n > 14 else 5 if n >= 10 else 3
-        rows = (n + per_row - 1) // per_row
+        n = len(labels)                                           # 8.0: full, even rows (14 games: 2 rows of 7,
+        most = 7 if n >= 11 else 5 if n >= 7 else 3              # 7 boards: 4 + 3, not 3 + 3 + 1)
+        rows = (n + most - 1) // most
+        per_row = (n + rows - 1) // rows
         for i, text in enumerate(labels):
             b = Button(text, "primary" if i == index else "ghost", 26)
             b.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
@@ -35315,6 +35338,16 @@ class NavTiles(QWidget):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.hover = -1
 
+    def hideEvent(self, e) -> None:                       # 8.0: no pulse while nobody can see it
+        if getattr(self, "_pulse", None) is not None:
+            self._pulse.stop()
+        super().hideEvent(e)
+
+    def showEvent(self, e) -> None:
+        if getattr(self, "_pulse", None) is not None:
+            self._pulse.start()
+        super().showEvent(e)
+
     def _tile(self, i: int) -> QRectF:
         gap = S(6)
         w = (self.width() - gap * (self.per - 1)) / self.per
@@ -35817,7 +35850,9 @@ def build_messages(page, lay) -> None:
     if data is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     if not data:
-        return lay.addWidget(Label(tr("Add friends to send them messages."), 11.5, TEXT_DIM, wrap_w=page.W))
+        lay.addSpacing(S(4))
+        lay.addWidget(notice("chat", tr("No messages yet"), tr("Add friends to send them messages."), page.W))
+        return
     lay.addWidget(Label(tr("Select a friend to chat."), 10.5, TEXT_DIM, wrap_w=page.W))
     for t in data:
         lay.addWidget(ThreadRow(page, t))
@@ -36031,7 +36066,10 @@ def build_trade_history(page, lay) -> None:
     if data is None:
         return lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
     if not data:
-        return lay.addWidget(Label(tr("No trades yet."), 11.5, TEXT_DIM))
+        lay.addSpacing(S(4))
+        lay.addWidget(notice("trades", tr("No trades yet"),
+                             tr("Trade items with a friend from their profile: every trade shows up here."), page.W))
+        return
     lay.addWidget(Label(tr("{n} trades", n=len(data)), 10.5, TEXT_DIM))
     for t in data[:60]:
         lay.addWidget(TradeCard(ctx, t, page.W))
@@ -60428,6 +60466,7 @@ class App(QObject):
         super().__init__()
         self.qapp = qapp
         self.cfg = Config()
+        ui.motion = 0.3 if self.cfg.get("reduce_motion") else 1.0
         for _k in ("welcome", "splash"):                 # 3.0.0: always on (no longer a setting)
             if not self.cfg[_k]:
                 self.cfg[_k] = True

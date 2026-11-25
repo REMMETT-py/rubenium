@@ -87,3 +87,8 @@ Open questions: see the Checkpoint 1 message.
   animation keeps its own full rate). Outside online mode the jackpot / race bell asks the server every 30 s per
   kind instead of every 10 s (events stay open 2 minutes, so the bell still rings in time).
 - Crawler: `ONLY=` and `MAX=` for quick runs of one set of pages.
+- Designed empty states for the market, chat and trades (a glyph, a title and what to do next).
+- Every row of switch buttons is even (7 leaderboards: 4 + 3, not 3 + 3 + 1).
+- Reduce motion (Settings > Style): interface movements take 30% of their time. Clocks and countdowns (linear
+  animations) are untouched, so no game timing changes.
+- The pulsing ONLINE / giveaway tabs and the admin alert tile stop their timers while the menu is closed.
