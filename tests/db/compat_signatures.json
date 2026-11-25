@@ -1,0 +1,1700 @@
+[
+{
+"sig": "rb_pawn_trade(uuid[],text,text)",
+"args": "ids uuid[], action text, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_force_update()",
+"args": "",
+"returns": "bigint",
+"authenticated": true
+},
+{
+"sig": "rb_c4_mult(text)",
+"args": "level text",
+"returns": "numeric",
+"authenticated": true
+},
+{
+"sig": "rb_title_kinds()",
+"args": "",
+"returns": "text[]",
+"authenticated": true
+},
+{
+"sig": "rb_trash(uuid,text)",
+"args": "item_id uuid, confirm text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_duel_ask(text,text,integer,integer)",
+"args": "name text, game text, tier integer, bet integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_cheat(text)",
+"args": "game text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_jackpot_slot(timestamp with time zone)",
+"args": "t timestamp with time zone",
+"returns": "timestamp with time zone",
+"authenticated": true
+},
+{
+"sig": "rb_ranks()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_jackpot_state()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_titles_set(text[])",
+"args": "ids text[]",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_giveaway_end(uuid,boolean)",
+"args": "giveaway uuid, draw boolean",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_sale_end(uuid)",
+"args": "sale uuid",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_device_free(text)",
+"args": "pc text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_jackpot_pick(uuid,text[])",
+"args": "jid uuid, keys text[]",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_gift_left()",
+"args": "",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_hello2(text,bigint)",
+"args": "pc text, build bigint",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_case_gift_n(text,text,integer,text)",
+"args": "name text, which text, n integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_backup_save(jsonb)",
+"args": "data jsonb",
+"returns": "timestamp with time zone",
+"authenticated": true
+},
+{
+"sig": "rb_avatars_get(text[])",
+"args": "names text[]",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_create(integer,integer)",
+"args": "bet integer, holes integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_solo_start(integer)",
+"args": "holes integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_ledger_list()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_looks()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_item_swaps_list()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_market_browse(text,text,integer)",
+"args": "kind text, sort text, page integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_swap_cancel(uuid)",
+"args": "sid uuid",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_swap_take(uuid,uuid)",
+"args": "sid uuid, item_id uuid",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_msg_mute(text,boolean)",
+"args": "name text, mute boolean",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_swap_save(text,text,text,text,text,text,text,boolean,boolean)",
+"args": "sid text, cat text, old text, new text, file text, sha text, orig_sha text, img boolean, orig boolean",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_party_join(uuid)",
+"args": "pid uuid",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_party_go(uuid)",
+"args": "pid uuid",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_party_create(integer,integer,integer)",
+"args": "size integer, bet integer, holes integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_party_leave(uuid)",
+"args": "pid uuid",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_party_state(uuid)",
+"args": "pid uuid",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_party_aim(uuid,double precision,double precision)",
+"args": "pid uuid, a double precision, p double precision",
+"returns": "void",
+"authenticated": true
+},
+{
+"sig": "rb_trade_cancel(uuid)",
+"args": "trade uuid",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_party_list()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_audit()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_avatar_clear(text)",
+"args": "name text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_vendor_price(text)",
+"args": "what text",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_og_chest_claim(text)",
+"args": "req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_party_shot(uuid,integer,double precision,double precision,double precision,double precision,double precision,double precision,boolean)",
+"args": "pid uuid, n integer, x0 double precision, y0 double precision, ang double precision, pow double precision, x double precision, y double precision, holed boolean",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_keno_table()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_sweep_open(uuid,integer)",
+"args": "round uuid, cell integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_notices(bigint)",
+"args": "before_id bigint",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_notices_clear()",
+"args": "",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_msg_react(bigint,text)",
+"args": "mid bigint, emoji text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_market_search(text[],text,text,integer,text,integer)",
+"args": "ids text[], kind text, rarity text, cls integer, sort text, page integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_trade_summary(uuid)",
+"args": "trade uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_case_cost(rb_cases,integer,integer)",
+"args": "c rb_cases, bought integer, how_many integer",
+"returns": "bigint",
+"authenticated": true
+},
+{
+"sig": "rb_case_buy(text,integer,text)",
+"args": "which text, how_many integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_swap_state(text,text)",
+"args": "sid text, st text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_case_week_start()",
+"args": "",
+"returns": "timestamp with time zone",
+"authenticated": true
+},
+{
+"sig": "rb_case_prices()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_levels_get(text[])",
+"args": "names text[]",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_trade_inventory(uuid)",
+"args": "trade uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_duels()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_reset_ask(text,text,text)",
+"args": "name text, pc text, msg text",
+"returns": "uuid",
+"authenticated": true
+},
+{
+"sig": "rb_admin_feature(text,boolean,text)",
+"args": "name text, lock boolean, note text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_trade_accept(uuid)",
+"args": "trade uuid",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_features()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_xp(text,integer,text)",
+"args": "name text, delta integer, reason text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_market_mine()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_xp_view(text)",
+"args": "name text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_c4_state()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_msg_threads()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_c4_resign()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_c4_start(text,integer,text)",
+"args": "level text, bet integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_set_claim(text)",
+"args": "which text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_swaps_list()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_give(text,text,integer)",
+"args": "name text, what text, how_many integer",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_giveaway(text,text,text,integer,integer,integer,integer)",
+"args": "title text, kind text, what text, amount integer, winners integer, minutes integer, min_hours integer",
+"returns": "uuid",
+"authenticated": true
+},
+{
+"sig": "rb_admin_lock(boolean)",
+"args": "lock boolean",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_player(text)",
+"args": "name text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_reset(text,text)",
+"args": "name text, what text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_bot_delete(text)",
+"args": "name text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_flip_offer(text,text[],bigint,text,integer)",
+"args": "bot text, items text[], val bigint, side text, minutes integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_reset_do(uuid,text)",
+"args": "rid uuid, new_password text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_resets()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_revoke(text,text)",
+"args": "name text, what text",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_admin_sale(text,integer,integer)",
+"args": "what text, pct integer, minutes integer",
+"returns": "uuid",
+"authenticated": true
+},
+{
+"sig": "rb_admin_set(text,numeric)",
+"args": "setting text, new_value numeric",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_stats()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_take(uuid)",
+"args": "item_id uuid",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_undo(bigint)",
+"args": "entry bigint",
+"returns": "text",
+"authenticated": true
+},
+{
+"sig": "rb_admin_undo_sale(uuid)",
+"args": "listing uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_flip_cancel(uuid)",
+"args": "fid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_ach_xp(integer)",
+"args": "tier integer",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_admin_undo_trade(uuid)",
+"args": "trade uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_solo_state(uuid)",
+"args": "gid uuid",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_ach_list(text)",
+"args": "name text DEFAULT NULL::text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_deals()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_blackjack(text,integer)",
+"args": "action text, bet integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_ach_claim(text)",
+"args": "aid text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_delete_account(text)",
+"args": "confirm text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_ach_show(text,text)",
+"args": "slot text, aid text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_login_for(text)",
+"args": "name text",
+"returns": "text",
+"authenticated": true
+},
+{
+"sig": "rb_duel_answer(uuid,boolean)",
+"args": "duel uuid, yes boolean",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_quest_prize(integer)",
+"args": "reward integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_sets()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_equip(text,text)",
+"args": "slot text, what text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_giveaway_join(uuid)",
+"args": "giveaway uuid",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_friend_remove(text)",
+"args": "name text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_friends_list()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_friend_add(text)",
+"args": "name text",
+"returns": "text",
+"authenticated": true
+},
+{
+"sig": "rb_history(text)",
+"args": "name text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_hello(text)",
+"args": "pc text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_login_state()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_market_answer(uuid,boolean)",
+"args": "offer uuid, accept boolean",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_market_buy(uuid,text)",
+"args": "listing uuid, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_market_cancel(uuid)",
+"args": "listing uuid",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_quest_claim(text)",
+"args": "which text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_market_list(uuid,integer)",
+"args": "item_id uuid, price integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_wave_level(integer)",
+"args": "x integer",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_mines(text,integer)",
+"args": "action text, arg integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_market_unoffer(uuid)",
+"args": "offer uuid",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_tap_start()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_mini_start()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_msg_get(text)",
+"args": "name text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_username_free(text)",
+"args": "name text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_msg_send(text,text)",
+"args": "name text, body text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_profile(text)",
+"args": "name text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_plinko(integer,integer,text)",
+"args": "bet integer, risk integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_rename(text)",
+"args": "new_name text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_social()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_quick_sell(uuid[],text)",
+"args": "ids uuid[], req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_state()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_tap_start(text)",
+"args": "mode text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_trade_history()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_trade_offer(uuid,uuid[],integer)",
+"args": "trade uuid, items uuid[], coins integer",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_trade_ready(uuid,boolean,integer)",
+"args": "trade uuid, ready boolean, seen_version integer",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_trades_list()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_users(text,integer)",
+"args": "search text, page integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_market_offer(uuid,integer)",
+"args": "listing uuid, price integer",
+"returns": "uuid",
+"authenticated": true
+},
+{
+"sig": "rb_market_offers()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_bot_set(text,jsonb)",
+"args": "name text, cfg jsonb",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_heartbeat(text)",
+"args": "device text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_roulette_multi(integer,text[],text)",
+"args": "bet integer, picks text[], req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_wear_mine()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_duel_limit(text)",
+"args": "name text",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_pawn_enter(uuid[])",
+"args": "ids uuid[]",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_deal_list()",
+"args": "",
+"returns": "TABLE(item text, pct integer, slot text, period date, ends_at timestamp with time zone)",
+"authenticated": true
+},
+{
+"sig": "rb_song_add(text,text)",
+"args": "title text, artist text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_song_share(boolean)",
+"args": "share boolean",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_songs(text)",
+"args": "name text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_rocket(text,integer,numeric)",
+"args": "action text, bet integer, target numeric",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_mini_finish(uuid,jsonb)",
+"args": "round uuid, hits jsonb",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_tap_finish(uuid,jsonb)",
+"args": "round uuid, hits jsonb",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_park_start(integer)",
+"args": "tier integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_park_finish(uuid,jsonb)",
+"args": "round uuid, moves jsonb",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_mem_start(integer)",
+"args": "tier integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_mem_flip(uuid,integer)",
+"args": "round uuid, card integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_duel_play(uuid)",
+"args": "duel uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_bot_market(text,text,uuid,integer,integer)",
+"args": "name text, action text, item_id uuid DEFAULT NULL::uuid, price integer DEFAULT NULL::integer, n integer DEFAULT 3",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_grant(text,integer,integer)",
+"args": "name text, add_coins integer, add_keys integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_login_claim()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_wave_cancel(uuid)",
+"args": "did uuid",
+"returns": "void",
+"authenticated": true
+},
+{
+"sig": "rb_wave_leave(uuid)",
+"args": "did uuid",
+"returns": "void",
+"authenticated": true
+},
+{
+"sig": "rb_slots(integer,text)",
+"args": "bet integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_wave_join(uuid)",
+"args": "did uuid",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_mg_start(text,integer)",
+"args": "game text, mode integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_pawn_chance(double precision,double precision)",
+"args": "ratio double precision, anger double precision",
+"returns": "double precision",
+"authenticated": true
+},
+{
+"sig": "rb_blocks_finish(uuid,text)",
+"args": "round uuid, moves text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_mg_board(text,integer,boolean)",
+"args": "game text, mode integer, friends boolean",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_wave_finish(uuid,integer[],integer)",
+"args": "run uuid, toggles integer[], ticks integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_pawn_rage(double precision)",
+"args": "ratio double precision",
+"returns": "double precision",
+"authenticated": true
+},
+{
+"sig": "rb_pawn_sell(uuid[],bigint,text)",
+"args": "ids uuid[], ask bigint, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_flip_bot_fit(bigint,bigint,bigint)",
+"args": "target bigint, lo bigint, hi bigint",
+"returns": "text[]",
+"authenticated": true
+},
+{
+"sig": "rb_flip_bot_for(bigint)",
+"args": "val bigint",
+"returns": "text",
+"authenticated": true
+},
+{
+"sig": "rb_gold_keys()",
+"args": "",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_best_win(uuid,text)",
+"args": "who uuid, g text",
+"returns": "bigint",
+"authenticated": true
+},
+{
+"sig": "rb_admin_rig(text,text,text,jsonb)",
+"args": "name text, kind text, key text, data jsonb",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_rigs()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_leaders(text,boolean)",
+"args": "kind text, friends boolean",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_answer(uuid,boolean)",
+"args": "gid uuid, yes boolean",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_og_event()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_open_case_gold(text,text)",
+"args": "which text, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_golf_shot(uuid,integer,double precision,double precision,double precision,double precision,double precision,double precision,boolean)",
+"args": "gid uuid, n integer, x0 double precision, y0 double precision, ang double precision, pow double precision, x double precision, y double precision, holed boolean",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_list()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_leave(uuid)",
+"args": "gid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_timing(text,integer,integer,text)",
+"args": "action text, bet integer, ms integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_scratch()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_dice(integer,integer,text)",
+"args": "bet integer, chance integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_wave_watch(uuid)",
+"args": "did uuid",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_golf_invite(text,integer)",
+"args": "name text, bet integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_catalog()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_gold_wheels()",
+"args": "",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_buy(text,text)",
+"args": "what text, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_rig_gold(text,boolean)",
+"args": "name text, rig boolean",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_c4_json(rb_c4)",
+"args": "g rb_c4",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_hsb_lab(double precision,double precision,double precision)",
+"args": "h double precision, s double precision, v double precision",
+"returns": "double precision[]",
+"authenticated": true
+},
+{
+"sig": "rb_de2000(double precision[],double precision[])",
+"args": "a double precision[], b double precision[]",
+"returns": "double precision",
+"authenticated": true
+},
+{
+"sig": "rb_num(jsonb,text,double precision,double precision)",
+"args": "v jsonb, k text, lo double precision, hi double precision",
+"returns": "double precision",
+"authenticated": true
+},
+{
+"sig": "rb_acc_mult(integer,numeric)",
+"args": "lv integer, acc numeric",
+"returns": "numeric",
+"authenticated": true
+},
+{
+"sig": "rb_admin_reset_timers(text)",
+"args": "name text",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_banner_gold(integer)",
+"args": "level integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_bot_avatar(text,text)",
+"args": "name text, picture text",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_cups(text,integer,integer,integer,text)",
+"args": "action text, level integer, bet integer, pick integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_bot_history(text,integer)",
+"args": "name text, n integer",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_colour(text,integer,integer,jsonb,text)",
+"args": "action text, level integer, bet integer, vals jsonb, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_sfx(text,integer,integer,jsonb,text)",
+"args": "action text, level integer, bet integer, vals jsonb, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_spin()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_c4_clock_off()",
+"args": "",
+"returns": "trigger",
+"authenticated": true
+},
+{
+"sig": "rb_market_price(text)",
+"args": "what text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_open_case(text,text)",
+"args": "which text, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_golf_solo_start()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_golf_solo_quit(uuid)",
+"args": "gid uuid",
+"returns": "void",
+"authenticated": true
+},
+{
+"sig": "rb_wave_ping(uuid,integer,integer[],integer)",
+"args": "run uuid, x integer, toggles integer[], t integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_me()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_wave_lobbies()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_golf_solo_shot(uuid,integer,double precision,double precision,boolean)",
+"args": "gid uuid, n integer, x double precision, y double precision, holed boolean",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_trade_get(uuid)",
+"args": "trade uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_bet_cap(bigint)",
+"args": "coins bigint",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_og_chest()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_state(uuid)",
+"args": "gid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_flag_count()",
+"args": "",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_admin_flags()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_case(text,integer,integer[],integer[],integer,integer)",
+"args": "which text, new_price integer, new_odds integer[], new_variants integer[], new_min integer, new_max integer",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_admin_flag_do(bigint,text)",
+"args": "fid bigint, action text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_players(text,text,integer)",
+"args": "search text, sort text, page integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_ban(text,boolean)",
+"args": "name text, ban boolean",
+"returns": "boolean",
+"authenticated": true
+},
+{
+"sig": "rb_jackpot_join(uuid[],text)",
+"args": "items uuid[], req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_pawn_ask(uuid[],bigint,text)",
+"args": "ids uuid[], ask bigint, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_golf_join(uuid)",
+"args": "gid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_cancel(uuid)",
+"args": "gid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_lobbies()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_golf_create(integer)",
+"args": "bet integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_pawn_props_left()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_flip_leave(uuid)",
+"args": "fid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_flip_state(uuid)",
+"args": "fid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_trade_up(text,integer)",
+"args": "base text, from_cls integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_advent_claim(integer)",
+"args": "which integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_flip_cancel(uuid)",
+"args": "fid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_reset_status(uuid,text)",
+"args": "rid uuid, pc text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_spin_collect()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_advent()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_flip_create(text,uuid[])",
+"args": "side text, items uuid[]",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_flip_list()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_online_status()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_online_leave()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_flip_lock(uuid,uuid[])",
+"args": "fid uuid, items uuid[]",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_bot_ticket()",
+"args": "",
+"returns": "text",
+"authenticated": true
+},
+{
+"sig": "rb_admin_bots()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_live()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_wave_solo()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_wave_state(uuid)",
+"args": "did uuid",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_wave_ping(uuid,integer)",
+"args": "run uuid, x integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_wave_create(integer)",
+"args": "bet integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_avatar_set(text)",
+"args": "picture text",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_backup_load()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_hilo(text,integer,text)",
+"args": "action text, bet integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_locks()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_case_gift(text,text,text)",
+"args": "name text, which text, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_race_state()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_xp_me()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_race_join(integer,bigint,text)",
+"args": "lane integer, amount bigint, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_quests()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_arena(text)",
+"args": "kind text DEFAULT NULL::text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_lockdown(boolean)",
+"args": "lock boolean",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_timers()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_admin_flips()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_xp_watch()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_level_badge_set(integer)",
+"args": "which integer",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_deals(text)",
+"args": "name text",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_coupon_use(uuid,text)",
+"args": "item_id uuid, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_play_history(text,integer)",
+"args": "name text, lim integer DEFAULT 1000",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_wave_rematch(uuid,boolean)",
+"args": "did uuid, go boolean DEFAULT false",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_race_history(integer)",
+"args": "lim integer DEFAULT 400",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_trade_offer(uuid,uuid[],integer,integer)",
+"args": "trade uuid, items uuid[], coins integer, keys integer",
+"returns": "integer",
+"authenticated": true
+},
+{
+"sig": "rb_trade_confirm(uuid,integer)",
+"args": "trade uuid, seen_version integer",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_flip_join(uuid)",
+"args": "fid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_flip_vs_bot(uuid)",
+"args": "fid uuid",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_quick_quote(uuid[])",
+"args": "ids uuid[]",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_admin_race_rig(integer[],integer,boolean)",
+"args": "places integer[] DEFAULT NULL::integer[], skip integer DEFAULT 0, clear boolean DEFAULT false",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_tower(text,integer,integer,text)",
+"args": "action text, bet integer, arg integer, req text",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_spin_odds()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_scratch_odds()",
+"args": "",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_flip_put(uuid,uuid[])",
+"args": "fid uuid, items uuid[]",
+"returns": "json",
+"authenticated": true
+},
+{
+"sig": "rb_trade_request(text)",
+"args": "name text",
+"returns": "uuid",
+"authenticated": true
+},
+{
+"sig": "rb_pawn_key(uuid[])",
+"args": "ids uuid[]",
+"returns": "text",
+"authenticated": true
+},
+{
+"sig": "rb_daily_case()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+},
+{
+"sig": "rb_gold_wheel()",
+"args": "",
+"returns": "jsonb",
+"authenticated": true
+}
+]

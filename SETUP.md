@@ -44,3 +44,16 @@
 42. 5.14: `047_v514_wave.sql`: Wave Rush stages at 250/500/750/1 000 m (`rb_wave_level`), tunnels, double ramp spikes, no gates. Run it when 5.14 is published (the app and the server must build the same course), then set `latest_tag` / `min_build` = 2026112114.
 43. 6.0 (final version): `048_v515.sql`: no XP or casino limits (`rb_xp_cap`, `cups_day_profit`, `c4_day_profit`...), admin bot market (`rb_admin_bot_market`), the OG Prismatic Case only on 6.0, and the one-time 6.0 fresh start (`reset_515`, backups in `rb_bak515_*`). Run live the same day as the pawn shop, quests, daily case prices (midnight), deals (hour/day/week) and case lineup changes. Run it right after 6.0 is published, then set `latest_tag` / `min_build` = 2026112116 (6.0 was rebuilt as 2026.11.21.16; the free spin now pays 120 to 2 500).
 44. 6.0 build 18: `049_v60_cases.sql` (run live): no coin cases any more, every badge case always gives a badge, fair prices (expected worth / 0.8) and best-first order. Then `latest_tag` / `min_build` = 2026112118.
+45. 6.1 to 7.0: `050_v61.sql` to `073_v70_longer_race.sql` are all already run live (each file says what it does in its
+    first lines). They are kept for the record. 048, 051, 052 and 054 do not replay on an empty database, because some
+    of their functions were first made live by hand; the tests use a snapshot of the live server instead
+    (`overhaul/db/run_tests.py`, `RB_BASELINE`). After each release, `latest_tag` / `min_build` were set to its build.
+46. 8.0: `074_v80_security.sql` (run live on 25/11/2026): the server plays out every golf shot, only the sign-in calls
+    work without a login, no direct table writes, password help limits per PC and per name, swap names checked, and
+    the admin second code. Undo: `074_down.sql`. **After installing 8.0, set your admin code** (Admin > Settings >
+    Admin code); once every admin has one, set `admin_step_all` = 1 in rb_config. To change a migration: edit
+    `overhaul/db/074_template.sql` or `overhaul/golf/sim.sql` and run `python overhaul/db/make_074.py`.
+47. Checks before running any new migration: `python overhaul/db/run_tests.py` (server tests) and
+    `python overhaul/db/roundtrip.py UP.sql DOWN.sql` (applies twice, undoes twice, everything back as it was).
+48. Releasing 8.0: see `overhaul/RELEASE_PLAN.md`. After the 8.0 release is published, set `latest_tag` / `min_build`
+    to its build, so 7.0 players get the update prompt (solo golf online already asks them to update).

@@ -4,7 +4,7 @@ Choices made where the request left room, newest last.
 
 ## Accounts (1.7)
 - The app is Python (PyQt6), not Electron. "Secure storage" is Windows data protection (DPAPI): the saved login
-  can only be read by the same Windows user on the same PC. File: `%USERPROFILE%\.rubenium\Rubenium\session.dat`.
+  can only be read by the same Windows user on the same PC. File: `Documents\Rubenium\session.dat` (corrected in 8.0; it has always been there).
 - Supabase needs an e-mail, so a username becomes `<username in lower case>@users.rubenium.app`. No mail is ever
   sent. "Confirm email" must be OFF in Supabase.
 - Usernames: 3 to 10 letters or numbers, unique whatever the capitals. The database refuses any account that does
@@ -173,3 +173,48 @@ Choices made where the request left room, newest last.
   The winner picks up to a third of the pot (at least 1); bot items taken are capped at 2x the winner's stake. Entries 500-250 000.
 - The menu does not open before the tutorial is done; the tutorial only asks language, show/hide key, notifications and sounds.
 - God mode in Wave Rush plays the practice bot's path as real inputs, so the server's replay agrees with it.
+
+## 8.0 (overhaul): security (074, live since 25/11/2026)
+- Golf: the server rolls every shot with the app's own maths (`rb_golf_sim`, a step-for-step copy of `simulate()`:
+  1/240 s steps, at most 14 s). 3 000 random shots on all 120 holes give the same result in the app and on the
+  server (largest gap 4e-15); about 1.5 ms a shot. The app's own start point is used when it is within 0.0006 of where
+  the server last saw the ball (the server stores 4 decimals); otherwise the server's point. What the app says about
+  where the ball stopped and whether it went in is no longer used. The hole layouts live in `rb_golf_hole_defs`,
+  made from `HOLES` in Rubenium.py by `overhaul/db/make_074.py` (never copied by hand).
+- Solo golf: a new call with the shot itself (`rb_golf_solo_shot(gid, n, x0, y0, ang, pow, x, y, holed)`); the old
+  5-argument call asks for the update (`rb_update_needed`), so until 8.0 is out, solo golf online on 7.0 asks for the update (chosen at checkpoint 2; 1 v 1 and group golf keep working).
+- API roles: players keep exactly the functions they could call; without a login only the six sign-in calls
+  (`rb_username_free`, `rb_device_free`, `rb_login_for`, `rb_reset_ask`, `rb_reset_status`, `rb_swaps_list`).
+  Tables: reading unchanged (row level security), no writes for anon or players (all writes go through rb_*
+  functions; none of them runs as the caller). Default privileges follow, so new functions are not public by
+  accident; a new function a player may call is granted to `authenticated` by default. The grants before 074 are
+  kept in `rb_bak74_grants` for 074_down.sql.
+- Password help: 3 asks a day per PC and per name; the shared limit of 300 a day only counts names that do not
+  exist, so made-up names cannot use up the help for real players.
+- Request ids: looked up by their first 64 characters, as they are stored.
+- Swaps: id and file must be plain names (letters, digits, `_`, `-`, `.`; no `..`; .upk/.bnk/.tfc/.pck/.wem), in the
+  database and in the app (an id cannot start with `_`, so it can never be the `_originals` folder).
+- Admin second step: a code (6 to 72 characters, bcrypt) per admin. Once set, every admin function (all of them go
+  through `rb_need_admin`) needs it typed in the last 30 minutes in the same login (the token's session id). 5 wrong
+  codes lock it for 15 minutes; changing it needs the old one. `admin_step_all = 1` refuses admins without a code
+  (off by default so the 7.0 admin panel keeps working until 8.0 is out). The admin panel is English only, as before.
+- Skill games (075, not applied: waiting for approval of the numbers): daily profit limits back on, each above the best real day in the 14 days
+  before 25/11/2026 (Cups 60 000, Connect 4 20 000, each mini game 5 000; Colour Pick and SFX Match keep 12 000,
+  Timing its 20 000). Reaction limits: none added. Timing already refuses stop times that do not match the server's
+  clock; the other skill games have no reaction step a limit would protect.
+
+## 8.0 (overhaul): design, motion, performance
+- One design system in Rubenium.py (`DS`, `paint_surface`, `field_css`): three corner sizes (7 / 10 / 12 at 100 %),
+  a hairline edge, a soft top-down light with a brighter top line. Every shared control (buttons, switches, panels,
+  section tiles, text fields, sliders) and the plain cards use it. Game art (tables, boards, horses, cases, banners)
+  keeps its own drawing. Approved at checkpoint 3 (25/11/2026).
+- A disabled main button is a dashed outline, so it never looks like a pressed or selected one. The UPDATE tile marks
+  news with a dot, not a glowing border.
+- Empty lists are a `notice()` (a glyph, a title and what to do next), never a bare line of grey text or a blank box.
+- Button rows: at most 7 per row, rows as even as possible; game picker buttons take widths from their names.
+- Reduce motion (`reduce_motion` in settings.json, off by default): non-linear interface tweens take 30 % of their time.
+  Linear animations (clocks, countdowns, game timing) are untouched, so no game changes speed.
+- Timers of pulsing tabs and tiles stop while hidden; the resting welcome screen redraws at 20 fps; outside online mode
+  the jackpot / race bell polls every 30 s instead of 10 s (events stay open 2 minutes).
+- Hours are written by `played_text()` everywhere ("100 h", "1.5 h"); dates as "25 Nov 2026" (English) and
+  25/11/2026 (French).
