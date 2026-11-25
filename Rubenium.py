@@ -4502,6 +4502,8 @@ FR = {
     'No giveaway right now.': 'Aucun concours pour l’instant.',
     'No longer on sale': 'Plus en vente',
     'No offers yet.': 'Pas encore d’offre.',
+    'No offers yet': 'Pas encore d’offre',
+    'When a player offers coins for one of your items, it shows up here.': 'Quand un joueur propose des pièces pour un de tes objets, l’offre apparaît ici.',
     'No such case': 'Cette caisse n’existe pas',
     'None right now': 'Aucun pour l’instant',
     'Not ready': 'Pas prêt',
@@ -4666,6 +4668,8 @@ FR = {
     'You get': 'Tu reçois',
     'You give': 'Tu donnes',
     'You have not made any offer.': 'Tu n’as fait aucune offre.',
+    'No offers sent': 'Aucune offre envoyée',
+    'Click an item in Buy, then Make an offer: the seller can accept or refuse it.': 'Clique sur un objet dans Acheter, puis Faire une offre : le vendeur peut l’accepter ou la refuser.',
     'You have nothing on sale. Put an item on sale from your Inventory.': 'Tu n’as rien en vente. Mets un objet en vente depuis ton Inventaire.',
     'You have too many items on sale': 'Tu as trop d’objets en vente',
     'You have {n} coins.': 'Tu as {n} pièces.',
@@ -6857,6 +6861,8 @@ FR.update({                                   # 5.8
     'Players take turns, 25 seconds a shot. Bots fill free seats after 90 seconds (or when you start). Bets are between players only: the best player takes them (5% fee).': 'Chacun son tour, 25 secondes par coup. Des bots prennent les places libres après 90 secondes (ou quand tu lances). Les mises sont entre joueurs : le meilleur les prend (5 % de frais).',
     'Open matches': 'Parties ouvertes',
     'No match open right now: create one!': 'Aucune partie ouverte : crées-en une !',
+    'No match open right now': 'Aucune partie ouverte pour l’instant',
+    'Create one above: bots fill free seats after 90 seconds.': 'Crées-en une plus haut : des robots prennent les places libres après 90 secondes.',
     '{host} · {p}/{s} players · {h} holes': '{host} · {p}/{s} joueurs · {h} trous',
     'Waiting for players…': 'En attente de joueurs…',
     'free seat': 'place libre',
@@ -20813,6 +20819,7 @@ class LyricsPage(Page):
         self._timer = QTimer(self)
         self._timer.setInterval(120)
         self._timer.timeout.connect(lambda: self.view.set_position(self.ctx.position_ms()))
+        self._show_empty(tr("Play a song to see its lyrics"))   # 8.0: never a blank page with a lone Try again
         self.on_state(ctx.state)
 
     def resizeEvent(self, _e) -> None:
@@ -21860,7 +21867,6 @@ class BallPreview(QWidget):
         self._clock.stop()
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         d = BD()
@@ -22179,9 +22185,8 @@ class SettingsPage(StylePart, Page):
                 lay.addWidget(Label(tr("Log in to see your account."), 12, TEXT_DIM))
             else:
                 hours = ctx.online.hours()
-                played = f"{hours:.1f}".replace(".", "," if lang() == "fr" else ".")
                 lay.addWidget(heading(tr("Account")))
-                lay.addWidget(Label(f"{ctx.online.username()}  ·  {played} h", 13, TEXT, bold=True))
+                lay.addWidget(Label(f"{ctx.online.username()}  ·  {played_text(int(round(hours * 60)))}", 13, TEXT, bold=True))
                 line = hbox(spacing=6)
                 pw = Button(tr("Change password"), "ghost", 30)
                 pw.clicked.connect(ctx.change_password_dialog)
@@ -23423,7 +23428,6 @@ class _FriendChip(QWidget):
             self.picked.emit(self.info["username"])
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
@@ -24935,7 +24939,6 @@ class DropList(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         ec = self.page.ctx.econ
@@ -25086,7 +25089,6 @@ class CaseCard(QWidget):
             self.page.open_case(self.case["id"])
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         h = self._hover.level
@@ -27959,7 +27961,7 @@ def _offers(page, lay) -> None:
             ec.call("rb_market_answer", {"offer": o["offer"], "accept": False}, done)
     lay.addWidget(heading(tr("Offers for your items")))
     if not data.get("to_me"):
-        lay.addWidget(Label(tr("No offers yet."), 11.5, TEXT_DIM))
+        lay.addWidget(notice("coin", tr("No offers yet"), tr("When a player offers coins for one of your items, it shows up here."), page.W))
     for o in data.get("to_me") or []:
         w = ListingRow(ctx, {"item": o["item"], "price": o["price"], "seller": o["from"],
                              "estimate": o.get("asking")}, page.W)
@@ -27976,7 +27978,7 @@ def _offers(page, lay) -> None:
         lay.addLayout(line)
     lay.addWidget(heading(tr("Your offers")))
     if not data.get("mine"):
-        lay.addWidget(Label(tr("You have not made any offer."), 11.5, TEXT_DIM))
+        lay.addWidget(notice("market", tr("No offers sent"), tr("Click an item in Buy, then Make an offer: the seller can accept or refuse it."), page.W))
     states = {"open": "Waiting", "taken": "Accepted", "refused": "Refused", "gone": "Closed"}
     for o in data.get("mine") or []:
         w = ListingRow(ctx, {"item": o["item"], "price": o["price"], "seller": tr(states.get(o["state"], "")),
@@ -31647,7 +31649,7 @@ def build_golf_home(page, lay) -> None:
     if data is None:
         return lay.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
     if not rows:
-        lay.addWidget(Label(tr("No match open right now: create one!"), 11, TEXT_DIM, wrap_w=page.W))
+        lay.addWidget(notice("flag", tr("No match open right now"), tr("Create one above: bots fill free seats after 90 seconds."), page.W))
     for r in rows[:10]:
         line = hbox(spacing=8)
         text = tr("{host} · {p}/{s} players · {h} holes", host=r.get("host"), p=r.get("players"), s=r.get("size"), h=r.get("holes"))
@@ -34091,21 +34093,23 @@ class GamePicker(QWidget):
         super().__init__()
         self._index = index
         self.buttons: list = []
-        grid = QGridLayout(self)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setSpacing(S(4))
+        col = vbox(self, 4)
         n = len(labels)                                           # 8.0: full, even rows (14 games: 2 rows of 7,
         most = 7 if n >= 11 else 5 if n >= 7 else 3              # 7 boards: 4 + 3, not 3 + 3 + 1)
         rows = (n + most - 1) // most
         per_row = (n + rows - 1) // rows
+        from PyQt6.QtGui import QFontMetrics
+        fm = QFontMetrics(font(11, QFont.Weight.Bold))
+        line = None
         for i, text in enumerate(labels):
+            if i % per_row == 0:
+                line = hbox(spacing=4)
+                col.addLayout(line)
             b = Button(text, "primary" if i == index else "ghost", 26)
             b.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
             b.clicked.connect(lambda _=False, n=i: self._pick(n))
-            grid.addWidget(b, i // per_row, i % per_row)
+            line.addWidget(b, fm.horizontalAdvance(text) + S(22))   # 8.0: a long name gets a wider button, never "Blackja…"
             self.buttons.append(b)
-        for c in range(per_row):
-            grid.setColumnStretch(c, 1)
         self.setFixedHeight(S(26) * rows + S(4) * (rows - 1))
 
     def index(self) -> int:
@@ -36018,7 +36022,6 @@ class TradeCard(QWidget):
         self.setFixedHeight(S(52) + S(26) * ((n + 3) // 4))
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
@@ -36955,7 +36958,6 @@ class StreakRow(QWidget):
         self.update()
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         streak, claimed = self._state()
@@ -37158,10 +37160,11 @@ def build_deals(page, lay) -> None:
         if not row:
             continue
         left = max(0, int(row[0].get("ends_in") or ans.get("ends_in") or 0) - since)
-        head = hbox(spacing=8)
-        head.addWidget(Label(title, 13, TEXT, bold=True))
+        head = hbox(spacing=8)                           # 8.0: the shelf titles were squeezed to nothing
+        head.addWidget(Label(title, 13, TEXT, bold=True).fit())
         head.addStretch(1)
-        head.addWidget(Label(tr("new ones in {t}", t=(f"{left // 86400}d {left % 86400 // 3600}h" if left >= 86400 else clock_text(left))), 10.5, GOLD_TEXT, bold=True))
+        head.addWidget(Label(tr("new ones in {t}", t=(f"{left // 86400}d {left % 86400 // 3600}h" if left >= 86400 else clock_text(left))), 10.5, GOLD_TEXT, bold=True).fit())
+        lay.addSpacing(S(4))
         lay.addLayout(head)
         holder = QWidget()
         grid = QGridLayout(holder)
@@ -37707,7 +37710,6 @@ class PlayerRow(QWidget):
             self.page.open_profile(self.info["username"])
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 2, -0.5, -2)
@@ -37854,7 +37856,6 @@ class StatsCard(QWidget):
             self.update()
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
@@ -37958,7 +37959,6 @@ class PerkRow(QWidget):
         self.setFixedSize(width, S(26))
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.save()
@@ -38609,7 +38609,6 @@ class ProfileCard(QWidget):
         self._tick.stop()
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
@@ -39144,7 +39143,6 @@ class CaseGrid(QWidget):
             self.picked.emit(self.ids[i])
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         for i, cid in enumerate(self.ids):
@@ -41082,7 +41080,6 @@ class GiveawayCard(QWidget):
         self._ask.stop()
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         now = time.monotonic()
@@ -41882,7 +41879,6 @@ class MasterSwitch(QWidget):
             self.update()
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         on = bool(self.ctx.cfg["notify_all"])
@@ -42157,7 +42153,6 @@ class OgCutscene(QWidget):
         self.update()
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         t = time.monotonic() - self.t0
@@ -47725,7 +47720,6 @@ class ItemPicker(QWidget):
         self.changed.emit()
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         if not self.rows:
@@ -47842,7 +47836,6 @@ class FlipRow(QWidget):
         self._tick.start()
 
     def paintEvent(self, _e) -> None:
-        pass
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         f = self.f
