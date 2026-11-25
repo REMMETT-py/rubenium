@@ -1491,8 +1491,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "8.0"         # the version people see
-BUILD = "2026.11.25.18"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "9.0"         # the version people see
+BUILD = "2026.11.25.23"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2072,6 +2072,7 @@ DEFAULTS: dict = {
     "ad_mute": True,                     # 3.2: mute the music app while an advert plays
     "online_tab": "hub",                 # 3.2: the last part of the online menu that was open (9.0: Home first)
     "recent_games": [],                  # 9.0: the casino games played last (Home's "Jump back in")
+    "casino_bet": 50,                    # 9.0: the last bet, kept between sessions
     "hilo_help": False,
     "my_stats": ["cases", "trades", "rounds", "casino"],     # 5.13: the bottom row of your stats card
     "cups_mode": 0,
@@ -9026,19 +9027,30 @@ class TabBar(QWidget):
         slot = self._slot()
         for i, (r, (key, icon, label, locked)) in enumerate(zip(self._rects(), self._tabs)):
             w, h = max(0.0, min(1.0, self._w[i].level)), self._h[i].level
-            if w > 0.01 or h > 0.01:
+            pill = r.adjusted(0, S(1), 0, -S(1))
+            c1, c2 = cta_colors()
+            if h > 0.01 and key != "online":
                 p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(mix(alpha("#FFFFFF", 0.07 * h), alpha(ui.accent, 0.18), w))
-                p.drawRoundedRect(r.adjusted(0, S(1), 0, -S(1)), S(9), S(9))
-            fg = mix(mix(QColor(TEXT_DIM), QColor(TEXT), h), ui.accent, w)
-            if key == "online":                             # 3.2: the ONLINE button, always lit and labelled
+                p.setBrush(alpha("#FFFFFF", 0.07 * h))
+                p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
+            if w > 0.01 and key != "online":              # 9.0: the open tab is a brand pill
+                g = QLinearGradient(pill.topLeft(), pill.topRight())
+                g.setColorAt(0, alpha(c1, 0.95 * w))
+                g.setColorAt(1, alpha(c2, 0.95 * w))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QBrush(g))
+                p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
+            fg = mix(mix(QColor(TEXT_DIM), QColor(TEXT), h), QColor("#FFFFFF"), w)
+            if key == "online":                             # 9.0: Go online, a glowing brand pill, always labelled
                 import time as _t
                 pulse = 0.5 + 0.5 * math.sin(_t.monotonic() * 2.4)
-                green = QColor("#3DDC84")
-                p.setPen(QPen(alpha(green, 0.45 + 0.35 * pulse + 0.2 * h), S(1.2)))
-                p.setBrush(alpha(green, 0.10 + 0.06 * pulse + 0.10 * h))
-                p.drawRoundedRect(r.adjusted(0, S(1), 0, -S(1)), S(9), S(9))
-                fg = mix(green, QColor("#FFFFFF"), 0.2 * h)
+                g = QLinearGradient(pill.topLeft(), pill.topRight())
+                g.setColorAt(0, c1)
+                g.setColorAt(1, c2)
+                p.setPen(QPen(alpha("#FFFFFF", 0.10 + 0.12 * pulse + 0.2 * h), S(1)))
+                p.setBrush(QBrush(g))
+                p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
+                fg = QColor("#FFFFFF")
                 w = 1.0
                 if not hasattr(self, "_on_t"):
                     self._on_t = QTimer(self)
@@ -9075,7 +9087,8 @@ class TabBar(QWidget):
                 p.setClipRect(r)
                 p.setOpacity(w)
                 p.setFont(self._font)
-                p.setPen(fg if key == "online" else mix(ui.accent, QColor(TEXT), 0.45))
+                p.setPen(QColor("#FFFFFF"))
+                p.setFont(font(11.5, QFont.Weight.Bold))
                 p.drawText(QRectF(r.left() + slot - S(3), 0, self._lw[i], self._full_h),
                            int(Qt.AlignmentFlag.AlignVCenter), label)
                 p.restore()
@@ -12566,6 +12579,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.0", ['A whole new look: a side menu, a top bar with your coins and level, and big clear tiles everywhere', 'Home shows what is ready for you, the games you played last and what is live', 'Rewards: the free spin, scratch card, daily reward and quests in one place', 'Wealth tiers: free rewards grow with what you own, from Rookie to Diamond', 'The Key Forge: turn coins into keys, a few a day', 'A fresh start: everyone begins again with the same coins and keys. Cosmetics, levels and friends stay', 'New prices, odds and taxes across the whole game', 'The player market is gone. Quick sell stays', 'No more automatic game locks', 'Less text: tap a golden ? when you want the details', 'Bet faster with ½, 2× and Max, and your bet is remembered']),
     ("8.0", ['Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one', 'Solo Mini Golf online needs Rubenium 8.0', 'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players', 'A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing', 'Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer', 'Empty pages now say what goes there and how to fill them (inventory, market, offers, chat, trades, Mini Golf matches, jackpot)', 'Game tabs show their full names, and every row of buttons is even', 'Lighter: Rubenium uses much less processor while it rests', 'Clearer numbers: "100 h played · member since 25 Nov 2026", long coinflip waits as 3:43:17']),
     ("7.0", ['Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.']),
     ("6.9.1", ["Horse Racing: the horses run at a normal pace again (the race is still 3 times longer, the speed is just doubled on screen). The Animations tab is locked for now."]),
@@ -13041,6 +13055,26 @@ FR.update({  # 9.0 start
     '+{n} coins in {t}': '+{n} pièces dans {t}',
     'No more today': 'Plus pour aujourd’hui',
     'This is not in Rubenium any more': 'Ce n’est plus dans Rubenium',
+    'Max': 'Max',
+    'Online': 'En ligne',
+    'Quick sell it from your Collection.': 'Vends-le vite depuis ta Collection.',
+    'A whole new look: a side menu, a top bar with your coins and level, and big clear tiles everywhere': 'Un tout nouveau look : un menu sur le côté, une barre du haut avec tes pièces et ton niveau, et de grandes tuiles claires partout',
+    'Home shows what is ready for you, the games you played last and what is live': 'L’accueil montre ce qui est prêt pour toi, tes derniers jeux et ce qui est en direct',
+    'Rewards: the free spin, scratch card, daily reward and quests in one place': 'Récompenses : la roue gratuite, la carte à gratter, la récompense du jour et les quêtes au même endroit',
+    'Wealth tiers: free rewards grow with what you own, from Rookie to Diamond': 'Rangs de richesse : les récompenses gratuites grandissent avec ce que tu possèdes, de Débutant à Diamant',
+    'The Key Forge: turn coins into keys, a few a day': 'La Forge à clés : transforme des pièces en clés, quelques-unes par jour',
+    'A fresh start: everyone begins again with the same coins and keys. Cosmetics, levels and friends stay': 'Un nouveau départ : tout le monde recommence avec les mêmes pièces et clés. Les cosmétiques, niveaux et amis restent',
+    'New prices, odds and taxes across the whole game': 'Nouveaux prix, chances et taxes dans tout le jeu',
+    'The player market is gone. Quick sell stays': 'Le marché entre joueurs disparaît. La vente rapide reste',
+    'No more automatic game locks': 'Plus de blocage automatique des jeux',
+    'Less text: tap a golden ? when you want the details': 'Moins de texte : touche un ? doré quand tu veux les détails',
+    'Bet faster with ½, 2× and Max, and your bet is remembered': 'Mise plus vite avec ½, 2× et Max, et ta mise est retenue',
+    'Rookie': 'Débutant',
+    'Bronze': 'Bronze',
+    'Silver': 'Argent',
+    'Gold': 'Or',
+    'Platinum': 'Platine',
+    'Diamond': 'Diamant',
 })  # 9.0 end
 
 # --------------------------------------------------------------------------- #
@@ -14987,8 +15021,6 @@ class Tutorial(QWidget):
         line.addWidget(self.back, 1)
         line.addWidget(self.next, 2)
         lay.addLayout(line)
-        if kind == "done":
-            lay.addWidget(Label(tr("Settings are on the right of the menu (the gear)."), 10, TEXT_FAINT, wrap_w=self.body.width()))
         self.body.show()
         self.step_at = time.monotonic()
 
@@ -22094,7 +22126,6 @@ class StylePart:
         lay.addWidget(row(tr("Colour 2 (outline and glow)"), t2))
         self.c2 = ColourRow(self, "c2", "accent2")
         lay.addWidget(self.c2)
-        lay.addWidget(Label(tr("Themes from the shop bring their own second colour."), 10.5, TEXT_DIM, wrap_w=self.W))
 
         lay.addWidget(heading(tr("Progression")))
         lay.addWidget(UnlockBar(self))
@@ -26688,7 +26719,7 @@ def build_cosmetics(page, lay) -> None:
             ctx.reload_page()
         b.clicked.connect(toggle)
         lay.addWidget(b)
-        lay.addWidget(Label(tr("Sell it or put it on the market from your Inventory."), 10.5, TEXT_DIM, wrap_w=page.W))
+        lay.addWidget(Label(tr("Quick sell it from your Collection."), 10.5, TEXT_DIM, wrap_w=page.W))
     elif price is not None:
         text = tr("Buy for {n} coins", n=coins_text(price))
         if ec.sale(item):
@@ -27116,7 +27147,6 @@ def build_animations(page, lay, shop: bool) -> None:
         return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see the shop"), 12, TEXT_DIM))
     cur = ec.worn("anim")
     cursp = anim_split(cur) if cur and ec.can_wear(cur) else None
-    lay.addWidget(Label(tr("How Rubenium leaves and comes back. The simple one is free and always works."), 10.5, TEXT_DIM, wrap_w=page.W))
     row = hbox(spacing=8)
     now_name = item_name(cur).split(" (")[0] if cursp else tr("Simple (free)")
     row.addWidget(Label(tr("Now: {name}", name=now_name), 12, bold=True), 1)
@@ -27505,7 +27535,6 @@ def build_profile_style(page, lay) -> None:
             ctx.reload_page()
         clear.clicked.connect(clear_all)
         lay.addWidget(clear)
-    lay.addWidget(Label(tr("The 3 badges you show are the showcase on your profile."), 10, TEXT_FAINT, wrap_w=page.W))
 
 
 def market_sell(ctx, item: str) -> None:
@@ -28479,7 +28508,6 @@ def _trade_pool(page, link, mine: list, offer) -> QWidget:
     if not pool:
         lay.addWidget(Label(tr("Nothing more to add."), 11.5, TEXT_DIM))
         return box
-    lay.addWidget(Label(tr("Click an item to add it to your offer."), 10.5, TEXT_DIM, wrap_w=page.W))
     grid = ItemGrid(ctx, [{"item": i["item"], "text": coins_text(value_of(ctx, i["item"])), "worth": value_of(ctx, i["item"])}
                           for i in pool], page.W, 6, 64, moving=False, tips=True)   # 4.6: every item, not only the first 60
 
@@ -35154,8 +35182,12 @@ class GamesPage(Page):
         back.clicked.connect(ctx.leave_casino)
         self.back = back
         top.addWidget(back)
-        top.addWidget(CoinBar(ctx, keys=True), 1)
-        pass
+        if getattr(ctx, "online_mode", False):           # 9.0: the top bar shows the coins: the game's name here
+            self.game_title = Label("", 20, weight=QFont.Weight.ExtraBold)
+            top.addWidget(self.game_title, 1)
+        else:
+            self.game_title = None
+            top.addWidget(CoinBar(ctx, keys=True), 1)
         top.addWidget(HelpButton(ctx, lambda: CASINO_KEYS.get(self.NAMES[self.games.index(self.game)])
                                  if self.game in getattr(self, "games", []) else None, 36))
         lay.addLayout(top)
@@ -35192,6 +35224,13 @@ class GamesPage(Page):
         self.bet_lay = hbox(self.bet_row, 6)
         self.bet_slider = None
         self._bet_top = -1
+        self.bet_quick = []                          # 9.0: ½, 2× and Max beside the slider
+        for label, fn in (("½", lambda b: b // 2), ("2×", lambda b: b * 2), (tr("Max"), lambda b: 10 ** 12)):
+            q = Button(label, "ghost", 30)
+            q.setFixedWidth(S(48))
+            q.clicked.connect(lambda _=False, f=fn: self._bet_quick(f))
+            self.bet_lay.addWidget(q)
+            self.bet_quick.append(q)
         self._bet_slider()
         cl.addStretch(1)
         cl.addWidget(self.bet_row)
@@ -35202,9 +35241,7 @@ class GamesPage(Page):
         self.act_buttons: list = []
         lay.addWidget(self.actions)
         pass
-        self.controls_bar = ControlsBar([("Space", tr("Main button")), (["2", "3"], tr("Other buttons")),
-                                         (["Left", "Right"], tr("Bet"))], self.W)
-        lay.addWidget(self.controls_bar)
+        self.controls_bar = None                     # 9.0: keys still work (Space, 2, 3, ← →); the ? lists them
         self._keys = KeyPoll(["Space", "1", "2", "3", "4", "Left", "Right"], self._casino_key,
                              lambda: self.game is not None and self.game.busy)
         lay.addWidget(self._keys)
@@ -35232,7 +35269,8 @@ class GamesPage(Page):
         top = self.max_bet()
         if top < 10:
             return 0
-        return max(10, min(top, int(getattr(self.ctx, "casino_bet", 50) or 50)))
+        want = getattr(self.ctx, "casino_bet", None) or self.ctx.cfg["casino_bet"] or 50
+        return max(10, min(top, int(want)))
 
     def _bet_slider(self) -> None:
         """(Re)build the slider when the most you can bet changes."""
@@ -35246,12 +35284,26 @@ class GamesPage(Page):
         pass
         self.bet_slider = AmountSlider(tr("Bet"), 10, top, self.bet() or 10, coins_text, label_w=40)
         self.bet_slider.changed.connect(self._bet_set)
-        self.bet_lay.addWidget(self.bet_slider, 1)
+        self.bet_lay.insertWidget(0, self.bet_slider, 1)
         self._bet_warn()
 
     def _bet_set(self, v: int) -> None:
         self.ctx.casino_bet = int(v)
+        self.ctx.cfg["casino_bet"] = int(v)          # 9.0: kept for next time
+        self.ctx.cfg.save()
         self._bet_warn()
+
+    def _bet_quick(self, f) -> None:
+        """9.0: halve, double or max the bet in one click (the slider snaps to the nearest step)."""
+        sl = self.bet_slider
+        if sl is None or (self.game is not None and self.game.busy):
+            return
+        want = max(10, min(self.max_bet(), int(f(self.bet()))))
+        vals = sl.values
+        v = min(vals, key=lambda x: abs(x - want)) if vals else want
+        sl.set_value(v)
+        self._bet_set(v)
+        sfx.play("pick")
 
     def _bet_warn(self) -> None:
         """6.3: a big bet shows in gold (over 10 000) and red (a quarter of your coins or more)."""
@@ -35295,6 +35347,8 @@ class GamesPage(Page):
             if self.opts[n] is not None:
                 self.opts[n].setVisible(n == i)
         self.game = self.games[i]
+        if getattr(self, "game_title", None) is not None:
+            self.game_title.set_text(tr(self.NAMES[i]))
         self.bet_row.setVisible(self.NAMES[i] != "Free spin")       # the free spin has no bet
         if getattr(self, "controls_bar", None) is not None:          # 6.0: no casino keys on the free spin / scratch card
             self.controls_bar.setVisible(not isinstance(self.game, Daily))
@@ -35309,6 +35363,8 @@ class GamesPage(Page):
             self._bet_slider()
         if self.bet_slider is not None:
             self.bet_slider.setEnabled(not busy)
+        for q in self.bet_quick:
+            q.setEnabled(not busy)
         self.seg.setEnabled(not busy)
         self.back.setEnabled(not busy)
         for seg in self.opts:
@@ -36378,7 +36434,6 @@ class LoginWindow(FloatWindow):
         head.addWidget(self.flame)
         col = vbox(spacing=2)
         col.addWidget(Label(tr("Daily reward"), 16, bold=True))
-        col.addWidget(Label(tr("Your flame grows a little every day in a row."), 10.5, TEXT_DIM, wrap_w=S(210)))
         head.addLayout(col, 1)
         lay.addLayout(head)
         lay.addWidget(Label(tr("Day 7 gives a free case. Missing a day resets the streak."),
@@ -47307,7 +47362,7 @@ PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": ScreenPage, "rl": 
 # 3.2: Games, Shop and Social (and the Giveaway) live in the online menu: one ONLINE button opens it.
 TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", "display", "Screen"),
         ("rl", "rocket", "RL SWAP"), ("perf", "perf", "PC"), ("new", "spark", "Updates"), ("settings", "cog", "Settings"),
-        ("online", "globe", "")]           # 4.0: ONLINE is the globe alone, far right. 4.5: Admin only in the online menu
+        ("online", "globe", tr("Online"))]   # 4.0: ONLINE is the globe alone, far right. 4.5: Admin only in the online menu
 ONLINE_PAGES = ("games", "themes", "friends", "giveaway")
 LIVE_TABS: set = set()      # Giveaway (while one is live) and Admin (the admin account only)
 LOCK_PAGES = {"hub", "rewards", "games", "themes", "friends", "giveaway"}     # covered while the admin has locked the app
@@ -53456,7 +53511,6 @@ def build_levels(page, lay) -> None:
             line.addWidget(b)
             lay.addLayout(line)
     lay.addWidget(heading(tr("Level badges")))
-    lay.addWidget(Label(tr("Click an unlocked badge to show it on your profile."), 10, TEXT_DIM, wrap_w=page.W))
     grid = QGridLayout()
     grid.setContentsMargins(0, 0, 0, 0)
     grid.setSpacing(S(4))
@@ -53485,14 +53539,15 @@ def build_levels(page, lay) -> None:
             lay.addWidget(Label(("✓  " if done else "🔒  ") + tr("Level {n}: {case}", n=need,
                                                                case=tr(CASE_NAMES.get(c["id"], c["id"]))),
                                 11, "#5BE08A" if done else TEXT_DIM, bold=done, wrap_w=page.W))
-    lay.addWidget(heading(tr("How to earn XP")))
+    xp_ways = []                                         # 9.0: the list sits behind the golden ?
     for text in (tr("Casino: 1 to 5 XP a win, nothing on a loss"),
                  tr("Minigames: 3 to 12 XP when they pay"),
                  tr("Mini Golf duels: 12 XP, +10 for the winner"), tr("Coinflip: 10 XP for the winner"),
                  tr("Trades: 8 XP each"), tr("Quests: 25 XP, sets: 80 XP"), tr("Online: 5 XP every 10 minutes"),
                  tr("Cases: 2 XP, wheel and scratch card: 4 XP"), tr("Advent calendar: 100 XP a door, 500 on the 25th"),
                  tr("XP coupons: from cases, the wheel and scratch cards")):
-        lay.addWidget(Label("•  " + text, 10.5, TEXT_DIM, wrap_w=page.W))
+        xp_ways.append("•  " + text)
+    lay.addWidget(help_row(tr("How to earn XP"), "\n".join(xp_ways)))
 
 
 def _pick_badge(page, lv: int) -> None:
@@ -54799,7 +54854,7 @@ class OnlineBody(QWidget):
         x -= self.wallet.width()
         self.wallet.move(x, (S(HEAD_H) - self.wallet.height()) // 2)
         right_end = x - S(14)
-        left = S(PAD) + S(150)
+        left = S(PAD) + S(190)                     # clear of the wordmark, the online dot and the music dots
         xw = max(S(120), min(S(300), right_end - left))
         self.xp.setGeometry(int(right_end - xw), (S(HEAD_H) - self.xp.height()) // 2, int(xw), self.xp.height())
         self.rail.setGeometry(0, S(HEAD_H), S(RAIL_W), self.height() - S(HEAD_H) - S(BOTTOM))
@@ -54845,7 +54900,7 @@ class OnlineBody(QWidget):
         p.setBrush(col)
         p.drawEllipse(QPointF(x + S(5), base.center().y()), S(3.4), S(3.4))
         x += S(16)
-        for i in range(3):
+        for i in range(3 if playing else 0):          # 9.0: the bouncing dots only while a song plays
             lift = math.sin(now * 5.0 - i * 0.9) * S(2.6) if playing else 0.0
             p.setBrush(alpha(ui.accent, 1.0 if playing else 0.3))
             p.drawEllipse(QPointF(x + i * S(6), base.center().y() + S(4) - lift), S(1.7), S(1.7))
@@ -60087,7 +60142,7 @@ class Body(QWidget):
         import math
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.setFont(font(18, QFont.Weight.ExtraBold, 0.4))
+        p.setFont(font(18, QFont.Weight.Black, 0.2))
         fm = p.fontMetrics()
         x, base = S(PAD), QRectF(S(PAD), S(HEADER_TOP), self.width(), S(HEADER_H))
         # Drawn as ONE word so the letters keep their natural spacing; the colour changes by clipping.
@@ -60099,7 +60154,11 @@ class Body(QWidget):
         p.setPen(QColor(TEXT))
         p.drawText(base, int(Qt.AlignmentFlag.AlignVCenter), word)
         p.setClipRect(QRectF(split, 0, self.width(), self.height()))
-        p.setPen(ui.accent)
+        c1, c2 = cta_colors()                                # 9.0: the same gradient wordmark as online
+        g = QLinearGradient(QPointF(split, 0), QPointF(x + full, 0))
+        g.setColorAt(0, c1)
+        g.setColorAt(1, c2)
+        p.setPen(QPen(QBrush(g), 1))
         p.drawText(base, int(Qt.AlignmentFlag.AlignVCenter), word)
         p.restore()
         x += full + S(9)
@@ -60108,7 +60167,7 @@ class Body(QWidget):
         live = st.status in (Status.PLAYING, Status.PAUSED)
         now = time.monotonic()
         p.setPen(Qt.PenStyle.NoPen)
-        for i in range(3):
+        for i in range(3 if live else 0):                    # 9.0: the music dots only with a song
             lift = math.sin(now * 5.0 - i * 0.9) * S(2.6) if playing else 0.0
             p.setBrush(alpha(ui.accent, 1.0 if playing else (0.6 if live else 0.25)))
             p.drawEllipse(QPointF(x + i * S(6), base.center().y() + S(4) - lift), S(1.7), S(1.7))
@@ -62063,24 +62122,8 @@ class App(QObject):
             self.reload_page("friends")
 
     def _xp_first(self) -> None:
-        """The first time levels reach this PC: explain them once, then the OG coupon (if any) opens."""
-        if getattr(self, "_xp_intro_on", False):
-            return
-        if self.cfg["xp_intro"]:
-            return self.offer_og_coupon()
-        if not self.online.logged_in() or not self.window.expanded or getattr(self.window, "sheet", None) is not None:
-            return                                   # asked again at the next XP update
-        self._xp_intro_on = True
-
-        def show() -> None:
-            pass
-            if self.cfg["xp_intro"] or not self.window.expanded:
-                self._xp_intro_on = False
-                return
-            intro = LevelIntro(self)
-            intro.destroyed.connect(lambda *_a: setattr(self, "_xp_intro_on", False))
-            self.window.embed(intro)
-        QTimer.singleShot(1200, show)
+        """9.0: no intro sheet for levels any more (the ? on Levels explains them): straight to the OG coupon, if any."""
+        self.offer_og_coupon()
 
     def offer_og_coupon(self) -> None:
         """OG players: their one-time XP coupon (to level 5) opens like a scratch card, once per session at most
