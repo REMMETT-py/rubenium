@@ -70,3 +70,20 @@ Open questions: see the Checkpoint 1 message.
 - `__init__` methods no longer return values (18 places), 7 stray `pass` lines and 8 unused variables removed (one
   random draw kept so a procedural picture stays the same).
 - SETUP.md covers 6.1 to 8.0; DECISIONS.md has the right place of session.dat.
+
+## Phase 5 (started) and Phase 4 quick wins (25/11/2026)
+- Design system (`DS`, `paint_surface`, `field_css` in Rubenium.py): one set of corners (7 / 10 / 12), hairline
+  edges and lit surfaces for every shared control. Buttons are lit from above with a crisp edge (main buttons get a
+  soft shadow; an unavailable main button is a quiet dashed outline instead of a grey block), segmented switches are
+  a recessed track with a raised pill, panels and section tiles share one surface, text fields one style (accent
+  edge while typing), slider knobs a shadow and a hover halo.
+- Settings: section titles are spaced capitals with room above them, each setting row has a hairline under it, and
+  the always-highlighted UPDATE tile is now a quiet accent mark, so it no longer looks like the selected tile.
+- Game picker: 14 games in two even rows of 7 (Colour Pick and SFX Match were a half row on the right).
+- Wording: "100 h played · member since 25 Nov 2026" (was "100.0 h Played · Member Since 2026-11-25"),
+  "1 user", coinflip waits over an hour as 3:43:17 (was 223:17).
+- Designed empty states: the Jackpot between rounds and an empty inventory (with a button to the cases).
+- Performance: the resting welcome screen redraws 20 times a second instead of 60 (its lights drift slowly; every
+  animation keeps its own full rate). Outside online mode the jackpot / race bell asks the server every 30 s per
+  kind instead of every 10 s (events stay open 2 minutes, so the bell still rings in time).
+- Crawler: `ONLY=` and `MAX=` for quick runs of one set of pages.

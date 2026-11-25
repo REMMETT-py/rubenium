@@ -1612,6 +1612,51 @@ def alpha(c: QColor | str, a: float) -> QColor:
     return c
 
 
+class DS:
+    """8.0 design system: one set of corners, hairlines and surfaces shared by every common control, so buttons,
+    switches, tiles and cards look like one family on every page (sizes go through S() as before)."""
+    R_SM = 7            # inner pills, chips
+    R_MD = 10           # buttons, inputs, segmented controls
+    R_LG = 12           # cards, tiles, panels
+    HAIR = 0.075        # hairline border (white, this opacity)
+    TOP = 0.05          # extra light at the top edge of a raised surface
+    SECTION = 10.5      # section titles (upper case, spaced)
+
+
+def paint_surface(p: QPainter, r: QRectF, radius: float, base: float = 0.05, hover: float = 0.0,
+                  edge: Optional[QColor] = None, tint: Optional[QColor] = None, tint_a: float = 0.0) -> None:
+    """A raised surface: a soft top-to-bottom light, a hairline edge and a brighter line along the top, the way
+    light falls on a real button. base/hover are white opacities; tint mixes a colour in (the accent, a state)."""
+    g = QLinearGradient(r.topLeft(), r.bottomLeft())
+    top = alpha("#FFFFFF", base + DS.TOP + 0.04 * hover)
+    bottom = alpha("#FFFFFF", base * 0.55 + 0.03 * hover)
+    if tint is not None and tint_a > 0:
+        top = mix(top, alpha(tint, tint_a * 1.25), 0.6)
+        bottom = mix(bottom, alpha(tint, tint_a * 0.8), 0.6)
+    g.setColorAt(0, top)
+    g.setColorAt(1, bottom)
+    p.setPen(QPen(edge if edge is not None else alpha("#FFFFFF", DS.HAIR + 0.05 * hover), 1))
+    p.setBrush(g)
+    p.drawRoundedRect(r, radius, radius)
+    if edge is None and r.height() > S(14):           # the lit top edge
+        p.save()
+        p.setClipRect(QRectF(r.left(), r.top(), r.width(), radius))
+        p.setPen(QPen(alpha("#FFFFFF", 0.06 + 0.04 * hover), 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRoundedRect(r.adjusted(0, 0.6, 0, 0), radius, radius)
+        p.restore()
+
+def field_css(px: float = 13) -> str:
+    """8.0: one look for every text field: recessed, a hairline edge, the accent edge while typing."""
+    acc = ui.accent
+    return (f"QLineEdit {{ background: rgba(0,0,0,0.30); border: 1px solid rgba(255,255,255,0.10);"
+            f" border-radius: {S(DS.R_MD)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(px)}px;"
+            f" selection-background-color: rgba({acc.red()},{acc.green()},{acc.blue()},0.35); }}"
+            f"QLineEdit:hover {{ border: 1px solid rgba(255,255,255,0.16); }}"
+            f"QLineEdit:focus {{ border: 1px solid rgba({acc.red()},{acc.green()},{acc.blue()},0.75);"
+            f" background: rgba(0,0,0,0.38); }}")
+
+
 # Metrics at 100 % (the window multiplies through S()).
 _PAGE_EXTRA = [0]           # set while the online menu builds its pages: they are made for its wider halves
 
@@ -5029,6 +5074,7 @@ FR = {
     'No friends yet. Open Users and add someone.': "Pas encore d'amis. Ouvre Utilisateurs et ajoute quelqu'un.",
     'This user needs 5 hours with Rubenium first': "Cet utilisateur doit d'abord passer 5 heures sur Rubenium",
     '{n} users. Click one to see their profile.': "{n} utilisateurs. Clique sur l'un d'eux pour voir son profil.",
+    '1 user. Click it to see their profile.': 'Un utilisateur. Clique dessus pour voir son profil.',
     'The trade ended: a user left or took too long.': "L'échange est terminé : quelqu'un est parti ou a mis trop de temps.",
     'Both users need 5 hours with Rubenium': 'Les deux utilisateurs doivent avoir 5 heures sur Rubenium',
     'Hub': 'Hub',
@@ -6980,6 +7026,10 @@ FR.update({                                   # 5.2
     'Pick 1 to 3 items (at least {n} in all)': 'Choisis 1 à 3 objets (au moins {n} en tout)',
     'Players ({n}/5)': 'Joueurs ({n}/5)', 'SPINNING': 'ÇA TOURNE',
     'The next jackpot opens in {t}': 'Le prochain jackpot ouvre dans {t}',
+    'Open cases': 'Ouvrir des caisses',
+    'Open cases or visit the shop: everything you own shows up here.': 'Ouvre des caisses ou passe à la boutique : tout ce que tu possèdes apparaît ici.',
+    'Every 15 minutes, 2 minutes to join once a player is in. Put in up to 3 items: your chance is your share of the pot.':
+        'Toutes les 15 minutes, 2 minutes pour entrer une fois qu’un joueur est dedans. Mets jusqu’à 3 objets : ta chance est ta part de la cagnotte.',
     'The next jackpot opens in {t}. Every 15 minutes, 2 minutes to join.': 'Le prochain jackpot ouvre dans {t}. Toutes les 15 minutes, 2 minutes pour entrer.',
     'The wheel is spinning: watch it': 'La roue tourne : regarde',
     'This jackpot is full (5 players). Watch it spin!': 'Ce jackpot est complet (5 joueurs). Regarde-le tourner !',
@@ -7597,22 +7647,43 @@ class Button(QAbstractButton):
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         inset = pr * S(1.5)
         r.adjust(inset, inset, -inset, -inset)
-        rad = S(9)
+        rad = S(DS.R_MD)
         fg = QColor(TEXT)
         p.setPen(Qt.PenStyle.NoPen)
-        if self._kind == "primary":
-            p.setBrush(mix(ui.accent, QColor("#FFFFFF"), 0.14 * h))
-            fg = QColor("#06110A")
+        if self._kind == "primary" and not self.isEnabled():  # 8.0: an unavailable main button is a quiet outline
+            p.setOpacity(self.fade)
+            p.setPen(QPen(alpha("#FFFFFF", 0.12), 1, Qt.PenStyle.DashLine))
+            p.setBrush(alpha("#FFFFFF", 0.025))
+            p.drawRoundedRect(r, rad, rad)
+            fg = QColor(TEXT_FAINT)
+        elif self._kind == "primary":                       # 8.0: lit from above, a crisp edge, a soft shadow
+            base = mix(ui.accent, QColor("#FFFFFF"), 0.14 * h)
+            p.setBrush(alpha("#000000", 0.35))
+            p.drawRoundedRect(r.translated(0, S(1.2)), rad, rad)
+            g = QLinearGradient(r.topLeft(), r.bottomLeft())
+            g.setColorAt(0, mix(base, QColor("#FFFFFF"), 0.10))
+            g.setColorAt(1, mix(base, QColor("#000000"), 0.08))
+            p.setBrush(g)
+            p.setPen(QPen(mix(base, QColor("#000000"), 0.25), 1))
+            p.drawRoundedRect(r, rad, rad)
+            p.setPen(QPen(alpha("#FFFFFF", 0.35), 1))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.save()
+            p.setClipRect(QRectF(r.left(), r.top(), r.width(), rad))
+            p.drawRoundedRect(r.adjusted(0.8, 0.8, -0.8, 0), rad, rad)
+            p.restore()
+            fg = QColor("#06110A") if base.lightnessF() > 0.45 else QColor("#FFFFFF")
         elif self._kind == "danger":
             p.setPen(QPen(alpha(DANGER, 0.45 + 0.25 * h), 1))
             p.setBrush(alpha(DANGER, 0.10 + 0.08 * h))
+            p.drawRoundedRect(r, rad, rad)
             fg = QColor("#FF8085")
         elif self._kind == "quiet":
             p.setBrush(alpha("#FFFFFF", 0.06 * h))
+            p.drawRoundedRect(r, rad, rad)
             fg = mix(QColor(TEXT_DIM), QColor(TEXT), h)
         else:
-            p.setBrush(mix(QColor(SURFACE_HI), QColor("#3A3A3A"), h))
-        p.drawRoundedRect(r, rad, rad)
+            paint_surface(p, r, rad, 0.075, h)
         room = r.width() - S(12) - (S(20) if self._icon else 0)
         p.setFont(self._fitted_font(room))
         p.setPen(fg)
@@ -8124,6 +8195,12 @@ class Slider(QWidget):
             p.drawEllipse(QPointF(x, cy + S(7)), S(3.8), S(3.8))
             return
         kr = S(5.5) + self._hover.level * S(1.2) + (S(1) if self._drag else 0)
+        hv = max(self._hover.level, 1.0 if self._drag else 0.0)
+        if hv > 0.01:                                      # 8.0: a soft halo while it is under the mouse
+            p.setBrush(alpha(ui.accent, 0.16 * hv))
+            p.drawEllipse(QPointF(x, cy), kr + S(5) * hv, kr + S(5) * hv)
+        p.setBrush(alpha("#000000", 0.35))                 # a little shadow under the knob
+        p.drawEllipse(QPointF(x, cy + S(1)), kr + S(0.6), kr + S(0.6))
         p.setBrush(QColor("#FFFFFF"))
         p.drawEllipse(QPointF(x, cy), kr, kr)
 
@@ -8167,15 +8244,14 @@ class Segmented(QWidget):
         p.setRenderHint(AA)
         if not self.isEnabled():
             p.setOpacity(0.4)
-        r = QRectF(self.rect())
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.06))
-        p.drawRoundedRect(r, S(8), S(8))
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QPen(alpha("#FFFFFF", 0.05), 1))               # 8.0: a recessed track, a raised pill
+        p.setBrush(alpha("#000000", 0.28))
+        p.drawRoundedRect(r, S(DS.R_MD), S(DS.R_MD))
         n = len(self._labels)
         sw = r.width() / n
-        pill = QRectF(self._pos.level * sw + S(2), S(2), sw - S(4), r.height() - S(4))
-        p.setBrush(alpha(ui.accent, 0.22))
-        p.drawRoundedRect(pill, S(6), S(6))
+        pill = QRectF(r.left() + self._pos.level * sw + S(2), r.top() + S(2), sw - S(4), r.height() - S(4))
+        paint_surface(p, pill, S(DS.R_SM), 0.10, 0.0, tint=ui.accent, tint_a=0.16)
         from PyQt6.QtGui import QFontMetrics
         f = self._font                                    # 3.2: shrink a little before cutting a label
         widest = max((QFontMetrics(f).horizontalAdvance(lb) for lb in self._labels), default=0)
@@ -8185,7 +8261,7 @@ class Segmented(QWidget):
         p.setFont(f)
         for i, label in enumerate(self._labels):
             near = max(0.0, 1.0 - abs(self._pos.level - i))
-            col = mix(QColor(TEXT_DIM), mix(ui.accent, QColor(TEXT), 0.55), near)
+            col = mix(QColor(TEXT_DIM), mix(ui.accent, QColor(TEXT), 0.75), near)
             if i in self.faint:
                 col = alpha(TEXT_DIM, 0.35)
             p.setPen(col)
@@ -8338,9 +8414,7 @@ class Panel(QWidget):
         p = QPainter(self)
         p.setRenderHint(AA)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha(ui.accent, 0.45) if self.accent_edge else alpha("#FFFFFF", 0.06), 1))
-        p.setBrush(alpha("#FFFFFF", self._tint))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_LG), self._tint, 0.0, edge=alpha(ui.accent, 0.45) if self.accent_edge else None)
 
 
 class Glyph(QWidget):
@@ -8972,13 +9046,41 @@ def refit_scroll(w: QWidget) -> None:
         sa.set_content_height(sa.content.content_height())
 
 
+class _Heading(Label):
+    """8.0: a section title, upper case and spaced, sitting on the bottom of a taller line so sections breathe."""
+
+    def __init__(self, text: str) -> None:
+        super().__init__(text.upper(), 10, TEXT_FAINT, weight=QFont.Weight.Bold)
+        self._font = font(10, QFont.Weight.Bold, 0.9)
+        self._align = Qt.AlignmentFlag.AlignLeft
+        self.setFixedHeight(S(23))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setFont(self._font)
+        p.setPen(self._color)
+        r = QRectF(self.rect()).adjusted(0, 0, 0, -S(3))
+        text = p.fontMetrics().elidedText(self._text, Qt.TextElideMode.ElideRight, self.width())
+        p.drawText(r, int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom), text)
+
+
 def heading(text: str) -> Label:
-    return Label(text.upper(), 10, TEXT_FAINT, weight=QFont.Weight.Bold)
+    return _Heading(text)
+
+
+class _Row(QWidget):
+    """8.0: a setting row draws a faint hairline under itself, so a list of settings reads as one tidy list."""
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setPen(QPen(alpha("#FFFFFF", 0.045), 1))
+        y = self.height() - 0.5
+        p.drawLine(QPointF(0, y), QPointF(self.width(), y))
 
 
 def row(label: str, control: QWidget, sub: str = "", height: int = 30) -> QWidget:
     """Label on the left (optional dim sub-line), control on the right."""
-    w = QWidget()
+    w = _Row()
     w.setFixedHeight(S(height + (12 if sub else 0)))
     lay = hbox(w, 10)
     if sub:
@@ -25712,9 +25814,7 @@ class AskDialog(QWidget):
         self.edit.setPlaceholderText(hint)
         self.edit.setFixedHeight(S(34))
         self.edit.setStyleSheet(
-            f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
-            f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}"
-            f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
+            field_css(13))
         self.edit.returnPressed.connect(self._go)
         lay.addWidget(self.edit)
         self.note = Label("", 11, DANGER, wrap_w=S(264))
@@ -26722,7 +26822,15 @@ def _inventory_items(page, lay, tab: int) -> None:
               if ec.quick_value(k) > 0 and len(groups[k]) > 1]
     del extras                                           # 5.0: no more "quick sell the doubles"
     if not order:
-        lay.addWidget(Label(tr("Nothing here yet. Open cases or visit the shop."), 12, TEXT_DIM, wrap_w=page.W))
+        go = Button(tr("Open cases"), "primary", 32, icon="case")        # 8.0: a designed empty state with a way out
+
+        def to_cases() -> None:
+            ctx.shop_tab, ctx.shop_badge, ctx.shop_case, ctx.inv_pick = 2, None, None, ""
+            ctx.reload_page()
+        go.clicked.connect(to_cases)
+        lay.addSpacing(S(4))
+        lay.addWidget(notice("case", tr("Nothing here yet"),
+                             tr("Open cases or visit the shop: everything you own shows up here."), page.W, go))
         return
     pick = getattr(ctx, "inv_pick", "") or ""
     if pick not in groups:
@@ -33964,19 +34072,14 @@ class GamePicker(QWidget):
         grid = QGridLayout(self)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(S(4))
-        per_row = 6 if len(labels) >= 11 else 5 if len(labels) >= 10 else 3   # 5.12: 12 games, 2 rows of 6
-        rows = (len(labels) + per_row - 1) // per_row
-        extra = 2 if len(labels) >= 14 else 0                    # 6.2: Colour Pick and SFX Match: a row of their own,
-        if extra:                                                 # right under Cups and Connect 4
-            rows = (len(labels) - extra + per_row - 1) // per_row + 1
+        n = len(labels)                                           # 8.0: full, even rows (14 games: 2 rows of 7)
+        per_row = (n + 1) // 2 if 11 <= n <= 14 else 7 if n > 14 else 5 if n >= 10 else 3
+        rows = (n + per_row - 1) // per_row
         for i, text in enumerate(labels):
             b = Button(text, "primary" if i == index else "ghost", 26)
             b.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
             b.clicked.connect(lambda _=False, n=i: self._pick(n))
-            if extra and i >= len(labels) - extra:
-                grid.addWidget(b, rows - 1, per_row - extra + (i - (len(labels) - extra)))
-            else:
-                grid.addWidget(b, i // per_row, i % per_row)
+            grid.addWidget(b, i // per_row, i % per_row)
             self.buttons.append(b)
         for c in range(per_row):
             grid.setColumnStretch(c, 1)
@@ -35250,29 +35353,33 @@ class NavTiles(QWidget):
         for i, (label, icon) in enumerate(self.items):
             r = self._tile(i).adjusted(0.5, 0.5, -0.5, -0.5)
             on, hov = i == self.index, i == self.hover
-            if on:
-                g = QLinearGradient(r.topLeft(), r.bottomLeft())
-                g.setColorAt(0, alpha(ui.accent, 0.30))
-                g.setColorAt(1, alpha(ui.accent, 0.12))
-                p.setPen(QPen(alpha(ui.accent, 0.85), S(1.4)))
-                p.setBrush(g)
+            rad = S(DS.R_LG)
+            alert = i in self.glow and self.glow_col                  # admin alerts: a red pulse
+            if on:                                                     # 8.0: the one you are in is raised and lit
+                paint_surface(p, r, rad, 0.06, 0.0, edge=alpha(ui.accent, 0.85), tint=ui.accent, tint_a=0.22)
             else:
-                p.setPen(QPen(alpha("#FFFFFF", 0.10 if hov else 0.06), 1))
-                p.setBrush(alpha("#FFFFFF", 0.07 if hov else 0.035))
-            if i in self.glow:                                       # 6.0: a soft accent glow around the tile
-                gc = QColor(self.glow_col) if self.glow_col else QColor(ui.accent)
-                pulse = 0.75 + 0.25 * math.sin(time.monotonic() * 5) if self.glow_col else 1.0
+                paint_surface(p, r, rad, 0.035, 1.0 if hov else 0.0)
+            if alert:
+                gc = QColor(self.glow_col)
+                pulse = 0.75 + 0.25 * math.sin(time.monotonic() * 5)
                 for k in range(3):
                     p.setBrush(Qt.BrushStyle.NoBrush)
-                    p.setPen(QPen(alpha(gc, (0.22 - k * 0.06) * pulse * (1.8 if self.glow_col else 1.0)), S(2 + k * 2)))
-                    p.drawRoundedRect(r.adjusted(-k, -k, k, k), S(10) + k, S(10) + k)
+                    p.setPen(QPen(alpha(gc, (0.22 - k * 0.06) * pulse * 1.8), S(2 + k * 2)))
+                    p.drawRoundedRect(r.adjusted(-k, -k, k, k), rad + k, rad + k)
                 p.setPen(QPen(alpha(gc, 0.9), S(1.4)))
                 p.setBrush(alpha(gc, 0.16 if not on else 0.3))
-            p.drawRoundedRect(r, S(10), S(10))
+                p.drawRoundedRect(r, rad, rad)
+            elif i in self.glow and not on:                            # 6.0 UPDATE: a quiet accent mark, not a border
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha(ui.accent, 0.10))
+                p.drawRoundedRect(r, rad, rad)
+                p.setBrush(ui.accent)
+                p.drawEllipse(QPointF(r.left() + S(9), r.top() + S(9)), S(2.6), S(2.6))
+            lit = on or hov or i in self.glow
             p.save()
             p.translate(r.center().x(), r.top() + S(17))
             p.scale(0.9, 0.9)
-            draw_icon(p, icon, QColor(TEXT) if on or hov or i in self.glow else QColor(TEXT_DIM))
+            draw_icon(p, icon, QColor(TEXT) if lit else QColor(TEXT_DIM))
             p.restore()
             p.setPen(QColor(TEXT) if on or i in self.glow else QColor(TEXT_DIM))
             p.setFont(font(10, QFont.Weight.Black if i in self.glow else (QFont.Weight.Bold if on else QFont.Weight.DemiBold),
@@ -35538,9 +35645,7 @@ class ChatWindow(FloatWindow):
         self.edit.setPlaceholderText(tr("Write a message…"))
         self.edit.setFixedHeight(S(34))
         self.edit.setStyleSheet(
-            f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
-            f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}"
-            f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
+            field_css(13))
         self.edit.returnPressed.connect(self._send)
         self.edit.textChanged.connect(self._count)
         send = Button(tr("Send"), "primary", 34)
@@ -37135,6 +37240,8 @@ ADMIN_COLOUR = "#FF4B6E"
 
 def played_text(minutes: int) -> str:
     text = f"{minutes / 60:.1f}"
+    if text.endswith(".0"):                            # 8.0: "100 h", not "100.0 h"
+        text = text[:-2]
     return (text.replace(".", ",") if lang() == "fr" else text) + " h"
 
 
@@ -37142,6 +37249,9 @@ def date_text(stamp) -> str:
     day = str(stamp or "")[:10]
     if len(day) == 10 and lang() == "fr":
         return f"{day[8:10]}/{day[5:7]}/{day[0:4]}"
+    if len(day) == 10 and day[5:7].isdigit() and 1 <= int(day[5:7]) <= 12:      # 8.0: "25 Nov 2026"
+        months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+        return f"{int(day[8:10])} {months[int(day[5:7]) - 1]} {day[0:4]}"
     return day
 
 
@@ -37733,7 +37843,7 @@ class StatsCard(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(S(76), S(38), r.width() - S(90), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("{h} Played · Member Since {d}", h=played_text(int(d.get("minutes") or 0)), d=date_text(d.get("since"))))
+                   tr("{h} played · member since {d}", h=played_text(int(d.get("minutes") or 0)), d=date_text(d.get("since"))))
         th = None                                          # 5.1: the stats sit on the theme this player wears
         if name.lower() == (self.ctx.online.username() or "").lower():
             th = self.ctx.theme()
@@ -38011,7 +38121,8 @@ class FriendsPage(Page):
         others = [r for r in rows if r.get("username") not in known and not r.get("me")]
         if not others:
             return self.lay.addWidget(Label(tr("Nobody else yet"), 11, TEXT_DIM))
-        self.lay.addWidget(Label(tr("{n} users. Click one to see their profile.", n=len(others)), 10.5, TEXT_DIM))
+        self.lay.addWidget(Label(tr("1 user. Click it to see their profile.") if len(others) == 1 else
+                                tr("{n} users. Click one to see their profile.", n=len(others)), 10.5, TEXT_DIM))
         for info in others:
             self.lay.addWidget(PlayerRow(self, info))
 
@@ -38519,7 +38630,7 @@ class ProfileCard(QWidget):
             p.setPen(QColor("#FFE7A8"))
             p.drawText(pill, int(Qt.AlignmentFlag.AlignCenter), text)
         cells = ((tr("Online") if prof.get("online") else (tr("Offline") if known else "—"), tr("Status")),
-                 (played_text(int(prof.get("minutes", 0))), tr("Played")), (date_text(prof.get("since")), tr("Member Since")))
+                 (played_text(int(prof.get("minutes", 0))), tr("Played")), (date_text(prof.get("since")), tr("Member since")))
         left = face.right() + S(6)
         w = (r.right() - left - S(6)) / 3
         for i, (big, small) in enumerate(cells):
@@ -38768,9 +38879,7 @@ class FormDialog(QWidget):
         if note:
             lay.addWidget(Label(note, 10.5, TEXT_DIM, wrap_w=inner))
         self.edits: dict = {}
-        style = (f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
-                 f" border-radius: {S(8)}px; padding: 0 {S(9)}px; color: {TEXT}; font-size: {S(12)}px; }}"
-                 f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
+        style = (field_css(12))
         grid = QGridLayout()
         grid.setHorizontalSpacing(S(12))
         grid.setVerticalSpacing(S(3))
@@ -39095,9 +39204,7 @@ class AdminStepSheet(QWidget):
         lay.addLayout(top)
         self.note = Label("", 10.5, TEXT_DIM, wrap_w=self.W)
         lay.addWidget(self.note)
-        css = (f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
-               f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}"
-               f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
+        css = (field_css(13))
         self.old = QLineEdit()
         self.new = QLineEdit()
         for e, hint in ((self.old, en("Admin code")), (self.new, en("New admin code (6 characters or more)"))):
@@ -42926,6 +43033,8 @@ def jp_words(s: float) -> str:
 
 def jp_clock(s: float) -> str:
     s = max(0, int(math.ceil(s)))
+    if s >= 3600:                                        # 8.0: 3:43:17, not 223:17
+        return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
     return f"{s // 60}:{s % 60:02d}"
 
 
@@ -45435,8 +45544,10 @@ def build_jackpot(page, lay) -> None:
     state = d.get("state")
     if state == "closed":                                # between two jackpots: the next one, and the last result
         nxt = float(d.get("next_at") or 0) - float(d.get("now") or time.time())
-        lay.addWidget(Label(tr("The next jackpot opens in {t}. 2 minutes to join once a player is in.", t=jp_clock(nxt)),
-                            12, TEXT, wrap_w=page.W))
+        lay.addSpacing(S(6))                             # 8.0: a designed waiting card, not a lone line of text
+        lay.addWidget(notice("hours", tr("The next jackpot opens in {t}", t=jp_clock(nxt)),
+                             tr("Every 15 minutes, 2 minutes to join once a player is in. Put in up to 3 items: your "
+                                "chance is your share of the pot."), page.W))
         return                                           # 6.4: nothing to look at until it opens
     wheel = JackpotWheel(page, min(page.W, S(330)))
     wheel.set_data(d)
@@ -47731,7 +47842,7 @@ class FlipRow(QWidget):
         p.setFont(font(9.5, QFont.Weight.DemiBold))
         state = f.get("state")
         left = int(f.get("expires") or 0) - int(time.monotonic() - self._t0)
-        sub = {"open": tr("Waiting · {t}", t=f"{max(0, left) // 60}:{max(0, left) % 60:02d}"),
+        sub = {"open": tr("Waiting · {t}", t=jp_clock(left)),
                "setup": tr("Choosing items"),
                "joined": tr("{name} is choosing", name=show_name(f, "b")),
                "locked": bot_phase_text(f, time.monotonic() - self._t0) or tr("Locked in: flipping soon"),
@@ -58356,9 +58467,7 @@ class DeleteDialog(QWidget):
         self.edit.setMaxLength(10)
         self.edit.setFixedHeight(S(34))
         self.edit.setStyleSheet(
-            f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
-            f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}"
-            f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
+            field_css(13))
         self.edit.textChanged.connect(self._typed)
         lay.addWidget(self.edit)
         self.hint = Label("", 11, DANGER)
@@ -58433,10 +58542,7 @@ class AccountPanel(QWidget):
         self.seg = Segmented([tr("Log in"), tr("Create account")], 0)
         self.seg.changed.connect(self._mode)
         lay.addWidget(self.seg)
-        css = (f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
-               f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px;"
-               f" selection-background-color: rgba(255,255,255,0.25); }}"
-               f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
+        css = (field_css(13))
         self.user = QLineEdit()
         self.user.setPlaceholderText(tr("Username"))
         self.user.setMaxLength(10)
@@ -58729,7 +58835,8 @@ class Welcome(QWidget):
         self.panel.sync()
         QTimer.singleShot(450, self._countdown)
         self.appear.to(1.0, 420)
-        self._clock.start()
+        self._clock.setInterval(50)              # 8.0: the resting card's lights drift slowly: 20 frames a second is
+        self._clock.start()                      # plenty (every animation still runs at full speed on its own)
 
     # -- geometry
     def _button(self) -> QRectF:
@@ -58746,6 +58853,7 @@ class Welcome(QWidget):
             return
         self.panel.hide()
         self.phase = "fold"
+        self._clock.setInterval(16)
         sfx.play("on")
         self.setCursor(Qt.CursorShape.ArrowCursor)
         self.hover.to(0.0, 120)
@@ -61544,6 +61652,8 @@ class App(QObject):
             return
         n = getattr(self, "_jp_tick", 0) + 1
         self._jp_tick = n
+        if not getattr(self, "online_mode", False) and n % 6 not in (0, 1):
+            return                                        # 8.0: outside online mode each kind every 30 s, not 10 s
         if n % 2 == 0 and not (self.window.showing("games") and getattr(self, "games_sub", "") == "jackpot"):
             load_jackpot(self)                            # 5.3: the card, the bell and the page read the server
         if n % 2 == 1 and not (self.window.showing("games") and getattr(self, "games_sub", "") == "horses"):

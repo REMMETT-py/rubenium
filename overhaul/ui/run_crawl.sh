@@ -1,7 +1,7 @@
 #!/bin/bash
 # Pictures of every page: offline (logged out) and online (logged in on the local stand-in server), in English and
 # French, as a player and as the admin. Never talks to the real server.
-#   overhaul/ui/run_crawl.sh OUT_DIR [Rubenium.py]
+#   [ONLY="player_en ..."] [MAX=60] overhaul/ui/run_crawl.sh OUT_DIR [Rubenium.py]
 # Needs the local Postgres (overhaul/db/pg_start.sh) and the test template database (overhaul/db/run_tests.py,
 # with RB_BASELINE for the live-like server). Screens are simulated (Qt offscreen): 1920x1080 unless given.
 set -u
@@ -23,6 +23,7 @@ sleep 1
 status=0
 run() {   # name lang online-user-id-or-empty username screen(WxH)
   local name=$1 lang=$2 uid=$3 user=$4 screen=${5:-1920x1080} home="$OUT/home_$1"
+  if [ -n "${ONLY:-}" ] && [[ " $ONLY " != *" $name "* ]]; then return; fi     # ONLY="player_en admin_en": just those
   printf '{"screens": [{"name": "s", "x": 0, "y": 0, "width": %s, "height": %s, "logicalDpi": 96, "dpr": 1}]}' \
       "${screen%x*}" "${screen#*x}" > "$OUT/screen_$name.json"
   mkdir -p "$home/Documents/Rubenium"
@@ -39,7 +40,7 @@ PY
   printf '{"schema": 3, "v53_fresh": true, "v5_fresh": true, "lang": "%s", "tutorial_done": true}' "$lang" > "$home/Documents/Rubenium/settings.json"
   local extra=""; [ -n "$uid" ] && extra=--online
   HOME="$home" QT_QPA_PLATFORM="offscreen:configfile=$OUT/screen_$name.json" RUBENIUM_API=http://127.0.0.1:$PORT timeout 1200 python3 "$HERE/crawl.py" "$REPO/$SCRIPT" \
-      --out "$OUT/$name" --lang "$lang" $extra > "$OUT/$name.out" 2>&1 || status=1
+      --out "$OUT/$name" --lang "$lang" --max "${MAX:-400}" $extra > "$OUT/$name.out" 2>&1 || status=1
   grep "^CRAWL" "$OUT/$name.out" | sed "s/^/$name: /" || echo "$name: did not finish"
 }
 run offline_en en "" ""
