@@ -1491,8 +1491,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.0"         # the version people see
-BUILD = "2026.11.25.23"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "9.0.1"       # the version people see
+BUILD = "2026.11.25.24"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12581,6 +12581,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.0.1", ["The online side menu works again (it could not be clicked)", "Leaving a free game takes you back to Rewards, not an old games list"]),
     ("9.0", ['A whole new look: a side menu, a top bar with your coins and level, and big clear tiles everywhere', 'Home shows what is ready for you, the games you played last and what is live', 'Rewards: the free spin, scratch card, daily reward and quests in one place', 'Wealth tiers: free rewards grow with what you own, from Rookie to Diamond', 'The Key Forge: turn coins into keys, a few a day', 'A fresh start: everyone begins again with the same coins and keys. Cosmetics, levels and friends stay', 'New prices, odds and taxes across the whole game', 'The player market is gone. Quick sell stays', 'No more automatic game locks', 'Less text: tap a golden ? when you want the details', 'Bet faster with ½, 2× and Max, and your bet is remembered']),
     ("8.0", ['Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one', 'Solo Mini Golf online needs Rubenium 8.0', 'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players', 'A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing', 'Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer', 'Empty pages now say what goes there and how to fill them (inventory, market, offers, chat, trades, Mini Golf matches, jackpot)', 'Game tabs show their full names, and every row of buttons is even', 'Lighter: Rubenium uses much less processor while it rests', 'Clearer numbers: "100 h played · member since 25 Nov 2026", long coinflip waits as 3:43:17']),
     ("7.0", ['Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.']),
@@ -13080,6 +13081,8 @@ FR.update({  # 9.0 start
     '{a}-{b} coins': '{a}-{b} pièces',
     '1 key + {a} coins + Common XP coupon': '1 clé + {a} pièces + coupon XP Commun',
     '{a} coins + Rare XP coupon': '{a} pièces + coupon XP Rare',
+    'The online side menu works again (it could not be clicked)': 'Le menu latéral en ligne marche de nouveau (on ne pouvait pas cliquer dessus)',
+    'Leaving a free game takes you back to Rewards, not an old games list': 'Quitter un jeu gratuit te ramène aux Récompenses, plus à une ancienne liste de jeux',
 })  # 9.0 end
 
 # --------------------------------------------------------------------------- #
@@ -34802,8 +34805,9 @@ class GamesPage(Page):
                     self._back_bar(lay, tr({"memory": "Memory", "scratch": "Scratch card"}.get(sub, "Duels")))
                     server_wait(ctx, lay, self.W)
                     return
-            if sub == "minigames":
-                build_minigames(self, lay)
+            if sub == "minigames":                                   # 9.0.1: never shown; the free games live in Rewards
+                ctx.games_sub = None
+                QTimer.singleShot(0, lambda: leave_free_game(ctx))
                 return
             if sub == "memory":
                 self._memory(lay)
@@ -34895,6 +34899,8 @@ class GamesPage(Page):
               "w_mini": "Play mini games {n} times", "w_golf": "Win {n} Mini Golf matches", "w_scratch": "Scratch {n} cards"}
 
     def _show_mini(self, on: bool) -> None:
+        if not on:
+            return leave_free_game(self.ctx)
         sfx.play("pick")
         self.ctx.mini_open = on
         self.ctx.games_sub = None if on else "minigames"
@@ -34939,6 +34945,8 @@ class GamesPage(Page):
     def open_sub(self, name) -> None:
         if claim_blocked(self.ctx):
             return
+        if name == "minigames":                       # 9.0.1: the old "Earn coins" list is gone: back to where you came from
+            return leave_free_game(self.ctx)
         sfx.play("pick")
         for flag in ("quests_open", "mini_open", "park_open"):
             setattr(self.ctx, flag, False)
@@ -35066,6 +35074,8 @@ class GamesPage(Page):
 
 
     def _show_park(self, on: bool) -> None:
+        if not on:
+            return leave_free_game(self.ctx)
         sfx.play("pick")
         self.ctx.park_open = on
         self.ctx.games_sub = None if on else "minigames"
@@ -41927,10 +41937,14 @@ def go(ctx, action) -> None:
         ctx.shop_tab = {"market": 5, "inventory": 5, "shop": 1, "cases": 3, "levels": 5, "notifications": 0}[key]
         if key == "levels":
             ctx.inv_tab = "levels"
-    elif key in ("golf", "flip", "advent", "minigames", "wave", "jackpot", "horses"):
+    elif key == "minigames":                               # 9.0.1: the free games are in Rewards
+        target = "rewards"
+        ctx.games_sub = None
+        ctx.casino = False
+    elif key in ("golf", "flip", "advent", "wave", "jackpot", "horses"):
         target = "games"
         ctx.casino = False
-        ctx.games_sub = {"golf": "duels", "flip": "flip", "advent": "advent", "minigames": "minigames", "wave": "wave",
+        ctx.games_sub = {"golf": "duels", "flip": "flip", "advent": "advent", "wave": "wave",
                          "jackpot": "jackpot", "horses": "horses"}[key]
         if key == "wave":
             ctx.wave_mode = "duel"
@@ -46944,6 +46958,22 @@ def open_game(ctx, index: int, back: str = "") -> None:
     if getattr(w, "current", "") == "games":
         return ctx.reload_page("games")
     w.goto("games")
+
+
+def leave_free_game(ctx) -> None:
+    """9.0.1: the back button of a free game (Beat Tap, Memory, Mini Golf, Wave Rush...) returns to the page it was
+    opened from (Rewards unless said otherwise), never to the old "Earn coins" list."""
+    for f in ("quests_open", "mini_open", "park_open"):
+        setattr(ctx, f, False)
+    ctx.games_sub = None
+    ctx.casino = False
+    dest = getattr(ctx, "back_to", None) or "rewards"
+    ctx.back_to = None
+    sfx.play("pick")
+    w = ctx.window
+    if getattr(w, "current", "") == dest:
+        return ctx.reload_page(dest)
+    w.goto(dest)
 
 
 def open_games_part(ctx, sub: str = None, flag: str = "", back: str = "") -> None:
@@ -54829,6 +54859,7 @@ class OnlineBody(QWidget):
         self.host = QWidget(self)
         self.cover = LockCover(self.host)
         self.cover.hide()
+        self.rail.raise_()                              # 9.0.1: the page host spans the full width; the rail sits on top
         self.to_ball.clicked.connect(window.ask_leave)
         self.stow.clicked.connect(window.collapse)
         self._press = None
@@ -54868,6 +54899,7 @@ class OnlineBody(QWidget):
         self.rail.setGeometry(0, S(HEAD_H), S(RAIL_W), self.height() - S(HEAD_H) - S(BOTTOM))
         top = S(HEAD_H)
         self.host.setGeometry(0, top, self.width(), max(1, self.height() - top - S(BOTTOM)))
+        self.rail.raise_()
         self.win.place_columns()
         if self.cover.isVisible():
             self.cover.setGeometry(self.host.rect())

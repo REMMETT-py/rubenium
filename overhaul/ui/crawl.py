@@ -201,8 +201,27 @@ def driver(app, rb):
             ow = win()
             M = sys.modules["__rb__"]
             keys = list(M.nav_keys()) if hasattr(M, "nav_keys") else list(M.SECTIONS) + sorted(M.LIVE_TABS)
+            for _ in range(20):                               # the garage doors open first (a few seconds)
+                if getattr(ow, "stage", None) is None:
+                    break
+                yield 500
+            if getattr(ow, "stage", None) is not None:
+                ERRORS.append({"where": "online", "error": "the opening doors never went away"})
+            rail = getattr(getattr(ow, "body", None), "rail", None)
+            spots = {k: r for r, k, _i, _t in rail.rects()} if rail is not None else {}
             for key in keys:
-                if hasattr(ow, "nav"):                        # 9.0: one page at a time, picked from the rail
+                if key in spots:                              # 9.0.1: a real click where the player clicks
+                    p = rail.mapTo(ow, spots[key].center().toPoint())
+                    hit = ow.childAt(p)
+                    if hit is not rail:
+                        ERRORS.append({"where": f"online {key}", "error": f"the rail entry is covered by {type(hit).__name__}"})
+                        ow.nav(key)
+                    else:
+                        from PyQt6.QtCore import Qt as _Qt
+                        from PyQt6.QtTest import QTest
+                        QTest.mouseClick(rail, _Qt.MouseButton.LeftButton, _Qt.KeyboardModifier.NoModifier,
+                                         spots[key].center().toPoint())
+                elif hasattr(ow, "nav"):                      # 9.0: one page at a time, picked from the rail
                     ow.nav(key)
                 else:
                     ow.set_pane(M.side_of(key), key)
