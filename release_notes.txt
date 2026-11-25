@@ -1,5 +1,12 @@
-Rubenium 7.0
+Rubenium 8.0
 
-- Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.
+- A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing
+- Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer
+- Empty pages now say what goes there and how to fill them
+- Game tabs show their full names, and every row of buttons is even
+- Lighter: Rubenium uses much less processor while it rests
+- Mini Golf online is fair for everyone: the server plays out every shot with the game's own physics
+- Safer accounts: password help is limited per PC and per name
+- Solo Mini Golf online needs Rubenium 8.0
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

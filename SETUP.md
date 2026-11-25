@@ -55,3 +55,5 @@
     `overhaul/db/074_template.sql` or `overhaul/golf/sim.sql` and run `python overhaul/db/make_074.py`.
 47. Checks before running any new migration: `python overhaul/db/run_tests.py` (server tests) and
     `python overhaul/db/roundtrip.py UP.sql DOWN.sql` (applies twice, undoes twice, everything back as it was).
+48. Releasing 8.0: see `overhaul/RELEASE_PLAN.md`. After the 8.0 release is published, set `latest_tag` / `min_build`
+    to its build, so 7.0 players get the update prompt (solo golf online already asks them to update).

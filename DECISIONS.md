@@ -202,3 +202,19 @@ Choices made where the request left room, newest last.
   before 25/11/2026 (Cups 60 000, Connect 4 20 000, each mini game 5 000; Colour Pick and SFX Match keep 12 000,
   Timing its 20 000). Reaction limits: none added. Timing already refuses stop times that do not match the server's
   clock; the other skill games have no reaction step a limit would protect.
+
+## 8.0 (overhaul): design, motion, performance
+- One design system in Rubenium.py (`DS`, `paint_surface`, `field_css`): three corner sizes (7 / 10 / 12 at 100 %),
+  a hairline edge, a soft top-down light with a brighter top line. Every shared control (buttons, switches, panels,
+  section tiles, text fields, sliders) and the plain cards use it. Game art (tables, boards, horses, cases, banners)
+  keeps its own drawing. Approved at checkpoint 3 (25/11/2026).
+- A disabled main button is a dashed outline, so it never looks like a pressed or selected one. The UPDATE tile marks
+  news with a dot, not a glowing border.
+- Empty lists are a `notice()` (a glyph, a title and what to do next), never a bare line of grey text or a blank box.
+- Button rows: at most 7 per row, rows as even as possible; game picker buttons take widths from their names.
+- Reduce motion (`reduce_motion` in settings.json, off by default): non-linear interface tweens take 30 % of their time.
+  Linear animations (clocks, countdowns, game timing) are untouched, so no game changes speed.
+- Timers of pulsing tabs and tiles stop while hidden; the resting welcome screen redraws at 20 fps; outside online mode
+  the jackpot / race bell polls every 30 s instead of 10 s (events stay open 2 minutes).
+- Hours are written by `played_text()` everywhere ("100 h", "1.5 h"); dates as "25 Nov 2026" (English) and
+  25/11/2026 (French).

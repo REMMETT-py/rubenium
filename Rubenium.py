@@ -4933,6 +4933,12 @@ FR = {
     'Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one': 'Le Mini Golf en ligne est juste pour tout le monde : le serveur joue maintenant chaque coup avec la même physique que le jeu, donc personne ne peut tricher un trou en un',
     'Solo Mini Golf online needs Rubenium 8.0': 'Le Mini Golf solo en ligne demande Rubenium 8.0',
     'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players': "Comptes plus sûrs : l'aide pour le mot de passe est limitée par PC et par nom, donc personne ne peut l'épuiser pour les autres joueurs",
+    'A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing': 'Un look plus net partout : chaque bouton, onglet, carte et champ de texte partage les mêmes coins, surfaces et espacements',
+    'Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer': 'Réduire les animations : un nouvel interrupteur dans Réglages > Style rend les animations de l’interface plus courtes et plus calmes',
+    'Empty pages now say what goes there and how to fill them (inventory, market, offers, chat, trades, Mini Golf matches, jackpot)': 'Les pages vides disent maintenant ce qui va là et comment les remplir (inventaire, marché, offres, chat, échanges, parties de Mini Golf, jackpot)',
+    'Game tabs show their full names, and every row of buttons is even': 'Les onglets des jeux affichent leur nom en entier, et chaque rangée de boutons est équilibrée',
+    'Lighter: Rubenium uses much less processor while it rests': 'Plus léger : Rubenium utilise beaucoup moins de processeur au repos',
+    'Clearer numbers: "100 h played · member since 25 Nov 2026", long coinflip waits as 3:43:17': 'Chiffres plus clairs : « 100 h de jeu · membre depuis le 25/11/2026 », les longues attentes de coinflip en 3:43:17',
     'Update needed': 'Mise à jour nécessaire',
     'Update now': 'Mettre à jour',
     'Visualiser': 'Visualiseur',
@@ -12449,7 +12455,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
-    ("8.0", ['Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one', 'Solo Mini Golf online needs Rubenium 8.0', 'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players']),
+    ("8.0", ['Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one', 'Solo Mini Golf online needs Rubenium 8.0', 'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players', 'A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing', 'Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer', 'Empty pages now say what goes there and how to fill them (inventory, market, offers, chat, trades, Mini Golf matches, jackpot)', 'Game tabs show their full names, and every row of buttons is even', 'Lighter: Rubenium uses much less processor while it rests', 'Clearer numbers: "100 h played · member since 25 Nov 2026", long coinflip waits as 3:43:17']),
     ("7.0", ['Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.']),
     ("6.9.1", ["Horse Racing: the horses run at a normal pace again (the race is still 3 times longer, the speed is just doubled on screen). The Animations tab is locked for now."]),
     ("6.9", ['NEW: 4 Mythic ANIMATIONS (Supernova, Shatter, Rift, Phoenix), each in Prismatic, Gold, Black Titan and White Titan: buy the originals in the Shop (Animations) or win any of them from the Profile Case. Click anywhere or press Esc to skip one, or switch back to the simple animation any time. The default animation is now simple: the banner floats up into nothing and drops back down. Lines now sit with the Balls in the Shop, and the Coin history moved to the Profile tab of your Inventory (whose old Coins button is now Animations)']),
@@ -22314,9 +22320,7 @@ class CoinBar(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
-        p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(11), S(11))
+        paint_surface(p, r, S(DS.R_MD), 0.04)          # 8.0: the shared surface
         paint_coin(p, QPointF(r.left() + S(20), r.center().y()), S(9))
         p.setPen(QColor(TEXT))
         p.setFont(font(16, QFont.Weight.Bold))
@@ -26652,9 +26656,7 @@ class LookPreview(QWidget):
         name = self.ctx.online.username() or "Rubenium"
         kind = self.item.split(":")[0]
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
-        p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(12), S(12))
+        paint_surface(p, r, S(DS.R_LG), 0.04)          # 8.0: the shared surface
         banner = self.item if kind == "banner" else ec.look_of(name).get("banner", "")
         top = QRectF(r.left(), r.top(), r.width(), S(74))
         if banner:
@@ -26754,9 +26756,7 @@ class WalletRow(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         ec = self.ctx.econ
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
-        p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.04)          # 8.0: the shared surface
         half = r.width() / 2
         p.save()
         p.translate(r.left() + S(20), r.center().y())
@@ -27643,9 +27643,7 @@ class SwapRow(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 2, -0.5, -2)
         mine = bool(self.r.get("mine"))
-        p.setPen(QPen(alpha(ui.accent, 0.6) if mine else alpha("#FFFFFF", 0.1), 1.2))
-        p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.04, edge=alpha(ui.accent, 0.6) if mine else None)   # 8.0: shared surface
         now = time.monotonic()
         d = r.height() - S(22)
         show_item(p, self.r.get("item", ""), QRectF(r.left() + S(8), r.top() + S(4), d, d), now, effects=False)
@@ -29651,9 +29649,7 @@ class DuelRow(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setBrush(alpha(ui.accent, 0.10) if self.urgent else alpha("#FFFFFF", 0.04))
-        p.setPen(QPen(alpha(ui.accent, 0.7), 1.2) if self.urgent else Qt.PenStyle.NoPen)
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.04, edge=alpha(ui.accent, 0.7) if self.urgent else None, tint=ui.accent if self.urgent else None, tint_a=0.10)   # 8.0: shared surface
 
     def _state_text(self) -> str:
         d = self.d
@@ -30774,9 +30770,7 @@ class GolfView(QWidget):
 
     def _paint_head(self, p: QPainter, g: dict) -> None:
         r = QRectF(0, 0, self.width(), self.head_h - S(6))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.05))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.05)   # 8.0: shared surface
         if self.solo:
             return self._paint_solo_head(p, g, r)
         me = g.get("me", "a")
@@ -30897,9 +30891,7 @@ class LobbyRow(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha(ui.accent, 0.5), 1.2) if self.m.get("mine") else QPen(alpha("#E8C26A", 0.25), 1))
-        p.setBrush(alpha("#FFFFFF", 0.05))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.05, edge=alpha(ui.accent, 0.5) if self.m.get("mine") else alpha("#E8C26A", 0.25))   # 8.0: shared surface
         left = max(0, self._left - int(time.monotonic() - self._t0))
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(9.5, QFont.Weight.DemiBold))
@@ -31394,9 +31386,7 @@ class GolfPartyView(QWidget):
 
     def _paint_head(self, p: QPainter, g: dict) -> None:
         r = QRectF(0, 0, self.width(), self.head_h - S(6))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.05))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.05)   # 8.0: shared surface
         turn, me = g.get("turn"), self.me()
         if g.get("state") == "live":                      # one big line: whose turn, and the clock
             mine = turn == me
@@ -34140,9 +34130,7 @@ class BetBox(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha("#FFFFFF", 0.10), 1))
-        p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.04)          # 8.0: the shared surface
         text = coins_text(self.page.bet())
         p.setFont(font(14, QFont.Weight.Bold))
         tw = p.fontMetrics().horizontalAdvance(text)
@@ -34167,9 +34155,7 @@ class KeyCard(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
-        p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(11), S(11))
+        paint_surface(p, r, S(DS.R_MD), 0.04)          # 8.0: the shared surface
         c = QPointF(r.left() + S(24), r.top() + S(22))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(alpha(ui.accent, 0.16))
@@ -34540,9 +34526,7 @@ class QuestRow(QWidget):
         r = QRectF(self.rect()).adjusted(0.5, 2, -0.5, -2)
         goal, prog = int(q.get("goal", 1)), int(q.get("progress", 0))
         done, claimed = prog >= goal, bool(q.get("claimed"))
-        p.setPen(QPen(alpha(GOLD_TEXT, 0.5) if (done and not claimed) else alpha("#FFFFFF", 0.08), 1.1))
-        p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.04, edge=alpha(GOLD_TEXT, 0.5) if (done and not claimed) else None)   # 8.0: shared surface
         p.setOpacity(0.45 if claimed else 1.0)
         p.setFont(font(11.5, QFont.Weight.Bold))
         prize = q.get("prize") or {}                        # 5.13: keys and cases, not coins
@@ -35808,9 +35792,7 @@ class ThreadRow(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.07 if self.hover else 0.04))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.04, 1.0 if self.hover else 0.0)   # 8.0: shared surface
         t = self.t
         p.setBrush(QColor("#3DDC84") if t.get("online") else alpha("#FFFFFF", 0.2))
         p.drawEllipse(QPointF(r.left() + S(14), r.center().y()), S(4), S(4))
@@ -36026,9 +36008,7 @@ class TradeCard(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         t = self.t
-        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
-        p.setBrush(alpha("#FFFFFF", 0.035))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.035)   # 8.0: shared surface
         p.setPen(QColor(TEXT))
         p.setFont(font(11.5, QFont.Weight.Bold))
         head = tr("With {name}", name=t.get("other", "?")) + ("  ·  " + tr("UNDONE BY ADMIN") if t.get("undone") else "")
@@ -37714,9 +37694,7 @@ class PlayerRow(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 2, -0.5, -2)
         info = self.info
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.07 if self._hover else 0.04))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.04, 1.0 if self._hover else 0.0)   # 8.0: shared surface
         friend = info.get("state") == "friend" or info.get("me")
         paint_face(p, QRectF(r.left() + S(7), r.center().y() - S(15), S(30), S(30)), self.ctx, info["username"],
                    int(info.get("avatar_v") or 0), bool(info.get("online")) if friend else None)
@@ -38616,9 +38594,7 @@ class ProfileCard(QWidget):
         name = prof.get("username", "?")
         eq = prof.get("equip") or {}
         now = time.monotonic()
-        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
-        p.setBrush(alpha("#FFFFFF", 0.04))
-        p.drawRoundedRect(r, S(12), S(12))
+        paint_surface(p, r, S(DS.R_LG), 0.04)          # 8.0: the shared surface
         top = QRectF(r.left(), r.top(), r.width(), S(70))
         if eq.get("banner"):
             look = self.ctx.econ.look_of(name)
@@ -57487,9 +57463,7 @@ class _DuelBar(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -6)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.05))
-        p.drawRoundedRect(r, S(10), S(10))
+        paint_surface(p, r, S(DS.R_MD), 0.05)   # 8.0: shared surface
         me = st.get("me", "a")
         other = "b" if me == "a" else "a"
         w = r.width() / 3
