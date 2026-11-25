@@ -9675,7 +9675,9 @@ class WindowsBackend:
                 if stamp.year > 2000:
                     if stamp.tzinfo is None:
                         stamp = stamp.replace(tzinfo=timezone.utc)
-                    position += int((datetime.now(timezone.utc) - stamp).total_seconds() * 1000)
+                    late = int((datetime.now(timezone.utc) - stamp).total_seconds() * 1000)
+                    if 0 <= late < 600000:            # 9.1: a stamp from the future or hours old is wrong: skip it
+                        position += late
             except Exception:  # noqa: BLE001
                 pass
         if duration:
@@ -10007,15 +10009,28 @@ class LyricsService(QObject):
         kind, payload = "none", []
         cache = LYRICS_DIR / f"{key}.json"
         try:
+            saved = None
             try:
                 data = json.loads(cache.read_text(encoding="utf-8"))
-                kind, payload = data["kind"], [tuple(x) if isinstance(x, list) else x for x in data["payload"]]
-            except (OSError, ValueError, KeyError):
-                kind, payload = self._download(clean_title(title), clean_artist(artist), album, duration_ms)
+                saved = (data["kind"], [tuple(x) if isinstance(x, list) else x for x in data["payload"]])
+                kind, payload = saved
+                # 9.1: lyrics saved before 9.1, or for another length of the song (another version), are looked
+                # up again so their times fit this version; if that fails the saved ones are kept
+                if duration_ms and (data.get("dur") is None or abs(int(data["dur"]) - duration_ms) > 2500):
+                    raise ValueError("another version")
+            except (OSError, ValueError, KeyError, TypeError):
                 try:
-                    cache.write_text(json.dumps({"kind": kind, "payload": payload}), encoding="utf-8")
-                except OSError:
-                    pass
+                    kind, payload = self._download(clean_title(title), clean_artist(artist), album, duration_ms)
+                except Exception:  # noqa: BLE001
+                    if saved is None:
+                        raise
+                    kind, payload = saved
+                else:
+                    try:
+                        cache.write_text(json.dumps({"kind": kind, "payload": payload, "dur": int(duration_ms or 0)}),
+                                         encoding="utf-8")
+                    except OSError:
+                        pass
             self._mem[key] = (kind, payload)
         except Exception as exc:  # noqa: BLE001  (network down, DNS, TLS...)
             log.debug("lyrics fetch failed: %s", exc)
@@ -10040,8 +10055,10 @@ class LyricsService(QObject):
             found = self._get("search", {"track_name": title, "artist_name": artist})
             if isinstance(found, list) and found:
                 def score(item):
+                    # 9.1: the same version of the song first (a radio edit or a live take has other times),
+                    # then synced lyrics, then the closest length
                     d = abs((item.get("duration") or 0) * 1000 - duration_ms) if duration_ms else 0
-                    return (0 if item.get("syncedLyrics") else 1, d)
+                    return (d > 2500, 0 if item.get("syncedLyrics") else 1, d)
                 found.sort(key=score)
                 cand = found[0]
                 if not duration_ms or abs((cand.get("duration") or 0) * 1000 - duration_ms) < 8000:
@@ -63541,7 +63558,7 @@ class App(QObject):
     def _on_state(self, st: TrackState) -> None:
         self.state = st
         self.admute.on_state(st)                      # 3.2: adverts are muted while they play
-        self._pos_base, self._pos_t = float(st.position_ms), time.monotonic()
+        self._set_clock(st)
         if st.art_key != self._art_key:
             self._art_key = st.art_key
             if st.has_track and st.title:
@@ -63605,6 +63622,32 @@ class App(QObject):
             self._song_key = "?"
             self.refresh_song()
 
+    def _set_clock(self, st) -> None:
+        """9.1: lyrics in time. The song clock runs on its own between the music app's reports (about once a
+        second); a report only moves it when it is a real jump (a seek, a new song, play or pause). Small
+        differences are eased in, and a report that did not move while the song plays is ignored, so lines no
+        longer jump back and forth."""
+        now = time.monotonic()
+        rep = float(st.position_ms)
+        track = (st.title, st.artist, st.duration_ms)
+        playing = st.status is Status.PLAYING
+        base = rep
+        if (playing and track == getattr(self, "_clock_track", None)
+                and getattr(self, "_clock_playing", False)):
+            guess = self._pos_base + (now - self._pos_t) * 1000.0
+            if st.duration_ms:
+                guess = min(guess, float(st.duration_ms))
+            if now < getattr(self, "_seek_until", 0.0) and abs(rep - guess) > 1200:
+                base = guess                                  # the app has not caught up with our seek yet
+            elif rep == getattr(self, "_clock_last", -1.0):
+                base = guess                                  # the app's clock did not move: ours keeps going
+            elif abs(rep - guess) > 1200:
+                base = rep                                    # a real jump
+            else:
+                base = guess + (rep - guess) * 0.3            # a small drift, eased in
+        self._clock_track, self._clock_playing, self._clock_last = track, playing, rep
+        self._pos_base, self._pos_t = base, now
+
     def position_ms(self) -> float:
         st = self.state
         pos = self._pos_base
@@ -63614,6 +63657,7 @@ class App(QObject):
 
     def seek(self, ms: float) -> None:
         self._pos_base, self._pos_t = float(ms), time.monotonic()
+        self._seek_until = self._pos_t + 2.0
         self.media.send(CMD_SEEK, int(ms))
 
     def on_visibility(self) -> None:
