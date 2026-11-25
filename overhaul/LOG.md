@@ -92,3 +92,13 @@ Open questions: see the Checkpoint 1 message.
 - Reduce motion (Settings > Style): interface movements take 30% of their time. Clocks and countdowns (linear
   animations) are untouched, so no game timing changes.
 - The pulsing ONLINE / giveaway tabs and the admin alert tile stop their timers while the menu is closed.
+- Full crawl review, page by page (25/11/2026, evening):
+  - Game picker buttons take their width from their names, so "Blackjack" and "Connect 4" are never cut to
+    "Blackja…" and Colour Pick / SFX Match no longer shrink their text.
+  - Deals: the "This hour / Today / This week" shelf titles were squeezed to nothing; they show again.
+  - Lyrics never shows a blank page with a lone Try again (it says to play a song).
+  - Designed empty states for market offers (both lists) and open Mini Golf matches.
+  - Hours read "100 h" everywhere (account settings and admin player list, not "100.0 h").
+  - Admin: 13 sections in two rows of 7 + 6 (Alerts was alone on a third row, with Rig's icon), the overview's
+    empty ninth number is now Game rounds, and its two tables say "Nobody has played yet" / "No coins moved yet"
+    instead of showing an empty section.

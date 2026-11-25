@@ -39352,7 +39352,7 @@ class AdminPage(Page):
     key = "admin"
     SECTIONS = ["Overview", "Players", "Give", "Rig", "Live", "Coinflips", "Cases", "Settings", "Locks", "Bots", "Swaps",
                 "Log", "Alerts"]
-    ICONS = ["perf", "users", "gift", "spark", "timer", "coin", "folder", "cog", "lock", "robot", "rocket", "refresh", "spark"]
+    ICONS = ["perf", "users", "gift", "spark", "timer", "coin", "folder", "cog", "lock", "robot", "rocket", "refresh", "danger"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
@@ -39362,9 +39362,8 @@ class AdminPage(Page):
             return
         tab = int(getattr(ctx, "admin_tab", 0) or 0)
         tab = tab if 0 <= tab < len(self.SECTIONS) else 0
-        pass
         alerts = int(getattr(ctx.econ, "admin_flags", 0) or 0)                 # 6.2: suspicious play: the tile glows red
-        pick = NavTiles(list(zip(self.SECTIONS, self.ICONS)), tab, per_row=6,
+        pick = NavTiles(list(zip(self.SECTIONS, self.ICONS)), tab, per_row=7,   # 8.0: 7 + 6, no lone tile
                         glow={self.SECTIONS.index("Alerts")} if alerts else None, glow_col="#FF3B4E",
                         badges={self.SECTIONS.index("Alerts"): alerts} if alerts else None)
         pick.changed.connect(self._section)
@@ -39571,17 +39570,19 @@ class AdminPage(Page):
         lay.addWidget(Numbers([(st.get("players", 0), "Users"), (st.get("online", 0), "Online now"), (st.get("today", 0), "Today"),
                                (coins_text(int(st.get("coins") or 0)), "Coins in total"), (st.get("keys", 0), "Keys in total"),
                                (st.get("items", 0), "Items"), (st.get("listings", 0), "On the market"),
-                               (st.get("trades", 0), "Trades done"), ("", "")], self.W))
+                               (st.get("trades", 0), "Trades done"),
+                               (sum(int(g.get("rounds") or 0) for g in st.get("games") or []), "Game rounds")], self.W))
         lay.addWidget(heading("Games: bets and payouts"))
         rows = []
         for g in st.get("games") or []:
             bet, paid = int(g["bet"]), int(g["paid"])
             keep = f"{100 - 100 * paid / bet:.1f}%" if bet else "—"
             rows.append((g["game"], f"{g['rounds']} rounds", f"house {keep}", "#5BE08A" if paid <= bet else "#FF7A7A"))
-        lay.addWidget(Table(rows, self.W))
+        lay.addWidget(Table(rows or [("Nobody has played yet", "", "")], self.W))       # 8.0: never an empty section
         lay.addWidget(heading("Coins in and out (7 days)"))
         lay.addWidget(Table([(x["reason"], f"{x['n']} times", ("+" if int(x["coins"]) >= 0 else "") + coins_text(int(x["coins"])),
-                              "#5BE08A" if int(x["coins"]) >= 0 else "#FF7A7A") for x in st.get("ledger") or []], self.W))
+                              "#5BE08A" if int(x["coins"]) >= 0 else "#FF7A7A") for x in st.get("ledger") or []]
+                            or [("No coins moved yet", "", "")], self.W))
         w = self.fetch("rb_admin_xp_watch", {})
         if w:
             top_day = w.get("top_day") or []
@@ -39621,7 +39622,7 @@ class AdminPage(Page):
         if rows is None:
             return self._loading(lay)
         table = [(("● " if r["online"] else "") + r["username"] + (" · blocked" if r["banned"] else ""),
-                  f"{int(r['minutes']) / 60:.1f} h", coins_text(int(r["coins"])), "#5BE08A" if r["online"] else TEXT)
+                  played_text(int(r['minutes'])), coins_text(int(r["coins"])), "#5BE08A" if r["online"] else TEXT)
                  for r in rows]
         lay.addWidget(Table(table, self.W, lambda i: self._open(rows[i]["username"])))
 
@@ -39648,7 +39649,7 @@ class AdminPage(Page):
         xp = self.fetch("rb_admin_xp_view", {"name": name}) or {}
         info = xp.get("info") or {}
         lay.addWidget(Numbers([(coins_text(int(d["coins"])), "Coins", GOLD_TEXT), (d["keys"], "Keys"),
-                               (f"{int(d['minutes']) / 60:.1f} h", "Played"),
+                               (played_text(int(d['minutes'])), "Played"),
                                (f"{info.get('level', '?')}", "Level"), (coins_text(int(info.get("xp") or 0)), "XP"),
                                (f"{int(info.get('today') or 0)}", "XP today"),
                                (coins_text(int(st.get("bet") or 0)), "Bet"), (coins_text(int(st.get("won") or 0)), "Won"),
