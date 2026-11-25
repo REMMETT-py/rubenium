@@ -65,5 +65,20 @@ begin
     assert n = 2, 'paid skill rounds count as mini games: ' || n;
     select progress into n from public.rb_quest_rows(a) where quest = 'd_rounds';
     assert n = 0, 'not casino rounds: ' || n;
+
+    -- the Stats tab: your own numbers, the balance line ends on your coins, the rewards split by source
+    insert into public.rb_ledger (owner, coins, keys, reason, ref) values (a, 30, 0, 'time', null), (a, 100, 1, 'quest', 'x');
+    update public.profiles set coins = coins + 130, keys = keys + 1 where id = a;
+    insert into public.rb_rounds (owner, game, bet, secret, open, paid) values (a, 'slots', 100, '{}', false, 300);
+    perform t.act(a);
+    r := public.rb_my_stats(500);
+    reset role;
+    assert (r ->> 'days')::int = 90 and jsonb_array_length(r -> 'series') = 90, 'at most 90 days: ' || (r ->> 'days');
+    assert (r -> 'series' -> 89 ->> 'balance')::bigint = t.coins(a), 'the line ends on the balance';
+    assert (r -> 'series' -> 89 -> 'r' ->> 0)::int = 30 and (r -> 'series' -> 89 -> 'r' ->> 4)::int = 100, 'rewards by source: ' || (r -> 'series' -> 89)::text;
+    assert (r -> 'series' -> 89 -> 'r' ->> 5)::int = 460, 'skill pay (120 + 60 + 30 + 50 + 200) counts as mini games: ' || (r -> 'series' -> 89)::text;
+    assert (r -> 'games' -> 'slots' ->> 'best')::int = 200, 'casino by game: ' || (r -> 'games')::text;
+    assert (r -> 'minis' -> 'c4' ->> 'paid')::int = 200 and r -> 'games' -> 'c4' is null, 'mini games apart';
+    assert (r -> 'series' -> 88 ->> 'balance')::bigint = t.coins(a) - (r -> 'series' -> 89 ->> 'net')::bigint, 'balance back in time';
 end $$;
 rollback;

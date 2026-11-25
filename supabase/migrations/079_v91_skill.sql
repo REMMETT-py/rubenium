@@ -5,6 +5,7 @@
 -- it chose) and pays from that result only: what the app says it won is never read.
 -- Pay = the round's base pay (how well you did) x your wealth tier. Full pay for the first rounds of the day
 -- (skill_full_rounds), then half, then a quarter, and never more than skill_day_cap x tier a day for each game.
+-- Also rb_my_stats(days): your own numbers for the Stats tab (wealth, rewards, casino and mini games by day and game).
 begin;
 
 insert into public.rb_config (key, value) values ('skill_full_rounds', 6), ('skill_day_cap', 900), ('skill_pay_mult', 1)
@@ -56,6 +57,62 @@ begin
     end loop;
     return out_ || jsonb_build_object('mult', public.rb_tier_mult(me),
         'resets', greatest(0, ceil(extract(epoch from (((public.rb_today() + 1)::timestamp at time zone 'Europe/Paris') - now()))))::int);
+end $$;
+
+-- ---------------------------------------------------------------- the Stats tab (9.1): your own numbers only
+create or replace function public.rb_my_stats(days integer) returns jsonb
+language plpgsql stable security definer set search_path to '' as $$
+declare me uuid := auth.uid(); n integer := greatest(7, least(coalesce(days, 30), 90)); d0 date; d1 date;
+        p public.profiles%rowtype; series jsonb; games jsonb; minis jsonb;
+begin
+    if me is null then raise exception 'rb_not_logged_in'; end if;
+    select * into p from public.profiles where id = me;
+    d1 := public.rb_today();
+    d0 := d1 - (n - 1);
+    with l as (select (at at time zone 'Europe/Paris')::date d, coins, keys, reason from public.rb_ledger
+                where owner = me and at >= (d0::timestamp at time zone 'Europe/Paris')),
+         x as (select (at at time zone 'Europe/Paris')::date d, amount from public.rb_xp_log
+                where owner = me and at >= (d0::timestamp at time zone 'Europe/Paris')),
+         dd as (select g::date d from generate_series(d0::timestamp, d1::timestamp, interval '1 day') g),
+         per as (select dd.d,
+                    coalesce(sum(l.coins), 0) net,
+                    coalesce(sum(l.coins) filter (where l.reason = 'time'), 0) r_time,
+                    coalesce(sum(l.coins) filter (where l.reason in ('login', 'daily_case')), 0) r_daily,
+                    coalesce(sum(l.coins) filter (where l.reason in ('spin', 'gold_wheel')), 0) r_spin,
+                    coalesce(sum(l.coins) filter (where l.reason = 'scratch'), 0) r_scratch,
+                    coalesce(sum(l.coins) filter (where l.reason = 'quest'), 0) r_quest,
+                    coalesce(sum(l.coins) filter (where l.reason in ('minigame', 'park', 'skill', 'golf_solo', 'golf_party',
+                                                                     'wave', 'memory')), 0) r_games,
+                    coalesce(sum(l.keys) filter (where l.keys > 0 and l.reason not in ('admin', 'admin_undo', 'trade',
+                                                                                       'trade_undo', 'reset')), 0) keys_in,
+                    coalesce(-sum(l.coins) filter (where l.reason in ('bet', 'race_bet')), 0) bet,
+                    coalesce(sum(l.coins) filter (where l.reason in ('win', 'race_win')), 0) won
+                   from dd left join l on l.d = dd.d group by dd.d),
+         xp as (select x.d, sum(x.amount) xp from x group by x.d),
+         bal as (select per.*, coalesce(xp.xp, 0) xp,
+                        p.coins - coalesce(sum(per.net) over (order by per.d desc rows between unbounded preceding and 1 preceding), 0) balance
+                   from per left join xp on xp.d = per.d)
+    select jsonb_agg(jsonb_build_object('d', d, 'net', net, 'balance', balance, 'xp', xp, 'keys', keys_in,
+                                        'bet', bet, 'won', won,
+                                        'r', jsonb_build_array(r_time, r_daily, r_spin, r_scratch, r_quest, r_games))
+                     order by d) into series from bal;
+    with r as (select game, bet, paid, at from public.rb_rounds
+                where owner = me and not open and at >= (d0::timestamp at time zone 'Europe/Paris')),
+         g as (select game, count(*) rounds, sum(bet) bet, sum(paid) paid, count(*) filter (where paid > bet) wins,
+                      max(paid - bet) best,
+                      (select jsonb_agg(v order by at) from (select r2.paid - r2.bet v, r2.at from r r2 where r2.game = r.game
+                                                             order by r2.at desc limit 40) z) last
+                 from r group by game)
+    select coalesce(jsonb_object_agg(game, jsonb_build_object('rounds', rounds, 'bet', bet, 'paid', paid, 'wins', wins,
+                                                              'best', best, 'last', last))
+                    filter (where game in ('slots', 'plinko', 'dice', 'mines', 'rocket', 'blackjack', 'roulette', 'hilo', 'tower')), '{}'),
+           coalesce(jsonb_object_agg(game, jsonb_build_object('rounds', rounds, 'paid', paid, 'best', best + bet, 'last', last))
+                    filter (where game in ('mini', 'park', 'memory', 'blocks', 'sweeper', 'golf_solo', 'golf_party', 'wave',
+                                           'timing', 'cups', 'c4', 'colour', 'sfx')), '{}')
+      into games, minis from g;
+    return jsonb_build_object('days', n, 'series', coalesce(series, '[]'), 'games', games, 'minis', minis,
+        'now', jsonb_build_object('coins', p.coins, 'keys', p.keys, 'level', p.level, 'xp', p.xp,
+                                  'tier', public.rb_tier(me)));
 end $$;
 
 CREATE OR REPLACE FUNCTION public.rb_timing(action text, bet integer, ms integer, req text)
@@ -489,5 +546,7 @@ revoke all on function public.rb_skill_base(text, text), public.rb_skill_window(
     public.rb_skill_pay(uuid, text, integer) from public, anon, authenticated;
 revoke all on function public.rb_skill_state() from public, anon;
 grant execute on function public.rb_skill_state() to authenticated;
+revoke all on function public.rb_my_stats(integer) from public, anon;
+grant execute on function public.rb_my_stats(integer) to authenticated;
 
 commit;

@@ -38836,7 +38836,7 @@ class FriendsPage(Page):
             ctx.reload_page()
         edit.clicked.connect(open_edit)
         stats = Button(tr("My Stats"), "ghost", 30, icon="perf")
-        stats.clicked.connect(lambda: self.open_profile(ctx.online.username()))
+        stats.clicked.connect(lambda: ctx.window.nav("stats") if hasattr(ctx.window, "nav") else self.open_profile(ctx.online.username()))
         songs = Button(tr("Songs"), "ghost", 30, icon="note")
 
         def open_songs() -> None:
@@ -48089,13 +48089,499 @@ class ScreenPage(Combined):
     parts = ((CrosshairPage, "Crosshair"), (DisplayPage, "Display"), (TimersPage, "Timer"))
 
 
+# ============================================================ 9.1: the Stats tab
+STAT_SERIES = ("#338CED", "#E76624", "#00A888", "#D28E05", "#E24D8B", "#0AAC23", "#9887EF", "#EB6263")   # fixed order
+REWARD_SOURCES = (("Online time", "time"), ("Daily reward", "daily"), ("Free spin", "spin"), ("Scratch card", "scratch"),
+                  ("Quests", "quest"), ("Mini games", "games"))
+CASINO_STAT_NAMES = {"slots": "Slots", "plinko": "Plinko", "dice": "Dice", "mines": "Bombs", "rocket": "Rocket",
+                     "blackjack": "Blackjack", "roulette": "Roulette", "hilo": "Hi-Lo", "tower": "Tower"}
+MINI_STAT_NAMES = {"mini": "Beat Tap", "park": "Parking", "memory": "Memory", "blocks": "Block Blast",
+                   "sweeper": "Minesweeper", "golf_solo": "Mini Golf", "golf_party": "Mini Golf party", "wave": "Wave Rush",
+                   "timing": "Timing", "cups": "Cups", "c4": "Connect 4", "colour": "Colour Pick", "sfx": "SFX Match"}
+
+
+def short_num(v: float) -> str:
+    """1 234 -> 1.2k, 2 500 000 -> 2.5M (axis labels)."""
+    a, sign = abs(v), "−" if v < 0 else ""
+    for div, suf in ((1e9, "B"), (1e6, "M"), (1e3, "k")):
+        if a >= div:
+            x = a / div
+            return f"{sign}{x:.1f}".rstrip("0").rstrip(".") + suf if x < 100 else f"{sign}{x:.0f}{suf}"
+    return f"{sign}{a:.0f}"
+
+
+def day_label(iso: str) -> str:
+    try:
+        d = datetime.date.fromisoformat(str(iso)[:10])
+    except ValueError:
+        return str(iso)
+    return f"{d.day} {tr(d.strftime('%b'))}"
+
+
+class StatChart(QWidget):
+    """9.1: one chart on a card: a title, a line ("line"), bars above and below zero ("signed"), plain bars ("bars") or
+    stacked bars ("stack"). Hover shows the day and its values; the marks grow in when it opens."""
+
+    def __init__(self, title: str, kind: str, labels: list, series: list, height: int = 190, fmt=coins_text,
+                 note: str = "") -> None:
+        super().__init__()
+        self.title, self.kind, self.labels, self.series, self.fmt, self.note = title, kind, labels, series, fmt, note
+        self.setFixedHeight(S(height))
+        self.setMouseTracking(True)
+        self.hover = -1
+        self._in = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self._t = QTimer(self)
+        self._t.setSingleShot(True)
+        self._t.timeout.connect(lambda: self._in.to(1.0, 700))
+        self._t.start(60)
+
+    def _plot(self) -> QRectF:
+        r = QRectF(self.rect()).adjusted(S(14), S(40), -S(12), -S(26))
+        return r.adjusted(S(38), 0, 0, 0)
+
+    def _range(self):
+        n = len(self.labels)
+        if self.kind == "stack":
+            tops = [sum(max(0.0, float(s[1][i] or 0)) for s in self.series) for i in range(n)]
+            return 0.0, max(tops + [1.0])
+        vals = [float(v or 0) for s in self.series for v in s[1]] or [0.0]
+        lo, hi = min(vals), max(vals)
+        if self.kind == "line":
+            pad = (hi - lo) * 0.12 or max(1.0, abs(hi) * 0.1)
+            return max(0.0, lo - pad) if lo >= 0 else lo - pad, hi + pad
+        return min(0.0, lo), max(0.0, hi, 1.0)
+
+    def mouseMoveEvent(self, e) -> None:
+        pr, n = self._plot(), len(self.labels)
+        x = e.position().x()
+        i = int((x - pr.left()) / max(1.0, pr.width()) * n) if pr.left() - S(6) <= x <= pr.right() + S(6) and n else -1
+        i = max(-1, min(n - 1, i))
+        if i != self.hover:
+            self.hover = i
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        paint_surface(p, r, S(DS.R_LG), 0.04)
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12.5, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left() + S(14), r.top() + S(10), r.width() / 2, S(20)), int(Qt.AlignmentFlag.AlignVCenter), self.title)
+        if len(self.series) > 1:                                 # the legend, top right (identity never by colour alone)
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            x = r.right() - S(12)
+            for name, _v, col in reversed(self.series):
+                w = p.fontMetrics().horizontalAdvance(name)
+                x -= w
+                p.setPen(QColor(TEXT_DIM))
+                p.drawText(QRectF(x, r.top() + S(10), w + S(2), S(20)), int(Qt.AlignmentFlag.AlignVCenter), name)
+                x -= S(12)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(col))
+                p.drawRoundedRect(QRectF(x, r.top() + S(16), S(8), S(8)), S(2), S(2))
+                x -= S(12)
+        elif self.note:
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.center().x(), r.top() + S(10), r.width() / 2 - S(12), S(20)),
+                       int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), self.note)
+        n = len(self.labels)
+        pr = self._plot()
+        if not n or not self.series:
+            return
+        lo, hi = self._range()
+        raw = max(1e-9, (hi - lo) / 3)                          # round steps: 1, 2, 2.5 or 5 times a power of ten
+        mag = 10 ** math.floor(math.log10(raw))
+        step_v = next(m * mag for m in (1, 2, 2.5, 5, 10) if m * mag >= raw)
+        lo, hi = math.floor(lo / step_v) * step_v, math.ceil(hi / step_v) * step_v
+        span = max(1e-9, hi - lo)
+
+        def y_of(v: float) -> float:
+            return pr.bottom() - (v - lo) / span * pr.height()
+        p.setFont(font(8.5, QFont.Weight.DemiBold))
+        for k in range(int(round(span / step_v)) + 1):          # a recessive grid on round values
+            v = lo + step_v * k
+            y = y_of(v)
+            p.setPen(QPen(alpha("#FFFFFF", 0.05), 1))
+            p.drawLine(QPointF(pr.left(), y), QPointF(pr.right(), y))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(r.left() + S(4), y - S(8), S(44), S(16)), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       short_num(v))
+        if lo < 0 < hi:
+            p.setPen(QPen(alpha("#FFFFFF", 0.22), 1))
+            p.drawLine(QPointF(pr.left(), y_of(0)), QPointF(pr.right(), y_of(0)))
+        step = pr.width() / n
+        for k in sorted({0, n // 2, n - 1}):                     # three dates under the axis
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(pr.left() + step * k + step / 2 - S(40), pr.bottom() + S(6), S(80), S(14)),
+                       int(Qt.AlignmentFlag.AlignCenter), day_label(self.labels[k]))
+        grow = self._in.level
+        if self.hover >= 0:
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.05))
+            p.drawRect(QRectF(pr.left() + step * self.hover, pr.top(), step, pr.height()))
+        if self.kind == "line":
+            for name, vals, col in self.series:
+                path, area = QPainterPath(), QPainterPath()
+                pts = [QPointF(pr.left() + step * i + step / 2, y_of(lo + (float(v or 0) - lo) * grow)) for i, v in enumerate(vals)]
+                for i, pt in enumerate(pts):
+                    (path.lineTo if i else path.moveTo)(pt)
+                area.addPath(path)
+                area.lineTo(pts[-1].x(), pr.bottom())
+                area.lineTo(pts[0].x(), pr.bottom())
+                area.closeSubpath()
+                g = QLinearGradient(pr.topLeft(), pr.bottomLeft())
+                g.setColorAt(0, alpha(col, 0.28))
+                g.setColorAt(1, alpha(col, 0.0))
+                p.fillPath(area, g)
+                p.setPen(QPen(QColor(col), S(2), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawPath(path)
+                if self.hover >= 0:
+                    p.setPen(QPen(QColor("#0B0F10"), S(2)))
+                    p.setBrush(QColor(col))
+                    p.drawEllipse(pts[self.hover], S(4.5), S(4.5))
+        else:
+            bw = max(S(2), min(S(22), step - S(2)))           # a 2 px gap between bars
+            for i in range(n):
+                x = pr.left() + step * i + (step - bw) / 2
+                if self.kind == "stack":
+                    base = 0.0
+                    for _name, vals, col in self.series:
+                        v = max(0.0, float(vals[i] or 0)) * grow
+                        if v <= 0:
+                            continue
+                        top, bot = y_of(base + v), y_of(base)
+                        p.setPen(Qt.PenStyle.NoPen)
+                        p.setBrush(QColor(col))
+                        p.drawRect(QRectF(x, top, bw, max(0.0, bot - top - S(1))))
+                        base += v
+                    continue
+                for _name, vals, col in self.series:
+                    v = float(vals[i] or 0) * grow
+                    c = QColor(col) if self.kind == "bars" else QColor(WIN if v >= 0 else LOSE)
+                    if self.hover >= 0 and i != self.hover:
+                        c = alpha(c, 0.55)
+                    y0, y1 = y_of(0), y_of(v)
+                    rect = QRectF(x, min(y0, y1), bw, max(S(1), abs(y1 - y0)))
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(c)
+                    p.drawRoundedRect(rect, min(S(3), bw / 2), min(S(3), bw / 2))
+        if self.hover >= 0:                                     # the tooltip: the day, then each value
+            lines = [day_label(self.labels[self.hover])]
+            for name, vals, _col in self.series:
+                v = float(vals[self.hover] or 0)
+                lines.append((f"{name}  " if len(self.series) > 1 or self.kind == "stack" else "")
+                             + ("+" if self.kind == "signed" and v > 0 else "") + self.fmt(int(v)))
+            if self.kind == "stack" and len(self.series) > 1:
+                lines.append(tr("Total") + "  " + self.fmt(int(sum(float(s[1][self.hover] or 0) for s in self.series))))
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            fm = p.fontMetrics()
+            tw = max(fm.horizontalAdvance(t) for t in lines) + S(20)
+            th = len(lines) * S(16) + S(10)
+            cx = pr.left() + step * self.hover + step / 2
+            tx = cx + S(10) if cx + S(10) + tw < r.right() else cx - S(10) - tw
+            box = QRectF(tx, pr.top(), tw, th)
+            p.setPen(QPen(alpha("#FFFFFF", 0.12), 1))
+            p.setBrush(QColor(14, 18, 22, 240))
+            p.drawRoundedRect(box, S(8), S(8))
+            for k, t in enumerate(lines):
+                p.setPen(QColor(TEXT_DIM if k == 0 else TEXT))
+                p.drawText(QRectF(box.left() + S(10), box.top() + S(5) + k * S(16), tw, S(16)), int(Qt.AlignmentFlag.AlignVCenter), t)
+
+
+class StatTiles(QWidget):
+    """9.1: three or four big numbers in a row, each with what it is."""
+
+    def __init__(self, cells: list) -> None:
+        super().__init__()
+        self.cells = cells                                     # (value text, label, colour or None)
+        self.setFixedHeight(S(74))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        n = max(1, len(self.cells))
+        gap = S(8)
+        w = (self.width() - gap * (n - 1)) / n
+        for k, (val, label, col) in enumerate(self.cells):
+            r = QRectF(k * (w + gap), 0, w, self.height()).adjusted(0.5, 0.5, -0.5, -0.5)
+            paint_surface(p, r, S(DS.R_MD), 0.04)
+            p.setPen(QColor(col or TEXT))
+            p.setFont(font(17, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(r.left() + S(12), r.top() + S(10), r.width() - S(20), S(30)), int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(str(val), Qt.TextElideMode.ElideRight, int(r.width() - S(20))))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left() + S(12), r.top() + S(42), r.width() - S(20), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(label, Qt.TextElideMode.ElideRight, int(r.width() - S(20))))
+
+
+class StatBars(QWidget):
+    """9.1: one row per game (or source): its name, a bar for its value and the number. Click a row to look at it."""
+    picked = pyqtSignal(str)
+
+    def __init__(self, title: str, rows: list, selected: str = "", signed: bool = False, pick: bool = True) -> None:
+        super().__init__()
+        self.pick = pick
+        self.title, self.rows, self.selected, self.signed = title, rows, selected, signed   # (key, name, value, sub, colour)
+        self.row_h = S(34)
+        self.setFixedHeight(S(40) + self.row_h * max(1, len(rows)) + S(8))
+        self.setMouseTracking(True)
+        self.hover = -1
+
+    def _row_at(self, y: float) -> int:
+        if not self.pick:
+            return -1
+        i = int((y - S(40)) // self.row_h)
+        return i if 0 <= i < len(self.rows) and y >= S(40) else -1
+
+    def mouseMoveEvent(self, e) -> None:
+        i = self._row_at(e.position().y())
+        if i != self.hover:
+            self.hover = i
+            self.setCursor(Qt.CursorShape.PointingHandCursor if i >= 0 else Qt.CursorShape.ArrowCursor)
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        i = self._row_at(e.position().y())
+        if i >= 0 and e.button() == Qt.MouseButton.LeftButton:
+            sfx.play("pick")
+            self.picked.emit(self.rows[i][0])
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        paint_surface(p, r, S(DS.R_LG), 0.04)
+        p.setPen(QColor(TEXT))
+        p.setFont(font(12.5, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left() + S(14), r.top() + S(10), r.width(), S(20)), int(Qt.AlignmentFlag.AlignVCenter), self.title)
+        if not self.rows:
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left() + S(14), r.top() + S(40), r.width(), self.row_h), int(Qt.AlignmentFlag.AlignVCenter),
+                       tr("Nothing played in this period yet"))
+            return
+        top = max([abs(float(row[2] or 0)) for row in self.rows] + [1.0])
+        name_w, val_w = S(128), S(96)
+        bar_l = r.left() + S(14) + name_w
+        bar_w = r.width() - S(28) - name_w - val_w
+        for i, (key, name, val, sub, col) in enumerate(self.rows):
+            y = r.top() + S(40) + i * self.row_h
+            row = QRectF(r.left() + S(6), y, r.width() - S(12), self.row_h - S(2))
+            if key == self.selected or i == self.hover:
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#FFFFFF", 0.07 if key == self.selected else 0.04))
+                p.drawRoundedRect(row, S(8), S(8))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(10.5, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left() + S(14), y, name_w - S(8), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight, int(name_w - S(8))))
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(8.5, QFont.Weight.DemiBold))
+            p.drawText(QRectF(r.left() + S(14), y + S(16), name_w - S(8), S(14)), int(Qt.AlignmentFlag.AlignVCenter), sub)
+            v = float(val or 0)
+            c = QColor(col) if not self.signed else QColor(WIN if v >= 0 else LOSE)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.05))
+            p.drawRoundedRect(QRectF(bar_l, y + S(11), bar_w, S(10)), S(3), S(3))
+            p.setBrush(c)
+            p.drawRoundedRect(QRectF(bar_l, y + S(11), max(S(3), bar_w * abs(v) / top), S(10)), S(3), S(3))
+            p.setPen(QColor(TEXT))
+            p.setFont(font(10.5, QFont.Weight.ExtraBold))
+            p.drawText(QRectF(r.right() - S(14) - val_w, y, val_w, S(32)), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       ("+" if self.signed and v > 0 else "") + coins_text(int(v)))
+
+
+class StatsPage(Page):
+    """9.1: every graph in one place: your wealth, the casino, the mini games and the rewards, over 7, 30 or 90 days.
+    Your own numbers, from the server (nobody else can see them)."""
+    key = "stats"
+    PERIODS = (7, 30, 90)
+    PARTS = ("Overview", "Casino", "Mini games", "Rewards")
+
+    def __init__(self, ctx) -> None:
+        super().__init__(ctx)
+        lay = vbox(self, 10)
+        self.lay = lay
+        lay.addWidget(titled(tr("Stats"), tr("Your own numbers, worked out on the server. Nobody else sees them."), 24))
+        part = int(getattr(ctx, "stats_part", 0) or 0)
+        days = int(getattr(ctx, "stats_days", 30) or 30)
+        parts = Segmented([tr(x) for x in self.PARTS], part)
+        parts.changed.connect(lambda i: (setattr(ctx, "stats_part", i), ctx.reload_page("stats")))
+        lay.addWidget(parts)
+        period = Segmented([tr("{n} days", n=n) for n in self.PERIODS], self.PERIODS.index(days) if days in self.PERIODS else 1)
+        period.changed.connect(lambda i: (setattr(ctx, "stats_days", self.PERIODS[i]), self.fetch(True)))
+        lay.addWidget(period)
+        if not ctx.online.logged_in():
+            lay.addWidget(Label(tr("Log in to see your stats"), 12, TEXT_DIM))
+            return
+        data = (getattr(ctx, "stats_data", None) or {}).get(days)
+        if data is None:
+            lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+            if not getattr(ctx, "stats_asking", False):
+                ctx.stats_asking = True
+                QTimer.singleShot(0, lambda: self.fetch(True))
+            return
+        if data.get("error"):
+            lay.addWidget(Label(tr(data["error"]), 12, TEXT_DIM, wrap_w=self.W))
+            return
+        [self._overview, self._casino, self._minis, self._rewards][max(0, min(3, part))](lay, data)
+        lay.addStretch(1)
+
+    def fetch(self, force: bool = False) -> None:
+        ctx = self.ctx
+        days = int(getattr(ctx, "stats_days", 30) or 30)
+        cache = getattr(ctx, "stats_data", None) or {}
+        if days in cache and not force:
+            return ctx.reload_page("stats")
+
+        def got(ok: bool, data) -> None:
+            ctx.stats_asking = False
+            if ok and isinstance(data, dict):
+                c = dict(getattr(ctx, "stats_data", None) or {})
+                c[days] = data
+                ctx.stats_data = c
+            elif not ok:                                        # shown on the page (no asking again in a loop)
+                c = dict(getattr(ctx, "stats_data", None) or {})
+                c[days] = {"error": str(data)}
+                ctx.stats_data = c
+            if ctx.window.showing("stats"):
+                ctx.reload_page("stats")
+        ctx.online.ask("rb_my_stats", {"days": days}, got)
+
+    def on_show(self) -> None:
+        if time.monotonic() - float(getattr(self.ctx, "stats_at", 0) or 0) > 60:      # fresh numbers, at most once a minute
+            self.ctx.stats_at = time.monotonic()
+            self.ctx.stats_data = {}
+            QTimer.singleShot(0, lambda: self.fetch(True))
+
+    # -- the four parts
+    @staticmethod
+    def _days(data) -> tuple:
+        s = list(data.get("series") or [])
+        return s, [x.get("d") for x in s]
+
+    def _overview(self, lay, data) -> None:
+        s, labels = self._days(data)
+        now = data.get("now") or {}
+        net = sum(int(x.get("net") or 0) for x in s)
+        tier = (now.get("tier") or {}).get("name") or ""
+        lay.addWidget(StatTiles([(coins_text(int(now.get("coins") or 0)), tr("Coins now"), GOLD_TEXT),
+                                 (("+" if net > 0 else "") + coins_text(net), tr("Change in {n} days", n=len(s)),
+                                  WIN if net > 0 else LOSE if net < 0 else None),
+                                 (tr(tier), tr("Tier"), None), (str(int(now.get("level") or 0)), tr("Level"), None)]))
+        lay.addWidget(StatChart(tr("Your coins"), "line", labels, [(tr("Coins"), [x.get("balance") for x in s], STAT_SERIES[0])],
+                                220, note=tr("at the end of each day")))
+        lay.addWidget(StatChart(tr("Coins in and out each day"), "signed", labels, [(tr("Change"), [x.get("net") for x in s], WIN)]))
+        lay.addWidget(StatChart(tr("XP each day"), "bars", labels, [(tr("XP"), [x.get("xp") for x in s], STAT_SERIES[6])],
+                                150, fmt=lambda v: f"{coins_text(v)} XP"))
+
+    def _pick_rows(self, table: dict, names: dict, signed: bool) -> list:
+        rows = []
+        for key, g in table.items():
+            if signed:
+                val = int(g.get("paid") or 0) - int(g.get("bet") or 0)
+            else:
+                val = int(g.get("paid") or 0)
+            rows.append((key, tr(names.get(key, key)), val, tr("{n} rounds", n=int(g.get("rounds") or 0)), STAT_SERIES[0]))
+        return sorted(rows, key=lambda x: -abs(x[2]) if signed else -x[2])
+
+    def _casino(self, lay, data) -> None:
+        s, labels = self._days(data)
+        games = data.get("games") or {}
+        bet, won = sum(int(x.get("bet") or 0) for x in s), sum(int(x.get("won") or 0) for x in s)
+        rounds = sum(int(g.get("rounds") or 0) for g in games.values())
+        lay.addWidget(StatTiles([(coins_text(rounds), tr("Rounds"), None), (coins_text(bet), tr("Bet"), None),
+                                 (f"{(won * 100 / bet):.0f}%" if bet else "–", tr("Came back"), None),
+                                 (("+" if won > bet else "") + coins_text(won - bet), tr("Result"),
+                                  WIN if won > bet else LOSE if won < bet else None)]))
+        lay.addWidget(StatChart(tr("Casino result each day"), "signed", labels,
+                                [(tr("Result"), [int(x.get("won") or 0) - int(x.get("bet") or 0) for x in s], WIN)],
+                                note=tr("won minus bet, Horse Racing included")))
+        self._by_game(lay, games, CASINO_STAT_NAMES, True)
+
+    def _minis(self, lay, data) -> None:
+        minis = data.get("minis") or {}
+        rounds = sum(int(g.get("rounds") or 0) for g in minis.values())
+        paid = sum(int(g.get("paid") or 0) for g in minis.values())
+        best = max([int(g.get("best") or 0) for g in minis.values()] + [0])
+        lay.addWidget(StatTiles([(coins_text(rounds), tr("Rounds"), None), (coins_text(paid), tr("Coins earned"), GOLD_TEXT),
+                                 (coins_text(best), tr("Best round"), None)]))
+        s, labels = self._days(data)
+        lay.addWidget(StatChart(tr("Mini game coins each day"), "bars", labels,
+                                [(tr("Coins"), [(x.get("r") or [0] * 6)[5] for x in s], STAT_SERIES[5])]))
+        self._by_game(lay, minis, MINI_STAT_NAMES, False)
+
+    def _by_game(self, lay, table: dict, names: dict, signed: bool) -> None:
+        ctx = self.ctx
+        key = "stats_game_c" if signed else "stats_game_m"
+        rows = self._pick_rows(table, names, signed)
+        sel = getattr(ctx, key, None)
+        if sel not in table:
+            sel = rows[0][0] if rows else ""
+        bars = StatBars(tr("By game") + "  ·  " + (tr("result") if signed else tr("coins earned")), rows, sel, signed)
+        bars.picked.connect(lambda k: (setattr(ctx, key, k), ctx.reload_page("stats")))
+        lay.addWidget(bars)
+        g = table.get(sel)
+        if not g:
+            return
+        last = [int(v or 0) for v in (g.get("last") or [])]
+        n = int(g.get("rounds") or 0)
+        cells = [(coins_text(n), tr("Rounds"), None)]
+        if signed:
+            cells += [(f"{int(g.get('wins') or 0) * 100 / max(1, n):.0f}%", tr("Rounds won"), None),
+                      ("+" + coins_text(max(0, int(g.get("best") or 0))), tr("Biggest win"), GOLD_TEXT)]
+        else:
+            cells += [(coins_text(int(g.get("paid") or 0)), tr("Coins earned"), GOLD_TEXT),
+                      (coins_text(int(g.get("best") or 0)), tr("Best round"), None)]
+        lay.addWidget(heading(tr(names.get(sel, sel))))
+        lay.addWidget(StatTiles(cells))
+        lay.addWidget(StatChart(tr("Last {n} rounds", n=len(last)), "signed" if signed else "bars",
+                                [""] * len(last), [(tr("Round"), last, STAT_SERIES[5])], 170,
+                                note=tr("oldest on the left")))
+
+    def _rewards(self, lay, data) -> None:
+        s, labels = self._days(data)
+        now = data.get("now") or {}
+        per = [[int(v or 0) for v in (x.get("r") or [0] * 6)] for x in s]
+        totals = [sum(day[k] for day in per) for k in range(6)]
+        total = sum(totals)
+        best = max([sum(day) for day in per] + [0])
+        keys = sum(int(x.get("keys") or 0) for x in s)
+        mult = float((now.get("tier") or {}).get("mult") or 1)
+        lay.addWidget(StatTiles([(coins_text(total), tr("Free coins in {n} days", n=len(s)), GOLD_TEXT),
+                                 (coins_text(best), tr("Best day"), None), (str(keys), tr("Keys earned"), None),
+                                 (f"×{mult:g}", tr("Your tier boost"), None)]))
+        series = [(tr(name), [day[k] for day in per], STAT_SERIES[k]) for k, (name, _key) in enumerate(REWARD_SOURCES)]
+        lay.addWidget(StatChart(tr("Free coins each day"), "stack", labels, series, 240))
+        rows = [(key, tr(name), totals[k], f"{totals[k] * 100 / max(1, total):.0f}%", STAT_SERIES[k])
+                for k, (name, key) in enumerate(REWARD_SOURCES)]
+        lay.addWidget(StatBars(tr("Where they came from"), rows, pick=False))
+        lay.addWidget(StatChart(tr("Keys earned each day"), "bars", labels, [(tr("Keys"), [x.get("keys") for x in s], STAT_SERIES[3])],
+                                150, fmt=lambda v: tr("{n} keys", n=v)))
+
+
 class PcPage(Combined):
     key = "perf"
     parts = ((PerfPage, "Stats"), (LauncherPage, "Apps"), (ToolsPage, "Tools"))
 
 
 PAGES = {"home": HomePage, "lyrics": LyricsPage, "crosshair": ScreenPage, "rl": RocketPage, "perf": PcPage,
-         "hub": HubPage, "rewards": RewardsPage, "games": GamesPage, "friends": FriendsPage, "themes": ShopPage, "new": NewsPage, "settings": SettingsPage,
+         "hub": HubPage, "rewards": RewardsPage, "stats": StatsPage, "games": GamesPage, "friends": FriendsPage, "themes": ShopPage, "new": NewsPage, "settings": SettingsPage,
          "giveaway": GiveawayPage, "admin": AdminPage}
 # Fixed order: music first, then what you use in a game, then the PC, then fun and looks, settings last.
 # 3.2: Games, Shop and Social (and the Giveaway) live in the online menu: one ONLINE button opens it.
@@ -48104,7 +48590,7 @@ TABS = [("home", "home", "Home"), ("lyrics", "lyrics", "Lyrics"), ("crosshair", 
         ("online", "globe", tr("Online"))]   # 4.0: ONLINE is the globe alone, far right. 4.5: Admin only in the online menu
 ONLINE_PAGES = ("games", "themes", "friends", "giveaway")
 LIVE_TABS: set = set()      # Giveaway (while one is live) and Admin (the admin account only)
-LOCK_PAGES = {"hub", "rewards", "games", "themes", "friends", "giveaway"}     # covered while the admin has locked the app
+LOCK_PAGES = {"hub", "rewards", "stats", "games", "themes", "friends", "giveaway"}     # covered while the admin has locked the app
 
 
 TEMP_TABS: set = set()      # tabs shown only until the user leaves them
@@ -55257,7 +55743,8 @@ class GoldButton(QWidget):
 
 # 9.0: the online menu is one focused page at a time, picked from a rail on the left. Each rail entry opens a page
 # (and, for Shop / Collection, which part of it). Coins, keys and the level live in the top bar on every page.
-NAV = [("hub", "home", "Home"), ("games", "dice", "Play"), ("rewards", "gift", "Rewards"), ("shop", "gem", "Shop"),
+NAV = [("hub", "home", "Home"), ("games", "dice", "Play"), ("rewards", "gift", "Rewards"), ("stats", "chart", "Stats"),
+       ("shop", "gem", "Shop"),
        ("collection", "folder", "Collection"), ("friends", "users", "Social"), ("settings", "cog", "Settings")]
 NAV_PAGE = {"shop": "themes", "collection": "themes"}
 SHOP_GET = (1, 7, 3)            # Shop, Deals, Cases (the player market is gone in 9.0)
@@ -55894,7 +56381,7 @@ def _make_class():
             for w in (self.toast_w, self.confirm_w, self.busy_w):
                 w.raise_()
             want = ctx.cfg["online_tab"]
-            self.current = want if want in ("hub", "games", "rewards", "themes", "friends", "settings") else "hub"
+            self.current = want if want in ("hub", "games", "rewards", "stats", "themes", "friends", "settings") else "hub"
             self.drop = Tween(self, 0.0, self._on_drop, QEasingCurve.Type.OutBack)
             self.drop.finished.connect(self._drop_done)
             self.suck = Tween(self, 0.0, self.update, QEasingCurve.Type.InCubic)
@@ -55959,7 +56446,7 @@ def _make_class():
                 return
             old = self.current
             self.current = key
-            if key in ONLINE_KEYS or key in ("hub", "rewards"):
+            if key in ONLINE_KEYS or key in ("hub", "rewards", "stats"):
                 self.ctx.cfg["online_tab"] = key
             sfx.play("pick")
             if old in self.pages and old != key:
@@ -56153,7 +56640,7 @@ def _make_class():
         def goto(self, key: str) -> None:
             if claim_blocked(self.ctx):
                 return
-            if key in ("hub", "games", "rewards", "themes", "friends", "giveaway", "settings", "admin"):
+            if key in ("hub", "games", "rewards", "stats", "themes", "friends", "giveaway", "settings", "admin"):
                 if key not in self.tab_keys():
                     self.set_pane(0, key)
                 if not self.expanded:

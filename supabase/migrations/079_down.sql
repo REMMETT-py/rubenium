@@ -207,6 +207,7 @@ begin
     end if;
     raise exception 'rb_bad_choice';
 end $function$;
+drop function if exists public.rb_my_stats cascade;
 CREATE OR REPLACE FUNCTION public.rb_quest_rows(who uuid)
  RETURNS TABLE(quest text, kind text, goal integer, reward integer, progress integer, period timestamp with time zone, left_s integer)
  LANGUAGE sql
