@@ -1,4 +1,5 @@
 -- 9.0: wealth tiers, scaled rewards, the Key Forge, the market closed, no automatic cheat flags, the new rigs.
+-- needs_live_snapshot (uses tables made on the live server only: game locks, flags, Cups)
 begin;
 do $$
 declare a uuid := t.player('Alice', 30000, 2); b uuid := t.player('Bob', 0, 0); boss uuid := t.player('Boss', 0, 0);

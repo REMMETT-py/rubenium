@@ -350,8 +350,16 @@ language plpgsql security definer set search_path to '' as $$
 begin
     return;                                   -- 9.0: nothing is flagged or locked automatically any more
 end $$;
-delete from public.rb_game_locks where reason is distinct from 'admin';
-update public.rb_flags set reviewed = true where not reviewed;
+revoke all on function public.rb_flag(uuid, text, text, integer, jsonb, integer) from public, anon, authenticated;
+do $$
+begin                                         -- these tables exist on the live server only (not in a repo replay)
+    if to_regclass('public.rb_game_locks') is not null then
+        delete from public.rb_game_locks where reason is distinct from 'admin';
+    end if;
+    if to_regclass('public.rb_flags') is not null then
+        update public.rb_flags set reviewed = true where not reviewed;
+    end if;
+end $$;
 
 -- ---------------------------------------------------------------- 13. more rigs: Plinko, Roulette, Rocket
 create or replace function public.rb_admin_rig(name text, kind text, key text, data jsonb) returns boolean

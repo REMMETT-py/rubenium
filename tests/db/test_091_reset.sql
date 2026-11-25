@@ -1,4 +1,5 @@
 -- 9.0 fresh start: coins and keys to the start, cosmetics and levels kept, things in play closed, items returned,
+-- needs_live_snapshot (Connect 4 and other tables exist on the live server only)
 -- a backup kept, and only once.
 begin;
 do $$
