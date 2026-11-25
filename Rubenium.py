@@ -1488,8 +1488,8 @@ from PyQt6.QtGui import QColor, QFont
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "7.0"         # the version people see
-BUILD = "2026.11.23.1"       # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "8.0"         # the version people see
+BUILD = "2026.11.25.18"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
