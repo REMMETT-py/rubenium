@@ -32518,6 +32518,12 @@ class Game(QWidget):
         """End of the round: pay what was won (0 = lost) and show it. 4.0: the balance shown is then set to the
         server's own number, so quick rounds one after another can never drift from the real balance."""
         payout = int(payout)
+        try:                                            # 9.1: this session's rounds, for the panel beside the game
+            name = self.page.NAMES[self.page.games.index(self)]
+            log_ = getattr(self.ctx, "round_log", None) or []
+            self.ctx.round_log = (log_ + [(name, int(self.stake), payout)])[-60:]
+        except (ValueError, AttributeError, IndexError):
+            pass
         srv = getattr(self, "_srv_coins", None)
         self.econ.hold_round(False)
         if srv is not None and not self.econ.rounds_held():
@@ -34898,7 +34904,7 @@ class MiniTile(QWidget):
         p.setFont(font(12.5, QFont.Weight.ExtraBold))
         p.drawText(QRectF(x, r.top() + S(14), room, S(22)), int(Qt.AlignmentFlag.AlignVCenter),
                    p.fontMetrics().elidedText(tr(self.name), Qt.TextElideMode.ElideRight, int(room)))
-        p.setPen(QColor(GOLD_TEXT) if self.note == "Bet & win" else QColor(TEXT_DIM))
+        p.setPen(QColor(GOLD_TEXT) if self.note == "Pays by skill" else QColor(TEXT_DIM))
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.drawText(QRectF(x, r.top() + S(36), room, S(18)), int(Qt.AlignmentFlag.AlignVCenter),
                    p.fontMetrics().elidedText(tr(self.note), Qt.TextElideMode.ElideRight, int(room)))
@@ -35365,7 +35371,7 @@ class GamesPage(Page):
                                                      "games pay coins: each one pays fully for a few rounds, then less "
                                                      "until its timer resets.")))
         ctx = self.ctx
-        games = [(n, "Bet & win", (lambda i=self.NAMES.index(n): self.enter(i))) for n in SKILL_GAMES]
+        games = [(n, "Pays by skill", (lambda i=self.NAMES.index(n): self.enter(i))) for n in SKILL_GAMES]
         games += [("Beat Tap", "Free coins", lambda: open_games_part(ctx, None, "mini_open", back="games")),
                   ("Parking", "Free coins", lambda: open_games_part(ctx, None, "park_open", back="games")),
                   ("Memory", "Free coins", lambda: open_games_part(ctx, "memory", back="games")),
@@ -35874,7 +35880,7 @@ class GamesPage(Page):
             cur = self.games.index(self.game)
             return self.seg.set_index(self.pick_map.index(cur) if cur in self.pick_map else 0)
         spin = i >= self.PICKER
-        self.seg.setVisible(not spin)                             # the free spin shows alone, without the bar
+        self.seg.setVisible(not spin and not getattr(self.ctx, "wide_games", False))   # 9.1: the side list when wide
         if not spin:
             self.ctx.cfg["game"] = i
             self.ctx.games_sub = "casino" if self.NAMES[i] in GAMBLE_GAMES else None
@@ -55544,6 +55550,192 @@ class LeaveButton(QWidget):
         p.restore()
 
 
+WIDE_SIDE = 250                     # 9.1: each side the online menu grows by while you play a game
+
+
+class GameSide(QWidget):
+    """9.1: beside a game, while the online menu is wide. "info": the game's picture, how it pays and how this session
+    went. "play": the other games of the same group, one click away. Painted only (no layouts), so it costs nothing
+    while it is hidden."""
+
+    def __init__(self, win, kind: str, parent) -> None:
+        super().__init__(parent)
+        self.win, self.kind = win, kind
+        self.level = 0.0
+        self._rows: list = []
+        self._hover = -1
+        self.setMouseTracking(True)
+        self.hide()
+
+    def page(self):
+        entry = getattr(self.win, "pages", {}).get("games")
+        page = entry[1] if entry else None
+        return page if page is not None and getattr(page, "game", None) is not None else None
+
+    def set_level(self, v: float) -> None:
+        self.level = v
+        self.setVisible(v > 0.01)
+        self.update()
+
+    def mouseMoveEvent(self, e) -> None:
+        i = next((k for k, (r, _i) in enumerate(self._rows) if r.contains(e.position())), -1)
+        if i != self._hover:
+            self._hover = i
+            self.setCursor(Qt.CursorShape.PointingHandCursor if i >= 0 else Qt.CursorShape.ArrowCursor)
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self._hover = -1
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:
+        page = self.page()
+        if page is None or e.button() != Qt.MouseButton.LeftButton:
+            return
+        for r, idx in self._rows:
+            if r.contains(e.position()):
+                if page.game is not None and page.game.busy:
+                    return page.ctx.toast(tr("Finish the round first"), "warn")
+                if idx != page.games.index(page.game):
+                    sfx.play("pick")
+                    if idx in page.pick_map:
+                        page.seg.set_index(page.pick_map.index(idx))
+                    page._choose(idx)
+                    self.parent().update()
+                    for s in (self.parent().side_l, self.parent().side_r):
+                        s.update()
+                return
+
+    def paintEvent(self, _e) -> None:
+        page = self.page()
+        if page is None:
+            return
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        k = self.level
+        p.setOpacity(k)
+        p.translate((1 - k) * S(28) * (-1 if self.kind == "info" else 1), 0)
+        r = QRectF(self.rect()).adjusted(S(2), S(2), -S(2), -S(2))
+        paint_surface(p, r, S(DS.R_LG), 0.035)
+        idx = page.games.index(page.game)
+        name = page.NAMES[idx]
+        if self.kind == "info":
+            self._paint_info(p, r.adjusted(S(16), S(16), -S(16), -S(16)), page, name)
+        else:
+            self._paint_list(p, r.adjusted(S(12), S(14), -S(12), -S(12)), page, idx)
+
+    def _paint_info(self, p: QPainter, r: QRectF, page, name: str) -> None:
+        skill = name in SKILL_GAMES
+        c = QPointF(r.center().x(), r.top() + S(46))
+        cols = MINI_COLOURS.get(name) if skill else GAME_COLOURS.get(name, ("#8899AA", "#223344"))
+        glow = QRadialGradient(c, S(70))
+        glow.setColorAt(0, alpha(cols[0], 0.32))
+        glow.setColorAt(1, alpha(cols[0], 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, S(70), S(70))
+        if skill:
+            paint_mini_badge(p, name, c, S(64))
+        else:
+            p.save()
+            p.translate(c)
+            p.scale(1.6, 1.6)
+            paint_game_art(p, name, QPointF(0, 0))
+            p.restore()
+        y = c.y() + S(50)
+        p.setPen(QColor(TEXT))
+        p.setFont(font(17, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left(), y, r.width(), S(26)), int(Qt.AlignmentFlag.AlignCenter), tr(name))
+        y += S(26)
+        p.setPen(QColor(GOLD_TEXT if not skill else MINT))
+        p.setFont(font(9.5, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left(), y, r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("MINI GAME · FREE") if skill else tr("CASINO · COINS ONLY"))
+        y += S(28)
+        key = CASINO_KEYS.get(name)
+        lines = list(HELP.get(key, ("", [], [], []))[3])[:4] if key in HELP else []
+        if lines:
+            p.setPen(QColor(TEXT_DIM))
+            p.setFont(font(9, QFont.Weight.Black))
+            p.drawText(QRectF(r.left(), y, r.width(), S(14)), int(Qt.AlignmentFlag.AlignVCenter), tr("HOW IT PAYS"))
+            y += S(18)
+            p.setFont(font(10, QFont.Weight.DemiBold))
+            p.setPen(QColor(TEXT))
+            fm = p.fontMetrics()
+            for line in lines:
+                text = tr(line)
+                box = fm.boundingRect(0, 0, int(r.width() - S(12)), 2000, int(Qt.TextFlag.TextWordWrap), text)
+                if y + box.height() > r.bottom() - S(110):
+                    break
+                p.setBrush(alpha(cols[0], 0.9))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.drawEllipse(QPointF(r.left() + S(3), y + S(7)), S(2.4), S(2.4))
+                p.setPen(QColor(TEXT))
+                p.drawText(QRectF(r.left() + S(12), y, r.width() - S(12), box.height() + S(2)),
+                           int(Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap), text)
+                y += box.height() + S(8)
+        log_ = [x for x in (getattr(page.ctx, "round_log", None) or []) if x[0] == name][-10:]
+        net = sum(pay - bet for _n, bet, pay in log_)
+        box = QRectF(r.left(), r.bottom() - S(92), r.width(), S(92))
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9, QFont.Weight.Black))
+        p.drawText(QRectF(box.left(), box.top(), box.width(), S(14)), int(Qt.AlignmentFlag.AlignVCenter), tr("THIS SESSION"))
+        p.setFont(font(20, QFont.Weight.ExtraBold))
+        p.setPen(QColor(WIN if net > 0 else LOSE if net < 0 else TEXT))
+        p.drawText(QRectF(box.left(), box.top() + S(16), box.width(), S(30)), int(Qt.AlignmentFlag.AlignVCenter),
+                   ("+" if net > 0 else "−" if net < 0 else "") + coins_text(abs(net)))
+        p.setFont(font(9.5, QFont.Weight.DemiBold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(box.left(), box.top() + S(46), box.width(), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("{n} rounds", n=len(log_)) if log_ else tr("No round yet"))
+        x = box.left()
+        for _n, bet, pay in log_:                      # one dot per round: green won, red lost, grey even
+            col = WIN if pay > bet else LOSE if pay < bet else TEXT_DIM
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(col))
+            p.drawRoundedRect(QRectF(x, box.top() + S(70), S(14), S(14)), S(4), S(4))
+            x += S(18)
+            if x + S(14) > box.right():
+                break
+
+    def _paint_list(self, p: QPainter, r: QRectF, page, idx: int) -> None:
+        names = [page.NAMES[i] for i in page.pick_map]
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9, QFont.Weight.Black))
+        p.drawText(QRectF(r.left() + S(4), r.top(), r.width(), S(14)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("MINI GAMES") if names and names[0] in SKILL_GAMES else tr("CASINO GAMES"))
+        top = r.top() + S(22)
+        row_h = max(S(36), min(S(54), (r.bottom() - top) / max(1, len(names)) - S(4)))
+        self._rows = []
+        busy = page.game is not None and page.game.busy
+        for k, (i, name) in enumerate(zip(page.pick_map, names)):
+            row = QRectF(r.left(), top + k * (row_h + S(4)), r.width(), row_h)
+            self._rows.append((row, i))
+            on, hov = i == idx, k == self._hover and not busy
+            cols = MINI_COLOURS.get(name) if name in SKILL_GAMES else GAME_COLOURS.get(name, ("#8899AA", "#223344"))
+            p.setPen(QPen(alpha(cols[0], 0.7), S(1.4)) if on else Qt.PenStyle.NoPen)
+            p.setBrush(alpha(cols[0], 0.20) if on else alpha("#FFFFFF", 0.06 if hov else 0.0))
+            p.drawRoundedRect(row, S(12), S(12))
+            c = QPointF(row.left() + S(10) + row_h * 0.36, row.center().y())
+            if name in SKILL_GAMES:
+                paint_mini_badge(p, name, c, row_h * 0.66)
+            else:
+                p.save()
+                p.translate(c)
+                p.scale(row_h / S(70), row_h / S(70))
+                paint_game_art(p, name, QPointF(0, 0))
+                p.restore()
+            p.setOpacity(self.level * (0.5 if busy and not on else 1.0))
+            p.setPen(QColor(TEXT if on or hov else TEXT_DIM))
+            p.setFont(font(11.5, QFont.Weight.ExtraBold if on else QFont.Weight.Bold))
+            p.drawText(QRectF(c.x() + row_h * 0.5, row.top(), row.right() - c.x() - row_h * 0.5 - S(6), row.height()),
+                       int(Qt.AlignmentFlag.AlignVCenter), tr(name))
+            p.setOpacity(self.level)
+
+
 class OnlineBody(QWidget):
     """9.0: the online menu's frame: a top bar (wordmark, level, wallet, leave) and a rail of sections on the left;
     the page in use fills the rest."""
@@ -55564,6 +55756,8 @@ class OnlineBody(QWidget):
         self.host = QWidget(self)
         self.cover = LockCover(self.host)
         self.cover.hide()
+        self.side_l = GameSide(window, "info", self)    # 9.1: beside a game while the menu is wide
+        self.side_r = GameSide(window, "play", self)
         self.rail.raise_()                              # 9.0.1: the page host spans the full width; the rail sits on top
         self.to_ball.clicked.connect(window.ask_leave)
         self.stow.clicked.connect(window.collapse)
@@ -55583,9 +55777,13 @@ class OnlineBody(QWidget):
 
     def release_drag(self) -> None: ...
 
+    def side_w(self) -> int:
+        """9.1: how much wider than usual the menu is on each side (while a game is played)."""
+        return max(0, (self.width() - (S(RAIL_W) + col_width() + 2 * S(PAD))) // 2)
+
     def col_rect(self, i: int = 0) -> QRectF:
-        """Where the page sits inside the body."""
-        left = S(RAIL_W) + S(PAD)
+        """Where the page sits inside the body (in the middle of the room right of the rail)."""
+        left = S(RAIL_W) + S(PAD) + self.side_w()
         return QRectF(left, S(HEAD_H), col_width(), self.height() - S(HEAD_H) - S(BOTTOM))
 
     def resizeEvent(self, _e) -> None:
@@ -55604,6 +55802,13 @@ class OnlineBody(QWidget):
         self.rail.setGeometry(0, S(HEAD_H), S(RAIL_W), self.height() - S(HEAD_H) - S(BOTTOM))
         top = S(HEAD_H)
         self.host.setGeometry(0, top, self.width(), max(1, self.height() - top - S(BOTTOM)))
+        sw, col = self.side_w(), self.col_rect()
+        h = self.height() - top - S(BOTTOM) - S(10)
+        self.side_l.setGeometry(int(S(RAIL_W) + S(PAD)), top + S(6), max(1, int(col.left() - S(RAIL_W) - S(PAD) - S(12))), h)
+        self.side_r.setGeometry(int(col.right() + S(12)), top + S(6), max(1, int(self.width() - S(PAD) - col.right() - S(12))), h)
+        for side in (self.side_l, self.side_r):
+            side.set_level(min(1.0, sw / S(WIDE_SIDE)) if sw > S(120) else 0.0)
+            side.raise_()
         self.rail.raise_()
         self.win.place_columns()
         if self.cover.isVisible():
@@ -55700,6 +55905,12 @@ def _make_class():
             self._watch = QTimer(self)
             self._watch.setInterval(60)
             self._watch.timeout.connect(self._watch_outside)
+            self.wide = Tween(self, 0.0, self._wide_step, QEasingCurve.Type.InOutCubic)    # 9.1: the wide game view
+            self.wide.finished.connect(lambda: self._place() if self.phase == "shown" else None)
+            self._wide_t = QTimer(self)
+            self._wide_t.setInterval(200)
+            self._wide_t.timeout.connect(self._wide_watch)
+            self._wide_t.start()
 
         # -------------------------------------------------------------- what is shown
         def max_cols(self) -> int:
@@ -55784,10 +55995,46 @@ def _make_class():
             return work_area(c)
 
         # -------------------------------------------------------------- geometry
-        def _place(self, ball=None, card_tl=None) -> None:
+        def _wide_extra(self, wa) -> int:
+            """9.1: while a game is played the menu grows on both sides (as far as the screen allows)."""
+            tw = getattr(self, "wide", None)
+            if tw is None or tw.level <= 0:
+                return 0
+            base = S(RAIL_W) + col_width() + 2 * S(PAD) + 2 * S(GLOW)
+            room = max(0, min(2 * S(WIDE_SIDE), wa.width() - base - S(40)))
+            return 0 if room < 2 * S(150) else int(room * tw.level) // 2 * 2
+
+        def _wide_step(self) -> None:
+            if self.phase != "shown":
+                return
+            self._place(sparks=False)
+            self._layout_body()
+            self.body.resizeEvent(None)
+            self.update()
+
+        def _wide_watch(self) -> None:
+            """Wide while a game (not the free spin) is on screen; back to normal anywhere else."""
+            ctx = self.ctx
+            want = (self.phase == "shown" and self.current == "games" and bool(ctx.casino)
+                    and ctx.cfg["game"] != GamesPage.PICKER)
+            if want != getattr(self, "_wide_on", False):
+                self._wide_on = want
+                room = self._area().width() - (S(RAIL_W) + col_width() + 2 * S(PAD) + 2 * S(GLOW)) - S(40)
+                ctx.wide_games = want and room >= 2 * S(150)          # (a small screen keeps the normal view)
+                entry = self.pages.get("games")
+                page = entry[1] if entry else None
+                seg = getattr(page, "seg", None)
+                if seg is not None and getattr(page, "game", None) is not None:
+                    try:
+                        seg.setVisible(not ctx.wide_games and page.NAMES[page.games.index(page.game)] != "Free spin")
+                    except (RuntimeError, ValueError):
+                        pass
+                self.wide.to(1.0 if want else 0.0, 520)
+
+        def _place(self, ball=None, card_tl=None, sparks: bool = True) -> None:
             wa = self._area()
             cw, g = col_width(), S(GLOW)
-            w = S(RAIL_W) + cw + 2 * S(PAD)
+            w = S(RAIL_W) + cw + 2 * S(PAD) + self._wide_extra(wa)
             h = int(min(wa.height() - S(18), S(HEAD_H + BOTTOM) + S(1000)))
             x = wa.center().x() - w // 2
             y = wa.top() + S(6)
@@ -55797,7 +56044,8 @@ def _make_class():
             self._ball_l = QRectF(g + w / 2 - BD() / 2, g, BD(), BD())
             self.card_max_h = h
             self.card_pos = QPoint(x, y)
-            self._sparks = extras.theme_sparkles(self.ctx.theme(), w, h, S(160))
+            if sparks or not getattr(self, "_sparks", None):
+                self._sparks = extras.theme_sparkles(self.ctx.theme(), w, h, S(160))
 
         def _save_card(self) -> None: ...
         def save_position(self) -> None: ...
