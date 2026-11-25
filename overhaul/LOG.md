@@ -50,3 +50,14 @@ Open questions: see the Checkpoint 1 message.
 - Phase 2 server work is written and tested on the local copy of the live server, kept privately until it is live
   (this repository is public). `overhaul/db/roundtrip.py` checks any migration: it applies twice, undoes twice, and
   every function, grant, table's row security and setting is back exactly as before.
+
+## Phase 2: security (25/11/2026)
+- 074 applied to the live server in four parts (golf tables and physics; hole layouts; shot functions, request ids and
+  password help; admin code, grants, backup tables and swap names). Checked afterwards against the tested copy: all 467
+  functions and their grants identical, 107 tables with the same row security and grants, the saved old grants
+  identical, and six sample shots rolled to the same spot. 075 (skill game daily limits) waits for approval.
+- Before applying: every function on live was still identical to the snapshot the work was tested on, and no golf
+  game was in progress.
+- The server tests, the golf tools (`overhaul/golf`: hole layouts read from Rubenium.py, the SQL physics, and a check
+  that compares 3 000 shots between the app and the database) and the client changes are now public.
+- Server tests: 16 of 16 with the live snapshot, 15 of 15 (one skipped) from the repository's migrations alone.

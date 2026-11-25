@@ -2797,6 +2797,8 @@ class Online(QObject):
                 msg = err.key if (raw and err.key != "offline") else explain(err)
                 if err.key == "offline":
                     emit(lambda: self._set_offline(True))
+                if "rb_admin_step" in (err.key or "") and "rb_admin_step_" not in (err.key or ""):
+                    emit(lambda: open_admin_step(self.ctx))           # 8.0: the admin code is needed
                 emit(lambda: done(False, msg))
             except Exception:  # noqa: BLE001
                 log.exception("%s failed", fn)
@@ -2949,7 +2951,7 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_bad_username": "3 to 10 letters or numbers", "rb_same_name": "That is already your name",
           "rb_bad_picture": "This picture cannot be used", "rb_not_admin": "Admin only",
           "rb_banned": "This account is blocked", "rb_bad_choice": "This is not possible", "rb_no_case": "No such case",
-          "rb_update_needed": "Update Rubenium to keep playing online", "rb_app_locked": "Rubenium is locked for now",
+          "rb_update_needed": "Update Rubenium to keep playing online", "rb_admin_step": "Type your admin code first", "rb_app_locked": "Rubenium is locked for now",
           "rb_not_friends": "Friends only", "rb_duel_gone": "This duel is over", "rb_already_played": "You already played this duel",
           "rb_too_many": "Too many at once: wait a little", "rb_slow_down": "Slow down a little",
           "rb_already_undone": "Already undone", "rb_cant_undo": "This cannot be undone",
@@ -4924,6 +4926,10 @@ FR = {
     'Undo “{what}” on {target}?': 'Annuler « {what} » sur {target} ?',
     'Undone': 'Annulé',
     'Update Rubenium to keep playing online': 'Mets à jour Rubenium pour continuer à jouer en ligne',
+    'Type your admin code first': "Tape d'abord ton code admin",
+    'Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one': 'Le Mini Golf en ligne est juste pour tout le monde : le serveur joue maintenant chaque coup avec la même physique que le jeu, donc personne ne peut tricher un trou en un',
+    'Solo Mini Golf online needs Rubenium 8.0': 'Le Mini Golf solo en ligne demande Rubenium 8.0',
+    'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players': "Comptes plus sûrs : l'aide pour le mot de passe est limitée par PC et par nom, donc personne ne peut l'épuiser pour les autres joueurs",
     'Update needed': 'Mise à jour nécessaire',
     'Update now': 'Mettre à jour',
     'Visualiser': 'Visualiseur',
@@ -12395,6 +12401,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("8.0", ['Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one', 'Solo Mini Golf online needs Rubenium 8.0', 'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players']),
     ("7.0", ['Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.']),
     ("6.9.1", ["Horse Racing: the horses run at a normal pace again (the race is still 3 times longer, the speed is just doubled on screen). The Animations tab is locked for now."]),
     ("6.9", ['NEW: 4 Mythic ANIMATIONS (Supernova, Shatter, Rift, Phoenix), each in Prismatic, Gold, Black Titan and White Titan: buy the originals in the Shop (Animations) or win any of them from the Profile Case. Click anywhere or press Esc to skip one, or switch back to the simple animation any time. The default animation is now simple: the banner floats up into nothing and drops back down. Lines now sit with the Balls in the Shop, and the Coin history moved to the Profile tab of your Inventory (whose old Coins button is now Animations)']),
@@ -14383,6 +14390,17 @@ class TopApps(QObject):
 ONLINE_STATES = {"paused": "Paused", "locked": "Locked: being fixed"}
 
 
+_SWAP_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
+_SWAP_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,119}\.(upk|bnk|tfc|pck|wem)", re.IGNORECASE)
+
+
+def swap_names_ok(sid, file) -> bool:
+    """A swap's id and file name become folder and file names on this PC: never a path, never "..", the game's
+    file types only (the server checks the same since 8.0)."""
+    return (isinstance(sid, str) and isinstance(file, str) and _SWAP_ID.fullmatch(sid) is not None
+            and _SWAP_FILE.fullmatch(file) is not None and ".." not in file)
+
+
 def set_online_swaps(rows: list) -> bool:
     """Put the admin's swaps in the list (replacing the last ones). True when something changed."""
     keep = [it for it in RL_ITEMS if not it.get("online")]
@@ -14390,6 +14408,9 @@ def set_online_swaps(rows: list) -> bool:
     cats = {c for c, _n in RL_CATS}
     for r in rows or []:
         if not isinstance(r, dict) or r.get("cat") not in cats or r.get("id") in RL_BY_ID and not RL_BY_ID[r["id"]].get("online"):
+            continue
+        if not swap_names_ok(r.get("id"), r.get("file")):     # 8.0: saved as swaps/<id>/<file>: plain names only
+            log.warning("swap list: skipped a swap with an unusable name")
             continue
         new.append(dict(id=str(r["id"]), cat=r["cat"], old=str(r.get("old", "")), new=str(r.get("new", "")),
                         file=str(r.get("file", "")), online=True, state=str(r.get("state", "live")),
@@ -14446,7 +14467,7 @@ def fetch_online_swaps(ctx, then=None) -> None:
 def _download_all(ctx, then) -> None:
     pass
     got = False
-    for it in [x for x in RL_ITEMS if x.get("online")]:
+    for it in [x for x in RL_ITEMS if x.get("online") and swap_names_ok(x.get("id"), x.get("file"))]:
         folder = _rl_store() / "swaps" / it["id"]
         jobs = [(f"swaps/{it['id']}/{it['file']}", folder / it["file"], it.get("sha"))]
         if it.get("img"):
@@ -30499,8 +30520,9 @@ class GolfView(QWidget):
                 self.ctx.toast(tr(str(data)), "warn")
                 self._mine_sent = False
                 self.ask()
-        if self.solo:
-            return self.ctx.online.ask("rb_golf_solo_shot", {"gid": self.gid, "n": n, "x": x, "y": y, "holed": holed}, done)
+        if self.solo:                                 # 8.0: the server rolls the shot too (from, angle, power)
+            return self.ctx.online.ask("rb_golf_solo_shot", {"gid": self.gid, "n": n, "x0": ball[0], "y0": ball[1], "ang": ang,
+                                                             "pow": pw, "x": x, "y": y, "holed": holed}, done)
         self.ctx.online.ask("rb_golf_shot", {"gid": self.gid, "n": n, "x0": ball[0], "y0": ball[1], "ang": ang,
                                              "pow": pw, "x": x, "y": y, "holed": holed}, done)
 
@@ -39068,6 +39090,133 @@ def item_picker(page, lay, state: dict, multi: int = 1) -> None:
         lay.addWidget(g2)
 
 
+class AdminStepSheet(QWidget):
+    """8.0: the admin's second step. With a code set, admin actions need it typed in the last 30 minutes (this
+    login only). mode "check": type it; mode "set": choose one (the old one is needed to change it)."""
+
+    def __init__(self, ctx, mode: str = "check") -> None:
+        super().__init__()
+        self.ctx, self.mode, self.busy, self.has_code = ctx, mode, False, mode == "check"
+        self.W = ctx.window.page_w()
+        self.setFixedWidth(self.W)
+        lay = vbox(self, 10)
+        top = hbox(spacing=8)
+        back = IconButton("back", 30, tip=tr("Back"))
+        back.clicked.connect(self.close_sheet)
+        top.addWidget(back)
+        self.title = Label("", 15, TEXT, bold=True)
+        top.addWidget(self.title, 1)
+        lay.addLayout(top)
+        self.note = Label("", 10.5, TEXT_DIM, wrap_w=self.W)
+        lay.addWidget(self.note)
+        css = (f"QLineEdit {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);"
+               f" border-radius: {S(9)}px; padding: 0 {S(10)}px; color: {TEXT}; font-size: {S(13)}px; }}"
+               f"QLineEdit:focus {{ border: 1px solid rgba(255,255,255,0.45); }}")
+        self.old = QLineEdit()
+        self.new = QLineEdit()
+        for e, hint in ((self.old, en("Admin code")), (self.new, en("New admin code (6 characters or more)"))):
+            e.setPlaceholderText(hint)
+            e.setMaxLength(72)
+            e.setEchoMode(QLineEdit.EchoMode.Password)
+            e.setFixedHeight(S(34))
+            e.setStyleSheet(css)
+            e.returnPressed.connect(self._go)
+            lay.addWidget(e)
+        self.btn = Button("", "primary", 38)
+        self.btn.clicked.connect(self._go)
+        lay.addWidget(self.btn)
+        self.other = Button("", "quiet", 32)
+        self.other.clicked.connect(lambda: self._mode("set" if self.mode == "check" else "check"))
+        lay.addWidget(self.other)
+        self._mode(mode)
+        ctx.online.ask("rb_admin_step_status", {}, self._status, raw=True)
+
+    def _status(self, ok: bool, data) -> None:
+        try:
+            if ok and isinstance(data, dict):
+                self.has_code = bool(data.get("set"))
+                if not self.has_code and self.mode == "check":
+                    self._mode("set")
+                else:
+                    self._mode(self.mode)
+        except RuntimeError:
+            pass
+
+    def _mode(self, mode: str) -> None:
+        self.mode = mode
+        if mode == "check":
+            self.title.set_text(en("Admin code"))
+            self.note.set_text(en("Type your admin code to use the admin panel for the next 30 minutes."))
+            self.btn.set_text(en("Unlock"))
+            self.other.set_text(en("Change the code"))
+        else:
+            self.title.set_text(en("Change the admin code") if self.has_code else en("Set an admin code"))
+            self.note.set_text(en("A second code for admin actions, on top of the password. Once it is set, the admin "
+                                  "panel asks for it every 30 minutes. Keep it somewhere safe: it cannot be read back.")
+                               + ("" if self.has_code else " " + en("Set it now, before anyone else can.")))
+            self.btn.set_text(en("Save the code"))
+            self.other.set_text(en("Back to unlock"))
+        self.old.setVisible(mode == "check" or self.has_code)
+        self.new.setVisible(mode == "set")
+        self.other.setVisible(self.has_code)
+        self.ctx.window.allow_keys(True)
+        self.adjustSize()
+        self.setFixedHeight(self.sizeHint().height())
+
+    def _go(self) -> None:
+        if self.busy:
+            return
+        self.busy = True
+
+        def done(ok: bool, data) -> None:
+            self.busy = False
+            try:
+                if ok and isinstance(data, dict) and data.get("ok"):
+                    sfx.play("on")
+                    self.ctx.toast(en("Admin panel unlocked for 30 minutes"))
+                    self.ctx.admin_cache = {}
+                    self.close_sheet()
+                    return self.ctx.reload_page("admin")
+                sfx.play("off")
+                if ok and isinstance(data, dict):
+                    self.ctx.toast(en("Wrong code ({n} tries left)", n=int(data.get("left") or 0)), "warn")
+                else:
+                    self.ctx.toast(en("Too many wrong codes: wait 15 minutes") if "rb_slow_down" in str(data)
+                                   else en("Failed: {e}", e=str(data)), "warn")
+                self.old.clear()
+            except RuntimeError:
+                pass
+        if self.mode == "check":
+            self.ctx.online.ask("rb_admin_step_check", {"code": self.old.text()}, done, raw=True)
+        else:
+            if len(self.new.text()) < 6:
+                self.busy = False
+                return self.ctx.toast(en("6 characters or more"), "warn")
+            self.ctx.online.ask("rb_admin_step_set", {"old_code": self.old.text() or None, "new_code": self.new.text()},
+                                done, raw=True)
+
+    def close_sheet(self) -> None:
+        self.ctx.window.allow_keys(False)
+        self.ctx.window.unembed(self)
+
+
+def open_admin_step(ctx, mode: str = "check") -> None:
+    """8.0: the server asked for the admin code: open the box (once, not for every call that was refused)."""
+    sheet = getattr(ctx.window, "sheet", None)
+    if isinstance(sheet, AdminStepSheet) or not getattr(ctx.econ, "admin", False):
+        return
+    if mode == "check":                      # only while the admin panel is on screen (background checks stay quiet)
+        try:
+            if not (getattr(ctx, "online_mode", False) and ctx.window.showing("admin")):
+                return
+        except (AttributeError, RuntimeError):
+            return
+    try:
+        ctx.window.embed(AdminStepSheet(ctx, mode), keys=True)
+    except RuntimeError:
+        pass
+
+
 class AdminPage(Page):
     """4.4: the admin panel, rebuilt to be clicked, not typed: pick players and things from lists, see the result
     in the list. English only."""
@@ -39993,6 +40142,9 @@ class AdminPage(Page):
                                   "new_min": _int(v["a"], 0), "new_max": _int(v["b"], 0)}, en("Saved"))
 
     def _settings(self, lay) -> None:
+        code = Button(en("Admin code (second step)"), "quiet", 34, icon="lock")
+        code.clicked.connect(lambda: open_admin_step(self.ctx, "set"))
+        lay.addWidget(code)
         st = self.fetch("rb_admin_stats", {})
         if st is None:
             return lay.addWidget(Label(en("Loading…"), 12, TEXT_DIM))

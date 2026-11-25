@@ -173,3 +173,32 @@ Choices made where the request left room, newest last.
   The winner picks up to a third of the pot (at least 1); bot items taken are capped at 2x the winner's stake. Entries 500-250 000.
 - The menu does not open before the tutorial is done; the tutorial only asks language, show/hide key, notifications and sounds.
 - God mode in Wave Rush plays the practice bot's path as real inputs, so the server's replay agrees with it.
+
+## 8.0 (overhaul): security (074, live since 25/11/2026)
+- Golf: the server rolls every shot with the app's own maths (`rb_golf_sim`, a step-for-step copy of `simulate()`:
+  1/240 s steps, at most 14 s). 3 000 random shots on all 120 holes give the same result in the app and on the
+  server (largest gap 4e-15); about 1.5 ms a shot. The app's own start point is used when it is within 0.0006 of where
+  the server last saw the ball (the server stores 4 decimals); otherwise the server's point. What the app says about
+  where the ball stopped and whether it went in is no longer used. The hole layouts live in `rb_golf_hole_defs`,
+  made from `HOLES` in Rubenium.py by `overhaul/db/make_074.py` (never copied by hand).
+- Solo golf: a new call with the shot itself (`rb_golf_solo_shot(gid, n, x0, y0, ang, pow, x, y, holed)`); the old
+  5-argument call asks for the update (`rb_update_needed`), so until 8.0 is out, solo golf online on 7.0 asks for the update (chosen at checkpoint 2; 1 v 1 and group golf keep working).
+- API roles: players keep exactly the functions they could call; without a login only the six sign-in calls
+  (`rb_username_free`, `rb_device_free`, `rb_login_for`, `rb_reset_ask`, `rb_reset_status`, `rb_swaps_list`).
+  Tables: reading unchanged (row level security), no writes for anon or players (all writes go through rb_*
+  functions; none of them runs as the caller). Default privileges follow, so new functions are not public by
+  accident; a new function a player may call is granted to `authenticated` by default. The grants before 074 are
+  kept in `rb_bak74_grants` for 074_down.sql.
+- Password help: 3 asks a day per PC and per name; the shared limit of 300 a day only counts names that do not
+  exist, so made-up names cannot use up the help for real players.
+- Request ids: looked up by their first 64 characters, as they are stored.
+- Swaps: id and file must be plain names (letters, digits, `_`, `-`, `.`; no `..`; .upk/.bnk/.tfc/.pck/.wem), in the
+  database and in the app (an id cannot start with `_`, so it can never be the `_originals` folder).
+- Admin second step: a code (6 to 72 characters, bcrypt) per admin. Once set, every admin function (all of them go
+  through `rb_need_admin`) needs it typed in the last 30 minutes in the same login (the token's session id). 5 wrong
+  codes lock it for 15 minutes; changing it needs the old one. `admin_step_all = 1` refuses admins without a code
+  (off by default so the 7.0 admin panel keeps working until 8.0 is out). The admin panel is English only, as before.
+- Skill games (075, not applied: waiting for approval of the numbers): daily profit limits back on, each above the best real day in the 14 days
+  before 25/11/2026 (Cups 60 000, Connect 4 20 000, each mini game 5 000; Colour Pick and SFX Match keep 12 000,
+  Timing its 20 000). Reaction limits: none added. Timing already refuses stop times that do not match the server's
+  clock; the other skill games have no reaction step a limit would protect.
