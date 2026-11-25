@@ -1,10 +1,10 @@
-# Checks for the 8.0 overhaul. Runs only on the overhaul-8 branch.
+# Checks for the overhaul branches (8.0 and the 9.0 remaster).
 # It never builds an installer, never publishes, never touches releases or tags, and only reads the live server
 # (the self-test runs the app logged out, like a fresh install).
 name: overhaul-checks
 on:
   push:
-    branches: [overhaul-8]
+    branches: [overhaul-8, claude/project-thread-oxuplv]
   workflow_dispatch:
 permissions:
   contents: read
