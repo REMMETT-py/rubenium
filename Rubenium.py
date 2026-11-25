@@ -2567,7 +2567,7 @@ def explain(err: ApiError) -> str:
     if "rb_too_many" in text:
         return "Your friends list is full"
     if "rb_device_used" in text:
-        return "This PC already has an account"
+        return "This PC already made an account: log in with it instead"
     if "rb_update_needed" in text:
         return "Update Rubenium first"
     if "rb_banned" in text:
@@ -3027,7 +3027,7 @@ RARITY_COLOURS = {"standard": "#9AA4AD", "rare": "#4FA8FF", "special": "#B36BFF"
                   "exotic": "#FFC94D"}
 RARITY_NAMES.update({"medieval": "Medieval Case only", "nature": "Nature Case only"})      # 5.10: collection rows
 RARITY_COLOURS.update({"medieval": "#D9A45B", "nature": "#5BD47A"})
-ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not for sale",
+ERRORS = {"rb_not_enough": "Not enough coins", "rb_need_base": "Buy the base animation first", "rb_not_for_sale": "This is not for sale",
           "rb_already_owned": "You already have it", "rb_not_yours": "You do not have this",
           "rb_item_locked": "This item is in a trade", "rb_not_tradeable": "This cannot be sold",
           "rb_too_soon": "Not ready yet", "rb_game_locked": "This game is paused on your account while it is checked", "rb_bad_bet": "This bet is too high or too low",
@@ -7426,6 +7426,21 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
     elif kind == "wave":                                  # 9.0: Wave Rush, a zigzag over a line
         p.drawPath(_poly((-8.5, 3), (-4.5, -3), (-0.5, 3), (3.5, -3), (8.5, 3)))
         p.drawPath(_poly((-8.5, 8), (8.5, 8)))
+    elif kind == "chart":                                 # 9.1: rising bars (Stats, the Average tier)
+        p.drawPath(_poly((-8.5, 8.5), (8.5, 8.5)))
+        p.drawRoundedRect(QRectF(-7, 1.5, 3.6, 5.5), 1, 1)
+        p.drawRoundedRect(QRectF(-1.8, -2.5, 3.6, 9.5), 1, 1)
+        p.drawRoundedRect(QRectF(3.4, -7, 3.6, 14), 1, 1)
+    elif kind == "briefcase":                             # 9.1: the Businessman tier
+        p.drawRoundedRect(QRectF(-8.5, -3.5, 17, 11.5), 2.2, 2.2)
+        p.drawRoundedRect(QRectF(-3.2, -7.5, 6.4, 4), 1.5, 1.5)
+        p.drawPath(_poly((-8.5, 1.5), (8.5, 1.5)))
+        p.drawPath(_poly((-1.2, 1.5), (-1.2, 3.5), (1.2, 3.5), (1.2, 1.5)))
+    elif kind == "crown":                                 # 9.1: the Casino Legend tier
+        cr = _poly((-8, 6), (-8.5, -5), (-4, -0.5), (0, -7.5), (4, -0.5), (8.5, -5), (8, 6))
+        cr.closeSubpath()
+        p.drawPath(cr)
+        p.drawPath(_poly((-8, 8.5), (8, 8.5)))
     elif kind == "flame":                                 # 9.0: the daily streak
         f = QPainterPath(QPointF(0, 8.5))
         f.cubicTo(QPointF(-7, 8.5), QPointF(-7.5, 1), QPointF(-3, -3))
@@ -16836,14 +16851,14 @@ _cw_register(_CW_ROWS_67)
 # --------------------------------------------------------------------------- #
 from PyQt6.QtGui import QPolygonF, QRadialGradient  # noqa: E402
 
-ANIMS = (("nova", "Supernova"), ("shatter", "Shatter"), ("rift", "Rift"), ("phoenix", "Phoenix"))
+ANIMS = (("shatter", "Shatter"), ("nova", "Supernova"), ("rift", "Rift"), ("phoenix", "Phoenix"), ("eclipse", "Eclipse"))
+ANIM_RARITY = {"shatter": "special", "nova": "special", "rift": "epic", "phoenix": "epic", "eclipse": "exotic"}   # 9.1
 ANIM_IDS = tuple(a[0] for a in ANIMS)
-ANIM_FINS = (("", "Original"), ("prismatic", "Prismatic"), ("gold", "Gold"), ("blacktitan", "Black Titan"),
-             ("whitetitan", "White Titan"))
+ANIM_FINS = (("", "Original"), ("titanium", "Titanium"), ("gold", "Gold"), ("prismatic", "Prismatic"))   # 9.1
 ANIM_FIN_IDS = tuple(f[0] for f in ANIM_FINS)
-ANIM_SHORT = {"": "Base", "prismatic": "Prismatic", "gold": "Gold", "blacktitan": "Black", "whitetitan": "White"}
+ANIM_SHORT = {"": "Base", "titanium": "Titanium", "gold": "Gold", "prismatic": "Prismatic"}
 ANIM_LOOK = {"nova": ("#FF8A2B", "#FFD27A"), "shatter": ("#4FD8FF", "#B4F0FF"), "rift": ("#9B5CFF", "#E0C8FF"),
-             "phoenix": ("#FF4A1C", "#FFB627")}
+             "phoenix": ("#FF4A1C", "#FFB627"), "eclipse": ("#E0405A", "#FFE08A")}
 
 
 def anim_id(design: str, fin: str = "") -> str:
@@ -16882,6 +16897,9 @@ def anim_cols(design: str, fin: str, now: float, i: float = 0.0):
         return QColor.fromHsvF(h, 0.78, 1.0), QColor.fromHsvF((h + 0.14) % 1.0, 0.45, 1.0), QColor("#FFFFFF")
     if fin == "gold":
         return QColor("#FFC83D"), QColor("#FFF0A8"), QColor("#FFFFFF")
+    if fin == "titanium":                                      # 9.1: brushed steel with a cold sheen
+        sheen = 0.5 + 0.5 * math.sin(now * 1.7 + i * 0.4)
+        return QColor("#9AA7B6"), mix(QColor("#DCE6F2"), QColor("#FFFFFF"), sheen), QColor("#FFFFFF")
     if fin == "blacktitan":
         return QColor("#2A2142"), QColor("#B9A6FF"), QColor("#EDE6FF")
     if fin == "whitetitan":
@@ -16918,7 +16936,7 @@ def _a_dot(p: QPainter, pt: QPointF, r: float, a: QColor, b: QColor, fin: str, o
         p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(alpha(a, op))
     p.drawEllipse(pt, r, r)
-    if star and fin in ("gold", "prismatic", "whitetitan"):          # a little glint
+    if star and fin in ("gold", "prismatic", "whitetitan", "titanium"):          # a little glint
         p.setPen(QPen(alpha("#FFFFFF", 0.9 * op), max(0.8, r * 0.3)))
         p.drawLine(QPointF(pt.x() - r * 2.4, pt.y()), QPointF(pt.x() + r * 2.4, pt.y()))
         p.drawLine(QPointF(pt.x(), pt.y() - r * 2.4), QPointF(pt.x(), pt.y() + r * 2.4))
@@ -16939,6 +16957,7 @@ def _a_ring(p: QPainter, c: QPointF, r: float, col: QColor, a: float, w: float) 
 # ---- 1. Supernova: the banner caves into a star that blows up, and the ball is born from the flash
 def _anim_nova(p, k, now, m, hole, d, fin, banner, ball) -> None:
     c = m.center()
+    span = min(m.width(), m.height()) * 0.78                   # 9.1: the blast stays inside the window
     te = 0.44
     e = _e3(k / te)
     a, b, core = anim_cols("nova", fin, now)
@@ -16962,19 +16981,19 @@ def _anim_nova(p, k, now, m, hole, d, fin, banner, ball) -> None:
     q = (k - te) / (1 - te)
     if q > 0:
         flash = max(0.0, 1.0 - q * 3.5)
-        _a_glow(p, c, m.width() * 0.5 * (0.3 + q), core, flash, "")
-        _a_glow(p, c, m.width() * 0.35 * (0.3 + q), a, 0.6 * max(0.0, 1 - q * 1.6), fin)
+        _a_glow(p, c, span * 0.5 * (0.3 + q), core, flash, "")
+        _a_glow(p, c, span * 0.35 * (0.3 + q), a, 0.6 * max(0.0, 1 - q * 1.6), fin)
         for j, (sp, wd) in enumerate(((0.62, 6.0), (0.42, 3.5))):          # two shock rings
             qq = max(0.0, q - j * 0.08)
             if qq > 0:
                 col = anim_cols("nova", fin, now, j * 3)[0] if fin == "prismatic" else (b if j else a if fin != "blacktitan" else b)
                 p.setBrush(Qt.BrushStyle.NoBrush)
-                _a_ring(p, c, m.width() * sp * (qq ** 0.55), col, 1.0 - qq, S(wd) * (1 - qq))
+                _a_ring(p, c, span * sp * (qq ** 0.55), col, 1.0 - qq, S(wd) * (1 - qq))
         rnd = random.Random(9)
         for i in range(80):                                    # the debris
             ang = rnd.uniform(0, math.tau)
             sp = rnd.uniform(0.15, 0.62)
-            r = m.width() * sp * (q ** 0.6)
+            r = span * sp * (q ** 0.6)
             pt = QPointF(c.x() + math.cos(ang) * r, c.y() + math.sin(ang) * r * 0.6 + q * q * S(14))
             aa, bb, _ = anim_cols("nova", fin, now, i)
             _a_dot(p, pt, S(rnd.uniform(1.2, 3.4)) * (1 - q * 0.6), aa if i % 3 else bb, bb, fin, max(0.0, 1.0 - q) ** 0.8, i % 7 == 0)
@@ -17188,11 +17207,13 @@ def _anim_phoenix(p, k, now, m, hole, d, fin, banner, ball) -> None:
     wing = _e3((k - 0.42) / 0.3) * (1.0 - _e3((k - 0.82) / 0.18))
     if wing > 0.01:
         flap = math.sin(now * 8.0) * 0.07
+        reach = min(m.width() * 0.34, max(S(60), (m.bottom() - hole.y()) * 0.9))
+        down = (hole.y() - m.top()) < reach * 0.85                 # 9.1: no room above the ball: the wings sweep down
         for side in (-1, 1):
             for j in range(9):
                 f = j / 8
-                ang = math.radians(-8 - 70 * f) + flap * (0.4 + f)
-                ln = (m.width() * 0.34) * (0.55 + 0.45 * math.sin(f * math.pi * 0.8 + 0.35)) * wing
+                ang = (math.radians(8 + 62 * f) if down else math.radians(-8 - 70 * f)) + flap * (0.4 + f)
+                ln = reach * (0.55 + 0.45 * math.sin(f * math.pi * 0.8 + 0.35)) * wing
                 dx, dy = math.cos(ang) * side, math.sin(ang)
                 tip = QPointF(hole.x() + dx * ln, hole.y() + dy * ln * 0.8)
                 mid = QPointF(hole.x() + dx * ln * 0.55, hole.y() + dy * ln * 0.55 * 0.8 - ln * 0.12)
@@ -17217,7 +17238,77 @@ def _anim_phoenix(p, k, now, m, hole, d, fin, banner, ball) -> None:
         ball(hole, d * (0.55 + 0.45 * e + 0.1 * math.sin(e * math.pi)), op)
 
 
-_ANIM_PAINT = {"nova": _anim_nova, "shatter": _anim_shatter, "rift": _anim_rift, "phoenix": _anim_phoenix}
+# ---- 5. Eclipse (9.1, Mythic): a dark moon slides over the banner; at totality the corona blazes, a diamond ring
+# flashes on its rim, and the moon slips away into the ball
+def _anim_eclipse(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    c = m.center()
+    a, b, core = anim_cols("eclipse", fin, now)
+    R = min(m.height() * 0.5, m.width() * 0.16)                 # the moon at totality (its corona stays on screen)
+    cover = _e3(k / 0.42)
+    start = QPointF(m.left() - R * 1.2, c.y() - m.height() * 0.1)
+    moon = _lerp(start, c, cover)
+    gone = _e3((k - 0.30) / 0.18)                                # the banner fades away under the moon
+    if gone < 1.0:
+        banner(m, (1.0 - 0.55 * cover) * (1.0 - gone))
+    leave = _e3((k - 0.56) / 0.36)                               # the moon shrinks into the ball
+    if leave > 0:
+        moon = _lerp(c, hole, leave)
+    rad = R * (1.0 - 0.86 * leave) * (0.55 + 0.45 * cover)
+    moon_op = min(1.0, k / 0.06) * (1.0 - _e3((k - 0.86) / 0.12))
+    total = max(0.0, min(1.0, (k - 0.34) / 0.12)) * (1.0 - leave)   # how bright the corona is
+    if total > 0:
+        _a_glow(p, moon, rad * 2.0, a, 0.55 * total, fin)
+        rnd = random.Random(41)
+        for i in range(48):                                      # the corona's streamers, slowly turning
+            ang = i * math.tau / 48 + rnd.uniform(-0.05, 0.05) + now * 0.05
+            ln = rad * (1.18 + rnd.uniform(0.15, 0.7) * (0.75 + 0.25 * math.sin(now * 1.3 + i)))
+            col = anim_cols("eclipse", fin, now, i)[1] if fin == "prismatic" else (b if i % 2 else a)
+            p.setPen(QPen(alpha(col, 0.5 * total * rnd.uniform(0.5, 1.0)), S(rnd.uniform(0.8, 2.0))))
+            p.drawLine(QPointF(moon.x() + math.cos(ang) * rad * 1.02, moon.y() + math.sin(ang) * rad * 1.02),
+                       QPointF(moon.x() + math.cos(ang) * ln, moon.y() + math.sin(ang) * ln))
+        p.setPen(Qt.PenStyle.NoPen)
+        _a_ring(p, moon, rad * 1.04, b, 0.9 * total, S(2.2))
+    if leave > 0:                                                # sparks trailing the moon to the ball
+        rnd = random.Random(8)
+        for i in range(24):
+            f = max(0.0, min(1.0, leave - rnd.uniform(0.0, 0.3)))
+            if f <= 0:
+                continue
+            off = rnd.uniform(-1, 1) * S(18) * (1 - f)
+            pt = _lerp(c, hole, f)
+            aa, bb, _ = anim_cols("eclipse", fin, now, i)
+            _a_dot(p, QPointF(pt.x() + off, pt.y() + off * 0.5), S(rnd.uniform(1.0, 2.4)), aa if i % 2 else bb, bb, fin,
+                   (1 - f) * 0.9 * (1 - leave), i % 6 == 0)
+    if moon_op > 0.01 and rad > 0.5:                             # the moon: dark, with a faint lit edge
+        g = QRadialGradient(QPointF(moon.x() - rad * 0.3, moon.y() - rad * 0.3), rad * 1.3)
+        g.setColorAt(0, QColor(28, 24, 36, int(255 * moon_op)))
+        g.setColorAt(1, QColor(4, 3, 8, int(255 * moon_op)))
+        p.setPen(QPen(alpha(b, 0.35 * moon_op), S(1)))
+        p.setBrush(g)
+        p.drawEllipse(moon, rad, rad)
+        p.setPen(Qt.PenStyle.NoPen)
+    ring = max(0.0, 1.0 - abs(k - 0.54) / 0.09)                  # the diamond ring, on the rim
+    if ring > 0 and rad > 1:
+        ang = -0.75
+        bead = QPointF(moon.x() + math.cos(ang) * rad, moon.y() + math.sin(ang) * rad)
+        _a_glow(p, bead, S(46) * ring, core, ring, "")
+        _a_glow(p, bead, S(22) * ring, b, ring, fin)
+        p.setPen(QPen(alpha(core, 0.9 * ring), S(1.6)))
+        for t_ in range(4):                                      # a four-point star flare
+            fa = t_ * math.pi / 2 + 0.3
+            ln = S(70) * ring if t_ % 2 == 0 else S(34) * ring
+            p.drawLine(QPointF(bead.x() - math.cos(fa) * ln, bead.y() - math.sin(fa) * ln),
+                       QPointF(bead.x() + math.cos(fa) * ln, bead.y() + math.sin(fa) * ln))
+        p.setPen(Qt.PenStyle.NoPen)
+    op = min(1.0, max(0.0, (k - 0.72) / 0.2))
+    if op > 0:
+        e = _e3((k - 0.72) / 0.28)
+        _a_ring(p, hole, d * (0.8 + 0.9 * e), b, 0.7 * (1 - e), S(2))
+        ball(hole, d * (0.6 + 0.4 * e), op)
+
+
+_ANIM_PAINT = {"nova": _anim_nova, "shatter": _anim_shatter, "rift": _anim_rift, "phoenix": _anim_phoenix,
+               "eclipse": _anim_eclipse}
 
 
 def paint_anim(p: QPainter, design: str, fin: str, k: float, now: float, m: QRectF, hole: QPointF, d: float, banner, ball) -> None:
@@ -17265,6 +17356,14 @@ def paint_anim_thumb(p: QPainter, item: str, box: QRectF, now: float) -> None:
                        QPointF(c.x() + math.cos(ang + 0.3) * r * 0.82, c.y() + math.sin(ang + 0.3) * r * 0.82))
     elif design == "rift":
         p.drawLine(QPointF(c.x(), c.y() - r * 0.85), QPointF(c.x(), c.y() + r * 0.85))
+    elif design == "eclipse":
+        p.setBrush(QColor("#08060C"))
+        p.drawEllipse(QPointF(c.x() + r * 0.12, c.y() - r * 0.06), r * 0.34, r * 0.34)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for i in range(12):
+            ang = i * math.tau / 12 + now * 0.3
+            p.drawLine(QPointF(c.x() + math.cos(ang) * r * 0.48, c.y() + math.sin(ang) * r * 0.48),
+                       QPointF(c.x() + math.cos(ang) * r * (0.62 + 0.1 * pulse), c.y() + math.sin(ang) * r * (0.62 + 0.1 * pulse)))
     else:
         for side in (-1, 1):
             p.drawArc(QRectF(c.x() + (0 if side > 0 else -r * 0.9), c.y() - r * 0.5, r * 0.9, r * 0.9), 16 * (20 if side > 0 else 110), 16 * 50)
@@ -23248,13 +23347,13 @@ class ShopPage(StylePart, Page):
             if case_kind("starter"):
                 # 6.0: two groups, the best case first. Every badge case (themed ones too) always gives a badge.
                 groups = (({"hunt", "theme", "coins"}, tr("Badge cases"),
-                           tr("Always a badge, never coins. Best case first: the higher, the better the odds.")),
-                          ({"style"}, tr("Style cases"), tr("Balls, lines, fonts, app colours, banners and frames. No key needed.")))
+                           tr("Always a badge, never coins. Cheapest at the top, best odds at the bottom.")),
+                          ({"style"}, tr("Style cases"), tr("One kind per case. The Crown Vault holds them all. No key needed.")))
                 for kinds, title, sub in groups:
                     lay.addWidget(heading(title))
                     lay.addWidget(Label(sub, 10.5, TEXT_DIM, wrap_w=self.W))
                     for case in sorted((c for c in ec.cases if case_kind(c["id"]) in kinds and not c.get("limited")),
-                                       key=lambda c: (-int(c.get("price") or 0), int(c.get("pos") or 0))):
+                                       key=lambda c: (int(c.get("price") or 0), int(c.get("pos") or 0))):     # 9.1: cheapest first
                         lay.addWidget(CaseCard(self, case))
                 for case in ec.cases:                         # a case the admin added later
                     if not case_kind(case["id"]) and not case.get("limited"):
@@ -23758,21 +23857,21 @@ SLOTS = ("badge1", "badge2", "badge3")
 CASE_NAMES = {"frames": "Frame Case", "cosmos": "Cosmic Case", "winter": "Winter Case",
               "giftbox": "Gift Case", "starter": "Starter Case", "standard": "Standard Case",
               "painter": "Painter's Case", "premium": "Premium Case", "mythic": "Top Tier Case", "daily": "Daily Case",
-              "style": "Ball, Line & Font Case", "themes": "Theme Case", "profile": "Banner & Frame Case", "royal": "Royal Case", "shiny": "Shiny Case",
+              "style": "Ball Case", "lines": "Line Case", "fonts": "Font Case", "themes": "Theme Case", "profile": "Crown Vault", "royal": "Royal Case", "shiny": "Shiny Case",
               "banners": "Banner Case", "medieval": "Medieval Case", "nature": "Nature Case",
               "ocean": "Ocean Case", "spooky": "Spooky Case", "arcade": "Arcade Case", "treasure": "Treasure Case"}
 CASE_NAMES["themes"] = "App Colour Case"                 # 5.15: its items colour the whole app (not the themed cases)            # 4.1: every one is a "Case", and no name promises what it cannot keep
 CASE_COLOURS = {"frames": "#C99BFF", "cosmos": "#5B6CFF", "winter": "#9FE3FF", "giftbox": "#FF4F6D",
                 "starter": "#7FA3B8", "standard": "#4FA8FF", "painter": "#FF8A3D",
                 "premium": "#B36BFF", "mythic": "#35E0D0",
-                "style": "#2EC5FF", "themes": "#FF8A3D", "profile": "#9B5CFF", "royal": "#E8C26A", "shiny": "#E6F2FF", "banners": "#FF6FA8",
+                "style": "#2EC5FF", "lines": "#35E0A1", "fonts": "#FF6FD8", "themes": "#FF8A3D", "profile": "#F5C04A", "royal": "#E8C26A", "shiny": "#E6F2FF", "banners": "#FF6FA8",
                 "medieval": "#D9A45B", "nature": "#5BD47A", "ocean": "#2FA8FF", "spooky": "#9B5CFF",
                 "arcade": "#FF4FD8", "treasure": "#FFC94D"}
 CASE_FRONT = {"frames": ("crown", "star", "crown"), "cosmos": ("planet", "comet", "saturn"),
               "winter": ("snowflake", "star", "snowflake"), "giftbox": ("$", "heart", "$"),
               "starter": ("heart", "clover", "note"), "standard": ("ghost", "moon", "sun"), "painter": ("feather", "quill", "drop"),
               "premium": ("sword", "bolt", "flame"), "mythic": ("?", "?", "?"),
-              "style": ("note", "sun", "bolt"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "feather", "flame"), "royal": ("crown", "trophy", "crown"),
+              "style": ("sun", "moon", "star"), "lines": ("bolt", "comet", "bolt"), "fonts": ("quill", "feather", "quill"), "themes": ("moon", "sun", "comet"), "profile": ("crown", "trophy", "crown"), "royal": ("crown", "trophy", "crown"),
               "shiny": ("drop", "comet", "drop"), "banners": ("flame", "crown", "feather"),
               "medieval": ("sword", "castle", "shield"), "nature": ("flower", "tree", "butterfly"),
               "ocean": ("fish", "anchor", "wave"), "spooky": ("ghost", "skull", "eye"), "arcade": ("gamepad", "rocket", "dice"),
@@ -23794,16 +23893,18 @@ CASE_NOTES = {                    # 4.0: checked against the real odds of every 
     "mythic": "The best case: always an Epic or Legendary badge, never Basic, with the best Shiny and Titanium odds.",
     "winter": "Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.",
     "giftbox": "Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.",
-    "style": "Balls, song lines and fonts, or coins.",
+    "style": "Balls, or coins.",
+    "lines": "Song lines, or coins.",
+    "fonts": "Fonts, or coins.",
     "themes": "App colours (they change how Rubenium looks), Rare or better, or coins. Not badges.",
     "frames": "Profile frames, or coins.",
-    "profile": "Banners and frames, or coins.",
+    "profile": "Everything from every style case, and the animations, with better odds. Or coins.",
     "banners": "Banners, or coins."}
 # 2.6.1: coin cases pay back a little more than they cost on average; rare hunts cost coins for better badges
 COIN_CASES = ("starter", "standard", "premium", "royal")
 HUNT_CASES = ("painter", "shiny", "mythic")
 THEME_CASES = ("nature", "ocean", "spooky", "treasure", "arcade", "medieval", "cosmos")
-STYLE_CASES = ("style", "themes", "banners", "profile", "frames")
+STYLE_CASES = ("style", "lines", "fonts", "themes", "banners", "profile", "frames")
 
 
 def case_kind(case_id: str) -> str:
@@ -27143,7 +27244,7 @@ def anim_set(ctx, item: str) -> None:
     ctx.econ.wear("anim", item, done)
 
 
-ANIMS_LOCKED = True                       # 6.9.1: the Animations tab is locked for now (the simple animation still plays)
+ANIMS_LOCKED = False                      # 9.1: open again (5 animations, each with Titanium, Gold and Prismatic)
 
 
 def build_animations(page, lay, shop: bool) -> None:
@@ -27199,7 +27300,10 @@ def build_animations(page, lay, shop: bool) -> None:
             b = Button(tr("Take off") if on else tr("Wear"), "ghost" if on else "primary", 36)
             b.clicked.connect(lambda _c=False, it=item, on_=on: anim_set(ctx, "" if on_ else it))
             lay.addWidget(b)
-        elif fin == "" and ec.shop_price(item) is not None:
+        elif fin and not ec.owns(anim_id(design)):                # 9.1: versions unlock with the base one
+            lay.addWidget(Label(tr("Own {name} first to unlock this version.", name=tr(name)), 10.5, TEXT_DIM,
+                                wrap_w=page.W))
+        elif ec.shop_price(item) is not None:
             price = ec.shop_price(item)
             b = Button(tr("Buy for {n} coins", n=coins_text(price)) + (f"  (-{ec.sale(item)}%)" if ec.sale(item) else ""), "primary", 36)
 
@@ -27220,9 +27324,9 @@ def build_animations(page, lay, shop: bool) -> None:
             lay.addWidget(b)
             lay.addWidget(TaxNote(ctx, item, page.W))
         else:
-            lay.addWidget(Label(tr("This finish only comes from Profile cases, and it is super rare."), 10.5, TEXT_DIM, wrap_w=page.W))
+            lay.addWidget(Label(tr("Not for sale."), 10.5, TEXT_DIM, wrap_w=page.W))
     if not shown:
-        lay.addWidget(Label(tr("Nothing here yet. Buy one in the Shop or win one in a Profile case."), 12, TEXT_DIM, wrap_w=page.W))
+        lay.addWidget(Label(tr("Nothing here yet. Buy one in the Shop or win one in the Crown Vault."), 12, TEXT_DIM, wrap_w=page.W))
     lay.addSpacing(S(6))
     lay.addWidget(Label(tr("If an animation ever glitches: click anywhere or press Esc to skip it, or press \"Use the simple one\"."),
                         10, TEXT_DIM, wrap_w=page.W))
@@ -47037,8 +47141,9 @@ def tier_info(ctx) -> dict:
     return {"tier": i, "name": tiers[i][0], "mult": tiers[i][2], "wealth": bal, "next": nxt}
 
 
-WEALTH_TIERS = [("Rookie", 0, 1.0, "#9AA5B1"), ("Bronze", 5000, 1.25, "#D08A4E"), ("Silver", 25000, 1.6, "#C9D3DD"),
-                ("Gold", 100000, 2.2, "#F5C04A"), ("Platinum", 500000, 3.0, "#8FE3FF"), ("Diamond", 2000000, 4.0, "#B9A2FF")]
+WEALTH_TIERS = [("Poor", 0, 1.0, "#9AA5B1"), ("Average", 10000, 1.3, "#5FD3A0"), ("Investor", 75000, 1.8, "#4FC3FF"),
+                ("Businessman", 400000, 2.6, "#F5C04A"), ("Casino Legend", 2500000, 4.0, "#FF5CA8")]     # 9.1
+TIER_ICONS = ("coin", "chart", "gem", "briefcase", "crown")
 
 
 class Tile(QWidget):
@@ -47156,62 +47261,119 @@ def game_art(name: str):
 
 
 class TierBanner(QWidget):
-    """9.0: your wealth tier and what it does: every free reward is multiplied by it."""
+    """9.1: your wealth tier on a five-step track. The bar charges toward the next tier; a tier once reached is kept
+    (your wealth can go down inside it, never below it). Every free reward is multiplied by it."""
 
     def __init__(self, ctx) -> None:
         super().__init__()
         self.ctx = ctx
-        self.setFixedHeight(S(64))
-        lay = hbox(self, 6, (S(14), 0, S(10), 0))
+        self.setFixedHeight(S(92))
+        lay = hbox(self, 6, (S(14), S(8), S(10), 0))
         lay.addStretch(1)
         lay.addWidget(HelpDot(tr("Free rewards (spins, scratch cards, daily rewards, quests, mini games and AFK coins) are "
-                                 "multiplied by your tier. Your tier comes from everything you own: coins and items."),
-                              tr("Wealth tier")), 0, Qt.AlignmentFlag.AlignVCenter)
+                                 "multiplied by your tier. Your tier comes from everything you own: coins and items. "
+                                 "Once you reach a tier you keep it."), tr("Wealth tier")), 0, Qt.AlignmentFlag.AlignTop)
+        self._fill = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self._want = None
+        self._t = QTimer(self)
+        self._t.setInterval(40)
+        self._t.timeout.connect(self._tick)
+        self._t.start()
+
+    def _frac(self, t: dict) -> float:
+        i = int(t.get("tier", 0) or 0)
+        nxt = t.get("next")
+        if not nxt:
+            return 1.0
+        lo = float(t.get("at") if t.get("at") is not None else WEALTH_TIERS[min(i, len(WEALTH_TIERS) - 1)][1])
+        return max(0.0, min(1.0, (float(t.get("wealth", 0) or 0) - lo) / max(1.0, float(nxt) - lo)))
+
+    def _tick(self) -> None:
+        if not self.isVisible():
+            return
+        f = self._frac(tier_info(self.ctx))
+        if self._want is None or abs(f - self._want) > 1e-4:
+            self._want = f
+            self._fill.to(f, int(900 * ui.motion))
+        self.update()
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         t = tier_info(self.ctx)
-        i = int(t.get("tier", 0) or 0)
-        col = QColor(WEALTH_TIERS[min(i, len(WEALTH_TIERS) - 1)][3])
-        paint_surface(p, r, S(16), 0.04, 0.0, tint=col, tint_a=0.16)
-        c = QPointF(r.left() + S(32), r.center().y())          # a little gem in the tier colour
-        gem = QPainterPath()
-        gem.moveTo(c.x(), c.y() - S(14))
-        gem.lineTo(c.x() + S(13), c.y() - S(3))
-        gem.lineTo(c.x(), c.y() + S(15))
-        gem.lineTo(c.x() - S(13), c.y() - S(3))
-        gem.closeSubpath()
-        g = QLinearGradient(QPointF(c.x(), c.y() - S(14)), QPointF(c.x(), c.y() + S(15)))
-        g.setColorAt(0, mix(col, QColor("#FFFFFF"), 0.5))
-        g.setColorAt(1, mix(col, QColor("#000000"), 0.35))
-        p.setPen(QPen(mix(col, QColor("#FFFFFF"), 0.6), S(1)))
-        p.setBrush(g)
-        p.drawPath(gem)
+        i = max(0, min(len(WEALTH_TIERS) - 1, int(t.get("tier", 0) or 0)))
+        col = QColor(WEALTH_TIERS[i][3])
+        now = time.monotonic()
+        paint_surface(p, r, S(16), 0.04, 0.0, tint=col, tint_a=0.14)
+        # the emblem
+        c = QPointF(r.left() + S(34), r.top() + S(30))
+        glow = QRadialGradient(c, S(26))
+        glow.setColorAt(0, alpha(col, 0.35))
+        glow.setColorAt(1, alpha(col, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, S(26), S(26))
+        p.setBrush(alpha(col, 0.18))
+        p.setPen(QPen(alpha(col, 0.8), S(1.4)))
+        p.drawEllipse(c, S(17), S(17))
+        p.save()
+        p.translate(c)
+        p.scale(S(18) / 20, S(18) / 20)
+        draw_icon(p, TIER_ICONS[i], mix(col, QColor("#FFFFFF"), 0.35))
+        p.restore()
+        # name and multiplier
         p.setPen(QColor(TEXT))
         p.setFont(font(15, QFont.Weight.ExtraBold))
-        name = tr(str(t.get("name", "Rookie")))
-        p.drawText(QRectF(r.left() + S(56), r.top() + S(10), r.width(), S(22)), int(Qt.AlignmentFlag.AlignVCenter), name)
+        name = tr(WEALTH_TIERS[i][0])
+        p.drawText(QRectF(r.left() + S(60), r.top() + S(12), r.width(), S(22)), int(Qt.AlignmentFlag.AlignVCenter), name)
         nw = p.fontMetrics().horizontalAdvance(name)
         p.setFont(font(13, QFont.Weight.Black))
         p.setPen(col)
-        p.drawText(QRectF(r.left() + S(64) + nw, r.top() + S(10), S(80), S(22)), int(Qt.AlignmentFlag.AlignVCenter),
+        p.drawText(QRectF(r.left() + S(68) + nw, r.top() + S(12), S(80), S(22)), int(Qt.AlignmentFlag.AlignVCenter),
                    "×" + f"{float(t.get('mult', 1) or 1):g}")
         nxt = t.get("next")
-        bar = QRectF(r.left() + S(56), r.bottom() - S(20), r.width() - S(56) - S(52), S(5))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.08))
-        p.drawRoundedRect(bar, S(2.5), S(2.5))
-        lo = WEALTH_TIERS[min(i, len(WEALTH_TIERS) - 1)][1]
-        frac = 1.0 if not nxt else max(0.0, min(1.0, (float(t.get("wealth", 0) or 0) - lo) / max(1.0, float(nxt) - lo)))
-        p.setBrush(col)
-        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(bar.height(), bar.width() * frac), bar.height()), S(2.5), S(2.5))
         p.setPen(QColor(TEXT_FAINT))
         p.setFont(font(10, QFont.Weight.DemiBold))
-        label = tr("Top tier") if not nxt else tr("Next at {n}", n=coins_text(int(nxt)))
-        p.drawText(QRectF(bar.left(), r.top() + S(10), bar.width(), S(22)),
+        label = tr("Top tier") if not nxt else tr("{name} at {n}", name=tr(WEALTH_TIERS[i + 1][0]), n=coins_text(int(nxt)))
+        p.drawText(QRectF(r.left() + S(60), r.top() + S(12), r.width() - S(60) - S(44), S(22)),
                    int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), label)
+        # the track: five stops; the part to the next stop charges up
+        n = len(WEALTH_TIERS)
+        x0, x1 = r.left() + S(24), r.right() - S(24)
+        y = r.bottom() - S(24)
+        step = (x1 - x0) / (n - 1)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#FFFFFF", 0.08))
+        p.drawRoundedRect(QRectF(x0, y - S(3), x1 - x0, S(6)), S(3), S(3))
+        f = self._fill.level
+        done = x0 + step * i + (step * f if i < n - 1 else 0)
+        g = QLinearGradient(QPointF(x0, y), QPointF(max(done, x0 + 1), y))
+        g.setColorAt(0, alpha(WEALTH_TIERS[0][3], 0.9))
+        g.setColorAt(1, col)
+        p.setBrush(g)
+        p.drawRoundedRect(QRectF(x0, y - S(3), max(S(6), done - x0), S(6)), S(3), S(3))
+        if i < n - 1 and f > 0.01:                                  # a light running along the charging part
+            run = (now * 0.6) % 1.0
+            sx = x0 + step * i + step * f * run
+            sh = QRadialGradient(QPointF(sx, y), S(10))
+            sh.setColorAt(0, alpha("#FFFFFF", 0.55))
+            sh.setColorAt(1, alpha("#FFFFFF", 0.0))
+            p.setBrush(sh)
+            p.drawEllipse(QPointF(sx, y), S(10), S(4))
+        for k in range(n):
+            cx = x0 + step * k
+            kc = QColor(WEALTH_TIERS[k][3])
+            reached = k <= i
+            p.setPen(QPen(QColor("#0B0D12"), S(2)))
+            p.setBrush(kc if reached else alpha("#FFFFFF", 0.12))
+            rad = S(6.5) if k == i else S(5)
+            p.drawEllipse(QPointF(cx, y), rad, rad)
+            p.setPen(QColor(TEXT) if k == i else (kc if reached else QColor(TEXT_FAINT)))
+            p.setFont(font(8.5, QFont.Weight.Bold if k == i else QFont.Weight.DemiBold))
+            al = Qt.AlignmentFlag.AlignLeft if k == 0 else Qt.AlignmentFlag.AlignRight if k == n - 1 else Qt.AlignmentFlag.AlignHCenter
+            bx = QRectF(cx - (0 if k == 0 else S(90) if k == n - 1 else S(45)), y + S(7), S(90), S(14))
+            p.drawText(bx, int(al | Qt.AlignmentFlag.AlignVCenter), tr(WEALTH_TIERS[k][0]))
 
 
 class HubPage(Page):
@@ -47341,63 +47503,166 @@ class RewardsPage(Page):
 
 
 class KeyForge(QWidget):
-    """9.0: make a key from coins. The price follows your wealth (a share of it, with a floor), a few a day."""
+    """9.1: coins in, a key out. One clear line: the price, how many forges are left today (dots), and a big button.
+    The price is a small share of your wealth (0.5%, at least 250); higher tiers get more forges a day."""
 
     def __init__(self, ctx) -> None:
         super().__init__()
         self.ctx = ctx
-        self.setFixedHeight(S(72))
-        lay = hbox(self, 8, (S(16), 0, S(12), 0))
-        col = vbox(spacing=2)
+        self.setFixedHeight(S(112))
+        lay = hbox(self, 10, (S(118), S(12), S(14), S(12)))
+        col = vbox(spacing=4)
         top = hbox(spacing=6)
         top.addWidget(Label(tr("Key Forge"), 15, weight=QFont.Weight.ExtraBold).fit())
-        top.addWidget(HelpDot(tr("Turn coins into a key. The price is a small share of your wealth, so it is fair at "
-                                 "every level. A few a day."), tr("Key Forge")))
+        top.addWidget(HelpDot(tr("Pay coins, get a key. The price is 0.5% of your wealth (at least 250 coins). "
+                                 "Higher tiers can forge more keys a day."), tr("Key Forge")))
         top.addStretch(1)
-        col.addStretch(1)
         col.addLayout(top)
-        self.sub = Label("", 11, TEXT_DIM)
+        self.price = Label("", 13, TEXT, bold=True)
+        col.addWidget(self.price)
+        self.sub = Label("", 10.5, TEXT_DIM)
         col.addWidget(self.sub)
         col.addStretch(1)
         lay.addLayout(col, 1)
-        self.btn = Button(tr("Forge"), "primary", 38, icon="key")
-        self.btn.setFixedWidth(S(130))
+        self.btn = Button(tr("Forge a key"), "primary", 44, icon="key")
+        self.btn.setFixedWidth(S(160))
         self.btn.clicked.connect(self._forge)
         lay.addWidget(self.btn, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._hit = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self._sparks: list = []
+        self._anim = QTimer(self)
+        self._anim.setInterval(16)
+        self._anim.timeout.connect(self._step)
+        self._busy = False
         self._fill()
         ctx.econ.looks_changed.connect(self._fill)
         ctx.wallet.changed.connect(self._fill)
+
+    def _state(self) -> tuple:
+        f = getattr(self.ctx.econ, "forge", None) or {}
+        return int(f.get("price", 0) or 0), int(f.get("left", 0) or 0), int(f.get("cap", 0) or f.get("left", 0) or 0)
 
     def _fill(self) -> None:
         try:
             self.sub.isVisible()
         except RuntimeError:                          # the page was closed
             return
-        f = getattr(self.ctx.econ, "forge", None) or {}
-        price, left = int(f.get("price", 0) or 0), int(f.get("left", 0) or 0)
-        self.sub.set_text(tr("{c} coins · {n} left today", c=coins_text(price), n=left) if price else "…")
-        self.btn.setEnabled(bool(price) and left > 0 and self.ctx.wallet.balance() >= price)
+        price, left, cap = self._state()
+        if not price:
+            self.price.set_text("…")
+            self.sub.set_text("")
+            self.btn.setEnabled(False)
+            return
+        self.price.set_text(tr("{c} coins → 1 key", c=coins_text(price)))
+        rich = self.ctx.wallet.balance() >= price
+        self.sub.set_text(tr("{n} of {cap} left today", n=left, cap=cap) if left and rich else
+                          tr("Come back tomorrow") if not left else tr("Not enough coins"))
+        self.btn.setEnabled(left > 0 and rich and not self._busy)
+        self.update()
 
     def _forge(self) -> None:
         ctx = self.ctx
+        if self._busy:
+            return
+        self._busy = True
+        self.btn.setEnabled(False)
 
         def got(ok: bool, data) -> None:
+            self._busy = False
+            try:
+                self.isVisible()
+            except RuntimeError:
+                return
             if ok and isinstance(data, dict):
                 ctx.econ.absorb(data)
                 ctx.econ.forge = data.get("forge") or ctx.econ.forge
                 sfx.play("key") if "key" in Sfx.SOUNDS else sfx.play("coin")
-                ctx.toast(tr("+1 key"), "ok")
+                self._strike()
                 ctx.wallet.changed.emit()
             else:
                 ctx.toast(tr("No more today") if data == ERRORS["rb_too_many"] else tr(str(data)), "warn")
             self._fill()
         ctx.econ.call("rb_key_forge", {}, got)
 
+    def _centre(self) -> QPointF:
+        return QPointF(S(60), self.height() / 2)
+
+    def _strike(self) -> None:
+        """The hammer comes down: a flash, sparks and the key lifts out."""
+        self._hit.jump(1.0)
+        self._hit.to(0.0, int(900 * ui.motion))
+        c = self._centre()
+        rnd = random.Random()
+        for _ in range(26):
+            a = rnd.uniform(-math.pi, 0)
+            v = rnd.uniform(1.5, 4.2) * ui.scale
+            self._sparks.append([c.x(), c.y() + S(6), math.cos(a) * v, math.sin(a) * v, 1.0])
+        self._anim.start()
+
+    def _step(self) -> None:
+        keep = []
+        for s_ in self._sparks:
+            s_[0] += s_[2]
+            s_[1] += s_[3]
+            s_[3] += 0.18 * ui.scale
+            s_[4] -= 0.03
+            if s_[4] > 0:
+                keep.append(s_)
+        self._sparks = keep
+        if not keep and self._hit.level <= 0.001:
+            self._anim.stop()
+        self.update()
+
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         paint_surface(p, r, S(16), 0.04, 0.0, tint=QColor(KEY_BLUE), tint_a=0.12)
+        c = self._centre()
+        h = self._hit.level
+        glow = QRadialGradient(c, S(46))
+        glow.setColorAt(0, alpha(KEY_BLUE, 0.28 + 0.5 * h))
+        glow.setColorAt(1, alpha(KEY_BLUE, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, S(46), S(46))
+        anvil = QPainterPath()                                    # the anvil
+        ax, ay = c.x(), c.y() + S(14)
+        anvil.moveTo(ax - S(26), ay - S(6))
+        anvil.lineTo(ax + S(20), ay - S(6))
+        anvil.quadTo(ax + S(30), ay - S(6), ax + S(32), ay - S(12))
+        anvil.lineTo(ax + S(18), ay + S(2))
+        anvil.lineTo(ax + S(10), ay + S(2))
+        anvil.lineTo(ax + S(14), ay + S(14))
+        anvil.lineTo(ax - S(14), ay + S(14))
+        anvil.lineTo(ax - S(10), ay + S(2))
+        anvil.lineTo(ax - S(26), ay + S(2))
+        anvil.closeSubpath()
+        g = QLinearGradient(QPointF(ax, ay - S(6)), QPointF(ax, ay + S(14)))
+        g.setColorAt(0, QColor("#5A6472"))
+        g.setColorAt(1, QColor("#252B34"))
+        p.setBrush(g)
+        p.setPen(QPen(alpha("#FFFFFF", 0.25), S(1)))
+        p.drawPath(anvil)
+        lift = S(16) * math.sin(min(1.0, (1 - h)) * math.pi) if h > 0 else 0.0     # the key hops out after a strike
+        p.save()
+        p.translate(c.x(), c.y() - S(8) - lift)
+        p.scale(S(22) / 20, S(22) / 20)
+        draw_icon(p, "key", mix(QColor(KEY_BLUE), QColor("#FFFFFF"), 0.3 + 0.6 * h))
+        p.restore()
+        price, left, cap = self._state()                          # today's forges, as dots under the anvil
+        if cap:
+            n = min(cap, 20)
+            gap = S(7) if n <= 8 else S(4.6)
+            x0 = c.x() - (n - 1) * gap / 2
+            for k in range(n):
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(KEY_BLUE) if k < left else alpha("#FFFFFF", 0.14))
+                p.drawEllipse(QPointF(x0 + k * gap, r.bottom() - S(12)), S(2.2), S(2.2))
+        for x, y, _vx, _vy, life in self._sparks:
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(mix(QColor("#FFD27A"), QColor(KEY_BLUE), 1 - life), life))
+            p.drawEllipse(QPointF(x, y), S(1.8), S(1.8))
 
 
 class ScreenPage(Combined):
