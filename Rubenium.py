@@ -42993,64 +42993,82 @@ def ease_io(k: float) -> float:
 
 
 def paint_door_half(p: QPainter, r: QRectF, left: bool, accent: QColor, glow: float = 0.0, lights: float = 0.0) -> None:
-    """One half of the garage door: steel slats, rivets, a hazard edge and half of the R."""
+    """9.1: one half of the Rubenium doors: black lacquer panels with fine gold inlay, a light strip along the seam in
+    the song's colour that wakes up from the bottom, and half of the gold R medallion."""
+    gold, gold_hi = QColor("#E8C26A"), QColor("#FFF1C2")
+    lit = mix(accent, QColor("#FFFFFF"), 0.35) if accent.saturationF() > 0.15 else gold
     p.save()
     p.setClipRect(r)
-    g = QLinearGradient(r.topLeft(), r.bottomLeft())
-    g.setColorAt(0, QColor(STEEL_A))
-    g.setColorAt(1, QColor(STEEL_B))
+    g = QLinearGradient(r.topLeft(), r.bottomRight() if left else r.bottomLeft())
+    g.setColorAt(0, QColor("#15171C"))
+    g.setColorAt(0.55, QColor("#0B0C10"))
+    g.setColorAt(1, QColor("#050608"))
     p.fillRect(r, g)
-    slats = 9
-    sh = r.height() / slats
-    for i in range(slats):                                # ribbed slats, lit from above
-        y = r.top() + i * sh
-        p.fillRect(QRectF(r.left(), y, r.width(), max(1.0, sh * 0.08)), QColor(255, 255, 255, 22))
-        p.fillRect(QRectF(r.left(), y + sh * 0.92, r.width(), max(1.0, sh * 0.08)), QColor(0, 0, 0, 90))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(255, 255, 255, 34))
-        for x in (r.left() + S(14), r.right() - S(14)):
-            p.drawEllipse(QPointF(x, y + sh * 0.5), S(2.2), S(2.2))
-    edge = S(16)                                          # the hazard stripe on the inner edge
-    er = QRectF(r.right() - edge, r.top(), edge, r.height()) if left else QRectF(r.left(), r.top(), edge, r.height())
-    p.fillRect(er, QColor("#1A1A1A"))
-    p.save()
-    p.setClipRect(er)
-    p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QColor(HAZARD))
-    step = S(18)
-    y = r.top() - step
-    while y < r.bottom() + step:
-        band = QPainterPath()
-        band.moveTo(er.left(), y)
-        band.lineTo(er.right(), y + step * 0.6)
-        band.lineTo(er.right(), y + step * 1.1)
-        band.lineTo(er.left(), y + step * 0.5)
-        band.closeSubpath()
-        p.drawPath(band)
-        y += step * 1.2
-    p.restore()
-    # half of the big R, cut by the seam
-    whole = QRectF(0, 0, r.height() * 0.42, r.height() * 0.42)
-    seam_x = r.right() if left else r.left()
+    sheen = QLinearGradient(r.topLeft(), r.topRight())          # a soft lacquer sheen across the panel
+    sheen.setColorAt(0.0 if left else 1.0, QColor(255, 255, 255, 0))
+    sheen.setColorAt(0.65 if left else 0.35, QColor(255, 255, 255, 14))
+    sheen.setColorAt(1.0 if left else 0.0, QColor(255, 255, 255, 0))
+    p.fillRect(r, sheen)
+    inset = S(26)                                               # two framed panels with thin gold inlay
+    inner = r.adjusted(inset if left else S(34), inset, -S(34) if left else -inset, -inset)
+    for k, part in enumerate((QRectF(inner.left(), inner.top(), inner.width(), inner.height() * 0.46),
+                              QRectF(inner.left(), inner.top() + inner.height() * 0.54, inner.width(), inner.height() * 0.46))):
+        p.setPen(QPen(alpha(gold, 0.30 + 0.25 * glow), S(1.2)))
+        p.setBrush(QColor(255, 255, 255, 5 + 4 * k))
+        p.drawRoundedRect(part, S(10), S(10))
+        p.setPen(QPen(QColor(0, 0, 0, 120), S(1)))
+        p.drawRoundedRect(part.adjusted(S(5), S(5), -S(5), -S(5)), S(7), S(7))
+    seam_x = r.right() if left else r.left()                     # the light strip on the inner edge
+    strip = QRectF(seam_x - S(5) if left else seam_x, r.top(), S(5), r.height())
+    p.fillRect(strip, QColor("#020203"))
+    wake = min(1.0, glow * 1.4)                                  # it lights up from the bottom
+    if wake > 0:
+        lg = QLinearGradient(strip.bottomLeft(), strip.topLeft())
+        lg.setColorAt(0, alpha(lit, 0.95))
+        lg.setColorAt(max(0.01, wake), alpha(lit, 0.75))
+        lg.setColorAt(min(1.0, wake + 0.02), alpha(lit, 0.0))
+        p.fillRect(strip, lg)
+        halo = QLinearGradient(QPointF(seam_x, 0), QPointF(seam_x + (-S(60) if left else S(60)), 0))
+        halo.setColorAt(0, alpha(lit, 0.22 * wake))
+        halo.setColorAt(1, alpha(lit, 0.0))
+        p.fillRect(QRectF(seam_x - S(60) if left else seam_x, r.top(), S(60), r.height()), halo)
+    # half of the gold R medallion, cut by the seam
+    d = min(r.height() * 0.30, r.width() * 1.1)
+    whole = QRectF(0, 0, d, d)
     whole.moveCenter(QPointF(seam_x, r.center().y()))
-    p.setPen(QPen(alpha(accent, 0.35 + 0.4 * glow), S(3)))
-    p.setBrush(QColor(0, 0, 0, 70))
-    p.drawEllipse(whole)
-    p.setPen(alpha(accent, 0.55 + 0.45 * glow))
-    p.setFont(font(max(10.0, whole.height() / max(0.1, ui.scale) * 0.62), QFont.Weight.Black))
-    p.drawText(whole, int(Qt.AlignmentFlag.AlignCenter), "R")
-    # warning lights at the top
-    lx = r.left() + r.width() * (0.18 if left else 0.82)
-    on = lights > 0 and int(lights * 7) % 2 == 0
     p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QColor("#FFB020") if on else QColor("#4A3A18"))
-    p.drawEllipse(QPointF(lx, r.top() + S(18)), S(6), S(6))
-    if on:
-        halo = QRadialGradient(QPointF(lx, r.top() + S(18)), S(40))
-        halo.setColorAt(0, QColor(255, 176, 32, 120))
-        halo.setColorAt(1, QColor(255, 176, 32, 0))
+    p.setBrush(QColor("#08090C"))
+    p.drawEllipse(whole)
+    rim = QLinearGradient(whole.topLeft(), whole.bottomRight())
+    rim.setColorAt(0, gold_hi)
+    rim.setColorAt(0.5, gold)
+    rim.setColorAt(1, QColor("#8A6420"))
+    p.setPen(QPen(QBrush(rim), S(3.2)))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.drawEllipse(whole.adjusted(S(2), S(2), -S(2), -S(2)))
+    p.setPen(QPen(alpha(gold, 0.35), S(1)))
+    p.drawEllipse(whole.adjusted(S(10), S(10), -S(10), -S(10)))
+    f = font(max(10.0, d / max(0.1, ui.scale) * 0.5), QFont.Weight.Black)
+    path = QPainterPath()
+    from PyQt6.QtGui import QFontMetricsF
+    fm = QFontMetricsF(f)
+    path.addText(QPointF(whole.center().x() - fm.horizontalAdvance("R") / 2,
+                         whole.center().y() + (fm.ascent() - fm.descent()) / 2), f, "R")
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QBrush(rim))
+    p.drawPath(path)
+    if glow > 0:
+        p.setPen(QPen(alpha(lit, 0.6 * glow), S(2)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(whole.adjusted(-S(3), -S(3), S(3), S(3)))
+    if lights > 0:                                               # a slow pulse on the medallion while it unlocks
+        pulse = 0.5 + 0.5 * math.sin(lights * 9)
+        halo = QRadialGradient(whole.center(), d * 0.9)
+        halo.setColorAt(0, alpha(gold, 0.18 * pulse))
+        halo.setColorAt(1, alpha(gold, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(halo)
-        p.drawEllipse(QPointF(lx, r.top() + S(18)), S(40), S(40))
+        p.drawEllipse(whole.center(), d * 0.9, d * 0.9)
     p.restore()
 
 
@@ -43420,7 +43438,7 @@ class DoorStage(QWidget):
                 p.setPen(Qt.PenStyle.NoPen)
                 for dx, dy, s_ in self.dust:
                     a = (1 - k) * 0.5 * s_
-                    p.setBrush(QColor(200, 210, 220, int(255 * a)))
+                    p.setBrush(QColor(255, 226, 160, int(255 * a)))     # 9.1: gold dust
                     p.drawEllipse(QPointF(r.center().x() + (dx - 0.5) * r.width() * k, r.top() + dy * r.height()),
                                   S(1.6) * s_, S(1.6) * s_)
         self._paint_sparks(p, now)
