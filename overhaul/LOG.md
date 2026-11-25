@@ -102,3 +102,7 @@ Open questions: see the Checkpoint 1 message.
   - Admin: 13 sections in two rows of 7 + 6 (Alerts was alone on a third row, with Rig's icon), the overview's
     empty ninth number is now Game rounds, and its two tables say "Nobody has played yet" / "No coins moved yet"
     instead of showing an empty section.
+- Measured (Linux, headless, same machine, two runs each; a proxy, not Windows numbers): resting CPU 25 % of one
+  core in 7.0 → 10 % in 8.0, memory the same (306 MB), start to ready 1.17 s → 1.24 s (a larger file to read).
+- Checkpoint 3 page: before / after of the main screens (private artifact, screenshots in
+  overhaul/screens/after on the project drive). 552 page states crawled with 0 errors.

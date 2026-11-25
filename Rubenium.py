@@ -39352,7 +39352,7 @@ class AdminPage(Page):
     key = "admin"
     SECTIONS = ["Overview", "Players", "Give", "Rig", "Live", "Coinflips", "Cases", "Settings", "Locks", "Bots", "Swaps",
                 "Log", "Alerts"]
-    ICONS = ["perf", "users", "gift", "spark", "timer", "coin", "folder", "cog", "lock", "robot", "rocket", "refresh", "danger"]
+    ICONS = ["perf", "users", "gift", "spark", "timer", "coin", "folder", "cog", "lock", "robot", "rocket", "refresh", "bell"]
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
