@@ -37,7 +37,8 @@ def dsn(db):
 
 
 def new_migrations():
-    files = sorted(glob.glob(os.path.join(REPO, "supabase", "migrations", "*.sql")))
+    dirs = [os.path.join(REPO, "supabase", "migrations")] + [d for d in os.environ.get("RB_MIGRATIONS_EXTRA", "").split(":") if d]
+    files = sorted((f for d in dirs for f in glob.glob(os.path.join(d, "*.sql"))), key=os.path.basename)
     return [f for f in files if not f.endswith("_down.sql") and int(re.match(r"(\d+)", os.path.basename(f)).group(1)) >= 74]
 
 

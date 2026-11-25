@@ -45,3 +45,8 @@ Open questions: see the Checkpoint 1 message.
   levels down), every casino game and every part of the games lobby, pictures each one and records any error.
   First full run: offline 27, player 120, admin 139 states, English and French, 0 errors; 58 server functions used,
   none refused.
+- "Before" pictures of every page: offline, player, admin, French, and two small screens (1366x768, 1280x720):
+  550 states, 0 errors (kept with the project files, not in the repository).
+- Phase 2 server work is written and tested on the local copy of the live server, kept privately until it is live
+  (this repository is public). `overhaul/db/roundtrip.py` checks any migration: it applies twice, undoes twice, and
+  every function, grant, table's row security and setting is back exactly as before.
