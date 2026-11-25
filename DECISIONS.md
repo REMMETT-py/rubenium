@@ -4,7 +4,7 @@ Choices made where the request left room, newest last.
 
 ## Accounts (1.7)
 - The app is Python (PyQt6), not Electron. "Secure storage" is Windows data protection (DPAPI): the saved login
-  can only be read by the same Windows user on the same PC. File: `%USERPROFILE%\.rubenium\Rubenium\session.dat`.
+  can only be read by the same Windows user on the same PC. File: `Documents\Rubenium\session.dat` (corrected in 8.0; it has always been there).
 - Supabase needs an e-mail, so a username becomes `<username in lower case>@users.rubenium.app`. No mail is ever
   sent. "Confirm email" must be OFF in Supabase.
 - Usernames: 3 to 10 letters or numbers, unique whatever the capitals. The database refuses any account that does

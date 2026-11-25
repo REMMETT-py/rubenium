@@ -2931,7 +2931,7 @@ ERRORS = {"rb_not_enough": "Not enough coins", "rb_not_for_sale": "This is not f
           "rb_pawn_limit": "10 proposals an hour at the pawn shop: wait a little",
           "rb_arena_busy": "A Jackpot or Horse Race is running: wait for it to end", "rb_arena_same": "That one is already running",
           "rb_pawn_nothing": "He has nothing to offer for that right now",
-          "rb_roulette_opposite": "Red and Black (or Low and High) can't both be picked", "rb_not_your_turn": "Wait for your turn",
+          "rb_roulette_opposite": "Red and Black (or Low and High) can't both be picked",
           "rb_row_not_full": "You need every colour of that row (not on sale or in a trade)",
           "rb_have_them_all": "You already have all of those",
           "rb_round_open": "Finish your round first", "rb_already_worn": "Already on show",
@@ -3622,12 +3622,12 @@ FR = {
     # tray
     "Open / close": "Ouvrir / fermer", "Crosshair on / off": "Afficher / masquer le viseur",
     "Normal screen colours": "Couleurs d'écran normales",
-    "Put the ball back in the corner": "Remettre la boule dans le coin", "Quit Rubenium": "Quitter Rubenium",
+    "Quit Rubenium": "Quitter Rubenium",
     # home
     "Could not find the music app window": "Fenêtre de l'appli de musique introuvable",
     "Click to choose the music app": "Clique pour choisir l'appli de musique",
     "Open the music app": "Ouvrir l'appli de musique",
-    "Shuffle": "Lecture aléatoire", "Previous": "Précédent", "Next": "Suivant", "Repeat": "Répéter",
+    "Shuffle": "Lecture aléatoire", "Previous": "Précédent", "Repeat": "Répéter",
     "Music app: {name}": "Appli de musique : {name}", "Music app: automatic": "Appli de musique : automatique",
     "Unknown artist": "Artiste inconnu", "Setup needed": "Installation à terminer",
     "Music app not responding": "L'appli de musique ne répond pas", "Trying again…": "Nouvel essai…",
@@ -3636,7 +3636,7 @@ FR = {
     "No music app is open": "Aucune appli de musique ouverte",
     "Press play to open Spotify": "Appuie sur lecture pour ouvrir Spotify", "Auto": "Auto",
     # lyrics
-    "Try again": "Réessayer", "Play a song to see its lyrics": "Lance un titre pour voir les paroles",
+    "Play a song to see its lyrics": "Lance un titre pour voir les paroles",
     "Looking for lyrics…": "Recherche des paroles…", "No internet connection": "Pas de connexion Internet",
     "No lyrics for this song": "Pas de paroles pour ce titre",
     # crosshair
@@ -3644,7 +3644,7 @@ FR = {
     "Image": "Image", "Colour": "Couleur", "Other colour": "Autre couleur", "Shape": "Forme",
     "Length": "Longueur", "Thickness": "Épaisseur", "Gap": "Écart", "Circle radius": "Taille du cercle",
     "Dot size": "Taille du point", "Outline width": "Épaisseur du contour", "Opacity": "Opacité",
-    "Centre dot": "Point central", "Outline": "Contour", "Position": "Position",
+    "Centre dot": "Point central", "Position": "Position",
     "Offset X": "Décalage horizontal", "Offset Y": "Décalage vertical", "Screen {n}": "Écran {n}",
     "Your own image": "Votre image", "Add image…": "Ajouter une image…", "Next image": "Image suivante",
     "Open the image folder": "Ouvrir le dossier des images", "Image size": "Taille de l'image",
@@ -3655,20 +3655,19 @@ FR = {
     "No image yet": "Aucune image pour l'instant", "Add an image first": "Ajoutez d'abord une image",
     "Choose an image": "Choisir une image", "This file could not be added": "Impossible d'ajouter ce fichier",
     "Image added": "Image ajoutée",
-    "Slot {n} is empty": "L'emplacement {n} est vide", "Crosshair reset": "Viseur réinitialisé",
+    "Crosshair reset": "Viseur réinitialisé",
     # display
     "Change my screen colours": "Modifier les couleurs de l'écran",
     "Goes back to normal when you turn it off": "Tout redevient normal quand tu désactives",
     "Look A": "Style A", "Look B": "Style B", "Light": "Lumière", "Brightness": "Luminosité",
     "Contrast": "Contraste", "Gamma": "Gamma", "Brighter shadows": "Ombres plus claires",
     "Colour strength": "Intensité des couleurs", "Tint": "Teinte", "NVIDIA vibrance": "Vibrance NVIDIA",
-    "Red": "Rouge", "Green": "Vert", "Blue": "Bleu",
     "Some settings are missing": "Certains réglages sont absents",
     "This PC or screen does not allow them.": "Ce PC ou cet écran ne les permet pas.",
     "Reset this look": "Réinitialiser ce style", "Look {p} reset": "Style {p} réinitialisé",
     "Your screen refused this setting": "Ton écran a refusé ce réglage",
     # stats
-    "Processor": "Processeur", "Memory": "Mémoire", "Graphics": "Carte graphique", "Ping": "Ping",
+    "Processor": "Processeur", "Graphics": "Carte graphique", "Ping": "Ping",
     "Internet": "Internet", "On-screen stats": "Stats à l'écran",
     "Show stats while I play": "Afficher les stats pendant le jeu",
     "Top left": "Haut gauche", "Top right": "Haut droite", "Bottom left": "Bas gauche",
@@ -3684,8 +3683,8 @@ FR = {
     "Screen: {a} Hz, the best it can do": "Écran : {a} Hz, son maximum",
     "Free up space": "Libérer de l'espace", "Deletes old temporary files": "Supprime les anciens fichiers temporaires",
     "My PC": "Mon PC", "Copy": "Copier", "Gaming mode is on": "Mode jeu activé",
-    "Back to your normal settings": "Retour à tes réglages habituels", "Done": "C'est fait",
-    "{mb} MB freed": "{mb} Mo libérés", "Screen": "Écran", "Copied": "Copié",
+    "Back to your normal settings": "Retour à tes réglages habituels",
+    "{mb} MB freed": "{mb} Mo libérés", "Copied": "Copié",
     # rocket league
     "Rocket League items": "Objets Rocket League",
     "Coming soon. Pick your files now: they are saved for later.":
@@ -3700,13 +3699,13 @@ FR = {
     # settings
     "Look": "Apparence", "Glow": "Halo lumineux", "Glow moves with the music": "Le halo suit la musique",
     "Song progress around the ball": "Avancement du titre autour de la boule",
-    "Colour from the album cover": "Couleur selon la pochette", "Language": "Langue", "Size": "Taille",
+    "Colour from the album cover": "Couleur selon la pochette", "Size": "Taille",
     "Windows": "Windows", "Start with Windows": "Lancer au démarrage de Windows",
     "Reset settings": "Réinitialiser les réglages",
     "Press again to reset everything": "Appuie encore une fois pour tout réinitialiser",
     "Settings reset": "Réglages réinitialisés",
     # window
-    "Close to the ball": "Réduire en boule", "Leave your game first": "Quitte d'abord votre jeu",
+    "Leave your game first": "Quitte d'abord votre jeu",
     # tools 1.2
     "Clock": "Heure", "Background recording off": "Enregistrement en arrière-plan désactivé",
     "Quick fixes": "Réparations rapides", "Free up memory": "Libérer de la mémoire",
@@ -3731,7 +3730,7 @@ FR = {
     # 1.4
     "Apps": "Applis", "Timer": "Chrono", "Themes": "Thèmes",
     "Start": "Démarrer", "Split": "Tour", "Resume": "Reprendre", "Pause": "Pause", "Finish": "Terminer",
-    "Reset": "Effacer", "No splits yet": "Aucun temps", "Best: {t}": "Meilleur temps : {t}",
+    "No splits yet": "Aucun temps", "Best: {t}": "Meilleur temps : {t}",
     "Show on screen": "Afficher à l'écran", "Keyboard shortcuts": "Raccourcis clavier",
     "Time used: {t}": "Temps d'utilisation : {t}", "In use": "Utilisé", "Use": "Utiliser",
     "Preview: unlocks at {h} hours": "Aperçu : se débloque à {h} heures", "Boost colour": "Couleur du thème Boost",
@@ -3741,14 +3740,14 @@ FR = {
     "Rocket League found": "Rocket League détecté", "Rocket League not found": "Rocket League introuvable",
     "Choose the game folder": "Choisis le dossier du jeu",
     "That is not the Rocket League folder": "Ce n'est pas le dossier de Rocket League",
-    "Mine": "Le mien", "Show as": "Afficher comme", "Soon": "Bientôt", "Off": "Désactivé", "Title": "Titre",
+    "Mine": "Le mien", "Show as": "Afficher comme", "Soon": "Bientôt", "Off": "Désactivé",
     "Pick the title you want to show": "Choisis le titre à afficher",
     "Library": "Bibliothèque", "Copy code": "Copier le code", "Paste code": "Coller un code",
     "Code copied": "Code copié", "No crosshair code found": "Aucun code de viseur trouvé",
-    "Classic": "Classique", "Small": "Petit", "Tight": "Serré", "Wide": "Large", "Big dot": "Gros point",
+    "Small": "Petit", "Tight": "Serré", "Wide": "Large", "Big dot": "Gros point",
     "Cross dot": "Croix et point", "Circle dot": "Cercle et point", "Scope": "Lunette", "Thick": "Épais",
     "This session": "Cette session", "Time": "Durée", "Processor, highest": "Processeur, maximum",
-    "Processor, average": "Processeur, moyenne", "Memory, highest": "Mémoire, maximum",
+    "Processor, average": "Processeur, moyenne",
     "Ping, average": "Ping, moyenne", "Graphics card, hottest": "Carte graphique, température max.",
     # 1.5
     "Custom 1": "Custom 1", "Custom 2": "Custom 2", "Custom {n} reset": "Custom {n} réinitialisé", "Shadows": "Ombres",
@@ -3761,15 +3760,13 @@ FR = {
     "Reset colours": "Réinitialiser les couleurs",
     # 1.6
     "Mute": "Muet", "Unmute": "Réactiver", "Music volume": "Volume de la musique",
-    "Quick start": "Modèles", "Style": "Style", "Circle size": "Taille du cercle", "Left / right": "Gauche / droite",
+    "Quick start": "Modèles", "Circle size": "Taille du cercle", "Left / right": "Gauche / droite",
     "Up / down": "Haut / bas",
     "Slot {n} is empty": "L'emplacement {n} est vide", "Hide menu bar when idle": "Masquer la barre au repos",
     "Start, then lap": "Démarrer, puis tour", "Pause / resume": "Pause / reprendre", "Reset to 0": "Remettre à 0",
     "Lines": "Lignes", "Radiance": "Éclat",
     # 2.0
-    "My crosshairs": "Mes viseurs", "Slot {n}": "Slot {n}", "Clear slot": "Vider",
-    "Save to slot {n}": "Enregistrer dans le slot {n}", "Click a slot to save": "Clique sur un slot",
-    "Saved in slot {n}": "Enregistré dans le slot {n}",
+    "My crosshairs": "Mes viseurs",
     "Goal explosions": "Explosions de but", "Car bodies": "Voitures", "Boosts": "Boosts", "Trails": "Traînées",
     "File missing": "Fichier manquant",
     "An update put back the original files": "Une mise à jour a remis les fichiers d'origine",
@@ -3802,7 +3799,7 @@ FR = {
     "Reset look": "Réinitialiser l'apparence", "Reset best time": "Effacer le meilleur temps",
     "Reset on-screen stats": "Réinitialiser les stats à l'écran",
     # 2.2
-    "Updates": "Mises à jour", "Check for updates": "Rechercher", "Update to {v}": "Installer la {v}",
+    "Updates": "Mises à jour", "Update to {v}": "Installer la {v}",
     "Version {v}": "Version {v}", "Check automatically": "Vérifier automatiquement",
     "Update {v} available": "Mise à jour {v} disponible", "Update": "Mettre à jour", "Later": "Plus tard",
     "Downloading update… {p}%": "Téléchargement… {p} %", "Restarting…": "Redémarrage…",
@@ -3815,11 +3812,11 @@ FR = {
     "Welcome to": "Bienvenue sur", "Launch": "Lancer", "Welcome screen": "Écran de bienvenue",
     "New": "Nouveautés", "What's new": "Nouveautés", "Decals": "Stickers", "Coming soon": "Bientôt disponible",
     "Only one swap at a time for {name}": "Un seul swap à la fois pour {name}",
-    "Ball": "Bulle", "Ball size": "Taille de la boule", "Menu bar": "Barre de menu",
-    "Style": "Style", "Background": "Fond", "Corners": "Angles",
+    "Menu bar": "Barre de menu",
+    "Background": "Fond", "Corners": "Angles",
     "Soft": "Doux", "Normal": "Normal", "Strong": "Fort",
-    "Dark": "Sombre", "Black": "Noir", "Night": "Nuit",
-    "Round": "Ronds", "Medium": "Moyens", "Sharp": "Nets",
+    "Dark": "Sombre", "Night": "Nuit",
+    "Round": "Ronds", "Sharp": "Nets",
     "Start-up": "Démarrage", "Fixes": "Corrections",
     "Welcome screen with a Launch button and a loading animation":
         "Écran de bienvenue avec un bouton Lancer et une animation de chargement",
@@ -3844,7 +3841,7 @@ FR = {
     "Unlocks after {n} h of use": "Se débloque après {n} h d'utilisation",
     "The update failed. Try again in a moment.": "La mise à jour a échoué. Réessaie dans un instant.",
     "Hive": "Ruche", "Sonar": "Sonar", "Circuit": "Circuit", "Comets": "Comètes", "Nebula": "Nébuleuse",
-    "Classic": "Classique", "Outline": "Contour", "Neon": "Néon", "Gold": "Or", "Line": "Ligne", "Dashes": "Tirets",
+    "Classic": "Classique", "Outline": "Contour", "Neon": "Néon", "Line": "Ligne", "Dashes": "Tirets",
     "Install and updates": "Installation et mises à jour",
     "Rubenium installs like a normal Windows app, with a Start menu entry and an uninstaller":
         "Rubenium s'installe comme une appli Windows normale, avec une entrée dans le menu Démarrer et un désinstalleur",
@@ -3860,7 +3857,6 @@ FR = {
         "Nouveaux styles pour le R et pour l'anneau du titre, à débloquer avec le temps",
     "Theme options for glow, background and corners": "Options de style : halo, fond et coins",
     "Audio": "Audio", "Interface sounds": "Sons de l'interface", "Sound": "Son",
-    "Rubenium itself: {v}": "Rubenium elle-même : {v}",
     "Soft, very quiet sounds when you switch something on or off (Settings, Audio)":
         "Des sons doux et très discrets quand tu actives ou désactives quelque chose (Réglages, Audio)",
     "Top apps measured like Task Manager: accurate, smooth and light on your PC":
@@ -3869,11 +3865,8 @@ FR = {
         "Les barres ont une échelle fixe : 2 % reste petit et 50 % remplit la moitié",
     "Rubenium uses much less processor": "Rubenium utilise beaucoup moins le processeur",
     # 1.1
-    "Player banners": "Bannières", "Default": "Par défaut", "Custom": "Custom", "Reset Custom": "Réinitialiser Custom",
-    "Custom reset": "Custom réinitialisé",
+    "Player banners": "Bannières", "Default": "Par défaut",
     "Your own settings. They are saved.": "Tes propres réglages. Ils sont enregistrés.",
-    "Your screen as Windows shows it. Move any slider to switch to Custom.":
-        "Ton écran tel que Windows l'affiche. Bougez un curseur pour passer en Custom.",
     "Mythic": "Mythique", "Bloom": "Lueur", "Shine": "Éclat", "Comet": "Comète", "Aura": "Aura",
     "6 new swaps and a new Player banners section": "6 nouveaux swaps et une nouvelle section Bannières",
     "Swaps now also work for items the game has not downloaded yet":
@@ -3941,7 +3934,7 @@ FR = {
     "First Stars": "Premières étoiles", "Starfield": "Ciel étoilé", "Constellation": "Constellation", "Nova": "Nova",
     "Gilded": "Doré", "Royal": "Royal",
     "Use the colours of the music": "Utiliser les couleurs de la musique", "Your colour": "Votre couleur",
-    "Second colour": "Deuxième couleur", "Games": "Jeux", "Rubenium start screen": "Écran de démarrage Rubenium",
+    "Second colour": "Deuxième couleur", "Rubenium start screen": "Écran de démarrage Rubenium",
     "Themes rebuilt: one night sky that fills with stars, then turns to gold":
         "Thèmes refaits : un ciel de nuit qui se remplit d'étoiles, puis devient doré",
     "Pick any colour on a colour line, and add a second colour after 24 h":
@@ -3962,7 +3955,7 @@ FR = {
     "The welcome code only lasts until Rubenium is closed":
         "Le code de bienvenue ne dure que jusqu'à la fermeture de Rubenium",
     # 1.3: coins, shop, games
-    "Shop": "Boutique", "Games": "Jeux", "Screen": "Écran", "PC": "PC",
+    "Shop": "Boutique", "Screen": "Écran", "PC": "PC",
     "Colour 1": "Couleur 1", "Colour 2": "Couleur 2", "Badge": "Badge", "Title": "Titre", "Buy": "Acheter",
     "Buy {name} for {n} coins?": "Acheter {name} pour {n} pièces ?",
     "Not enough coins: {n} more needed": "Pas assez de pièces : il en manque {n}",
@@ -3970,10 +3963,10 @@ FR = {
     "Unlock {name} first": "Débloque d'abord {name}",
     "Unlock every Colour 1 first": "Débloque d'abord toutes les Couleurs 1",
     "Music colours": "Couleurs de la musique",
-    "White": "Blanc", "Black": "Noir", "Red": "Rouge", "Orange": "Orange", "Amber": "Ambre", "Yellow": "Jaune",
+    "Red": "Rouge", "Orange": "Orange", "Amber": "Ambre", "Yellow": "Jaune",
     "Lime": "Citron vert", "Green": "Vert", "Teal": "Sarcelle", "Cyan": "Cyan", "Sky": "Ciel", "Blue": "Bleu",
     "Purple": "Violet", "Magenta": "Magenta", "Pink": "Rose", "Rose": "Rose pâle",
-    "Star": "Étoile", "Bolt": "Éclair", "Flame": "Flamme", "Heart": "Cœur", "Sun": "Soleil", "Moon": "Lune",
+    "Star": "Étoile", "Bolt": "Éclair", "Flame": "Flamme", "Heart": "Cœur", "Sun": "Soleil",
     "Clover": "Trèfle", "Rocket ship": "Fusée", "Diamond": "Diamant", "Crown": "Couronne", "Shield": "Bouclier",
     "Trophy": "Trophée",
     "Rookie": "Débutant", "Regular": "Habitué", "Night Owl": "Oiseau de nuit", "Grinder": "Acharné",
@@ -3981,9 +3974,9 @@ FR = {
     "Collector": "Collectionneur", "Champion": "Champion", "Supersonic": "Supersonique", "Rubenium OG": "Rubenium OG",
     "Click again": "Clique encore", "Hold to reset": "Maintiens pour réinitialiser",
     "Blackjack": "Blackjack", "Chicken": "Poulet", "Wheel": "Roue", "Slots": "Machine à sous", "Daily": "Cadeau",
-    "Hit": "Carte", "Stand": "Rester", "Double": "Doubler", "Deal": "Distribuer", "Go": "Avancer",
+    "Stand": "Rester", "Double": "Doubler", "Deal": "Distribuer", "Go": "Avancer",
     "Cash out": "Encaisser", "Bet": "Miser", "Spin": "Lancer", "Free spin": "Tour gratuit",
-    "Try again": "Réessayer", "Offline": "Hors ligne", "Max": "Max",
+    "Offline": "Hors ligne", "Max": "Max",
     "Before you play": "Avant de jouer",
     "These games use Rubenium coins only. Coins are not money: they cannot be bought, sold or cashed out.":
         "Ces jeux utilisent seulement les pièces Rubenium. Ce n'est pas de l'argent : elles ne s'achètent pas, ne se vendent pas et ne s'échangent pas.",
@@ -4012,20 +4005,16 @@ FR = {
     'High risk': 'Risque élevé',
     'Slow down': 'Doucement',
     'Any two the same': 'Deux identiques',
-    'key': 'clé',
-    'keys': 'clés',
     'Keys': 'Clés',
     'Full: open a case in the Shop': 'Plein : ouvre une caisse dans la Boutique',
     '1 key for every {n} coins played': '1 clé toutes les {n} pièces jouées',
     'Free daily spin': 'Tour gratuit du jour',
     'Ready': 'Prêt',
     'Enter casino': 'Entrer au casino',
-    'Back': 'Retour',
     'Badges': 'Badges',
     'Cases': 'Caisses',
     'in {n} min': 'dans {n} min',
     'Showcase': 'Vitrine',
-    'Collection': 'Collection',
     'Collected': 'Collectés',
     'Take off': 'Retirer',
     'Show on the music tab': "Afficher sur l'onglet musique",
@@ -4046,7 +4035,6 @@ FR = {
     'Very rare': 'Très rare',
     'Super rare': 'Super rare',
     'Street Case': 'Caisse Street',
-    'Arcade Case': 'Caisse Arcade',
     'Wild Case': 'Caisse Sauvage',
     'Warrior Case': 'Caisse Guerrier',
     'Royal Case': 'Caisse Royale',
@@ -4129,12 +4117,10 @@ FR = {
     'Password: strong': 'Mot de passe : fort',
     'Username is free': 'Nom disponible',
     'This username is taken': 'Ce nom est déjà pris',
-    'One moment…': 'Un instant…',
     'Log out': 'Déconnexion',
     'Wrong username or password': 'Nom ou mot de passe incorrect',
     'Too many tries: wait a minute': "Trop d'essais : attends une minute",
     'Accounts are not open yet': 'Les comptes ne sont pas encore ouverts',
-    'Something went wrong: try again': 'Un problème est survenu : réessaie',
     'Account': 'Compte',
     'Log out and close Rubenium?': 'Se déconnecter et fermer Rubenium ?',
     'Accounts: create one or log in on the welcome screen. You stay logged in': "Comptes : crée-en un ou connecte-toi sur l'écran d'accueil. Tu restes connecté",
@@ -4173,7 +4159,6 @@ FR = {
     'Nothing played yet': "Rien de joué pour l'instant",
     'Online': 'En ligne',
     'Status': 'Statut',
-    'Played': 'Joué',
     'Member since': 'Membre depuis',
     'Bet {a} · Won {b} · Best win {c} · Cases {d}': 'Misé {a} · Gagné {b} · Meilleur gain {c} · Caisses {d}',
     'Case': 'Caisse',
@@ -4210,14 +4195,12 @@ FR = {
     'Progression': 'Progression',
     'Really sell this {rarity} badge? This cannot be undone.': 'Vendre vraiment ce badge {rarity} ? Impossible d’annuler.',
     'Roll': 'Lancer le dé',
-    'Sell': 'Vendre',
     'Sell to the vendor for {n} coins': 'Vendre au marchand pour {n} pièces',
     'Sell {name} for {n} coins?': 'Vendre {name} pour {n} pièces ?',
     'Unlocks after {n} h with Rubenium': 'Se débloque après {n} h avec Rubenium',
     'Win if the roll is under {n}': 'Gagné si le dé fait moins de {n}',
     'You need a key: 1 key for every hour with Rubenium': 'Il te faut une clé : 1 clé par heure avec Rubenium',
     '{a} to {b} coins': '{a} à {b} pièces',
-    '{n} h played': '{n} h jouées',
     '{rarity} or better is certain within {n} openings': '{rarity} ou mieux garanti en {n} ouvertures',
     'Paw Print': 'Patte',
     'Cherries': 'Cerises',
@@ -4237,7 +4220,6 @@ FR = {
     'Glitch': 'Glitch',
     'Crystal Heart': 'Cœur de cristal',
     'Dragon Eye': 'Œil de dragon',
-    'Prismatic': 'Prismatique',
     'Standard': 'Commun',
     'Special': 'Spécial',
     'Epic': 'Épique',
@@ -4271,13 +4253,11 @@ FR = {
     # 2.1
     'Quests': 'Quêtes',
     'Today': "Aujourd'hui",
-    'This week': 'Cette semaine',
     'Play {n} casino rounds': 'Joue {n} parties au casino',
     'Open a case': 'Ouvre une caisse',
     'Collect a free spin': 'Récupère un tour gratuit',
     'Open {n} cases': 'Ouvre {n} caisses',
     'Win {n} coins in the casino': 'Gagne {n} pièces au casino',
-    'Claim': 'Récupérer',
     'Refresh': 'Actualiser',
     'Refreshed': 'Actualisé',
     'No badges yet': 'Pas encore de badges',
@@ -4299,7 +4279,6 @@ FR = {
     'Admin': 'Admin',
     'Admin only': 'Réservé à l’admin',
     'Admin panel': 'Panneau admin',
-    'All': 'Tout',
     'All or Nothing': 'Tout ou rien',
     'All players': 'Tous les joueurs',
     'Already sold': 'Déjà vendu',
@@ -4313,7 +4292,6 @@ FR = {
     'Beads': 'Perles',
     'Beat Tap': 'Beat Tap',
     'Beat Tap mini game, quests every hour, day and week': 'Mini-jeu Beat Tap, quêtes chaque heure, jour et semaine',
-    'Beat Tap pays up to 50 coins a round': 'Beat Tap rapporte jusqu’à 40 pièces par partie',
     'Become friends to see their history.': 'Devenez amis pour voir son historique.',
     'Bet {n} coins in the casino': 'Mise {n} pièces au casino',
     'Bets': 'Mises',
@@ -4385,7 +4363,6 @@ FR = {
     'Finishes: Basic, Painted, Shiny, Titanium and Gold (Gold is extremely rare)': 'Finitions : Base, Peint, Brillant, Titane et Or (l’Or est extrêmement rare)',
     'Font': 'Police',
     'Fonts': 'Polices',
-    'Forest': 'Forêt',
     'Free spin, daily case and quests ready': 'Tour gratuit, caisse du jour et quêtes prêts',
     'Free to join. Winners are drawn at random by the server when the time is up.': 'Participation gratuite. Les gagnants sont tirés au hasard par le serveur à la fin.',
     'Friend requests and friends online': 'Demandes d’amis et amis en ligne',
@@ -4438,7 +4415,6 @@ FR = {
     'Last 3 trades': '3 derniers échanges',
     'Last 30 bets': '30 dernières mises',
     'Last rounds': 'Dernières parties',
-    'Last seen': 'Vu récemment',
     'Lasts (minutes)': 'Durée (minutes)',
     'Legend Vault': 'Coffre Légende',
     'Legendary': 'Légendaire',
@@ -4461,7 +4437,6 @@ FR = {
     'Market: sell to other players at your price, or accept their offers (5% fee)': 'Marché : vends aux autres joueurs à ton prix, ou accepte leurs offres (5 % de frais)',
     'Mono': 'Mono',
     'More coins with time: 20 every 10 minutes': 'Plus de pièces avec le temps : 20 toutes les 10 minutes',
-    'My sales': 'Mes ventes',
     'Mythic Hunt': 'Chasse Mythique',
     'NEW OFFER': 'NOUVELLE OFFRE',
     'Never a Basic badge: every badge comes in colour.': 'Jamais de badge de base : chaque badge est en couleur.',
@@ -4488,7 +4463,6 @@ FR = {
     'Nothing more to add.': 'Plus rien à ajouter.',
     'Nothing on sale right now. Be the first: put an item on sale from your Inventory.': 'Rien en vente pour l’instant. Sois le premier : mets un objet en vente depuis ton Inventaire.',
     'Nothing yet': 'Rien pour l’instant',
-    'Notifications': 'Notifications',
     'Notifications look like this': 'Les notifications ressemblent à ça',
     'Notifications with a quiet sound (choose them in Settings), live giveaways': 'Notifications avec un son discret (à choisir dans Paramètres), concours en direct',
     'Number of winners (1 to 50)': 'Nombre de gagnants (1 à 50)',
@@ -4497,7 +4471,6 @@ FR = {
     'OFFER ACCEPTED': 'OFFRE ACCEPTÉE',
     'OFFER REFUSED': 'OFFRE REFUSÉE',
     'OK': 'OK',
-    'ONLINE': 'EN LIGNE',
     'Ocean': 'Océan',
     'Offer refused': 'Offre refusée',
     'Offer sent. Your coins stay yours until the seller accepts.': 'Offre envoyée. Tes pièces restent à toi tant que le vendeur n’accepte pas.',
@@ -4525,18 +4498,14 @@ FR = {
     'Pixel': 'Pixel',
     'Play Beat Tap {n} times': 'Joue à Beat Tap {n} fois',
     'Play again': 'Rejouer',
-    'Players': 'Joueurs',
     'Press Start': 'Appuie sur Lancer',
-    'Price': 'Prix',
     'Price in coins': 'Prix en pièces',
-    'Prize type: coins, keys, item or case': 'Type de prix : coins, keys, item ou case',
     'Pulse': 'Pulsation',
     'Put it on the market: other players buy it or make you an offer': 'Mets-le au marché : les autres joueurs l’achètent ou te font une offre',
     'Put items you do not wear on the market': 'Mets au marché les objets que tu ne portes pas',
     'Put on sale': 'Mettre en vente',
     'Quest': 'Quête',
     'RUBENIUM': 'RUBENIUM',
-    'Refuse': 'Refuser',
     'Refused': 'Refusée',
     'Remove picture': 'Retirer la photo',
     'Retro': 'Rétro',
@@ -4553,7 +4522,6 @@ FR = {
     'Saved': 'Enregistré',
     'Script': 'Manuscrite',
     'Selected: {what}': 'Choisi : {what}',
-    'Sell it or put it on the market from your Inventory.': 'Vends-le au marché depuis ton Inventaire.',
     'Sell on the market': 'Vendre au marché',
     'Sell {name} to {who} for {n} coins?': 'Vendre {name} à {who} pour {n} pièces ?',
     'Sell: {name}': 'Vendre : {name}',
@@ -4597,7 +4565,6 @@ FR = {
     'Theme': 'Thème',
     'This account is blocked': 'Ce compte est bloqué',
     'This giveaway is over': 'Ce concours est terminé',
-    'This hour': 'Cette heure',
     'This is much more than its usual price ({v}).': 'C’est bien plus que son prix habituel ({v}).',
     'This is not possible': 'Ce n’est pas possible',
     'This is your own item': 'C’est ton propre objet',
@@ -4613,7 +4580,6 @@ FR = {
     'Titanium': 'Titane',
     'Titanium Black': 'Titane Noir',
     'Titanium Case': 'Caisse Titane',
-    'Today: {n} / {cap} coins': 'Aujourd’hui : {n} / {cap} pièces',
     'Too early: wait for x1.20': 'Trop tôt : attends ×1,20',
     'Too many open trades': 'Trop d’échanges ouverts',
     'Trade': 'Échanger',
@@ -4638,7 +4604,6 @@ FR = {
     'Wait for the countdown': 'Attends le compte à rebours',
     'Waiting': 'En attente',
     'Waiting for {name} to accept… (5 minutes at most)': 'En attente de {name}… (5 minutes maximum)',
-    'Waiting for {name}…': 'En attente de {name}…',
     'Wear': 'Porter',
     'Win {n}': 'Gain {n}',
     'Winners of {title}: {names}': 'Gagnants de {title} : {names}',
@@ -4674,14 +4639,12 @@ FR = {
     'blocked': 'bloqué',
     'by {name}': 'par {name}',
     'every colour': 'toutes les couleurs',
-    'house {k}': 'maison {k}',
     'usual: {v}': 'habituel : {v}',
     'with {name}': 'avec {name}',
     'you': 'toi',
     '{c}% chance': '{c} % de chance',
     '{h} / 24 circles · {s} points': '{h} / 24 cercles · {s} points',
     '{h} h needed': '{h} h requises',
-    '{h} played · member since {d}': '{h} jouées · membre depuis le {d}',
     '{name} confirmed. Your turn.': '{name} a confirmé. À toi.',
     '{name} gifted you a case: {case}': '{name} t’a offert une caisse : {case}',
     '{name} is online': '{name} est en ligne',
@@ -4706,16 +4669,12 @@ FR = {
     'A free puzzle: slide the cars to get the red car out, for coins': 'Un casse-tête gratuit : fais glisser les voitures pour sortir la voiture rouge, contre des pièces',
     'Admin panel: every give and edit window works': 'Panneau admin : toutes les fenêtres pour donner et modifier marchent',
     'Best possible: {n}': 'Meilleur possible : {n}',
-    'Best win': 'Meilleur gain',
     'Cases opened': 'Caisses ouvertes',
     'Casino bets': 'Mises au casino',
     'Casino result': 'Bilan casino',
     'Collection worth': 'Valeur de la collection',
     'Colour 2 is gone: only shop themes have a second colour': 'La couleur 2 disparaît : seuls les thèmes de la boutique ont une deuxième couleur',
     'Drag the cars along their lane to make way, then drive the red car out on the right. Easy 10-20, Medium 15-30, Hard 25-40 coins: fewer moves pay more. 300 a day at most.': 'Fais glisser les voitures dans leur voie pour libérer le passage, puis sors la voiture rouge à droite. Facile 10-20, Moyen 15-30, Difficile 25-40 pièces : moins de coups rapporte plus. 300 par jour maximum.',
-    'Easy': 'Facile',
-    'Hard': 'Difficile',
-    'Medium': 'Moyen',
     'Free spins': 'Tours gratuits',
     'Friend profiles: last seen, collection worth, gold badges, games played and what they wear': 'Profils des amis : vu pour la dernière fois, valeur de la collection, badges Or, parties jouées et ce qu’ils portent',
     'Gold badges': 'Badges Or',
@@ -4728,7 +4687,6 @@ FR = {
     'Start over': 'Recommencer',
     'Themes from the shop bring their own second colour.': 'Les thèmes de la boutique apportent leur propre deuxième couleur.',
     'Too fast to be real: no coins': 'Trop rapide pour être vrai : pas de pièces',
-    'Wearing': 'Porte',
     'just now': 'à l’instant',
     'seen {t}': 'vu {t}',
     '{n} days ago': 'il y a {n} jours',
@@ -4770,7 +4728,6 @@ FR = {
     'Best combo {n}': 'Meilleur combo {n}',
     'Bet {n} coins each': 'Mise de {n} pièces chacun',
     'Bigger text': 'Texte plus grand',
-    'Both play the same level once. Best score wins both bets (5% fee); a draw gives them back. Beat Tap: more points wins. Memory and Parking: fewer flips or moves wins, then the faster.': 'Vous jouez le même niveau une fois chacun. Le meilleur score gagne les deux mises (5 % de frais) ; une égalité les rend. Beat Tap : le plus de points gagne. Memory et Parking : le moins de cartes ou de coups gagne, puis le plus rapide.',
     'CHALLENGE A FRIEND': 'DÉFIER UN AMI',
     'COMBO': 'COMBO',
     'Challenge a friend at Beat Tap, Memory or Parking, with or without a bet': 'Défie un ami à Beat Tap, Memory ou Parking, avec ou sans mise',
@@ -4782,9 +4739,7 @@ FR = {
     'Click a friend to chat. Mute stops pop-ups for that friend.': 'Clique sur un ami pour discuter. Muet coupe les notifications de cet ami.',
     'Click to claim!': 'Clique pour récupérer !',
     'Click to copy': 'Clique pour copier',
-    'Coins and keys': 'Pièces et clés',
     'Come back every day: day 7 gives a free case. Miss a day and it starts again.': 'Reviens chaque jour : le 7e jour donne une caisse gratuite. Rate un jour et ça recommence.',
-    'Complete a set to get a big bonus, once. You must still own the badges when you claim.': 'Complète une collection pour un gros bonus, une seule fois. Tu dois encore avoir les badges quand tu récupères.',
     'Copy the lyrics': 'Copier les paroles',
     'Could not save the backup file': "Impossible d'enregistrer le fichier de sauvegarde",
     'DUEL': 'DUEL',
@@ -4840,7 +4795,6 @@ FR = {
     'Messages from friends': 'Messages des amis',
     'Mirror': 'Miroir',
     'Most coins right now': 'Le plus de pièces en ce moment',
-    'Music': 'Musique',
     "Muted: no pop-ups or sounds for this friend's messages": 'Muet : pas de notifications ni de son pour les messages de cet ami',
     'New game': 'Nouvelle partie',
     'New password': 'Nouveau mot de passe',
@@ -4848,7 +4802,6 @@ FR = {
     'Next scratch card in {t}': 'Prochaine carte à gratter dans {t}',
     'No account with this name': 'Aucun compte avec ce nom',
     'No answer': 'Pas de réponse',
-    'No bet': 'Rien',
     'No duels yet.': 'Pas encore de duels.',
     'No internet right now. The music, lyrics you already saw, the crosshair and the tools still work. Rubenium reconnects by itself.': "Pas d'internet pour le moment. La musique, les paroles déjà vues, le viseur et les outils marchent toujours. Rubenium se reconnecte tout seul.",
     'No messages yet': 'Pas encore de messages',
@@ -4885,7 +4838,6 @@ FR = {
     'Send': 'Envoyer',
     'Send challenge': 'Envoyer le défi',
     'Sent to the admin. Keep Rubenium open: the answer shows here.': "Envoyé à l'admin. Garde Rubenium ouvert : la réponse s'affichera ici.",
-    'Set bonus: +{n} coins': 'Bonus de collection : +{n} pièces',
     'Settings has backups, the show/hide key and this tour again. Have fun!': 'Les Réglages contiennent les sauvegardes, la touche afficher/cacher et cette visite. Amuse-toi bien !',
     'Settings restored: Rubenium restarts them now': 'Réglages restaurés : Rubenium les applique maintenant',
     'Show / hide key (tap it once)': 'Touche afficher / cacher (un appui)',
@@ -5054,7 +5006,6 @@ FR = {
     'Save to slot {n}': "Enregistrer dans l'emplacement {n}",
     'Saved in slot {n}': "Enregistré dans l'emplacement {n}",
     'Clear slot': "Vider l'emplacement",
-    'No bet': 'Sans mise',
     'Prize type: coins, keys, item or case': 'Type de prix : pièces, clés, objet ou caisse',
     'Rubenium itself: {v}': 'Rubenium : {v}',
     'Reset': 'Réinitialiser',
@@ -5091,7 +5042,6 @@ FR = {
     'Balls, lines, fonts and themes to buy.': 'Boules, lignes, polices et thèmes à acheter.',
     'Buy {what} for {n} coins?': 'Acheter {what} pour {n} pièces ?',
     'Chords': 'Accords',
-    'Collect full sets for a big bonus.': 'Complète des collections pour un gros bonus.',
     'Compare in the Friends top': 'Compare-toi dans le top Amis',
     'Danger zone': 'Zone dangereuse',
     'Deals': 'Bons plans',
@@ -5141,7 +5091,6 @@ FR = {
     'Shapes': 'Formes',
     'Show / hide key': 'Touche afficher / cacher',
     'Slide the cars and get the red one out. Easy, Medium or Hard.': 'Fais glisser les voitures et sors la rouge. Facile, Moyen ou Difficile.',
-    'Sounds': 'Sons',
     'Stats, history, last seen': 'Stats, historique, dernière connexion',
     'Tabs in the menu bar': 'Onglets de la barre de menu',
     'Tap it once to open or close Rubenium, even in a game.': 'Un appui pour ouvrir ou fermer Rubenium, même en jeu.',
@@ -5226,18 +5175,14 @@ FR = {
     'Peaks': 'Sommets',
     'Lava': 'Lave',
     'Matrix': 'Matrice',
-    'Silver': 'Argent',
-    'Bronze': 'Bronze',
     'Ink': 'Encre',
     'Dashed': 'Pointillés',
     'Laurel': 'Laurier',
     'Spikes': 'Pointes',
-    'Rainbow': 'Arc-en-ciel',
     'OG': 'OG',
     # 2.6.1
     'Badges in the shop cost more, the rarer and luckier they are; the market can now go up to the shop price': 'Les badges de la boutique coûtent plus cher, selon leur rareté et la chance qu’il faut pour les avoir ; le marché peut maintenant monter jusqu’au prix de la boutique',
     'Bigger coins and better badges.': 'Plus de pièces et de meilleurs badges.',
-    'COINS': 'PIÈCES',
     'Cases rebalanced: coin cases now pay back a little more than they cost on average (you still lose about half the time)': 'Caisses rééquilibrées : les caisses à pièces rapportent maintenant un peu plus que leur prix en moyenne (tu perds quand même environ une fois sur deux)',
     'Coin cases': 'Caisses à pièces',
     'Coins only. Most of the time less than its price, sometimes double, and once in a while 10 to 30 times its price.': 'Que des pièces. La plupart du temps moins que son prix, parfois le double, et de temps en temps 10 à 30 fois son prix.',
@@ -5266,7 +5211,6 @@ FR = {
     'Chance of this exact badge per open:': 'Chance d’avoir exactement ce badge par ouverture :',
     'Not in any case right now.': 'Dans aucune caisse pour l’instant.',
     '1 in {n}': '1 sur {n}',
-    'Snow': 'Neige',
     'Ember': 'Braise',
     'Frost': 'Givre',
     # 3.0
@@ -5283,7 +5227,6 @@ FR = {
     'Create': 'Créer',
     'Create a bot': 'Créer un bot',
     'Creating…': 'Création…',
-    'Delete': 'Supprimer',
     'Delete the bot {name} for good?': 'Supprimer le bot {name} pour de bon ?',
     'Deleted': 'Supprimé',
     'Downloading…': 'Téléchargement…',
@@ -5303,7 +5246,6 @@ FR = {
     'Style cases': 'Caisses de style',
     'Style cases: every ball, line, font, theme, banner and frame can now come from a case (Style, Theme and Profile cases)': 'Caisses de style : chaque boule, ligne, police, thème, bannière et cadre peut maintenant sortir d’une caisse (caisses Style, Thème et Profil)',
     'Swap added for everyone': 'Swap ajouté pour tout le monde',
-    'Swaps': 'Swaps',
     'Swaps you added': 'Swaps que tu as ajoutés',
     'The item you equip in the game (e.g. Octane)': 'L’objet que tu équipes dans le jeu (ex. Octane)',
     'The original file must have the same name as the swap file': 'Le fichier original doit avoir le même nom que le fichier du swap',
@@ -5434,7 +5376,6 @@ FR = {
     "Deep Sea": "Abysses",
     "City Nights": "Nuit en ville",
     "Fireflies": "Lucioles",
-    "Vortex": "Vortex",
     "Gold I": "Or I",
     "Gold II": "Or II",
     "Gold III": "Or III",
@@ -5459,8 +5400,6 @@ FR = {
     "Gold keys are used first and disappear once used.": "Les clés en or sont utilisées en premier et disparaissent une fois utilisées.",
     "Hole {n} of 3": "Trou {n} sur 3",
     "Keys: 1 every 15 minutes, up to 5. Gold keys are used first and disappear once used": "Clés : 1 toutes les 15 minutes, jusqu’à 5. Les clés en or sont utilisées en premier et disparaissent une fois utilisées",
-    "Leave": "Quitter",
-    "Leave the match": "Quitter la partie",
     "Leave? Your friend wins the match.": "Quitter ? Ton ami gagne la partie.",
     "Live now": "En direct",
     "Lost": "Perdu",
@@ -5491,7 +5430,6 @@ FR = {
     "YOUR MATCHES": "TES PARTIES",
     "You beat {name} at Mini Golf!": "Tu as battu {name} au Mini Golf !",
     "You need a key: 1 key every 15 minutes": "Il te faut une clé : 1 clé toutes les 15 minutes",
-    "You win!": "Tu gagnes !",
     "Your turn · {s} s": "À toi · {s} s",
     "vs {name}": "contre {name}",
     "{name} accepted: the match starts now!": "{name} a accepté : la partie commence !",
@@ -5621,7 +5559,6 @@ FR = {
     'Buy the case first': "Achète d'abord la caisse",
     'Buy the case first: it goes to Your cases': "Achète d'abord la caisse : elle va dans Tes caisses",
     'Buy {n}': 'Acheter {n}',
-    'COINFLIP': 'PILE OU FACE',
     'Cases you buy or get as gifts wait here until you open them with a key.': "Les caisses achetées ou reçues attendent ici jusqu'à ce que tu les ouvres avec une clé.",
     'Cases: buy them with coins, they wait in Your cases, open them with a key. Keys can be traded': "Caisses : achète-les avec des pièces, elles attendent dans Tes caisses, ouvre-les avec une clé. Les clés s'échangent",
     'Cash out {n}': 'Encaisser {n}',
@@ -5632,7 +5569,6 @@ FR = {
     'Close it (items come back)': 'Fermer (les objets reviennent)',
     'Closed: the items went back': 'Fermé : les objets sont rendus',
     'Closes in {t}': 'Ferme dans {t}',
-    'Coinflip': 'Pile ou face',
     'Coinflip: put in up to 6 items, pick black or white. Winner takes everything (49% to 51% chance)': "Pile ou face : mise jusqu'à 6 objets, choisis noir ou blanc. Le gagnant prend tout (49 % à 51 % de chance)",
     'Cosmic Hunt': 'Chasse cosmique',
     'Could not open {app}': "Impossible d'ouvrir {app}",
@@ -5667,7 +5603,6 @@ FR = {
     'How to play Hi-Lo': 'Comment jouer à Plus ou moins',
     'Ice Bridge': 'Pont de glace',
     'Items against items. Black or white.': 'Objets contre objets. Noir ou blanc.',
-    'Join': 'Rejoindre',
     'Keys can be added to trades. Click to see your cases.': 'Les clés peuvent être ajoutées aux échanges. Clique pour voir tes caisses.',
     'Keys to give': 'Clés à donner',
     'Keys: 1 every 30 minutes, up to 12. Everyone got a full key wallet': "Clés : 1 toutes les 30 minutes, jusqu'à 12. Tout le monde a reçu un portefeuille de clés plein",
@@ -5921,7 +5856,6 @@ FR = {
     'Everything online: trades, chat, coinflips, Mini Golf': 'Tout ce qui est en ligne : échanges, chat, pile ou face, Mini Golf',
     'Everything you were told, newest first. Click one to go there.': "Tout ce qu'on t'a signalé, du plus récent au plus ancien. Clique pour y aller.",
     'Experience points. You get them by playing: games, Mini Golf, Coinflip, trades, quests, XP coupons and time spent online.': "Points d'expérience. Tu les gagnes en jouant : jeux, Mini Golf, Coinflip, échanges, quêtes, coupons XP et temps passé en ligne.",
-    'Expert': 'Expert',
     'FOR ALL': 'POUR TOUS',
     'Fast': 'Rapide',
     'Fastest Minesweeper clear': 'Démineur le plus rapide',
@@ -5998,7 +5932,6 @@ FR = {
     'Mines {n}': 'Mines {n}',
     'Minesweeper': 'Démineur',
     'Mini Golf duels: 12 XP, +10 for the winner': 'Duels de Mini Golf : 12 XP, +10 pour le gagnant',
-    'Mini games': 'Mini-jeux',
     'Minigames: 3 to 12 XP when they pay (300 a day)': 'Mini-jeux : 3 à 12 XP quand ils rapportent (300 par jour)',
     'Minutes before it ends': 'Minutes avant la fin',
     'Most XP in the last 24 hours': "Le plus d'XP sur les dernières 24 heures",
@@ -6061,7 +5994,6 @@ FR = {
     'Pick 1 to 10 numbers': 'Choisis de 1 à 10 numéros',
     'Pick a tile': 'Choisis une tuile',
     'Ping Pong': 'Ping-pong',
-    'Platinum': 'Platine',
     'Play  ·  target ×{t}': 'Jouer  ·  cible ×{t}',
     'Players see it with a RUBENIUM OFFER tag. Without items, the server picks items worth that much.': "Les joueurs la voient avec l'étiquette OFFRE RUBENIUM. Sans objets, le serveur choisit des objets de cette valeur.",
     'Press New game to start': 'Appuie sur Nouvelle partie pour commencer',
@@ -6154,7 +6086,6 @@ FR = {
     'Uncommon XP coupon': 'Coupon XP Peu commun',
     'Unknown item: {id}': 'Objet inconnu : {id}',
     'Unlock {name} for everyone?': 'Déverrouiller {name} pour tout le monde ?',
-    'Unlocked: {what}': 'Débloqué : {what}',
     'Unlocks at a higher level': 'Se débloque à un niveau supérieur',
     'Unlocks at level {n}': 'Se débloque au niveau {n}',
     'Unlocks': 'Déblocages',
@@ -6178,7 +6109,6 @@ FR = {
     'Yesterday': 'Hier',
     'You reached level {n}!': 'Tu as atteint le niveau {n} !',
     'You received from {name}': 'Tu as reçu de {name}',
-    'You': 'Toi',
     'Your badge': 'Ton badge',
     'Your level. Click to see your level badges.': 'Ton niveau. Clique pour voir tes badges de niveau.',
     'Your trade is waiting': "Ton échange t'attend",
@@ -6480,7 +6410,6 @@ FR = {
     'FRIENDS': 'AMIS',
     'No friends yet. Press Add next to someone below.': "Pas encore d'amis. Appuie sur Ajouter à côté de quelqu'un ci-dessous.",
     'Nobody else yet': "Personne d'autre pour l'instant",
-    'Wave Rush': 'Wave Rush',
     'Solo: 5 holes alone, no bet and no clock.': 'Solo : 5 trous seul, sans mise et sans chrono.',
     'Duel: 5 holes against another player, 25 seconds a turn. Anyone can join your lobby.': 'Duel : 5 trous contre un autre joueur, 25 secondes par tour. Tout le monde peut rejoindre ton salon.',
     'Solo: each hole pays by strokes: 60, 35, 20, 10, 5, then nothing. Paid at the end, with the 2-hour mini game limit.': 'Solo : chaque trou paie selon les coups : 60, 35, 20, 10, 5, puis rien. Payé à la fin, avec la limite des mini-jeux sur 2 heures.',
@@ -6585,7 +6514,6 @@ FR = {
     'The daily reward opens in online mode, the first time each day; a slow red dot and a reminder every 30 minutes while it waits': "La récompense du jour s'ouvre dans le mode en ligne, la première fois de la journée ; un point rouge lent et un rappel toutes les 30 minutes tant qu'elle attend",
     'Shorter texts in Wave Rush and Mini Golf': 'Des textes plus courts dans Wave Rush et le Mini Golf',
     # 4.5
-    'Eclipse': 'Éclipse',
     'Glacier': 'Glacier',
     'Mirage': 'Mirage',
     'Mosaic': 'Mosaïque',
@@ -6682,7 +6610,6 @@ FR = {
     'each · pot {n}': 'chacun · pot {n}',
     'Staircase': 'Escalier',
     'Desert Run': 'Traversée du désert',
-    'Volcano': 'Volcan',
     'Drag back anywhere, then let go to shoot. {n} holes, 30 seconds a turn. Fewest strokes wins.': "Tire en arrière n'importe où, puis lâche pour frapper. {n} trous, 30 secondes par tour. Le moins de coups gagne.",
     'win {n}': 'gain {n}',
     'Game mode is ON: turn it off': 'Le mode jeu est ACTIVÉ : le désactiver',
@@ -6732,7 +6659,6 @@ FR = {
     'Special and Epic badges only, with the best Mythic odds.': 'Seulement des badges Spéciaux et Épiques, avec les meilleures chances de Mythique.',
     'He never agreed to that price: ask him again': 'Il n’a jamais accepté ce prix : redemande-lui',
     'DEALER': 'CROUPIER',
-    'YOU': 'TOI',
     'Blackjack pays 3 to 2 · the dealer draws to 17 · double on your first two cards': 'Le blackjack paie 3 pour 2 · le croupier tire jusqu’à 17 · double sur tes deux premières cartes',
     'Multiplier': 'Multiplicateur',
     'Next gem': 'Gemme suivante',
@@ -6778,7 +6704,7 @@ FR.update({'LOWER': 'PLUS BAS', 'HIGHER': 'PLUS HAUT', 'or the same': 'ou pareil
 
 FR.update({'Click up to 6 picks: your bet goes on each one. Red or Black, Low or High: never both. Then spin.': 'Clique jusqu’à 6 choix : ta mise va sur chacun. Rouge ou Noir, Bas ou Haut : jamais les deux. Puis lance.', 'More picks = more chances to win something, but more coins on the table.': 'Plus de choix = plus de chances de gagner quelque chose, mais plus de pièces en jeu.', 'One number: ×24, 4% chance. Gold: ×25, 4% chance.': 'Un numéro : ×24, 4 % de chance. Or : ×25, 4 % de chance.'})
 
-FR.update({'NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5': 'NOUVEAU : le jeu des gobelets. Une pièce Rubenium passe sous un gobelet, ils se mélangent, retrouve la pièce. Facile (3) ×1,4, Moyen (6) ×2,2, Difficile (9) ×3,3, Expert (9, très rapide) ×5', 'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25': 'Roulette : choisis autant de paris que tu veux en un tour (ta mise va sur chacun), vois ta chance de gagner. L’or paie maintenant ×25', 'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each': 'Plus ou moins est plus clair : deux grands choix PLUS HAUT / PLUS BAS à côté de la carte, avec la chance et le multiplicateur', 'No more daily coin limit in mini games, and up to 16 keys a day from games': 'Plus de limite de pièces par jour dans les mini-jeux, et jusqu’à 16 clés par jour grâce aux jeux', "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)": 'Jackpot : tu peux réduire Rubenium pendant que tu y participes (sans pouvoir ouvrir d’autres onglets)', 'Cups': 'Gobelets', 'Cup Game': 'Jeu des gobelets', 'Watch the coin, follow its cup, then click it.': 'Regarde la pièce, suis son gobelet, puis clique dessus.', 'Watch the coin…': 'Regarde la pièce…', 'Follow the cup!': 'Suis le gobelet !', 'Which cup hides the coin?': 'Quel gobelet cache la pièce ?', 'Found it!': 'Trouvée !', 'It was here': 'Elle était ici', 'Your pick': 'Ton choix', 'Click the cup with the coin': 'Clique sur le gobelet avec la pièce', 'Play  ·  {m} cups': 'Jouer  ·  {m} gobelets', 'Easy': 'Facile', 'Medium': 'Moyen', 'Hard': 'Difficile', 'Expert': 'Expert', 'Daily Cup Game limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte aux gobelets : une victoire rend ta mise jusqu’à minuit', 'A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.': 'Une pièce Rubenium tombe sur la table et les gobelets la recouvrent. Puis ils se mélangent.', 'Follow the cup with the coin and click it when they stop.': 'Suis le gobelet avec la pièce et clique dessus quand ils s’arrêtent.', 'Watch only the cup with the coin, never the others.': 'Regarde seulement le gobelet avec la pièce, jamais les autres.', 'Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves.': 'Facile : 3 gobelets, lent. Moyen : 6. Difficile : 9. Expert : 9 gobelets, très rapide et beaucoup plus de mouvements.', 'Easy ×1.2 · Medium ×2 · Hard ×3 · Expert ×5.': 'Facile ×1,2 · Moyen ×2 · Difficile ×3 · Expert ×5.', 'Once you are up 6 000 coins in a day, a win gives your bet back until midnight.': 'Une fois 6 000 pièces gagnées dans la journée, une victoire rend ta mise jusqu’à minuit.', 'Click the cup with the coin.': 'Clique sur le gobelet avec la pièce.'})
+FR.update({'NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5': 'NOUVEAU : le jeu des gobelets. Une pièce Rubenium passe sous un gobelet, ils se mélangent, retrouve la pièce. Facile (3) ×1,4, Moyen (6) ×2,2, Difficile (9) ×3,3, Expert (9, très rapide) ×5', 'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25': 'Roulette : choisis autant de paris que tu veux en un tour (ta mise va sur chacun), vois ta chance de gagner. L’or paie maintenant ×25', 'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each': 'Plus ou moins est plus clair : deux grands choix PLUS HAUT / PLUS BAS à côté de la carte, avec la chance et le multiplicateur', 'No more daily coin limit in mini games, and up to 16 keys a day from games': 'Plus de limite de pièces par jour dans les mini-jeux, et jusqu’à 16 clés par jour grâce aux jeux', "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)": 'Jackpot : tu peux réduire Rubenium pendant que tu y participes (sans pouvoir ouvrir d’autres onglets)', 'Cups': 'Gobelets', 'Cup Game': 'Jeu des gobelets', 'Watch the coin, follow its cup, then click it.': 'Regarde la pièce, suis son gobelet, puis clique dessus.', 'Watch the coin…': 'Regarde la pièce…', 'Follow the cup!': 'Suis le gobelet !', 'Which cup hides the coin?': 'Quel gobelet cache la pièce ?', 'Found it!': 'Trouvée !', 'It was here': 'Elle était ici', 'Click the cup with the coin': 'Clique sur le gobelet avec la pièce', 'Play  ·  {m} cups': 'Jouer  ·  {m} gobelets', 'Easy': 'Facile', 'Medium': 'Moyen', 'Hard': 'Difficile', 'Expert': 'Expert', 'Daily Cup Game limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte aux gobelets : une victoire rend ta mise jusqu’à minuit', 'A Rubenium coin lands on the table and the cups come down over it. Then they shuffle.': 'Une pièce Rubenium tombe sur la table et les gobelets la recouvrent. Puis ils se mélangent.', 'Follow the cup with the coin and click it when they stop.': 'Suis le gobelet avec la pièce et clique dessus quand ils s’arrêtent.', 'Watch only the cup with the coin, never the others.': 'Regarde seulement le gobelet avec la pièce, jamais les autres.', 'Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves.': 'Facile : 3 gobelets, lent. Moyen : 6. Difficile : 9. Expert : 9 gobelets, très rapide et beaucoup plus de mouvements.', 'Easy ×1.2 · Medium ×2 · Hard ×3 · Expert ×5.': 'Facile ×1,2 · Moyen ×2 · Difficile ×3 · Expert ×5.', 'Once you are up 6 000 coins in a day, a win gives your bet back until midnight.': 'Une fois 6 000 pièces gagnées dans la journée, une victoire rend ta mise jusqu’à minuit.', 'Click the cup with the coin.': 'Clique sur le gobelet avec la pièce.'})
 
 FR.update({"NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back": 'NOUVEAU : Puissance 4 contre un vrai bot qui réfléchit sur notre serveur (impossible de le tromper). Facile ×1,5, Moyen ×2,2, Difficile ×4, Professionnel ×10 (il commence et voit loin). Un match nul rend ta mise', 'Connect 4': 'Puissance 4', 'Professional': 'Professionnel', 'Play  ·  {lvl}': 'Jouer  ·  {lvl}', 'Your turn: click a column': 'À toi : clique une colonne', 'Bot is thinking…': 'Le bot réfléchit…', 'Give up': 'Abandonner', 'Give up this game? You lose your bet.': 'Abandonner cette partie ? Tu perds ta mise.', 'You win!': 'Tu gagnes !', 'The bot wins': 'Le bot gagne', 'Draw: bet back': 'Nul : mise rendue', 'Line up 4 to win ×{m}': 'Aligne 4 pour gagner ×{m}', 'Your turn': 'À toi', 'Thinking': 'Il réfléchit', 'Win: {n}': 'Gain : {n}', 'Bot': 'Bot', 'You': 'Toi', 'Daily Connect 4 limit reached: a win gives your bet back until midnight': 'Limite du jour atteinte au Puissance 4 : une victoire rend ta mise jusqu’à minuit', 'Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.': 'Lâche des jetons dans les colonnes. Aligne 4 des tiens (en ligne, en colonne ou en diagonale) avant le bot.', 'The bot really plays: it looks ahead, blocks you and attacks. On Professional it moves first.': 'Le bot joue vraiment : il anticipe, te bloque et attaque. En Professionnel il commence.', 'Take the middle column early, block every line of 3, and set up two threats at once.': 'Prends la colonne du milieu tôt, bloque chaque ligne de 3 et prépare deux menaces à la fois.', 'Easy ×1.5 · Medium ×2.2 · Hard ×4 · Professional ×10. A draw gives your bet back.': 'Facile ×1,5 · Moyen ×2,2 · Difficile ×4 · Professionnel ×10. Un nul rend ta mise.', 'Leaving a game or giving up loses the bet. Once you are up 15 000 coins in a day, a win gives your bet back.': 'Quitter ou abandonner fait perdre la mise. Une fois 15 000 pièces gagnées dans la journée, une victoire rend ta mise.', 'Drop a disc in a column': 'Lâche un jeton dans une colonne'})
 
@@ -6810,7 +6736,7 @@ FR.update({'Power': 'Puissance', 'Your turn: move the mouse away from your ball'
 
 FR.update({'Please update to the latest version to play online: updating now…': 'Mets à jour vers la dernière version pour jouer en ligne : mise à jour en cours…', 'A new version is out: online closes while it updates': 'Une nouvelle version est sortie : le mode en ligne se ferme pendant la mise à jour'})
 
-FR.update({'This hour': 'Cette heure', 'Today': 'Aujourd’hui', 'This week': 'Cette semaine', 'new ones in {t}': 'nouveaux dans {t}'})
+FR.update({'This hour': 'Cette heure', 'This week': 'Cette semaine', 'new ones in {t}': 'nouveaux dans {t}'})
 
 FR.update({'What you can get ({n})': 'Ce que tu peux obtenir ({n})', '{what} (any colour or finish)': '{what} (toute couleur ou finition)', 'Themed badge cases': 'Caisses de badges à thème', 'Always a badge, all of one theme. No coins.': 'Toujours un badge, tous du même thème. Pas de pièces.', 'Always a badge, with much better odds for rare ones. No coins.': 'Toujours un badge, avec de bien meilleures chances pour les rares. Pas de pièces.', 'Mostly COINS back, and sometimes a badge.': 'Surtout des PIÈCES, et parfois un badge.', 'Balls, lines, fonts, app colours, banners and frames. No key needed.': 'Balles, lignes, polices, couleurs d’app, bannières et cadres. Pas besoin de clé.', 'App Colour Case': 'Caisse Couleurs d’app', 'Ocean Case': 'Caisse Océan', 'Spooky Case': 'Caisse Frisson', 'Arcade Case': 'Caisse Arcade', 'Treasure Case': 'Caisse Trésor', 'A COIN case: mostly coins back, sometimes a badge (Basic or Painted).': 'Une caisse à PIÈCES : surtout des pièces, parfois un badge (Basique ou Peint).', 'A COIN case: mostly coins, sometimes a badge, a tiny chance of Gold.': 'Une caisse à PIÈCES : surtout des pièces, parfois un badge, une toute petite chance d’Or.', 'A COIN case: coins, or a better badge than the Standard Case (up to Shiny and Gold).': 'Une caisse à PIÈCES : des pièces, ou un meilleur badge que la caisse Standard (jusqu’à Brillant et Or).', 'A COIN case for high rollers: big coin drops, or a badge in every finish up to Epic Gold.': 'Une caisse à PIÈCES pour gros joueurs : de grosses sommes, ou un badge de toute finition jusqu’à Épique Or.', 'Always a badge, never Basic: Painted, Shiny, Titanium or Gold.': 'Toujours un badge, jamais Basique : Peint, Brillant, Titane ou Or.', 'Always a space badge: moons, suns, stars, comets, planets, rockets and aliens. A real chance of a Mythic.': 'Toujours un badge de l’espace : lunes, soleils, étoiles, comètes, planètes, fusées et aliens. Une vraie chance de Mythique.', 'Always a medieval badge: swords, shields, castles, helmets, bows, crowns, goblets, scrolls. 6 found only here.': 'Toujours un badge médiéval : épées, boucliers, châteaux, heaumes, arcs, couronnes, coupes, parchemins. 6 introuvables ailleurs.', 'Always a nature badge: flowers, leaves, trees, butterflies, cacti, mushrooms, the lotus, the rainbow. 6 found only here.': 'Toujours un badge nature : fleurs, feuilles, arbres, papillons, cactus, champignons, le lotus, l’arc-en-ciel. 6 introuvables ailleurs.', 'Always an ocean badge: fish, waves, anchors, tridents, snowflakes and the moon.': 'Toujours un badge océan : poissons, vagues, ancres, tridents, flocons et la lune.', 'Always a spooky badge: ghosts, skulls, eyes, black cats, mushrooms and aliens.': 'Toujours un badge frisson : fantômes, crânes, yeux, chats noirs, champignons et aliens.', 'Always a game badge: controllers, headsets, dice, cards, rockets and targets.': 'Toujours un badge jeu : manettes, casques, dés, cartes, fusées et cibles.', 'Always a treasure badge: keys, crowns, diamonds, shields, swords and gold stars.': 'Toujours un badge trésor : clés, couronnes, diamants, boucliers, épées et étoiles d’or.', 'Always a badge, no Basic finish: the best odds for Shiny, Titanium and Gold.': 'Toujours un badge, sans finition Basique : les meilleures chances de Brillant, Titane et Or.', 'Always a Special or Epic badge, with the best Mythic odds.': 'Toujours un badge Spécial ou Épique, avec les meilleures chances de Mythique.', 'App colours (they change how Rubenium looks), Rare or better, or coins. Not badges.': 'Des couleurs d’app (elles changent l’apparence de Rubenium), Rares ou mieux, ou des pièces. Pas de badges.'})
 
@@ -6819,7 +6745,7 @@ FR.update({'120 coins 17.3% · 200 coins 17% · 300 coins 17% · 450 coins 13%':
 FR.update({'Settings: About is now UPDATE, with a Repair button that reinstalls the newest Rubenium if updating ever fails (your account, items and settings are never touched)': 'Réglages : À propos devient MISE À JOUR, avec un bouton Réparer qui réinstalle la dernière Rubenium si la mise à jour échoue (ton compte, tes objets et tes réglages ne sont jamais touchés)', 'The free spin pays a lot more: 120 to 2 500 coins': 'Le tour gratuit rapporte bien plus : 120 à 2 500 pièces', 'Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen': 'Wave Rush plus fluide : un mode performance caché pendant chaque course, et des images calées sur ton écran', "Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys": "Les notifications de jackpot disent « environ 2 minutes » au lieu d'une horloge figée, et le tour gratuit et le ticket à gratter n'affichent plus les touches du casino", 'UPDATE': 'MISE À JOUR', 'Repair': 'Réparer', 'Repair Rubenium': 'Réparer Rubenium', 'Repair Rubenium?': 'Réparer Rubenium ?', 'Repair now': 'Réparer maintenant', 'Repairing… {p}%': 'Réparation… {p} %', 'Reinstalling…': 'Réinstallation…', 'Finish your round first, then repair': 'Termine ta partie d’abord, puis répare', 'Update not working, or Rubenium acting strange? Repair downloads the newest Rubenium again and reinstalls it cleanly over this one, then opens it again.': 'La mise à jour ne marche pas, ou Rubenium fait des siennes ? Réparer télécharge à nouveau la dernière Rubenium, la réinstalle proprement par-dessus celle-ci, puis la rouvre.', 'It only replaces the program files. Your account, coins, keys, items, levels, friends and settings are NOT touched: your account is saved online and your settings stay in Documents\\Rubenium.': 'Seuls les fichiers du programme sont remplacés. Ton compte, tes pièces, clés, objets, niveaux, amis et réglages ne sont PAS touchés : ton compte est enregistré en ligne et tes réglages restent dans Documents\\Rubenium.', 'What happens: Rubenium downloads the newest version, closes, reinstalls itself cleanly and opens again. It takes about a minute.': 'Ce qui se passe : Rubenium télécharge la dernière version, se ferme, se réinstalle proprement et se rouvre. Cela prend environ une minute.', 'What stays: your account, coins, keys, items, levels, friends, trophies and settings. Nothing is deleted from your account.': "Ce qui reste : ton compte, tes pièces, clés, objets, niveaux, amis, trophées et réglages. Rien n'est supprimé de ton compte.", 'Before you go on: finish any game, bet, trade or coinflip you are in, because Rubenium closes for a moment.': 'Avant de continuer : termine toute partie, mise, échange ou pile ou face en cours, car Rubenium se ferme un instant.', 'The repair could not download Rubenium. Check your internet, or get RubeniumSetup.exe from GitHub.': "La réparation n'a pas pu télécharger Rubenium. Vérifie ta connexion, ou récupère RubeniumSetup.exe sur GitHub.", '{n} minutes': '{n} minutes', '1 minute': '1 minute', '{n} seconds': '{n} secondes', 'Open for about {t}. Join in Games > Jackpot': 'Ouvert encore environ {t}. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in about {t}': 'Le prochain jackpot ouvre dans environ {t}', 'Wave god mode on: slide along the walls': 'Mode dieu Wave activé : glisse le long des murs', 'Wave god mode off': 'Mode dieu Wave désactivé'})
 FR.update({'Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself': "Mettre à jour ne peut plus ne rien faire en silence : un téléchargement bloqué se libère tout seul, et si la mise à jour automatique échoue deux fois, la page de téléchargement s'ouvre toute seule", 'Automatic update failed twice: opening the download page. Run RubeniumSetup.exe there.': 'La mise à jour automatique a échoué deux fois : ouverture de la page de téléchargement. Lance RubeniumSetup.exe là-bas.'})
 FR.update({'Badge cases': 'Caisses de badges', 'Always a badge, never coins. Best case first: the higher, the better the odds.': 'Toujours un badge, jamais de pièces. La meilleure caisse en premier : plus elle est haut, meilleures sont les chances.', 'Always a badge, never coins': 'Toujours un badge, jamais de pièces', 'The cheapest case: always a badge, mostly Common, Basic or Painted.': 'La caisse la moins chère : toujours un badge, surtout Commun, Basique ou Peint.', 'Always a badge, mostly Common, with a small chance of Rare or better, and of Shiny or Gold.': 'Toujours un badge, surtout Commun, avec une petite chance de Rare ou mieux, et de Brillant ou Or.', 'Always a badge of any rarity, with better odds than the Standard Case, up to Shiny, Titanium and Gold.': 'Toujours un badge de toute rareté, avec de meilleures chances que la caisse Standard, jusqu’à Brillant, Titane et Or.', 'Always a Rare, Epic or Legendary badge in every finish, up to Gold, with a Mythic chance.': 'Toujours un badge Rare, Épique ou Légendaire dans toutes les finitions, jusqu’à Or, avec une chance de Mythique.', 'Always a badge, never Basic: mostly Painted, with a good chance of Shiny, Titanium and Gold.': 'Toujours un badge, jamais Basique : surtout Peint, avec une bonne chance de Brillant, Titane et Or.', 'The best case: always an Epic or Legendary badge, never Basic, with the best Shiny, Titanium, Gold and Mythic odds.': 'La meilleure caisse : toujours un badge Épique ou Légendaire, jamais Basique, avec les meilleures chances de Brillant, Titane, Or et Mythique.', 'Cases remade: every badge case (themed ones too) always gives a badge and is priced fairly, in two groups, best case first. No more coin cases, the Top Tier Case is the best, Mythics stay a surprise in the previews, and tiny chances read "1 in 250 000" instead of 0.000%': 'Caisses refaites : chaque caisse de badges (à thème aussi) donne toujours un badge à un prix juste, en deux groupes, la meilleure en premier. Plus de caisses à pièces, la caisse Haut de gamme est la meilleure, les Mythiques restent une surprise dans les aperçus, et les toutes petites chances s’écrivent « 1 sur 250 000 » au lieu de 0,000 %'})
-FR.update({'BADGES': 'BADGES', 'THEMED': 'À THÈME'})
+FR.update({'THEMED': 'À THÈME'})
 FR.update({'Easy is quick and makes mistakes. Medium sees a few moves ahead. Hard moves first and looks far ahead.': "Facile joue vite et fait des erreurs. Moyen voit quelques coups à l'avance. Difficile commence et voit loin.", 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 200 times your bet.': "Professionnel commence et joue parfaitement : il n'a jamais perdu. Bats-le et tu gagnes 200 fois ta mise.", 'Easy ×1.2 · Medium ×2.5 · Hard ×10 · Professional ×200. A draw gives your bet back.': 'Facile ×1,2 · Moyen ×2,5 · Difficile ×10 · Professionnel ×200. Un match nul rend ta mise.'})
 FR.update({'Always an Epic or Legendary badge, never Basic, with the best Gold and Mythic odds.': "Toujours un badge Épique ou Légendaire, jamais Basique, avec les meilleures chances d'Or et de Mythique.", 'The best case: always an Epic or Legendary badge, never Basic, with the best Shiny and Titanium odds.': 'La meilleure caisse : toujours un badge Épique ou Légendaire, jamais Basique, avec les meilleures chances de Brillant et de Titane.'})
 FR.update({"Your chance is your share of everything put in. The winner gets their own items back and picks 75% of everyone else's; the rest leaves the game. After 2 minutes the lobby locks and bots fill the empty seats.": 'Ta chance est ta part de tout ce qui est mis. Le gagnant récupère ses objets et choisit 75 % de ceux des autres ; le reste quitte le jeu. Après 2 minutes, le salon se ferme et des bots prennent les places vides.', "The winner gets their own items back and picks 75% of everyone else's items. The rest leaves the game.": 'Le gagnant récupère ses objets et choisit 75 % des objets des autres. Le reste quitte le jeu.', "Winner: own items back + 75% of the others' items (rounded up), plus 150 XP.": 'Gagnant : ses objets + 75 % des objets des autres (arrondi au-dessus), plus 150 XP.'})
@@ -6890,8 +6816,6 @@ FR.update({                                   # 5.8
     '{h} holes': '{h} trous',
     'Starts in {s} s: bots take the free seats': 'Début dans {s} s : des bots prennent les places libres',
     'Leave the match': 'Quitter la partie',
-    'YOUR TURN': 'À TOI',
-    "{name}'s turn": 'Au tour de {name}',
     'ONLINE': 'EN LIGNE',
     'Move the mouse away from the ball for more power · click to shoot': 'Éloigne la souris de la balle pour plus de puissance · clique pour frapper',
     'Move the mouse away from your ball to aim: the further away, the harder the shot. The arrow shows the direction and the bar the power: how far it rolls is up to you. Click (or Space) to shoot.': 'Éloigne la souris de ta balle pour viser : plus loin, plus fort. La flèche montre la direction et la barre la puissance : la distance, c’est à toi de la sentir. Clique (ou Espace) pour frapper.',
@@ -6985,7 +6909,6 @@ FR.update({                                   # 5.4
     'Sunrise': 'Lever de soleil',
     'Bubbles': 'Bulles',
     'Plasma': 'Plasma',
-    'Neon Rain': 'Pluie néon',
     'Fireworks': 'Feux d’artifice',
     'Hyperspace': 'Hyperespace',
     'Today: {n} / {cap} coins': 'Aujourd’hui : {n} / {cap} pièces',
@@ -6995,7 +6918,6 @@ FR.update({                                   # 5.4
     "No coins: today's limit is reached (back at midnight)": 'Pas de pièces : la limite du jour est atteinte (de retour à minuit)',
     'Colour 2 (outline and glow)': 'Couleur 2 (contour et lueur)',
     'Eclipse': 'Éclipse',
-    'Supernova': 'Supernova',
     'Infinity': 'Infini',
     'Thunder Orb': 'Orbe de foudre',
     'Omega': 'Oméga',
@@ -7086,7 +7008,6 @@ FR.update({                                   # 5.1
 FR.update({                                   # 5.0.1
     'Welcome to Rubenium 5.0': 'Bienvenue dans Rubenium 5.0',
     'Everyone starts fresh with the full release. This quick guide shows the main parts and lets you set Rubenium up your way.': 'Tout le monde repart de zéro avec la version complète. Ce petit guide montre les parties principales et te laisse régler Rubenium à ta façon.',
-    'The ball': 'La bulle',
     'The R on your screen is Rubenium. Click it to open the menu, click the R again to fold it away. Pick the key that shows or hides it:': 'Le R sur ton écran, c’est Rubenium. Clique dessus pour ouvrir le menu, reclique sur le R pour le ranger. Choisis la touche qui l’affiche ou le cache :',
     'Music': 'Musique',
     'The first tab shows what is playing (Spotify, YouTube Music and more) with lyrics. Choose how it looks:': 'Le premier onglet montre ce qui joue (Spotify, YouTube Music et plus) avec les paroles. Choisis son apparence :',
@@ -7104,8 +7025,7 @@ FR.update({                                   # 5.0.1
     'Open by holding the mouse on the ball': 'Ouvrir en restant sur la bulle avec la souris',
     'Menu colours follow the album art': 'Les couleurs du menu suivent la pochette',
     'Compact music card while gaming': 'Carte musique compacte en jeu',
-    'Notifications': 'Notifications', 'Notification sound': 'Son des notifications', 'Interface sounds': 'Sons de l’interface',
-    'Case opening speed': 'Vitesse d’ouverture des caisses',
+    'Notifications': 'Notifications', 'Notification sound': 'Son des notifications',
     'Settings are on the right of the menu (the gear).': 'Les Paramètres sont à droite du menu (l’engrenage).',
     'Hold to go up, let go to go down': 'Maintiens pour monter, lâche pour descendre',
     'Practice bot: plays perfectly, see-through, a little ahead': 'Bot d’entraînement : joue parfaitement, transparent, un peu devant',
@@ -11153,7 +11073,7 @@ def _shop_scene_66(p: QPainter, style: str, w: float, h: float, c1: QColor, c2: 
             p.drawPolygon(poly)
         for k in range(10):
             x0 = w * (0.04 + 0.1 * k + rnd.uniform(-0.02, 0.02))
-            sw = w * 0.006 * (1 + rnd.random())
+            rnd.random()                                   # one draw kept so the pattern stays the same
             seg = 9
             pts = [QPointF(x0 + math.sin(t * 0.7 + k) * w * 0.012 * (j / seg) ** 2, h * (1 - j / seg)) for j in range(seg + 1)]
             thick = w * 0.016 * (0.7 + 0.5 * rnd.random())
@@ -12344,12 +12264,12 @@ def close_app(exe: str) -> bool:
 
 
 FR.update({'NEW games: Colour Pick (recreate a colour from memory) and SFX Match (recreate a sound). Easy, Medium and Hard, rewards by accuracy, with their own leaderboards': 'NOUVEAU : Choix de couleur (recrée une couleur de mémoire) et SFX Match (recrée un son). Facile, Moyen et Difficile, gains selon la précision, avec leurs propres classements', 'A big 30 second countdown on every move in Connect 4 and the Cup Game: when it runs out you lose the round': 'Un grand compte à rebours de 30 secondes à chaque coup au Puissance 4 et au jeu des gobelets : à zéro, tu perds la manche', 'Cup Game is much harder: more swaps, and faster': 'Le jeu des gobelets est bien plus dur : plus d’échanges, et plus vite', 'Cases: Mythics are listed in every case as a hidden "?" until you unlock them, and Prismatic chances show above Gold': 'Caisses : les Mythiques sont listés dans chaque caisse sous forme de « ? » caché jusqu’à leur déblocage, et les chances de Prismatique s’affichent au-dessus d’Or', 'Much rarer odds: Mythic 1 / 100 000 in the Top Tier Case and 1 / 250 000 to 1 / 500 000 in the others. Shiny, Titanium and Gold are far rarer too, Painted is the common finish': 'Chances bien plus rares : Mythique 1 / 100 000 dans la caisse Haut de gamme et 1 / 250 000 à 1 / 500 000 dans les autres. Brillant, Titane et Or sont bien plus rares aussi, Peint est la finition courante', 'Updates no longer pop Rubenium open: after an automatic update it slides to the top right as the ball and waits. Open it to see what is new': 'Les mises à jour n’ouvrent plus Rubenium : après une mise à jour automatique, il glisse en haut à droite sous forme de bulle et attend. Ouvre-le pour voir les nouveautés', 'Colour Pick': 'Choix de couleur', 'Previews': 'Essais', 'SFX Match': 'SFX Match', 'Submit': 'Valider', 'Sine': 'Sinus', 'Triangle': 'Triangle', 'Saw': 'Dent de scie', 'Square': 'Carré', 'Pluck': 'Pincé', 'Beep': 'Bip', 'Swell': 'Crescendo', 'Accuracy': 'Précision', 'Colour distance {n}': 'Écart de couleur {n}', 'Daily limit reached: wins give your bet back until midnight': 'Limite du jour atteinte : une victoire rend ta mise jusqu’à minuit', 'Duration': 'Durée', 'Glide': 'Glissando', 'Hear original': 'Écouter l’original', 'Hear yours': 'Écouter le tien', 'Hue': 'Teinte', 'Saturation': 'Saturation', 'Listen closely, then recreate the sound.': 'Écoute bien, puis recrée le son.', 'Listen!': 'Écoute !', 'Listen: {a} s · Answer: {b} s': 'Écoute : {a} s · Réponse : {b} s', 'Look: {a} s · Answer: {b} s': 'Regarde : {a} s · Réponse : {b} s', 'Memorise the colour, then recreate it.': 'Mémorise la couleur, puis recrée-la.', 'Memorise this colour!': 'Mémorise cette couleur !', 'No previews left': 'Plus d’écoutes d’essai', 'Original': 'Original', 'Pitch': 'Hauteur', 'Play sound · {n} left': 'Jouer le son · {n} restantes', 'Plays left: {n}': 'Écoutes restantes : {n}', 'Preview · {n} left': 'Essai · {n} restants', 'Previews left: {n}': 'Essais restants : {n}', 'Recreate the colour': 'Recrée la couleur', 'Recreate the sound': 'Recrée le son', 'The original is gone: you were disconnected': 'L’original a disparu : tu as été déconnecté', 'Time is up!': 'Temps écoulé !', 'Time is up: you lose the game': 'Temps écoulé : tu perds la partie', 'Tone': 'Timbre', 'Wobble': 'Vibrato', 'A colour is shown for a few seconds, then it disappears. Recreate it from memory with the Hue, Saturation and Brightness sliders, then submit.': 'Une couleur s’affiche quelques secondes, puis disparaît. Recrée-la de mémoire avec les curseurs Teinte, Saturation et Luminosité, puis valide.', 'A short sound plays, then it is gone. Recreate it with the sliders: pitch, duration and tone, and on harder levels glide, shape and wobble.': 'Un court son est joué, puis il disparaît. Recrée-le avec les curseurs : hauteur, durée et timbre, et aux niveaux difficiles glissando, forme et vibrato.', 'After the round you hear both sounds and see how close each setting was.': 'Après la manche, tu entends les deux sons et vois la précision de chaque réglage.', 'Easy shows it for 6 s and gives 45 s, Medium 4 s and 35 s, Hard shows a muted colour for only 2.5 s and gives 25 s.': 'Facile l’affiche 6 s et laisse 45 s, Moyen 4 s et 35 s, Difficile montre une couleur terne seulement 2,5 s et laisse 25 s.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy. Low accuracy gives back part of your bet or nothing.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision. Une faible précision rend une partie de la mise ou rien.', 'Easy up to ×1.5 · Medium up to ×2.2 · Hard up to ×3, by accuracy.': 'Facile jusqu’à ×1,5 · Moyen jusqu’à ×2,2 · Difficile jusqu’à ×3, selon la précision.', 'Easy: 10 s to listen, 60 s to answer. Medium: 7 s and 45 s. Hard: 5 s and 30 s, with 2 listens and 4 previews.': 'Facile : 10 s pour écouter, 60 s pour répondre. Moyen : 7 s et 45 s. Difficile : 5 s et 30 s, avec 2 écoutes et 4 essais.', 'Find the pitch first, then the length, then the tone: sine is soft, square is buzzy, saw is sharp.': 'Trouve d’abord la hauteur, puis la durée, puis le timbre : le sinus est doux, le carré bourdonne, la dent de scie est vive.', 'Once you are up 12 000 coins in a day, a win gives your bet back.': 'Une fois 12 000 pièces gagnées dans la journée, une victoire rend ta mise.', 'Remember the hue first, then how pale or dark it was. Move the sliders one at a time.': 'Retiens d’abord la teinte, puis si elle était pâle ou sombre. Bouge les curseurs un par un.', 'The colour is shown once and the clock is kept by the server: a late answer scores nothing.': 'La couleur n’est montrée qu’une fois et le serveur garde le chrono : une réponse tardive ne rapporte rien.', 'You can listen to the original a few times while it is available, and to your own sound a limited number of times before you submit.': 'Tu peux écouter l’original quelques fois tant qu’il est disponible, et ton propre son un nombre limité de fois avant de valider.', 'Your accuracy is measured the way the eye sees colour (CIEDE2000): close counts, exact is best.': 'Ta précision est mesurée comme l’œil voit les couleurs (CIEDE2000) : proche compte, exact est le mieux.'})      # 6.2
-FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'Preview': 'Essai', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
-FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'Waiting for a player': 'En attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
-FR.update({'Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run.': 'Les paris ferment 2 minutes après l’arrivée du premier joueur. Puis les bots prennent les chevaux libres, 3, 2, 1, le coup de feu, et ils partent.', 'Chance to win = your bet ÷ all the money on the horses.': 'Chance de gagner = ta mise ÷ tout l’argent misé sur les chevaux.', 'Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start.': 'Les chevaux à l’arrière de la file partent en premier, pour qu’ils passent tous la ligne de départ ensemble : personne n’a d’avance.', 'Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Pendant 2 minutes tu peux mettre 1 à 3 objets (5 joueurs au plus).', 'Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.': 'Le Jackpot et la Course de chevaux alternent : chacun ouvre 15 minutes après la fin de l’autre.', 'Nobody joins? The bots race on their own and the next event comes 15 minutes later.': 'Personne ne rejoint ? Les bots courent seuls et l’événement suivant arrive 15 minutes plus tard.', 'Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).': 'Choisis un cheval libre sur le tableau et mise des pièces dessus (un cheval chacun, 5 chevaux).', "The more you bet, the better your horse's chance, but the more you can lose.": 'Plus tu mises, plus ton cheval a de chances, mais plus tu peux perdre.', "The winner gets their bet back plus 80% of everybody else's bets (bots' too).": 'Le gagnant récupère sa mise plus 80 % des mises de tous les autres (bots compris).', 'Bet {n} coins on this round? That is {p}% of your coins.': 'Miser {n} pièces sur cette manche ? C’est {p} % de tes pièces.', 'Careful: you could lose a big part of your coins.': 'Attention : tu pourrais perdre une grosse partie de tes pièces.', 'Bet it': 'Miser', 'FINISH': 'ARRIVÉE', 'BETS CLOSE IN {t}': 'PARIS FERMÉS DANS {t}', 'Pick a horse and bet. Bots take the empty horses at 0:00.': 'Choisis un cheval et mise. Les bots prennent les chevaux libres à 0:00.', 'The clock restarts at 2:00 when the first player joins': 'Le chrono repart à 2:00 quand le premier joueur rejoint', 'BOTS TAKE THE EMPTY HORSES': 'LES BOTS PRENNENT LES CHEVAUX LIBRES', 'Get ready…': 'Préparez-vous…', 'GO!': 'PARTEZ !', 'YOU WON {n}!': 'TU AS GAGNÉ {n} !', 'YOU WON!': 'TU AS GAGNÉ !', '#{n} {name} WINS': 'N°{n} {name} GAGNE', 'Ridden for {who}': 'Monté pour {who}', 'Desert': 'Désert', 'Forest': 'Forêt', 'Snow': 'Neige', 'RACE BOARD': 'TABLEAU DES COURSES', '{n} on the horses': '{n} misés sur les chevaux', 'Free: click to pick': 'Libre : clique pour choisir', 'Free': 'Libre', 'Your pick': 'Ton choix', 'HORSE RACING': 'COURSE DE CHEVAUX', 'Horse Racing': 'Course de chevaux', 'OPEN · bets close in {t}': 'OUVERT · paris fermés dans {t}', "They're racing: watch it": 'Ils courent : regarde', 'Next race in {t}': 'Prochaine course dans {t}', '5 horses, bet on one': '5 chevaux, mise sur un', 'Horse Racing is paused for a moment. Nothing you own is lost.': 'La Course de chevaux est en pause un moment. Tu ne perds rien.', 'The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.': 'La prochaine course ouvre dans environ {t}. Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart.', 'Last race': 'Dernière course', 'Every horse is taken. Watch the race!': 'Tous les chevaux sont pris. Regarde la course !', 'You need at least {n} to bet.': 'Il te faut au moins {n} pour miser.', 'Bet on this horse': 'Miser sur ce cheval', 'Click a free horse on the board': 'Clique un cheval libre sur le tableau', 'Too late: the bets are closed': 'Trop tard : les paris sont fermés', '#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)': 'N°{n} : {p} de chances · s’il gagne tu reçois {w} (ta mise + {s} % des autres)', 'Bet {n} coins on #{h} {name}? That is {p}% of your coins.': 'Miser {n} pièces sur le n°{h} {name} ? C’est {p} % de tes pièces.', "You're on #{n} {name}. Good luck!": 'Tu es sur le n°{n} {name}. Bonne chance !', "Your chance to win is your share of all the money on the horses. The winner gets their bet back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.": 'Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. Le gagnant récupère sa mise plus {s} % de celles des autres. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.', 'HORSE RACE IS OPEN': 'LA COURSE DE CHEVAUX EST OUVERTE', 'Bets close in about {t}. Bet in Games > Horse Racing': 'Les paris ferment dans environ {t}. Mise dans Jeux > Course de chevaux', 'Red Rocket': 'Fusée Rouge', 'Blue Thunder': 'Tonnerre Bleu', 'Green Clover': 'Trèfle Vert', 'Golden Sun': 'Soleil d’Or', 'Purple Storm': 'Tempête Violette', 'The bets for this race are closed': 'Les paris de cette course sont fermés', 'Someone just took this horse: pick another': 'Quelqu’un vient de prendre ce cheval : choisis-en un autre', 'You already have a horse in this race': 'Tu as déjà un cheval dans cette course', 'Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.': 'Limitée (calendrier de l’Avent) : aussi bonne que la Caisse Top Tier. Toujours un badge Épique ou Légendaire, avec une chance de Mythique.', 'Professional moves first and plays perfectly: it has never lost. Beat it and you win 999 times your bet.': 'Le Professionnel commence et joue parfaitement : il n’a jamais perdu. Bats-le et tu gagnes 999 fois ta mise.', "NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's": 'NOUVEAU : Course de chevaux. 5 chevaux, choisis-en un et mise : ta chance est ta part de l’argent. Le gagnant récupère sa mise plus 80 % de celles des autres', 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Si personne ne rejoint, les bots jouent quand même', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)': 'Mises jusqu’à la moitié de tes pièces. Au-delà de 10 000, on te demande d’abord, en or (en rouge si c’est une grosse part de tes pièces)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5': 'Puissance 4 Professionnel paie ×999. Jeu des gobelets : Facile ×1,2, Moyen ×2, Difficile ×3, Expert ×5', "A coloured app font now colours the app's text too": 'Une police colorée colore maintenant aussi le texte de l’app', 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)': 'Bots du Mini Golf corrigés : plus de passage à travers les murs ni de glissade sur tout le parcours, et ils jouent chacun leur tour (tu attends leur balle)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar': 'Mini Golf et Wave Rush sont dans Gagner des pièces ; Coinflip est sous le calendrier de l’Avent', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case': 'Anciennes caisses retirées (ceux qui en avaient ont reçu leur prix en pièces). Les caisses Hiver et Cadeau sont maintenant aussi bonnes que la Caisse Top Tier'})      # 6.3
+FR.update({'The reward depends only on your accuracy, the same on every level: 95% or more pays ×1.5, 85% ×1.25, 70% your bet back. Lower gives back part of it or nothing.': 'Le gain dépend seulement de ta précision, le même à chaque niveau : 95 % ou plus paie ×1,5, 85 % ×1,25, 70 % rend ta mise. En dessous, tu récupères une partie ou rien.', 'Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s.': 'Facile l’affiche 6 s et laisse 30 s, Moyen 4 s et 20 s, Difficile montre une couleur terne seulement 2,5 s et laisse 10 s.', 'Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited.': 'Facile : 12 s pour écouter, 75 s pour répondre. Moyen : 9 s et 60 s. Difficile : 7 s et 45 s. Les essais de ton propre son sont illimités.', 'You can listen to the original several times while it is available, and to your own sound as often as you like before you submit.': 'Tu peux écouter l’original plusieurs fois tant qu’il est disponible, et ton propre son autant que tu veux avant de valider.', 'How to get it: {what}': 'Comment l’obtenir : {what}', 'Unlocked': 'Débloqué', 'Claim': 'Récupérer', 'Remove from profile': 'Retirer du profil', 'Show on my profile': 'Montrer sur mon profil', 'Tap a trophy to see how to get it': 'Touche un trophée pour voir comment l’obtenir', 'SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews': 'SFX Match est bien plus facile à réussir : notation plus souple, écoute plus longue, plus d’écoutes et essais illimités', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s': 'Temps de réponse du Choix de couleur : Facile 30 s, Moyen 20 s, Difficile 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)': 'Choix de couleur et SFX Match paient selon la précision seulement, pareil à chaque niveau (jusqu’à ×1,5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile': 'Trophées refaits : touche-en un pour ouvrir sa fiche, qui dit comment l’obtenir, avec un bouton pour le montrer sur ton profil'})
+FR.update({'The Jackpot stays open until a player joins, and its countdown only starts when the first player joins': "Le Jackpot reste ouvert jusqu'à ce qu'un joueur rejoigne, et son compte à rebours ne démarre que lorsque le premier joueur entre", 'OPEN · waiting for a player': 'OUVERT · en attente d’un joueur', 'The clock starts when someone joins': 'Le compte à rebours démarre quand quelqu’un rejoint', 'Waiting for a player: the clock starts when someone joins. Join in Games > Jackpot': 'En attente d’un joueur : le compte à rebours démarre dès que quelqu’un rejoint. Rejoins dans Jeux > Jackpot', 'The next jackpot opens in {t}. 2 minutes to join once a player is in.': 'Le prochain jackpot ouvre dans {t}. 2 minutes pour entrer une fois qu’un joueur est dedans.'})      # 6.2.3
+FR.update({'Bets close 2 minutes after the first player joins. Then bots take the empty horses, 3, 2, 1, the gun, and they run.': 'Les paris ferment 2 minutes après l’arrivée du premier joueur. Puis les bots prennent les chevaux libres, 3, 2, 1, le coup de feu, et ils partent.', 'Chance to win = your bet ÷ all the money on the horses.': 'Chance de gagner = ta mise ÷ tout l’argent misé sur les chevaux.', 'Horses at the back of the line-up start first, so they all cross the start line together: nobody gets a head start.': 'Les chevaux à l’arrière de la file partent en premier, pour qu’ils passent tous la ligne de départ ensemble : personne n’a d’avance.', 'Jackpot and Horse Racing take turns, 15 minutes apart. For 2 minutes you can put in 1 to 3 items (5 players at most).': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Pendant 2 minutes tu peux mettre 1 à 3 objets (5 joueurs au plus).', 'Jackpot and Horse Racing take turns: each one opens 15 minutes after the other one ends.': 'Le Jackpot et la Course de chevaux alternent : chacun ouvre 15 minutes après la fin de l’autre.', 'Nobody joins? The bots race on their own and the next event comes 15 minutes later.': 'Personne ne rejoint ? Les bots courent seuls et l’événement suivant arrive 15 minutes plus tard.', 'Pick a free horse on the race board and bet coins on it (one horse each, 5 horses).': 'Choisis un cheval libre sur le tableau et mise des pièces dessus (un cheval chacun, 5 chevaux).', "The more you bet, the better your horse's chance, but the more you can lose.": 'Plus tu mises, plus ton cheval a de chances, mais plus tu peux perdre.', "The winner gets their bet back plus 80% of everybody else's bets (bots' too).": 'Le gagnant récupère sa mise plus 80 % des mises de tous les autres (bots compris).', 'Bet {n} coins on this round? That is {p}% of your coins.': 'Miser {n} pièces sur cette manche ? C’est {p} % de tes pièces.', 'Careful: you could lose a big part of your coins.': 'Attention : tu pourrais perdre une grosse partie de tes pièces.', 'Bet it': 'Miser', 'FINISH': 'ARRIVÉE', 'BETS CLOSE IN {t}': 'PARIS FERMÉS DANS {t}', 'Pick a horse and bet. Bots take the empty horses at 0:00.': 'Choisis un cheval et mise. Les bots prennent les chevaux libres à 0:00.', 'The clock restarts at 2:00 when the first player joins': 'Le chrono repart à 2:00 quand le premier joueur rejoint', 'BOTS TAKE THE EMPTY HORSES': 'LES BOTS PRENNENT LES CHEVAUX LIBRES', 'GO!': 'PARTEZ !', 'YOU WON {n}!': 'TU AS GAGNÉ {n} !', 'YOU WON!': 'TU AS GAGNÉ !', '#{n} {name} WINS': 'N°{n} {name} GAGNE', 'Ridden for {who}': 'Monté pour {who}', 'Desert': 'Désert', 'Forest': 'Forêt', 'Snow': 'Neige', 'RACE BOARD': 'TABLEAU DES COURSES', '{n} on the horses': '{n} misés sur les chevaux', 'Free: click to pick': 'Libre : clique pour choisir', 'Your pick': 'Ton choix', 'HORSE RACING': 'COURSE DE CHEVAUX', 'Horse Racing': 'Course de chevaux', 'OPEN · bets close in {t}': 'OUVERT · paris fermés dans {t}', "They're racing: watch it": 'Ils courent : regarde', 'Next race in {t}': 'Prochaine course dans {t}', '5 horses, bet on one': '5 chevaux, mise sur un', 'Horse Racing is paused for a moment. Nothing you own is lost.': 'La Course de chevaux est en pause un moment. Tu ne perds rien.', 'The next race opens in about {t}. Jackpot and Horse Racing take turns, 15 minutes apart.': 'La prochaine course ouvre dans environ {t}. Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart.', 'Last race': 'Dernière course', 'Every horse is taken. Watch the race!': 'Tous les chevaux sont pris. Regarde la course !', 'You need at least {n} to bet.': 'Il te faut au moins {n} pour miser.', 'Bet on this horse': 'Miser sur ce cheval', 'Click a free horse on the board': 'Clique un cheval libre sur le tableau', 'Too late: the bets are closed': 'Trop tard : les paris sont fermés', '#{n}: {p} chance · if it wins you get {w} (your bet + {s}% of the others)': 'N°{n} : {p} de chances · s’il gagne tu reçois {w} (ta mise + {s} % des autres)', 'Bet {n} coins on #{h} {name}? That is {p}% of your coins.': 'Miser {n} pièces sur le n°{h} {name} ? C’est {p} % de tes pièces.', "You're on #{n} {name}. Good luck!": 'Tu es sur le n°{n} {name}. Bonne chance !', "Your chance to win is your share of all the money on the horses. The winner gets their bet back plus {s}% of everybody else's. Bets close 2 minutes after the first player joins; then bots take the empty horses and the race starts, with or without players.": 'Ta chance de gagner est ta part de tout l’argent misé sur les chevaux. Le gagnant récupère sa mise plus {s} % de celles des autres. Les paris ferment 2 minutes après l’arrivée du premier joueur ; puis les bots prennent les chevaux libres et la course part, avec ou sans joueurs.', 'HORSE RACE IS OPEN': 'LA COURSE DE CHEVAUX EST OUVERTE', 'Bets close in about {t}. Bet in Games > Horse Racing': 'Les paris ferment dans environ {t}. Mise dans Jeux > Course de chevaux', 'Red Rocket': 'Fusée Rouge', 'Blue Thunder': 'Tonnerre Bleu', 'Green Clover': 'Trèfle Vert', 'Golden Sun': 'Soleil d’Or', 'Purple Storm': 'Tempête Violette', 'The bets for this race are closed': 'Les paris de cette course sont fermés', 'Someone just took this horse: pick another': 'Quelqu’un vient de prendre ce cheval : choisis-en un autre', 'You already have a horse in this race': 'Tu as déjà un cheval dans cette course', 'Limited (advent calendar): as good as the Top Tier Case. Always an Epic or Legendary badge, with a Mythic chance.': 'Limitée (calendrier de l’Avent) : aussi bonne que la Caisse Top Tier. Toujours un badge Épique ou Légendaire, avec une chance de Mythique.', "NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's": 'NOUVEAU : Course de chevaux. 5 chevaux, choisis-en un et mise : ta chance est ta part de l’argent. Le gagnant récupère sa mise plus 80 % de celles des autres', 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway': 'Le Jackpot et la Course de chevaux alternent, à 15 minutes d’écart. Si personne ne rejoint, les bots jouent quand même', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)': 'Mises jusqu’à la moitié de tes pièces. Au-delà de 10 000, on te demande d’abord, en or (en rouge si c’est une grosse part de tes pièces)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5': 'Puissance 4 Professionnel paie ×999. Jeu des gobelets : Facile ×1,2, Moyen ×2, Difficile ×3, Expert ×5', "A coloured app font now colours the app's text too": 'Une police colorée colore maintenant aussi le texte de l’app', 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)': 'Bots du Mini Golf corrigés : plus de passage à travers les murs ni de glissade sur tout le parcours, et ils jouent chacun leur tour (tu attends leur balle)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar': 'Mini Golf et Wave Rush sont dans Gagner des pièces ; Coinflip est sous le calendrier de l’Avent', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case': 'Anciennes caisses retirées (ceux qui en avaient ont reçu leur prix en pièces). Les caisses Hiver et Cadeau sont maintenant aussi bonnes que la Caisse Top Tier'})      # 6.3
 FR.update({'Horse Racing: the horses run at a normal pace again (the race is still 3 times longer, the speed is just doubled on screen). The Animations tab is locked for now.': 'Course de chevaux : les chevaux repartent à une allure normale (la course dure toujours 3 fois plus longtemps, la vitesse à l’écran est simplement doublée). L’onglet Animations est verrouillé pour le moment.', "Animations are locked for now. Watch this space.": "Les animations sont verrouillées pour le moment. Reste à l’affût."})  # 6.9.1
 FR.update({'Horse Racing: the race is now 3 times longer (about a minute) with many more lead changes, and 5 new maps (Beach, Canyon, Night City, Volcano, Moon) join Desert, Forest and Snow': 'Course de chevaux : la course dure maintenant 3 fois plus longtemps (environ une minute) avec beaucoup plus de changements de tête, et 5 nouvelles cartes (Plage, Canyon, Ville de nuit, Volcan, Lune) rejoignent Désert, Forêt et Neige'})      # 6.8
-FR.update({'NEW: 4 Mythic ANIMATIONS (Supernova, Shatter, Rift, Phoenix), each in Prismatic, Gold, Black Titan and White Titan: buy the originals in the Shop (Animations) or win any of them from the Profile Case. Click anywhere or press Esc to skip one, or switch back to the simple animation any time. The default animation is now simple: the banner floats up into nothing and drops back down. Lines now sit with the Balls in the Shop, and the Coin history moved to the Profile tab of your Inventory (whose old Coins button is now Animations)': 'NOUVEAU : 4 ANIMATIONS Mythiques (Supernova, Éclat, Faille, Phénix), chacune en Prismatique, Or, Titan noir et Titan blanc : achète les originales dans la Boutique (Animations) ou gagne-les dans la Caisse Profil. Clique n’importe où ou appuie sur Échap pour en passer une, ou reviens à l’animation simple quand tu veux. L’animation par défaut est maintenant simple : la bannière monte dans le vide et retombe. Les lignes sont maintenant avec les balles dans la Boutique, et l’historique des pièces est passé dans l’onglet Profil de ton Inventaire (l’ancien bouton Pièces est maintenant Animations)', 'Animations': 'Animations', 'Animation': 'Animation', 'Simple (free)': 'Simple (gratuite)', 'Now: {name}': 'Actuelle : {name}', 'Use the simple one': 'Utiliser la simple', 'Turns the special animation off: the banner just floats up and drops back down': 'Désactive l’animation spéciale : la bannière monte simplement puis retombe', 'How Rubenium leaves and comes back. The simple one is free and always works.': 'Comment Rubenium part et revient. La simple est gratuite et marche toujours.', 'This finish only comes from Profile cases, and it is super rare.': 'Cette finition vient uniquement des caisses Profil, et elle est super rare.', 'Nothing here yet. Buy one in the Shop or win one in a Profile case.': 'Rien ici pour l’instant. Achètes-en une dans la Boutique ou gagne-en une dans une caisse Profil.', 'If an animation ever glitches: click anywhere or press Esc to skip it, or press "Use the simple one".': 'Si une animation bugue : clique n’importe où ou appuie sur Échap pour la passer, ou appuie sur « Utiliser la simple ».', 'Base': 'Base', 'Prismatic': 'Prismatique', 'Black': 'Noir', 'White': 'Blanc', 'Original': 'Originale', 'Black Titan': 'Titan noir', 'White Titan': 'Titan blanc', 'Supernova': 'Supernova', 'Shatter': 'Éclat de verre', 'Rift': 'Faille', 'Prismatic Supernova': 'Supernova Prismatique', 'Prismatic Shatter': 'Éclat de verre Prismatique', 'Prismatic Rift': 'Faille Prismatique', 'Prismatic Phoenix': 'Phénix Prismatique', 'Gold Supernova': 'Supernova Or', 'Gold Shatter': 'Éclat de verre Or', 'Gold Rift': 'Faille Or', 'Gold Phoenix': 'Phénix Or', 'Black Titan Supernova': 'Supernova Titan noir', 'Black Titan Shatter': 'Éclat de verre Titan noir', 'Black Titan Rift': 'Faille Titan noir', 'Black Titan Phoenix': 'Phénix Titan noir', 'White Titan Supernova': 'Supernova Titan blanc', 'White Titan Shatter': 'Éclat de verre Titan blanc', 'White Titan Rift': 'Faille Titan blanc', 'White Titan Phoenix': 'Phénix Titan blanc', 'Animations (animation)': 'Animations (animation)'})  # 6.9
+FR.update({'NEW: 4 Mythic ANIMATIONS (Supernova, Shatter, Rift, Phoenix), each in Prismatic, Gold, Black Titan and White Titan: buy the originals in the Shop (Animations) or win any of them from the Profile Case. Click anywhere or press Esc to skip one, or switch back to the simple animation any time. The default animation is now simple: the banner floats up into nothing and drops back down. Lines now sit with the Balls in the Shop, and the Coin history moved to the Profile tab of your Inventory (whose old Coins button is now Animations)': 'NOUVEAU : 4 ANIMATIONS Mythiques (Supernova, Éclat, Faille, Phénix), chacune en Prismatique, Or, Titan noir et Titan blanc : achète les originales dans la Boutique (Animations) ou gagne-les dans la Caisse Profil. Clique n’importe où ou appuie sur Échap pour en passer une, ou reviens à l’animation simple quand tu veux. L’animation par défaut est maintenant simple : la bannière monte dans le vide et retombe. Les lignes sont maintenant avec les balles dans la Boutique, et l’historique des pièces est passé dans l’onglet Profil de ton Inventaire (l’ancien bouton Pièces est maintenant Animations)', 'Animations': 'Animations', 'Animation': 'Animation', 'Simple (free)': 'Simple (gratuite)', 'Now: {name}': 'Actuelle : {name}', 'Use the simple one': 'Utiliser la simple', 'Turns the special animation off: the banner just floats up and drops back down': 'Désactive l’animation spéciale : la bannière monte simplement puis retombe', 'How Rubenium leaves and comes back. The simple one is free and always works.': 'Comment Rubenium part et revient. La simple est gratuite et marche toujours.', 'This finish only comes from Profile cases, and it is super rare.': 'Cette finition vient uniquement des caisses Profil, et elle est super rare.', 'Nothing here yet. Buy one in the Shop or win one in a Profile case.': 'Rien ici pour l’instant. Achètes-en une dans la Boutique ou gagne-en une dans une caisse Profil.', 'If an animation ever glitches: click anywhere or press Esc to skip it, or press "Use the simple one".': 'Si une animation bugue : clique n’importe où ou appuie sur Échap pour la passer, ou appuie sur « Utiliser la simple ».', 'Base': 'Base', 'Prismatic': 'Prismatique', 'Black': 'Noir', 'White': 'Blanc', 'Black Titan': 'Titan noir', 'White Titan': 'Titan blanc', 'Supernova': 'Supernova', 'Shatter': 'Éclat de verre', 'Rift': 'Faille', 'Prismatic Supernova': 'Supernova Prismatique', 'Prismatic Shatter': 'Éclat de verre Prismatique', 'Prismatic Rift': 'Faille Prismatique', 'Prismatic Phoenix': 'Phénix Prismatique', 'Gold Supernova': 'Supernova Or', 'Gold Shatter': 'Éclat de verre Or', 'Gold Rift': 'Faille Or', 'Gold Phoenix': 'Phénix Or', 'Black Titan Supernova': 'Supernova Titan noir', 'Black Titan Shatter': 'Éclat de verre Titan noir', 'Black Titan Rift': 'Faille Titan noir', 'Black Titan Phoenix': 'Phénix Titan noir', 'White Titan Supernova': 'Supernova Titan blanc', 'White Titan Shatter': 'Éclat de verre Titan blanc', 'White Titan Rift': 'Faille Titan blanc', 'White Titan Phoenix': 'Phénix Titan blanc', 'Animations (animation)': 'Animations (animation)'})  # 6.9
 FR.update({'Ripples': 'Ondulations', 'Pinwheel': 'Moulinet', 'Ticker': 'Téléscripteur', 'Light Leaks': 'Fuites de lumière', 'Nixie': 'Nixie', 'Static': 'Neige TV', 'Vinyl': 'Vinyle', 'Pendulum': 'Pendule', 'Hologram': 'Hologramme', 'Mandala': 'Mandala', 'Monsoon': 'Mousson', 'Sahara': 'Sahara', 'Bamboo': 'Bambou', 'Neon Rain': 'Pluie néon', 'Lanterns': 'Lanternes', 'Quartz': 'Quartz', 'Lava Lamp': 'Lampe à lave', 'Wormhole': 'Trou de ver', 'Polar Lights': 'Aurores polaires', 'Liquid Chrome': 'Chrome liquide', 'NEW: 10 more animated banners (Ripples, Pinwheel, Ticker, Light Leaks, Nixie, Static, Vinyl, Pendulum, Hologram, Mandala) and 10 more moving app themes (Monsoon, Sahara, Bamboo, Neon Rain, Lanterns, Quartz, Lava Lamp, Wormhole, Polar Lights, Liquid Chrome), each in up to 6 more colours. In the shop and the cases': 'NOUVEAU : 10 bannières animées de plus (Ondulations, Moulinet, Téléscripteur, Fuites de lumière, Nixie, Neige TV, Vinyle, Pendule, Hologramme, Mandala) et 10 thèmes animés de plus (Mousson, Sahara, Bambou, Pluie néon, Lanternes, Quartz, Lampe à lave, Trou de ver, Aurores polaires, Chrome liquide), chacun jusqu’à 6 autres couleurs. Dans la boutique et les caisses'})      # 6.7
 FR.update({'1st': '1er', '2nd': '2e', '3rd': '3e', '4th': '4e', '5th': '5e', 'Average bet {v}': 'Mise moyenne {v}', 'Best round': 'Meilleure manche', 'Best round {a} · worst {b}': 'Meilleure manche {a} · pire {b}', 'Best winning streak {n}': 'Meilleure série de victoires {n}', 'Bet {a} · paid {b}': 'Mise {a} · payé {b}', 'Bet {a} → paid {b}': 'Mise {a} → payé {b}', 'Coins won or lost in each round': 'Pièces gagnées ou perdues à chaque manche', 'EVEN': 'ÉGALITÉ', 'Every round of every game will be drawn here.': 'Chaque manche de chaque jeu sera dessinée ici.', 'Games: won, lost and even rounds': 'Jeux : manches gagnées, perdues et à égalité', 'LOSS': 'PERTE', 'Multiplier ×{m}': 'Multiplicateur ×{m}', 'Net coins each day': 'Pièces nettes par jour', 'Net coins over time (last {n} rounds)': 'Pièces nettes dans le temps ({n} dernières manches)', 'Net result': 'Résultat net', 'Net {v}': 'Net {v}', 'PLAY HISTORY': 'HISTORIQUE DE JEU', 'Played: {g}': 'Joué : {g}', 'Podium of the last races': 'Podium des dernières courses', 'Pot': 'Cagnotte', 'Rounds, newest first': 'Manches, de la plus récente à la plus ancienne', 'Running net {v}': 'Net cumulé {v}', 'That day: {n} rounds · net {v}': 'Ce jour-là : {n} manches · net {v}', 'Total bet': 'Total misé', 'Total bet {a} · paid {b}': 'Total misé {a} · payé {b}', 'Total paid': 'Total payé', 'WIN': 'GAIN', 'Win rate (last 20 rounds, %)': 'Taux de victoire (20 dernières manches, %)', 'Win rate then {p}%': 'Taux de victoire alors {p} %', 'Win rate {p}%': 'Taux de victoire {p} %', 'Won / lost': 'Gagnées / perdues', 'Worst round': 'Pire manche', '{n} rounds · {p}% won': '{n} manches · {p} % gagnées', '{n} rounds · {w} won · {l} lost': '{n} manches · {w} gagnées · {l} perdues', '{n} rounds · {w} won · {l} lost · {e} even': '{n} manches · {w} gagnées · {l} perdues · {e} égalités', "NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover": 'NOUVEAU : un graphique Historique de jeu en haut des Stats de chaque joueur (les tiennes et celles de tes amis) : pièces nettes dans le temps, résultat de chaque manche, taux de victoire, chaque jour et chaque jeu, tout en détail au survol', 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place': 'Historique de la Course de chevaux : une liste Podium montre le 1er, le 2e et le 3e de chaque course (or, argent, bronze) et la carte au survol nomme chaque place'})      # 6.6
 FR.update({'NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too': 'NOUVEAU : 10 bannières, cadres et thèmes de plus (Lagoon, Pêche, Forme d’onde, Radar, Or rose…) et chaque bannière, cadre et thème existe maintenant jusqu’à 6 autres couleurs : plus de 900 nouveaux looks. Choisis la couleur dans chaque design de la boutique, ils sont aussi dans les caisses', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%': 'La Course de chevaux paie maintenant les trois premiers : le 1er récupère 100 % de sa mise et 70 % des gains, le 2e 25 % et 20 %, le 3e 5 % et 10 %', "Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse's wins. Hover anywhere to see the details": 'Course de chevaux : un Historique sous le menu avec les vainqueurs, un graphique façon bourse des cagnottes, une bougie par course et les victoires de chaque cheval. Survole pour voir les détails', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)': 'La Course de chevaux et le Jackpot ne peuvent plus être ouverts avant leur ouverture (l’historique reste visible)'})      # 6.5 news
@@ -12388,7 +12308,7 @@ FR.update({
 })      # 6.5
 FR.update({'NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more': 'NOUVEAU : 12 bannières, 12 cadres de profil et 12 thèmes de couleurs d’app, aucun saisonnier : Prairie, Glitch, Kaléidoscope, Or liquide, Ailes, Plasma, Abysses, Or rose et plus', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too': 'NOUVEAU : un sixième badge Nature, la Feuille, dans la Caisse Nature (et toutes ses couleurs). La boutique et les Caisses Bannière, Cadre et Couleurs d’app ont aussi les nouveautés', 'Meadow': 'Prairie', 'Paper': 'Papier', 'Clouds': 'Nuages', 'Bokeh': 'Bokeh', 'Pixels': 'Pixels', 'Ribbons': 'Rubans', 'Sunbeams': 'Rayons de soleil', 'Starry Desert': 'Désert étoilé', 'Kaleidoscope': 'Kaléidoscope', 'Liquid Gold': 'Or liquide', 'Meteor Shower': 'Pluie de météores', 'Daisy': 'Pâquerette', 'Spectrum': 'Spectre', 'Void': 'Néant', 'Wings': 'Ailes', 'Mocha': 'Moka', 'Cobalt': 'Cobalt', 'Lavender': 'Lavande', 'Rust': 'Rouille', 'Graphite': 'Graphite', 'Gold Rush': 'Ruée vers l’or', 'Abyss': 'Abysses', 'Rose Gold': 'Or rose', 'Rematch': 'Revanche', 'Waiting for {name}…': 'En attente de {name}…', 'You are ready. The duel starts when {name} is ready too.': 'Tu es prêt. Le duel commence quand {name} est prêt aussi.', 'Accept the rematch': 'Accepter la revanche', '{name} wants a rematch!': '{name} veut une revanche !', 'Ready up and play again with {name}': 'Sois prêt et rejoue avec {name}', 'You crashed at {n} m  ·  watching {name}': 'Tu as crashé à {n} m  ·  tu regardes {name}', 'Wave Rush duels: the other player now moves smoothly instead of lagging and running into walls (you see them a moment behind, exactly as they really flew)': 'Duels Wave Rush : l’autre joueur bouge maintenant de façon fluide au lieu de ramer et de foncer dans les murs (tu le vois un instant en retard, exactement comme il a volé)', 'Wave Rush duels: when you crash you keep watching the other player until they crash too, then the result comes up': 'Duels Wave Rush : quand tu crashes, tu continues de regarder l’autre joueur jusqu’à son crash, puis le résultat s’affiche', 'Wave Rush duels: a Rematch button after the duel. When both players press it, a new duel starts with the same bet': 'Duels Wave Rush : un bouton Revanche après le duel. Quand les deux joueurs l’appuient, un nouveau duel commence avec la même mise'})      # 6.4
 FR.update({'The pawn shop allows 10 exchanges an hour, not 5': 'Le prêteur sur gages accepte 10 échanges par heure, pas 5'})      # 6.2.8
-FR.update({'Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works': 'Prêteur sur gages : vends plusieurs exemplaires d’un objet d’un coup, un gros compteur de 5 échanges par heure, et Refuser marche toujours', 'Exchange · {n}/10 left': 'Échange · {n}/10 restants', 'No exchanges left': 'Plus d’échange', 'No exchanges left this hour': 'Plus d’échange cette heure', 'EXCHANGES THIS HOUR': 'ÉCHANGES CETTE HEURE', 'Pawn shop: take {n} of {m}': 'Prêteur sur gages : en prendre {n} sur {m}', 'Quick sell ×{n}': 'Vente rapide ×{n}', 'All': 'Tous'})      # 6.2.7
+FR.update({'Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works': 'Prêteur sur gages : vends plusieurs exemplaires d’un objet d’un coup, un gros compteur de 5 échanges par heure, et Refuser marche toujours', 'Exchange · {n}/10 left': 'Échange · {n}/10 restants', 'No exchanges left': 'Plus d’échange', 'No exchanges left this hour': 'Plus d’échange cette heure', 'EXCHANGES THIS HOUR': 'ÉCHANGES CETTE HEURE', 'Pawn shop: take {n} of {m}': 'Prêteur sur gages : en prendre {n} sur {m}', 'Quick sell ×{n}': 'Vente rapide ×{n}', })      # 6.2.7
 FR.update({"The pawn shop takes 5 offers or refusals an hour, so you can't spam refuse": 'Le prêteur sur gages accepte 5 offres ou refus par heure, donc tu ne peux pas spammer le refus', '10 proposals an hour at the pawn shop: wait a little': '10 propositions par heure chez le prêteur sur gages : attends un peu'})      # 6.2.6
 FR.update({"Quick sell's pawn shop ban is 5 minutes instead of 30": 'Le bannissement du prêteur sur gages (vente rapide) dure 5 minutes au lieu de 30'})      # 6.2.5
 FR.update({'SFX Match has a volume bar, so you can turn the sound up or down': 'SFX Match a une barre de volume pour monter ou baisser le son', 'Volume': 'Volume'})      # 6.2.4
@@ -12796,6 +12716,64 @@ NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritte
            'Settings saved in Documents']),
     ("0.1", ['First version: music, lyrics, crosshair, screen colours and tools in one glowing ball']),
 ]
+FR.update({  # 8.0: What's new lines that had no French
+    'Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.':
+        'La course de chevaux est plus longue : la piste est 4 fois plus longue et une course dure environ 2 minutes, les chevaux gardent leur rythme et la caméra suit les premiers.',
+    "NEW: JACKPOT at the top of Games. Every 15 minutes, 2 minutes to put in up to 3 items, your chance is your share. Bots fill the empty seats, the wheel spins and the winner picks half of everyone else's items":
+        "NOUVEAU : le JACKPOT en haut de Jeux. Toutes les 15 minutes, 2 minutes pour miser jusqu'à 3 objets, ta chance est ta part. Des bots prennent les places vides, la roue tourne et le gagnant choisit la moitié des objets des autres",
+    'Leaderboard titles: be top 3 of a leaderboard to wear "#1 RICH" in gold, #2 silver, #3 bronze. Up to 3 titles with your OG tag (Style > Your profile)':
+        "Titres de classement : sois dans le top 3 d'un classement pour porter « #1 RICHE » en or, #2 en argent, #3 en bronze. Jusqu'à 3 titres avec ton tag OG (Style > Ton profil)",
+    'Coinflip: when the last 15 seconds start, the screen fades into a face-off: you on top, them below, a glowing countdown':
+        "Coinflip : quand les 15 dernières secondes commencent, l'écran passe en face-à-face : toi en haut, l'autre en bas, avec un compte à rebours lumineux",
+    'Mini Golf: aim with the mouse, the power bar swings by itself: click or press Space at the right moment. Your ball and whose turn it is are easy to see':
+        "Mini Golf : vise avec la souris, la barre de puissance bouge toute seule : clique ou appuie sur Espace au bon moment. Ta balle et le joueur dont c'est le tour se voient bien",
+    'Wave Rush: the first 2.5 seconds you slide along the walls (no instant crash), spikes are never stacked in tight spaces, and a practice bot plays ahead of you':
+        "Wave Rush : pendant les 2,5 premières secondes tu glisses le long des murs (pas de crash immédiat), les pics ne s'empilent jamais dans les passages étroits et un bot d'entraînement joue devant toi",
+    'Sort and filter your items (price, rarity, recent, collection) in the inventory, coinflips and trades. Coinflip Lock in / Cancel are at the top':
+        "Trie et filtre tes objets (prix, rareté, récents, collection) dans l'inventaire, les coinflips et les échanges. Valider / Annuler du coinflip sont en haut",
+    'Market: a price stop between every two for more precise prices. The scroll bar can be dragged':
+        'Marché : un palier de prix entre chaque deux pour des prix plus précis. La barre de défilement peut être glissée',
+    'Profiles show the theme the player wears. 20 more coinflip bots with a bot picture, open from 30 minutes to 6 hours':
+        'Les profils montrent le thème que porte le joueur. 20 bots de coinflip en plus avec une image de bot, ouverts de 30 minutes à 6 heures',
+    'A trash can for items you never want again (asked twice). Collection sets can be claimed again. Quests no longer overlap in French':
+        'Une poubelle pour les objets dont tu ne veux plus jamais (confirmation demandée deux fois). Les collections peuvent être récupérées à nouveau. Les quêtes ne se chevauchent plus en français',
+    'Gifting a case shows every friend. Log out restarts on the login screen':
+        "Offrir une caisse montre tous tes amis. Se déconnecter redémarre sur l'écran de connexion",
+    'Shop: banners, frames and themes cost 5 times more, balls and lines 2 times':
+        'Boutique : les bannières, cadres et thèmes coûtent 5 fois plus, les boules et lignes 2 fois plus',
+    'A new guide for everyone: its own window in the middle of the screen, a moving picture for each part, and your settings chosen as you go (the old tour shrank and broke)':
+        "Un nouveau guide pour tout le monde : sa propre fenêtre au milieu de l'écran, une image animée pour chaque partie et tes réglages choisis au fur et à mesure (l'ancienne visite rétrécissait et cassait)",
+    'Updates now install by themselves within a minute of their release: Rubenium closes, updates and starts again':
+        "Les mises à jour s'installent maintenant toutes seules moins d'une minute après leur sortie : Rubenium se ferme, se met à jour et redémarre",
+    'The OG coupon only arrives once you are on 5.0 or newer':
+        "Le coupon OG n'arrive qu'une fois que tu es en 5.0 ou plus récent",
+    'Wave Rush: the distance and difficulty bar have their own strip above the course, the other player no longer slides through walls, your arrow is the size of what can hit, and a practice bot (on or off) shows a perfect run a little ahead of you':
+        "Wave Rush : la distance et la barre de difficulté ont leur propre bande au-dessus du parcours, l'autre joueur ne traverse plus les murs, ta flèche a la taille de ce qui peut toucher et un bot d'entraînement (activable) montre une partie parfaite un peu devant toi",
+    'THE FULL RELEASE: everyone starts again from zero (500 coins, OG players 1 500 coins and a coupon to level 5). Accounts, friends, hours played and your settings are kept':
+        "LA VERSION COMPLÈTE : tout le monde repart de zéro (500 pièces, les joueurs OG 1 500 pièces et un coupon jusqu'au niveau 5). Les comptes, amis, heures de jeu et tes réglages sont gardés",
+    'OG players, 20 and 21 November only: something is waiting behind the new garage doors of ONLINE mode':
+        'Joueurs OG, les 20 et 21 novembre seulement : quelque chose vous attend derrière les nouvelles portes de garage du mode EN LIGNE',
+    'Mythic badges: Prismatic is now the rarest and gets an extra aura. In the Top Tier Case: Titanium 1 in 30 000, Gold 1 in 75 000, Prismatic 1 in 100 000. The R is rarer than ever':
+        'Badges mythiques : le Prismatique est maintenant le plus rare et a une aura en plus. Dans la Caisse Top Tier : Titane 1 sur 30 000, Or 1 sur 75 000, Prismatique 1 sur 100 000. Le R est plus rare que jamais',
+    'Keys: find one by luck in any mini game, and quests give a key half of the time':
+        "Clés : trouves-en une par chance dans n'importe quel mini-jeu, et les quêtes donnent une clé une fois sur deux",
+    'Royal Case fixed (coins far less often), quick sell pays more, Wave Rush pays 5 coins every 10 m, your level boosts more rewards':
+        'Caisse Royale corrigée (beaucoup moins de pièces), la vente rapide paie plus, Wave Rush paie 5 pièces tous les 10 m, ton niveau augmente plus de récompenses',
+    'Case opening speed: Instant. The daily case shows a key as a key. Rewards no longer wait when you switch tab during an opening':
+        "Vitesse d'ouverture des caisses : Instantanée. La caisse du jour montre une clé comme une clé. Les récompenses n'attendent plus quand tu changes d'onglet pendant une ouverture",
+    'Blackjack: Hit or Stand. Pawn shop opens straight away. New sell buttons, Clear badges in Edit Profile':
+        "Blackjack : Tirer ou Rester. Le prêteur sur gages s'ouvre tout de suite. Nouveaux boutons de vente, Retirer les badges dans Modifier le profil",
+    'Fixed: level 100 showing 101, the Line ring saying it needs 0 hours, leaving a golf or Wave Rush match (a red Leave button replaces the arrow)':
+        "Corrigé : le niveau 100 affiché 101, l'anneau Ligne qui demandait 0 heure, quitter un match de golf ou de Wave Rush (un bouton rouge Quitter remplace la flèche)",
+    'Badge size and place, better lyrics, song history and Right Shift to show or hide':
+        'Taille et place du badge, meilleures paroles, historique des titres et Maj droite pour afficher ou masquer',
+    'Market: sell to other users at your price, or accept their offers (5% fee)':
+        'Marché : vends aux autres joueurs à ton prix ou accepte leurs offres (5 % de frais)',
+    'Social tab: your stats, profile pictures, every user, name changes':
+        'Onglet Social : tes stats, photos de profil, tous les joueurs, changements de nom',
+    'Friends: add users by username and see who is online':
+        'Amis : ajoute des joueurs par leur pseudo et vois qui est en ligne',
+})
 
 # --------------------------------------------------------------------------- #
 # Rocket League: find the game, swap item files, keep the originals safe
@@ -24702,7 +24680,6 @@ class CaseOverview(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w = self.width()
-        col = QColor(CASE_COLOURS.get(self.case["id"], "#3DDC84"))
         if self.jackpot:
             rows = [(tr("{a}× to {b}× the price", a=f"{lo:g}", b=f"{hi:g}"), share) for share, lo, hi in JACKPOT_BANDS]
             p.setFont(font(10.5, QFont.Weight.Bold))
@@ -26437,7 +26414,7 @@ def build_cosmetics(page, lay) -> None:
             ctx.reload_page()
         grid.picked.connect(pick_colour)
         lay.addWidget(grid)
-    price, full = ec.shop_price(item), ec.price(item)
+    price = ec.shop_price(item)
     if ec.owns(item):
         on = look_worn(ctx, item) if kind in LOOKS else ctx.shop_item_worn(item)
         b = Button(tr("Take off") if on else tr("Wear"), "ghost" if on else "primary", 38)
@@ -34487,7 +34464,8 @@ class GamesPage(Page):
         lay = vbox(self, 8)
         if not ctx.casino:
             if getattr(ctx, "casino_ask", None) is not None and not ctx.wallet.warned():
-                return self._warning(lay)
+                self._warning(lay)
+                return
             sub = getattr(ctx, "games_sub", None)
             feature = ("quests" if getattr(ctx, "quests_open", False) else
                        "minigames" if getattr(ctx, "mini_open", False) or getattr(ctx, "park_open", False) else
@@ -34497,48 +34475,57 @@ class GamesPage(Page):
             else:
                 self._paused(lay)
             if getattr(ctx, "quests_open", False):
-                return self._quests(lay)
+                self._quests(lay)
+                return
             if getattr(ctx, "mini_open", False):
-                return self._mini(lay)
+                self._mini(lay)
+                return
             if getattr(ctx, "park_open", False):
-                return self._park(lay)
+                self._park(lay)
+                return
             if sub in ("memory", "duel_run", "scratch"):
-                pass
                 if ctx.econ.server_old:
                     self._back_bar(lay, tr({"memory": "Memory", "scratch": "Scratch card"}.get(sub, "Duels")))
                     server_wait(ctx, lay, self.W)
                     return
             if sub == "minigames":
-                return build_minigames(self, lay)
+                build_minigames(self, lay)
+                return
             if sub == "memory":
-                return self._memory(lay)
+                self._memory(lay)
+                return
             if sub == "duels":
-                pass
-                return build_golf(self, lay)
+                build_golf(self, lay)
+                return
             if sub == "duel_run":
-                return self._duel_run(lay)
+                self._duel_run(lay)
+                return
             if sub == "flip":
-                pass
-                return build_flip(self, lay)
+                build_flip(self, lay)
+                return
             if sub == "jackpot":                                     # 5.2
-                return build_jackpot(self, lay)
+                build_jackpot(self, lay)
+                return
             if sub == "horses":                                      # 6.3
-                return build_horses(self, lay)
+                build_horses(self, lay)
+                return
             if sub == "advent":
-                pass
-                return build_advent(self, lay)
+                build_advent(self, lay)
+                return
             if sub == "scratch":
-                return self._scratch(lay)
+                self._scratch(lay)
+                return
             if sub == "blocks":                                      # 4.1: Block Blast (in place of 2048)
-                pass
-                return build_blocks(self, lay)
+                build_blocks(self, lay)
+                return
             if sub == "sweeper":
-                pass
-                return build_sweeper(self, lay)
+                build_sweeper(self, lay)
+                return
             if sub == "wave":                                        # 4.3: Wave Rush, solo or 1 v 1
-                pass
-                return build_wave(self, lay)
-            return self._lobby(lay)
+                build_wave(self, lay)
+                return
+            self._lobby(lay)
+            return
         self._casino(lay)
 
     def _paused(self, lay) -> None:
@@ -37747,7 +37734,6 @@ class StatsCard(QWidget):
         p.setFont(font(10.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(S(76), S(38), r.width() - S(90), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
                    tr("{h} Played · Member Since {d}", h=played_text(int(d.get("minutes") or 0)), d=date_text(d.get("since"))))
-        bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
         th = None                                          # 5.1: the stats sit on the theme this player wears
         if name.lower() == (self.ctx.online.username() or "").lower():
             th = self.ctx.theme()
@@ -39229,7 +39215,8 @@ class AdminPage(Page):
         super().__init__(ctx)
         self.lay = lay = vbox(self, 6)
         if not ctx.econ.admin:
-            return lay.addWidget(Label("Admin only", 12, TEXT_DIM))
+            lay.addWidget(Label("Admin only", 12, TEXT_DIM))
+            return
         tab = int(getattr(ctx, "admin_tab", 0) or 0)
         tab = tab if 0 <= tab < len(self.SECTIONS) else 0
         pass
@@ -43939,7 +43926,6 @@ class RaceView(QWidget):
             p.setBrush(alpha("#FFF4C9", 0.9))
             p.drawEllipse(QPointF(r.left() + W * 0.78, r.top() + H * 0.14), H * 0.08, H * 0.08)
         # far hills / dunes / mountains (slow)
-        rnd = random.Random({"desert": 1, "forest": 2, "snow": 3}[mp])
         base = r.top() + H * 0.46
         off = cam * W * 0.4
         path = QPainterPath(QPointF(r.left(), base))
@@ -45344,7 +45330,6 @@ def build_horses(page, lay) -> None:
                                       coins_text, label_w=40)
                 info = Label("", 11.5, TEXT, bold=True, wrap_w=page.W)
                 join = Button(tr("Bet on this horse"), "primary", 42)
-                share = float(d.get("share") or 0.8)
 
                 def update() -> None:
                     v = amount.value()
@@ -50272,7 +50257,7 @@ class ColourPick(MatchGame):
     def __init__(self, page) -> None:
         super().__init__(page)
         self.mine = {"h": 180, "s": 50, "v": 50}
-        W, H = self.width(), self.height()
+        W = self.width()
         sx = S(150)
         self.s_h = GradientSlider(360, lambda: [hsb_colour(i * 60, 100, 100) for i in range(7)], 180, 1)
         self.s_s = GradientSlider(100, lambda: [hsb_colour(self.s_h.value(), 0, self.s_v.value()),

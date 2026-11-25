@@ -61,3 +61,12 @@ Open questions: see the Checkpoint 1 message.
 - The server tests, the golf tools (`overhaul/golf`: hole layouts read from Rubenium.py, the SQL physics, and a check
   that compares 3 000 shots between the app and the database) and the client changes are now public.
 - Server tests: 16 of 16 with the live snapshot, 15 of 15 (one skipped) from the repository's migrations alone.
+
+## Phase 3: broken and unfinished things (25/11/2026)
+- French: every literal passed to tr() and every What's new line now has French (`overhaul/i18n/check.py`, run in CI).
+  44 keys were defined twice with different French; one value each is kept (the one players saw, except: "The ball"
+  is "La boule" like "Ball", "Get ready…" uses "tu" like the rest of the app).
+- One error message was defined twice ("rb_not_your_turn"); the one players saw is kept.
+- `__init__` methods no longer return values (18 places), 7 stray `pass` lines and 8 unused variables removed (one
+  random draw kept so a procedural picture stays the same).
+- SETUP.md covers 6.1 to 8.0; DECISIONS.md has the right place of session.dat.

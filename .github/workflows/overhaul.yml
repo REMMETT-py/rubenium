@@ -25,7 +25,8 @@ jobs:
       - name: Ruff (real errors only, no style rules)
         run: |
           pip install ruff==0.16.9
-          ruff check --select E9,F63,F7,F82 Rubenium.py overhaul tests
+          ruff check --select E9,F63,F7,F82,F601,F841 Rubenium.py overhaul tests
+          python overhaul/i18n/check.py
 
   selftest-linux:
     runs-on: ubuntu-latest
