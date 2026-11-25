@@ -1,15 +1,6 @@
-Rubenium 9.0
+Rubenium 9.0.1
 
-- A whole new look: a side menu, a top bar with your coins and level, and big clear tiles everywhere
-- Home shows what is ready for you, the games you played last and what is live
-- Rewards: the free spin, scratch card, daily reward and quests in one place
-- Wealth tiers: free rewards grow with what you own, from Rookie to Diamond
-- The Key Forge: turn coins into keys, a few a day
-- A fresh start: everyone begins again with the same coins and keys. Cosmetics, levels and friends stay
-- New prices, odds and taxes across the whole game
-- The player market is gone. Quick sell stays
-- No more automatic game locks
-- Less text: tap a golden ? when you want the details
-- Bet faster with ½, 2× and Max, and your bet is remembered
+- The online side menu works again (it could not be clicked)
+- Leaving a free game takes you back to Rewards, not an old games list
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
