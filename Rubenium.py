@@ -13855,6 +13855,35 @@ class RocketSwaps(QObject):
                     orig[name] = good
         return True, "ok", orig
 
+    def undo_jobs(self) -> list:
+        """9.1 Uninstall: one job per Rocket League install, to put every game file back as the game had it.
+        Built here on the main thread (it reads the settings); undo_run does the work in a worker thread."""
+        jobs = []
+        for plat in list(self._installs()):
+            if not rocket_league_ok(self.folder(plat)):
+                continue
+            e = self._entry(plat)
+            jobs.append({"plat": plat, "cooked": self.cooked(plat),
+                         "paths": {n.lower(): self.game_file(plat, n) for n in swap_files()},
+                         "orig": dict(e["orig"]), "stamp_saved": e["stamp"], "stamp_now": self.stamp(plat),
+                         "was": {RL_BY_ID[i]["file"].lower() for i in e["active"].values() if i in RL_BY_ID}})
+        return jobs
+
+    def undo_run(self, jobs: list) -> str:
+        """Every swapped file back to the game's own (a worker thread). '' when done, else what went wrong."""
+        for job in jobs:
+            if self.running(job["plat"]):
+                return "running"
+            try:
+                ok, key, _orig = self._apply({}, job)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("uninstall: swaps not undone on %s: %s", job["plat"], exc)
+                ok, key = False, "error"
+            if not ok:
+                log.warning("uninstall: swaps not undone on %s: %s", job["plat"], key)
+                return key
+        return ""
+
     @staticmethod
     def _restore_source(name: str, backups: Path, customs: set):
         """Where to take the original of `name` from: the player's own saved copy if it is sound, otherwise
@@ -14243,6 +14272,78 @@ def run_setup(path: str, extra: str = "") -> bool:
         return True
     except OSError as exc:
         log.warning("could not start the setup: %s", exc)
+        return False
+
+
+def _ps(text) -> str:
+    return "'" + str(text).replace("'", "''") + "'"
+
+
+def uninstall_targets() -> dict:
+    """9.1 Uninstall: everything Rubenium keeps on this PC. Nothing online (account, coins, items) is in here."""
+    local = os.environ.get("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local")
+    folders = [DATA_DIR, app_home(), Path(local) / "Programs" / "Rubenium"]
+    files = [OLD_CONFIG_PATH]
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        files.append(Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Rubenium.lnk")
+    for d in {os.path.join(os.environ.get("USERPROFILE", ""), "Desktop"), str(win.documents_dir().parent / "Desktop")}:
+        if os.path.isabs(d):
+            files.append(Path(d) / "Rubenium.lnk")
+    uninstaller, exe = "", ""
+    if getattr(sys, "frozen", False):
+        here = Path(sys.executable).resolve()
+        if (here.parent / "unins000.exe").is_file():
+            uninstaller = str(here.parent / "unins000.exe")              # installed: Windows' own uninstaller
+            folders.append(here.parent)
+        elif not (here.parent / "_internal").exists() and "rubenium" in here.name.lower():
+            exe = str(here)                                              # the one-file version: the exe itself
+    # only folders named Rubenium, never a drive or a user folder (the script version's own folder is never here)
+    folders = [Path(f) for f in dict.fromkeys(str(f) for f in folders)]
+    folders = [f for f in folders if len(f.parts) > 2 and (f.name.lower() == "rubenium" or
+                                                           (f.name.lower() == "app" and f.parent.name.lower() == "rubenium"))]
+    return {"folders": folders, "files": [f for f in files if f.name.lower().startswith("rubenium")],
+            "uninstaller": uninstaller, "exe": exe}
+
+
+def run_uninstall(pid: int) -> bool:
+    """Writes a small hidden PowerShell script to %TEMP% and starts it. It waits for Rubenium (process `pid`)
+    to close, runs the Windows uninstaller if Rubenium was installed, then deletes every local Rubenium
+    folder and file, and itself. Windows only."""
+    import subprocess
+    import tempfile
+    t = uninstall_targets()
+    lines = ["$ErrorActionPreference = 'SilentlyContinue'",
+             f"Wait-Process -Id {int(pid)} -Timeout 90",
+             "Start-Sleep -Milliseconds 800"]
+    if t["uninstaller"]:
+        un = _ps(t["uninstaller"])
+        lines += [f"Start-Process -FilePath {un} -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait",
+                  f"for ($i = 0; $i -lt 120 -and (Test-Path -LiteralPath {un}); $i++) {{ Start-Sleep -Milliseconds 500 }}"]
+    gone = [str(f) for f in t["folders"]] + [str(f) for f in t["files"]] + ([t["exe"]] if t["exe"] else [])
+    lines += ["$gone = @(" + ", ".join(_ps(g) for g in gone) + ")",
+              "for ($round = 0; $round -lt 5; $round++) {",
+              "  $left = $false",
+              "  foreach ($p in $gone) { if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Recurse -Force; "
+              "if (Test-Path -LiteralPath $p) { $left = $true } } }",
+              "  if (-not $left) { break }",
+              "  Start-Sleep -Seconds 2",
+              "}",
+              "foreach ($f in @('Rubenium_update*', 'rubenium_*.png', 'rubenium_*.tmp', 'rubenium_uninstall*')) {",
+              "  Get-ChildItem -Path $env:TEMP -Filter $f | Where-Object { $_.FullName -ne $PSCommandPath } | "
+              "Remove-Item -Recurse -Force }",
+              "Remove-Item -LiteralPath $PSCommandPath -Force"]
+    try:
+        path = Path(tempfile.gettempdir()) / f"rubenium_uninstall_{int(time.time())}.ps1"
+        path.write_text("\r\n".join(lines) + "\r\n", encoding="utf-8-sig")       # with a BOM: any path, any language
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        subprocess.Popen(["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                          "-WindowStyle", "Hidden", "-File", str(path)],
+                         close_fds=True, env=clean_env(), cwd=tempfile.gettempdir(), creationflags=flags)
+        log.info("uninstall: clean-up started (%d folders, %d files)", len(t["folders"]), len(t["files"]))
+        return True
+    except OSError as exc:
+        log.warning("could not start the uninstall: %s", exc)
         return False
 
 
@@ -20740,6 +20841,109 @@ class HoldButton(QAbstractButton):
         p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
 
 
+class ChargeButton(QAbstractButton):
+    """9.1: a glowing red button you hold down until it is full (about 4 s). Letting go early drains it and
+    nothing happens."""
+    confirmed = pyqtSignal()
+    HOLD_MS = 4000
+
+    def __init__(self, text: str, height: int = 50) -> None:
+        super().__init__()
+        self._text = text
+        self.setFixedHeight(S(height))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._hover = Tween(self, on_change=self.update)
+        self.charge = Tween(self, 0.0, self.update, QEasingCurve.Type.Linear)
+        self.charge.finished.connect(self._charged)
+        self._t0 = time.monotonic()
+        self._pulse = QTimer(self)                  # the glow breathes, only while it can be seen
+        self._pulse.setInterval(50)
+        self._pulse.timeout.connect(self.update)
+
+    def showEvent(self, e) -> None:
+        self._pulse.start()
+        super().showEvent(e)
+
+    def hideEvent(self, e) -> None:
+        self._pulse.stop()
+        if self.isDown():
+            self.setDown(False)
+            self.charge.to(0.0, 200)
+        super().hideEvent(e)
+
+    def enterEvent(self, e) -> None:
+        self._hover.to(1.0, 140)
+
+    def leaveEvent(self, e) -> None:
+        self._hover.to(0.0, 220)
+
+    def mousePressEvent(self, e) -> None:
+        e.accept()
+        if e.button() != Qt.MouseButton.LeftButton or not self.isEnabled():
+            return
+        self.setDown(True)
+        sfx.play("pick")
+        left = max(0.0, 1.0 - self.charge.level)
+        self.charge.to(1.0, max(1, int(self.HOLD_MS * left)))
+
+    def mouseReleaseEvent(self, e) -> None:
+        e.accept()
+        if not self.isDown():
+            return
+        self.setDown(False)
+        if self.charge.level < 0.999:
+            self.charge.to(0.0, 350)                # let go too early: nothing happens
+
+    def _charged(self) -> None:
+        if self.isDown() and self.charge.target >= 1.0 and self.charge.level >= 0.999:
+            self.setDown(False)
+            self.charge.jump(0.0)
+            self.update()
+            self.confirmed.emit()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        m = S(7)
+        r = QRectF(self.rect()).adjusted(m, m, -m, -m)
+        rad = S(12)
+        c = max(0.0, min(1.0, self.charge.level))
+        h = self._hover.level
+        breathe = 0.5 + 0.5 * math.sin((time.monotonic() - self._t0) * (2.4 + 6.0 * c))
+        glow = 0.18 + 0.12 * breathe + 0.15 * h + 0.45 * c
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(5, 0, -1):                   # the soft red glow around it
+            g = S(1.4) * i
+            p.setBrush(alpha(DANGER, glow * 0.42 / (i + 1)))
+            p.drawRoundedRect(r.adjusted(-g, -g, g, g), rad + g, rad + g)
+        body = QLinearGradient(r.topLeft(), r.bottomLeft())
+        body.setColorAt(0.0, QColor("#4A1418"))
+        body.setColorAt(1.0, QColor("#2A0B0E"))
+        p.setBrush(body)
+        p.setPen(QPen(alpha(DANGER, 0.55 + 0.3 * breathe * (0.4 + 0.6 * max(h, c))), 1.4))
+        p.drawRoundedRect(r, rad, rad)
+        if c > 0.0:
+            clip = QPainterPath()
+            clip.addRoundedRect(r, rad, rad)
+            p.save()
+            p.setClipPath(clip)
+            fill = QLinearGradient(r.topLeft(), r.topRight())
+            fill.setColorAt(0.0, QColor("#B3262C"))
+            fill.setColorAt(1.0, QColor(DANGER))
+            p.fillRect(QRectF(r.left(), r.top(), r.width() * c, r.height()), fill)
+            p.fillRect(QRectF(r.left() + r.width() * c - S(2), r.top(), S(2), r.height()), QColor(255, 255, 255, 150))
+            p.restore()
+        if self.isDown() and c < 1.0:
+            left = max(1, math.ceil(self.HOLD_MS / 1000 * (1.0 - c)))
+            text = tr("Keep holding… {n}", n=left)
+        else:
+            text = self._text
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(font(12.5, QFont.Weight.Bold))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
+
+
 class HomePage(Page):
     key = "home"
     ART, ART_COMPACT, CTRL_H = 88, 64, 38          # 4.1: Compact Music Mode: smaller cover, no button row
@@ -22555,6 +22759,18 @@ class SettingsPage(StylePart, Page):
             fix = Button(tr("Repair Rubenium"), "ghost", 34, icon="refresh")
             fix.clicked.connect(lambda: repair_dialog(ctx))
             lay.addWidget(fix)
+            # 9.1: Uninstall, for good, with every warning before it
+            lay.addWidget(heading(tr("Uninstall")))
+            note(tr("Removes Rubenium from this PC: the program, your settings, backups, saved lyrics, logs, "
+                    "shortcuts and start with Windows. Rocket League swaps and the game start screen are put back "
+                    "to the game's own files first."))
+            note(tr("Your online account is NOT deleted: coins, keys, items, levels and friends stay saved online. "
+                    "If you are logged in, your settings are backed up online first, so you can restore them if you "
+                    "install Rubenium again."))
+            note(tr("This cannot be undone on this PC. Hold the button until it is full (4 seconds)."))
+            gone = ChargeButton(tr("Hold to uninstall Rubenium"))
+            gone.confirmed.connect(ctx.uninstall_app)
+            lay.addWidget(gone)
             lay.addSpacing(S(10))
             leave = Button(tr("Quit Rubenium"), "quiet", 22)
             leave.setFixedWidth(max(S(120), leave.sizeHint().width()))
@@ -62900,6 +63116,7 @@ def app_icon() -> QIcon:
 
 class App(QObject):
     """Shared context handed to the window and every page."""
+    uninstall_step = pyqtSignal(str)                 # 9.1: the uninstall worker reports back on the main thread
 
     def __init__(self, qapp: QApplication) -> None:
         super().__init__()
@@ -64360,6 +64577,94 @@ class App(QObject):
         self.repairing = True
         self.window.show_busy(tr("Repairing… {p}%", p=0))
         self.updater.repair()
+
+    # ------------------------------------------------------------------ 9.1 uninstall
+    def uninstall_app(self) -> None:
+        """Settings > UPDATE > Uninstall (held for 4 s): a quick save, the game files put back, then every local
+        Rubenium file goes once Rubenium has closed. Nothing online is touched."""
+        if getattr(self, "uninstalling", False):
+            return
+        if not win.IS_WIN:
+            return self.toast(tr("Uninstall works on Windows only"), "warn")
+        try:
+            if self.econ.rounds_held():
+                return self.toast(tr("Finish your round first, then uninstall"), "warn")
+        except Exception:  # noqa: BLE001
+            pass
+        if self.rocket.working:
+            return self.toast(tr("Rocket League items are being changed: try again in a moment"), "warn")
+        jobs = self.rocket.undo_jobs()
+        if any(self.rocket.running(j["plat"]) for j in jobs):
+            return self.toast(tr("Close Rocket League first, so its own files can be put back"), "warn")
+        self.uninstalling = True
+        log.info("uninstall: asked")
+        self.window.show_busy(tr("Saving…"))
+        for entry in list(getattr(self.window, "pages", {}).values()):     # a waiting hand stands, a board cashes
+            try:
+                fn = getattr(entry[1], "wrap_up", None)
+                if fn is not None:
+                    fn()
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            self.cfg.flush()
+        except Exception:  # noqa: BLE001
+            pass
+        state = {"next": False}
+
+        def saved(*_a) -> None:
+            if state["next"]:
+                return
+            state["next"] = True
+            self._uninstall_restore(jobs)
+        if self.online.logged_in():                                         # the quick save: settings online
+            self.online.ask("rb_backup_save", {"data": backup_data(self)}, saved)
+            QTimer.singleShot(6000, saved)
+        else:
+            QTimer.singleShot(400, saved)
+
+    def _uninstall_restore(self, jobs: list) -> None:
+        self.window.show_busy(tr("Putting game files back…"))
+        try:
+            self.uninstall_step.disconnect()
+        except TypeError:
+            pass
+        self.uninstall_step.connect(self._uninstall_done)
+        self.rocket.stop()
+        self.splash.stop()
+
+        def work() -> None:
+            bad = ""
+            try:
+                bad = self.rocket.undo_run(jobs)
+                if not bad:
+                    self.splash.apply(False, self.splash._find())
+            except Exception as exc:  # noqa: BLE001
+                log.warning("uninstall: %s", exc)
+                bad = "error"
+            self.uninstall_step.emit(bad)
+        import threading
+        threading.Thread(target=work, daemon=True).start()
+
+    def _uninstall_done(self, bad: str) -> None:
+        if bad:
+            self.uninstalling = False
+            self.rocket.start()
+            self.splash.start()
+            msg = (tr("Close Rocket League first, so its own files can be put back") if bad == "running" else
+                   tr("Rocket League's own files could not be put back, so nothing was removed. Turn your swaps "
+                      "off in Rocket League, then try again."))
+            return self.window.end_busy(lambda: self.toast(msg, "error"))
+        autostart_set(False)
+        self.cfg["autostart"] = False
+        self.window.show_busy(tr("Uninstalling…"))
+        if extras.run_uninstall(os.getpid()):
+            log.info("uninstall: Rubenium closes, the clean-up runs")
+            QTimer.singleShot(600, self.quit)
+        else:
+            self.uninstalling = False
+            self.window.end_busy(lambda: self.toast(tr("Windows did not let Rubenium uninstall. Use Windows "
+                                                       "Settings > Apps instead."), "error"))
 
     def install_update(self) -> None:
         sfx.play("pick")

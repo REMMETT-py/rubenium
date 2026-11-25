@@ -20,11 +20,11 @@ AppUpdatesURL=https://github.com/REMMETT-py/rubenium/releases
 VersionInfoVersion={#Version}
 VersionInfoProductName=Rubenium
 VersionInfoDescription=Rubenium setup
-DefaultDirName={localappdata}\Programs\Rubenium
+DefaultDirName={localappdata}\Rubenium\App
 DisableDirPage=auto
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
-UsePreviousAppDir=yes
+UsePreviousAppDir=no
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -55,6 +55,13 @@ Name: "desktop"; Description: "{cm:Desktop}"; Flags: unchecked
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\_internal"
+; 9.1: everything lives in one folder (AppData\Local\Rubenium: the program in App, its downloads in update).
+; Builds before 9.1 were in AppData\Local\Programs\Rubenium: that old copy goes.
+Type: filesandordirs; Name: "{localappdata}\Programs\Rubenium"
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\Rubenium\update"
+Type: dirifempty; Name: "{localappdata}\Rubenium"
 
 [Files]
 Source: "dist\Rubenium\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
