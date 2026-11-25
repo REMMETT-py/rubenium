@@ -1,4 +1,24 @@
-# Economy (2.2)
+# Economy
+
+## 9.0 (current)
+
+Everything lives in the server (rb_config) and can be changed from Admin > Economy.
+
+| What | Value |
+|---|---|
+| Fresh start | everyone starts again at 1 000 coins and 3 keys (rb_reset_economy_90, run once). Cosmetics, items, levels, friends stay |
+| Wealth tiers | from wealth (coins plus the value of items, rb_wealth): Rookie 0 (x1), Bronze 5 000 (x1.25), Silver 25 000 (x1.6), Gold 100 000 (x2.2), Platinum 500 000 (x3), Diamond 2 000 000 (x4) |
+| Scaled rewards | free spin, scratch card, daily reward, quests, mini games, AFK coins and the Golden Wheel are multiplied by the tier, rounded to 10 (5 under 100) |
+| Free spin | every hour: 100, 150, 250, 400, 600, 1 000, 2 000 (x tier), a key, the Golden Wheel or an XP coupon |
+| Scratch card | every 4 h: 150-300, 400-700, a key + 200, 2 keys, 3 000 (x tier) or the Golden Wheel |
+| Daily reward | 7 days: 150, 250, a key, 400, 2 keys, 750, 1 500 + a key (x tier) |
+| Time | 30 coins every 10 min (2 400 a day), 1 key every 20 min up to 10 |
+| Key Forge | a key for 1% of your coins (at least 500), 5 a day |
+| Shop tax | 15% on top of shop prices |
+| Player market | gone (closed on the server: rb_feature_gone) |
+| Cheat detection | off: nothing is flagged or locked automatically. Admins can still lock a game by hand |
+
+## 2.2 (history)
 
 Everything below lives in the server (table rb_config and rb_cases) and can be changed live from the admin panel.
 

@@ -106,3 +106,16 @@ Open questions: see the Checkpoint 1 message.
   core in 7.0 → 10 % in 8.0, memory the same (306 MB), start to ready 1.17 s → 1.24 s (a larger file to read).
 - Checkpoint 3 page: before / after of the main screens (private artifact, screenshots in
   overhaul/screens/after on the project drive). 552 page states crawled with 0 errors.
+
+
+# Overhaul 9.0 log
+
+## 25/11/2026: the remaster
+- Design system 9.0 (brand gradient, pills, glass surfaces), online side rail and top bar, Home and Rewards pages,
+  game posters, golden ? help dots. Offline menu uses the same tabs and wordmark.
+- Server 076: tiers, scaled rewards, Key Forge, market closed, no automatic flags, new rigs, set balance, give
+  everyone. 077: the run-once economy reset with backups. Undo files 076_down and 077_down.
+- Admin: Players, Give (players, everyone, set balance), Rig (9 games), Live, Economy, Coinflips, Cases, Bots,
+  Swaps, Locks, Log. Overview and Alerts removed.
+- Casino: ½, 2× and Max bet buttons, the bet is remembered, the game name in the header.
+- Tests: tests/db/test_090_remaster.sql, tests/db/test_091_reset.sql. Full crawl in the project's files (screens9).

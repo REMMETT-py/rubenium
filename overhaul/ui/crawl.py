@@ -199,13 +199,17 @@ def driver(app, rb):
             rb.enter_online()
             yield 4500
             ow = win()
-            keys = list(sys.modules["__rb__"].SECTIONS) + sorted(sys.modules["__rb__"].LIVE_TABS)
+            M = sys.modules["__rb__"]
+            keys = list(M.nav_keys()) if hasattr(M, "nav_keys") else list(M.SECTIONS) + sorted(M.LIVE_TABS)
             for key in keys:
-                ow.set_pane(sys.modules["__rb__"].side_of(key), key)
+                if hasattr(ow, "nav"):                        # 9.0: one page at a time, picked from the rail
+                    ow.nav(key)
+                else:
+                    ow.set_pane(M.side_of(key), key)
                 yield 1500
                 yield from clear(f"online {key}")
                 shot(f"online {key}")
-                yield from explore(key, f"online {key}", 1)
+                yield from explore(getattr(M, "NAV_PAGE", {}).get(key, key), f"online {key}", 1)
                 if key == "games":
                     yield from games()
             rb.leave_online(ask=False)

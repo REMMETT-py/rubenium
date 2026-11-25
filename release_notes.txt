@@ -1,12 +1,15 @@
-Rubenium 8.0
+Rubenium 9.0
 
-- A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing
-- Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer
-- Empty pages now say what goes there and how to fill them
-- Game tabs show their full names, and every row of buttons is even
-- Lighter: Rubenium uses much less processor while it rests
-- Mini Golf online is fair for everyone: the server plays out every shot with the game's own physics
-- Safer accounts: password help is limited per PC and per name
-- Solo Mini Golf online needs Rubenium 8.0
+- A whole new look: a side menu, a top bar with your coins and level, and big clear tiles everywhere
+- Home shows what is ready for you, the games you played last and what is live
+- Rewards: the free spin, scratch card, daily reward and quests in one place
+- Wealth tiers: free rewards grow with what you own, from Rookie to Diamond
+- The Key Forge: turn coins into keys, a few a day
+- A fresh start: everyone begins again with the same coins and keys. Cosmetics, levels and friends stay
+- New prices, odds and taxes across the whole game
+- The player market is gone. Quick sell stays
+- No more automatic game locks
+- Less text: tap a golden ? when you want the details
+- Bet faster with ½, 2× and Max, and your bet is remembered
 
 Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.

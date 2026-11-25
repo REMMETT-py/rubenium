@@ -218,3 +218,19 @@ Choices made where the request left room, newest last.
   the jackpot / race bell polls every 30 s instead of 10 s (events stay open 2 minutes).
 - Hours are written by `played_text()` everywhere ("100 h", "1.5 h"); dates as "25 Nov 2026" (English) and
   25/11/2026 (French).
+
+## 9.0 remaster
+- One online page at a time with a side rail (Home, Play, Rewards, Shop, Collection, Social, Settings), not two
+  columns: fewer choices on screen, nobody gets lost. The coins, keys and level live in the top bar.
+- Explanations moved behind golden ? buttons. Short state lines (empty lists, waiting) stay on the page.
+- Wealth tiers come from wealth (coins and item values), worked out on the server for every reward, so the app can never pay more than
+  the server allows. Prices for buying stay fixed; the tier only multiplies free rewards.
+- The never-approved 7.5 caps (075) are not used. Their goal (no runaway coins) is met by smaller base rewards,
+  the hourly wheel, the per-day caps above and the 1% Key Forge.
+- The market is closed on the server rather than deleted, so its history stays readable. Items on it went back
+  to their owners.
+- Automatic cheat flags and game locks are off (rb_flag is a no-op, the round scan trigger is gone). The admin's
+  manual game locks, rigs and gives stay.
+- The economy reset is a separate, run-once server function (077) so it can be checked and backed up first. It
+  keeps a full copy in rb_bak90_* tables.
+- Rig now covers Plinko (the box), Roulette (the pocket) and Rocket (the crash point) too.
