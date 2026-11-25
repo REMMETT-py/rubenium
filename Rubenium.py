@@ -6920,6 +6920,7 @@ FR.update({                                   # 5.8
     'Starts in {s} s: bots take the free seats': 'Début dans {s} s : des bots prennent les places libres',
     'Leave the match': 'Quitter la partie',
     'ONLINE': 'EN LIGNE',
+    'GOLD': 'OR',
     'Move the mouse away from the ball for more power · click to shoot': 'Éloigne la souris de la balle pour plus de puissance · clique pour frapper',
     'Move the mouse away from your ball to aim: the further away, the harder the shot. The arrow shows the direction and the bar the power: how far it rolls is up to you. Click (or Space) to shoot.': 'Éloigne la souris de ta balle pour viser : plus loin, plus fort. La flèche montre la direction et la barre la puissance : la distance, c’est à toi de la sentir. Clique (ou Espace) pour frapper.',
     'Play alone: no bet and no clock.': 'Seul : sans mise et sans chrono.',
@@ -15089,7 +15090,7 @@ class Tutorial(QWidget):
             p.drawRoundedRect(box, S(10), S(10))
             p.setPen(QColor("#3DDC84"))
             p.setFont(font(16, QFont.Weight.Black, 2))
-            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), "ONLINE")
+            p.drawText(box, int(Qt.AlignmentFlag.AlignCenter), tr("ONLINE"))
             p.save()
             p.setClipRect(box, Qt.ClipOperation.IntersectClip)
             paint_doors(p, box, k, ui.accent)
@@ -33127,7 +33128,7 @@ class Daily(Game):
             elif keys < 0:
                 p.setPen(QColor("#3A2606"))
                 p.setFont(font(9, QFont.Weight.Black))
-                p.drawText(QRectF(tp.x() - S(22), tp.y() - S(9), S(44), S(18)), int(Qt.AlignmentFlag.AlignCenter), "GOLD")
+                p.drawText(QRectF(tp.x() - S(22), tp.y() - S(9), S(44), S(18)), int(Qt.AlignmentFlag.AlignCenter), tr("GOLD"))
             elif keys:
                 p.save()
                 p.translate(tp.x() - (S(6) if keys > 1 else 0), tp.y())
@@ -38956,7 +38957,7 @@ class FormDialog(QWidget):
         self.note = Label("", 11, DANGER, wrap_w=inner)
         lay.addWidget(self.note)
         line = hbox(spacing=6)
-        cancel = Button("Cancel", "ghost", 32)
+        cancel = Button(tr("Cancel"), "ghost", 32)
         cancel.clicked.connect(self.close)
         go = Button(button, "primary", 32)
         go.clicked.connect(self._go)
@@ -45898,7 +45899,7 @@ class _Wheel(QWidget):
         p.drawEllipse(c, radius * 0.2, radius * 0.2)
         p.setPen(QColor("#3A2606"))
         p.setFont(font(9, QFont.Weight.Black))
-        p.drawText(QRectF(c.x() - radius * 0.2, c.y() - S(9), radius * 0.4, S(18)), int(Qt.AlignmentFlag.AlignCenter), "GOLD")
+        p.drawText(QRectF(c.x() - radius * 0.2, c.y() - S(9), radius * 0.4, S(18)), int(Qt.AlignmentFlag.AlignCenter), tr("GOLD"))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor("#FFFFFF"))
         p.drawPolygon(QPolygonF([QPointF(c.x() - S(9), c.y() - radius - S(12)), QPointF(c.x() + S(9), c.y() - radius - S(12)),
@@ -47093,7 +47094,7 @@ class AdventBanner(QWidget):
         p.drawRoundedRect(tag, S(10), S(10))
         p.setPen(QColor("#FFFFFF"))
         p.setFont(font(9.5, QFont.Weight.Black, 1.0))
-        p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), "2027 LIMITED")
+        p.drawText(tag, int(Qt.AlignmentFlag.AlignCenter), "2027 " + tr("LIMITED"))
         p.setPen(mix(QColor("#14324D"), QColor("#2A2E32"), h))
         p.setFont(font(17, QFont.Weight.Black, 1.2))
         p.drawText(QRectF(r.left() + S(14), r.top() + S(34), r.width() - S(28), S(28)), int(Qt.AlignmentFlag.AlignVCenter),
