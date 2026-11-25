@@ -3498,6 +3498,8 @@ class Econ(QObject):
                 self.tier = {k: data[k] for k in data if k != "forge"}
                 self.forge = data.get("forge") if isinstance(data.get("forge"), dict) else None
                 if old != (self.tier, self.forge):
+                    if (old[0] or {}).get("tier") != self.tier.get("tier"):
+                        self.ctx.scratch_odds = None          # the prizes shown follow the tier
                     self.looks_changed.emit()
         self.online.ask("rb_my_tier", {}, got)
 
@@ -13075,6 +13077,9 @@ FR.update({  # 9.0 start
     'Gold': 'Or',
     'Platinum': 'Platine',
     'Diamond': 'Diamant',
+    '{a}-{b} coins': '{a}-{b} pièces',
+    '1 key + {a} coins + Common XP coupon': '1 clé + {a} pièces + coupon XP Commun',
+    '{a} coins + Rare XP coupon': '{a} pièces + coupon XP Rare',
 })  # 9.0 end
 
 # --------------------------------------------------------------------------- #
@@ -29652,7 +29657,8 @@ class ScratchOdds(QWidget):
             p.setPen(QColor(TEXT_DIM))
             p.setFont(font(10, QFont.Weight.DemiBold))
             p.drawText(QRectF(r.left() + nw, r.top(), r.width() - nw - S(56), r.height()), int(Qt.AlignmentFlag.AlignVCenter),
-                       p.fontMetrics().elidedText(tr(str(row.get("prize", ""))), Qt.TextElideMode.ElideRight,
+                       p.fontMetrics().elidedText(tr(str(row.get("prize", "")), **{k: coins_text(int(row[k])) for k in ("a", "b")
+                                                                                if k in row}), Qt.TextElideMode.ElideRight,
                                                   int(r.width() - nw - S(56))))
             p.setPen(QColor(TEXT))
             p.setFont(font(11, QFont.Weight.Bold))
@@ -30005,9 +30011,12 @@ def build_minigames(page, lay) -> None:
         ("Minesweeper", tr("Open every safe cell, as fast as you can. Easy, Medium, Hard. Leaderboard for each."), "flag",
          ("#3DDC84", "#0F6B3A"), "35-420", lambda: page.open_sub("sweeper")),
     ]
+    t = getattr(page.ctx.econ, "tier", None)
+    m = float(t.get("mult") or 1) if isinstance(t, dict) else 1.0     # 9.0: what it pays at your tier
     for name, sub, icon, cols, pay, go in games:
         card = BigCard(tr(name), sub, icon, cols, go, 78)
-        card.extra = tr("{n} coins", n=pay)
+        lo, hi = (int(x) for x in pay.split("-"))
+        card.extra = tr("{n} coins", n=f"{scaled(lo, m)}-{scaled(hi, m)}")
         lay.addWidget(card)
     lay.addWidget(DuelTile(page, "golf"))                   # 6.3: Mini Golf and Wave Rush live here now
     lay.addWidget(DuelTile(page, "wave"))

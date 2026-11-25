@@ -127,6 +127,21 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------- 5. scratch card (every 4 h, scaled)
+-- the chances shown under the card, with the prizes for the caller's tier
+create or replace function public.rb_scratch_odds() returns json
+language sql stable security definer set search_path to '' as $$
+    with t as (select case when auth.uid() is null then 1 else public.rb_tier_mult(auth.uid()) end as m)
+    select json_build_array(
+        json_build_object('tier', 'standard', 'pct', 30, 'prize', '{a}-{b} coins',
+                          'a', public.rb_scaled(150, t.m), 'b', public.rb_scaled(300, t.m)),
+        json_build_object('tier', 'rare', 'pct', 27, 'prize', '{a}-{b} coins',
+                          'a', public.rb_scaled(400, t.m), 'b', public.rb_scaled(700, t.m)),
+        json_build_object('tier', 'special', 'pct', 20, 'prize', '1 key + {a} coins + Common XP coupon',
+                          'a', public.rb_scaled(200, t.m)),
+        json_build_object('tier', 'epic', 'pct', 14, 'prize', '2 keys + Uncommon XP coupon'),
+        json_build_object('tier', 'exotic', 'pct', 6, 'prize', '{a} coins + Rare XP coupon', 'a', public.rb_scaled(3000, t.m)),
+        json_build_object('tier', 'golden', 'pct', 3, 'prize', 'Golden Wheel + Epic XP coupon')) from t $$;
+
 create or replace function public.rb_scratch() returns jsonb
 language plpgsql security definer set search_path to '' as $$
 declare p public.profiles%rowtype; roll double precision; tier text; c integer := 0; k integer := 0; g integer := 0; cp text;

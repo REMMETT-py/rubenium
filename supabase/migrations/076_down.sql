@@ -591,6 +591,19 @@ begin
     return jsonb_build_object('rarity', tier, 'coins_won', c, 'keys_won', k, 'coins', p.coins + c, 'keys', p.keys + k,
                               'gold_wheel', g = 1, 'coupon', cp, 'next', public.rb_cfg('scratch_hours')::int * 3600);
 end $function$;
+CREATE OR REPLACE FUNCTION public.rb_scratch_odds()
+ RETURNS json
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO ''
+AS $function$
+    select json_build_array(
+        json_build_object('tier', 'standard', 'pct', 30, 'prize', '80-160 coins'),
+        json_build_object('tier', 'rare', 'pct', 27, 'prize', '220-420 coins'),
+        json_build_object('tier', 'special', 'pct', 20, 'prize', '1 key + Common XP coupon'),
+        json_build_object('tier', 'epic', 'pct', 14, 'prize', '2 keys + Uncommon XP coupon'),
+        json_build_object('tier', 'exotic', 'pct', 6, 'prize', '2 500 coins + Rare XP coupon'),
+        json_build_object('tier', 'golden', 'pct', 3, 'prize', 'Golden Wheel + Epic XP coupon')) $function$;
 CREATE OR REPLACE FUNCTION public.rb_spin()
  RETURNS jsonb
  LANGUAGE plpgsql

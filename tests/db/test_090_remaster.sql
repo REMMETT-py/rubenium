@@ -32,6 +32,8 @@ begin
     r := public.rb_scratch();
     assert (r ->> 'coins_won')::int between 240 and 480, 'scratch scaled: ' || r::text;
 
+    assert (public.rb_scratch_odds()::jsonb -> 0 ->> 'a')::int = 240, 'scratch chances show scaled prizes';
+
     -- daily reward rows are scaled for the player
     r := public.rb_login_state()::jsonb;
     assert (r -> 'rewards' -> 0 ->> 'coins')::int = 240, 'day 1 is 150 x 1.6: ' || r::text;
