@@ -4975,6 +4975,7 @@ FR = {
     '{n} second': '{n} seconde',
     '{n} stroke': '{n} coup',
     '{n} trade': '{n} échange',
+    'Not logged in': 'Pas connecté',
     'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players': "Comptes plus sûrs : l'aide pour le mot de passe est limitée par PC et par nom, donc personne ne peut l'épuiser pour les autres joueurs",
     'A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing': 'Un look plus net partout : chaque bouton, onglet, carte et champ de texte partage les mêmes coins, surfaces et espacements',
     'Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer': 'Réduire les animations : un nouvel interrupteur dans Réglages > Style rend les animations de l’interface plus courtes et plus calmes',
@@ -22232,7 +22233,7 @@ class SettingsPage(StylePart, Page):
 
         elif sec == 3:                                  # ---------------------------------------------- Account
             if not ctx.online.logged_in():
-                lay.addWidget(Label(tr("Log in to see your account."), 12, TEXT_DIM))
+                lay.addWidget(notice("users", tr("Not logged in"), tr("Log in to see your account."), self.W))   # 8.0
             else:
                 hours = ctx.online.hours()
                 lay.addWidget(heading(tr("Account")))
