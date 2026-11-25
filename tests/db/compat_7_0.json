@@ -1,0 +1,2347 @@
+[
+ {
+  "fn": "rb_ach_claim",
+  "args": [
+   "aid"
+  ],
+  "lines": [
+   24058
+  ]
+ },
+ {
+  "fn": "rb_ach_list",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   23964
+  ]
+ },
+ {
+  "fn": "rb_ach_show",
+  "args": [
+   "aid",
+   "slot"
+  ],
+  "lines": [
+   24075
+  ]
+ },
+ {
+  "fn": "rb_admin_arena",
+  "args": [
+   "kind"
+  ],
+  "lines": [
+   40001,
+   40020
+  ]
+ },
+ {
+  "fn": "rb_admin_audit",
+  "args": [],
+  "lines": [
+   40076,
+   39956
+  ]
+ },
+ {
+  "fn": "rb_admin_audit",
+  "args": null,
+  "lines": [
+   39164
+  ]
+ },
+ {
+  "fn": "rb_admin_avatar_clear",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   39407
+  ]
+ },
+ {
+  "fn": "rb_admin_ban",
+  "args": [
+   "ban",
+   "name"
+  ],
+  "lines": [
+   39403
+  ]
+ },
+ {
+  "fn": "rb_admin_bot_avatar",
+  "args": [
+   "name",
+   "picture"
+  ],
+  "lines": [
+   40326
+  ]
+ },
+ {
+  "fn": "rb_admin_bot_delete",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   40164
+  ]
+ },
+ {
+  "fn": "rb_admin_bot_history",
+  "args": [
+   "n",
+   "name"
+  ],
+  "lines": [
+   40175
+  ]
+ },
+ {
+  "fn": "rb_admin_bot_market",
+  "args": [
+   "action",
+   "item_id",
+   "name",
+   "price"
+  ],
+  "lines": [
+   40262
+  ]
+ },
+ {
+  "fn": "rb_admin_bot_market",
+  "args": [
+   "action",
+   "item_id",
+   "name"
+  ],
+  "lines": [
+   40250
+  ]
+ },
+ {
+  "fn": "rb_admin_bot_market",
+  "args": [
+   "action",
+   "n",
+   "name"
+  ],
+  "lines": [
+   40213
+  ]
+ },
+ {
+  "fn": "rb_admin_bot_market",
+  "args": [
+   "action",
+   "name"
+  ],
+  "lines": [
+   40208,
+   40217
+  ]
+ },
+ {
+  "fn": "rb_admin_bot_set",
+  "args": [
+   "cfg",
+   "name"
+  ],
+  "lines": [
+   40305,
+   40159,
+   40172,
+   40182,
+   40187,
+   40384,
+   40198,
+   40362
+  ]
+ },
+ {
+  "fn": "rb_admin_bot_ticket",
+  "args": [],
+  "lines": [
+   40364
+  ]
+ },
+ {
+  "fn": "rb_admin_bots",
+  "args": [],
+  "lines": [
+   40131
+  ]
+ },
+ {
+  "fn": "rb_admin_case",
+  "args": [
+   "new_max",
+   "new_min",
+   "new_odds",
+   "new_price",
+   "new_variants",
+   "which"
+  ],
+  "lines": [
+   39992
+  ]
+ },
+ {
+  "fn": "rb_admin_cheat",
+  "args": [
+   "game"
+  ],
+  "lines": [
+   3491
+  ]
+ },
+ {
+  "fn": "rb_admin_deals",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   39435
+  ]
+ },
+ {
+  "fn": "rb_admin_feature",
+  "args": [
+   "lock",
+   "name",
+   "note"
+  ],
+  "lines": [
+   40576
+  ]
+ },
+ {
+  "fn": "rb_admin_features",
+  "args": [],
+  "lines": [
+   40531
+  ]
+ },
+ {
+  "fn": "rb_admin_flag_count",
+  "args": [],
+  "lines": [
+   3389
+  ]
+ },
+ {
+  "fn": "rb_admin_flag_do",
+  "args": [
+   "action",
+   "fid"
+  ],
+  "lines": [
+   39276,
+   39280
+  ]
+ },
+ {
+  "fn": "rb_admin_flags",
+  "args": [],
+  "lines": [
+   39236
+  ]
+ },
+ {
+  "fn": "rb_admin_flip_cancel",
+  "args": [
+   "fid"
+  ],
+  "lines": [
+   40603
+  ]
+ },
+ {
+  "fn": "rb_admin_flip_offer",
+  "args": [
+   "bot",
+   "items",
+   "minutes",
+   "side",
+   "val"
+  ],
+  "lines": [
+   39876
+  ]
+ },
+ {
+  "fn": "rb_admin_flips",
+  "args": [],
+  "lines": [
+   39880
+  ]
+ },
+ {
+  "fn": "rb_admin_force_update",
+  "args": [],
+  "lines": [
+   40057
+  ]
+ },
+ {
+  "fn": "rb_admin_give",
+  "args": [
+   "how_many",
+   "name",
+   "what"
+  ],
+  "lines": [
+   40243,
+   39541
+  ]
+ },
+ {
+  "fn": "rb_admin_giveaway",
+  "args": [
+   "amount",
+   "kind",
+   "min_hours",
+   "minutes",
+   "title",
+   "what",
+   "winners"
+  ],
+  "lines": [
+   39813
+  ]
+ },
+ {
+  "fn": "rb_admin_giveaway_end",
+  "args": [
+   "draw",
+   "giveaway"
+  ],
+  "lines": [
+   39745,
+   39747
+  ]
+ },
+ {
+  "fn": "rb_admin_grant",
+  "args": [
+   "add_coins",
+   "add_keys",
+   "name"
+  ],
+  "lines": [
+   39531,
+   39533,
+   39391,
+   39395
+  ]
+ },
+ {
+  "fn": "rb_admin_lockdown",
+  "args": [
+   "lock"
+  ],
+  "lines": [
+   39924
+  ]
+ },
+ {
+  "fn": "rb_admin_player",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   39363
+  ]
+ },
+ {
+  "fn": "rb_admin_players",
+  "args": [
+   "page",
+   "search",
+   "sort"
+  ],
+  "lines": [
+   39126,
+   39341
+  ]
+ },
+ {
+  "fn": "rb_admin_race_rig",
+  "args": [
+   "clear",
+   "places",
+   "skip"
+  ],
+  "lines": [
+   40045,
+   40051
+  ]
+ },
+ {
+  "fn": "rb_admin_race_rig",
+  "args": [],
+  "lines": [
+   40023
+  ]
+ },
+ {
+  "fn": "rb_admin_reset",
+  "args": [
+   "name",
+   "what"
+  ],
+  "lines": [
+   39951
+  ]
+ },
+ {
+  "fn": "rb_admin_reset_do",
+  "args": [
+   "new_password",
+   "rid"
+  ],
+  "lines": [
+   40640,
+   40639
+  ]
+ },
+ {
+  "fn": "rb_admin_reset_timers",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   39409
+  ]
+ },
+ {
+  "fn": "rb_admin_resets",
+  "args": [],
+  "lines": [
+   40612,
+   39323
+  ]
+ },
+ {
+  "fn": "rb_admin_revoke",
+  "args": [
+   "name",
+   "what"
+  ],
+  "lines": [
+   39432
+  ]
+ },
+ {
+  "fn": "rb_admin_rig",
+  "args": [
+   "data",
+   "key",
+   "kind",
+   "name"
+  ],
+  "lines": [
+   3499,
+   39720,
+   39689
+  ]
+ },
+ {
+  "fn": "rb_admin_rig_gold",
+  "args": [
+   "name",
+   "rig"
+  ],
+  "lines": [
+   39719
+  ]
+ },
+ {
+  "fn": "rb_admin_rigs",
+  "args": [],
+  "lines": [
+   39693
+  ]
+ },
+ {
+  "fn": "rb_admin_sale",
+  "args": [
+   "minutes",
+   "pct",
+   "what"
+  ],
+  "lines": [
+   39849
+  ]
+ },
+ {
+  "fn": "rb_admin_sale_end",
+  "args": [
+   "sale"
+  ],
+  "lines": [
+   39759
+  ]
+ },
+ {
+  "fn": "rb_admin_set",
+  "args": [
+   "new_value",
+   "setting"
+  ],
+  "lines": [
+   40073
+  ]
+ },
+ {
+  "fn": "rb_admin_stats",
+  "args": [],
+  "lines": [
+   39289,
+   39965,
+   39996
+  ]
+ },
+ {
+  "fn": "rb_admin_swap_save",
+  "args": [
+   "cat",
+   "file",
+   "img",
+   "new",
+   "old",
+   "orig",
+   "orig_sha",
+   "sha",
+   "sid"
+  ],
+  "lines": [
+   40505
+  ]
+ },
+ {
+  "fn": "rb_admin_swap_state",
+  "args": [
+   "sid",
+   "st"
+  ],
+  "lines": [
+   40407
+  ]
+ },
+ {
+  "fn": "rb_admin_take",
+  "args": [
+   "item_id"
+  ],
+  "lines": [
+   39430
+  ]
+ },
+ {
+  "fn": "rb_admin_undo",
+  "args": [
+   "entry"
+  ],
+  "lines": [
+   39961,
+   40087
+  ]
+ },
+ {
+  "fn": "rb_admin_undo_sale",
+  "args": [
+   "listing"
+  ],
+  "lines": [
+   39456
+  ]
+ },
+ {
+  "fn": "rb_admin_undo_trade",
+  "args": [
+   "trade"
+  ],
+  "lines": [
+   39456
+  ]
+ },
+ {
+  "fn": "rb_admin_xp",
+  "args": [
+   "delta",
+   "name",
+   "reason"
+  ],
+  "lines": [
+   39535,
+   39399
+  ]
+ },
+ {
+  "fn": "rb_admin_xp_view",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   39369
+  ]
+ },
+ {
+  "fn": "rb_admin_xp_watch",
+  "args": [],
+  "lines": [
+   39306
+  ]
+ },
+ {
+  "fn": "rb_advent",
+  "args": [],
+  "lines": [
+   46555
+  ]
+ },
+ {
+  "fn": "rb_advent_claim",
+  "args": [
+   "which"
+  ],
+  "lines": [
+   47041
+  ]
+ },
+ {
+  "fn": "rb_avatar_set",
+  "args": [
+   "picture"
+  ],
+  "lines": [
+   37298,
+   38131
+  ]
+ },
+ {
+  "fn": "rb_avatars_get",
+  "args": [
+   "names"
+  ],
+  "lines": [
+   37267
+  ]
+ },
+ {
+  "fn": "rb_backup_load",
+  "args": [],
+  "lines": [
+   36210
+  ]
+ },
+ {
+  "fn": "rb_backup_save",
+  "args": [
+   "data"
+  ],
+  "lines": [
+   36188
+  ]
+ },
+ {
+  "fn": "rb_banner_gold",
+  "args": [
+   "level"
+  ],
+  "lines": [
+   27209
+  ]
+ },
+ {
+  "fn": "rb_blackjack",
+  "args": [
+   "action",
+   "bet"
+  ],
+  "lines": [
+   32250,
+   32281,
+   32287,
+   32304,
+   32255
+  ]
+ },
+ {
+  "fn": "rb_blocks_finish",
+  "args": [
+   "moves",
+   "round"
+  ],
+  "lines": [
+   51651
+  ]
+ },
+ {
+  "fn": "rb_buy",
+  "args": [
+   "what"
+  ],
+  "lines": [
+   3547
+  ]
+ },
+ {
+  "fn": "rb_c4_resign",
+  "args": [],
+  "lines": [
+   49655
+  ]
+ },
+ {
+  "fn": "rb_c4_start",
+  "args": [
+   "bet",
+   "level"
+  ],
+  "lines": [
+   49595
+  ]
+ },
+ {
+  "fn": "rb_c4_state",
+  "args": [],
+  "lines": [
+   49555
+  ]
+ },
+ {
+  "fn": "rb_case_buy",
+  "args": [
+   "how_many",
+   "which"
+  ],
+  "lines": [
+   23113
+  ]
+ },
+ {
+  "fn": "rb_case_gift_n",
+  "args": [
+   "n",
+   "name",
+   "which"
+  ],
+  "lines": [
+   23435
+  ]
+ },
+ {
+  "fn": "rb_case_prices",
+  "args": [],
+  "lines": [
+   23622
+  ]
+ },
+ {
+  "fn": "rb_colour",
+  "args": null,
+  "lines": [
+   50117,
+   50117
+  ]
+ },
+ {
+  "fn": "rb_coupon_use",
+  "args": [
+   "item_id",
+   "req"
+  ],
+  "lines": [
+   52454
+  ]
+ },
+ {
+  "fn": "rb_cups",
+  "args": [
+   "action",
+   "bet",
+   "level",
+   "pick"
+  ],
+  "lines": [
+   49306,
+   49469,
+   49461
+  ]
+ },
+ {
+  "fn": "rb_daily_case",
+  "args": [],
+  "lines": [
+   23171
+  ]
+ },
+ {
+  "fn": "rb_deals",
+  "args": [],
+  "lines": [
+   36995
+  ]
+ },
+ {
+  "fn": "rb_delete_account",
+  "args": [
+   "confirm"
+  ],
+  "lines": [
+   2674
+  ]
+ },
+ {
+  "fn": "rb_device_free",
+  "args": [
+   "pc"
+  ],
+  "lines": [
+   2642
+  ]
+ },
+ {
+  "fn": "rb_dice",
+  "args": [
+   "bet",
+   "chance"
+  ],
+  "lines": [
+   33035
+  ]
+ },
+ {
+  "fn": "rb_duel_answer",
+  "args": [
+   "duel",
+   "yes"
+  ],
+  "lines": [
+   34712
+  ]
+ },
+ {
+  "fn": "rb_duel_ask",
+  "args": [
+   "bet",
+   "game",
+   "name",
+   "tier"
+  ],
+  "lines": [
+   29625
+  ]
+ },
+ {
+  "fn": "rb_duel_limit",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   29476
+  ]
+ },
+ {
+  "fn": "rb_duel_play",
+  "args": [
+   "duel"
+  ],
+  "lines": [
+   34722
+  ]
+ },
+ {
+  "fn": "rb_duels",
+  "args": [],
+  "lines": [
+   34700
+  ]
+ },
+ {
+  "fn": "rb_equip",
+  "args": [
+   "slot",
+   "what"
+  ],
+  "lines": [
+   3564,
+   27241
+  ]
+ },
+ {
+  "fn": "rb_flip_cancel",
+  "args": [
+   "fid"
+  ],
+  "lines": [
+   48256,
+   48308
+  ]
+ },
+ {
+  "fn": "rb_flip_create",
+  "args": [
+   "items",
+   "side"
+  ],
+  "lines": [
+   48186
+  ]
+ },
+ {
+  "fn": "rb_flip_join",
+  "args": [
+   "fid"
+  ],
+  "lines": [
+   48111
+  ]
+ },
+ {
+  "fn": "rb_flip_leave",
+  "args": [
+   "fid"
+  ],
+  "lines": [
+   48278
+  ]
+ },
+ {
+  "fn": "rb_flip_list",
+  "args": [],
+  "lines": [
+   48088
+  ]
+ },
+ {
+  "fn": "rb_flip_lock",
+  "args": [
+   "fid",
+   "items"
+  ],
+  "lines": [
+   48340
+  ]
+ },
+ {
+  "fn": "rb_flip_put",
+  "args": [
+   "fid",
+   "items"
+  ],
+  "lines": [
+   48253
+  ]
+ },
+ {
+  "fn": "rb_flip_state",
+  "args": [
+   "fid"
+  ],
+  "lines": [
+   48372
+  ]
+ },
+ {
+  "fn": "rb_flip_vs_bot",
+  "args": [
+   "fid"
+  ],
+  "lines": [
+   48294
+  ]
+ },
+ {
+  "fn": "rb_friend_add",
+  "args": null,
+  "lines": [
+   38339,
+   37522,
+   38345,
+   37532
+  ]
+ },
+ {
+  "fn": "rb_friend_remove",
+  "args": null,
+  "lines": [
+   37523,
+   37528,
+   38324
+  ]
+ },
+ {
+  "fn": "rb_friends_list",
+  "args": [],
+  "lines": [
+   23358,
+   38035,
+   34702
+  ]
+ },
+ {
+  "fn": "rb_gift_left",
+  "args": [],
+  "lines": [
+   23359
+  ]
+ },
+ {
+  "fn": "rb_giveaway_join",
+  "args": [
+   "giveaway"
+  ],
+  "lines": [
+   40906
+  ]
+ },
+ {
+  "fn": "rb_gold_keys",
+  "args": [],
+  "lines": [
+   3337
+  ]
+ },
+ {
+  "fn": "rb_gold_wheel",
+  "args": [],
+  "lines": [
+   45670
+  ]
+ },
+ {
+  "fn": "rb_gold_wheels",
+  "args": [],
+  "lines": [
+   45477
+  ]
+ },
+ {
+  "fn": "rb_golf_cancel",
+  "args": [
+   "gid"
+  ],
+  "lines": [
+   31595
+  ]
+ },
+ {
+  "fn": "rb_golf_create",
+  "args": [
+   "bet",
+   "holes"
+  ],
+  "lines": [
+   31919
+  ]
+ },
+ {
+  "fn": "rb_golf_join",
+  "args": [
+   "gid"
+  ],
+  "lines": [
+   31613
+  ]
+ },
+ {
+  "fn": "rb_golf_leave",
+  "args": [
+   "gid"
+  ],
+  "lines": [
+   31865
+  ]
+ },
+ {
+  "fn": "rb_golf_lobbies",
+  "args": [],
+  "lines": [
+   31648
+  ]
+ },
+ {
+  "fn": "rb_golf_shot",
+  "args": [
+   "ang",
+   "gid",
+   "holed",
+   "n",
+   "pow",
+   "x",
+   "x0",
+   "y",
+   "y0"
+  ],
+  "lines": [
+   30504
+  ]
+ },
+ {
+  "fn": "rb_golf_solo_quit",
+  "args": [
+   "gid"
+  ],
+  "lines": [
+   31705
+  ]
+ },
+ {
+  "fn": "rb_golf_solo_shot",
+  "args": [
+   "gid",
+   "holed",
+   "n",
+   "x",
+   "y"
+  ],
+  "lines": [
+   30503
+  ]
+ },
+ {
+  "fn": "rb_golf_solo_start",
+  "args": [
+   "holes"
+  ],
+  "lines": [
+   31461,
+   31682
+  ]
+ },
+ {
+  "fn": "rb_golf_solo_state",
+  "args": [
+   "gid"
+  ],
+  "lines": [
+   30357
+  ]
+ },
+ {
+  "fn": "rb_golf_state",
+  "args": [
+   "gid"
+  ],
+  "lines": [
+   30357
+  ]
+ },
+ {
+  "fn": "rb_heartbeat",
+  "args": [
+   "device"
+  ],
+  "lines": [
+   2821
+  ]
+ },
+ {
+  "fn": "rb_hello",
+  "args": [
+   "pc"
+  ],
+  "lines": [
+   3254
+  ]
+ },
+ {
+  "fn": "rb_hello2",
+  "args": [
+   "build",
+   "pc"
+  ],
+  "lines": [
+   3260
+  ]
+ },
+ {
+  "fn": "rb_hilo",
+  "args": [
+   "action",
+   "bet",
+   "req"
+  ],
+  "lines": [
+   50541
+  ]
+ },
+ {
+  "fn": "rb_hilo",
+  "args": [
+   "action",
+   "bet"
+  ],
+  "lines": [
+   50547,
+   50559,
+   50579
+  ]
+ },
+ {
+  "fn": "rb_history",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   38394,
+   38413
+  ]
+ },
+ {
+  "fn": "rb_item_swaps_list",
+  "args": [],
+  "lines": [
+   27439
+  ]
+ },
+ {
+  "fn": "rb_jackpot_join",
+  "args": [
+   "items"
+  ],
+  "lines": [
+   45404
+  ]
+ },
+ {
+  "fn": "rb_jackpot_pick",
+  "args": [
+   "jid",
+   "keys"
+  ],
+  "lines": [
+   45350
+  ]
+ },
+ {
+  "fn": "rb_jackpot_state",
+  "args": [],
+  "lines": [
+   43177
+  ]
+ },
+ {
+  "fn": "rb_leaders",
+  "args": [
+   "friends",
+   "kind"
+  ],
+  "lines": [
+   35847
+  ]
+ },
+ {
+  "fn": "rb_ledger_list",
+  "args": [],
+  "lines": [
+   26696
+  ]
+ },
+ {
+  "fn": "rb_level_badge_set",
+  "args": [
+   "which"
+  ],
+  "lines": [
+   52541
+  ]
+ },
+ {
+  "fn": "rb_live",
+  "args": [],
+  "lines": [
+   3375
+  ]
+ },
+ {
+  "fn": "rb_login_claim",
+  "args": [],
+  "lines": [
+   36117
+  ]
+ },
+ {
+  "fn": "rb_login_for",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   2624
+  ]
+ },
+ {
+  "fn": "rb_login_state",
+  "args": [],
+  "lines": [
+   36136,
+   36153
+  ]
+ },
+ {
+  "fn": "rb_looks",
+  "args": [],
+  "lines": [
+   3162
+  ]
+ },
+ {
+  "fn": "rb_market_answer",
+  "args": [
+   "accept",
+   "offer"
+  ],
+  "lines": [
+   27831,
+   27828
+  ]
+ },
+ {
+  "fn": "rb_market_buy",
+  "args": [
+   "listing"
+  ],
+  "lines": [
+   27795
+  ]
+ },
+ {
+  "fn": "rb_market_cancel",
+  "args": [
+   "listing"
+  ],
+  "lines": [
+   27761
+  ]
+ },
+ {
+  "fn": "rb_market_list",
+  "args": [
+   "item_id",
+   "price"
+  ],
+  "lines": [
+   52714
+  ]
+ },
+ {
+  "fn": "rb_market_mine",
+  "args": [],
+  "lines": [
+   27353
+  ]
+ },
+ {
+  "fn": "rb_market_mine",
+  "args": null,
+  "lines": [
+   27353
+  ]
+ },
+ {
+  "fn": "rb_market_offer",
+  "args": [
+   "listing",
+   "price"
+  ],
+  "lines": [
+   27791
+  ]
+ },
+ {
+  "fn": "rb_market_offers",
+  "args": [],
+  "lines": [
+   27811
+  ]
+ },
+ {
+  "fn": "rb_market_price",
+  "args": [
+   "what"
+  ],
+  "lines": [
+   52616,
+   54952
+  ]
+ },
+ {
+  "fn": "rb_market_search",
+  "args": [
+   "cls",
+   "ids",
+   "kind",
+   "page",
+   "rarity",
+   "sort"
+  ],
+  "lines": [
+   27361
+  ]
+ },
+ {
+  "fn": "rb_market_search",
+  "args": null,
+  "lines": [
+   27361
+  ]
+ },
+ {
+  "fn": "rb_market_unoffer",
+  "args": [
+   "offer"
+  ],
+  "lines": [
+   27857
+  ]
+ },
+ {
+  "fn": "rb_mem_flip",
+  "args": [
+   "card",
+   "round"
+  ],
+  "lines": [
+   29063
+  ]
+ },
+ {
+  "fn": "rb_mem_start",
+  "args": [
+   "tier"
+  ],
+  "lines": [
+   28997
+  ]
+ },
+ {
+  "fn": "rb_mg_board",
+  "args": [
+   "friends",
+   "game",
+   "mode"
+  ],
+  "lines": [
+   35845
+  ]
+ },
+ {
+  "fn": "rb_mg_start",
+  "args": [
+   "game",
+   "mode"
+  ],
+  "lines": [
+   51603
+  ]
+ },
+ {
+  "fn": "rb_mines",
+  "args": [
+   "action",
+   "arg"
+  ],
+  "lines": [
+   32614,
+   32678,
+   32708,
+   32623
+  ]
+ },
+ {
+  "fn": "rb_mines",
+  "args": null,
+  "lines": [
+   3490
+  ]
+ },
+ {
+  "fn": "rb_msg_get",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   35561
+  ]
+ },
+ {
+  "fn": "rb_msg_mute",
+  "args": [
+   "mute",
+   "name"
+  ],
+  "lines": [
+   35614
+  ]
+ },
+ {
+  "fn": "rb_msg_react",
+  "args": [
+   "emoji",
+   "mid"
+  ],
+  "lines": [
+   35571
+  ]
+ },
+ {
+  "fn": "rb_msg_send",
+  "args": [
+   "body",
+   "name"
+  ],
+  "lines": [
+   35601
+  ]
+ },
+ {
+  "fn": "rb_msg_threads",
+  "args": [],
+  "lines": [
+   35702
+  ]
+ },
+ {
+  "fn": "rb_og_chest",
+  "args": [],
+  "lines": [
+   61473
+  ]
+ },
+ {
+  "fn": "rb_og_chest_claim",
+  "args": [
+   "req"
+  ],
+  "lines": [
+   42319
+  ]
+ },
+ {
+  "fn": "rb_online_leave",
+  "args": [],
+  "lines": [
+   61859,
+   61967
+  ]
+ },
+ {
+  "fn": "rb_online_status",
+  "args": [],
+  "lines": [
+   61847
+  ]
+ },
+ {
+  "fn": "rb_open_case",
+  "args": [
+   "which"
+  ],
+  "lines": [
+   23175
+  ]
+ },
+ {
+  "fn": "rb_open_case_gold",
+  "args": [
+   "which"
+  ],
+  "lines": [
+   23175
+  ]
+ },
+ {
+  "fn": "rb_park_finish",
+  "args": [
+   "moves",
+   "round"
+  ],
+  "lines": [
+   33873
+  ]
+ },
+ {
+  "fn": "rb_park_start",
+  "args": [
+   "tier"
+  ],
+  "lines": [
+   33765
+  ]
+ },
+ {
+  "fn": "rb_party_aim",
+  "args": [
+   "a",
+   "p",
+   "pid"
+  ],
+  "lines": [
+   31090
+  ]
+ },
+ {
+  "fn": "rb_party_create",
+  "args": [
+   "bet",
+   "holes",
+   "size"
+  ],
+  "lines": [
+   31491
+  ]
+ },
+ {
+  "fn": "rb_party_go",
+  "args": [
+   "pid"
+  ],
+  "lines": [
+   31406
+  ]
+ },
+ {
+  "fn": "rb_party_join",
+  "args": [
+   "pid"
+  ],
+  "lines": [
+   31538
+  ]
+ },
+ {
+  "fn": "rb_party_leave",
+  "args": [
+   "pid"
+  ],
+  "lines": [
+   31414,
+   31433
+  ]
+ },
+ {
+  "fn": "rb_party_list",
+  "args": [],
+  "lines": [
+   31514
+  ]
+ },
+ {
+  "fn": "rb_party_shot",
+  "args": [
+   "ang",
+   "holed",
+   "n",
+   "pid",
+   "pow",
+   "x",
+   "x0",
+   "y",
+   "y0"
+  ],
+  "lines": [
+   31129
+  ]
+ },
+ {
+  "fn": "rb_party_state",
+  "args": [
+   "pid"
+  ],
+  "lines": [
+   30980,
+   31364
+  ]
+ },
+ {
+  "fn": "rb_pawn_ask",
+  "args": [
+   "ask",
+   "ids"
+  ],
+  "lines": [
+   55137
+  ]
+ },
+ {
+  "fn": "rb_pawn_enter",
+  "args": [
+   "ids"
+  ],
+  "lines": [
+   54736
+  ]
+ },
+ {
+  "fn": "rb_pawn_props_left",
+  "args": [],
+  "lines": [
+   54922
+  ]
+ },
+ {
+  "fn": "rb_pawn_sell",
+  "args": [
+   "ask",
+   "ids"
+  ],
+  "lines": [
+   55009
+  ]
+ },
+ {
+  "fn": "rb_pawn_trade",
+  "args": [
+   "action",
+   "ids"
+  ],
+  "lines": [
+   55091
+  ]
+ },
+ {
+  "fn": "rb_play_history",
+  "args": [
+   "lim",
+   "name"
+  ],
+  "lines": [
+   44739
+  ]
+ },
+ {
+  "fn": "rb_plinko",
+  "args": [
+   "bet",
+   "risk"
+  ],
+  "lines": [
+   32477
+  ]
+ },
+ {
+  "fn": "rb_profile",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   38030,
+   38251
+  ]
+ },
+ {
+  "fn": "rb_quest_claim",
+  "args": [
+   "which"
+  ],
+  "lines": [
+   34842
+  ]
+ },
+ {
+  "fn": "rb_quests",
+  "args": [],
+  "lines": [
+   34821,
+   34345
+  ]
+ },
+ {
+  "fn": "rb_quick_quote",
+  "args": [
+   "ids"
+  ],
+  "lines": [
+   3197
+  ]
+ },
+ {
+  "fn": "rb_quick_sell",
+  "args": [
+   "ids"
+  ],
+  "lines": [
+   3207
+  ]
+ },
+ {
+  "fn": "rb_race_history",
+  "args": [
+   "lim"
+  ],
+  "lines": [
+   44142
+  ]
+ },
+ {
+  "fn": "rb_race_join",
+  "args": [
+   "amount",
+   "lane"
+  ],
+  "lines": [
+   45234
+  ]
+ },
+ {
+  "fn": "rb_race_state",
+  "args": [],
+  "lines": [
+   43263
+  ]
+ },
+ {
+  "fn": "rb_ranks",
+  "args": [],
+  "lines": [
+   3350
+  ]
+ },
+ {
+  "fn": "rb_rename",
+  "args": [
+   "new_name"
+  ],
+  "lines": [
+   38200
+  ]
+ },
+ {
+  "fn": "rb_reset_ask",
+  "args": [
+   "msg",
+   "name",
+   "pc"
+  ],
+  "lines": [
+   2863
+  ]
+ },
+ {
+  "fn": "rb_reset_status",
+  "args": [
+   "pc",
+   "rid"
+  ],
+  "lines": [
+   2876
+  ]
+ },
+ {
+  "fn": "rb_rocket",
+  "args": [
+   "action",
+   "bet",
+   "target"
+  ],
+  "lines": [
+   33567,
+   33580,
+   33589,
+   33596,
+   33628
+  ]
+ },
+ {
+  "fn": "rb_roulette_multi",
+  "args": [
+   "bet",
+   "picks"
+  ],
+  "lines": [
+   49098
+  ]
+ },
+ {
+  "fn": "rb_scratch",
+  "args": [],
+  "lines": [
+   29217
+  ]
+ },
+ {
+  "fn": "rb_scratch_odds",
+  "args": [],
+  "lines": [
+   34675
+  ]
+ },
+ {
+  "fn": "rb_sell",
+  "args": [
+   "item_id"
+  ],
+  "lines": [
+   3556
+  ]
+ },
+ {
+  "fn": "rb_set_claim",
+  "args": [
+   "which"
+  ],
+  "lines": [
+   36016
+  ]
+ },
+ {
+  "fn": "rb_sets",
+  "args": [],
+  "lines": [
+   36001
+  ]
+ },
+ {
+  "fn": "rb_sfx",
+  "args": null,
+  "lines": [
+   50221,
+   50221
+  ]
+ },
+ {
+  "fn": "rb_slots",
+  "args": [
+   "bet"
+  ],
+  "lines": [
+   33236
+  ]
+ },
+ {
+  "fn": "rb_social",
+  "args": [],
+  "lines": [
+   38031
+  ]
+ },
+ {
+  "fn": "rb_song_add",
+  "args": [
+   "artist",
+   "title"
+  ],
+  "lines": [
+   36310
+  ]
+ },
+ {
+  "fn": "rb_song_share",
+  "args": [
+   "share"
+  ],
+  "lines": [
+   61301,
+   36370
+  ]
+ },
+ {
+  "fn": "rb_songs",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   38406
+  ]
+ },
+ {
+  "fn": "rb_spin",
+  "args": [],
+  "lines": [
+   32857
+  ]
+ },
+ {
+  "fn": "rb_spin_collect",
+  "args": [],
+  "lines": [
+   32914
+  ]
+ },
+ {
+  "fn": "rb_state",
+  "args": [],
+  "lines": [
+   3279
+  ]
+ },
+ {
+  "fn": "rb_swap_cancel",
+  "args": [
+   "sid"
+  ],
+  "lines": [
+   27488
+  ]
+ },
+ {
+  "fn": "rb_swap_create",
+  "args": [
+   "item_id",
+   "wants"
+  ],
+  "lines": [
+   27612
+  ]
+ },
+ {
+  "fn": "rb_swap_take",
+  "args": [
+   "item_id",
+   "sid"
+  ],
+  "lines": [
+   27507
+  ]
+ },
+ {
+  "fn": "rb_swaps_list",
+  "args": [],
+  "lines": [
+   40391,
+   14424
+  ]
+ },
+ {
+  "fn": "rb_sweep_open",
+  "args": [
+   "cell",
+   "round"
+  ],
+  "lines": [
+   51695
+  ]
+ },
+ {
+  "fn": "rb_tap_finish",
+  "args": [
+   "hits",
+   "round"
+  ],
+  "lines": [
+   28619
+  ]
+ },
+ {
+  "fn": "rb_tap_start",
+  "args": [
+   "mode"
+  ],
+  "lines": [
+   28547
+  ]
+ },
+ {
+  "fn": "rb_timers",
+  "args": [],
+  "lines": [
+   15081,
+   22904,
+   2885
+  ]
+ },
+ {
+  "fn": "rb_timing",
+  "args": [
+   "action",
+   "bet",
+   "ms"
+  ],
+  "lines": [
+   33389,
+   33435
+  ]
+ },
+ {
+  "fn": "rb_titles_set",
+  "args": [
+   "ids"
+  ],
+  "lines": [
+   37470
+  ]
+ },
+ {
+  "fn": "rb_tower",
+  "args": [
+   "action",
+   "arg",
+   "bet",
+   "req"
+  ],
+  "lines": [
+   50941
+  ]
+ },
+ {
+  "fn": "rb_tower",
+  "args": [
+   "action",
+   "arg",
+   "bet"
+  ],
+  "lines": [
+   50947,
+   50988,
+   50961
+  ]
+ },
+ {
+  "fn": "rb_trade_accept",
+  "args": [
+   "trade"
+  ],
+  "lines": [
+   38220,
+   41461
+  ]
+ },
+ {
+  "fn": "rb_trade_cancel",
+  "args": [
+   "trade"
+  ],
+  "lines": [
+   28325,
+   37780,
+   37862
+  ]
+ },
+ {
+  "fn": "rb_trade_confirm",
+  "args": [
+   "seen_version"
+  ],
+  "lines": [
+   28403
+  ]
+ },
+ {
+  "fn": "rb_trade_get",
+  "args": [
+   "trade"
+  ],
+  "lines": [
+   27936
+  ]
+ },
+ {
+  "fn": "rb_trade_history",
+  "args": [],
+  "lines": [
+   35916
+  ]
+ },
+ {
+  "fn": "rb_trade_inventory",
+  "args": [
+   "trade"
+  ],
+  "lines": [
+   28440
+  ]
+ },
+ {
+  "fn": "rb_trade_offer",
+  "args": [
+   "coins",
+   "items",
+   "keys"
+  ],
+  "lines": [
+   28355
+  ]
+ },
+ {
+  "fn": "rb_trade_ready",
+  "args": [
+   "ready",
+   "seen_version"
+  ],
+  "lines": [
+   28399,
+   28411
+  ]
+ },
+ {
+  "fn": "rb_trade_request",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   38231
+  ]
+ },
+ {
+  "fn": "rb_trade_summary",
+  "args": [
+   "trade"
+  ],
+  "lines": [
+   28276
+  ]
+ },
+ {
+  "fn": "rb_trade_up",
+  "args": [
+   "base",
+   "from_cls"
+  ],
+  "lines": [
+   25571
+  ]
+ },
+ {
+  "fn": "rb_trash",
+  "args": [
+   "confirm",
+   "item_id"
+  ],
+  "lines": [
+   27142
+  ]
+ },
+ {
+  "fn": "rb_username_free",
+  "args": [
+   "name"
+  ],
+  "lines": [
+   2663
+  ]
+ },
+ {
+  "fn": "rb_users",
+  "args": [
+   "page",
+   "search"
+  ],
+  "lines": [
+   38036,
+   38065
+  ]
+ },
+ {
+  "fn": "rb_wave_cancel",
+  "args": [
+   "did"
+  ],
+  "lines": [
+   57137
+  ]
+ },
+ {
+  "fn": "rb_wave_create",
+  "args": [
+   "bet"
+  ],
+  "lines": [
+   57084
+  ]
+ },
+ {
+  "fn": "rb_wave_finish",
+  "args": [
+   "run",
+   "ticks",
+   "toggles"
+  ],
+  "lines": [
+   57368,
+   56972
+  ]
+ },
+ {
+  "fn": "rb_wave_join",
+  "args": [
+   "did"
+  ],
+  "lines": [
+   57156
+  ]
+ },
+ {
+  "fn": "rb_wave_leave",
+  "args": [
+   "did"
+  ],
+  "lines": [
+   57422
+  ]
+ },
+ {
+  "fn": "rb_wave_lobbies",
+  "args": [],
+  "lines": [
+   57018
+  ]
+ },
+ {
+  "fn": "rb_wave_ping",
+  "args": [
+   "run",
+   "t",
+   "toggles",
+   "x"
+  ],
+  "lines": [
+   57347
+  ]
+ },
+ {
+  "fn": "rb_wave_rematch",
+  "args": [
+   "did",
+   "go"
+  ],
+  "lines": [
+   57407
+  ]
+ },
+ {
+  "fn": "rb_wave_solo",
+  "args": [],
+  "lines": [
+   56944
+  ]
+ },
+ {
+  "fn": "rb_wave_state",
+  "args": [
+   "did"
+  ],
+  "lines": [
+   57349
+  ]
+ },
+ {
+  "fn": "rb_wave_watch",
+  "args": [
+   "did"
+  ],
+  "lines": [
+   57483
+  ]
+ },
+ {
+  "fn": "rb_wear_mine",
+  "args": [],
+  "lines": [
+   3149
+  ]
+ },
+ {
+  "fn": "rb_xp_me",
+  "args": [],
+  "lines": [
+   3436
+  ]
+ }
+]
