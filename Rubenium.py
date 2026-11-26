@@ -34499,6 +34499,9 @@ class Daily(Game):
 
     def prizes(self) -> list:
         """3.1: a 9th slice, GOLD (the Golden Wheel). 4.0: a 10th, an XP coupon (keys = -3). 9.0: scaled by tier."""
+        live = getattr(self.ctx.econ, "spin_slots", None)          # 9.4: the slices as the server pays them
+        if isinstance(live, list) and len(live) == 10 and all(isinstance(v, int) for v in live[:7]):
+            return [(int(v), 0) for v in live[:7]] + [(0, 1), (0, -1), (0, -3)]
         t = getattr(self.ctx.econ, "tier", None)
         if isinstance(t, dict) and t.get("mult"):
             m = float(t["mult"])
@@ -34520,6 +34523,17 @@ class Daily(Game):
     def showEvent(self, e) -> None:
         super().showEvent(e)
         self.wallet.check_time()
+
+        def got(ok: bool, data) -> None:                          # 9.4: the real slices (they follow the server)
+            if ok and isinstance(data, dict) and isinstance(data.get("slots"), list):
+                try:
+                    if self.ctx.econ.__dict__.get("spin_slots") != data["slots"] and not self.busy:
+                        self.ctx.econ.spin_slots = [int(v) for v in data["slots"]]
+                        self.update()
+                except (RuntimeError, TypeError, ValueError):
+                    pass
+        if self.ctx.online.logged_in():
+            self.ctx.online.ask("rb_spin_odds", {}, got)
 
     def _checked(self) -> None:
         waiting = self.wallet.spin_waiting
