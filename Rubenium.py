@@ -220,6 +220,47 @@ def key_down(vk: int) -> bool:
     return bool(IS_WIN and user32.GetAsyncKeyState(vk) & 0x8000)
 
 
+def is_foreground(hwnd: int) -> bool:
+    """9.4: is this window the one Windows sends the keyboard to?"""
+    if not IS_WIN or not hwnd:
+        return True
+    try:
+        return int(user32.GetForegroundWindow() or 0) == int(hwnd)
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def take_focus(hwnd: int, on: bool) -> None:
+    """9.4: Wave Rush only. Rubenium's window never takes the keyboard (so a game behind it keeps it); while Wave Rush
+    is open it does, so Space and Up go to Rubenium alone and Windows treats it as the app in front (no background
+    slow-down). off puts it back as it was."""
+    if not IS_WIN or not hwnd:
+        return
+    try:
+        ex = user32.GetWindowLongPtrW(HWND(hwnd), -20)
+        user32.SetWindowLongPtrW(HWND(hwnd), -20, (ex & ~0x08000000) if on else (ex | 0x08000000))
+        if on:
+            user32.SetForegroundWindow(HWND(hwnd))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def no_throttle(on: bool) -> None:
+    """9.4: Windows 11 slows the timers of apps it thinks are in the background (EcoQoS): Wave Rush stutters. While a
+    run is on, this process opts out (execution speed and timer resolution); off gives the choice back to Windows."""
+    if not IS_WIN:
+        return
+    try:
+        class _PPT(ctypes.Structure):
+            _fields_ = [("Version", ctypes.c_ulong), ("ControlMask", ctypes.c_ulong), ("StateMask", ctypes.c_ulong)]
+        st = _PPT(1, 0x1 | 0x4 if on else 0, 0)
+        k = ctypes.windll.kernel32
+        k.GetCurrentProcess.restype = ctypes.c_void_p
+        k.SetProcessInformation(ctypes.c_void_p(k.GetCurrentProcess()), 4, ctypes.byref(st), ctypes.sizeof(st))
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _exe_of(pid: int) -> str:
     h = kernel32.OpenProcess(0x1000, False, pid)          # PROCESS_QUERY_LIMITED_INFORMATION (name only)
     if not h:
@@ -8075,6 +8116,7 @@ class GamePerf:
                 k.SetPriorityClass(ctypes.c_void_p(k.GetCurrentProcess()), 0x8000)    # ABOVE_NORMAL
             except Exception:  # noqa: BLE001
                 pass
+            win.no_throttle(True)                 # 9.4: no Windows background slow-down during a run
 
     @classmethod
     def leave(cls, ctx) -> None:
@@ -8098,6 +8140,7 @@ class GamePerf:
                 k.SetPriorityClass(ctypes.c_void_p(k.GetCurrentProcess()), 0x20)      # NORMAL
             except Exception:  # noqa: BLE001
                 pass
+            win.no_throttle(False)
         keys, ctx._deferred_reloads = list(getattr(ctx, "_deferred_reloads", ()) or ()), set()
         if keys:
             def flush() -> None:
@@ -8127,10 +8170,11 @@ class KeyPoll(QWidget):
     VK = {"Space": 0x20, "Up": 0x26, "Down": 0x28, "Left": 0x25, "Right": 0x27, "Enter": 0x0D, "W": 0x57, "D": 0x44,
           "F": 0x46, "J": 0x4A, "K": 0x4B, "1": 0x31, "2": 0x32, "3": 0x33, "4": 0x34, "R": 0x52, "S": 0x53}
 
-    def __init__(self, names: list, on_key, running=None) -> None:
+    def __init__(self, names: list, on_key, running=None, foreground_only: bool = False) -> None:
         super().__init__()
         self.setFixedSize(0, 0)
         self.names, self.on_key, self.running = list(names), on_key, running
+        self.foreground_only = foreground_only        # 9.4: keys count only while Rubenium is the app in front
         self.down = {n: False for n in self.names}
         self.live = bool(win.IS_WIN)
         self._t = QTimer(self)
@@ -8157,6 +8201,8 @@ class KeyPoll(QWidget):
     def _active(self) -> bool:
         from PyQt6.QtGui import QCursor
         try:
+            if self.foreground_only and not win.is_foreground(int(self.window().winId())):
+                return False
             if self.running is not None and self.running():
                 return True
             top = self.window()
@@ -38223,7 +38269,8 @@ class GamesPage(Page):
                   ("Parking", "Free coins", lambda: open_games_part(ctx, None, "park_open", back="games")),
                   ("Memory", "Free coins", lambda: open_games_part(ctx, "memory", back="games")),
                   ("Block Blast", "Free coins", lambda: open_games_part(ctx, "blocks", back="games")),
-                  ("Minesweeper", "Free coins", lambda: open_games_part(ctx, "sweeper", back="games"))]
+                  ("Minesweeper", "Free coins", lambda: open_games_part(ctx, "sweeper", back="games")),
+                  ("Wave Rush", "Free coins", lambda: open_games_part(ctx, "wave", back="games"))]     # 9.4: solo only
         lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(games)], 3))
         # 9.2: board games, each once, against a bot or a player
         lay.addWidget(help_row(tr("Duels"), tr("Board games 1 v 1. Against a bot (free, pays by how well you win) or "
@@ -38236,7 +38283,6 @@ class GamesPage(Page):
         lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(duels)], 2))
         lay.addWidget(help_row(tr("Multiplayer"), tr("Play with up to 4 players at once, for fun or for a bet.")))
         multi = [("Mini Golf", "Up to 4 players", lambda: open_games_part(ctx, "duels", back="games")),
-                 ("Wave Rush", "Up to 4 players", lambda: open_games_part(ctx, "wave", back="games")),
                  ("Karting", "3 players + bot", lambda: open_games_part(ctx, "kart", back="games")),
                  ("Hoops", "2 v 2 against bots", lambda: open_games_part(ctx, "hoops", back="games"))]
         lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(multi)], 2))
@@ -57191,7 +57237,7 @@ class DuelTile(QWidget):
         p.drawText(QRectF(r.left() + S(80), r.top() + S(14), r.width() - S(150), S(24)), int(Qt.AlignmentFlag.AlignVCenter), name)
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.DemiBold))
-        sub = {"golf": tr("Solo or 1v1 live, 5 holes."), "wave": tr("Solo or 1v1. Hold to rise, let go to fall.")}.get(
+        sub = {"golf": tr("Solo or 1v1 live, 5 holes."), "wave": tr("Hold to rise, let go to fall")}.get(
             self.kind, tr("Items against items. Black or white."))
         p.drawText(QRectF(r.left() + S(80), r.top() + S(40), r.width() - S(100), S(20)), int(Qt.AlignmentFlag.AlignVCenter), sub)
         tag = tr("DUEL")
@@ -62783,7 +62829,7 @@ class WaveView(QWidget):
         self._timer.timeout.connect(self._frame)
         self._timer.start()
         self._idle_paint = 0.0
-        self.keys = KeyPoll(["Space", "Up", "W"], self._key, lambda: self.state == "run")
+        self.keys = KeyPoll(["Space", "Up", "W"], self._key, lambda: self.state == "run", foreground_only=True)
         self.keys.setParent(self)
 
     # -- set up
@@ -62921,6 +62967,7 @@ class WaveView(QWidget):
     def mousePressEvent(self, e) -> None:
         e.accept()
         self.setFocus()
+        win.take_focus(int(self.window().winId()), True)          # 9.4: a click brings Rubenium in front again
         for rect, name in self._legend:                    # 9.2: click a name to watch that player
             if rect.contains(e.position()) and self.state == "dead" and name in self.runners:
                 self.spec = name
@@ -62960,10 +63007,15 @@ class WaveView(QWidget):
             self._crash()
         self._timer.stop()
         GamePerf.leave(self.ctx)
+        try:
+            win.take_focus(int(self.window().winId()), False)     # 9.4: the keyboard goes back to normal
+        except RuntimeError:
+            pass
 
     def showEvent(self, _e) -> None:
         self._timer.setInterval(self._frame_ms())
         self._timer.start()
+        win.take_focus(int(self.window().winId()), True)          # 9.4: Wave Rush takes the keyboard while open
 
     def _frame_ms(self) -> int:
         """6.0: the timer follows the screen's refresh rate (60, 75, 120, 144 Hz…), so every frame shown is a new
@@ -63644,7 +63696,7 @@ def build_wave(page, lay) -> None:
     ctx = page.ctx
     did = getattr(ctx, "wave_duel", None)
     rid = getattr(ctx, "wave_room", None) if not did else None
-    solo = not did and not rid and getattr(ctx, "wave_mode", "solo") == "solo"
+    solo = not did and not rid
 
     def leave_screen() -> None:
         if did:
@@ -63674,18 +63726,9 @@ def build_wave(page, lay) -> None:
             ctx.wave_watch = None
             ctx.reload_page("games")
         return _watch_run(page, lay, watching, stop_watching)
-    which = Segmented([tr("Solo"), tr("Multiplayer")], 0 if solo else 1)
-
-    def pick(i: int) -> None:
-        ctx.wave_mode = "solo" if i == 0 else "duel"
-        sfx.play("pick")
-        ctx.reload_page("games")
-    which.changed.connect(pick)
-    lay.addWidget(which)
+    # 9.4: online Wave Rush is gone (it stuttered too much online): solo only
     lay.addWidget(CoinBar(ctx))
-    if solo:
-        return _solo(page, lay)
-    _rooms_lobby(page, lay)
+    return _solo(page, lay)
 
 
 def _controls(page, lay) -> None:

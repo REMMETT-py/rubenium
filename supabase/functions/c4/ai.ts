@@ -186,9 +186,10 @@ export class Searcher {
 // tactics now and then; Hard looks far ahead (it moves first) and only rarely falls into a well-built trap; the
 // Professional plays perfectly (solver.ts: an opening book, then an exact solve) and moves first: it cannot lose.
 export const LEVELS: Record<string, { depth: number; ms: number; slack: number; blunder: number; shallow: number; low: number }> = {
-  easy: { depth: 2, ms: 150, slack: 45, blunder: 0.33, shallow: 0, low: 1 },     // a third of its moves are careless
-  medium: { depth: 6, ms: 450, slack: 8, blunder: 0.03, shallow: 0.15, low: 3 },  // about 1 move in 7 it only looks 3 ahead
-  hard: { depth: 12, ms: 1000, slack: 0, blunder: 0, shallow: 0.05, low: 8 },    // 1 in 20 it looks 8 ahead, not 12
+  // 9.4: Easy and Medium make real mistakes, and Hard is much further from the perfect Professional
+  easy: { depth: 2, ms: 150, slack: 60, blunder: 0.45, shallow: 0, low: 1 },     // almost half its moves are careless
+  medium: { depth: 4, ms: 350, slack: 15, blunder: 0.12, shallow: 0.3, low: 2 },  // 1 in 8 careless, often only 2 ahead
+  hard: { depth: 8, ms: 700, slack: 4, blunder: 0.03, shallow: 0.15, low: 4 },   // misses deeper traps
   pro: { depth: 42, ms: 1500, slack: 0, blunder: 0, shallow: 0, low: 42 },
 };
 
