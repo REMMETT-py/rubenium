@@ -138,7 +138,7 @@ jobs:
         shell: pwsh
         run: |
           $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
-          $app = Join-Path $env:LOCALAPPDATA "Programs\Rubenium"
+          $app = Join-Path $env:LOCALAPPDATA "Rubenium\App"
           $setup = (Resolve-Path out\RubeniumSetup.exe).Path
           function Wait-Gone {
             Start-Sleep 4; $t = 0
