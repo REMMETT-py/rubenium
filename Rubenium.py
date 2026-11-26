@@ -35796,6 +35796,7 @@ class MazeBoard(QWidget):
     """Mazelock: a 9 x 9 board. Click a lit square to step, or a groove between squares to drop a wall there.
     Your side is always at the bottom."""
     moved = pyqtSignal(int)
+    blocked = pyqtSignal()                 # 9.3.2: a click while it is not your turn
 
     def __init__(self, width: int) -> None:
         super().__init__()
@@ -35821,8 +35822,9 @@ class MazeBoard(QWidget):
                 self._flash.to(0.0, 900)
                 self._from = {i: int(c) for i, c in enumerate(old.get("p") or [])}
                 self._glide.jump(0.0)
-                self._glide.to(1.0, 260)
+                self._glide.to(1.0, 220)
             self._last_n = n
+        self.setCursor(Qt.CursorShape.PointingHandCursor if self.my_turn() else Qt.CursorShape.ArrowCursor)
         self.update()
 
     def my_turn(self) -> bool:
@@ -35918,6 +35920,8 @@ class MazeBoard(QWidget):
             self.moved.emit(hit[1])
         elif hit is not None and hit[0] == "wall" and self.my_turn():
             sfx.play("tick")
+        elif hit is not None and self.d.get("state") == "live" and not self.my_turn():
+            self.blocked.emit()
 
     # -- drawing
     def paintEvent(self, _e) -> None:
@@ -35952,6 +35956,10 @@ class MazeBoard(QWidget):
         p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
         p.setBrush(QColor(10, 12, 16))
         p.drawRoundedRect(board, S(12), S(12))
+        if self.my_turn():                                       # 9.3.2: your turn: the board lights up in your colour
+            p.setPen(QPen(alpha(MAZE_COLS[mine], 0.75), S(2)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(board.adjusted(-S(1), -S(1), S(1), S(1)), S(13), S(13))
         legal = set(self.d.get("legal") or []) if self.my_turn() else set()
         my_goal, their_goal = (0, 8) if side == 1 else (8, 0)
         for cell in range(81):
@@ -36027,6 +36035,7 @@ class TriBoard(QWidget):
     so the oldest of a full set is shown fading. Click an empty square to play there."""
     moved = pyqtSignal(int)
     LINES = ((0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6))
+    blocked = pyqtSignal()
 
     def __init__(self, width: int) -> None:
         super().__init__()
@@ -36051,6 +36060,7 @@ class TriBoard(QWidget):
                 self._flash.jump(1.0)
                 self._flash.to(0.0, 700)
             self._last_n = n
+        self.setCursor(Qt.CursorShape.PointingHandCursor if self.my_turn() else Qt.CursorShape.ArrowCursor)
         self.update()
 
     def my_turn(self) -> bool:
@@ -36101,6 +36111,8 @@ class TriBoard(QWidget):
             self.moved.emit(cell)
         elif cell >= 0 and self.my_turn():
             sfx.play("tick")
+        elif cell >= 0 and self.d.get("state") == "live":
+            self.blocked.emit()
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -36151,6 +36163,10 @@ class TriBoard(QWidget):
         p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
         p.setBrush(QColor(10, 12, 16))
         p.drawRoundedRect(board, S(14), S(14))
+        if self.my_turn():                                      # 9.3.2: your turn: the board lights up in your colour
+            p.setPen(QPen(alpha(MAZE_COLS[side - 1], 0.75), S(2)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(board.adjusted(-S(1), -S(1), S(1), S(1)), S(15), S(15))
         mine = q1 if side == 1 else q2
         mine_turn = self.my_turn()
         goes = mine[0] if mine_turn and len(mine) >= 3 and self._free(self.hover) else -1
@@ -36201,6 +36217,7 @@ class TriBoard(QWidget):
 class ArenaBoard(QWidget):
     """The board of an Arena game, drawn from what the server sent. A click sends a move (the server checks it)."""
     moved = pyqtSignal(int)
+    blocked = pyqtSignal()
 
     def __init__(self, kind: str, width: int) -> None:
         super().__init__()
@@ -36227,6 +36244,7 @@ class ArenaBoard(QWidget):
                 self._flash.jump(1.0)
                 self._flash.to(0.0, 900)
             self._last_n = n
+        self.setCursor(Qt.CursorShape.PointingHandCursor if self.my_turn() else Qt.CursorShape.ArrowCursor)
         self.update()
 
     def my_turn(self) -> bool:
@@ -36289,6 +36307,8 @@ class ArenaBoard(QWidget):
         if self._legal(m):
             sfx.play("drop" if self.kind == "c4" else "chip" if self.kind == "reversi" else "putt")
             self.moved.emit(m)
+        elif m >= 0 and self.d.get("state") == "live" and not self.my_turn():
+            self.blocked.emit()
 
     # -- drawing
     def paintEvent(self, _e) -> None:
@@ -36296,6 +36316,16 @@ class ArenaBoard(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         try:
             (self._paint_c4 if self.kind == "c4" else self._paint_rv if self.kind == "reversi" else self._paint_sh)(p)
+            if self.my_turn():                             # 9.3.2: your turn: the board you play on lights up
+                if self.kind == "c4":
+                    fr, rad = QRectF(0, 0, self.width(), self.height() - S(8)), S(14)
+                elif self.kind == "reversi":
+                    fr, rad = QRectF(self.rect()), S(8)
+                else:
+                    fr, rad = self._ships_rects()[0], S(8)
+                p.setPen(QPen(alpha("#FFD34D", 0.75), S(2)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(fr.adjusted(S(1), S(1), -S(1), -S(1)), rad, rad)
         except Exception as exc:  # noqa: BLE001
             log.debug("arena paint: %s", exc)
 
@@ -36423,6 +36453,11 @@ class ArenaBoard(QWidget):
             if v == "o":
                 p.setBrush(QColor(255, 255, 255, 90))
                 p.drawEllipse(c, cs * 0.12, cs * 0.12)
+            elif v == "p":                                  # 9.3.2: your shot, on its way
+                p.setPen(QPen(QColor("#FFD34D"), S(2)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(c, cs * 0.3, cs * 0.3)
+                p.setPen(Qt.PenStyle.NoPen)
             elif v in "xs":
                 p.setBrush(QColor("#FF5C3A") if v == "x" else QColor("#8E1A10"))
                 p.drawEllipse(c, cs * 0.32, cs * 0.32)
@@ -36449,6 +36484,15 @@ class ArenaBoard(QWidget):
         self._grid(p, small, str(d.get("taken") or ""), d.get("fleet") or [], False, tr("YOUR FLEET"))
 
 
+def arena_secs_left(d: dict):
+    """9.3.2: the seconds left for this turn, counted down smoothly from when the server last said."""
+    if d.get("secs") is None or d.get("state") != "live":
+        return None
+    t = d.get("_t")
+    gone = time.monotonic() - float(t) if t is not None else 0.0
+    return max(0, int(math.ceil(float(d.get("secs") or 0) - gone)))
+
+
 def arena_status(ctx, d: dict) -> tuple:
     """(text, colour) for the line above the board."""
     st, side = d.get("state"), int(d.get("side") or 0)
@@ -36470,10 +36514,111 @@ def arena_status(ctx, d: dict) -> tuple:
             return (tr("You won!") + (f" ({why})" if why else "") +
                     (f"  ·  +{coins_text(paid)}" if paid else "")), "#5BE08A"
         return tr("{name} won", name=other) + (f" ({why})" if why else ""), "#FF7A7A"
-    secs = int(d.get("secs") or 0)
+    left = arena_secs_left(d)
+    clock = f"  ·  {left} s" if left is not None and left <= 15 else ""      # 9.3.2: the clock only when it matters
     if int(d.get("turn") or 0) == side:
-        return tr("Your turn") + f"  ·  {secs} s", "#FFD34D"
-    return tr("{name} is thinking…", name=other) + f"  ·  {secs} s", TEXT_DIM
+        return tr("Your turn") + clock, "#FFD34D"
+    return tr("{name} is thinking…", name=other) + clock, TEXT
+
+
+def arena_turn_cols(d: dict) -> tuple:
+    """(your colour, their colour) in this game."""
+    side, kind = int(d.get("side") or 0), d.get("kind")
+    if not side:
+        return TEXT, TEXT
+    if kind == "c4":
+        return ARENA_SIDES[side - 1], ARENA_SIDES[2 - side]
+    if kind in ("maze", "tri"):
+        return MAZE_COLS[side - 1], MAZE_COLS[2 - side]
+    return "#FFD34D", "#9AA4AD"
+
+
+class TurnBanner(QWidget):
+    """9.3.2: whose turn it is, big and plain. Your turn: a band in your colour that breathes. Their turn: their
+    colour and dots that move while they think. A click out of turn gives it a little shake."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._text, self._col, self._mode, self._dot = "", QColor(TEXT), "", QColor(TEXT)
+        self._shake = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self._anim = QTimer(self)
+        self._anim.setInterval(50)
+        self._anim.timeout.connect(self.update)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setFixedHeight(S(40))
+
+    def set_text(self, text: str) -> None:
+        if text != self._text:
+            self._text = text
+            self.update()
+
+    def set_color(self, color) -> None:
+        self._col = QColor(color)
+        self.update()
+
+    def set_game(self, ctx, d: dict) -> None:
+        text, col = arena_status(ctx, d)
+        mine_col, their_col = arena_turn_cols(d)
+        mode = ""
+        if d.get("state") == "live":
+            mode = "mine" if int(d.get("turn") or 0) == int(d.get("side") or -1) else "wait"
+        self._mode = mode
+        self._dot = QColor(mine_col if mode == "mine" else their_col)
+        if mode and not self._anim.isActive():
+            self._anim.start()
+        elif not mode:
+            self._anim.stop()
+        self.set_color(col)
+        self.set_text(text)
+
+    def nudge(self) -> None:
+        self._shake.jump(1.0)
+        self._shake.to(0.0, 420)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        r = QRectF(self.rect()).adjusted(S(1), S(2), -S(1), -S(2))
+        r.translate(math.sin(now * 46.0) * S(6) * self._shake.level, 0)
+        rad = r.height() / 2
+        if self._mode == "mine":
+            beat = 0.5 + 0.5 * math.sin(now * 3.4)
+            p.setPen(QPen(alpha(self._dot, 0.55 + 0.35 * beat), S(1.6)))
+            p.setBrush(alpha(self._dot, 0.14 + 0.08 * beat))
+        else:
+            p.setPen(QPen(alpha("#FFFFFF", 0.10), 1))
+            p.setBrush(alpha("#FFFFFF", 0.045))
+        p.drawRoundedRect(r, rad, rad)
+        x = r.left() + S(16)
+        if self._mode:
+            dc = QPointF(x + S(5), r.center().y())
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(self._dot)
+            p.drawEllipse(dc, S(5.5), S(5.5))
+            x += S(20)
+        text = self._text
+        dots = ""
+        if self._mode == "wait" and "…" in text:            # the thinking dots move
+            head, _sep, tail = text.partition("…")
+            text, dots = head, "." * (1 + int(now * 3.0) % 3)
+        else:
+            tail = ""
+        f = font(13.5, QFont.Weight.ExtraBold if self._mode == "mine" else QFont.Weight.Bold)
+        p.setFont(f)
+        fm = p.fontMetrics()
+        p.setPen(self._col)
+        tr_ = QRectF(x, r.top(), r.right() - x - S(12), r.height())
+        p.drawText(tr_, int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), text)
+        if dots or tail:
+            x2 = x + fm.horizontalAdvance(text)
+            p.drawText(QRectF(x2, r.top(), fm.horizontalAdvance("..."), r.height()),
+                       int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), dots)
+            if tail:
+                x3 = x2 + fm.horizontalAdvance("...")
+                p.drawText(QRectF(x3, r.top(), max(0.0, r.right() - x3 - S(12)), r.height()),
+                           int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), tail)
 
 
 def arena_discs(d: dict) -> str:
@@ -36496,25 +36641,123 @@ def arena_call(page, fn: str, args: dict, then=None) -> None:
     ctx.econ.call(fn, args, done)
 
 
+ARENA_TURN_SECS = {"reversi": 45, "ships": 30, "maze": 60, "tri": 30, "c4": 30}     # the server's rb_bg_turn_secs
+ARENA_THINK_MS = {"easy": (380, 620), "medium": (450, 750), "hard": (550, 880), "insane": (650, 1000)}
+
+
+def arena_think_ms(level) -> int:
+    """9.3.2: the least time a bot's answer takes on screen, so its move never snaps in on top of yours. The bot
+    itself thinks on the server for as long as it needs (Professional uses its whole budget), so this only pads
+    quick answers and never slows a bot down or makes it weaker."""
+    import random
+    lo, hi = ARENA_THINK_MS.get(str(level or ""), (450, 750))
+    return int(random.uniform(lo, hi))
+
+
+def arena_local_move(d: dict, m: int):
+    """9.3.2: your move, drawn the moment you click (the server still checks it and has the last word).
+    Returns the game as it looks after your move, or None when it can't be shown ahead."""
+    kind, side = d.get("kind"), int(d.get("side") or 0)
+    if not side or d.get("state") != "live" or int(d.get("turn") or 0) != side:
+        return None
+    out = dict(d)
+    try:
+        if kind == "maze":
+            b = dict(d.get("board") or {})
+            h, v = str(b.get("h") or "." * 64), str(b.get("v") or "." * 64)
+            pos, walls = list(b.get("p") or [76, 4]), list(b.get("w") or [10, 10])
+            if 0 <= m <= 80:
+                if m not in (d.get("legal") or []):
+                    return None
+                pos[side - 1] = m
+            else:
+                if not mz_wall_ok(b, side, m):
+                    return None
+                a = m % 100
+                if m < 200:
+                    h = h[:a] + str(side) + h[a + 1:]
+                else:
+                    v = v[:a] + str(side) + v[a + 1:]
+                walls[side - 1] = int(walls[side - 1]) - 1
+            b.update(h=h, v=v, p=pos, w=walls)
+            out["board"] = b
+            out.pop("legal", None)
+        elif kind == "tri":
+            b = dict(d.get("board") or {})
+            q = [[int(c) for c in x] for x in (b.get("q") or [[], []])]
+            if m in q[0] or m in q[1] or not 0 <= m <= 8:
+                return None
+            mine = q[side - 1]
+            q[side - 1] = (mine[1:] if len(mine) >= 3 else mine) + [m]
+            b["q"] = q
+            out["board"] = b
+        elif kind == "c4":
+            bd = list(str(d.get("board") or ""))
+            row = next((r for r in range(6) if len(bd) == 42 and bd[r * 7 + m] == "."), None)
+            if row is None:
+                return None
+            bd[row * 7 + m] = str(side)
+            out["board"] = "".join(bd)
+        elif kind == "reversi":
+            bd = str(d.get("board") or "")
+            flips = rv_flips_py(bd, m, str(side))
+            if not flips:
+                return None
+            cells = list(bd)
+            for x in flips + [m]:
+                cells[x] = str(side)
+            out["board"] = "".join(cells)
+            out.pop("legal", None)
+        elif kind == "ships":                        # hit or miss is the server's secret: a ring until it answers
+            shots = str(d.get("shots") or "")
+            if len(shots) != 100 or shots[m] != ".":
+                return None
+            out["shots"] = shots[:m] + "p" + shots[m + 1:]
+            return out
+        else:
+            return None
+    except (TypeError, ValueError, IndexError, AttributeError):
+        return None
+    out.update(turn=3 - side, n=int(d.get("n") or 0) + 1, last={"s": side, "m": m},
+               secs=ARENA_TURN_SECS.get(kind, 30), _t=time.monotonic())
+    return out
+
+
+def arena_show(page, d: dict) -> None:
+    """9.3.2: draw a game state on the screen in place (the board, whose turn, the discs)."""
+    board = getattr(page, "arena_board", None)
+    try:
+        if board is not None:
+            board.set_data(d)
+        line = getattr(page, "arena_line", None)
+        if line is not None:
+            line.set_game(page.ctx, d)
+        discs = getattr(page, "arena_discs", None)
+        if discs is not None:
+            discs.set_text(arena_discs(d))
+    except RuntimeError:
+        pass
+
+
 def arena_take(page, d) -> None:
     """A new game state from the server: the board updates in place; a new phase rebuilds the screen."""
     ctx = page.ctx
     if not isinstance(d, dict) or not d.get("id"):
         return
+    d["_t"] = time.monotonic()
     old = getattr(ctx, "arena_game", None) or {}
     ctx.arena_game = d
     board = getattr(page, "arena_board", None)
     try:
         if board is not None and old.get("id") == d.get("id") and old.get("state") == d.get("state"):
-            board.set_data(d)
-            line = getattr(page, "arena_line", None)
-            if line is not None:
-                text, col = arena_status(ctx, d)
-                line.set_text(text)
-                line.set_color(col)
-            discs = getattr(page, "arena_discs", None)
-            if discs is not None:
-                discs.set_text(arena_discs(d))
+            shown = dict(board.d or {})
+            side = int(d.get("side") or 0)
+            if (d.get("state") == "live" and int(d.get("n") or 0) > int(shown.get("n") or 0)
+                    and (d.get("last") or {}).get("s") not in (None, side)):
+                lm = int((d.get("last") or {}).get("m") if (d.get("last") or {}).get("m") is not None else -1)
+                sfx.play("drop" if d.get("kind") == "c4" else "chip" if d.get("kind") == "maze" and lm >= 100
+                         else "pick")                         # 9.3.2: you hear their move land
+            arena_show(page, d)
             shuf = getattr(page, "arena_shuffle", None)
             if shuf is not None and int(d.get("n") or 0) > 0:
                 shuf.hide()                              # only before the first shot
@@ -36606,31 +36849,82 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
     vs = Label(f"{them} ●", 12, their_col, bold=True, align=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
     names.addWidget(vs, 1)
     lay.addLayout(names)
-    text, col = arena_status(ctx, g)
-    line = Label(text, 13, col, bold=True)
+    line = TurnBanner()                                 # 9.3.2: whose turn it is, big and clear
     page.arena_line = line
     lay.addWidget(line)
+    if g.get("_t") is None:
+        g["_t"] = time.monotonic()
     board = (MazeBoard(page.W) if g.get("kind") == "maze" else TriBoard(page.W) if g.get("kind") == "tri"
              else ArenaBoard(g.get("kind"), page.W))
-    board.set_data(g)
     page.arena_board = board
-    lay.addWidget(board, 0, Qt.AlignmentFlag.AlignHCenter)
     page.arena_discs = page.arena_shuffle = None
+    side_ = int(g.get("side") or 0)
+    last_ = g.get("last") or {}
+    intro = (getattr(ctx, "arena_intro", None) == g.get("id") and g.get("bot") and g.get("state") == "live"
+             and g.get("kind") in ("maze", "tri") and int(g.get("n") or 0) == 1 and last_.get("s") not in (None, side_))
+    ctx.arena_intro = None
+    if intro:            # 9.3.2: the bot starts: show the empty board first, then its opening move lands
+        pre = dict(g)
+        pre.update(n=0, last=None, turn=3 - side_, legal=[],
+                   board=({"p": [76, 4], "w": [10, 10], "h": "." * 64, "v": "." * 64} if g.get("kind") == "maze"
+                          else {"q": [[], []]}))
+        board.set_data(pre)
+        line.set_game(ctx, pre)
+    else:
+        board.set_data(g)
+        line.set_game(ctx, g)
+    lay.addWidget(board, 0, Qt.AlignmentFlag.AlignHCenter)
     if g.get("kind") == "reversi" and g.get("board") and g.get("state") in ("live", "done"):
         page.arena_discs = Label(arena_discs(g), 11, TEXT_DIM)
         lay.addWidget(page.arena_discs)
+    if intro:
+        state["busy"] = True
+
+        def opening() -> None:
+            state["busy"] = False
+            if (getattr(ctx, "arena_game", None) or {}).get("id") == g.get("id"):
+                arena_take(page, ctx.arena_game)
+        QTimer.singleShot(arena_think_ms(g.get("level")), opening)
+
+    def not_yet() -> None:
+        """A click while the other side is still to play: a soft sound and the banner shakes."""
+        sfx.play("tick")
+        try:
+            line.nudge()
+        except RuntimeError:
+            pass
 
     def move(m: int) -> None:
         if state["busy"]:
-            return
+            return not_yet()
+        before = dict(board.d or {})
+        mid = arena_local_move(before, m)               # 9.3.2: your move shows at once
         state["busy"] = True
+        state["seq"] = state.get("seq", 0) + 1
+        t0 = time.monotonic()
+        if mid is not None:
+            arena_show(page, mid)
 
         def after(d) -> None:
-            state["busy"] = False
-            if d:
+            if not d:
+                state["busy"] = False
+                if mid is not None:                     # the server said no: put the board back
+                    arena_show(page, before)
+                return
+            wait = 0
+            if d.get("bot") and int(d.get("n") or 0) > int(before.get("n") or 0) + 1:
+                wait = arena_think_ms(d.get("level")) - int((time.monotonic() - t0) * 1000)
+
+            def land() -> None:
+                state["busy"] = False
                 arena_take(page, d)
-        arena_call(page, "rb_bg_move", {"gid": g["id"], "m": int(m), "n": int(board.d.get("n") or 0)}, after)
+            if wait > 30:
+                QTimer.singleShot(wait, land)
+            else:
+                land()
+        arena_call(page, "rb_bg_move", {"gid": g["id"], "m": int(m), "n": int(before.get("n") or 0)}, after)
     board.moved.connect(move)
+    board.blocked.connect(not_yet)
     row = hbox(spacing=8)
     st = g.get("state")
     if st == "open":
@@ -36656,8 +36950,11 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
         def play_again() -> None:
             ctx.arena_game = None
             if g.get("bot"):
+                again.setEnabled(False)
+                again.set_text(tr("Starting…"))
                 arena_call(page, "rb_bg_bot", {"kind": g.get("kind"), "level": g.get("level") or "easy"},
-                           lambda d: arena_take(page, d) if d else ctx.reload_page("games"))
+                           lambda d: (setattr(ctx, "arena_intro", d.get("id")), arena_take(page, d)) if d
+                           else ctx.reload_page("games"))
             else:
                 ctx.reload_page("games")
         again.clicked.connect(play_again)
@@ -36673,29 +36970,39 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
                                 wrap_w=page.W))
 
     def tick() -> None:
+        """9.3.2: twice a second. A person's move arrives within half a second; while it is your turn (or a bot's)
+        it only checks now and then, for the clock."""
         cur = getattr(ctx, "arena_game", None) or {}
         if cur.get("id") != g.get("id") or cur.get("state") not in ("open", "live"):
             poll.stop()
             return
         state["tick"] += 1
-        if cur.get("secs") is not None and cur.get("state") == "live":
-            cur["secs"] = max(0, int(cur.get("secs") or 0) - 1)
+        if not state["busy"]:
             try:
-                text_, col_ = arena_status(ctx, cur)
-                line.set_text(text_)
-                line.set_color(col_)
+                line.set_game(ctx, board.d or cur)
             except RuntimeError:
                 return poll.stop()
         mine_turn = cur.get("state") == "live" and int(cur.get("turn") or 0) == side
-        if state["busy"] or (mine_turn and state["tick"] % 4):
+        every = 8 if mine_turn else 4 if cur.get("bot") else 2 if cur.get("state") == "open" else 1
+        if state["busy"] or state.get("asking") or state["tick"] % every:
             return
-        state["busy"] = True
+        state["asking"] = True
+        seq = state.get("seq", 0)
 
         def got(ok: bool, d) -> None:
-            state["busy"] = False
-            if ok and isinstance(d, dict):
-                arena_take(page, d)
+            state["asking"] = False
+            if not ok or not isinstance(d, dict) or state["busy"] or seq != state.get("seq", 0):
+                return                                  # a move went out meanwhile: its answer is newer
+            shown = getattr(board, "d", None) or {}
+            try:
+                if (d.get("id") == shown.get("id") and d.get("state") == shown.get("state")
+                        and int(d.get("n") or 0) < int(shown.get("n") or 0)):
+                    return                              # older than what is on screen
+            except RuntimeError:
+                return
+            arena_take(page, d)
         ctx.online.ask("rb_bg_state", {"gid": g["id"]}, got)
+    poll.setInterval(500)
     poll.timeout.connect(tick)
     if st in ("open", "live"):
         poll.start()
@@ -36729,9 +37036,11 @@ def _arena_bot_setup(page, lay, kind: str, lobby: dict) -> None:
 
     def start() -> None:
         go.setEnabled(False)
+        go.set_text(tr("Starting…"))
         key = ARENA_LEVELS[seg.index() if hasattr(seg, "index") else int(getattr(ctx, "arena_level_" + kind, 1) or 0)][0]
         arena_call(page, "rb_bg_bot", {"kind": kind, "level": key},
-                   lambda d: arena_take(page, d) if d else go.setEnabled(True))
+                   lambda d: (setattr(ctx, "arena_intro", d.get("id")), arena_take(page, d)) if d
+                   else (go.setEnabled(True), go.set_text(tr("Play"))))
     go.clicked.connect(start)
     lay.addWidget(go)
     duel = Button(tr("Play a person instead"), "ghost", 32, icon="users")
@@ -55523,7 +55832,9 @@ class ConnectFour(Game):
                 self.page.sync()
                 return
             self.pending = ans
-            wait = float(ans.get("think") or 0)
+            # 9.3.2: the server suggests a long show of thinking (up to 6 s on Professional). The bot has already
+            # found its move by now, so it lands after a short, natural pause instead: same move, no long wait.
+            wait = min(1.1, max(0.35, float(ans.get("think") or 0) * 0.3))
             self.thinking_until = self.sent_at + wait if ans.get("bot", -1) >= 0 else 0
             QTimer.singleShot(int(max(0.0, self.thinking_until - time.monotonic()) * 1000) + 30, self._land)
             self.page.sync()
