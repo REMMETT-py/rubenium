@@ -1,5 +1,25 @@
 # Economy
 
+## 9.2.1: prize limits by wealth tier
+
+Every daily limit is worked out by the server from the player's wealth tier (rb_config, Admin > Economy). `cap_x_<tier>`
+multiplies the base daily limit on top of the tier's reward multiplier; 0 means no daily limit.
+
+| | Poor | Average | Investor | Businessman | Casino Legend |
+|---|---|---|---|---|---|
+| Reward multiplier (`tier_x_`) | x1 | x1.3 | x1.8 | x2.6 | x4 |
+| Limit multiplier (`cap_x_`) | x2 | x3 | x4 | x6 | no limit |
+| Mini game coins a day, each game (3 000 base, before the level bonus) | 6 000 | 11 700 | 21 600 | 46 800 | no limit |
+| Karting prizes a day (2 500 base) | 5 000 | 9 750 | 18 000 | 39 000 | no limit |
+| AFK coins a day (2 400 base + streak) | 4 800 | 9 360 | 17 280 | 37 440 | no limit |
+| Keys kept from time (`key_cap_`) | 10 | 15 | 20 | 30 | 50 |
+| Key Forge a day (`forge_day_`) | 5 | 8 | 12 | 20 | 40 |
+| Keys found in games a day (`key_find_day_`) | 16 | 20 | 25 | 35 | 60 |
+| Biggest bet in a duel or room (`duel_max_bet_`, and never above 80% of your coins) | 10 000 | 20 000 | 40 000 | 75 000 | 150 000 |
+
+Skill games (Timing, Cups, Colour Pick, SFX Match, Connect 4 and the bot games) had no daily limit before and still have
+none. Bots keep the base limits. Reaching a new tier shows a rank-up screen once (profiles.tier_seen).
+
 ## 9.0 (current)
 
 Everything lives in the server (rb_config) and can be changed from Admin > Economy.
