@@ -3,36 +3,22 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { bestMove, result, Board } from "./ai.ts";
 import { perfectMove, loadBook } from "./solver.ts";
+import { BOOK_B64 } from "./book_data.ts";
 
-// 6.0: the Professional's opening book, built offline (tools/c4book), read once per server start from the public repo
-// and checked against its SHA-256. Without it the Professional still solves, just more slowly early in a game.
-const BOOK_URL = "https://raw.githubusercontent.com/REMMETT-py/rubenium/main/supabase/functions/c4/book.bin";
+// 6.0: the Professional's opening book, built offline (tools/c4book). 9.2: bundled with the function (book_data.ts)
+// instead of read from the source repo, which is private now. Checked against its SHA-256 once per server start.
 const BOOK_SHA = "dfcb8f7a4b79396acbf6a37fc236df020f4357a0503535c93be330f34ff726f1";
-let bookState: "none" | "loading" | "ok" | "bad" = "none";
-let bookWait: Promise<void> | null = null;
-let bookTried = 0;
-function ensureBook(): Promise<void> {
-  if (bookState === "ok") return Promise.resolve();
-  if (bookState === "bad") {
-    if (Date.now() - bookTried < 60_000) return Promise.resolve();
-    bookWait = null;                                // tried a minute ago and failed: try again
-  }
-  if (!bookWait) {
-    bookTried = Date.now();
-    bookState = "loading";
-    bookWait = (async () => {
-      try {
-        const res = await fetch(BOOK_URL, { signal: AbortSignal.timeout(4000) });
-        const buf = new Uint8Array(await res.arrayBuffer());
-        const sha = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buf)))
-          .map((x) => x.toString(16).padStart(2, "0")).join("");
-        if (sha !== BOOK_SHA) { console.error("c4 book checksum mismatch", sha); bookState = "bad"; return; }
-        console.log("c4 book", loadBook(buf), "positions");
-        bookState = "ok";
-      } catch (e) { console.error("c4 book", e); bookState = "bad"; }
-    })();
-  }
-  return bookWait;
+let bookState: "none" | "ok" | "bad" = "none";
+async function ensureBook(): Promise<void> {
+  if (bookState !== "none") return;
+  try {
+    const buf = Uint8Array.from(atob(BOOK_B64), (ch) => ch.charCodeAt(0));
+    const sha = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buf)))
+      .map((x) => x.toString(16).padStart(2, "0")).join("");
+    if (sha !== BOOK_SHA) { console.error("c4 book checksum mismatch", sha); bookState = "bad"; return; }
+    console.log("c4 book", loadBook(buf), "positions");
+    bookState = "ok";
+  } catch (e) { console.error("c4 book", e); bookState = "bad"; }
 }
 ensureBook();
 

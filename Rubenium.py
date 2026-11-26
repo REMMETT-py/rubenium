@@ -1491,8 +1491,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.1"         # the version people see
-BUILD = "2026.11.25.25"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "9.2"       # the version people see
+BUILD = "2026.11.26.27"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2047,6 +2047,7 @@ DEFAULTS: dict = {
     "ball_style": "classic",
     "ring_style": "line",
     "casino_warned": False,
+    "terms_seen": 0,                     # 9.2: the Terms version accepted on this PC
     "accent_from_screen": False,
     "notify": {},
     "notify_sound": True,
@@ -2085,6 +2086,7 @@ DEFAULTS: dict = {
     "ad_mute": True,                     # 3.2: mute the music app while an advert plays
     "online_tab": "hub",                 # 3.2: the last part of the online menu that was open (9.0: Home first)
     "recent_games": [],                  # 9.0: the casino games played last (Home's "Jump back in")
+    "kart": {"track": 0, "laps": 3, "elo": 1000, "size": 1, "bot": True, "collide": True, "boost": True, "damage": True},
     "casino_bet": 50,                    # 9.0: the last bet, kept between sessions
     "hilo_help": False,
     "my_stats": ["cases", "trades", "rounds", "casino"],     # 5.13: the bottom row of your stats card
@@ -2373,6 +2375,26 @@ log = logging.getLogger("rubenium.online")
 
 API_URL = os.environ.get("RUBENIUM_API", "https://nrdcdjeahvvtkswkvacz.supabase.co")
 API_KEY = "sb_publishable_cdVja4ZFwumAmMQIfZgaOw_pQbCbAXp"
+TERMS_URL = "https://github.com/REMMETT-py/rubenium-releases/blob/main/TERMS.md"      # 9.2: English, then French
+PRIVACY_URL = "https://github.com/REMMETT-py/rubenium-releases/blob/main/PRIVACY.md"
+TERMS_VERSION = 20261126                     # 9.2: rb_config terms_version; raise both when the terms change
+MIN_AGE = 18
+
+
+def open_web(url: str) -> None:
+    """9.2: open a page in the default browser. The Terms and the Privacy Policy come from the installer repo, or
+    from the old repo while the installer repo does not have them yet."""
+    import threading
+    import webbrowser
+
+    def go() -> None:
+        target = url
+        if url in (TERMS_URL, PRIVACY_URL) and not _url_ok(url, 5.0):
+            target = url.replace("/rubenium-releases/", "/rubenium/")
+        webbrowser.open(target)
+    threading.Thread(target=go, daemon=True).start()
+
+
 MAIL = "@users.rubenium.app"                 # accounts have no real e-mail: the username is turned into one
 USERNAME_RE = re.compile(r"^[A-Za-z0-9]{3,10}$")
 PASSWORD_MIN = 8
@@ -2769,7 +2791,8 @@ class Online(QObject):
                 raise ApiError("rb_device_used")
             try:
                 ans = _request("/auth/v1/signup", {"email": username.lower() + MAIL, "password": password,
-                                                   "data": {"username": username, "device": pc}})
+                                                   "data": {"username": username, "device": pc,
+                                                            "terms": str(TERMS_VERSION), "adult": True}})
             except ApiError as err:
                 if "database error" in (err.key or "").lower():     # the server refused: almost always the PC rule
                     raise ApiError("rb_device_used") from None
@@ -7510,6 +7533,11 @@ def draw_icon(p: QPainter, kind: str, fg: QColor, hover: float = 0.0) -> None:
         p.drawArc(QRectF(4.5, -6.5, 4.5, 6), 90 * 16, -180 * 16)
         p.drawPath(_poly((0, 2.5), (0, 6)))
         p.drawPath(_poly((-4, 8), (4, 8)))
+    elif kind == "medal":                                 # 9.2: Trophies in the side menu
+        p.drawPath(_poly((-4.5, -8.5), (-1.5, -2.5)))
+        p.drawPath(_poly((4.5, -8.5), (1.5, -2.5)))
+        p.drawEllipse(QPointF(0, 2.5), 5.5, 5.5)
+        p.drawEllipse(QPointF(0, 2.5), 2.2, 2.2)
     elif kind == "coin":                                  # 3.2: coinflip
         p.drawEllipse(QPointF(0, 0), 8, 8)
         p.drawEllipse(QPointF(0, 0), 5, 5)
@@ -9137,8 +9165,7 @@ class TabBar(QWidget):
                 p.save()
                 p.setClipRect(r)
                 p.setOpacity(w)
-                p.setFont(self._font)
-                p.setPen(QColor("#FFFFFF"))
+                p.setPen(fg)                                # 9.2: dark on a light pill, white on a dark one
                 p.setFont(font(11.5, QFont.Weight.Bold))
                 if key == "online" and locked:
                     p.setPen(QColor(TEXT_FAINT))
@@ -12653,6 +12680,8 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.2", ["NEW: Karting, a racing game for 1 to 3 players and always one bot, on 3 circuits. Boost, drift for mini turbos, slipstream, bump the others, and big crashes wreck your kart. Pick the bot from 100 to 2500 (Professional is a perfect driver), and after each race everyone gets a score out of 100%", "Mini Golf rooms: pick the bots' level, from Easy to Professional. Bots play every hole with the real ball physics, and Professional finds a hole in one wherever there is one", 'Mini games pay double: Timing, Cups, Colour Pick, SFX Match, Connect 4, Beat Tap, Parking, Memory, Block Blast, Minesweeper and every bot game', 'The top bot is called Professional in every game, and it plays the strongest moves it can find', 'NEW: Trifade, endless noughts and crosses. You only keep 3 marks: your 4th takes your oldest away, so the game goes on until someone wins. Against bots from Easy to Professional (it always starts and plays the best move every time), or against players', 'NEW: Mazelock, a duel board game. Race your pawn to the other side and place walls to block the way. Against bots from Easy to Professional (it always starts and plays the strongest moves it can find), or against players', 'Play is clearer: Mini games, then Duels (Connect 4, Battleships, Mazelock, Trifade, each against a bot or a player), then Multiplayer (Mini Golf and Wave Rush, up to 4 players)', 'Wave Rush rooms for 2 to 4 players: everyone races live in their own colour, and after a crash you watch the others (switch with the arrows or by clicking a name). The longest run wins the pot', 'Wave Rush: the practice ghost has its own clear card, and it never shows in races against players', 'Trophies have their own page in the side menu', 'A new Home: your tier, the free rewards waiting for you, the game that is live now and the games you played last', 'Jackpot and Horse Racing take turns every 20 minutes on a fixed clock. The next one stays locked with a countdown, and bots keep both going', 'Stats: look up any player by typing a few letters of their name, and a new Records page. Player numbers moved out of Friends into Stats', 'Fresh season: everyone restarts with 2 500 coins and 5 keys, and every leaderboard, streak and quest starts again. Items stay, except for OG players, who start completely fresh with the starter pack. Leaderboards are Global only', 'Fixes: starting a mini game no longer says you already have one going, the scratch card takes you back when it is done and its chances sit under the card, readable text on light buttons', 'LEAVE CASINO door, animation previews that play when you hover them, one online menu size, the daily reward sits lower', 'Coinflip: fewer huge bot flips, and bots take longer to match a big flip (up to 2 min, you are told). Reversi is gone, and so are the Titanium White and Black fonts']),
+    ("9.1.1", ['A starter pack for everyone: 2 500 coins, 5 keys, 3 Starter Cases and 5 Standard Cases', 'Lower tiers: Average 25 000, Investor 100 000, Businessman 250 000, Casino Legend 1 000 000. Everyone starts at Poor', 'Your wealth is exact now: your coins + the shop value of the items you got since 9.1. The tier bar shows it, and hovering it shows the coins and items parts']),
     ("9.1", ['A fresh start for everyone: coins and keys go back to 0. Your level, your Common and Rare basic items and the OG tag stay', 'Five wealth tiers, from Poor to Casino Legend: a tier you reach is yours for good, and it multiplies every free reward', 'Leaderboards have their own tab in the side menu, with every game: casino, mini games, Horse Racing and every duel', 'A new Stats tab: your wealth, casino results by game, mini game coins and where your free coins came from, all in graphs', 'Play is now an ENTER CASINO door (casino games, Jackpot, Horse Racing, Coinflip behind it) and the mini games', 'Mini games are free and pay by how well you play, judged on the server. No daily limit: your first 8 rounds of each game every day pay double', "NEW: Reversi and Battleships against bots from Easy to Insane. The bots play on the server, so they can't be tricked", 'NEW: Duels. Connect 4, Reversi and Battleships 1 v 1 against other players, free or for the same bet (the winner takes the pot, less 5%), next to Mini Golf and Wave Rush', 'Separate cases for each kind of item, and the Crown Vault (20 000) that holds them all. The Key Forge gives more keys at higher tiers', '5 animations, each with versions you unlock by owning the original', 'Badge layouts that fit how many badges you show: a row, spread out, stacked or a pyramid', "The online doors are Rubenium doors now, buttons take the colours of the song's cover, and the menu widens while you play a game", 'Lyrics stay in time with the song, and the lyrics picked match the version you are playing', 'Horse Racing shows wins properly, scratch cards never get stuck, and Rewards says how often each one comes back', 'The tutorial shows the app as it is now', 'Rubenium installs in one place (AppData\\Local\\Rubenium\\App), and Settings > UPDATE can uninstall it: hold the red button. Your online account is never touched', 'One account per PC']),
     ("9.0.1", ["The online side menu works again (it could not be clicked)", "Leaving a free game takes you back to Rewards, not an old games list"]),
     ("9.0", ['A whole new look: a side menu, a top bar with your coins and level, and big clear tiles everywhere', 'Home shows what is ready for you, the games you played last and what is live', 'Rewards: the free spin, scratch card, daily reward and quests in one place', 'Wealth tiers: free rewards grow with what you own, from Rookie to Diamond', 'The Key Forge: turn coins into keys, a few a day', 'A fresh start: everyone begins again with the same coins and keys. Cosmetics, levels and friends stay', 'New prices, odds and taxes across the whole game', 'The player market is gone. Quick sell stays', 'No more automatic game locks', 'Less text: tap a golden ? when you want the details', 'Bet faster with ½, 2× and Max, and your bet is remembered']),
@@ -13315,8 +13344,8 @@ FR.update({  # 9.1
     'One free card every {h} hours. Scratch it to see your prize.': 'Une carte gratuite toutes les {h} heures. Gratte-la pour voir ton prix.',
     'Only the server knows where the ships are: their fleet is shown once the game ends.': 'Seul le serveur sait où sont les bateaux : sa flotte est montrée à la fin de la partie.',
     'Open a duel (free, or with a bet) and wait for someone to join, or join one that is open.': 'Ouvre un duel (gratuit ou avec mise) et attends qu’on le rejoigne, ou rejoins-en un ouvert.',
-    "Pay = the level's pay (Easy 40, Medium 60, Hard 90) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.": 'Gain = le gain du niveau (Facile 40, Moyen 60, Difficile 90) × ta précision : 95 % ou plus ×1,5, 85 % ×1,25, 70 % ×1, 55 % ×0,7, 40 % ×0,4, en dessous rien.',
-    "Pay = the level's pay (Easy 50, Medium 75, Hard 110) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.": 'Gain = le gain du niveau (Facile 50, Moyen 75, Difficile 110) × ta précision : 95 % ou plus ×1,5, 85 % ×1,25, 70 % ×1, 55 % ×0,7, 40 % ×0,4, en dessous rien.',
+    "Pay = the level's pay (Easy 80, Medium 120, Hard 180) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.": 'Gain = le gain du niveau (Facile 40, Moyen 60, Difficile 90) × ta précision : 95 % ou plus ×1,5, 85 % ×1,25, 70 % ×1, 55 % ×0,7, 40 % ×0,4, en dessous rien.',
+    "Pay = the level's pay (Easy 100, Medium 150, Hard 220) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.": 'Gain = le gain du niveau (Facile 50, Moyen 75, Difficile 110) × ta précision : 95 % ou plus ×1,5, 85 % ×1,25, 70 % ×1, 55 % ×0,7, 40 % ×0,4, en dessous rien.',
     'Pays by skill': 'Paie selon ton niveau',
     'Perfect (the centre): 120 coins. Good: 50. Close: 15. Miss, or after 9 seconds: nothing.': 'Parfait (le centre) : 120 pièces. Bien : 50. Proche : 15. Raté, ou après 9 secondes : rien.',
     'Place a disc': 'Poser un pion',
@@ -13363,6 +13392,262 @@ FR.update({  # 9.1
     'Rubenium installs in one place (AppData\\Local\\Rubenium\\App), and Settings > UPDATE can uninstall it: hold the red button. Your online account is never touched': 'Rubenium s’installe à un seul endroit (AppData\\Local\\Rubenium\\App), et Réglages > MISE À JOUR peut le désinstaller : maintiens le bouton rouge. Ton compte en ligne n’est jamais touché',
     'One account per PC': 'Un seul compte par PC',
 })  # 9.1 end
+FR.update({  # 9.1.1
+    'Your wealth = your coins + the shop value of every item you got since 9.1. Cases you have not opened and items from before 9.1 do not count. Average at 25 000, Investor at 100 000, Businessman at 250 000, Casino Legend at 1 000 000. Free rewards (spins, scratch cards, daily rewards, quests, mini games and AFK coins) are multiplied by your tier. Once you reach a tier you keep it.': 'Ta richesse = tes pièces + la valeur en boutique de chaque objet reçu depuis la 9.1. Les caisses pas encore ouvertes et les objets d’avant la 9.1 ne comptent pas. Moyen à 25 000, Investisseur à 100 000, Homme d’affaires à 250 000, Légende du casino à 1 000 000. Les récompenses gratuites (roues, cartes à gratter, récompenses du jour, quêtes, mini-jeux et pièces AFK) sont multipliées par ton rang. Un rang atteint est gardé.',
+    'Wealth {w} = {c} coins + {i} in items': 'Richesse {w} = {c} pièces + {i} en objets',
+    'Wealth {w} / {n} for {name}': 'Richesse {w} / {n} pour {name}',
+    'A starter pack for everyone: 2 500 coins, 5 keys, 3 Starter Cases and 5 Standard Cases': 'Un pack de départ pour tout le monde : 2 500 pièces, 5 clés, 3 Caisses Débutant et 5 Caisses Standard',
+    'Lower tiers: Average 25 000, Investor 100 000, Businessman 250 000, Casino Legend 1 000 000. Everyone starts at Poor': 'Des rangs plus bas : Moyen 25 000, Investisseur 100 000, Homme d’affaires 250 000, Légende du casino 1 000 000. Tout le monde commence Pauvre',
+    'Your wealth is exact now: your coins + the shop value of the items you got since 9.1. The tier bar shows it, and hovering it shows the coins and items parts': 'Ta richesse est exacte maintenant : tes pièces + la valeur en boutique des objets reçus depuis la 9.1. La barre de rang l’affiche, et en la survolant tu vois la part pièces et la part objets',
+})  # 9.1.1 end
+FR.update({  # 9.2
+    'Hover to play': 'Survole pour lancer',
+    'LEAVE CASINO': 'QUITTER LE CASINO',
+    'Back to Play: mini games and duels': 'Retour à Jouer : mini-jeux et duels',
+    'See my stats': 'Voir mes stats',
+    "See {name}'s stats": 'Voir les stats de {name}',
+    '{game} opens in about {t}': '{game} ouvre dans environ {t}',
+    'NEXT UP': 'ENSUITE',
+    'Jackpot and Horse Racing take turns every 20 minutes': 'Jackpot et Course de chevaux alternent toutes les 20 minutes',
+    'Free rewards grow with your tier': 'Les récompenses gratuites grandissent avec ton rang',
+    '1 reward ready': '1 récompense prête',
+    'All collected': 'Tout est récupéré',
+    '{n} rewards ready': '{n} récompenses prêtes',
+    'Jackpot and Horse Racing take turns every 20 minutes, all day. Bots play when nobody else does.': 'Jackpot et Course de chevaux alternent toutes les 20 minutes, toute la journée. Les bots jouent quand personne d’autre ne joue.',
+    'Go to': 'Aller à',
+    '1 v 1': '1 contre 1',
+    'Global': 'Global',
+    'Type a few letters of the name, then pick it from the list.': 'Tape quelques lettres du nom, puis choisis-le dans la liste.',
+    'Name': 'Nom',
+    'Nobody with that name': 'Personne avec ce nom',
+    "Your numbers, or any player's: worked out on the server.": 'Tes chiffres, ou ceux de n’importe quel joueur : calculés par le serveur.',
+    'Their numbers, worked out on the server.': 'Ses chiffres, calculés par le serveur.',
+    "{name}'s stats": 'Stats de {name}',
+    'My stats': 'Mes stats',
+    'Add {name} as a friend to see their records.': 'Ajoute {name} en ami pour voir ses records.',
+    'Big flip: bots take up to 2 min to find these items ({t})': 'Gros flip : les bots mettent jusqu’à 2 min pour trouver ces objets ({t})',
+    'A new Home: your tier, the free rewards waiting for you, the game that is live now and the games you played last': 'Un nouvel Accueil : ton rang, les récompenses gratuites qui t’attendent, le jeu en cours et tes derniers jeux',
+    'Jackpot and Horse Racing take turns every 20 minutes on a fixed clock. The next one stays locked with a countdown, and bots keep both going': 'Jackpot et Course de chevaux alternent toutes les 20 minutes sur une horloge fixe. Le suivant reste verrouillé avec un compte à rebours, et les bots font tourner les deux',
+    'Stats: look up any player by typing a few letters of their name, and a new Records page. Player numbers moved out of Friends into Stats': 'Stats : cherche n’importe quel joueur en tapant quelques lettres de son nom, et une nouvelle page Records. Les chiffres des joueurs passent d’Amis à Stats',
+    'Fresh season: everyone restarts with 2 500 coins and 5 keys, and every leaderboard, streak and quest starts again. Items stay, except for OG players, who start completely fresh with the starter pack. Leaderboards are Global only': 'Nouvelle saison : tout le monde repart avec 2 500 pièces et 5 clés, et chaque classement, série et quête recommence. Les objets restent, sauf pour les joueurs OG, qui repartent de zéro avec le pack de départ. Les classements sont seulement Global',
+    'Fixes: starting a mini game no longer says you already have one going, the scratch card takes you back when it is done and its chances sit under the card, readable text on light buttons': 'Corrections : lancer un mini-jeu ne dit plus que tu en as déjà un en cours, la carte à gratter te ramène une fois finie et ses chances sont sous la carte, texte lisible sur les boutons clairs',
+    'LEAVE CASINO door, animation previews that play when you hover them, one online menu size, the daily reward sits lower': 'Porte QUITTER LE CASINO, aperçus d’animations qui se lancent au survol, une seule taille de menu en ligne, la récompense du jour est plus bas',
+    'Coinflip: fewer huge bot flips, and bots take longer to match a big flip (up to 2 min, you are told). Reversi is gone, and so are the Titanium White and Black fonts': 'Pile ou face : moins de très gros flips de bots, et les bots mettent plus de temps pour un gros flip (jusqu’à 2 min, tu es prévenu). Le Reversi disparaît, ainsi que les polices Blanc et Noir titane',
+    'Trophies have their own page in the side menu': 'Les Trophées ont leur propre page dans le menu latéral',
+    'Their walls': 'Ses murs',
+    'Your walls': 'Tes murs',
+    'reached the other side': 'arrivé de l’autre côté',
+    'too many moves': 'trop de coups',
+    'Groove: place a wall': 'Rainure : poser un mur',
+    'Lit square: step': 'Case éclairée : avancer',
+    'Race your pawn to the far side. Each turn, step one square or place one of your 10 walls to slow the other side down. A wall can never close a pawn in. Professional always starts and does not make mistakes.': 'Amène ton pion de l’autre côté. À chaque tour, avance d’une case ou pose un de tes 10 murs pour ralentir l’adversaire. Un mur ne peut jamais enfermer un pion. Professionnel commence toujours et ne fait pas d’erreur.',
+    'Board games 1 v 1. Against a bot (free, pays by how well you win) or against a player, for fun or for the same bet each: the winner takes the pot (less a small fee).': 'Jeux de plateau en 1 contre 1. Contre un bot (gratuit, paie selon ta victoire) ou contre un joueur, pour le plaisir ou pour la même mise chacun : le gagnant prend le pot (moins de petits frais).',
+    'Multiplayer': 'Multijoueur',
+    'Play with up to 4 players at once, for fun or for a bet.': 'Joue jusqu’à 4 joueurs à la fois, pour le plaisir ou pour une mise.',
+    'Mazelock': 'Mazelock',
+    'Bot or player': 'Bot ou joueur',
+    'Up to 4 players': 'Jusqu’à 4 joueurs',
+    'Professional': 'Professionnel',
+    '◀ ▶ or click a name to watch someone else': '◀ ▶ ou clique un nom pour regarder quelqu’un d’autre',
+    'MULTIPLAYER': 'MULTIJOUEUR',
+    'ROOM': 'SALLE',
+    'Practice ghost': 'Fantôme d’entraînement',
+    "A good player's run on your course, see-through, a little ahead. Solo only.": 'La course d’un bon joueur sur ton parcours, transparente, un peu devant. En solo seulement.',
+    'Empty seat': 'Place libre',
+    'Everyone races the same course at the same time and sees the others live. The longest run wins the pot (less 5%).': 'Tout le monde court sur le même parcours en même temps et voit les autres en direct. La plus longue course gagne la cagnotte (moins 5 %).',
+    'Open a room': 'Ouvrir une salle',
+    'Open rooms': 'Salles ouvertes',
+    'Nobody is waiting. Open a room and players can join it.': 'Personne n’attend. Ouvre une salle et d’autres joueurs pourront la rejoindre.',
+    '{a}/{b} players': '{a}/{b} joueurs',
+    'Place {n}': '{n}e place',
+    '{n} players': '{n} joueurs',
+    'Back to rooms': 'Retour aux salles',
+    'Leave room': 'Quitter la salle',
+    'Leave the race? Your run counts as 0 m.': 'Quitter la course ? Ta course compte pour 0 m.',
+    'Close room': 'Fermer la salle',
+    'Waiting for players: {a}/{b}': 'En attente de joueurs : {a}/{b}',
+    'The race starts when the room is full': 'La course démarre quand la salle est pleine',
+    'Start now, or wait for more players': 'Commence maintenant, ou attends d’autres joueurs',
+    'The room was closed: bets given back': 'La salle a été fermée : mises rendues',
+    'The room was closed': 'La salle a été fermée',
+    'Race!': 'Course !',
+    '{n} still racing': '{n} encore en course',
+    'NEW: Mazelock, a duel board game. Race your pawn to the other side and place walls to block the way. Against bots from Easy to Professional (it always starts and plays the strongest moves it can find), or against players': 'NOUVEAU : Mazelock, un jeu de plateau en duel. Amène ton pion de l’autre côté et pose des murs pour barrer la route. Contre des bots de Facile à Professionnel (il commence toujours et joue les coups les plus forts qu’il trouve), ou contre des joueurs',
+    'Play is clearer: Mini games, then Duels (Connect 4, Battleships, Mazelock, Trifade, each against a bot or a player), then Multiplayer (Mini Golf and Wave Rush, up to 4 players)': 'Jouer est plus clair : les mini-jeux, puis les Duels (Puissance 4, Bataille navale, Mazelock, Trifade, chacun contre un bot ou un joueur), puis le Multijoueur (Mini Golf et Wave Rush, jusqu’à 4 joueurs)',
+    'Wave Rush rooms for 2 to 4 players: everyone races live in their own colour, and after a crash you watch the others (switch with the arrows or by clicking a name). The longest run wins the pot': 'Salles Wave Rush de 2 à 4 joueurs : tout le monde court en direct dans sa couleur, et après un crash tu regardes les autres (change avec les flèches ou en cliquant un nom). La plus longue course gagne la cagnotte',
+    'Wave Rush: the practice ghost has its own clear card, and it never shows in races against players': 'Wave Rush : le fantôme d’entraînement a sa propre carte claire, et il n’apparaît jamais dans les courses contre des joueurs',
+    'NEW: Trifade, endless noughts and crosses. You only keep 3 marks: your 4th takes your oldest away, so the game goes on until someone wins. Against bots from Easy to Professional (it always starts and plays the best move every time), or against players': 'NOUVEAU : Trifade, un morpion sans fin. Tu ne gardes que 3 marques : la 4e retire ta plus ancienne, donc la partie continue jusqu’à ce que quelqu’un gagne. Contre des bots de Facile à Professionnel (il commence toujours et joue le meilleur coup à chaque fois), ou contre des joueurs',
+    'Them': 'Eux',
+    'three in a row': 'trois alignés',
+    'Empty square: place a mark': 'Case vide : poser une marque',
+    'Three in a row wins, but you only keep 3 marks: your 4th takes your oldest away (it fades first). The game goes on until someone wins. Professional always starts and never loses.': 'Aligne trois marques pour gagner, mais tu n’en gardes que 3 : la 4e retire ta plus ancienne (elle s’efface d’abord). La partie continue jusqu’à ce que quelqu’un gagne. Professionnel commence toujours et ne perd jamais.',
+    'Mazelock duels': 'Duels Mazelock',
+    'Trifade duels': 'Duels Trifade',
+    'Mazelock wins against the bots (Easy 1, Medium 2, Hard 4, Professional 10 points)': 'Victoires à Mazelock contre les bots (Facile 1, Moyen 2, Difficile 4, Professionnel 10 points)',
+    'Trifade wins against the bots (Easy 1, Medium 2, Hard 4, Professional 10 points)': 'Victoires à Trifade contre les bots (Facile 1, Moyen 2, Difficile 4, Professionnel 10 points)',
+    'Mazelock duels won': 'Duels Mazelock gagnés',
+    'Trifade duels won': 'Duels Trifade gagnés',
+    'Perfect (the centre): 240 coins. Good: 100. Close: 30. Miss, or after 9 seconds: nothing.': 'Parfait (le centre) : 240 pièces. Bien : 100. Proche : 30. Raté, ou après 9 secondes : rien.',
+    'Professional moves first and always looks for the strongest move. Beat it for 1 200 coins.': 'Professionnel joue en premier et cherche toujours le meilleur coup. Bats-le pour 1 200 pièces.',
+    'A win: Easy 80 · Medium 180 · Hard 400 · Professional 1 200 coins. A draw pays a quarter of it.': 'Une victoire : Facile 80 · Moyen 180 · Difficile 400 · Professionnel 1 200 pièces. Un nul en paie un quart.',
+    'Finding the coin: Easy 50 · Medium 100 · Hard 180 · Expert 300 coins.': 'Trouver la pièce : Facile 50 · Moyen 100 · Difficile 180 · Expert 300 pièces.',
+    '30 to 130 coins a round.': '30 à 130 pièces par partie.',
+    'Beat Tap pays up to 130 coins a round': 'Beat Tap rapporte jusqu’à 130 pièces par partie',
+    'Classic: 2 coins for every 5 points, up to 600 coins. Relaxed: 1 for every 4 points, up to 400. Hard: 2 for every 3 points, up to 720.': 'Classique : 2 pièces tous les 5 points, jusqu’à 600 pièces. Détente : 1 tous les 4 points, jusqu’à 400. Difficile : 2 tous les 3 points, jusqu’à 720.',
+    'Easy pays 70 to 210 coins, Medium 150 to 450, Hard 280 to 840: the faster, the more.': 'Facile rapporte 70 à 210 pièces, Moyen 150 à 450, Difficile 280 à 840 : plus tu es rapide, plus tu gagnes.',
+    'Easy fires at random, Medium hunts around hits, Hard hunts in a pattern, Professional works out where ships can still be.': 'Facile tire au hasard, Moyen chasse autour des touches, Difficile chasse en motif, Professionnel calcule où les navires peuvent encore être.',
+    'A win: Easy 60 · Medium 160 · Hard 360 · Professional 900 coins, up to 50% more if you used few shots.': 'Une victoire : Facile 60 · Moyen 160 · Difficile 360 · Professionnel 900 pièces, jusqu’à 50 % de plus si tu as tiré peu de coups.',
+    'Race your pawn to the far side of the 9 x 9 board. On your turn, step one square (or jump over the other pawn), or place one of your 10 walls.': 'Amène ton pion de l’autre côté du plateau 9 x 9. À ton tour, avance d’une case (ou saute par-dessus l’autre pion), ou pose un de tes 10 murs.',
+    "A wall is two squares long. Walls can't overlap or cross, and must always leave both pawns a way through.": 'Un mur fait deux cases de long. Les murs ne peuvent ni se chevaucher ni se croiser, et doivent toujours laisser un passage aux deux pions.',
+    'Save your walls for when the bot is close to its goal: one good wall can cost it several moves.': 'Garde tes murs pour quand le bot approche de son but : un bon mur peut lui coûter plusieurs coups.',
+    'Count both paths before you place a wall: it is only worth it if it slows them down more than you.': 'Compte les deux chemins avant de poser un mur : il ne vaut le coup que s’il le ralentit plus que toi.',
+    'A win: Easy 50 · Medium 160 · Hard 440 · Professional 3 000 coins, up to 50% more the further the bot still had to go.': 'Une victoire : Facile 50 · Moyen 160 · Difficile 440 · Professionnel 3 000 pièces, jusqu’à 50 % de plus selon la distance qu’il restait au bot.',
+    'Professional always starts and plays the strongest moves it can find, traps included.': 'Professionnel commence toujours et joue les coups les plus forts qu’il trouve, pièges compris.',
+    'Noughts and crosses with a twist: you only keep 3 marks. Your 4th takes your oldest away, so the game goes on until someone gets three in a row.': 'Un morpion avec une astuce : tu ne gardes que 3 marques. La 4e retire ta plus ancienne, donc la partie continue jusqu’à ce que quelqu’un en aligne trois.',
+    'Your oldest mark fades: when you point at a square, the mark that will go is outlined in red.': 'Ta plus ancienne marque s’efface : quand tu pointes une case, la marque qui va partir est entourée de rouge.',
+    'Watch which of their marks fades next: a line that looks blocked may open up on their next move.': 'Regarde laquelle de ses marques s’efface ensuite : une ligne qui semble bloquée peut s’ouvrir à son prochain coup.',
+    'Make two threats at once: they can only block one.': 'Crée deux menaces à la fois : il ne peut en bloquer qu’une.',
+    'A win: Easy 40 · Medium 120 · Hard 360 · Professional 4 000 coins, up to 50% more for a quick win.': 'Une victoire : Facile 40 · Moyen 120 · Difficile 360 · Professionnel 4 000 pièces, jusqu’à 50 % de plus pour une victoire rapide.',
+    'Professional always starts and always plays the best move there is.': 'Professionnel commence toujours et joue toujours le meilleur coup possible.',
+    'Race your pawn to the far side. Each turn, step one square or place one of your 10 walls to slow the other side down. A wall can never close a pawn in. Professional always starts and plays the strongest moves it can find.': 'Amène ton pion de l’autre côté. À chaque tour, avance d’une case ou pose un de tes 10 murs pour ralentir l’adversaire. Un mur ne peut jamais enfermer un pion. Professionnel commence toujours et joue les coups les plus forts qu’il trouve.',
+    'Three in a row wins, but you only keep 3 marks: your 4th takes your oldest away (it fades first). The game goes on until someone wins. Professional always starts and always plays the best move.': 'Aligne trois marques pour gagner, mais tu n’en gardes que 3 : la 4e retire ta plus ancienne (elle s’efface d’abord). La partie continue jusqu’à ce que quelqu’un gagne. Professionnel commence toujours et joue toujours le meilleur coup.',
+    'Battleships wins against the bots (Easy 1, Medium 2, Hard 4, Professional 10 points)': 'Victoires à la Bataille navale contre les bots (Facile 1, Moyen 2, Difficile 4, Professionnel 10 points)',
+    'Professional bots beaten': 'Bots Professionnels battus',
+    'Mini games pay double: Timing, Cups, Colour Pick, SFX Match, Connect 4, Beat Tap, Parking, Memory, Block Blast, Minesweeper and every bot game': 'Les mini-jeux rapportent le double : Timing, Gobelets, Choix de couleur, SFX Match, Puissance 4, Beat Tap, Parking, Memory, Block Blast, Démineur et tous les jeux contre les bots',
+    'The top bot is called Professional in every game, and it plays the strongest moves it can find': 'Le meilleur bot s’appelle Professionnel dans tous les jeux, et il joue les coups les plus forts qu’il trouve',
+    'Bots in the free seats': 'Bots aux places libres',
+    'Bots: {lvl}': 'Bots : {lvl}',
+    "Mini Golf rooms: pick the bots' level, from Easy to Professional. Bots play every hole with the real ball physics, and Professional finds a hole in one wherever there is one": 'Salles de Mini Golf : choisis le niveau des bots, de Facile à Professionnel. Les bots jouent chaque trou avec la vraie physique de la balle, et Professionnel trouve un trou en un partout où il y en a un',
+'NEW: Karting, a racing game for 1 to 3 players and always one bot, on 3 circuits. Boost, drift for mini turbos, slipstream, bump the others, and big crashes wreck your kart. Pick the bot from 100 to 2500 (Professional is a perfect driver), and after each race everyone gets a score out of 100%': 'NOUVEAU : Karting, un jeu de course pour 1 à 3 joueurs et toujours un bot, sur 3 circuits. Boost, drift pour des mini turbos, aspiration, bouscule les autres, et les gros chocs détruisent ton kart. Choisis le bot de 100 à 2500 (Professionnel conduit parfaitement), et après chaque course chacun reçoit un score sur 100 %',
+    'Karting': 'Karting',
+    'Sunset Bay': 'Sunset Bay',
+    'Pine Ridge': 'Pine Ridge',
+    'Neon Docks': 'Neon Docks',
+    'Rookie': 'Débutant',
+    'Amateur': 'Amateur',
+    'Racer': 'Pilote',
+    'Expert': 'Expert',
+    'Elite': 'Élite',
+    'BOT': 'BOT',
+    'Circuit': 'Circuit',
+    'Gap': 'Écart',
+    '#': '#',
+    'Karts can bump into each other': 'Les karts peuvent se percuter',
+    'Damage: big hits can wreck a kart': 'Dégâts : les gros chocs peuvent détruire un kart',
+    '3 players + bot': '3 joueurs + bot',
+    'Wrecked! Back in 2 s': 'Détruit ! Retour dans 2 s',
+    'Back on track': 'De retour en piste',
+    'Mini turbo!': 'Mini turbo !',
+    'Super mini turbo!': 'Super mini turbo !',
+    'PERFECT START!': 'DÉPART PARFAIT !',
+    'Too early! Wheelspin': 'Trop tôt ! Patinage',
+    'FINAL LAP': 'DERNIER TOUR',
+    'Lap {a}/{b}': 'Tour {a}/{b}',
+    'FINISHED  ·  {p}': 'ARRIVÉE  ·  {p}',
+    'Lap': 'Tour',
+    'Best lap': 'Meilleur tour',
+    'Lap {a}': 'Tour {a}',
+    'boost': 'boost',
+    'drive': 'conduire',
+    'handbrake / drift': 'frein à main / drift',
+    'hold R': 'maintenir R',
+    'respawn': 'réapparaître',
+    'WRONG WAY': 'MAUVAIS SENS',
+    'Back in {n} s': 'Retour dans {n} s',
+    'Watching: Tab switches kart': 'Spectateur : Tab change de kart',
+    'Accelerate right on GO for a perfect start. Too early spins the wheels.': 'Accélère pile au GO pour un départ parfait. Trop tôt, les roues patinent.',
+    'BOOST': 'BOOST',
+    'recharging': 'recharge',
+    'wait': 'attente',
+    'HEALTH': 'SANTÉ',
+    'DRIFT ': 'DRIFT ',
+    'SLIPSTREAM': 'ASPIRATION',
+    'races at about {s}': 'roule à environ {s}',
+    'Race on 3 circuits, alone or with up to 3 players, and always one bot at the level you pick. After the race everyone gets a score out of 100%.': 'Cours sur 3 circuits, seul ou jusqu’à 3 joueurs, toujours avec un bot du niveau choisi. Après la course, chacun reçoit un score sur 100 %.',
+    'Race': 'Course',
+    '{n} laps': '{n} tours',
+    'No bot: show the ideal line': 'Sans bot : voir la trajectoire idéale',
+    'Race the bot': 'Contre le bot',
+    'Bot level': 'Niveau du bot',
+    'Start the race': 'Lancer la course',
+    'Drive': 'Conduire',
+    'Handbrake, drift': 'Frein à main, drift',
+    'Hold: respawn': 'Maintenir : réapparaître',
+    'Prizes today: {a} of {b}': 'Gains du jour : {a} sur {b}',
+    'Bot {n}': 'Bot {n}',
+    'Best scores': 'Meilleurs scores',
+    'Bot {n} ({l})': 'Bot {n} ({l})',
+    'No bot: the ideal line': 'Sans bot : la trajectoire idéale',
+    'Boost on': 'Boost activé',
+    'Bumping on': 'Chocs activés',
+    'No boost': 'Sans boost',
+    'No bumping': 'Sans chocs',
+    'Damage on': 'Dégâts activés',
+    'No damage': 'Sans dégâts',
+    'The race starts when the room is full, or when the host starts it.': 'La course démarre quand la salle est pleine, ou quand l’hôte la lance.',
+    'Race on!': 'Course en cours !',
+    'Open the race window': 'Ouvrir la fenêtre de course',
+    'Leave the race': 'Quitter la course',
+    'Back to Karting': 'Retour au Karting',
+    'Results': 'Résultats',
+    'Driver': 'Pilote',
+    'Prize': 'Gain',
+    'Score': 'Score',
+    'Wrecks': 'Détruit',
+    'DNF': 'Abandon',
+    'YOUR RACE': 'TA COURSE',
+    'Laps': 'Tours',
+    'Top speed': 'Vitesse max',
+    'Mini turbos': 'Mini turbos',
+    'Bumps': 'Chocs',
+    'Wall hits': 'Murs touchés',
+    'On the ideal line': 'Sur la trajectoire idéale',
+    'Respawns': 'Réapparitions',
+    'Sound off': 'Son coupé',
+    'Sound on': 'Son activé',
+    'Full screen': 'Plein écran',
+    'Exit full screen': 'Quitter le plein écran',
+    'Loading the circuit…': 'Chargement du circuit…',
+    'Leave the race? You will be out of it.': 'Quitter la course ? Tu seras éliminé.',
+    'Race again': 'Rejouer',
+    'Ideal line: {l}': 'Trajectoire idéale : {l}',
+    'Best Karting score (%) on any circuit': 'Meilleur score de Karting (%) sur un circuit',
+    'Race 1 to 3 players and always one bot over 2 to 5 laps. Up, left, down, right: W A S D (Z Q S D in French) or the arrows.': 'Course de 1 à 3 joueurs et toujours un bot, en 2 à 5 tours. Haut, gauche, bas, droite : Z Q S D (W A S D en anglais) ou les flèches.',
+    'Shift boosts while the bar lasts. It refills slowly once you have not boosted for 2 seconds, so save it for the long straights.': 'Maj donne du boost tant que la barre dure. Elle se recharge lentement après 2 secondes sans boost : garde-le pour les longues lignes droites.',
+    'Space is the handbrake: tap it while turning to start a drift, keep steering through the corner, straighten up for a mini turbo (blue after a short drift, orange after a long one). Holding it turns very sharply but brakes hard.': 'Espace est le frein à main : un appui en tournant lance un drift, garde le virage, redresse pour un mini turbo (bleu après un drift court, orange après un long). Le maintenir fait tourner très serré mais freine fort.',
+    'Walls and other karts cost health by how hard you hit them: grazing costs nothing, a full-speed crash wrecks the kart. A wrecked kart is back on the track 2 seconds later with full health. Hold R for 2 seconds to be put back a little behind (if you are stuck). After a respawn your kart flashes: others drive through you for a moment.': 'Les murs et les autres karts coûtent de la santé selon la force du choc : frôler ne coûte rien, un choc à pleine vitesse détruit le kart. Un kart détruit revient en piste 2 secondes plus tard avec toute sa santé. Maintiens R 2 secondes pour être replacé un peu en arrière (si tu es coincé). Après une réapparition ton kart clignote : les autres te traversent un instant.',
+    'Accelerate right as the 5 lights go out for a perfect start (a short turbo). Pressing too early spins the wheels.': 'Accélère pile quand les 5 feux s’éteignent pour un départ parfait (un petit turbo). Trop tôt, les roues patinent.',
+    'Brake before the corner, not in it: a kart that is still braking in the corner slides wide.': 'Freine avant le virage, pas dedans : un kart qui freine encore dans le virage glisse vers l’extérieur.',
+    'Right behind another kart you are in its slipstream: more top speed and faster boost refill.': 'Juste derrière un autre kart tu es dans son aspiration : plus de vitesse de pointe et un boost qui se recharge plus vite.',
+    "Alone, pick 'No bot' to see the ideal line for your level: green full throttle, yellow lift, red brake, blue drift.": "Seul, choisis « Sans bot » pour voir la trajectoire idéale de ton niveau : vert à fond, jaune lever le pied, rouge freiner, bleu drift.",
+    "After every race each driver gets a score out of 100%: your average lap against the circuit's calibrated times. Professional bots score 99-100%, Elite about 80%, Expert 60-70%, Racer 50-60%, Amateur 35-50%, Rookie 20-35%.": 'Après chaque course chaque pilote reçoit un score sur 100 % : ton tour moyen comparé aux temps étalonnés du circuit. Les bots Professionnel font 99-100 %, Élite environ 80 %, Expert 60-70 %, Pilote 50-60 %, Amateur 35-50 %, Débutant 20-35 %.',
+    "The server checks every time against the clock and the fastest possible lap.": 'Le serveur vérifie chaque temps avec l’horloge et le tour le plus rapide possible.',
+    "The prize grows with your place, your score, each player and the bot you beat (more for a stronger bot), a win and a race without being wrecked, up to a daily limit. No bets.": 'Le gain augmente avec ta place, ton score, chaque joueur et le bot battus (plus pour un bot fort), une victoire et une course sans être détruit, jusqu’à une limite par jour. Sans mise.',
+    # 9.2: privacy and terms
+    "I am {n}+ and accept the Terms and Privacy Policy": "J'ai {n} ans ou plus et j'accepte les Conditions et la Politique de confidentialité",
+    "Turn on the switch to confirm your age and the terms": "Active l'interrupteur pour confirmer ton âge et les conditions",
+    "To play online, confirm you are {n}+ and accept the Terms and Privacy Policy.":
+        "Pour jouer en ligne, confirme que tu as {n} ans ou plus et que tu acceptes les Conditions et la Politique de confidentialité.",
+    "I accept": "J'accepte",
+    "Read them": "Les lire",
+    "Download my data": "Télécharger mes données",
+    "Could not save the file": "Impossible d'enregistrer le fichier",
+    "Saved to Documents\\Rubenium\\{f}": "Enregistré dans Documents\\Rubenium\\{f}",
+    "Terms and privacy": "Conditions et confidentialité",
+    "Terms of Use": "Conditions d'utilisation",
+    "Privacy Policy": "Politique de confidentialité",
+    "Rubenium is a free fan-made app. It is not made by, endorsed by or affiliated with Spotify, Epic Games, Psyonix or any other company or game named in it. Coins and items have no money value and can never be bought or cashed out.":
+        "Rubenium est une appli gratuite faite par un fan. Elle n'est ni faite, ni soutenue, ni liée à Spotify, Epic Games, Psyonix ou toute autre entreprise ou jeu cité. Les pièces et objets n'ont aucune valeur en argent et ne peuvent jamais être achetés ni encaissés.",
+    "The casino is for players 18 and over.": "Le casino est réservé aux joueurs de 18 ans et plus.",
+    # 9.2: the first-launch agreement
+    "Before you start": "Avant de commencer",
+    "Rubenium is free. Coins, keys and items have no money value: they can never be bought, sold or cashed out.":
+        "Rubenium est gratuit. Les pièces, clés et objets n'ont aucune valeur en argent : ils ne peuvent jamais être achetés, vendus ni encaissés.",
+    "The online part is for people {n} and over. Cheating and trading items for real money are not allowed.":
+        "La partie en ligne est réservée aux {n} ans et plus. La triche et l'échange d'objets contre de l'argent réel sont interdits.",
+    "By choosing Accept, you agree to the Terms of Use and the Privacy Policy.":
+        "En choisissant Accepter, tu acceptes les Conditions d'utilisation et la Politique de confidentialité.",
+})  # 9.2 end
 
 # --------------------------------------------------------------------------- #
 # Rocket League: find the game, swap item files, keep the originals safe
@@ -14473,8 +14758,32 @@ def hours_text(seconds: float) -> str:
 # --------------------------------------------------------------------------- #
 # Updates from GitHub Releases
 # --------------------------------------------------------------------------- #
-UPDATE_REPO = "REMMETT-py/rubenium"
+UPDATE_REPO = "REMMETT-py/rubenium-releases"                 # 9.2: the public installer repo (the source repo is private)
 UPDATE_PAGE = f"https://github.com/{UPDATE_REPO}/releases/latest"
+UPDATE_REPOS = (UPDATE_REPO, "REMMETT-py/rubenium")             # 9.2: the old repo while it is still public
+
+
+def _url_ok(url: str, timeout: float = 8.0) -> bool:
+    """9.2: does this public address answer (200 after redirects)? Never raises."""
+    import urllib.request
+    try:
+        if Net.blocked:
+            return False
+        req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "Rubenium-updater"})
+        with urllib.request.urlopen(req, timeout=timeout, context=_net_ssl()) as resp:  # noqa: S310
+            return resp.status < 400
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def update_repo_for(tag: str = "") -> str:
+    """9.2: the first repo that has this release (or any release), else the public installer repo."""
+    for repo in UPDATE_REPOS:
+        url = (f"https://github.com/{repo}/releases/download/{tag}/RubeniumSetup.exe.sha256" if tag
+               else f"https://github.com/{repo}/releases/latest/download/RubeniumSetup.exe.sha256")
+        if _url_ok(url):
+            return repo
+    return UPDATE_REPO
 
 
 def version_tuple(text: str) -> tuple:
@@ -14675,13 +14984,14 @@ class Updater(QObject):
             raise ValueError("no tag on the server")
         n = str(int(float(raw)))                       # 2026112110 -> 2026.11.21.10
         tag = f"{n[0:4]}.{n[4:6]}.{n[6:8]}.{int(n[8:])}"
-        base = f"https://github.com/{UPDATE_REPO}/releases/download/{tag}/"
+        repo = update_repo_for(tag)                    # 9.2: the installer repo, or the old one while it has it
+        base = f"https://github.com/{repo}/releases/download/{tag}/"
         names = ("RubeniumSetup.exe", "Rubenium.exe", "Rubenium.py", "swaps.zip")
         assets = {nm: base + nm for nm in names}
         assets.update({nm + ".sha256": base + nm + ".sha256" for nm in names})
         label = vals.get("latest_label")
         return {"version": tag, "label": str(label) if label not in (None, "") else tag,
-                "page": f"https://github.com/{UPDATE_REPO}/releases/tag/{tag}", "assets": assets}
+                "page": f"https://github.com/{repo}/releases/tag/{tag}", "assets": assets}
 
     @classmethod
     def _latest_without_api(cls) -> dict:
@@ -14697,7 +15007,8 @@ class Updater(QObject):
             ctx = ssl.create_default_context()
         if Net.blocked:
             raise OSError("offline mode")
-        req = urllib.request.Request(UPDATE_PAGE, headers={"User-Agent": "Rubenium-updater"})
+        repo = update_repo_for()                       # 9.2
+        req = urllib.request.Request(f"https://github.com/{repo}/releases/latest", headers={"User-Agent": "Rubenium-updater"})
         with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:  # noqa: S310
             final = resp.geturl()
             page = resp.read(3_000_000).decode("utf-8", "ignore")
@@ -14706,7 +15017,7 @@ class Updater(QObject):
             raise ValueError("no release tag")
         import re
         shown = re.search(r"Rubenium\s+v?(\d+(?:\.\d+)+)", page)
-        base = f"https://github.com/{UPDATE_REPO}/releases/download/{tag}/"
+        base = f"https://github.com/{repo}/releases/download/{tag}/"
         names = ("RubeniumSetup.exe", "Rubenium.exe", "Rubenium.py", "swaps.zip")
         assets = {n: base + n for n in names}
         assets.update({n + ".sha256": base + n + ".sha256" for n in names})
@@ -14749,7 +15060,7 @@ class Updater(QObject):
                 import time as _t
                 if _t.monotonic() < getattr(Updater, "_api_skip_until", 0.0):
                     raise OSError("API rested for an hour")
-                rel = json.loads(self._get(f"https://api.github.com/repos/{UPDATE_REPO}/releases/latest").decode("utf-8"))
+                rel = json.loads(self._get(f"https://api.github.com/repos/{update_repo_for()}/releases/latest").decode("utf-8"))
                 tag = str(rel.get("tag_name", ""))
                 assets = {str(a.get("name", "")): str(a.get("browser_download_url", ""))
                           for a in rel.get("assets", []) if isinstance(a, dict)}
@@ -22966,15 +23277,6 @@ class SettingsPage(StylePart, Page):
             seg.setFixedWidth(S(170))
             seg.changed.connect(lambda i: ctx.set_language("fr" if i else "en"))
             lay.addWidget(row(tr("Language"), seg))
-            osz = Segmented([tr("Medium"), tr("Large")], 1 if cfg["online_size"] == "large" else 0)
-            osz.setFixedWidth(S(190))                   # 4.7: it had no width in the row, so it never showed
-
-            def set_osz(i: int) -> None:
-                cfg["online_size"] = "large" if i else "medium"
-                if getattr(ctx, "online_mode", False):
-                    ctx.toast(tr("The online menu takes this size next time you open it"))
-            osz.changed.connect(set_osz)
-            lay.addWidget(row(tr("Online menu size"), osz))
             size = SliderRow(tr("Size"), 70, 150, cfg["scale"], 10, 100, lambda v: f"{int(v)}%",
                              marks=list(range(70, 151, 10)))
             size.released.connect(lambda v: ctx.set_scale(int(v)))        # applied when you let go
@@ -23036,7 +23338,14 @@ class SettingsPage(StylePart, Page):
                 gone = Button(tr("Delete account"), "quiet", 24)
                 gone.setFixedWidth(max(S(120), gone.sizeHint().width()))
                 gone.clicked.connect(ctx.delete_account_dialog)
-                lay.addWidget(gone, 0, Qt.AlignmentFlag.AlignRight)
+                mine = Button(tr("Download my data"), "quiet", 24)    # 9.2
+                mine.setFixedWidth(max(S(140), mine.sizeHint().width()))
+                mine.clicked.connect(ctx.download_my_data)
+                ends = hbox(spacing=6)
+                ends.addWidget(mine)
+                ends.addStretch(1)
+                ends.addWidget(gone)
+                lay.addLayout(ends)
 
         elif sec == 4:                                  # ---------------------------------------------- Backup
             pass
@@ -23060,6 +23369,17 @@ class SettingsPage(StylePart, Page):
                 ctx.updater.start() if v else ctx.updater.stop()
             t_up.toggled_by_user.connect(auto_up)
             lay.addWidget(row(tr("Check automatically"), t_up))
+            # 9.2: the legal pages
+            lay.addWidget(heading(tr("Terms and privacy")))
+            legal = hbox(spacing=6)
+            for text, url in ((tr("Terms of Use"), TERMS_URL), (tr("Privacy Policy"), PRIVACY_URL)):
+                b = Button(text, "ghost", 30)
+                b.clicked.connect(lambda _=False, u=url: open_web(u))
+                legal.addWidget(b, 1)
+            lay.addLayout(legal)
+            note(tr("Rubenium is a free fan-made app. It is not made by, endorsed by or affiliated with Spotify, "
+                    "Epic Games, Psyonix or any other company or game named in it. Coins and items have no money "
+                    "value and can never be bought or cashed out."))
             # 6.0: Repair, for when the Update button does nothing or Rubenium acts broken
             lay.addWidget(heading(tr("Repair")))
             note(tr("Update not working, or Rubenium acting strange? Repair downloads the newest Rubenium again and "
@@ -23660,6 +23980,13 @@ class ShopPage(StylePart, Page):
         gifts = sum(int(v or 0) for v in ctx.econ.stock.values())
         mine = tab in SHOP_MINE
         ids = list(SHOP_MINE if mine else SHOP_GET)
+        if tab == 2 and getattr(ctx, "coll_trophies", False) and not getattr(ctx, "shop_badge", None):
+            self.seg, self.navs = None, []                         # 9.2: Trophies is its own page in the side menu
+            lay.addWidget(titled(tr("Trophies"), tr("Play to earn them. A gold outline: ready, click to claim its XP. Click one you "
+                                                    "have to show it on your profile (3 at most)."), 24))
+            lay.addWidget(TrophyBoard(self))
+            lay.addStretch(1)
+            return
         lay.addWidget(titled(tr("Collection") if mine else tr("Shop"), tr(self.NOTES[tab]), 24, tr(self.SECTIONS[tab])))
         nav = NavTiles([(tr(self.SECTIONS[k]), self.ICONS[k]) for k in ids], ids.index(tab) if tab in ids else -1,
                        per_row=len(ids), badges={ids.index(3): gifts} if 3 in ids else {})
@@ -23698,6 +24025,7 @@ class ShopPage(StylePart, Page):
         if self.reel is not None and self.reel.busy():
             return None
         self.ctx.shop_tab = i
+        self.ctx.coll_trophies = False
         self.ctx.shop_badge = None
         self.ctx.shop_case = None
         self.ctx.shop_design = None
@@ -23716,16 +24044,6 @@ class ShopPage(StylePart, Page):
             return lay.addWidget(Label(tr("Connecting…") if ctx.online.logged_in() else tr("Log in to see your badges"),
                                        12, TEXT_DIM))
         if not base:
-            # 6.0: Badges and Trophies (the achievements) on their own tabs
-            view = Segmented([tr("Badges"), tr("Trophies")], 1 if getattr(ctx, "coll_trophies", False) else 0)
-            view.changed.connect(lambda i: (setattr(ctx, "coll_trophies", i == 1), ctx.reload_page()))
-            lay.addWidget(view)
-            if getattr(ctx, "coll_trophies", False):
-                lay.addWidget(heading(tr("Trophies")))            # 5.13: a row of 9 for every game
-                lay.addWidget(Label(tr("Play to earn them. A gold outline: ready, click to claim its XP. Click one you "
-                                       "have to show it on your profile (3 at most)."), 10.5, TEXT_DIM, wrap_w=self.W))
-                lay.addWidget(TrophyBoard(self))
-                return
             lay.addWidget(heading(tr("On show")))
             self.showcase = Showcase(self)
             lay.addWidget(self.showcase)
@@ -27714,23 +28032,37 @@ def _inventory_items(page, lay, tab: int) -> None:
 # 6.9: the Animations page (Shop and Inventory)
 # --------------------------------------------------------------------------- #
 class AnimPreview(QWidget):
-    """A looping picture of one animation: the banner leaves, the ball waits, the banner comes back."""
+    """A looping picture of one animation: the banner leaves, the ball waits, the banner comes back.
+    9.2: it plays only while the mouse is over it (a faint PREVIEW until then), on a stage lit in its colours with
+    drifting sparks and a light sweep."""
 
     def __init__(self, ctx, design: str, fin: str, width: int) -> None:
         super().__init__()
         self.ctx, self.design, self.fin = ctx, design, fin
-        self.setFixedSize(width, S(112))
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setFixedSize(width, S(136))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._t0 = time.monotonic()
+        self._hover = Tween(self, on_change=self.update)
+        self._on = False
         self._timer = QTimer(self)
-        self._timer.setInterval(33)
+        self._timer.setInterval(16)
         self._timer.timeout.connect(self.update)
+        rnd = random.Random(hash(design + fin) & 0xFFFF)
+        self._sparks = [(rnd.random(), rnd.random(), rnd.uniform(0.6, 1.6), rnd.uniform(0, math.tau)) for _ in range(26)]
 
-    def showEvent(self, _e) -> None:
+    def enterEvent(self, _e) -> None:
+        self._on = True
+        self._t0 = time.monotonic()
+        self._hover.to(1.0, 220)
         self._timer.start()
+
+    def leaveEvent(self, _e) -> None:
+        self._on = False
+        self._hover.to(0.0, 320)
 
     def hideEvent(self, _e) -> None:
         self._timer.stop()
+        self._on = False
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -27738,12 +28070,42 @@ class AnimPreview(QWidget):
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         clip = QPainterPath()
         clip.addRoundedRect(r, S(12), S(12))
-        p.setPen(QPen(alpha("#FFFFFF", 0.1), 1))
-        p.setBrush(QColor("#090B0E"))
+        now = time.monotonic()
+        hv = self._hover.level
+        if not self._on and hv < 0.01:
+            self._timer.stop()
+        try:
+            ca, cb, _core = anim_cols(self.design, self.fin, now)
+        except Exception:  # noqa: BLE001
+            ca, cb = QColor(ui.accent), QColor("#FFFFFF")
+        stage = QLinearGradient(r.topLeft(), r.bottomLeft())             # 9.2: a stage lit in the animation's colours
+        stage.setColorAt(0, mix(QColor("#090B0E"), ca, 0.10 + 0.12 * hv))
+        stage.setColorAt(1, QColor("#06070A"))
+        p.setPen(QPen(alpha(ca, 0.18 + 0.45 * hv), 1))
+        p.setBrush(stage)
         p.drawPath(clip)
         p.setClipPath(clip)
-        now = time.monotonic()
-        t = (now - self._t0) % 4.8
+        p.setPen(Qt.PenStyle.NoPen)
+        floor = QRadialGradient(QPointF(r.center().x(), r.bottom()), r.width() * 0.55)
+        floor.setColorAt(0, alpha(ca, 0.22 + 0.2 * hv))
+        floor.setColorAt(1, alpha(ca, 0.0))
+        p.setBrush(floor)
+        p.drawRect(r)
+        for x, y, sp, ph in self._sparks:                                 # drifting sparks
+            yy = (y - (now * 0.05 * sp if self._on else 0)) % 1.0
+            a_ = (0.15 + 0.5 * hv) * (0.5 + 0.5 * math.sin(now * 2 * sp + ph))
+            p.setBrush(alpha(cb if sp > 1.1 else ca, a_))
+            rr = S(1.2) * sp
+            p.drawEllipse(QPointF(r.left() + x * r.width(), r.top() + yy * r.height()), rr, rr)
+        if hv > 0.01:                                                     # a light sweep while it plays
+            sx = r.left() + ((now - self._t0) * 0.35 % 1.4 - 0.2) * r.width()
+            sw = QLinearGradient(QPointF(sx - S(60), 0), QPointF(sx + S(60), 0))
+            sw.setColorAt(0, alpha("#FFFFFF", 0.0))
+            sw.setColorAt(0.5, alpha("#FFFFFF", 0.06 * hv))
+            sw.setColorAt(1, alpha("#FFFFFF", 0.0))
+            p.setBrush(sw)
+            p.drawRect(r)
+        t = (now - self._t0) % 4.8 if self._on else 0.0
         if t < 0.5:
             k = 0.0
         elif t < 1.9:
@@ -27785,10 +28147,23 @@ class AnimPreview(QWidget):
             p.drawText(QRectF(pos.x() - size / 2, pos.y() - size / 2, size, size), int(Qt.AlignmentFlag.AlignCenter), "R")
             p.setOpacity(1.0)
         try:
-            paint_anim(p, self.design, self.fin, k, now, m, hole, d, banner, ball)
+            if hv > 0.01 or self._on:
+                paint_anim(p, self.design, self.fin, k, now, m, hole, d, banner, ball)
+            else:
+                banner(m, 0.35)
         except Exception:  # noqa: BLE001
             log.exception("animation preview failed")
             self._timer.stop()
+        if hv < 0.99:                                                     # PREVIEW until the mouse comes over it
+            p.setOpacity(1.0 - hv)
+            p.setPen(alpha("#FFFFFF", 0.22))
+            p.setFont(font(26, QFont.Weight.Black, 8))
+            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), tr("PREVIEW"))
+            p.setPen(alpha("#FFFFFF", 0.35))
+            p.setFont(font(9.5, QFont.Weight.Bold))
+            p.drawText(r.adjusted(0, 0, 0, -S(10)), int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom),
+                       tr("Hover to play"))
+            p.setOpacity(1.0)
 
 
 def anim_set(ctx, item: str) -> None:
@@ -30254,6 +30629,14 @@ class ScratchCard(QWidget):
         if cp:
             text += "  ·  " + tr("+ {what}", what=tr(COUPONS.get(cp, ("XP coupon",))[0]))
         self.ctx.toast(text)
+        QTimer.singleShot(2600, self._leave)                     # 9.2: back to the menu it was opened from
+
+    def _leave(self) -> None:
+        try:
+            if self.isVisible() and getattr(self.ctx, "games_sub", None) == "scratch":
+                leave_free_game(self.ctx)
+        except RuntimeError:
+            pass
 
     def reset(self) -> None:
         self.prize, self.asked, self.cleared, self.done, self.last = {}, False, 0, False, None
@@ -30690,15 +31073,15 @@ def build_minigames(page, lay) -> None:
     del cap
     games = [
         ("Beat Tap", tr("Hit the notes on the beat. 4 modes: Normal, Rush, Long notes, Chords."), "note",
-         ("#FF5C8A", "#7A1FFF"), "12-50", lambda: page._show_mini(True)),
+         ("#FF5C8A", "#7A1FFF"), "24-100", lambda: page._show_mini(True)),
         ("Parking", tr("Slide the cars and get the red one out. Easy, Medium or Hard."), "grid",
-         ("#FF8A3D", "#C2271F"), "12-50", lambda: page._show_park(True)),
+         ("#FF8A3D", "#C2271F"), "24-100", lambda: page._show_park(True)),
         ("Memory", tr("Find the pairs in as few flips as you can. 3 sizes, 3 card styles."), "gem",
-         ("#4FC3FF", "#2E5BFF"), "12-55", lambda: page.open_sub("memory")),
+         ("#4FC3FF", "#2E5BFF"), "24-110", lambda: page.open_sub("memory")),
         ("Block Blast", tr("Place the pieces, clear rows and columns. Classic, Relaxed or Hard. Leaderboard for each."),
-         "blocks", ("#FFB547", "#E8503A"), "5-360", lambda: page.open_sub("blocks")),
+         "blocks", ("#FFB547", "#E8503A"), "10-720", lambda: page.open_sub("blocks")),
         ("Minesweeper", tr("Open every safe cell, as fast as you can. Easy, Medium, Hard. Leaderboard for each."), "flag",
-         ("#3DDC84", "#0F6B3A"), "35-420", lambda: page.open_sub("sweeper")),
+         ("#3DDC84", "#0F6B3A"), "70-840", lambda: page.open_sub("sweeper")),
     ]
     t = getattr(page.ctx.econ, "tier", None)
     m = float(t.get("mult") or 1) if isinstance(t, dict) else 1.0     # 9.0: what it pays at your tier
@@ -31765,6 +32148,61 @@ def party_tee(h: dict, seat: int):
 
 _BOT_SHOTS: dict = {}
 _HOLE_FIELDS: dict = {}
+GOLF_BOT_LEVELS = ("Easy", "Medium", "Hard", "Professional")    # 9.2: the room's bot level (rb_golf_parties.bot_level)
+GOLF_ACES: dict = {            # 9.2: hole -> the Professional's hole-in-one (aim, power) from each tee, or None (bots.py)
+    1: [(-0.680678, 0.889334), (-0.715585, 0.920439), (0.715585, 0.920439), (0.698132, 0.889334)],
+    2: [(0.057282, 0.889334), (0.031602, 0.889334), (-0.034102, 0.920439), (-0.047282, 0.798533)],
+    4: [(0.208727, 0.858645), (0.176249, 0.71159), (-0.176249, 0.828377), (-0.211227, 0.858645)],
+    8: [(-0.663225, 0.920439), (-0.663225, 0.920439), (0.680678, 0.920439), (0.663225, 0.920439)],
+    9: [(0.715585, 0.920439), (0.698132, 0.920439), (-0.715585, 0.920439), (-0.715585, 0.920439)],
+    10: [(0.715585, 0.951957), (0.698132, 0.951957), (0.680678, 0.889334), None],
+    11: [(0.048394, 0.575579), (0.006973, 0.524405), (-0.001973, 0.499532), (-0.028394, 0.318588)],
+    12: [(-0.118458, 0.740135), (-0.375172, 0.920439), (0.610865, 0.889334), (-0.432214, 0.920439)],
+    13: [(0.019945, 0.499532), (0.048331, 0.601869), (-0.018331, 0.798533), (-0.029945, 0.71159)],
+    15: [(-0.138234, 0.889334), (0.223094, 0.951957), (0.179406, 0.889334), (0.140734, 0.683485)],
+    16: [(-0.188234, 0.71159), (0.025594, 0.858645), (-0.018094, 0.858645), (-0.041766, 0.889334)],
+    19: [(-0.073234, 0.920439), (0.255594, 0.889334), (-0.255594, 0.889334), (0.073234, 0.920439)],
+    20: [(0.051766, 0.360713), (0.025594, 0.339381), (-0.018094, 0.655827), (-0.016766, 0.499532)],
+    21: [(1.169371, 0.983884), (-0.959931, 0.889334), (0.959931, 0.889334), (-1.169371, 0.983884)],
+    23: [(0.174533, 0.983884), (0.0, 0.983884), (-0.034907, 0.983884), (-0.10472, 0.951957)],
+    26: [(0.08486, 0.499532), (-0.010005, 0.404955), (-0.062495, 0.71159), (-0.04986, 0.601869)],
+    27: [(0.610865, 0.683485), (0.680678, 0.475144), (0.663225, 0.475144), (-0.610865, 0.683485)],
+    29: [None, None, None, (-0.51553, 0.983884)],
+    30: [(0.941384, 0.601869), (0.842895, 0.740135), (0.832453, 0.920439), (0.745049, 0.575579)],
+    32: [(0.061766, 0.798533), (0.045594, 0.798533), (-0.045594, 0.798533), (-0.074266, 0.858645)],
+    33: [(0.802851, 0.889334), (0.802851, 0.858645), (0.802851, 0.858645), (-0.802851, 0.889334)],
+    34: [(0.696959, 0.889334), None, (0.618908, 0.920439), (0.584244, 0.798533)],
+    35: [(0.043301, 0.318588), (0.040277, 0.601869), (-0.017777, 0.601869), (-0.060801, 0.427849)],
+    37: [(0.081766, 0.205695), (0.017453, 0.475144), (-0.015594, 0.475144), (-0.046766, 0.549756)],
+    40: [(0.907571, 0.983884), (0.890118, 0.983884), (-0.47254, 0.828377), (0.855211, 0.951957)],
+    41: [(0.064266, 0.798533), (-0.196906, 0.858645), (0.004406, 0.858645), (-0.031766, 0.889334)],
+    42: [(-0.628066, 0.769118), (-0.655444, 0.524405), (-0.68981, 0.382574), (-0.193659, 0.920439)],
+    43: [(0.08841, 0.499532), (0.073684, 0.427849), (-0.071184, 0.499532), (-0.08841, 0.339381)],
+    44: [(-2.010796, 0.549756), (-1.803296, 0.683485), (-1.343296, 0.920439), (-1.788296, 0.920439)],
+    46: [(0.85708, 0.983884), (0.821569, 0.951957), (0.798117, 0.951957), (0.761728, 0.951957)],
+    47: [(0.324266, 0.655827), (0.033094, 0.740135), (-0.060594, 0.62862), (-0.019266, 0.549756)],
+    48: [(-0.056342, 0.769118), (-0.109977, 0.769118), (-0.16688, 0.769118), (-0.222014, 0.769118)],
+    50: [(0.024266, 0.920439), (-0.001906, 0.951957), (-0.035594, 0.951957), (-0.031766, 0.951957)],
+    51: [(0.037482, 0.524405), (0.009999, 0.318588), (1e-06, 0.524405), (-0.002482, 0.404955)],
+    52: [(-0.959931, 0.920439), (-0.994838, 0.920439), (-1.029744, 0.920439), (-1.064651, 0.920439)],
+    53: [(-0.158286, 0.951957), (0.236416, 0.983884), (-0.233916, 0.951957), (0.155786, 0.951957)],
+    54: [(-0.649772, 0.920439), (-0.707795, 0.920439), (-0.705294, 0.858645), (-0.734766, 0.889334)],
+    55: [(-0.211273, 0.858645), (0.288749, 0.889334), (-0.291249, 0.889334), (0.208773, 0.828377)],
+    56: [(0.054266, 0.920439), (-0.006906, 0.601869), (-0.005594, 0.920439), (-0.044266, 0.655827)],
+    57: [(2.617994, 0.828377), (2.635447, 0.828377), (2.670354, 0.828377), (2.687807, 0.828377)],
+    58: [(0.039266, 0.769118), (0.173094, 0.920439), (-0.215594, 0.889334), (-0.256766, 0.889334)],
+    59: [(-1.008155, 0.920439), (-2.373648, 0.920439), (-2.356194, 0.920439), (-2.338741, 0.951957)],
+    60: [(-0.217518, 0.404955), (-1e-06, 0.655827), (-0.024999, 0.339381), (-0.054982, 0.549756)],
+}
+
+
+def golf_ace(hid: int, seat: int):
+    """9.2: the Professional's ace from this tee (holes 101-160 are 1-60 mirrored: the aim is mirrored too)."""
+    row = GOLF_ACES.get(int(hid) % 100) or []
+    shot = row[seat] if 0 <= seat < len(row) else None
+    if not shot:
+        return None
+    return (math.pi - shot[0], shot[1]) if int(hid) > 100 else (shot[0], shot[1])
 
 
 def hole_distance(h: dict):
@@ -31810,13 +32248,19 @@ def hole_distance(h: dict):
     return _HOLE_FIELDS[key]
 
 
-def bot_golf_shot(h: dict, start, seed: str, must_hole: bool):
+def bot_golf_shot(h: dict, start, seed: str, must_hole: bool, ace=None):
     """5.10: a bot plays a real shot with the real physics, like a decent player: it tries a few aims and keeps one of
     the better ones (not always the best). The same seed gives the same shot on every PC.
     Returns (frames, end point, holed)."""
     key = (seed, round(start[0], 4), round(start[1], 4), must_hole)
     if key in _BOT_SHOTS:
         return _BOT_SHOTS[key]
+    if must_hole and ace:                                # 9.2: the Professional's worked-out hole in one
+        frames, x, y, holed = simulate(h, start[0], start[1], ace[0], ace[1])
+        if holed:
+            got = (frames, h["cup"], True)
+            _BOT_SHOTS[key] = got
+            return got
     rnd = random.Random(seed)
     cx, cy = h["cup"]
     far = hole_distance(h)
@@ -31887,11 +32331,12 @@ def bot_golf_shot(h: dict, start, seed: str, must_hole: bool):
     return got
 
 
-def bot_golf_path(h: dict, pid: str, hole: int, seat: int, n: int, holed: bool) -> list:
+def bot_golf_path(h: dict, pid: str, hole: int, seat: int, n: int, holed: bool, hid: int = 0) -> list:
     """Where a bot's ball is after each of its n strokes on this hole: [(frames, end, holed)]."""
     pos, out = party_tee(h, seat), []
     for i in range(1, n + 1):
-        shot = bot_golf_shot(h, pos, f"{pid}:{hole}:{seat}:{i}", holed and i == n)
+        ace = golf_ace(hid, seat) if hid and n == 1 and holed else None
+        shot = bot_golf_shot(h, pos, f"{pid}:{hole}:{seat}:{i}", holed and i == n, ace)
         out.append(shot)
         pos = shot[1]
     return out
@@ -31994,7 +32439,9 @@ class GolfPartyView(QWidget):
                 n, holed = int(s.get("now") or 0), bool(s.get("in"))
                 key = (int(g.get("hole") or 0), k)
                 shown = self.bot_seen.get(key)
-                path = bot_golf_path(h, str(self.pid), key[0], k, n, holed) if n else []
+                hs = list(g.get("holes") or [])
+                hid = int(hs[key[0] - 1]) if 0 < key[0] <= len(hs) else 0
+                path = bot_golf_path(h, str(self.pid), key[0], k, n, holed, hid) if n else []
                 self.bot_seen[key] = n
                 if n and shown is not None and shown < n and g.get("state") == "live":
                     frames = list(path[-1][0])
@@ -32353,6 +32800,8 @@ class PartyWaiting(QWidget):
         left = max(0, int(float(g.get("starts_in") or 0) - (time.monotonic() - self.got_at)))
         bet = int(g.get("bet") or 0)
         info = tr("{h} holes", h=len(g.get("holes") or [])) + ("  ·  " + tr("Bet {n}", n=coins_text(bet)) if bet else "")
+        if g.get("bot_level") is not None:                  # 9.2
+            info += "  ·  " + tr("Bots: {lvl}", lvl=tr(GOLF_BOT_LEVELS[max(0, min(3, int(g.get("bot_level") or 0)))]))
         p.setPen(QColor(TEXT_DIM))
         p.setFont(font(10.5, QFont.Weight.Bold))
         p.drawText(QRectF(S(16), S(36), card.width() - S(32), S(20)), int(Qt.AlignmentFlag.AlignVCenter), info)
@@ -32442,6 +32891,10 @@ def build_golf_home(page, lay) -> None:
     size = Segmented([tr("2 players"), tr("3 players"), tr("4 players")], max(0, min(2, int(getattr(ctx, "party_size", 2)) - 2)))
     size.changed.connect(lambda i: setattr(ctx, "party_size", 2 + i))
     lay.addWidget(size)
+    lay.addWidget(Label(tr("Bots in the free seats"), 10.5, TEXT_DIM))          # 9.2: the room's bot level
+    bots = Segmented([tr(n) for n in GOLF_BOT_LEVELS], max(0, min(3, int(getattr(ctx, "party_bots", 1)))))
+    bots.changed.connect(lambda i: setattr(ctx, "party_bots", i))
+    lay.addWidget(bots)
     cap = max(0, int(ctx.econ.coins * 0.8) // 10 * 10)
     bet_box = None
     if cap >= 10:
@@ -32464,7 +32917,13 @@ def build_golf_home(page, lay) -> None:
             ctx.party_id = d.get("id")
             ctx.econ.refresh()
             ctx.reload_page("games")
-        ctx.econ.call("rb_party_create", {"size": int(getattr(ctx, "party_size", 2)), "bet": bet, "holes": golf_count(ctx)}, done)
+        args = {"size": int(getattr(ctx, "party_size", 2)), "bet": bet, "holes": golf_count(ctx)}
+
+        def first(ok: bool, d) -> None:
+            if not ok and ("bot_level" in str(d) or "function" in str(d).lower()):   # a server without 9.2's golf bots
+                return ctx.econ.call("rb_party_create", args, done)
+            done(ok, d)
+        ctx.econ.call("rb_party_create", dict(args, bot_level=int(getattr(ctx, "party_bots", 1))), first)
     make.clicked.connect(create)
     lay.addWidget(make)
     lay.addWidget(Label(tr("Players take turns, 25 seconds a shot. Bots fill free seats after 90 seconds (or when you "
@@ -32500,6 +32959,8 @@ def build_golf_home(page, lay) -> None:
         text = tr("{host} · {p}/{s} players · {h} holes", host=r.get("host"), p=r.get("players"), s=r.get("size"), h=r.get("holes"))
         if int(r.get("bet") or 0):
             text += "  ·  " + tr("Bet {n}", n=coins_text(int(r["bet"])))
+        if r.get("bot_level") is not None:
+            text += "  ·  " + tr("Bots: {lvl}", lvl=tr(GOLF_BOT_LEVELS[max(0, min(3, int(r.get("bot_level") or 0)))]))
         line.addWidget(Label(text, 11, TEXT, wrap_w=int(page.W * 0.68)), 1)
         j = Button(tr("Join"), "primary", 30)
 
@@ -35080,12 +35541,498 @@ def game_feature(name: str) -> str:
 
 
 # ================================================================ 9.1: the Arena (Reversi, Battleships, duels)
-ARENA_KINDS = {"reversi": "Reversi", "ships": "Battleships", "c4": "Connect 4"}
-ARENA_LEVELS = [("easy", "Easy"), ("medium", "Medium"), ("hard", "Hard"), ("insane", "Insane")]
-ARENA_PAY = {"reversi": {"easy": 40, "medium": 100, "hard": 250, "insane": 700},
-             "ships": {"easy": 30, "medium": 80, "hard": 180, "insane": 450}}
+ARENA_KINDS = {"reversi": "Reversi", "ships": "Battleships", "c4": "Connect 4", "maze": "Mazelock", "tri": "Trifade"}
+ARENA_LEVELS = [("easy", "Easy"), ("medium", "Medium"), ("hard", "Hard"), ("insane", "Professional")]
+ARENA_PAY = {"reversi": {"easy": 80, "medium": 200, "hard": 500, "insane": 1400},      # 9.2: × skill_pay_mult (2)
+             "ships": {"easy": 60, "medium": 160, "hard": 360, "insane": 900},
+             "maze": {"easy": 50, "medium": 160, "hard": 440, "insane": 3000},
+             "tri": {"easy": 40, "medium": 120, "hard": 360, "insane": 4000}}
 ARENA_BETS = [0, 100, 500, 1000, 5000]
 ARENA_SIDES = ("#FF5C5C", "#F5C04A")            # Connect 4: side 1 red, side 2 yellow
+
+
+def arena_level_name(kind: str, key: str) -> str:
+    """9.2: the top bot is called Professional in every game."""
+    return tr(dict(ARENA_LEVELS).get(key, key))
+
+
+# ---------------------------------------------------------------- 9.2: Mazelock (the same rules as the server's mz_*)
+def mz_open(h: str, v: str, cell: int, d: int) -> bool:
+    r, c = divmod(cell, 9)
+    if d == 0:
+        return r > 0 and (c > 7 or h[(r - 1) * 8 + c] == ".") and (c < 1 or h[(r - 1) * 8 + c - 1] == ".")
+    if d == 1:
+        return r < 8 and (c > 7 or h[r * 8 + c] == ".") and (c < 1 or h[r * 8 + c - 1] == ".")
+    if d == 2:
+        return c > 0 and (r > 7 or v[r * 8 + c - 1] == ".") and (r < 1 or v[(r - 1) * 8 + c - 1] == ".")
+    return c < 8 and (r > 7 or v[r * 8 + c] == ".") and (r < 1 or v[(r - 1) * 8 + c] == ".")
+
+
+MZ_STEP = (-9, 9, -1, 1)
+
+
+def mz_dist(h: str, v: str, start: int, goal_row: int) -> int:
+    if start // 9 == goal_row:
+        return 0
+    seen, q = {start: 0}, [start]
+    for cur in q:
+        for d in range(4):
+            if mz_open(h, v, cur, d):
+                n = cur + MZ_STEP[d]
+                if n not in seen:
+                    seen[n] = seen[cur] + 1
+                    if n // 9 == goal_row:
+                        return seen[n]
+                    q.append(n)
+    return 999
+
+
+def mz_steps(h: str, v: str, me: int, op: int) -> list:
+    out = []
+    for d in range(4):
+        if not mz_open(h, v, me, d):
+            continue
+        n = me + MZ_STEP[d]
+        if n != op:
+            out.append(n)
+        elif mz_open(h, v, op, d):
+            out.append(op + MZ_STEP[d])
+        else:
+            out += [op + MZ_STEP[s] for s in ((2, 3) if d < 2 else (0, 1)) if mz_open(h, v, op, s)]
+    return out
+
+
+def mz_fits(h: str, v: str, horiz: bool, a: int) -> bool:
+    if not 0 <= a <= 63:
+        return False
+    r, c = divmod(a, 8)
+    if horiz:
+        return h[a] == "." and v[a] == "." and (c == 0 or h[a - 1] == ".") and (c == 7 or h[a + 1] == ".")
+    return v[a] == "." and h[a] == "." and (r == 0 or v[a - 8] == ".") and (r == 7 or v[a + 8] == ".")
+
+
+def mz_wall_ok(b: dict, side: int, m: int) -> bool:
+    """Would wall move m (100 + a or 200 + a) be allowed for side?"""
+    h, v, p = str(b.get("h") or "." * 64), str(b.get("v") or "." * 64), list(b.get("p") or [76, 4])
+    if int((b.get("w") or [0, 0])[side - 1]) <= 0:
+        return False
+    a, horiz = m % 100, m < 200
+    if not mz_fits(h, v, horiz, a):
+        return False
+    if horiz:
+        h = h[:a] + str(side) + h[a + 1:]
+    else:
+        v = v[:a] + str(side) + v[a + 1:]
+    return mz_dist(h, v, p[0], 0) < 999 and mz_dist(h, v, p[1], 8) < 999
+
+
+MAZE_COLS = ("#5BD6FF", "#FFB347")          # side 1 cool, side 2 warm
+
+
+class MazeBoard(QWidget):
+    """Mazelock: a 9 x 9 board. Click a lit square to step, or a groove between squares to drop a wall there.
+    Your side is always at the bottom."""
+    moved = pyqtSignal(int)
+
+    def __init__(self, width: int) -> None:
+        super().__init__()
+        self.kind, self.d = "maze", {}
+        self.hover = None                  # ("cell", cell) or ("wall", move)
+        self._last_n = -1
+        self._shown = {}                   # where each pawn is drawn (it glides to its square)
+        self._flash = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self._glide = Tween(self, 1.0, self.update, QEasingCurve.Type.OutCubic)
+        self._from = {}
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        w = int(min(width, S(430)))
+        self.setFixedSize(w, w + S(30))
+
+    def set_data(self, d: dict) -> None:
+        old = dict(self.d.get("board") or {}) if self.d else {}
+        self.d = dict(d or {})
+        n = int(self.d.get("n") or 0)
+        if n != self._last_n:
+            if self._last_n >= 0:
+                self._flash.jump(1.0)
+                self._flash.to(0.0, 900)
+                self._from = {i: int(c) for i, c in enumerate(old.get("p") or [])}
+                self._glide.jump(0.0)
+                self._glide.to(1.0, 260)
+            self._last_n = n
+        self.update()
+
+    def my_turn(self) -> bool:
+        d = self.d
+        return d.get("state") == "live" and int(d.get("turn") or 0) == int(d.get("side") or -1)
+
+    def _b(self) -> dict:
+        b = self.d.get("board") or {}
+        return b if isinstance(b, dict) else {}
+
+    def _flip(self) -> bool:
+        return int(self.d.get("side") or 1) == 2
+
+    # -- geometry: 9 squares with grooves between them
+    def _geo(self):
+        size = min(self.width(), self.height() - S(30))
+        gap = size / 9 * 0.16
+        cs = (size - 8 * gap) / 9
+        x0, y0 = (self.width() - size) / 2, S(30)
+        return x0, y0, cs, gap
+
+    def _view(self, cell: int) -> tuple:
+        r, c = divmod(cell, 9)
+        return (8 - r, 8 - c) if self._flip() else (r, c)
+
+    def _cell_rect(self, cell: int) -> QRectF:
+        x0, y0, cs, gap = self._geo()
+        r, c = self._view(cell)
+        return QRectF(x0 + c * (cs + gap), y0 + r * (cs + gap), cs, cs)
+
+    def _wall_rect(self, horiz: bool, a: int) -> QRectF:
+        x0, y0, cs, gap = self._geo()
+        r, c = divmod(a, 8)
+        if self._flip():
+            r, c = 7 - r, 7 - c
+        step = cs + gap
+        if horiz:
+            return QRectF(x0 + c * step, y0 + r * step + cs, 2 * cs + gap, gap)
+        return QRectF(x0 + c * step + cs, y0 + r * step, gap, 2 * cs + gap)
+
+    def _at(self, pos):
+        x0, y0, cs, gap = self._geo()
+        step = cs + gap
+        fx, fy = (pos.x() - x0) / step, (pos.y() - y0) / step
+        if not (0 <= fx < 9 and 0 <= fy < 9):
+            return None
+        vc, vr = int(fx), int(fy)
+        ox, oy = (fx - vc) * step, (fy - vr) * step              # where in the square + groove
+        near_x = ox > cs - gap * 0.2 or ox < gap * 0.6           # close to a vertical groove
+        near_y = oy > cs - gap * 0.2 or oy < gap * 0.6
+        inner = cs * 0.22 < ox < cs * 0.78 and cs * 0.22 < oy < cs * 0.78
+        if inner or not (near_x or near_y):
+            r, c = (8 - vr, 8 - vc) if self._flip() else (vr, vc)
+            return ("cell", r * 9 + c)
+        dx = min(abs(ox - cs - gap / 2), abs(ox + gap / 2))
+        dy = min(abs(oy - cs - gap / 2), abs(oy + gap / 2))
+        if dy <= dx:                                            # a horizontal groove: under row gr
+            gr = vr if oy > cs / 2 else vr - 1
+            gc = min(7, max(0, int(round(fx - 1))))
+            if not 0 <= gr <= 7:
+                return None
+            r, c = (7 - gr, 7 - gc) if self._flip() else (gr, gc)
+            return ("wall", 100 + r * 8 + c)
+        gc = vc if ox > cs / 2 else vc - 1
+        gr = min(7, max(0, int(round(fy - 1))))
+        if not 0 <= gc <= 7:
+            return None
+        r, c = (7 - gr, 7 - gc) if self._flip() else (gr, gc)
+        return ("wall", 200 + r * 8 + c)
+
+    def _legal(self, hit) -> bool:
+        if hit is None or not self.my_turn():
+            return False
+        kind, m = hit
+        if kind == "cell":
+            return m in (self.d.get("legal") or [])
+        return mz_wall_ok(self._b(), int(self.d.get("side") or 1), m)
+
+    def mouseMoveEvent(self, e) -> None:
+        h = self._at(e.position())
+        if h != self.hover:
+            self.hover = h
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = None
+        self.update()
+
+    def mouseReleaseEvent(self, e) -> None:
+        hit = self._at(e.position())
+        if self._legal(hit):
+            sfx.play("chip" if hit[0] == "wall" else "pick")
+            self.moved.emit(hit[1])
+        elif hit is not None and hit[0] == "wall" and self.my_turn():
+            sfx.play("tick")
+
+    # -- drawing
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        try:
+            self._paint(p)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("maze paint: %s", exc)
+
+    def _paint(self, p: QPainter) -> None:
+        b, side = self._b(), int(self.d.get("side") or 1)
+        h, v = str(b.get("h") or "." * 64), str(b.get("v") or "." * 64)
+        pos = list(b.get("p") or [76, 4])
+        walls = list(b.get("w") or [10, 10])
+        x0, y0, cs, gap = self._geo()
+        mine, theirs = side - 1, 2 - side
+        # walls left: theirs on the left, yours on the right, above the board
+        p.setFont(font(10, QFont.Weight.Bold))
+        for who, left in ((theirs, True), (mine, False)):
+            dots_x = x0 + S(84) if left else self.width() - x0 - 10 * S(12)
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(x0 if left else dots_x - S(90), S(2), S(84), S(22)),
+                       int(Qt.AlignmentFlag.AlignVCenter | (Qt.AlignmentFlag.AlignLeft if left else Qt.AlignmentFlag.AlignRight)),
+                       tr("Their walls") if left else tr("Your walls"))
+            p.setPen(Qt.PenStyle.NoPen)
+            for i in range(10):
+                p.setBrush(QColor(MAZE_COLS[who]) if i < int(walls[who]) else alpha("#FFFFFF", 0.08))
+                p.drawRoundedRect(QRectF(dots_x + i * S(12), S(9), S(8), S(8)), S(2), S(2))
+        size = 9 * cs + 8 * gap
+        board = QRectF(x0 - gap, y0 - gap, size + 2 * gap, size + 2 * gap)
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(QColor(10, 12, 16))
+        p.drawRoundedRect(board, S(12), S(12))
+        legal = set(self.d.get("legal") or []) if self.my_turn() else set()
+        my_goal, their_goal = (0, 8) if side == 1 else (8, 0)
+        for cell in range(81):
+            rr = self._cell_rect(cell)
+            row = cell // 9
+            base = QColor(30, 33, 40)
+            if row == my_goal:                                   # where you are going
+                base = mix(base, QColor(MAZE_COLS[mine]), 0.28)
+            elif row == their_goal:
+                base = mix(base, QColor(MAZE_COLS[theirs]), 0.18)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(base)
+            p.drawRoundedRect(rr, S(4), S(4))
+            if cell in legal:
+                on = self.hover == ("cell", cell)
+                p.setBrush(alpha(MAZE_COLS[mine], 0.45 if on else 0.18))
+                p.drawRoundedRect(rr.adjusted(S(2), S(2), -S(2), -S(2)), S(4), S(4))
+        # walls
+        for horiz, text in ((True, h), (False, v)):
+            for a, ch in enumerate(text):
+                if ch in "12":
+                    wr = self._wall_rect(horiz, a)
+                    col = QColor(MAZE_COLS[int(ch) - 1])
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(alpha(col, 0.25))
+                    p.drawRoundedRect(wr.adjusted(-S(1.5), -S(1.5), S(1.5), S(1.5)), gap, gap)
+                    p.setBrush(col)
+                    p.drawRoundedRect(wr, gap / 2, gap / 2)
+        last = self.d.get("last") or {}
+        try:
+            lm = int(last.get("m"))
+        except (TypeError, ValueError):
+            lm = -1
+        if lm >= 100 and self._flash.level > 0.01:               # the wall just placed glows
+            wr = self._wall_rect(lm < 200, lm % 100)
+            p.setPen(QPen(alpha("#FFFFFF", 0.8 * self._flash.level), S(2)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(wr.adjusted(-S(2), -S(2), S(2), S(2)), gap, gap)
+        # the wall you are about to place
+        if self.hover is not None and self.hover[0] == "wall" and self.my_turn():
+            ok = self._legal(self.hover)
+            wr = self._wall_rect(self.hover[1] < 200, self.hover[1] % 100)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(MAZE_COLS[mine], 0.7) if ok else alpha("#FF5C5C", 0.45))
+            p.drawRoundedRect(wr, gap / 2, gap / 2)
+        # pawns
+        g = self._glide.level
+        for i in (theirs, mine):
+            cell = int(pos[i])
+            rr = self._cell_rect(cell)
+            c = rr.center()
+            if i in self._from and self._from[i] != cell and g < 1:
+                c0 = self._cell_rect(self._from[i]).center()
+                c = QPointF(lerp(c0.x(), c.x(), g), lerp(c0.y(), c.y(), g))
+            rad = cs * 0.34
+            col = QColor(MAZE_COLS[i])
+            glow = QRadialGradient(c, rad * 2.0)
+            glow.setColorAt(0, alpha(col, 0.35))
+            glow.setColorAt(1, alpha(col, 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(glow)
+            p.drawEllipse(c, rad * 2.0, rad * 2.0)
+            rg = QRadialGradient(c - QPointF(rad * 0.35, rad * 0.35), rad * 1.4)
+            rg.setColorAt(0, col.lighter(150))
+            rg.setColorAt(1, col.darker(130))
+            p.setBrush(rg)
+            p.setPen(QPen(alpha("#FFFFFF", 0.5), S(1.2)))
+            p.drawEllipse(c, rad, rad)
+
+
+class TriBoard(QWidget):
+    """9.2: Trifade, endless noughts and crosses. Each side keeps at most 3 marks: the next one takes the oldest away,
+    so the oldest of a full set is shown fading. Click an empty square to play there."""
+    moved = pyqtSignal(int)
+    LINES = ((0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6))
+
+    def __init__(self, width: int) -> None:
+        super().__init__()
+        self.kind, self.d = "tri", {}
+        self.hover = -1
+        self._last_n = -1
+        self._flash = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self._pulse = QTimer(self)                  # the fading mark breathes, so it is easy to spot
+        self._pulse.setInterval(60)
+        self._pulse.timeout.connect(self.update)
+        self._pulse.start()
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        w = int(min(width, S(380)))
+        self.setFixedSize(w, w + S(30))
+
+    def set_data(self, d: dict) -> None:
+        self.d = dict(d or {})
+        n = int(self.d.get("n") or 0)
+        if n != self._last_n:
+            if self._last_n >= 0:
+                self._flash.jump(1.0)
+                self._flash.to(0.0, 700)
+            self._last_n = n
+        self.update()
+
+    def my_turn(self) -> bool:
+        d = self.d
+        return d.get("state") == "live" and int(d.get("turn") or 0) == int(d.get("side") or -1)
+
+    def _q(self, s: int) -> list:
+        b = self.d.get("board") or {}
+        try:
+            return [int(c) for c in (b.get("q") or [[], []])[s - 1]]
+        except (AttributeError, IndexError, TypeError, ValueError):
+            return []
+
+    def _geo(self):
+        size = min(self.width(), self.height() - S(30))
+        gap = S(8)
+        cs = (size - 2 * gap) / 3
+        return (self.width() - size) / 2, S(30), cs, gap
+
+    def _rect(self, cell: int) -> QRectF:
+        x0, y0, cs, gap = self._geo()
+        r, c = divmod(cell, 3)
+        return QRectF(x0 + c * (cs + gap), y0 + r * (cs + gap), cs, cs)
+
+    def _at(self, pos) -> int:
+        for cell in range(9):
+            if self._rect(cell).contains(pos):
+                return cell
+        return -1
+
+    def _free(self, cell: int) -> bool:
+        return 0 <= cell <= 8 and cell not in self._q(1) and cell not in self._q(2)
+
+    def mouseMoveEvent(self, e) -> None:
+        h = self._at(e.position())
+        if h != self.hover:
+            self.hover = h
+            self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self.hover = -1
+        self.update()
+
+    def mouseReleaseEvent(self, e) -> None:
+        cell = self._at(e.position())
+        if self.my_turn() and self._free(cell):
+            sfx.play("pick")
+            self.moved.emit(cell)
+        elif cell >= 0 and self.my_turn():
+            sfx.play("tick")
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        try:
+            self._paint(p)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("tri paint: %s", exc)
+
+    def _mark(self, p: QPainter, r: QRectF, s: int, a: float, scale: float = 1.0) -> None:
+        """Side 1 is a cross, side 2 a ring, each in its colour."""
+        col = QColor(MAZE_COLS[s - 1])
+        c = r.center()
+        k = r.width() * 0.26 * scale
+        glow = QRadialGradient(c, k * 2.0)
+        glow.setColorAt(0, alpha(col, 0.28 * a))
+        glow.setColorAt(1, alpha(col, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, k * 2.0, k * 2.0)
+        p.setPen(QPen(alpha(col, a), max(3.0, r.width() * 0.09 * scale), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        if s == 1:
+            p.drawLine(QPointF(c.x() - k, c.y() - k), QPointF(c.x() + k, c.y() + k))
+            p.drawLine(QPointF(c.x() + k, c.y() - k), QPointF(c.x() - k, c.y() + k))
+        else:
+            p.drawEllipse(c, k * 1.08, k * 1.08)
+
+    def _paint(self, p: QPainter) -> None:
+        side = int(self.d.get("side") or 1)
+        q1, q2 = self._q(1), self._q(2)
+        x0, y0, cs, gap = self._geo()
+        # who has which mark, above the board
+        p.setFont(font(10, QFont.Weight.Bold))
+        for s, left in ((3 - side, True), (side, False)):
+            label = tr("Them") if left else tr("You")
+            r = QRectF(x0, 0, 3 * cs + 2 * gap, S(24))
+            col = QColor(MAZE_COLS[s - 1])
+            fm = p.fontMetrics()
+            tw = fm.horizontalAdvance(label)
+            icon = QRectF(r.left() if left else r.right() - S(18), S(3), S(18), S(18))
+            self._mark(p, icon, s, 1.0, 1.15)
+            p.setPen(col)
+            p.drawText(QRectF(icon.right() + S(6) if left else icon.left() - S(6) - tw, 0, tw, S(24)),
+                       int(Qt.AlignmentFlag.AlignVCenter), label)
+        size = 3 * cs + 2 * gap
+        board = QRectF(x0 - gap, y0 - gap, size + 2 * gap, size + 2 * gap)
+        p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
+        p.setBrush(QColor(10, 12, 16))
+        p.drawRoundedRect(board, S(14), S(14))
+        mine = q1 if side == 1 else q2
+        mine_turn = self.my_turn()
+        goes = mine[0] if mine_turn and len(mine) >= 3 and self._free(self.hover) else -1
+        last = self.d.get("last") or {}
+        try:
+            lm = int(last.get("m"))
+        except (TypeError, ValueError):
+            lm = -1
+        beat = 0.5 + 0.5 * math.sin(time.monotonic() * 4.0)
+        win = None
+        if self.d.get("state") == "done" and self.d.get("why") == "three":
+            w = int(self.d.get("winner") or 0)
+            q = set(q1 if w == 1 else q2)
+            win = next((ln for ln in self.LINES if set(ln) <= q), None)
+        for cell in range(9):
+            rr = self._rect(cell)
+            free = self._free(cell)
+            on = mine_turn and free and cell == self.hover
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(40, 44, 54) if on else QColor(28, 31, 38))
+            p.drawRoundedRect(rr, S(10), S(10))
+            if cell == lm and self._flash.level > 0.01:
+                p.setPen(QPen(alpha("#FFFFFF", 0.6 * self._flash.level), S(2)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(rr.adjusted(S(1), S(1), -S(1), -S(1)), S(10), S(10))
+            if on:                                              # where your mark would go: smaller, see-through
+                self._mark(p, rr, side, 0.5, 0.78)
+        for s, q in ((1, q1), (2, q2)):
+            for i, cell in enumerate(q):
+                oldest = i == 0 and len(q) >= 3 and self.d.get("state") == "live"
+                a = 1.0
+                if oldest:                                      # it goes when this side plays again
+                    a = 0.3 + 0.25 * beat if cell == goes or int(self.d.get("turn") or 0) == s else 0.55
+                self._mark(p, self._rect(cell), s, a)
+                if oldest:
+                    rr = self._rect(cell).adjusted(S(5), S(5), -S(5), -S(5))
+                    pen = (QPen(alpha("#FF6B6B", 0.55 + 0.4 * beat), S(2), Qt.PenStyle.DashLine) if cell == goes else
+                           QPen(alpha(MAZE_COLS[s - 1], 0.5 * a), S(1.5), Qt.PenStyle.DashLine))
+                    p.setPen(pen)
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+                    p.drawRoundedRect(rr, S(8), S(8))
+        if win:
+            a_, b_ = self._rect(win[0]).center(), self._rect(win[2]).center()
+            p.setPen(QPen(alpha("#FFFFFF", 0.85), S(5), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(a_, b_)
 
 
 class ArenaBoard(QWidget):
@@ -35350,7 +36297,9 @@ def arena_status(ctx, d: dict) -> tuple:
     if st == "done":
         w = d.get("winner")
         why = {"time": tr("time ran out"), "resign": tr("resigned"), "four": tr("four in a row"), "discs": tr("most discs"),
-               "fleet": tr("fleet sunk"), "full": tr("board full")}.get(d.get("why"), "")
+               "fleet": tr("fleet sunk"), "full": tr("board full"),
+               "home": tr("reached the other side"), "long": tr("too many moves"),
+               "three": tr("three in a row")}.get(d.get("why"), "")
         paid = int(d.get("paid") or 0)
         if w == 0:
             return tr("A draw") + (f"  ·  +{coins_text(paid)}" if paid and d.get("bot") else ""), TEXT
@@ -35419,7 +36368,7 @@ def arena_take(page, d) -> None:
 
 def build_arena(page, lay) -> None:
     ctx = page.ctx
-    kind = getattr(ctx, "arena_kind", "reversi") or "reversi"
+    kind = getattr(ctx, "arena_kind", "ships") or "ships"
     mode = getattr(ctx, "arena_mode", "bot") or "bot"
     if kind == "c4":
         mode = "duel"
@@ -35466,7 +36415,12 @@ def build_arena(page, lay) -> None:
         _arena_bot_setup(page, hl, kind, lobby)
     else:
         _arena_duel_setup(page, hl, kind, lobby, poll)
-    lay.addWidget(ControlsBar([("LMB", tr("Play a move"))], page.W))
+    if kind == "maze":
+        lay.addWidget(ControlsBar([("LMB", tr("Lit square: step")), ("LMB", tr("Groove: place a wall"))], page.W))
+    elif kind == "tri":
+        lay.addWidget(ControlsBar([("LMB", tr("Empty square: place a mark"))], page.W))
+    else:
+        lay.addWidget(ControlsBar([("LMB", tr("Play a move"))], page.W))
 
 
 def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
@@ -35477,6 +36431,8 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
     them = (g.get("b") if side == 1 else g.get("a")) or tr("Waiting…")
     if g.get("kind") == "c4":
         mine_col, their_col = ARENA_SIDES[side - 1] if side else TEXT, ARENA_SIDES[2 - side] if side else TEXT
+    elif g.get("kind") in ("maze", "tri"):
+        mine_col, their_col = (MAZE_COLS[side - 1], MAZE_COLS[2 - side]) if side else (TEXT, TEXT)
     elif g.get("kind") == "reversi":
         mine_col, their_col = ("#9AA4AD", "#FFFFFF") if side == 1 else ("#FFFFFF", "#9AA4AD")
     else:
@@ -35490,7 +36446,8 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
     line = Label(text, 13, col, bold=True)
     page.arena_line = line
     lay.addWidget(line)
-    board = ArenaBoard(g.get("kind"), page.W)
+    board = (MazeBoard(page.W) if g.get("kind") == "maze" else TriBoard(page.W) if g.get("kind") == "tri"
+             else ArenaBoard(g.get("kind"), page.W))
     board.set_data(g)
     page.arena_board = board
     lay.addWidget(board, 0, Qt.AlignmentFlag.AlignHCenter)
@@ -35585,7 +36542,15 @@ def _arena_bot_setup(page, lay, kind: str, lobby: dict) -> None:
     lvl = int(getattr(ctx, "arena_level_" + kind, 1) or 0)
     lay.addWidget(Label(tr("Against the bot. Free, no bet: a win pays by the level and by how well you win."), 11,
                         TEXT_DIM, wrap_w=page.W))
-    seg = Segmented([tr(n) for _k, n in ARENA_LEVELS], lvl)
+    if kind == "maze":
+        lay.addWidget(Label(tr("Race your pawn to the far side. Each turn, step one square or place one of your 10 "
+                               "walls to slow the other side down. A wall can never close a pawn in. Professional "
+                               "always starts and plays the strongest moves it can find."), 10.5, TEXT_FAINT, wrap_w=page.W))
+    elif kind == "tri":
+        lay.addWidget(Label(tr("Three in a row wins, but you only keep 3 marks: your 4th takes your oldest away (it fades "
+                               "first). The game goes on until someone wins. Professional always starts and always "
+                               "plays the best move."), 10.5, TEXT_FAINT, wrap_w=page.W))
+    seg = Segmented([arena_level_name(kind, k) for k, _n in ARENA_LEVELS], lvl)
     lay.addWidget(seg)
     skill = (lobby.get("skill") or {}).get(kind) or {}
     mult = float((lobby.get("skill") or {}).get("mult") or 1.0)
@@ -35656,9 +36621,12 @@ def _arena_duel_setup(page, lay, kind: str, lobby: dict, poll: QTimer) -> None:
                    lambda d: arena_take(page, d) if d else go.setEnabled(True))
     go.clicked.connect(create)
     lay.addWidget(go)
-    if kind in ARENA_PAY:
+    if kind in ARENA_PAY or kind == "c4":
         bot = Button(tr("Play a bot instead"), "ghost", 32, icon="robot")
-        bot.clicked.connect(lambda: (setattr(ctx, "arena_mode", "bot"), ctx.reload_page("games")))
+        if kind == "c4":                                  # 9.2: Connect 4 bots are the Connect 4 game (with bets)
+            bot.clicked.connect(lambda: page.enter(page.NAMES.index("Connect 4")))
+        else:
+            bot.clicked.connect(lambda: (setattr(ctx, "arena_mode", "bot"), ctx.reload_page("games")))
         lay.addWidget(bot)
 
     def refresh() -> None:                              # the list of open duels stays fresh
@@ -36038,7 +37006,9 @@ MINI_COLOURS = {"Timing": ("#3DDC84", "#0F5A3A"), "Connect 4": ("#FF5C5C", "#2A2
                 "Beat Tap": ("#FF5C8A", "#6A1FD0"), "Parking": ("#FF9A3D", "#9A2A1F"), "Memory": ("#4FC3FF", "#2E3BC0"),
                 "Block Blast": ("#FFB547", "#C8402A"), "Minesweeper": ("#7BE0A0", "#1F5A4A"),
                 "Mini Golf": ("#8BE36B", "#1F6B2A"), "Wave Rush": ("#5EEAD4", "#1A3A8A"),
-                "Reversi": ("#3FCF7A", "#0B4A2A"), "Battleships": ("#5AA8FF", "#0A2A5A")}
+                "Reversi": ("#3FCF7A", "#0B4A2A"), "Battleships": ("#5AA8FF", "#0A2A5A"),
+                "Mazelock": ("#5BD6FF", "#B5561A"), "Trifade": ("#9B7BFF", "#2B2F8F"),
+                "Karting": ("#FF7A3D", "#7A1038")}
 
 
 def paint_mini_glyph(p: QPainter, name: str, c: QPointF, size: float) -> None:
@@ -36149,6 +37119,17 @@ def paint_mini_glyph(p: QPainter, name: str, c: QPointF, size: float) -> None:
         p.drawPolygon(QPolygonF([QPointF(3, -13), QPointF(14, -9), QPointF(3, -5)]))
         p.setBrush(white)
         p.drawEllipse(QPointF(-9, 9), 3.4, 3.4)
+    elif name == "Karting":                             # 9.2: a chequered flag on its pole
+        p.drawRoundedRect(QRectF(-11, -13, 2.6, 27), 1.2, 1.2)
+        for r_ in range(4):
+            for c_ in range(5):
+                if (r_ + c_) % 2 == 0:
+                    p.drawRect(QRectF(-8.4 + c_ * 4.2, -13 + r_ * 4.2 + math.sin(c_ * 0.9) * 1.2, 4.2, 4.2))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(white, 1.6))
+        p.drawRect(QRectF(-8.4, -13, 21, 16.8))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(white)
     elif name == "Wave Rush":                           # a zig-zag run and the arrow
         path = QPainterPath()
         path.moveTo(-14, 6)
@@ -36176,6 +37157,26 @@ def paint_mini_glyph(p: QPainter, name: str, c: QPointF, size: float) -> None:
         p.setBrush(QColor("#FF7A5C"))
         p.drawEllipse(QPointF(10, -8), 1.6, 1.6)
         p.setBrush(white)
+    elif name == "Mazelock":                            # a 3 x 3 grid, two walls and a pawn slipping past
+        for gx in (-9, 0, 9):
+            for gy in (-9, 0, 9):
+                p.setBrush(QColor(255, 255, 255, 70))
+                p.drawRoundedRect(QRectF(gx - 3.4, gy - 3.4, 6.8, 6.8), 1.4, 1.4)
+        p.setBrush(white)
+        p.drawRoundedRect(QRectF(-13, -5.6, 17, 2.4), 1.2, 1.2)
+        p.drawRoundedRect(QRectF(3.3, -4, 2.4, 17), 1.2, 1.2)
+        p.setBrush(QColor("#FFD08A"))
+        p.drawEllipse(QPointF(9, -9), 4.2, 4.2)
+        p.setBrush(white)
+    elif name == "Trifade":                             # a cross, a ring, and a cross fading away
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for (cx, cy), a in (((-8, -8), 255), ((8, 8), 255), ((8, -8), 90)):
+            p.setPen(QPen(QColor(255, 255, 255, a), 2.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawLine(QPointF(cx - 4.5, cy - 4.5), QPointF(cx + 4.5, cy + 4.5))
+            p.drawLine(QPointF(cx + 4.5, cy - 4.5), QPointF(cx - 4.5, cy + 4.5))
+        p.setPen(QPen(QColor("#FFD08A"), 2.8))
+        p.drawEllipse(QPointF(-8, 8), 5.2, 5.2)
+        p.setPen(Qt.PenStyle.NoPen)
     p.restore()
 
 
@@ -36261,10 +37262,11 @@ class CasinoDoor(QWidget):
     """9.1: the big Enter Casino button: a gold-lit marquee with chasing bulbs and two doors. Clicked, the doors swing
     open on a burst of light and the casino hall comes in. The bulbs run only while it is on screen."""
 
-    def __init__(self, on_enter) -> None:
+    def __init__(self, on_enter, leave: bool = False) -> None:
         super().__init__()
         self.on_enter = on_enter
-        self.setFixedHeight(S(150))
+        self.leave = leave                              # 9.2: LEAVE CASINO: the doors start open and swing shut
+        self.setFixedHeight(S(104 if leave else 150))
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._hover = Tween(self, on_change=self.update)
         self._open = Tween(self, 0.0, self.update, QEasingCurve.Type.InOutCubic)
@@ -36293,7 +37295,7 @@ class CasinoDoor(QWidget):
     def mouseReleaseEvent(self, e) -> None:
         if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()) and not self._going:
             self._going = True
-            sfx.play("on")
+            sfx.play("off" if self.leave else "on")
             self._open.to(1.0, 620)
 
     def _done(self) -> None:
@@ -36305,6 +37307,9 @@ class CasinoDoor(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         t, h, o = time.monotonic() - self.t0, self._hover.level, self._open.level
+        shut = o if self.leave else 0.0                 # leaving: how far the doors have closed
+        if self.leave:
+            h, o = 0.0, max(0.0, 1.0 - o) * (1.0 - 0.25 * self._hover.level)
         r = QRectF(self.rect()).adjusted(S(2), S(2), -S(2), -S(2))
         gold, deep = QColor("#F5C04A"), QColor("#2A0A14")
         rad = S(20)
@@ -36319,7 +37324,8 @@ class CasinoDoor(QWidget):
         clip.addRoundedRect(r, rad, rad)
         p.save()
         p.setClipPath(clip)
-        door = QRectF(r.right() - S(150), r.top() + S(18), S(116), r.height() - S(18))   # the doorway on the right
+        door = QRectF(r.right() - S(150), r.top() + S(18), S(116), r.height() - S(18)) if not self.leave else \
+            QRectF(r.right() - S(112), r.top() + S(14), S(84), r.height() - S(14))         # the doorway on the right
         light = QRadialGradient(door.center(), door.width() * (0.8 + 0.9 * o))
         light.setColorAt(0, alpha("#FFE7A0", 0.55 * (0.35 + 0.65 * max(h * 0.6, o))))
         light.setColorAt(1, alpha("#FFE7A0", 0.0))
@@ -36383,11 +37389,11 @@ class CasinoDoor(QWidget):
         p.setPen(QPen(alpha(gold, 0.55 + 0.35 * h), S(1.6)))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawRoundedRect(r, rad, rad)
-        text_r = QRectF(r.left() + S(26), r.top() + S(26), door.left() - r.left() - S(36), S(54))
-        f = font(27, QFont.Weight.Black)
+        text_r = QRectF(r.left() + S(26), r.top() + S(26 if not self.leave else 14), door.left() - r.left() - S(36), S(54))
+        f = font(27 if not self.leave else 22, QFont.Weight.Black)
         f.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, S(1.2))
         p.setFont(f)
-        title = tr("ENTER CASINO")
+        title = tr("LEAVE CASINO") if self.leave else tr("ENTER CASINO")
         fm = p.fontMetrics()
         while fm.horizontalAdvance(title) > text_r.width() and f.pointSizeF() > 12:
             f.setPointSizeF(f.pointSizeF() - 1)
@@ -36406,10 +37412,16 @@ class CasinoDoor(QWidget):
         p.drawPath(path)
         p.setPen(alpha("#FFE7C8", 0.82))
         p.setFont(font(11, QFont.Weight.DemiBold))
-        sub = tr("Blackjack, Slots, Roulette, Jackpot, Horse Racing and more")
-        p.drawText(QRectF(text_r.left(), text_r.top() + S(56), text_r.width(), S(36)),
+        sub = tr("Back to Play: mini games and duels") if self.leave else \
+            tr("Blackjack, Slots, Roulette, Jackpot, Horse Racing and more")
+        p.drawText(QRectF(text_r.left(), text_r.top() + S(46 if self.leave else 56), text_r.width(), S(36)),
                    int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), sub)
-        if o > 0:                                       # the burst of light as the doors open
+        if self.leave:                                  # leaving: the doors shut and the lights go down
+            if shut > 0:
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha("#000000", 0.8 * shut * shut))
+                p.drawRoundedRect(r, rad, rad)
+        elif o > 0:                                     # the burst of light as the doors open
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha("#FFF4D0", 0.75 * o * o))
             p.drawRoundedRect(r, rad, rad)
@@ -36680,6 +37692,9 @@ class GamesPage(Page):
             if sub == "wave":                                        # 4.3: Wave Rush, solo or 1 v 1
                 build_wave(self, lay)
                 return
+            if sub == "kart":                                        # 9.2: Karting
+                build_kart(self, lay)
+                return
             if sub == "arena":                                       # 9.1: Reversi, Battleships, duels
                 build_arena(self, lay)
                 return
@@ -36720,31 +37735,35 @@ class GamesPage(Page):
         lay.addWidget(help_row(tr("Mini games"), tr("All free, no bet. They pay by how well you do, with no daily limit: "
                                                      "your first 8 rounds of each game every day pay double.")))
         ctx = self.ctx
-        games = [(n, "Pays by skill", (lambda i=self.NAMES.index(n): self.enter(i))) for n in SKILL_GAMES]
-        games += [("Reversi", "Pays by skill", lambda: open_arena(ctx, "reversi", "bot")),
-                  ("Battleships", "Pays by skill", lambda: open_arena(ctx, "ships", "bot")),
-                  ("Beat Tap", "Free coins", lambda: open_games_part(ctx, None, "mini_open", back="games")),
+        games = [(n, "Pays by skill", (lambda i=self.NAMES.index(n): self.enter(i))) for n in SKILL_GAMES if n != "Connect 4"]
+        games += [("Beat Tap", "Free coins", lambda: open_games_part(ctx, None, "mini_open", back="games")),
                   ("Parking", "Free coins", lambda: open_games_part(ctx, None, "park_open", back="games")),
                   ("Memory", "Free coins", lambda: open_games_part(ctx, "memory", back="games")),
                   ("Block Blast", "Free coins", lambda: open_games_part(ctx, "blocks", back="games")),
                   ("Minesweeper", "Free coins", lambda: open_games_part(ctx, "sweeper", back="games"))]
         lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(games)], 3))
-        lay.addWidget(help_row(tr("Duels"), tr("1 v 1 against another player, for fun or for the same bet each: the "
-                                               "winner takes the pot (less a small fee).")))
-        duels = [("Connect 4", "Duel a player", lambda: open_arena(ctx, "c4", "duel")),
-                 ("Reversi", "Duel a player", lambda: open_arena(ctx, "reversi", "duel")),
-                 ("Battleships", "Duel a player", lambda: open_arena(ctx, "ships", "duel")),
-                 ("Mini Golf", "Duel or practice", lambda: open_games_part(ctx, "duels", back="games")),
-                 ("Wave Rush", "Duel or solo", lambda: open_games_part(ctx, "wave", back="games"))]
-        lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(duels)], 3))
+        # 9.2: board games, each once, against a bot or a player
+        lay.addWidget(help_row(tr("Duels"), tr("Board games 1 v 1. Against a bot (free, pays by how well you win) or "
+                                               "against a player, for fun or for the same bet each: the winner takes "
+                                               "the pot (less a small fee).")))
+        duels = [("Connect 4", "Bot or player", lambda: open_arena(ctx, "c4", "duel")),
+                 ("Battleships", "Bot or player", lambda: open_arena(ctx, "ships", "bot")),
+                 ("Mazelock", "Bot or player", lambda: open_arena(ctx, "maze", "bot")),
+                 ("Trifade", "Bot or player", lambda: open_arena(ctx, "tri", "bot"))]
+        lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(duels)], 2))
+        lay.addWidget(help_row(tr("Multiplayer"), tr("Play with up to 4 players at once, for fun or for a bet.")))
+        multi = [("Mini Golf", "Up to 4 players", lambda: open_games_part(ctx, "duels", back="games")),
+                 ("Wave Rush", "Up to 4 players", lambda: open_games_part(ctx, "wave", back="games")),
+                 ("Karting", "3 players + bot", lambda: open_games_part(ctx, "kart", back="games"))]
+        lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(multi)], 3))
 
     def _hall(self, lay) -> None:
         """9.1: behind the casino door: the live events, Coinflip and the games of chance."""
         if self._go_back_if_asked():
             return
-        self._back_bar(lay, tr("Casino"), lambda: self.open_sub(None), None)
-        lay.addWidget(JackpotCard(self))
-        lay.addWidget(HorseCard(self))
+        lay.addWidget(CasinoDoor(lambda: self.open_sub(None), leave=True))   # 9.2: leave the way you came in
+        lay.addWidget(CoinBar(self.ctx))
+        lay.addWidget(LiveSlot(self))                                 # 9.2: one live game at a time
         lay.addWidget(DuelTile(self, "flip"))
         lay.addWidget(help_row(tr("Games"), tr("Coins only, never real money. The odds favour the house.")))
         grid = QWidget()
@@ -36848,7 +37867,7 @@ class GamesPage(Page):
         QTimer.singleShot(50, self.mem.start)
 
     def _scratch(self, lay) -> None:
-        self._back_bar(lay, tr("Scratch card"), None, "scratch")
+        self._back_bar(lay, tr("Scratch card"), lambda: leave_free_game(self.ctx), "scratch")   # 9.2: back where it was opened
         card = ScratchCard(self)
         lay.addWidget(card)
         hours = int(float(self.ctx.econ.cfg.get("scratch_hours", 12) or 12))
@@ -36867,10 +37886,16 @@ class GamesPage(Page):
             except RuntimeError:
                 pass
         if odds is None:
-            def got(ok: bool, data) -> None:
-                if ok and isinstance(data, list):
+            def got(ok: bool, data) -> None:                      # 9.2: the page is laid out again with the chances
+                if ok and isinstance(data, list):                 # under the card (added late they sat on top of it)
                     self.ctx.scratch_odds = data
-                    show(data)
+                    try:
+                        untouched = not card.asked and not card.prize
+                    except RuntimeError:
+                        return
+                    if untouched and getattr(self.ctx, "games_sub", None) == "scratch" \
+                            and self.ctx.window.showing("games"):
+                        self.ctx.reload_page("games")
             self.ctx.online.ask("rb_scratch_odds", {}, got)
         else:
             show(odds)
@@ -37055,7 +38080,8 @@ class GamesPage(Page):
         lay.addWidget(Label(tr("Before you play"), 16, bold=True))
         for text in ("These games use Rubenium coins only. Coins are not money: they cannot be bought, sold or cashed out.",
                      "The odds favour the house. Over time you lose more than you win.",
-                     "Gambling with real money can be addictive and is for adults only. If it stops being fun, stop."):
+                     "Gambling with real money can be addictive and is for adults only. If it stops being fun, stop.",
+                     "The casino is for players 18 and over."):
             lay.addWidget(Label(tr(text), 12.5, TEXT, wrap_w=self.W))
         lay.addSpacing(S(6))
         ok = Button(tr("I understand"), "primary", 38)
@@ -37981,16 +39007,18 @@ BOARDS = [("coins", "Richest"), ("worth", "Worth"), ("level", "Level"), ("badges
           ("g:rocket", "Rocket"), ("g:plinko", "Plinko"), ("g:mines", "Bombs"), ("g:tower", "Tower"), ("g:dice", "Dice"),
           ("g:timing", "Timing"), ("g:colour", "Colour Pick"), ("g:sfx", "SFX Match"),
           # 9.1: Horse Racing, the Arena games and the duels
-          ("horses", "Horse Racing"), ("reversi", "Reversi"), ("ships", "Battleships"), ("arena", "All duels"),
-          ("a:c4", "Connect 4 duels"), ("a:reversi", "Reversi duels"), ("a:ships", "Battleships duels")]
+          ("horses", "Horse Racing"), ("ships", "Battleships"), ("arena", "All duels"),
+          ("a:c4", "Connect 4 duels"), ("a:ships", "Battleships duels"),           # 9.2: no Reversi
+          ("maze", "Mazelock"), ("a:maze", "Mazelock duels"), ("tri", "Trifade"), ("a:tri", "Trifade duels"),
+          ("kart", "Karting")]
 # 5.13: the boards in three sections (no more one long row of buttons)
 # 9.1: four sections, the same as the Play screen: the casino, the mini games, the duels
 BOARD_SECTIONS = [("Players", ["coins", "worth", "level", "badges", "trophies", "hours", "streak"]),
                   ("Casino", ["g:slots", "g:roulette", "g:blackjack", "g:plinko", "g:mines", "g:rocket", "g:hilo",
                               "g:tower", "g:dice", "horses", "flips"]),
-                  ("Mini games", ["c4", "reversi", "ships", "cups", "g:timing", "g:colour", "g:sfx", "tap", "park",
+                  ("Mini games", ["c4", "ships", "maze", "tri", "cups", "g:timing", "g:colour", "g:sfx", "tap", "park",
                                   "memory", "blocks", "sweeper"]),
-                  ("Duels", ["arena", "a:c4", "a:reversi", "a:ships", "golf", "wave"])]
+                  ("Duels", ["arena", "a:c4", "a:ships", "a:maze", "a:tri", "golf", "wave", "kart"])]
 BOARD_NOTES = {"coins": "Most coins right now", "worth": "What their items are worth", "badges": "Different badges owned",
                "hours": "Hours with Rubenium", "streak": "Days in a row of daily rewards", "tap": "Best Beat Tap score (%)",
                "park": "Parking puzzles solved", "memory": "Memory games finished", "level": "Highest level (by XP)",
@@ -38001,9 +39029,13 @@ BOARD_NOTES.update({k: "Biggest win in one round (coins won above the bet)" for 
 BOARD_NOTES.update({"g:timing": "Best pay in one round", "g:colour": "Best pay in one round", "g:sfx": "Best pay in one round",
                     "horses": "Biggest Horse Racing win (coins won above the bet)",
                     "reversi": "Reversi wins against the bots (Easy 1, Medium 2, Hard 4, Insane 10 points)",
-                    "ships": "Battleships wins against the bots (Easy 1, Medium 2, Hard 4, Insane 10 points)",
+                    "ships": "Battleships wins against the bots (Easy 1, Medium 2, Hard 4, Professional 10 points)",
                     "arena": "Duels won in the Arena", "a:c4": "Connect 4 duels won", "a:reversi": "Reversi duels won",
-                    "a:ships": "Battleships duels won", "cups": "Cup Game rounds won"})
+                    "a:ships": "Battleships duels won", "cups": "Cup Game rounds won",
+                    "maze": "Mazelock wins against the bots (Easy 1, Medium 2, Hard 4, Professional 10 points)",
+                    "tri": "Trifade wins against the bots (Easy 1, Medium 2, Hard 4, Professional 10 points)",
+                    "a:maze": "Mazelock duels won", "a:tri": "Trifade duels won",
+                    "kart": "Best Karting score (%) on any circuit"})
 
 
 class LeaderRow(QWidget):
@@ -38056,6 +39088,11 @@ class LeaderRow(QWidget):
             p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
                        tr("Lv {n}", n=lv))
             return
+        if self.kind == "kart":                               # 9.2: tenths of a %
+            p.setPen(QColor(TEXT))
+            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       f"{v / 10:.1f}%")
+            return
         if self.kind == "sweeper":
             secs = row.get("secs")
             p.setPen(QColor(TEXT))
@@ -38079,10 +39116,7 @@ def build_leaders(page, lay) -> None:
     if server_wait(ctx, lay, page.W):
         return
     k = int(getattr(ctx, "board_kind", 0) or 0)
-    friends = bool(getattr(ctx, "board_friends", False))
-    seg = Segmented([tr("Everyone"), tr("Friends")], 1 if friends else 0)
-    seg.changed.connect(lambda i: (setattr(ctx, "board_friends", i == 1), setattr(ctx, "board_data", None), ctx.reload_page()))
-    lay.addWidget(seg)
+    friends = False                                         # 9.2: one global board, no Everyone / Friends
     names = dict(BOARDS)
     kind = BOARDS[min(k, len(BOARDS) - 1)][0]
     sec = next((i for i, (_t, ks) in enumerate(BOARD_SECTIONS) if kind in ks), 0)
@@ -39879,7 +40913,7 @@ class PlayerRow(QWidget):
 # 5.13: what the bottom row of your stats card can show (records included)
 STAT_CHOICES = {"cases": "Cases", "trades": "Trades", "rounds": "Bets", "casino": "Casino", "wave": "Wave Rush best",
                 "flip": "Coinflips won", "golf": "Golf games", "c4": "Connect 4 wins", "cups": "Cups won",
-                "trophies": "Trophies", "best": "Best win", "streak": "Day streak", "friends": "Friends"}
+                "best": "Best win", "streak": "Day streak", "friends": "Friends"}
 
 
 def stat_cell(key: str, st: dict) -> tuple:
@@ -39896,13 +40930,13 @@ def stat_cell(key: str, st: dict) -> tuple:
 
 
 class StatsCard(QWidget):
-    """Your picture, name, ADMIN tag and stats: the top of the Social tab."""
+    """Your picture, name and ADMIN tag: the top of the Social tab (9.2: the numbers are in the Stats tab)."""
     picture = pyqtSignal()
 
     def __init__(self, ctx, data: dict, width: int) -> None:
         super().__init__()
         self.ctx, self.data = ctx, data
-        self.setFixedSize(width, S(150))
+        self.setFixedSize(width, S(66))
         self.setMouseTracking(True)
         self._tick = Ticker(self, 80)
 
@@ -39927,6 +40961,8 @@ class StatsCard(QWidget):
         return keys[:4]
 
     def _cell_at(self, pos) -> int:
+        if self.height() < S(100):                          # 9.2: no numbers on the card
+            return -1
         w = (self.width() - S(16)) / 4
         for i in range(4, 8):
             box = QRectF(S(8) + (i % 4) * w, S(72) + S(38), w, S(36))
@@ -39981,7 +41017,7 @@ class StatsCard(QWidget):
             pass
             p.save()
             p.setOpacity(0.55)
-            paint_banner(p, QRectF(r.left(), r.top(), r.width(), S(66)), banner, time.monotonic(), S(12), 1.0,
+            paint_banner(p, QRectF(r.left(), r.top(), r.width(), min(S(66), r.height())), banner, time.monotonic(), S(12), 1.0,
                          int(look.get("gold") or 0))
             p.restore()
         paint_face(p, self._face(), self.ctx, name, int(d.get("avatar_v") or self.ctx.econ.avatar_v or 0))
@@ -39994,6 +41030,8 @@ class StatsCard(QWidget):
         p.setFont(font(10.5, QFont.Weight.DemiBold))
         p.drawText(QRectF(S(76), S(38), r.width() - S(90), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
                    tr("{h} played · member since {d}", h=played_text(int(d.get("minutes") or 0)), d=date_text(d.get("since"))))
+        if self.height() < S(100):                          # 9.2: the numbers live in the Stats tab
+            return
         th = None                                          # 5.1: the stats sit on the theme this player wears
         if name.lower() == (self.ctx.online.username() or "").lower():
             th = self.ctx.theme()
@@ -40157,6 +41195,32 @@ def build_activity(page, lay) -> None:
         lay.addWidget(ActivityRow(colour, text, action, fn, second))
 
 
+def profile_numbers(prof: dict, width: int) -> QWidget:
+    """A player's numbers (9.2: shown in the Stats tab, Records)."""
+    st = prof.get("stats") or {}
+    bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
+    seen = tr("Online") if prof.get("online") else (ago_text(prof.get("seen")) or "—")
+    return Numbers([
+            (played_text(int(prof.get("minutes") or 0)), tr("Played")), (seen, tr("Last Seen")),
+            (int(st.get("friends") or 0), tr("Friends")),
+            (int(st.get("items") or 0), tr("Items")), (coins_text(int(st.get("worth") or 0)), tr("Collection Worth")),
+            (int(st.get("badges") or 0), tr("Badges")),
+            (int(st.get("gold") or 0), tr("Gold Badges"), "#E8C26A"), (int(st.get("cases") or 0), tr("Cases Opened")),
+            (int(st.get("trades") or 0), tr("Trades")),
+            (int(st.get("rounds") or 0), tr("Casino Bets")), (coins_text(int(st.get("best") or 0)), tr("Best Win")),
+            (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino Result"),
+             "#5BE08A" if won >= bet else "#FF7A7A"),
+            (int(st.get("mini") or 0), tr("Beat Tap")), (int(st.get("park") or 0), tr("Parking")),
+            (int(st.get("spins") or 0), tr("Free Spins")),
+            (f"{coins_text(int(st.get('wave') or 0))} m", tr("Wave Rush best"), "#7FE8FF"),     # 5.13: records
+            (int(st.get("flip") or 0), tr("Coinflips won")), (int(st.get("golf") or 0), tr("Golf games")),
+            (int(st.get("c4") or 0), tr("Connect 4 wins")), (int(st.get("cups") or 0), tr("Cups won")),
+            (int(st.get("ships") or 0), tr("Battleships wins")),   # 9.1
+            (int(st.get("insane") or 0), tr("Professional bots beaten"), "#FF7AD9"),
+            (int(st.get("arena") or 0), tr("Duels won")), (coins_text(int(st.get("horses") or 0)), tr("Best horse win")),
+            (coins_text(int(st.get("skill") or 0)), tr("Mini game coins"))], width)   # 9.2: trophies only in their tab
+
+
 class FriendsPage(Page):
     """The Social tab."""
     key = "friends"
@@ -40204,8 +41268,6 @@ class FriendsPage(Page):
             ctx.social_edit = True
             ctx.reload_page()
         edit.clicked.connect(open_edit)
-        stats = Button(tr("My Stats"), "ghost", 30, icon="perf")
-        stats.clicked.connect(lambda: ctx.window.nav("stats") if hasattr(ctx.window, "nav") else self.open_profile(ctx.online.username()))
         songs = Button(tr("Songs"), "ghost", 30, icon="note")
 
         def open_songs() -> None:
@@ -40213,7 +41275,6 @@ class FriendsPage(Page):
             ctx._hist = HistoryWindow(ctx)
         songs.clicked.connect(open_songs)
         line.addWidget(edit, 1)
-        line.addWidget(stats, 1)
         line.addWidget(songs, 1)
         self.lay.addLayout(line)
         build_activity(self, self.lay)               # 4.0: everything waiting for you, in one place
@@ -40515,7 +41576,7 @@ class FriendsPage(Page):
         if data is None:
             self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
             return ctx.online.ask("rb_profile", {"name": name}, self._got_profile)
-        prof, hist = data.get("profile") or {}, data.get("history")
+        prof = data.get("profile") or {}
         self.lay.addWidget(ProfileCard(ctx, prof, self.W))
         badges = list(prof.get("badges") or [])
         owned = set(badges)
@@ -40535,7 +41596,11 @@ class FriendsPage(Page):
             self.lay.addWidget(Label(tr("No badges yet"), 12, TEXT_DIM))
         if prof.get("stats") is None:
             return
-        self._details(prof)
+        see = Button(tr("See {name}'s stats", name=name) if not prof.get("me") else tr("See my stats"), "primary", 36,
+                     icon="chart")                       # 9.2: every number lives in the Stats tab now
+        see.clicked.connect(lambda: open_player_stats(ctx, None if prof.get("me") else name))
+        self.lay.addWidget(see)
+        self._wearing(prof)
         songs = data.get("songs")
         if songs is not None and (songs.get("rows") or not songs.get("shared", True)):
             self.lay.addWidget(heading(tr("Recently Played")))
@@ -40545,16 +41610,6 @@ class FriendsPage(Page):
                 pass
                 for row in (songs.get("rows") or [])[:10]:
                     self.lay.addWidget(HistoryRow(row, self.W))
-        if hist is None:
-            return self.lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
-        for key, title in (("trades", tr("Last 3 Trades")), ("cases", tr("Last 3 Cases")), ("spins", tr("Last 3 Spins")),
-                           ("bets", tr("Last 30 Bets"))):
-            rows = hist.get(key) or []
-            self.lay.addWidget(heading(title))
-            if not rows:
-                self.lay.addWidget(Label(tr("Nothing yet"), 11, TEXT_FAINT))
-            else:
-                self.lay.addWidget(HistoryList(ctx, key, rows, self.W))
 
     PERKS = [("users", "Chat", "Send messages"), ("swap", "Trading", "Swap items and coins"),
              ("gift", "Gifts", "Send cases to each other"), ("perf", "Full profile", "Stats, history, last seen"),
@@ -40612,36 +41667,8 @@ class FriendsPage(Page):
             cl.addWidget(b)
         self.lay.addWidget(card)                       # 4.5: trading is for friends only
 
-    def _details(self, prof: dict) -> None:
-        """A friend's numbers and what they are wearing."""
-        pass
-        pass
-        pass
-        st = prof.get("stats") or {}
-        bet, won = int(st.get("bet") or 0), int(st.get("won") or 0)
-        seen = tr("Online") if prof.get("online") else (ago_text(prof.get("seen")) or "—")
-        self.lay.addWidget(heading(tr("Stats")))
-        add_play_history(self, self.lay, getattr(self.ctx, "friends_profile", None) or "")      # 6.6: the graph
-        self.lay.addWidget(Numbers([
-            (played_text(int(prof.get("minutes") or 0)), tr("Played")), (seen, tr("Last Seen")),
-            (int(st.get("friends") or 0), tr("Friends")),
-            (int(st.get("items") or 0), tr("Items")), (coins_text(int(st.get("worth") or 0)), tr("Collection Worth")),
-            (int(st.get("badges") or 0), tr("Badges")),
-            (int(st.get("gold") or 0), tr("Gold Badges"), "#E8C26A"), (int(st.get("cases") or 0), tr("Cases Opened")),
-            (int(st.get("trades") or 0), tr("Trades")),
-            (int(st.get("rounds") or 0), tr("Casino Bets")), (coins_text(int(st.get("best") or 0)), tr("Best Win")),
-            (("+" if won >= bet else "−") + coins_text(abs(won - bet)), tr("Casino Result"),
-             "#5BE08A" if won >= bet else "#FF7A7A"),
-            (int(st.get("mini") or 0), tr("Beat Tap")), (int(st.get("park") or 0), tr("Parking")),
-            (int(st.get("spins") or 0), tr("Free Spins")),
-            (f"{coins_text(int(st.get('wave') or 0))} m", tr("Wave Rush best"), "#7FE8FF"),     # 5.13: records
-            (int(st.get("flip") or 0), tr("Coinflips won")), (int(st.get("golf") or 0), tr("Golf games")),
-            (int(st.get("c4") or 0), tr("Connect 4 wins")), (int(st.get("cups") or 0), tr("Cups won")),
-            (int(st.get("reversi") or 0), tr("Reversi wins")), (int(st.get("ships") or 0), tr("Battleships wins")),   # 9.1
-            (int(st.get("insane") or 0), tr("Insane bots beaten"), "#FF7AD9"),
-            (int(st.get("arena") or 0), tr("Duels won")), (coins_text(int(st.get("horses") or 0)), tr("Best horse win")),
-            (coins_text(int(st.get("skill") or 0)), tr("Mini game coins")),
-            (int(st.get("trophies") or 0), tr("Trophies"), "#FFC94D")], self.W))
+    def _wearing(self, prof: dict) -> None:
+        """What they are wearing (9.2: their numbers are in the Stats tab)."""
         eq = prof.get("equip") or {}
         wearing = [eq.get(k) for k in ("ball", "ring", "theme", "font")]
         wearing = [w for w in wearing if w and w.split(":")[0] in ("ball", "line", "theme", "font")]
@@ -40650,6 +41677,7 @@ class FriendsPage(Page):
             grid = ItemGrid(self.ctx, [{"item": w, "text": ""} for w in wearing], self.W, 6, 58)
             grid.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
             self.lay.addWidget(grid)
+
 
     def _got_profile(self, ok: bool, data) -> None:
         name = getattr(self.ctx, "friends_profile", None)
@@ -43988,7 +45016,7 @@ class Notifier(QObject):
             import random
             pass
             tips = [tr("New quests every hour: check the Games tab"),
-                    tr("Beat Tap pays up to 50 coins a round"),
+                    tr("Beat Tap pays up to 130 coins a round"),
                     tr("Gold badges are 1 in thousands: keep opening!"),
                     tr("You have {n} coins: maybe a case?", n=coins_text(ec.coins)),
                     tr("Put items you do not wear on the market")]
@@ -45455,6 +46483,128 @@ class JackpotCard(QWidget):
             p.setPen(QColor(TEXT_DIM))
             text = tr("Next jackpot in {t}", t=jp_clock(left))
         p.drawText(QRectF(r.left() + S(74), r.top() + S(38), r.width() - S(84), S(22)), int(Qt.AlignmentFlag.AlignVCenter), text)
+
+
+
+class LiveSlot(QWidget):
+    """9.2: Jackpot and Horse Racing take turns on the server's 20 minute clock, so only one shows at a time: the
+    game that is on, or between games a locked card with the next one, its countdown, a flash as it nears and the
+    padlock dropping when it opens."""
+
+    def __init__(self, page) -> None:
+        super().__init__()
+        self.page, self.ctx = page, page.ctx
+        self.setFixedHeight(S(74))
+        lay = vbox(self, 0)
+        self.jp, self.hr, self.lk = JackpotCard(page), HorseCard(page), LockedEvent(self)
+        for w in (self.jp, self.hr, self.lk):
+            lay.addWidget(w)
+        self._show = None
+        self._t = QTimer(self)
+        self._t.setInterval(400)
+        self._t.timeout.connect(self._pick)
+        self._pick()
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def next_event(self) -> tuple:
+        """(kind name, seconds until it opens) of the next game, from the two servers' answers."""
+        jph, jl = jp_phase(self.ctx)
+        rph, rl = race_phase(self.ctx)
+        opts = []
+        if jph == "closed":
+            opts.append(("Jackpot", jl))
+        if rph == "closed":
+            opts.append(("Horse Racing", rl))
+        if not opts:
+            return ("Jackpot", 0.0)
+        return min(opts, key=lambda o: o[1])
+
+    def _pick(self) -> None:
+        ctx = self.ctx
+        jph, _ = jp_phase(ctx)
+        rph, _ = race_phase(ctx)
+        if jph in ("open", "running", "waiting") or getattr(ctx, "jackpot_in", False):
+            want = "jp"
+        elif rph in ("open", "running", "done"):
+            want = "hr"
+        else:
+            want = "lk"
+        if want != self._show:
+            if self._show == "lk" and want != "lk":
+                sfx.play("on")                              # the padlock drops: the next game opens
+            self._show = want
+            self.jp.setVisible(want == "jp")
+            self.hr.setVisible(want == "hr")
+            self.lk.setVisible(want == "lk")
+
+
+class LockedEvent(QWidget):
+    """9.2: between two live games: which one is next, a padlock and the time left. It flashes in the last 15 s."""
+
+    def __init__(self, slot) -> None:
+        super().__init__()
+        self.slot = slot
+        self.setFixedHeight(S(74))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._t = QTimer(self)
+        self._t.setInterval(50)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if self.rect().contains(e.position().toPoint()):
+            name, left = self.slot.next_event()
+            sfx.play("off")
+            self.slot.ctx.toast(tr("{game} opens in about {t}", game=tr(name), t=jp_words(left)), "warn")
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        name, left = self.slot.next_event()
+        now = time.monotonic()
+        col = QColor("#FFC94D") if name == "Jackpot" else QColor("#35E0A1")
+        near = left <= 15
+        flash = (0.5 + 0.5 * math.sin(now * 9)) if near else 0.0
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, mix(QColor("#1A1C1F"), col, 0.10 + 0.18 * flash))
+        g.setColorAt(1, QColor("#0E0F11"))
+        p.setPen(QPen(alpha(col, 0.25 + 0.6 * flash) if near else alpha("#FFFFFF", 0.12), S(1.6)))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+        c = QPointF(r.left() + S(38), r.center().y())
+        lift = max(0.0, 1.0 - left / 3.0) * S(6)          # the shackle lifts in the last 3 s
+        p.save()
+        p.translate(c.x(), c.y() - lift * 0.3)
+        p.scale(S(30) / 20, S(30) / 20)
+        draw_icon(p, "lock", mix(QColor(TEXT_DIM), col, 0.35 + 0.65 * flash))
+        p.restore()
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(9.5, QFont.Weight.Bold, 1.5))
+        p.drawText(QRectF(r.left() + S(74), r.top() + S(10), r.width() - S(84), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("NEXT UP"))
+        p.setPen(col if near else QColor(TEXT))
+        p.setFont(font(17, QFont.Weight.Black, 2))
+        p.drawText(QRectF(r.left() + S(74), r.top() + S(24), r.width() - S(84), S(26)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr(name).upper())
+        p.setFont(font(11, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(r.left() + S(74), r.top() + S(48), r.width() - S(84), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("Jackpot and Horse Racing take turns every 20 minutes"))
+        p.setPen(col if near else QColor(TEXT))
+        p.setFont(font(22, QFont.Weight.Black))
+        p.drawText(r.adjusted(0, 0, -S(16), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   jp_clock(left))
 
 
 class JackpotWheel(QWidget):
@@ -49134,9 +50284,9 @@ def scaled(n: int, m: float) -> int:
     return int(math.floor(x / step + 0.5)) * step
 
 
-SKILL_PAY = {"timing": {"perfect": 120, "good": 50, "close": 15}, "cups": {0: 25, 1: 50, 2: 90, 3: 150},
-             "c4": {"easy": 40, "medium": 90, "hard": 200, "pro": 600}, "colour": {0: 40, 1: 60, 2: 90},
-             "sfx": {0: 50, 1: 75, 2: 110}}          # 9.1: the server's rb_skill_base (full pay, before the tier)
+SKILL_PAY = {"timing": {"perfect": 240, "good": 100, "close": 30}, "cups": {0: 50, 1: 100, 2: 180, 3: 300},
+             "c4": {"easy": 80, "medium": 180, "hard": 400, "pro": 1200}, "colour": {0: 80, 1: 120, 2: 180},
+             "sfx": {0: 100, 1: 150, 2: 220}}        # the server's rb_skill_base × skill_pay_mult (9.2: 2), before the tier
 
 
 def skill_pay(ctx, game: str, key, factor: float = 1.0) -> int:
@@ -49161,8 +50311,8 @@ def tier_info(ctx) -> dict:
     return {"tier": i, "name": tiers[i][0], "mult": tiers[i][2], "wealth": bal, "next": nxt}
 
 
-WEALTH_TIERS = [("Poor", 0, 1.0, "#9AA5B1"), ("Average", 10000, 1.3, "#5FD3A0"), ("Investor", 75000, 1.8, "#4FC3FF"),
-                ("Businessman", 400000, 2.6, "#F5C04A"), ("Casino Legend", 2500000, 4.0, "#FF5CA8")]     # 9.1
+WEALTH_TIERS = [("Poor", 0, 1.0, "#9AA5B1"), ("Average", 25000, 1.3, "#5FD3A0"), ("Investor", 100000, 1.8, "#4FC3FF"),
+                ("Businessman", 250000, 2.6, "#F5C04A"), ("Casino Legend", 1000000, 4.0, "#FF5CA8")]     # 9.1.1
 TIER_ICONS = ("coin", "chart", "gem", "briefcase", "crown")
 
 
@@ -49296,9 +50446,11 @@ class TierBanner(QWidget):
         self.setFixedHeight(S(92))
         lay = hbox(self, 6, (S(14), S(8), S(10), 0))
         lay.addStretch(1)
-        lay.addWidget(HelpDot(tr("Free rewards (spins, scratch cards, daily rewards, quests, mini games and AFK coins) are "
-                                 "multiplied by your tier. Your tier comes from everything you own: coins and items. "
-                                 "Once you reach a tier you keep it."), tr("Wealth tier")), 0, Qt.AlignmentFlag.AlignTop)
+        lay.addWidget(HelpDot(tr("Your wealth = your coins + the shop value of every item you got since 9.1. Cases you "
+                                 "have not opened and items from before 9.1 do not count. Average at 25 000, Investor at "
+                                 "100 000, Businessman at 250 000, Casino Legend at 1 000 000. Free rewards (spins, scratch "
+                                 "cards, daily rewards, quests, mini games and AFK coins) are multiplied by your tier. Once "
+                                 "you reach a tier you keep it."), tr("Wealth tier")), 0, Qt.AlignmentFlag.AlignTop)
         self._fill = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
         self._want = None
         self._t = QTimer(self)
@@ -49317,7 +50469,13 @@ class TierBanner(QWidget):
     def _tick(self) -> None:
         if not self.isVisible():
             return
-        f = self._frac(tier_info(self.ctx))
+        t = tier_info(self.ctx)
+        f = self._frac(t)
+        if t.get("coins") is not None:                     # 9.1.1: what the wealth is made of
+            tip = tr("Wealth {w} = {c} coins + {i} in items", w=coins_text(int(t.get("wealth") or 0)),
+                     c=coins_text(int(t.get("coins") or 0)), i=coins_text(int(t.get("items") or 0)))
+            if self.toolTip() != tip:
+                self.setToolTip(tip)
         if self._want is None or abs(f - self._want) > 1e-4:
             self._want = f
             self._fill.to(f, int(900 * ui.motion))
@@ -49361,7 +50519,8 @@ class TierBanner(QWidget):
         nxt = t.get("next")
         p.setPen(QColor(TEXT_FAINT))
         p.setFont(font(10, QFont.Weight.DemiBold))
-        label = tr("Top tier") if not nxt else tr("{name} at {n}", name=tr(WEALTH_TIERS[i + 1][0]), n=coins_text(int(nxt)))
+        label = tr("Top tier") if not nxt else tr("Wealth {w} / {n} for {name}", w=coins_text(int(t.get("wealth") or 0)),
+                                                  name=tr(WEALTH_TIERS[i + 1][0]), n=coins_text(int(nxt)))
         p.drawText(QRectF(r.left() + S(60), r.top() + S(12), r.width() - S(60) - S(44), S(22)),
                    int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), label)
         # the track: five stops; the part to the next stop charges up
@@ -49402,8 +50561,113 @@ class TierBanner(QWidget):
             p.drawText(bx, int(al | Qt.AlignmentFlag.AlignVCenter), tr(WEALTH_TIERS[k][0]))
 
 
+class HomeHero(QWidget):
+    """9.2: the top of Home: hello, your tier, and one button to what is waiting for you in Rewards."""
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.setFixedHeight(S(132))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._hover = Tween(self, on_change=self.update)
+        self._t = QTimer(self)
+        self._t.setInterval(50)
+        self._t.timeout.connect(self.update)
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def enterEvent(self, _e) -> None:
+        self._hover.to(1.0, 160)
+
+    def leaveEvent(self, _e) -> None:
+        self._hover.to(0.0, 260)
+
+    def mouseReleaseEvent(self, e) -> None:
+        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
+            sfx.play("pick")
+            self.ctx.window.nav("rewards")
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        now, h = time.monotonic(), self._hover.level
+        c1, c2 = cta_colors()
+        t = tier_info(self.ctx)
+        ti = max(0, min(len(WEALTH_TIERS) - 1, int(t.get("tier", 0) or 0)))
+        tcol = QColor(WEALTH_TIERS[ti][3])
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, mix(QColor("#0B0D12"), c1, 0.22))
+        g.setColorAt(0.6, QColor("#0B0D12"))
+        g.setColorAt(1, mix(QColor("#0B0D12"), tcol, 0.25))
+        p.setPen(QPen(alpha(c1, 0.25 + 0.3 * h), S(1.2)))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(20), S(20))
+        clip = QPainterPath()
+        clip.addRoundedRect(r, S(20), S(20))
+        p.save()
+        p.setClipPath(clip)
+        for k in range(3):                                   # slow rings of light behind the text
+            rad = S(80 + 60 * k) + S(10) * math.sin(now * 0.8 + k)
+            glow = QRadialGradient(QPointF(r.right() - S(70), r.top() + S(30)), rad)
+            glow.setColorAt(0, alpha(c1, 0.10))
+            glow.setColorAt(1, alpha(c1, 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(glow)
+            p.drawRect(r)
+        p.restore()
+        name = self.ctx.online.username() or tr("player")
+        p.setPen(QColor(TEXT))
+        p.setFont(font(26, QFont.Weight.Black))
+        p.drawText(QRectF(r.left() + S(22), r.top() + S(18), r.width() - S(44), S(36)), int(Qt.AlignmentFlag.AlignVCenter),
+                   p.fontMetrics().elidedText(tr("Hey, {name}", name=name), Qt.TextElideMode.ElideRight, int(r.width() * 0.6)))
+        chip = tr(WEALTH_TIERS[ti][0]) + "  ×" + f"{float(t.get('mult', 1) or 1):g}"
+        p.setFont(font(11, QFont.Weight.Bold))
+        cw = p.fontMetrics().horizontalAdvance(chip) + S(22)
+        cr = QRectF(r.left() + S(22), r.top() + S(58), cw, S(22))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha(tcol, 0.18))
+        p.drawRoundedRect(cr, cr.height() / 2, cr.height() / 2)
+        p.setPen(tcol)
+        p.drawText(cr, int(Qt.AlignmentFlag.AlignCenter), chip)
+        n = rewards_ready(self.ctx)
+        p.setPen(QColor(TEXT_DIM))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.drawText(QRectF(r.left() + S(22), r.bottom() - S(38), r.width() * 0.55, S(22)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("Free rewards grow with your tier"))
+        label = (tr("{n} rewards ready", n=n) if n != 1 else tr("1 reward ready")) if n else tr("All collected")
+        p.setFont(font(12, QFont.Weight.ExtraBold))
+        bw = p.fontMetrics().horizontalAdvance(label) + S(54)
+        br = QRectF(r.right() - bw - S(18), r.bottom() - S(52), bw, S(36))
+        pulse = (0.5 + 0.5 * math.sin(now * 3)) if n else 0.0
+        if n:
+            bg = QLinearGradient(br.topLeft(), br.topRight())
+            bg.setColorAt(0, c1)
+            bg.setColorAt(1, c2)
+            p.setBrush(bg)
+            p.setPen(QPen(alpha("#FFFFFF", 0.15 + 0.25 * pulse), S(1)))
+            fg = cta_fg()
+        else:
+            p.setBrush(alpha("#FFFFFF", 0.06 + 0.04 * h))
+            p.setPen(QPen(alpha("#FFFFFF", 0.12), S(1)))
+            fg = QColor(TEXT_DIM)
+        p.drawRoundedRect(br, br.height() / 2, br.height() / 2)
+        p.save()
+        p.translate(br.left() + S(20), br.center().y())
+        p.scale(S(15) / 20, S(15) / 20)
+        draw_icon(p, "gift", fg)
+        p.restore()
+        p.setPen(fg)
+        p.drawText(br.adjusted(S(34), 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter), label)
+
+
 class HubPage(Page):
-    """9.0: the online Home: what is ready to collect, the games you played last, what is live, and where to go."""
+    """9.0: the online Home. 9.2: its own page, not a copy of Rewards: hello and what is waiting for you, the one live
+    game on now, the games you played last, and where to go."""
     key = "hub"
 
     def __init__(self, ctx) -> None:
@@ -49413,40 +50677,10 @@ class HubPage(Page):
         if ctx.online.logged_in():
             ctx.wallet.check_time()
             ec.fetch_tier(force=True)
-        hello = QWidget()
-        hl = hbox(hello, 8)
-        name = ctx.online.username() or tr("player")
-        hl.addWidget(Label(tr("Hey, {name}", name=name), 24, weight=QFont.Weight.Black), 1)
-        lay.addWidget(hello)
-        lay.addWidget(TierBanner(ctx))
-        w = ctx.wallet
-
-        def spin_status():
-            d = w.daily_wait()
-            return tr("Ready") if d == 0 else ("…" if d is None else clock_text(d))
-
-        def scratch_status():
-            left = int(getattr(ec, "scratch_in", 0) or 0)
-            return tr("Ready") if left <= 0 else clock_text(left)
-
-        def streak_ready():
-            day = str(ec.streak_day or "")
-            return bool(ec.ready) and day != datetime.date.today().isoformat()
-
-        lay.addWidget(help_row(tr("Ready for you")))
-        lay.addWidget(tile_grid([
-            Tile(tr("Free spin"), spin_status, "", GAME_COLOURS["Free spin"], lambda: open_game(ctx, GamesPage.PICKER, "hub"),
-                 ready=lambda: w.daily_wait() == 0, art=game_art("Free spin")),
-            Tile(tr("Scratch card"), scratch_status, "gift", ("#FF6FA8", "#5A1A7A"),
-                 lambda: open_games_part(ctx, "scratch", back="hub"),
-                 ready=lambda: int(getattr(ec, "scratch_in", 0) or 0) <= 0),
-            Tile(tr("Daily reward"), lambda: tr("Claim") if streak_ready() else tr("Day {n}", n=max(1, int(ec.streak or 0))),
-                 "flame", ("#FF8A3D", "#7A1F0A"), lambda: check_login_reward(ctx, force=True), ready=streak_ready),
-            Tile(tr("Quests"), lambda: (tr("{n} to claim", n=quests_ready(getattr(ctx, "quests_data", None)))
-                                        if quests_ready(getattr(ctx, "quests_data", None)) else tr("Goals")),
-                 "spark", ("#35E0A1", "#0B4A5A"), lambda: open_games_part(ctx, None, "quests_open", back="hub"),
-                 ready=lambda: quests_ready(getattr(ctx, "quests_data", None)) > 0),
-        ], 2))
+        lay.addWidget(HomeHero(ctx))
+        lay.addWidget(help_row(tr("Live now"), tr("Jackpot and Horse Racing take turns every 20 minutes, all day. "
+                                                  "Bots play when nobody else does.")))
+        lay.addWidget(LiveSlot(self))
         recent = [int(i) for i in (ctx.cfg["recent_games"] or []) if str(i).isdigit() and int(i) < GamesPage.PICKER][:3]
         if not recent:
             recent = [GamesPage.NAMES.index(n) for n in ("Blackjack", "Plinko", "Roulette")]
@@ -49454,18 +50688,13 @@ class HubPage(Page):
         tiles = [Tile(tr(GamesPage.NAMES[i]), "", "", GAME_COLOURS.get(GamesPage.NAMES[i], ("#888", "#333")),
                       lambda i=i: open_game(ctx, i, "hub"), height=104, art=game_art(GamesPage.NAMES[i])) for i in recent]
         lay.addWidget(tile_grid(tiles, 3))
-        lay.addWidget(help_row(tr("Live")))
-        lay.addWidget(JackpotCard(self))
-        lay.addWidget(HorseCard(self))
-        go = QWidget()
-        gl = hbox(go, 8)
-        for label, icon, fn in ((tr("All games"), "dice", lambda: ctx.window.nav("games")),
-                                (tr("Cases"), "gift", lambda: (setattr(ctx, "shop_tab", 3), ctx.window.nav("shop"))),
-                                (tr("Leaderboards"), "trophy", lambda: ctx.window.open_leaders())):
-            b = Button(label, "ghost", 40, icon=icon)
-            b.clicked.connect(fn)
-            gl.addWidget(b, 1)
-        lay.addWidget(go)
+        lay.addWidget(help_row(tr("Go to")))
+        lay.addWidget(tile_grid([
+            Tile(tr("Casino"), tr("Enter"), "dice", ("#F5C04A", "#5A1A0A"), lambda: open_games_part(ctx, "casino"), height=96),
+            Tile(tr("Mini games"), tr("Free"), "spark", ("#35E0A1", "#0B4A5A"), lambda: ctx.window.nav("games"), height=96),
+            Tile(tr("Duels"), tr("1 v 1"), "shield", ("#5AA8FF", "#0A2A5A"), lambda: open_arena(ctx, "c4", "duel"), height=96),
+            Tile(tr("Leaderboards"), tr("Global"), "trophy", ("#FF6FA8", "#5A1A7A"), lambda: ctx.window.nav("leaders"),
+                 height=96)], 2))
         lay.addStretch(1)
 
     def open_sub(self, name) -> None:
@@ -49523,10 +50752,6 @@ class RewardsPage(Page):
         ], 2))
         if getattr(ec, "tier", None):                 # a 9.0 server
             lay.addWidget(KeyForge(ctx))
-        graph = Button(tr("See your rewards graph"), "ghost", 36, icon="chart")      # 9.1: in the Stats tab
-        graph.clicked.connect(lambda: (setattr(ctx, "stats_part", 3), ctx.window.nav("stats"))
-                              if hasattr(ctx.window, "nav") else None)
-        lay.addWidget(graph)
         lay.addStretch(1)
 
 
@@ -50032,18 +51257,139 @@ class LeadersPage(Page):
         lay.addStretch(1)
 
 
+def open_player_stats(ctx, name=None) -> None:
+    """9.2: the Stats tab for a player (None: yourself)."""
+    ctx.stats_player = name or None
+    ctx.stats_data = {}
+    w = ctx.window
+    if getattr(w, "current", "") == "stats":
+        return ctx.reload_page("stats")
+    w.nav("stats") if hasattr(w, "nav") else w.goto("stats")
+
+
+class PlayerPicker(QWidget):
+    """9.2: find a player by typing part of the name: matching names appear under the box as you type; pick one."""
+
+    def __init__(self, ctx, on_pick) -> None:
+        super().__init__()
+        from PyQt6.QtWidgets import QLineEdit
+        self.ctx, self.on_pick = ctx, on_pick
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setFixedWidth(S(320))
+        lay = vbox(self, 8, (18, 18, 18, 18))
+        lay.addWidget(Label(tr("Find a player"), 15, bold=True))
+        lay.addWidget(Label(tr("Type a few letters of the name, then pick it from the list."), 11, TEXT_DIM, wrap_w=S(284)))
+        self.edit = QLineEdit()
+        self.edit.setMaxLength(12)
+        self.edit.setPlaceholderText(tr("Name"))
+        self.edit.setFixedHeight(S(34))
+        self.edit.setStyleSheet(field_css(13))
+        self.edit.textChanged.connect(self._typed)
+        self.edit.returnPressed.connect(self._first)
+        lay.addWidget(self.edit)
+        self.list_w = QWidget()
+        self.list_l = vbox(self.list_w, 4)
+        self.list_w.setFixedHeight(S(8 * 34))
+        lay.addWidget(self.list_w)
+        self.note = Label("", 11, TEXT_DIM)
+        lay.addWidget(self.note)
+        cancel = Button(tr("Cancel"), "ghost", 32)
+        cancel.clicked.connect(self.close)
+        lay.addWidget(cancel)
+        self._names: list = []
+        self._ask = QTimer(self)
+        self._ask.setSingleShot(True)
+        self._ask.setInterval(220)
+        self._ask.timeout.connect(self._search)
+        self.adjustSize()
+        self.focus_me = self.edit.setFocus
+        if not present(self, ctx, keys=True):
+            area = work_area(ctx.window.card_global().center())
+            self.move(area.center().x() - self.width() // 2, area.center().y() - self.height() // 2)
+            self.show()
+            self.edit.setFocus()
+
+    def close(self) -> bool:
+        return close_embedded(self) or super().close()
+
+    def keyPressEvent(self, e) -> None:
+        if e.key() == Qt.Key.Key_Escape:
+            self.close()
+
+    def _typed(self, _t: str) -> None:
+        self._ask.start()
+
+    def _search(self) -> None:
+        q = self.edit.text().strip()
+        if not q:
+            return self._show([])
+
+        def got(ok: bool, data) -> None:
+            try:
+                if q == self.edit.text().strip():
+                    self._show(list(data) if ok and isinstance(data, list) else [])
+            except RuntimeError:
+                pass
+        self.ctx.online.ask("rb_find_players", {"q": q}, got)
+
+    def _show(self, rows: list) -> None:
+        while self.list_l.count():
+            it = self.list_l.takeAt(0)
+            if it.widget():
+                it.widget().deleteLater()
+        self._names = [str(r.get("name")) for r in rows if r.get("name")]
+        for r in rows[:8]:
+            name = str(r.get("name") or "")
+            b = Button(f"{name}   ·   " + tr("Lv {n}", n=int(r.get("level") or 0)) + ("  ·  BOT" if r.get("bot") else ""),
+                       "ghost", 30)
+            b.clicked.connect(lambda _c=False, n=name: self._pick(n))
+            self.list_l.addWidget(b)
+        self.list_l.addStretch(1)
+        self.note.set_text("" if rows or not self.edit.text().strip() else tr("Nobody with that name"))
+
+    def _first(self) -> None:
+        if self._names:
+            self._pick(self._names[0])
+
+    def _pick(self, name: str) -> None:
+        sfx.play("pick")
+        cb = self.on_pick
+        self.close()
+        cb(name)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(QPen(alpha(ui.accent, 0.45), 1.2))
+        p.setBrush(QColor(12, 15, 16, 252))
+        p.drawRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), S(16), S(16))
+
+
 class StatsPage(Page):
     """9.1: every graph in one place: your wealth, the casino, the mini games and the rewards, over 7, 30 or 90 days.
-    Your own numbers, from the server (nobody else can see them)."""
+    9.2: any player's numbers too (Find a player), and Records: the numbers and history that were in Social."""
     key = "stats"
     PERIODS = (7, 30, 90)
-    PARTS = ("Overview", "Casino", "Mini games", "Rewards")
+    PARTS = ("Overview", "Casino", "Mini games", "Rewards", "Records")
 
     def __init__(self, ctx) -> None:
         super().__init__(ctx)
         lay = vbox(self, 10)
         self.lay = lay
-        lay.addWidget(titled(tr("Stats"), tr("Your own numbers, worked out on the server. Nobody else sees them."), 24))
+        who = getattr(ctx, "stats_player", None)
+        head = hbox(spacing=8)
+        head.addWidget(titled(tr("Stats"), tr("Your numbers, or any player's: worked out on the server."), 24) if not who
+                       else titled(tr("{name}'s stats", name=who), tr("Their numbers, worked out on the server."), 24), 1)
+        if who:
+            mine = Button(tr("My stats"), "ghost", 32, icon="back")
+            mine.clicked.connect(lambda: open_player_stats(ctx, None))
+            head.addWidget(mine, 0, Qt.AlignmentFlag.AlignTop)
+        find = Button(tr("Find a player"), "primary", 32, icon="search")
+        find.clicked.connect(lambda: PlayerPicker(ctx, lambda n: open_player_stats(
+            ctx, None if n.lower() == (ctx.online.username() or "").lower() else n)))
+        head.addWidget(find, 0, Qt.AlignmentFlag.AlignTop)
+        lay.addLayout(head)
         part = int(getattr(ctx, "stats_part", 0) or 0)
         days = int(getattr(ctx, "stats_days", 30) or 30)
         parts = Segmented([tr(x) for x in self.PARTS], part)
@@ -50054,6 +51400,10 @@ class StatsPage(Page):
         lay.addWidget(period)
         if not ctx.online.logged_in():
             lay.addWidget(Label(tr("Log in to see your stats"), 12, TEXT_DIM))
+            return
+        if part == 4:                                            # 9.2: Records (was in Social)
+            self._records(lay)
+            lay.addStretch(1)
             return
         data = (getattr(ctx, "stats_data", None) or {}).get(days)
         if data is None:
@@ -50068,12 +51418,48 @@ class StatsPage(Page):
         [self._overview, self._casino, self._minis, self._rewards][max(0, min(3, part))](lay, data)
         lay.addStretch(1)
 
+    def _records(self, lay) -> None:
+        ctx = self.ctx
+        name = getattr(ctx, "stats_player", None) or ctx.online.username() or ""
+        rec = getattr(ctx, "stats_records", None) or {}
+        cur = rec.get(name.lower())
+        if cur is None:
+            lay.addWidget(Label(tr("Loading…"), 12, TEXT_DIM))
+            got_both = {}
+
+            def got(key: str, ok: bool, data) -> None:
+                got_both[key] = data if ok and isinstance(data, dict) else {}
+                if len(got_both) == 2:
+                    r = dict(getattr(ctx, "stats_records", None) or {})
+                    r[name.lower()] = dict(got_both)
+                    ctx.stats_records = r
+                    if ctx.window.showing("stats"):
+                        ctx.reload_page("stats")
+            ctx.online.ask("rb_profile", {"name": name}, lambda ok, d: got("profile", ok, d))
+            ctx.online.ask("rb_history", {"name": name}, lambda ok, d: got("history", ok, d))
+            return
+        prof, hist = cur.get("profile") or {}, cur.get("history") or {}
+        if prof.get("stats") is None:
+            lay.addWidget(Label(tr("Add {name} as a friend to see their records.", name=name), 12, TEXT_DIM, wrap_w=self.W))
+            return
+        add_play_history(self, lay, name)
+        lay.addWidget(profile_numbers(prof, self.W))
+        for key, title in (("trades", tr("Last 3 Trades")), ("cases", tr("Last 3 Cases")), ("spins", tr("Last 3 Spins")),
+                           ("bets", tr("Last 30 Bets"))):
+            rows = hist.get(key) or []
+            lay.addWidget(heading(title))
+            if not rows:
+                lay.addWidget(Label(tr("Nothing yet"), 11, TEXT_FAINT))
+            else:
+                lay.addWidget(HistoryList(ctx, key, rows, self.W))
+
     def fetch(self, force: bool = False) -> None:
         ctx = self.ctx
         days = int(getattr(ctx, "stats_days", 30) or 30)
         cache = getattr(ctx, "stats_data", None) or {}
         if days in cache and not force:
             return ctx.reload_page("stats")
+        who = getattr(ctx, "stats_player", None)
 
         def got(ok: bool, data) -> None:
             ctx.stats_asking = False
@@ -50087,12 +51473,16 @@ class StatsPage(Page):
                 ctx.stats_data = c
             if ctx.window.showing("stats"):
                 ctx.reload_page("stats")
-        ctx.online.ask("rb_my_stats", {"days": days}, got)
+        if who:
+            ctx.online.ask("rb_player_stats", {"name": who, "days": days}, got)
+        else:
+            ctx.online.ask("rb_my_stats", {"days": days}, got)
 
     def on_show(self) -> None:
         if time.monotonic() - float(getattr(self.ctx, "stats_at", 0) or 0) > 60:      # fresh numbers, at most once a minute
             self.ctx.stats_at = time.monotonic()
             self.ctx.stats_data = {}
+            self.ctx.stats_records = {}
             QTimer.singleShot(0, lambda: self.fetch(True))
 
     # -- the four parts
@@ -51792,6 +53182,8 @@ def bot_phases(f: dict, elapsed: float) -> tuple:
 def bot_phase_text(f: dict, elapsed: float) -> str:
     found, join, count = bot_phases(f, elapsed)
     if found > 0 or (join > 0 and not f.get("b")):
+        if found > 12:                                   # 9.2: big flips take the bots a while (up to 2 min)
+            return tr("Big flip: bots take up to 2 min to find these items ({t})", t=jp_clock(found))
         return tr("Searching for a bot…")
     if join > 0:
         return tr("{name} is choosing items…", name=show_name(f, "b"))
@@ -52203,7 +53595,7 @@ HELP = {
         "The needle speeds up a little the longer you wait. The target moves every round."], [
         "Stop early, while the needle is still slow.",
         "Watch one bounce to feel the speed, then press a little before it reaches the target."], [
-        "Perfect (the centre): 120 coins. Good: 50. Close: 15. Miss, or after 9 seconds: nothing.",
+        "Perfect (the centre): 240 coins. Good: 100. Close: 30. Miss, or after 9 seconds: nothing.",
         "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The server keeps its own clock and judges the stop: slowing Rubenium down does not help."]),
     "rocket": ("Rocket", [
@@ -52225,9 +53617,9 @@ HELP = {
     "connect4": ("Connect 4", [
         "Drop discs in the columns. Line up 4 of yours (across, down or diagonal) before the bot does.",
         "Easy is quick and makes mistakes. Medium sees a few moves ahead. Hard moves first and looks far ahead.",
-        "Professional moves first and plays perfectly: it has never lost. Beat it for 600 coins."], [
+        "Professional moves first and always looks for the strongest move. Beat it for 1 200 coins."], [
         "Take the middle column early, block every line of 3, and set up two threats at once."], [
-        "A win: Easy 40 · Medium 90 · Hard 200 · Professional 600 coins. A draw pays a quarter of it.",
+        "A win: Easy 80 · Medium 180 · Hard 400 · Professional 1 200 coins. A draw pays a quarter of it.",
         "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The bot plays on the server, which decides who won. Leaving a game or giving up pays nothing."]),
     "colour": ("Colour Pick", [
@@ -52236,7 +53628,7 @@ HELP = {
         "Easy shows it for 6 s and gives 30 s, Medium 4 s and 20 s, Hard shows a muted colour for only 2.5 s and gives 10 s."], [
         "Remember the hue first, then how pale or dark it was. Move the sliders one at a time.",
         "The colour is shown once and the clock is kept by the server: a late answer scores nothing."], [
-        "Pay = the level's pay (Easy 40, Medium 60, Hard 90) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.",
+        "Pay = the level's pay (Easy 80, Medium 120, Hard 180) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.",
         "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The server picks the colour and scores your answer."]),
     "sfxmatch": ("SFX Match", [
@@ -52245,7 +53637,7 @@ HELP = {
         "After the round you hear both sounds and see how close each setting was."], [
         "Find the pitch first, then the length, then the tone: sine is soft, square is buzzy, saw is sharp.",
         "Easy: 12 s to listen, 75 s to answer. Medium: 9 s and 60 s. Hard: 7 s and 45 s. Previews of your own sound are unlimited."], [
-        "Pay = the level's pay (Easy 50, Medium 75, Hard 110) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.",
+        "Pay = the level's pay (Easy 100, Medium 150, Hard 220) × your accuracy: 95% or more ×1.5, 85% ×1.25, 70% ×1, 55% ×0.7, 40% ×0.4, lower nothing.",
         "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The server makes the sound and scores your answer."]),
     "cups": ("Cup Game", [
@@ -52253,7 +53645,7 @@ HELP = {
         "Follow the cup with the coin and click it when they stop."], [
         "Watch only the cup with the coin, never the others.",
         "Easy: 3 cups, slow. Medium: 6. Hard: 9. Expert: 9 cups, very fast and many more moves."], [
-        "Finding the coin: Easy 25 · Medium 50 · Hard 90 · Expert 150 coins.",
+        "Finding the coin: Easy 50 · Medium 100 · Hard 180 · Expert 300 coins.",
         "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "The server hides the coin and checks your pick and its time."]),
     "tower": ("Tower", [
@@ -52285,7 +53677,7 @@ HELP = {
         "Rush is much faster, with many more notes."], [
         "Use the keyboard and keep your eyes on the line, not on the notes up high.",
         "Combos raise your score: a miss breaks them."], [
-        "15 to 65 coins a round."]),
+        "30 to 130 coins a round."]),
     "memory": ("Memory", [
         "Turn two cards at a time to find the pairs. Each card is checked on the server."], [
         "Remember every card you turn, even when it is not a pair.",
@@ -52302,14 +53694,14 @@ HELP = {
         "Place the big pieces while there is room. Clearing several lines at once, or on piece after piece, "
         "scores much more."], [
         "1 point a square. Clearing L lines at once: +10 × L × L. Clearing again on the next piece: +20 a step.",
-        "Classic: score ÷ 5, up to 300 coins. Relaxed: ÷ 8, up to 200. Hard: ÷ 3, up to 360.",
+        "Classic: 2 coins for every 5 points, up to 600 coins. Relaxed: 1 for every 4 points, up to 400. Hard: 2 for every 3 points, up to 720.",
         "No daily limit: every game pays what you earn."]),
     "sweeper": ("Minesweeper", [
         "Open every cell without a mine. A number says how many mines touch that cell.",
         "Right-click puts a flag. The first cell is always safe."], [
         "A 1 touching a single closed cell means that cell is a mine: flag it and open the others.",
         "Start in the middle: one click often opens a big area."], [
-        "Easy pays 35 to 105 coins, Medium 75 to 225, Hard 140 to 420: the faster, the more.",
+        "Easy pays 70 to 210 coins, Medium 150 to 450, Hard 280 to 840: the faster, the more.",
         "No daily limit: every game pays what you earn."]),
     "duels": ("Duels", [
         "Challenge a friend to a game, with or without a bet. You both play the same round: the best score wins."], [
@@ -52328,12 +53720,28 @@ HELP = {
     "ships": ("Battleships", [
         "Your fleet (5 ships) is placed for you: press Move my ships before the first shot to place it again.",
         "Click a cell of their waters to fire. A hit lets you fire again. Sink all 17 cells of their fleet before they sink yours.",
-        "Easy fires at random, Medium hunts around hits, Hard hunts in a pattern, Insane works out where ships can still be."], [
+        "Easy fires at random, Medium hunts around hits, Hard hunts in a pattern, Professional works out where ships can still be."], [
         "Fire in a checker pattern: the smallest ship is 2 long, so it can't hide between the dots.",
         "After a hit, find the direction first, then follow the line."], [
-        "A win: Easy 30 · Medium 80 · Hard 180 · Insane 450 coins, up to 50% more if you used few shots.",
+        "A win: Easy 60 · Medium 160 · Hard 360 · Professional 900 coins, up to 50% more if you used few shots.",
         "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier).",
         "Only the server knows where the ships are: their fleet is shown once the game ends."]),
+    "maze": ("Mazelock", [
+        "Race your pawn to the far side of the 9 x 9 board. On your turn, step one square (or jump over the other pawn), or place one of your 10 walls.",
+        "A wall is two squares long. Walls can't overlap or cross, and must always leave both pawns a way through."], [
+        "Save your walls for when the bot is close to its goal: one good wall can cost it several moves.",
+        "Count both paths before you place a wall: it is only worth it if it slows them down more than you."], [
+        "A win: Easy 50 · Medium 160 · Hard 440 · Professional 3 000 coins, up to 50% more the further the bot still had to go.",
+        "Professional always starts and plays the strongest moves it can find, traps included.",
+        "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier)."]),
+    "tri": ("Trifade", [
+        "Noughts and crosses with a twist: you only keep 3 marks. Your 4th takes your oldest away, so the game goes on until someone gets three in a row.",
+        "Your oldest mark fades: when you point at a square, the mark that will go is outlined in red."], [
+        "Watch which of their marks fades next: a line that looks blocked may open up on their next move.",
+        "Make two threats at once: they can only block one."], [
+        "A win: Easy 40 · Medium 120 · Hard 360 · Professional 4 000 coins, up to 50% more for a quick win.",
+        "Professional always starts and always plays the best move there is.",
+        "Free: no bet. Your first 8 rounds of each game every day pay double, then full pay with no daily limit (all of it times your tier)."]),
     "arena": ("Duels", [
         "Open a duel (free, or with a bet) and wait for someone to join, or join one that is open.",
         "You take turns. Each move has a clock (30 s, 45 s for Reversi): if it runs out, you lose."], [
@@ -52351,6 +53759,23 @@ HELP = {
         "Alone: each hole pays by strokes: 60, 35, 20, 10, 5, then nothing.",
         "Online: the best player takes all the players' bets, minus a {golf}% fee. Everyone also earns coins by strokes.",
         "Running out of time counts as a stroke. 6 strokes at most a hole."]),
+    "kart": ("Karting", [
+        "Race 1 to 3 players and always one bot over 2 to 5 laps. Up, left, down, right: W A S D (Z Q S D in French) or the arrows.",
+        "Shift boosts while the bar lasts. It refills slowly once you have not boosted for 2 seconds, so save it for the long straights.",
+        "Space is the handbrake: tap it while turning to start a drift, keep steering through the corner, straighten up for a mini "
+        "turbo (blue after a short drift, orange after a long one). Holding it turns very sharply but brakes hard.",
+        "Walls and other karts cost health by how hard you hit them: grazing costs nothing, a full-speed crash wrecks the kart. "
+        "A wrecked kart is back on the track 2 seconds later with full health. Hold R for 2 seconds to be put back a little "
+        "behind (if you are stuck). After a respawn your kart flashes: others drive through you for a moment.",
+        "Accelerate right as the 5 lights go out for a perfect start (a short turbo). Pressing too early spins the wheels."], [
+        "Brake before the corner, not in it: a kart that is still braking in the corner slides wide.",
+        "Right behind another kart you are in its slipstream: more top speed and faster boost refill.",
+        "Alone, pick 'No bot' to see the ideal line for your level: green full throttle, yellow lift, red brake, blue drift."], [
+        "After every race each driver gets a score out of 100%: your average lap against the circuit's calibrated times. "
+        "Professional bots score 99-100%, Elite about 80%, Expert 60-70%, Racer 50-60%, Amateur 35-50%, Rookie 20-35%.",
+        "The server checks every time against the clock and the fastest possible lap.",
+        "The prize grows with your place, your score, each player and the bot you beat (more for a stronger bot), a win and a "
+        "race without being wrecked, up to a daily limit. No bets."]),
     "wave": ("Wave Rush", [
         "Hold (mouse button or Space) to rise, let go to fall. You always move at 45 degrees.",
         "Touching a wall or a spike ends the run: there is no sliding along a wall.",
@@ -57398,7 +58823,8 @@ class GoldButton(QWidget):
 NAV = [("hub", "home", "Home"), ("games", "dice", "Play"), ("rewards", "gift", "Rewards"), ("stats", "chart", "Stats"),
        ("leaders", "trophy", "Leaderboards"),
        ("shop", "gem", "Shop"),
-       ("collection", "folder", "Collection"), ("friends", "users", "Social"), ("settings", "cog", "Settings")]
+       ("collection", "folder", "Collection"), ("trophies", "medal", "Trophies"), ("friends", "users", "Social"),
+       ("settings", "cog", "Settings")]
 NAV_PAGE = {"shop": "themes", "collection": "themes"}
 SHOP_GET = (1, 7, 3)            # Shop, Deals, Cases (the player market is gone in 9.0)
 SHOP_MINE = (5, 2, 8, 0, 6)     # Inventory, Collection, Style, Notifications, Sets
@@ -57417,6 +58843,8 @@ def nav_keys() -> list:
 def nav_of(ctx, page_key: str) -> str:
     """Which rail entry a page belongs to (the shop page is two entries: getting things and what is yours)."""
     if page_key == "themes":
+        if int(getattr(ctx, "shop_tab", 1) or 0) == 2 and getattr(ctx, "coll_trophies", False):
+            return "trophies"                                     # 9.2: Trophies have their own rail entry
         return "collection" if int(getattr(ctx, "shop_tab", 1) or 0) in SHOP_MINE else "shop"
     if page_key == "games":
         sub = getattr(ctx, "games_sub", None)
@@ -58067,7 +59495,10 @@ def _make_class():
             if claim_blocked(self.ctx):
                 return
             ctx = self.ctx
-            if key in ("shop", "collection"):
+            if key in ("shop", "collection", "trophies"):
+                ctx.coll_trophies = key == "trophies"
+                if key == "trophies":
+                    ctx.shop_tab, ctx.shop_badge, ctx.shop_case, ctx.shop_design, ctx.inv_pick = 2, None, None, None, ""
                 tab = int(getattr(ctx, "shop_tab", 1) or 0)
                 want = SHOP_GET if key == "shop" else SHOP_MINE
                 if tab not in want:
@@ -60050,6 +61481,8 @@ WAVE_SW = 48              # half width of a spike
 WAVE_TPS = 60             # ticks a second
 WAVE_MAX = 60 * 900
 GHOST_LAG = 84             # 6.4: the other player is shown 1.4 s behind, so we only ever draw what really happened
+ROOM_LAG = 48              # 9.2: rooms send news every 0.3 s, so the others are shown only 0.8 s behind
+WAVE_SEAT_COLS = ("#4FC3FF", "#FFB627", "#FF5CA8", "#7BE07B")     # 9.2: one colour per seat in a room
 WAVE_SLIDE = 150          # 5.1 (033): the first 2.5 s you slide on the walls instead of crashing
 WAVE_SPACE = 130          # 5.1 (033): two spikes in a row are never closer than this (they could close the gap)
 WAVE_HUD = 46             # 5.1: the distance and the difficulty bar sit in their own strip above the course
@@ -60298,6 +61731,10 @@ class WaveView(QWidget):
         self.result = None                   # duel: (title, line, colour) once it is over
         self.bot_on = bool(page.ctx.cfg["wave_bot"])       # 5.1: the practice bot
         self.bot = None
+        self.runners = {}                    # 9.2: a room: the other players' waves, by name
+        self.spec = None                     # 9.2: who you are watching after your crash
+        self.my_col = None                   # 9.2: your seat's colour in a room
+        self._legend = []                    # 9.2: (rect, name) of the names under the course
         self._reset()
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
@@ -60381,6 +61818,39 @@ class WaveView(QWidget):
             self.other = WaveRunner(self.course, name)
         self.other.set(toggles, upto, done, final)
 
+    def set_runner(self, name: str, seat: int, toggles, upto: int, done: bool, final=None) -> None:
+        """9.2: a room: one of the other players, rebuilt from their presses (their seat gives their colour)."""
+        if self.course is None:
+            return
+        run = self.runners.get(name)
+        if run is None:
+            run = WaveRunner(self.course, "")
+            run.pname, run.col = name, QColor(WAVE_SEAT_COLS[int(seat) % 4])
+            self.runners[name] = run
+        run.set(toggles, upto, done, final)
+
+    def _spec_runner(self):
+        """9.2: the room player you are watching: the one you picked, or the one furthest along that is still going."""
+        if not self.runners:
+            return None
+        now = time.monotonic()
+        alive = [o for o in self.runners.values() if not o.reached]
+        cur = self.runners.get(self.spec)
+        if cur is None or (cur.reached and now - cur.reach_at > 1.6 and alive):
+            pick = max(alive, key=lambda o: o.upto) if alive else (cur or next(iter(self.runners.values())))
+            self.spec = pick.pname
+            self._cam_t = now
+        return self.runners.get(self.spec)
+
+    def cycle_spec(self, step: int) -> None:
+        names = [n for n, o in sorted(self.runners.items(), key=lambda kv: kv[1].col.name()) if not o.reached]
+        if not names:
+            return
+        i = names.index(self.spec) if self.spec in names else -1
+        self.spec = names[(i + step) % len(names)]
+        sfx.play("pick")
+        self.update()
+
     def start_replay(self, loser: WaveRunner, winner, title: str) -> None:
         """The last seconds before the crash, again: both waves, black bars, REPLAY."""
         end = loser.final if loser.final is not None else (loser.crash or loser.upto)
@@ -60410,6 +61880,11 @@ class WaveView(QWidget):
     def mousePressEvent(self, e) -> None:
         e.accept()
         self.setFocus()
+        for rect, name in self._legend:                    # 9.2: click a name to watch that player
+            if rect.contains(e.position()) and self.state == "dead" and name in self.runners:
+                self.spec = name
+                sfx.play("pick")
+                return self.update()
         if e.button() == Qt.MouseButton.LeftButton:
             self._press(True)
 
@@ -60426,6 +61901,9 @@ class WaveView(QWidget):
         if e.key() in (Qt.Key.Key_Space, Qt.Key.Key_Up, Qt.Key.Key_W):
             if not e.isAutoRepeat() and not self.keys.live:
                 self._press(True)
+            return e.accept()
+        if e.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_A, Qt.Key.Key_D) and self.runners and self.state == "dead":
+            self.cycle_spec(-1 if e.key() in (Qt.Key.Key_Left, Qt.Key.Key_A) else 1)
             return e.accept()
         super().keyPressEvent(e)
 
@@ -60594,7 +62072,8 @@ class WaveView(QWidget):
             else:
                 self._paint_bot(p, r, cam, sc, now)
                 self._paint_ghost(p, r, cam, sc, now)
-                self._paint_wave(p, r, cam, sc, col, now)
+                self._paint_room(p, r, cam, sc, now)
+                self._paint_wave(p, r, cam, sc, self.my_col or col, now)
         if self.state == "run" and self.t <= WAVE_SLIDE and self.course is not None:     # 5.1: the start slide
             k = 1.0 - self.t / WAVE_SLIDE
             p.setPen(Qt.PenStyle.NoPen)
@@ -60613,6 +62092,7 @@ class WaveView(QWidget):
             p.translate(0, hud_h)
             return self._paint_replay_hud(p, QRectF(0, 0, play.width(), play.height()), now)
         self._paint_hud(p, play, col, now)
+        self._paint_legend(p, play, now)
 
     def _paint_pay_line(self, p, r, cam, sc, now) -> None:
         xx = (WAVE_FREE_X - cam) * sc
@@ -60669,7 +62149,8 @@ class WaveView(QWidget):
         if self.watch is not None:
             return max(self._watch_t(0, now), self._watch_t(1, now)) * WAVE_VX
         if self._spectating():                             # 6.4: you crashed: the camera moves over to the other player
-            gx = (self.other.disp if self.other.disp is not None else self.x / WAVE_VX) * WAVE_VX
+            o = self.other if self.other is not None else self._spec_runner()
+            gx = (o.disp if o.disp is not None else self.x / WAVE_VX) * WAVE_VX
             if self._cam is None:
                 self._cam, self._cam_t = float(self.x), now
             self._cam += (gx - self._cam) * min(1.0, max(0.0, now - self._cam_t) * 5.0)
@@ -60691,13 +62172,13 @@ class WaveView(QWidget):
         """Spectating: where each player is shown (a little behind, so the path shown is the real one)."""
         return self._ghost_tick(self.watch[i], now, self.watch[2])
 
-    def _ghost_tick(self, o, now: float, t0: float) -> float:
+    def _ghost_tick(self, o, now: float, t0: float, lag: int = GHOST_LAG) -> float:
         """6.4: a smooth tick for another wave. It never goes past what the server told us (no guessing, so no waves
         running into walls) and it speeds up or slows down a little to stay about GHOST_LAG ticks behind real time."""
         cap = float(o.final) if (o.done and o.final is not None) else float(o.upto)
         if o.crash is not None:
             cap = min(cap, float(o.crash))
-        target = (now - t0) * WAVE_TPS - GHOST_LAG if t0 else 0.0
+        target = (now - t0) * WAVE_TPS - lag if t0 else 0.0
         dt = min(0.25, max(0.0, now - o.stamp)) if o.stamp else 0.0
         o.stamp = now
         if o.disp is None or target - o.disp > WAVE_TPS * 6 or o.disp - target > WAVE_TPS * 3:
@@ -60706,13 +62187,69 @@ class WaveView(QWidget):
             gap = target - o.disp
             o.disp += dt * WAVE_TPS * max(0.3, min(2.5, 1.0 + gap / 30.0))
         o.disp = max(0.0, min(o.disp, cap))
-        if o.done and o.final is not None and o.disp >= o.final - 0.01 and not o.reached:
+        if o.done and o.final is not None and o.disp >= cap - 0.01 and not o.reached:
             o.reached, o.reach_at, o.fade_at = True, now, now
         return o.disp
 
     def _spectating(self) -> bool:
-        return (self.spectate and self.state == "dead" and self.other is not None
+        return (self.spectate and self.state == "dead" and (self.other is not None or bool(self.runners))
                 and time.monotonic() - self.dead_at > 0.9)
+
+    def _paint_room(self, p, r, cam, sc, now) -> None:
+        """9.2: the other players of a room, live, each in their seat's colour. The one you watch is clear, the others
+        see-through; a crashed wave bursts and fades."""
+        if not self.runners or self.state not in ("run", "safe", "dead") or not self.run_t0:
+            return
+        spec = self._spec_runner() if self._spectating() else None
+        order = [o for o in self.runners.values() if o is not spec] + ([spec] if spec is not None else [])
+        for o in order:
+            tf = self._ghost_tick(o, now, self.run_t0, ROOM_LAG)
+            fade = 1.0
+            if o.reached:
+                fade = max(0.0, 1.0 - (now - o.reach_at) / 2.2)
+                if fade <= 0:
+                    continue
+            base = 1.0 if o is spec else (0.42 if spec is not None else 0.55)
+            self._paint_runner(p, r, cam, sc, o, tf, o.col, base * fade, now, boom=True)
+
+    def _paint_legend(self, p, play: QRectF, now) -> None:
+        """9.2: who is who, under the course: a colour and a name each (no names over the waves)."""
+        self._legend = []
+        if not self.runners:
+            return
+        rows = [(self.ctx.online.username() or tr("You"), self.my_col or QColor(WAVE_SEAT_COLS[0]), None)]
+        rows += [(o.pname, o.col, o) for o in sorted(self.runners.values(), key=lambda o: WAVE_SEAT_COLS.index(o.col.name().upper())
+                                                      if o.col.name().upper() in WAVE_SEAT_COLS else 9)]
+        p.setFont(font(9.5, QFont.Weight.Bold))
+        fm = p.fontMetrics()
+        h = S(22)
+        widths = [S(26) + fm.horizontalAdvance(n) + S(46) for n, _c, _o in rows]
+        x = play.center().x() - (sum(widths) + S(6) * (len(rows) - 1)) / 2
+        y = play.bottom() - h - S(8)
+        spec = self.runners.get(self.spec) if self._spectating() else None
+        for (name, col, o), w in zip(rows, widths):
+            box = QRectF(x, y, w, h)
+            me = o is None
+            out = (self.state in ("dead", "safe")) if me else o.reached
+            watched = o is not None and o is spec
+            p.setPen(QPen(alpha(col, 0.9 if watched else 0.35), S(1.4 if watched else 1)))
+            p.setBrush(alpha("#000000", 0.62))
+            p.drawRoundedRect(box, h / 2, h / 2)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.35 if out else 1.0))
+            p.drawEllipse(QPointF(box.left() + S(13), box.center().y()), S(5), S(5))
+            p.setPen(alpha(TEXT, 0.5 if out else 1.0))
+            p.drawText(QRectF(box.left() + S(24), box.top(), w - S(24), h), int(Qt.AlignmentFlag.AlignVCenter), name)
+            if me:
+                dist = metres(int(self.x))
+            else:
+                dist = metres(int((o.final if o.reached and o.final is not None else (o.disp or 0)) * WAVE_VX))
+            p.setPen(QColor(TEXT_FAINT if out else TEXT_DIM))
+            p.drawText(QRectF(box.left(), box.top(), w - S(10), h),
+                       int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), f"{dist} m")
+            if o is not None:
+                self._legend.append((box, name))
+            x += w + S(6)
 
     def ghost_ready(self) -> bool:
         """Duel: have we shown the other player's end (so the result can come up)?"""
@@ -60939,8 +62476,13 @@ class WaveView(QWidget):
             if self.message:
                 self._big(p, mid.adjusted(0, S(20), 0, S(20)), self.message, self.message_col, 11.5)
         elif self.state == "dead" and self._spectating():
+            o = self.other if self.other is not None else self._spec_runner()
             self._big(p, QRectF(r.left(), r.top() + S(40), r.width(), S(22)),
-                      tr("You crashed at {n} m  ·  watching {name}", n=metres(self.x), name=self.other.name), "#FFFFFF", 11.5)
+                      tr("You crashed at {n} m  ·  watching {name}", n=metres(self.x),
+                         name=getattr(o, "pname", None) or o.name), "#FFFFFF", 11.5)
+            if self.runners and sum(1 for x_ in self.runners.values() if not x_.reached) > 1:
+                self._big(p, QRectF(r.left(), r.top() + S(62), r.width(), S(18)),
+                          tr("◀ ▶ or click a name to watch someone else"), TEXT_DIM, 9.5)
         elif self.state == "dead" and now - self.dead_at >= 0.45:
             self._big(p, mid.adjusted(0, -S(22), 0, -S(22)), tr("Crashed at {n} m", n=metres(self.x)), "#FFFFFF", 20)
             if self.message:
@@ -61060,28 +62602,38 @@ def build_wave(page, lay) -> None:
     pass
     ctx = page.ctx
     did = getattr(ctx, "wave_duel", None)
-    solo = not did and getattr(ctx, "wave_mode", "solo") == "solo"
+    rid = getattr(ctx, "wave_room", None) if not did else None
+    solo = not did and not rid and getattr(ctx, "wave_mode", "solo") == "solo"
 
     def leave_screen() -> None:
         if did:
             ctx.wave_duel = None
             ctx.wave_lobby = None
             return ctx.reload_page("games")
-        page.open_sub("minigames")              # 6.3: back to Earn coins
-    _head(page, lay, tr("WATCHING") if getattr(ctx, "wave_watch", None) and not did else tr("SOLO") if solo else tr("DUEL"),
+        if rid:                                 # a room: its own leave button handles a live one; after it, back out
+            ctx.wave_room = ctx.wroom_done = ctx.wroom_lobby = None
+        page.open_sub(None)                     # 9.2: back to Play
+    done_st = getattr(ctx, "wroom_done", None) if rid else None
+    room_over = isinstance(done_st, dict) and done_st.get("id") == rid
+    _head(page, lay, tr("WATCHING") if getattr(ctx, "wave_watch", None) and not did else tr("SOLO") if solo else
+          tr("ROOM") if rid else tr("DUEL") if did else tr("MULTIPLAYER"),
           (lambda: (setattr(ctx, "wave_watch", None), ctx.reload_page("games"))) if getattr(ctx, "wave_watch", None) and not did
-          else leave_screen, live=bool(did))
+          else leave_screen, live=bool(did or (rid and not room_over)))
     if getattr(ctx, "wave_missing", False):
         return server_wait(ctx, lay, page.W)
     if did:
         return _duel_run(page, lay, did, leave_screen)
+    if rid:
+        if room_over:
+            return _room_results(page, lay, done_st)
+        return _room_run(page, lay, rid, leave_screen)
     watching = getattr(ctx, "wave_watch", None)
     if watching:
         def stop_watching() -> None:
             ctx.wave_watch = None
             ctx.reload_page("games")
         return _watch_run(page, lay, watching, stop_watching)
-    which = Segmented([tr("Solo"), tr("Duel")], 0 if solo else 1)
+    which = Segmented([tr("Solo"), tr("Multiplayer")], 0 if solo else 1)
 
     def pick(i: int) -> None:
         ctx.wave_mode = "solo" if i == 0 else "duel"
@@ -61092,7 +62644,7 @@ def build_wave(page, lay) -> None:
     lay.addWidget(CoinBar(ctx))
     if solo:
         return _solo(page, lay)
-    _lobby(page, lay)
+    _rooms_lobby(page, lay)
 
 
 def _controls(page, lay) -> None:
@@ -61172,20 +62724,51 @@ class WaveBot:
             self.ys.append(y0 + jj * WAVE_VX)
 
 
-def wave_bot_toggle(ctx, view):
-    """5.1: the switch under the course: the practice bot on or off."""
-    row = hbox(spacing=8)
-    row.addWidget(Label(tr("Practice bot: plays like a good player, see-through, a little ahead"), 10.5, TEXT_DIM), 1)
-    t = Toggle(bool(ctx.cfg["wave_bot"]))
+class WaveBotCard(QWidget):
+    """9.2: the practice ghost switch, as a clear card: what it is, and on or off."""
 
-    def flip(on: bool) -> None:
-        ctx.cfg["wave_bot"] = bool(on)
-        ctx.cfg.save()
-        view.bot_on = bool(on)
-        view.update()
-    t.toggled_by_user.connect(flip)
-    row.addWidget(t)
-    return row
+    def __init__(self, ctx, view, width: int) -> None:
+        super().__init__()
+        self.ctx, self.view = ctx, view
+        self.setFixedSize(width, S(58))
+        lay = hbox(self, 10, (S(58), 0, S(12), 0))
+        col = vbox(spacing=0)
+        col.addStretch(1)
+        col.addWidget(Label(tr("Practice ghost"), 12, TEXT, bold=True))
+        col.addWidget(Label(tr("A good player's run on your course, see-through, a little ahead. Solo only."), 10, TEXT_DIM))
+        col.addStretch(1)
+        lay.addLayout(col, 1)
+        self.t = Toggle(bool(ctx.cfg["wave_bot"]))
+        self.t.toggled_by_user.connect(self._flip)
+        lay.addWidget(self.t)
+
+    def _flip(self, on: bool) -> None:
+        self.ctx.cfg["wave_bot"] = bool(on)
+        self.ctx.cfg.save()
+        self.view.bot_on = bool(on)
+        self.view.update()
+        sfx.play("pick")
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        on = bool(self.ctx.cfg["wave_bot"])
+        cyan = QColor("#4FE3FF")
+        paint_surface(p, QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), S(12), 0.05, 0.0,
+                      edge=alpha(cyan, 0.45 if on else 0.12))
+        c = QPointF(S(30), self.height() / 2)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha(cyan, 0.22 if on else 0.08))
+        p.drawEllipse(c, S(17), S(17))
+        p.save()
+        p.translate(c)
+        p.rotate(-45)
+        size = S(9)
+        p.setBrush(alpha(cyan, 0.95 if on else 0.4))
+        p.drawPolygon(QPolygonF([QPointF(size, 0), QPointF(-size * 0.8, -size * 0.7), QPointF(-size * 0.35, 0),
+                                 QPointF(-size * 0.8, size * 0.7)]))
+        p.restore()
 
 
 # -- solo
@@ -61255,9 +62838,348 @@ def _solo(page, lay) -> None:
         old_press(on)
     view._press = press
     lay.addWidget(view)
-    lay.addLayout(wave_bot_toggle(ctx, view))
+    lay.addWidget(WaveBotCard(ctx, view, page.W))
     _controls(page, lay)
     fetch()
+
+
+# -- 9.2: multiplayer rooms (2 to 4 players on the same course, all shown live)
+WROOM_BETS = [0, 100, 500, 1000, 5000]
+
+
+class RoomSeats(QWidget):
+    """9.2: the seats of a room: a colour each, the name sat there, or an empty seat."""
+
+    def __init__(self, room: dict, width: int) -> None:
+        super().__init__()
+        self.room = room
+        self.setFixedSize(width, S(56))
+
+    def set_room(self, room: dict) -> None:
+        self.room = room
+        self.update()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        size = int(self.room.get("size") or 2)
+        by_seat = {int(pl.get("seat") or 0): pl for pl in self.room.get("players") or []}
+        w = (self.width() - S(8) * (size - 1)) / size
+        for i in range(size):
+            box = QRectF(i * (w + S(8)), 0, w, self.height())
+            col = QColor(WAVE_SEAT_COLS[i])
+            pl = by_seat.get(i)
+            paint_surface(p, box, S(12), 0.05 if pl else 0.02, 0.0, edge=alpha(col, 0.5 if pl else 0.15))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col if pl else alpha(col, 0.25))
+            p.drawEllipse(QPointF(box.left() + S(18), box.center().y()), S(6), S(6))
+            p.setFont(font(11, QFont.Weight.Bold))
+            p.setPen(QColor(TEXT) if pl else QColor(TEXT_FAINT))
+            name = (pl.get("name") or "?") if pl else tr("Empty seat")
+            p.drawText(QRectF(box.left() + S(32), box.top(), box.width() - S(38), box.height()),
+                       int(Qt.AlignmentFlag.AlignVCenter),
+                       p.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight, int(box.width() - S(40))))
+
+
+def _rooms_lobby(page, lay) -> None:
+    """9.2: open a room for 2, 3 or 4 players, or join one."""
+    ctx = page.ctx
+    host = QWidget()
+    hl = vbox(host, 8)
+    lay.addWidget(host)
+    poll = QTimer(host)
+    poll.setInterval(2500)
+
+    def load() -> None:
+        def got(ok: bool, d) -> None:
+            if not ok or not isinstance(d, dict):
+                return
+            if d.get("mine"):
+                ctx.wave_room = d["mine"]["id"]
+                return ctx.reload_page("games")
+            if d != getattr(ctx, "wroom_lobby", None):
+                ctx.wroom_lobby = d
+                if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "wave":
+                    ctx.reload_page("games")
+        ctx.online.ask("rb_wroom_lobbies", {}, got)
+    poll.timeout.connect(load)
+    poll.start()
+    data = getattr(ctx, "wroom_lobby", None)
+    if data is None:
+        hl.addWidget(Label(tr("Loading…"), 11, TEXT_DIM))
+        return load()
+    cap = int(data.get("cap") or 0)
+    hl.addWidget(Label(tr("Everyone races the same course at the same time and sees the others live. The longest run "
+                          "wins the pot (less 5%)."), 10.5, TEXT_DIM, wrap_w=page.W))
+    hl.addWidget(heading(tr("Open a room")))
+    si = int(getattr(ctx, "wroom_size", 2) or 2)
+    size = Segmented([tr("2 players"), tr("3 players"), tr("4 players")], max(0, min(2, si - 2)))
+    size.changed.connect(lambda i: setattr(ctx, "wroom_size", i + 2))
+    hl.addWidget(size)
+    bets = [b for b in WROOM_BETS if b == 0 or b <= cap]
+    bi = min(len(bets) - 1, int(getattr(ctx, "wroom_bet", 0) or 0))
+    bet = Segmented([tr("Free") if b == 0 else coins_text(b) for b in bets], bi)
+    bet.changed.connect(lambda i: setattr(ctx, "wroom_bet", i))
+    hl.addWidget(bet)
+    go = Button(tr("Open a room"), "primary", 40, icon="users")
+
+    def create() -> None:
+        go.setEnabled(False)
+        b = bets[min(len(bets) - 1, int(getattr(ctx, "wroom_bet", 0) or 0))]
+
+        def done(ok: bool, d) -> None:
+            if not ok:
+                go.setEnabled(True)
+                return ctx.toast(tr(str(d)), "warn")
+            sfx.play("on")
+            ctx.econ.refresh()
+            ctx.wave_room = d.get("id")
+            ctx.reload_page("games")
+        ctx.econ.call("rb_wroom_create", {"size": int(getattr(ctx, "wroom_size", 2) or 2), "bet": b}, done)
+    go.clicked.connect(create)
+    hl.addWidget(go)
+    rooms = list(data.get("rooms") or [])
+    hl.addWidget(heading(tr("Open rooms") + f"  ·  {len(rooms)}"))
+    if not rooms:
+        hl.addWidget(Label(tr("Nobody is waiting. Open a room and players can join it."), 11, TEXT_FAINT, wrap_w=page.W))
+    for rm in rooms[:12]:
+        row = hbox(spacing=8)
+        row.addWidget(Label(("★ " if rm.get("friend") else "") + str(rm.get("host", "?")), 12, TEXT, bold=True), 1)
+        row.addWidget(Label(tr("{a}/{b} players", a=int(rm.get("seated") or 0), b=int(rm.get("size") or 2)), 11, TEXT_DIM))
+        b = int(rm.get("bet") or 0)
+        row.addWidget(Label(tr("Bet {n}", n=coins_text(b)) if b else tr("Free"), 11, GOLD_TEXT if b else TEXT_DIM))
+        join = Button(tr("Join"), "primary", 30)
+        join.setFixedWidth(S(80))
+
+        def do_join(_c=False, rid=rm["id"], btn=join) -> None:
+            btn.setEnabled(False)
+
+            def done(ok: bool, d) -> None:
+                if not ok:
+                    btn.setEnabled(True)
+                    return ctx.toast(tr(str(d)), "warn")
+                sfx.play("on")
+                ctx.econ.refresh()
+                ctx.wave_room = rid
+                ctx.reload_page("games")
+            ctx.econ.call("rb_wroom_join", {"rid": rid}, done)
+        join.clicked.connect(do_join)
+        row.addWidget(join)
+        hl.addLayout(row)
+
+
+class RoomResultRow(QWidget):
+    """9.2: one line of a room's results: place, the player's colour and name, how far they got, what they won."""
+
+    def __init__(self, pl: dict, width: int) -> None:
+        super().__init__()
+        self.pl = pl
+        self.setFixedSize(width, S(48))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pl = self.pl
+        place = int(pl.get("place") or 0)
+        col = QColor(WAVE_SEAT_COLS[int(pl.get("seat") or 0) % 4])
+        r = QRectF(0, S(2), self.width(), self.height() - S(4))
+        paint_surface(p, r, S(12), 0.07 if pl.get("me") else 0.04, 0.0, edge=alpha(col, 0.55 if place == 1 else 0.25))
+        p.setFont(font(15, QFont.Weight.Bold))
+        p.setPen(QColor(GOLD_TEXT if place == 1 else TEXT_DIM))
+        p.drawText(QRectF(r.left() + S(12), r.top(), S(26), r.height()), int(Qt.AlignmentFlag.AlignCenter), str(place or "-"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(col)
+        p.drawEllipse(QPointF(r.left() + S(50), r.center().y()), S(6), S(6))
+        right = r.right() - S(14)
+        paid = int(pl.get("paid") or 0)
+        p.setFont(font(12, QFont.Weight.Bold))
+        if paid:
+            txt = "+" + coins_text(paid)
+            w = p.fontMetrics().horizontalAdvance(txt)
+            p.setPen(QColor(GOLD_TEXT))
+            p.drawText(QRectF(right - w, r.top(), w, r.height()), int(Qt.AlignmentFlag.AlignVCenter), txt)
+            right -= w + S(18)
+        dist = f"{metres(int(pl.get('dist') or 0))} m"
+        w = p.fontMetrics().horizontalAdvance(dist)
+        p.setPen(QColor(TEXT))
+        p.drawText(QRectF(right - w, r.top(), w, r.height()), int(Qt.AlignmentFlag.AlignVCenter), dist)
+        name = str(pl.get("name") or "?") + ("  (" + tr("you") + ")" if pl.get("me") else "")
+        left = r.left() + S(66)
+        p.drawText(QRectF(left, r.top(), right - w - S(16) - left, r.height()), int(Qt.AlignmentFlag.AlignVCenter),
+                   p.fontMetrics().elidedText(name, Qt.TextElideMode.ElideRight, int(right - w - S(16) - left)))
+
+
+def _room_results(page, lay, st: dict) -> None:
+    """9.2: the end of a room: places, distances and what each player won, in their colours."""
+    ctx = page.ctx
+    players = sorted(st.get("players") or [], key=lambda pl: int(pl.get("place") or 9))
+    me = next((pl for pl in players if pl.get("me")), {}) or {}
+    won = int(me.get("place") or 0) == 1
+    lay.addWidget(Label(tr("You won!") if won else tr("Place {n}", n=int(me.get("place") or 0)), 20,
+                        "#3DDC84" if won else TEXT, bold=True))
+    if st.get("bet"):
+        lay.addWidget(Label(tr("Bet {n}", n=coins_text(int(st.get("bet") or 0))) + "  ·  " +
+                            tr("{n} players", n=len(players)), 11, TEXT_DIM))
+    for pl in players:
+        lay.addWidget(RoomResultRow(pl, page.W))
+    again = Button(tr("Back to rooms"), "primary", 40, icon="users")
+
+    def back() -> None:
+        ctx.wave_room = None
+        ctx.wroom_done = None
+        ctx.wroom_lobby = None
+        ctx.reload_page("games")
+    again.clicked.connect(back)
+    lay.addWidget(again)
+
+
+def _room_run(page, lay, rid: str, leave_screen) -> None:
+    """9.2: a room: the seats while it fills, then the run with everyone live, spectating after a crash, the results."""
+    ctx = page.ctx
+    view = WaveView(page, page.W)
+    view.spectate = True
+    view.auto_start = True
+    view.bot_on = False                                   # no practice ghost in a room
+    seats = RoomSeats({"size": 2, "players": []}, page.W)
+    status = Label("", 12.5, TEXT, bold=True)
+    lay.addWidget(status)
+    lay.addWidget(view)
+    lay.addWidget(seats)
+    row = hbox(spacing=8)
+    start = Button(tr("Start now"), "primary", 36, icon="play")
+    leave = Button(tr("Leave room"), "ghost", 36)
+    row.addWidget(leave, 1)
+    row.addWidget(start, 2)
+    lay.addLayout(row)
+    _controls(page, lay)
+    info = {"run": None, "state": None, "seed": None, "finishing": False, "sent": False, "last": None}
+
+    def back_to_rooms() -> None:
+        ctx.wave_room = None
+        ctx.wroom_lobby = None
+        ctx.reload_page("games")
+
+    def do_leave() -> None:
+        def go() -> None:
+            ctx.econ.call("rb_wroom_leave", {"rid": rid}, lambda ok, d: (ctx.econ.refresh(), back_to_rooms()))
+        if info["state"] == "live" and view.state == "run":
+            return ctx.window.confirm(tr("Leave the race? Your run counts as 0 m."), go, yes=tr("Leave"))
+        if info["state"] in ("done", "cancelled"):
+            return back_to_rooms()
+        go()
+    leave.clicked.connect(do_leave)
+    ctx._live_leave = do_leave
+    start.clicked.connect(lambda: ctx.econ.call("rb_wroom_start", {"rid": rid},
+                                                lambda ok, d: show(d) if ok else ctx.toast(tr(str(d)), "warn")))
+
+    def results(st: dict) -> None:
+        """Everyone is done: once the waves you watch have ended (or after a few seconds), the results screen."""
+        t0 = time.monotonic()
+
+        def wait() -> None:
+            try:
+                busy = view.state == "dead" and any(not o.reached for o in view.runners.values())
+            except RuntimeError:
+                return
+            if busy and time.monotonic() - t0 < 8:
+                return QTimer.singleShot(400, wait)
+            ctx.wroom_done = st
+            if getattr(ctx, "wave_room", None) == rid:
+                ctx.reload_page("games")
+        QTimer.singleShot(600, wait)
+
+    def show(st) -> None:
+        try:
+            if not isinstance(st, dict):
+                return
+            info["last"] = st
+            state = st.get("state")
+            players = list(st.get("players") or [])
+            me = next((pl for pl in players if pl.get("me")), None)
+            if me is None and state != "done":
+                return back_to_rooms()
+            if me is not None:
+                view.my_col = QColor(WAVE_SEAT_COLS[int(me.get("seat") or 0) % 4])
+                if me.get("run"):
+                    info["run"] = me["run"]
+            n, size = len(players), int(st.get("size") or 2)
+            start.setVisible(state == "open" and bool(st.get("mine")) and n >= 2)
+            leave.set_text(tr("Close room") if state == "open" and st.get("mine") else
+                           tr("Back to rooms") if state in ("done", "cancelled") else tr("Leave room"))
+            if state == "open":
+                status.set_text(tr("Waiting for players: {a}/{b}", a=n, b=size) +
+                                ("  ·  " + tr("Bet {n}", n=coins_text(int(st.get("bet") or 0))) if st.get("bet") else ""))
+                status.set_color(TEXT_DIM)
+                view.wait(tr("The race starts when the room is full") if not st.get("mine") or n < 2 else
+                          tr("Start now, or wait for more players"))
+                seats.set_room(st)
+                seats.show()
+            elif state == "cancelled":
+                status.set_text(tr("The room was closed: bets given back"))
+                view.wait(tr("The room was closed"))
+            elif state in ("live", "done"):
+                if info["seed"] != st.get("seed") and state == "live":
+                    info["seed"] = st.get("seed")
+                    view.load(int(st["seed"]), time.monotonic() + float(st.get("starts_in") or 0))
+                    seats.hide()
+                for pl in players:
+                    if not pl.get("me"):
+                        view.set_runner(str(pl.get("name")), int(pl.get("seat") or 0), pl.get("tg") or [],
+                                        int(pl.get("t") or 0), bool(pl.get("done")), pl.get("final"))
+                if state == "live":
+                    alive = sum(1 for pl in players if not pl.get("done"))
+                    status.set_text(tr("{n} still racing", n=alive) if view.state in ("dead", "safe") else tr("Race!"))
+                    status.set_color("#3DDC84" if view.state == "run" else TEXT_DIM)
+                else:
+                    mine = me or {}
+                    won = int(mine.get("place") or 0) == 1
+                    status.set_text(tr("You won!") if won else tr("Place {n}", n=int(mine.get("place") or 0)))
+                    status.set_color("#3DDC84" if won else TEXT)
+                    if info["state"] != "done":
+                        sfx.play("coin" if won else "lose")
+                        ctx.econ.refresh()
+                        results(st)
+            info["state"] = state
+        except RuntimeError:
+            pass
+
+    def ended(ticks: int, toggles: list, x: int) -> None:
+        if not info["run"]:
+            return
+        info["finishing"] = True
+
+        def done(ok: bool, d) -> None:
+            info["finishing"] = False
+            if ok:
+                show(d)
+            else:
+                ctx.toast(tr(str(d)), "warn")
+        ctx.econ.call("rb_wroom_finish", {"run": info["run"], "toggles": toggles, "ticks": ticks}, done)
+    view.on_end = ended
+
+    def poll() -> None:
+        if info["state"] in ("done", "cancelled") or info["finishing"]:
+            return
+        if info["sent"]:
+            return
+        info["sent"] = True
+
+        def got(ok: bool, d) -> None:
+            info["sent"] = False
+            if ok:
+                show(d)
+            elif "gone" in str(d).lower():
+                back_to_rooms()
+        if info["run"] and view.state == "run":
+            ctx.online.ask("rb_wroom_ping", {"run": info["run"], "x": view.x, "toggles": list(view.toggles), "t": view.t}, got)
+        else:
+            ctx.online.ask("rb_wroom_state", {"rid": rid}, got)
+    timer = QTimer(view)
+    timer.setInterval(300)
+    timer.timeout.connect(poll)
+    timer.start()
+    view.wait(tr("Loading…"))
+    poll()
 
 
 # -- duel lobby
@@ -61554,6 +63476,7 @@ def _duel_run(page, lay, did: str, leave_screen) -> None:
     view = WaveView(page, page.W)
     view.auto_start = True                                  # 4.5: both start together, when the countdown ends
     view.spectate = True                                    # 6.4: crashed first? You watch the other player to the end
+    view.bot_on = False                                     # 9.2: never the practice ghost against a person
     lay.addWidget(view)
     _controls(page, lay)
     info = {"run": None, "seed": None, "ended": False, "settled": False}
@@ -62591,6 +64514,18 @@ class AccountPanel(QWidget):
         self.forgot.clicked.connect(self._forgot)
         hl.addWidget(self.forgot)
         lay.addLayout(hl)
+        # 9.2: creating an account needs the age and terms switch
+        self.agree_row = QWidget()
+        al = hbox(self.agree_row, spacing=6)
+        self.agree = Toggle(False)
+        al.addWidget(self.agree)
+        al.addWidget(Label(tr("I am {n}+ and accept the Terms and Privacy Policy", n=MIN_AGE), 10.5, TEXT, wrap_w=200), 1)
+        read = Button(tr("Read"), "quiet", 22)
+        read.setFixedWidth(max(S(44), read.sizeHint().width()))
+        read.clicked.connect(lambda: open_web(TERMS_URL))
+        al.addWidget(read)
+        lay.addWidget(self.agree_row)
+        self.agree_row.hide()
         self._reset_poll = QTimer(self)
         self._reset_poll.setInterval(30000)
         self._reset_poll.timeout.connect(self._reset_check)
@@ -62610,7 +64545,7 @@ class AccountPanel(QWidget):
         self.hide()
 
     def place(self) -> None:
-        w, h = S(300), S(184)
+        w, h = S(300), S(184 + (34 if self.mode else 0))          # 9.2: room for the terms switch
         top = self.w.card_top() + S(self.w.CH) * 0.52
         self.setGeometry(int(self.w.width() / 2 - w / 2), int(top), w, h)
         out = self.w.out_level()
@@ -62630,6 +64565,8 @@ class AccountPanel(QWidget):
         self.mode = i
         self.go.set_text(tr("Create account") if i else tr("Log in"))
         self.forgot.setVisible(not i)
+        self.agree_row.setVisible(bool(i))                         # 9.2
+        self.w.tall.to(self.w._extra(), 260)                        # 9.2: the card grows for the switch
         self._typed()
 
     # forgot password: a request goes to the admin, who checks it is really you
@@ -62739,6 +64676,8 @@ class AccountPanel(QWidget):
             return self._say(tr("3 to 10 letters or numbers"), WARN)
         if len(pw) < PASSWORD_MIN:
             return self._say(tr("Password too short (8 or more)"), WARN)
+        if self.mode and not self.agree.isChecked():                # 9.2
+            return self._say(tr("Turn on the switch to confirm your age and the terms"), WARN)
         self.go.setEnabled(False)
         self._say(tr("One moment…"))
         (self.online.sign_up if self.mode else self.online.log_in)(name, pw)
@@ -62791,7 +64730,9 @@ class Welcome(QWidget):
         return self.ctx.online.logged_in()
 
     def _extra(self) -> float:
-        return float(S(self.IN) if self.logged_in() else S(self.OUT))
+        if self.logged_in():
+            return float(S(self.IN))
+        return float(S(self.OUT + (34 if getattr(getattr(self, "panel", None), "mode", 0) else 0)))   # 9.2
 
     def out_level(self) -> float:
         """0 = the Launch view, 1 = the login form (in between while the card changes size)."""
@@ -62845,7 +64786,7 @@ class Welcome(QWidget):
         ball = self.ctx.window.ball
         wa = work_area(ball.center)
         m = S(GLOW) + S(14)
-        w, h = S(self.CW) + 2 * m, S(self.CH) + S(self.OUT) + 2 * m + S(16)
+        w, h = S(self.CW) + 2 * m, S(self.CH) + S(self.OUT + 34) + 2 * m + S(16)       # 9.2: + the terms switch
         self.setGeometry(wa.center().x() - w // 2, wa.center().y() - h // 2, w, h)
         self.tall.jump(self._extra())
         self.panel.place()
@@ -63184,6 +65125,7 @@ class SheetPage(QWidget):
         widget.setParent(self)
         if widget.width() > self.W:
             widget.setFixedWidth(self.W)
+        lay.addSpacing(S(56))                          # 9.2: a little lower, not stuck to the top of the menu
         lay.addWidget(widget, 0, Qt.AlignmentFlag.AlignHCenter)
         lay.addStretch(1)
         widget.show()
@@ -64599,6 +66541,13 @@ class App(QObject):
         qapp.aboutToQuit.connect(self.shutdown)
         atexit.register(self._last_resort)
 
+        if TermsGate.needed(self.cfg):                 # 9.2: the Terms first, before anything starts
+            self._terms_gate_w = TermsGate(self, self._begin)
+        else:
+            self._begin()
+
+    def _begin(self) -> None:
+        self._terms_gate_w = None
         self._intro()                                # the welcome screen (or the ball) is up before anything heavy
         QTimer.singleShot(0, self._late_start)
 
@@ -65482,8 +67431,7 @@ class App(QObject):
         unit_w = RAIL_W + (CARD_W - 2 * PAD + ONLINE_EXTRA + ScrollArea.GUTTER) + 2 * PAD
         unit_h = HEAD_H + BOTTOM + 760
         fit = min(wa.width() * 0.96 / unit_w, wa.height() / unit_h)
-        large = self.cfg.get("online_size") == "large"
-        return max(0.75, min(1.6, fit * (0.97 if large else 0.84)))
+        return max(0.75, min(1.6, fit * 0.84))             # 9.2: one size for the online menu (medium)
 
     def set_scale(self, pct: int) -> None:
         if self.online_mode:                              # 4.6: the online menu keeps its own size
@@ -66107,6 +68055,8 @@ class App(QObject):
             return self.toast(tr("Online is paused for a moment by the Rubenium team. Nothing you own is lost."), "warn")
         if getattr(self, "outdated", False):              # 5.15: an old version: up into the black hole, back down
             return self._online_refused()
+        if not getattr(self, "_terms_ok", False):           # 9.2: the terms, accepted once per account
+            return self._terms_gate(focus)
         if (getattr(self, "og_chest", None) or {}).get("due") is not False:
             self.og_event_check()                            # 5.0: asked again, the answer is in before the drop ends
         main = self.main_window
@@ -66363,6 +68313,42 @@ class App(QObject):
         self.toast(tr("Your screen refused this setting"), "error")
 
     # ------------------------------------------------------------------ shutdown
+    def _terms_gate(self, focus=None) -> None:
+        """9.2: before the first ONLINE of a session, check the account accepted the current terms (ask if not)."""
+        def go_on() -> None:
+            self._terms_ok = True
+            self.enter_online(focus)
+
+        def accepted(ok: bool, data) -> None:
+            if ok:
+                return go_on()
+            self.toast(tr(str(data)), "warn")
+
+        def got(ok: bool, data) -> None:
+            if not ok or not isinstance(data, dict) or data.get("accepted"):
+                return go_on()                               # an older server, or offline: never lock anyone out
+            self.window.confirm(
+                tr("To play online, confirm you are {n}+ and accept the Terms and Privacy Policy.", n=MIN_AGE),
+                lambda: self.online.ask("rb_accept_terms", {"version": TERMS_VERSION, "adult": True}, accepted),
+                yes=tr("I accept"), no=tr("Read them"), persistent=True, on_no=lambda: open_web(TERMS_URL))
+        self.online.ask("rb_terms_state", {}, got)
+
+    def download_my_data(self) -> None:
+        """9.2: everything the server holds about this account, saved as JSON in Documents\\Rubenium."""
+        def got(ok: bool, data) -> None:
+            if not ok:
+                return self.toast(tr(str(data)), "warn")
+            import datetime
+            path = DATA_DIR / f"my_data_{datetime.date.today().isoformat()}.json"
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            except OSError:
+                log.exception("my data")
+                return self.toast(tr("Could not save the file"), "warn")
+            self.toast(tr("Saved to Documents\\Rubenium\\{f}", f=path.name), "ok")
+        self.online.ask("rb_my_data", {}, got)
+
     def delete_account_dialog(self) -> None:
         pass
         self._delete_dialog = DeleteDialog(self)
@@ -66416,6 +68402,3500 @@ class App(QObject):
                 self.display.restore()
         except Exception:  # noqa: BLE001
             pass
+
+
+
+# ==================================================================================================
+# SECTION: karting (9.2)
+# ==================================================================================================
+# Karting: the physics, circuits, bots and scores (no Qt), then the drawing, then the lobby, window and link.
+
+KART_DT = 1.0 / 120.0          # physics step (s)
+KART_LEN, KART_WID = 38.0, 22.0
+KART_R = 12.5                  # each kart is two circles of this radius, front and back
+KART_HP = 100.0
+KART_RESPAWN = 2.0             # s after blowing up
+KART_COUNT = 5.0               # the countdown before GO
+KART_GHOST = 2.5               # s without kart collisions after a respawn
+
+# engine and grip (world units: 1 unit is about 5 cm, so 360 u/s is about 65 km/h)
+V_MAX, V_BOOST, V_TURBO = 480.0, 600.0, 540.0
+ACCEL, BOOST_ACCEL = 520.0, 380.0
+BRAKE, REV_MAX = 820.0, 140.0
+GRIP, GRIP_HB, GRIP_DRIFT = 410.0, 160.0, 330.0
+YAW_LO, YAW_HI = 3.4, 1.55      # max turn rate (rad/s) at low speed and at top speed
+YAW_HB = 1.45                   # handbrake turns this much faster
+BOOST_DRAIN, BOOST_FILL, BOOST_WAIT = 32.0, 8.5, 2.0
+WALL_SAFE, WALL_DMG = 130.0, 0.38   # speed into a wall below this does no damage; damage per unit above it
+BUMP_SAFE, BUMP_DMG = 190.0, 0.20
+DRIFT_L1, DRIFT_L2 = 0.65, 1.45     # s of drifting for a blue / orange mini turbo
+TURBO_T = (0.0, 0.55, 1.05)
+SLIP_DIST, SLIP_T = 200.0, 0.5      # slipstream: this close behind someone for this long
+KMH = 0.18                          # display: units/s to km/h
+
+
+def clamp(v, a, b):
+    return a if v < a else b if v > b else v
+
+
+def wrap_pi(a):
+    while a > math.pi:
+        a -= 2 * math.pi
+    while a < -math.pi:
+        a += 2 * math.pi
+    return a
+
+
+# ------------------------------------------------------------------------------------------------ circuits
+# Control points of each circuit's centre line (a closed loop, clockwise or not), its half width, its look.
+KART_TRACKS = [
+    {"key": "bay", "name": "Sunset Bay", "theme": "bay", "hw": 108,
+     "pts": [(0, 0), (800, 0), (1600, 0), (2300, 0), (2650, 60), (2800, 260), (2700, 470), (2450, 520),
+             (2150, 540), (1850, 680), (1800, 950), (2050, 1150), (2250, 1400), (2150, 1700), (2250, 1980),
+             (2700, 2100), (3300, 2050), (3800, 2120), (4100, 2450), (4050, 2900), (3700, 3200), (3100, 3280),
+             (2400, 3280), (1700, 3280), (1200, 3250), (880, 3130), (830, 2850), (900, 2600), (650, 2450),
+             (380, 2650), (180, 2550), (120, 2150), (-120, 1700), (-280, 1150), (-300, 600), (-220, 200)]},
+    {"key": "pine", "name": "Pine Ridge", "theme": "pine", "hw": 104,
+     "pts": [(0, 0), (700, 0), (1400, 0), (1850, -100), (2150, -350), (2500, -450), (2800, -300), (2850, 0),
+             (2650, 250), (2600, 550), (2850, 750), (3250, 700), (3650, 750), (3850, 1050), (3700, 1350),
+             (3350, 1450), (3050, 1650), (3150, 1950), (3550, 2050), (3900, 2300), (3850, 2700), (3500, 2900),
+             (3000, 2850), (2600, 2600), (2200, 2650), (1900, 2950), (1450, 3000), (1100, 2750), (1200, 2400),
+             (1500, 2150), (1450, 1800), (1100, 1650), (700, 1800), (350, 2050), (0, 1950), (-150, 1600),
+             (100, 1250), (150, 900), (-150, 650), (-350, 350), (-250, 80)]},
+    {"key": "docks", "name": "Neon Docks", "theme": "docks", "hw": 112,
+     "pts": [(0, 0), (1000, 0), (2000, 0), (3000, 0), (3450, 60), (3600, 350), (3450, 650), (3050, 720),
+             (2500, 720), (2150, 850), (2150, 1150), (2450, 1300), (3200, 1300), (3900, 1300), (4250, 1450),
+             (4350, 1850), (4150, 2200), (3700, 2300), (3300, 2500), (3350, 2850), (3700, 3050), (3800, 3400),
+             (3500, 3650), (2800, 3700), (1900, 3700), (1000, 3700), (520, 3640), (230, 3360), (330, 3040),
+             (550, 2650), (250, 2400), (-100, 2250), (-250, 1800), (-250, 1100), (-250, 600), (-180, 220)]},
+]
+
+
+def _catmull(p0, p1, p2, p3, t):
+    t2, t3 = t * t, t * t * t
+    return (0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2
+                   + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+            0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2
+                   + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3))
+
+
+class KartTrack:
+    """A closed circuit: the centre line sampled every STEP units, its direction, normals and curvature, the walls
+    either side, the racing line and its speed profile (what the bots drive), the start grid."""
+    STEP = 8.0
+
+    def __init__(self, index):
+        spec = KART_TRACKS[index % len(KART_TRACKS)]
+        self.index, self.key, self.name, self.theme = index % len(KART_TRACKS), spec["key"], spec["name"], spec["theme"]
+        self.hw = float(spec["hw"])
+        self._sample(spec["pts"])
+        self._racing_line()
+        self._speed_profile()
+        self._grid()
+
+    # -- the centre line
+    def _sample(self, ctrl):
+        n = len(ctrl)
+        dense = []
+        for i in range(n):
+            p0, p1, p2, p3 = ctrl[(i - 1) % n], ctrl[i], ctrl[(i + 1) % n], ctrl[(i + 2) % n]
+            seg = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
+            k = max(8, int(seg / 2))
+            for j in range(k):
+                dense.append(_catmull(p0, p1, p2, p3, j / k))
+        # resample at an even spacing
+        pts = [dense[0]]
+        acc = 0.0
+        for i in range(1, len(dense) + 1):
+            a, b = dense[i - 1], dense[i % len(dense)]
+            d = math.hypot(b[0] - a[0], b[1] - a[1])
+            while acc + d >= self.STEP:
+                t = (self.STEP - acc) / d
+                a = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+                pts.append(a)
+                d = math.hypot(b[0] - a[0], b[1] - a[1])
+                acc = 0.0
+            acc += d
+        if math.hypot(pts[-1][0] - pts[0][0], pts[-1][1] - pts[0][1]) < self.STEP * 0.5:
+            pts.pop()
+        self.n = len(pts)
+        self.cx = [p[0] for p in pts]
+        self.cy = [p[1] for p in pts]
+        self._relax(150.0)
+        self._frame()
+        # the start line: 35 % into the longest straight, so the grid is on a straight
+        n = self.n
+        straight = [abs(c) < 1 / 1600.0 for c in self.curv]
+        best, best_i, run, st = 0, 0, 0, 0
+        for j in range(2 * n):
+            if straight[j % n]:
+                if run == 0:
+                    st = j
+                run += 1
+                if run > best and run <= n:
+                    best, best_i = run, st
+            else:
+                run = 0
+        k = (best_i + int(best * 0.35)) % n
+        self.cx = self.cx[k:] + self.cx[:k]
+        self.cy = self.cy[k:] + self.cy[:k]
+        self._frame()
+
+    def _relax(self, rmin):
+        """Round off any corner tighter than rmin (so the inside wall never folds over itself)."""
+        n = self.n
+        for _ in range(400):
+            bad = 0
+            for i in range(n):
+                a, b = (i - 4) % n, (i + 4) % n
+                ax, ay, bx, by, cx, cy = self.cx[a], self.cy[a], self.cx[i], self.cy[i], self.cx[b], self.cy[b]
+                cross = (bx - ax) * (cy - by) - (by - ay) * (cx - bx)
+                r = math.hypot(bx - ax, by - ay) * math.hypot(cx - bx, cy - by) * math.hypot(cx - ax, cy - ay) / max(1e-6, 2 * abs(cross))
+                if r < rmin:
+                    bad += 1
+                    for j in range(i - 3, i + 4):
+                        j %= n
+                        mx = (self.cx[(j - 1) % n] + self.cx[(j + 1) % n]) * 0.5
+                        my = (self.cy[(j - 1) % n] + self.cy[(j + 1) % n]) * 0.5
+                        self.cx[j] += (mx - self.cx[j]) * 0.5
+                        self.cy[j] += (my - self.cy[j]) * 0.5
+            if not bad:
+                break
+        # even spacing again
+        tot = [0.0]
+        for i in range(n):
+            tot.append(tot[-1] + math.hypot(self.cx[(i + 1) % n] - self.cx[i], self.cy[(i + 1) % n] - self.cy[i]))
+        L = tot[-1]
+        m = int(L / self.STEP)
+        xs, ys, j = [], [], 0
+        for k in range(m):
+            d = k * L / m
+            while tot[j + 1] < d:
+                j += 1
+            t = (d - tot[j]) / max(1e-9, tot[j + 1] - tot[j])
+            xs.append(self.cx[j] + (self.cx[(j + 1) % n] - self.cx[j]) * t)
+            ys.append(self.cy[j] + (self.cy[(j + 1) % n] - self.cy[j]) * t)
+        self.cx, self.cy, self.n = xs, ys, m
+        self.STEP = L / m
+
+    def _frame(self):
+        self.length = self.n * self.STEP
+        self.tx, self.ty, self.nx, self.ny = [], [], [], []
+        for i in range(self.n):
+            a, b = (i - 1) % self.n, (i + 1) % self.n
+            dx, dy = self.cx[b] - self.cx[a], self.cy[b] - self.cy[a]
+            d = math.hypot(dx, dy) or 1.0
+            self.tx.append(dx / d)
+            self.ty.append(dy / d)
+            self.nx.append(-dy / d)          # left of the direction of travel
+            self.ny.append(dx / d)
+        self.ang = [math.atan2(self.ty[i], self.tx[i]) for i in range(self.n)]
+        self.curv = []
+        for i in range(self.n):
+            a = self.ang[(i + 3) % self.n] - self.ang[(i - 3) % self.n]
+            self.curv.append(wrap_pi(a) / (6 * self.STEP))
+        xs, ys = self.cx, self.cy
+        m = self.hw + 400
+        self.bounds = (min(xs) - m, min(ys) - m, max(xs) + m, max(ys) + m)
+
+    # -- nearest point on the centre line, searched around a hint
+    def locate(self, x, y, hint=-1, span=60):
+        best, bi = 1e18, 0
+        if hint < 0:
+            rng = range(0, self.n, 2)
+        else:
+            rng = (i % self.n for i in range(hint - span, hint + span + 1))
+        for i in rng:
+            d = (x - self.cx[i]) ** 2 + (y - self.cy[i]) ** 2
+            if d < best:
+                best, bi = d, i
+        if hint < 0:
+            for i in range(bi - 3, bi + 4):
+                i %= self.n
+                d = (x - self.cx[i]) ** 2 + (y - self.cy[i]) ** 2
+                if d < best:
+                    best, bi = d, i
+        lat = (x - self.cx[bi]) * self.nx[bi] + (y - self.cy[bi]) * self.ny[bi]
+        along = (x - self.cx[bi]) * self.tx[bi] + (y - self.cy[bi]) * self.ty[bi]
+        return bi, lat, along
+
+    # -- the racing line: the least-curved path inside the walls (bots follow it)
+    def _racing_line(self):
+        n, lim = self.n, self.hw - 30.0
+        off = [0.0] * n
+        px = list(self.cx)
+        py = list(self.cy)
+        for it in range(260):
+            k = 3 if it % 3 == 0 else (8 if it % 3 == 1 else 18)
+            nxt = off[:]
+            for i in range(n):
+                a, b = (i - k) % n, (i + k) % n
+                mx, my = (px[a] + px[b]) * 0.5, (py[a] + py[b]) * 0.5
+                o = (mx - self.cx[i]) * self.nx[i] + (my - self.cy[i]) * self.ny[i]
+                nxt[i] = clamp(off[i] + (o - off[i]) * 0.55, -lim, lim)
+            off = nxt
+            for i in range(n):
+                px[i] = self.cx[i] + off[i] * self.nx[i]
+                py[i] = self.cy[i] + off[i] * self.ny[i]
+        self.line_off = off
+        self.lx, self.ly = px, py
+        # the line's own curvature, from 3 points 4 steps apart
+        self.lcurv = []
+        for i in range(n):
+            a, b, c = (i - 4) % n, i, (i + 4) % n
+            ax, ay, bx, by, cx, cy = px[a], py[a], px[b], py[b], px[c], py[c]
+            cross = (bx - ax) * (cy - by) - (by - ay) * (cx - bx)
+            d1 = math.hypot(bx - ax, by - ay)
+            d2 = math.hypot(cx - bx, cy - by)
+            d3 = math.hypot(cx - ax, cy - ay)
+            self.lcurv.append(2 * cross / max(1e-6, d1 * d2 * d3))
+        # smooth it a little
+        for _ in range(3):
+            self.lcurv = [(self.lcurv[(i - 1) % n] + 2 * self.lcurv[i] + self.lcurv[(i + 1) % n]) / 4 for i in range(n)]
+        self.lseg = [math.hypot(px[(i + 1) % n] - px[i], py[(i + 1) % n] - py[i]) for i in range(n)]
+
+    def _speed_profile(self, grip=GRIP * 0.93, top=V_MAX):
+        n = self.n
+        v = [min(top, math.sqrt(grip / max(1e-5, abs(self.lcurv[i])))) for i in range(n)]
+        self.vcorner = [math.sqrt(grip / max(1e-5, abs(self.lcurv[i]))) for i in range(n)]
+        for _ in range(2):                     # forward: how fast the kart can get there
+            for i in range(1, 2 * n):
+                a, b = (i - 1) % n, i % n
+                acc = ACCEL * max(0.05, 1 - v[a] / V_MAX) + 30
+                v[b] = min(v[b], math.sqrt(v[a] ** 2 + 2 * acc * self.lseg[a]))
+            for i in range(2 * n, 0, -1):     # backward: braking in time
+                a, b = (i - 1) % n, i % n
+                v[a] = min(v[a], math.sqrt(v[b] ** 2 + 2 * BRAKE * 0.62 * self.lseg[a]))
+        self.vprof = v
+        # corners: where the line turns hard (for the bots' drifts) and straights (for their boosts)
+        self.corner = [abs(c) > 1 / 330.0 for c in self.lcurv]
+
+    # -- the grid: 4 places side by side, at an equal distance from the first corner's apex
+    def _grid(self):
+        n = self.n
+        back = int(160 / self.STEP)                     # the line sits a little before sample 0
+        g = (n - back) % n
+        self.start_i = 0
+        # the first apex: the first sample after the start where the line is closest to an edge and turning
+        apex = 0
+        for i in range(10, n // 2):
+            if self.corner[i] and abs(self.line_off[i]) > self.hw - 45:
+                apex = i
+                break
+        ax, ay = self.lx[apex], self.ly[apex]
+        lanes = [-1.5, -0.5, 0.5, 1.5]
+        gap = (self.hw * 2 - 50) / 4
+        cand = []
+        for ln in lanes:
+            o = ln * gap
+            x, y = self.cx[g] + o * self.nx[g], self.cy[g] + o * self.ny[g]
+            cand.append((o, x, y, math.hypot(ax - x, ay - y)))
+        # best: the lane closest to where the racing line runs at the grid (it drives straight onto the ideal line)
+        lo = self.line_off[g]
+        best = min(range(4), key=lambda k: (abs(cand[k][0] - lo), k))
+        far = max(c[3] for c in cand)
+        self.grid = []
+        for k, (o, x, y, d) in enumerate(cand):
+            push = far - d                              # move closer lanes back so every lane is as far from the apex
+            self.grid.append((x - push * self.tx[g], y - push * self.ty[g], self.ang[g]))
+        self.best_slot = best
+        self.apex = apex
+
+    def wall_check(self):
+        """Smallest corner radius and the closest two far-apart parts of the circuit (they must not touch)."""
+        rmin = min(1 / max(1e-6, abs(c)) for c in self.curv)
+        worst = 1e9
+        for i in range(0, self.n, 4):
+            for j in range(0, self.n, 4):
+                gap = min(abs(i - j), self.n - abs(i - j))
+                if gap * self.STEP < 4 * self.hw + 300:
+                    continue
+                d = math.hypot(self.cx[i] - self.cx[j], self.cy[i] - self.cy[j])
+                worst = min(worst, d)
+        return rmin, worst
+
+
+# ------------------------------------------------------------------------------------------------ the kart
+class Kart:
+    __slots__ = ("seat", "x", "y", "h", "vx", "vy", "w", "hp", "boost", "boost_idle", "steer", "idx", "lap", "s",
+                 "prog", "dead", "ghost", "turbo", "turbo_lvl", "drift_t", "drifting", "hb", "braking", "boosting",
+                 "slip_t", "slip", "done", "finish_t", "lap_t0", "laps", "blowups", "hits", "wall_hits", "top",
+                 "smoke", "throttle", "reverse", "wrong", "checks", "best_lap", "max_check", "drift_turbos", "boost_used",
+                 "boost_waste", "clean_t", "on_line", "line_n", "ev", "start_pen", "start_bonus", "stuck_t", "reset_t", "resets")
+
+    def __init__(self, seat, x, y, h):
+        self.seat = seat
+        self.x, self.y, self.h = x, y, h
+        self.vx = self.vy = self.w = 0.0
+        self.hp = KART_HP
+        self.boost = 100.0
+        self.boost_idle = 99.0
+        self.steer = 0.0
+        self.idx = -1
+        self.lap = 0
+        self.s = 0.0
+        self.prog = 0.0
+        self.dead = 0.0
+        self.ghost = 0.0
+        self.turbo = 0.0
+        self.turbo_lvl = 0
+        self.drift_t = 0.0
+        self.drifting = False
+        self.hb = self.braking = self.boosting = self.reverse = False
+        self.throttle = 0.0
+        self.slip_t = 0.0
+        self.slip = False
+        self.done = False
+        self.finish_t = 0.0
+        self.lap_t0 = 0.0
+        self.laps = []
+        self.blowups = self.hits = self.wall_hits = 0
+        self.top = 0.0
+        self.smoke = 0.0
+        self.wrong = False
+        self.checks = 0
+        self.max_check = 0
+        self.best_lap = 0.0
+        self.drift_turbos = 0
+        self.boost_used = 0.0
+        self.boost_waste = 0.0
+        self.clean_t = 0.0
+        self.on_line = 0.0
+        self.line_n = 0
+        self.ev = []
+        self.start_pen = 0.0
+        self.start_bonus = 0.0
+        self.stuck_t = 0.0
+        self.reset_t = 0.0
+        self.resets = 0
+
+    @property
+    def speed(self):
+        return math.hypot(self.vx, self.vy)
+
+    def fwd(self):
+        return math.cos(self.h), math.sin(self.h)
+
+    def circles(self):
+        c, s = math.cos(self.h), math.sin(self.h)
+        q = KART_LEN * 0.5 - KART_R
+        return ((self.x + c * q, self.y + s * q), (self.x - c * q, self.y - s * q))
+
+    def snapshot(self):
+        """What other players need to draw this kart (sent ~12 times a second)."""
+        fl = ((1 if self.boosting else 0) | (2 if self.hb else 0) | (4 if self.braking else 0) | (8 if self.drifting else 0)
+              | (16 if self.dead > 0 else 0) | (32 if self.ghost > 0 else 0) | (64 if self.turbo > 0 else 0)
+              | (128 if self.done else 0) | (256 if self.slip else 0) | (512 if self.reverse else 0))
+        return [round(self.x, 1), round(self.y, 1), round(self.h, 3), round(self.vx, 1), round(self.vy, 1),
+                round(self.w, 2), int(self.hp), fl, self.lap, round(self.prog, 1), int(self.boost),
+                min(2, self.turbo_lvl if self.drifting else 0), round(self.steer, 2), round(self.drift_t, 2)]
+
+
+class KartInput:
+    __slots__ = ("up", "down", "left", "right", "boost", "hb", "reset")
+
+    def __init__(self, up=0.0, down=0.0, left=0.0, right=0.0, boost=False, hb=False, reset=False):
+        self.up, self.down, self.left, self.right, self.boost, self.hb, self.reset = up, down, left, right, boost, hb, reset
+
+
+def kart_step(k, inp, track, dt, t, race_on, opts):
+    """One physics step for one kart. Events (wall hits, blowups, laps, turbo) go to k.ev."""
+    if k.done and not race_on:
+        inp = KartInput(down=0.4)
+    if k.dead > 0:
+        k.dead -= dt
+        if k.dead <= 0:
+            respawn(k, track)
+        return
+    if k.ghost > 0:
+        k.ghost -= dt
+    # hold R for 2 s: back on the track a little behind, full health, a ghost for a moment (never forward)
+    if inp.reset and race_on and not k.done:
+        k.reset_t += dt
+        if k.reset_t >= 2.0:
+            k.reset_t = 0.0
+            k.resets += 1
+            respawn(k, track, True)
+            return
+    else:
+        k.reset_t = 0.0
+    cos_h, sin_h = math.cos(k.h), math.sin(k.h)
+    vf = k.vx * cos_h + k.vy * sin_h
+    vl = -k.vx * sin_h + k.vy * cos_h
+    if not race_on:
+        inp = KartInput(down=1.0 if abs(vf) > 1 else 0.0, hb=inp.hb, left=inp.left, right=inp.right)
+    if k.start_pen > 0:                      # pressed too early: the wheels spin for a moment
+        k.start_pen -= dt
+        inp = KartInput(left=inp.left, right=inp.right, hb=inp.hb)
+    # steering: eased in so a keyboard tap is gentle
+    want = clamp(inp.right - inp.left, -1.0, 1.0)
+    rate = 7.5 if abs(want) > abs(k.steer) else 11.0
+    k.steer += clamp(want - k.steer, -rate * dt, rate * dt)
+    sp = abs(vf)
+    # boost
+    can_boost = opts.get("boost", True)
+    k.boosting = bool(inp.boost and can_boost and k.boost > 0.5 and race_on and inp.up > 0)
+    if k.boosting:
+        k.boost = max(0.0, k.boost - BOOST_DRAIN * dt)
+        k.boost_idle = 0.0
+        k.boost_used += BOOST_DRAIN * dt
+        if sp > V_BOOST - 8:
+            k.boost_waste += BOOST_DRAIN * dt
+    else:
+        k.boost_idle += dt
+        if k.boost_idle >= BOOST_WAIT:
+            k.boost = min(100.0, k.boost + BOOST_FILL * dt * (1.6 if k.slip else 1.0))
+    if k.turbo > 0:
+        k.turbo -= dt
+    vmax = V_BOOST if k.boosting else (V_TURBO if k.turbo > 0 else V_MAX)
+    if k.slip:
+        vmax *= 1.06
+    # engine, brake, reverse
+    k.throttle = inp.up
+    k.braking = False
+    k.reverse = False
+    acc = 0.0
+    if inp.up > 0 and vf > -20:
+        top = ACCEL + (BOOST_ACCEL if k.boosting else (220.0 if k.turbo > 0 else 0.0))
+        acc = inp.up * (top * max(0.0, 1 - vf / vmax) + (40 if vf < vmax else 0))
+        if vf > vmax:
+            acc = -min(260.0, (vf - vmax) * 2.2)       # coming down from a boost: smooth, not a wall
+    if inp.down > 0:
+        if vf > 15:
+            acc = -BRAKE * inp.down
+            k.braking = True
+        else:
+            k.reverse = True
+            acc = -280 * inp.down if vf > -REV_MAX else 0.0
+    if inp.up == 0 and inp.down == 0:
+        acc = -(70 + 0.25 * abs(vf)) * (1 if vf > 0 else -1) if abs(vf) > 3 else -vf / dt
+    if inp.up > 0 and vf < -20:
+        acc = BRAKE
+        k.braking = True
+    # handbrake: the rear lets go
+    k.hb = bool(inp.hb)
+    grip = GRIP_HB if k.hb else (GRIP_DRIFT if k.drifting else GRIP)
+    if k.hb:
+        acc -= 150.0 * (1 if vf > 0 else -1) if abs(vf) > 5 else 0.0
+    vf += acc * dt
+    # turning
+    s = abs(vf)
+    yaw_max = YAW_LO + (YAW_HI - YAW_LO) * min(1.0, s / V_MAX)
+    if k.hb or k.drifting:
+        yaw_max *= YAW_HB
+    turn_ok = min(1.0, s / 70.0)                          # no spinning on the spot
+    target_w = k.steer * yaw_max * turn_ok * (1 if vf >= 0 else -1)
+    k.w += (target_w - k.w) * min(1.0, dt * (9.0 if not k.hb else 6.0))
+    k.h = wrap_pi(k.h + k.w * dt)
+    cos_h, sin_h = math.cos(k.h), math.sin(k.h)
+    # the velocity stayed where it was while the kart turned: split it again on the new heading
+    vx, vy = k.vx + (acc * dt) * cos_h, k.vy + (acc * dt) * sin_h
+    vf = vx * cos_h + vy * sin_h
+    vl = -vx * sin_h + vy * cos_h
+    # grip pulls the sideways speed back to zero, up to what the tyres hold
+    fix = grip * dt
+    if abs(vl) <= fix:
+        vl = 0.0
+    else:
+        vl -= fix * (1 if vl > 0 else -1)
+    # scrub: sliding costs a little speed
+    if abs(vl) > 30:
+        vf -= (abs(vl) * (0.12 if k.drifting and not k.hb else 0.32)) * dt * (1 if vf > 0 else -1)
+    k.vx = vf * cos_h - vl * sin_h
+    k.vy = vf * sin_h + vl * cos_h
+    # drift: sliding sideways with the handbrake or right after it, at speed
+    slide = abs(vl) > 38 and abs(vf) > 140
+    if k.hb and abs(vf) > 140 and abs(k.steer) > 0.3:
+        k.drifting = True
+    elif not k.hb and (abs(k.steer) < 0.15 or (not slide and k.drift_t > 0.4 and abs(k.steer) < 0.5)):
+        if k.drifting and race_on:
+            lvl = 2 if k.drift_t >= DRIFT_L2 else (1 if k.drift_t >= DRIFT_L1 else 0)
+            if lvl:
+                k.turbo = TURBO_T[lvl]
+                k.turbo_lvl = lvl
+                k.drift_turbos += 1
+                k.ev.append(("turbo", lvl))
+        k.drifting = False
+    if abs(vf) < 110:
+        k.drifting = False
+    if k.drifting:
+        k.drift_t += dt
+        k.turbo_lvl = 2 if k.drift_t >= DRIFT_L2 else (1 if k.drift_t >= DRIFT_L1 else 0)
+    else:
+        k.drift_t = 0.0
+    k.smoke = 1.0 if (k.hb and s > 30) or (abs(vl) > 70) or k.start_pen > 0 else max(0.0, k.smoke - dt * 4)
+    k.x += k.vx * dt
+    k.y += k.vy * dt
+    sp = math.hypot(k.vx, k.vy)
+    if sp > k.top:
+        k.top = sp
+    walls(k, track, t, opts.get("damage", True))
+    # where it is on the circuit
+    i, lat, _a = track.locate(k.x, k.y, k.idx)
+    k.idx = i
+    k.wrong = (math.cos(k.h) * track.tx[i] + math.sin(k.h) * track.ty[i]) < -0.35 and sp > 40
+    if abs(lat - track.line_off[i]) < 26:
+        k.on_line += dt
+    k.line_n += 1
+    progress(k, track, i, t, race_on)
+    if race_on and not k.done and sp < 25 and inp.up > 0:
+        k.stuck_t += dt
+    else:
+        k.stuck_t = 0.0
+
+
+def walls(k, track, t, dmg_on=True):
+    """The walls on both sides: push back, bounce, damage by the speed going into the wall (fair and the same for
+    everyone: grazing never hurts, a straight hit at full speed blows the kart up)."""
+    for (cx, cy) in k.circles():
+        i, lat, _a = track.locate(cx, cy, k.idx if k.idx >= 0 else -1)
+        lim = track.hw - KART_R
+        if abs(lat) <= lim:
+            continue
+        side = 1 if lat > 0 else -1
+        nx, ny = track.nx[i] * side, track.ny[i] * side          # out of the track
+        over = abs(lat) - lim
+        k.x -= nx * over
+        k.y -= ny * over
+        vn = k.vx * nx + k.vy * ny
+        if vn > 0:
+            k.vx -= nx * vn * 1.32                                # bounce back 32 %
+            k.vy -= ny * vn * 1.32
+            vt_x, vt_y = k.vx + nx * vn * 0.32, k.vy + ny * vn * 0.32
+            fr = 1 - 0.18 * min(1.0, vn / 220)
+            k.vx = vt_x * fr - nx * vn * 0.32
+            k.vy = vt_y * fr - ny * vn * 0.32
+            k.w *= 0.5
+            if vn > 40:
+                k.wall_hits += 1 if vn > WALL_SAFE else 0
+                dmg = max(0.0, vn - WALL_SAFE) * WALL_DMG
+                k.ev.append(("wall", vn, dmg, (cx + nx * KART_R, cy + ny * KART_R)))
+                if dmg > 0 and dmg_on:
+                    damage(k, dmg, t)
+
+
+def damage(k, dmg, t):
+    if k.dead > 0 or k.ghost > 0 or dmg <= 0:
+        return
+    k.hp -= dmg
+    k.clean_t = 0.0
+    if k.hp <= 0:
+        k.hp = 0
+        k.dead = KART_RESPAWN
+        k.blowups += 1
+        k.ev.append(("boom", k.x, k.y))
+        k.vx *= 0.15
+        k.vy *= 0.15
+
+
+def respawn(k, track, reset=False):
+    """Back on the track, at the centre, facing the right way, a little behind where it blew up."""
+    i = (k.idx - int(60 / track.STEP)) % track.n if k.idx >= 0 else 0
+    k.x = track.cx[i] + track.line_off[i] * 0.4 * track.nx[i]
+    k.y = track.cy[i] + track.line_off[i] * 0.4 * track.ny[i]
+    k.h = track.ang[i]
+    k.vx = k.vy = k.w = 0.0
+    k.hp = KART_HP
+    k.dead = 0.0
+    k.ghost = KART_GHOST
+    k.drifting = False
+    k.drift_t = 0.0
+    k.turbo = 0.0
+    k.idx = i
+    k.ev.append(("respawn", reset))
+
+
+def progress(k, track, i, t, race_on):
+    """Laps: 4 checkpoints a lap, in order, so cutting is impossible; prog is laps done plus how far into this one."""
+    n = track.n
+    q = i * 4 // n                                       # which quarter of the lap the kart is in
+    nxt = (k.checks + 1) % 4
+    if q == nxt and k.checks != 3:
+        k.checks = nxt
+    elif q == 0 and k.checks == 3 and race_on and not k.done:
+        # crossed the line
+        k.checks = 0
+        lap_time = t - k.lap_t0
+        k.laps.append(lap_time)
+        k.lap_t0 = t
+        k.lap += 1
+        if not k.best_lap or lap_time < k.best_lap:
+            k.best_lap = lap_time
+        k.ev.append(("lap", k.lap, lap_time))
+    k.prog = k.lap * n + (i if not (k.checks == 0 and i > n * 3 // 4) else i - n)
+    k.s = i
+
+
+def bump(a, b, t, dmg_on=True):
+    """Two karts touching: push both apart (same weight), bounce, a little damage above a closing speed."""
+    if a.dead > 0 or b.dead > 0 or a.ghost > 0 or b.ghost > 0:
+        return False
+    hit = False
+    for (ax, ay) in a.circles():
+        for (bx, by) in b.circles():
+            dx, dy = bx - ax, by - ay
+            d2 = dx * dx + dy * dy
+            if d2 >= (2 * KART_R) ** 2 or d2 < 1e-6:
+                continue
+            d = math.sqrt(d2)
+            nx, ny = dx / d, dy / d
+            over = 2 * KART_R - d
+            a.x -= nx * over * 0.5
+            a.y -= ny * over * 0.5
+            b.x += nx * over * 0.5
+            b.y += ny * over * 0.5
+            rv = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny     # closing speed
+            if rv > 0:
+                j = rv * (1 + 0.35) * 0.5
+                a.vx -= j * nx
+                a.vy -= j * ny
+                b.vx += j * nx
+                b.vy += j * ny
+                if not hit and rv > 30:
+                    a.hits += 1
+                    b.hits += 1
+                    dmg = max(0.0, rv - BUMP_SAFE) * BUMP_DMG if dmg_on else 0.0
+                    a.ev.append(("bump", rv, dmg, ((ax + bx) / 2, (ay + by) / 2)))
+                    b.ev.append(("bump", rv, dmg, ((ax + bx) / 2, (ay + by) / 2)))
+                    damage(a, dmg, t)
+                    damage(b, dmg, t)
+                hit = True
+    return hit
+
+
+def bump_one(me, other, t, dmg_on=True):
+    """Online: my kart against someone else's (drawn where we think it is now). Only my kart moves here; their PC does
+    the same for theirs, so both feel the push."""
+    if me.dead > 0 or other.dead > 0 or me.ghost > 0 or other.ghost > 0:
+        return False
+    hit = False
+    for (ax, ay) in me.circles():
+        for (bx, by) in other.circles():
+            dx, dy = bx - ax, by - ay
+            d2 = dx * dx + dy * dy
+            if d2 >= (2 * KART_R) ** 2 or d2 < 1e-6:
+                continue
+            d = math.sqrt(d2)
+            nx, ny = dx / d, dy / d
+            over = 2 * KART_R - d
+            me.x -= nx * over * 0.5
+            me.y -= ny * over * 0.5
+            rv = (me.vx - other.vx) * nx + (me.vy - other.vy) * ny
+            if rv > 0:
+                j = rv * (1 + 0.35) * 0.5
+                me.vx -= j * nx
+                me.vy -= j * ny
+                if not hit and rv > 30:
+                    me.hits += 1
+                    dmg = max(0.0, rv - BUMP_SAFE) * BUMP_DMG if dmg_on else 0.0
+                    me.ev.append(("bump", rv, dmg, ((ax + bx) / 2, (ay + by) / 2)))
+                    damage(me, dmg, t)
+                hit = True
+    return hit
+
+
+def slipstream(k, others, dt):
+    """Right behind another kart, in its wake: a little more top speed and boost refill."""
+    if k.dead > 0 or k.speed < 200:
+        k.slip_t = 0.0
+        k.slip = False
+        return
+    c, s = math.cos(k.h), math.sin(k.h)
+    found = False
+    for o in others:
+        if o is k or o.dead > 0:
+            continue
+        dx, dy = o.x - k.x, o.y - k.y
+        ahead = dx * c + dy * s
+        side = abs(-dx * s + dy * c)
+        if 40 < ahead < SLIP_DIST and side < 34:
+            found = True
+            break
+    k.slip_t = k.slip_t + dt if found else max(0.0, k.slip_t - dt * 2)
+    k.slip = k.slip_t > SLIP_T
+
+
+# ------------------------------------------------------------------------------------------------ bots
+# Six levels on the slider from 100 to 2500. Every number below is a real driving skill, read by the bot each step.
+BOT_LEVELS = [(100, "Rookie"), (500, "Amateur"), (1000, "Racer"), (1500, "Expert"), (2000, "Elite"), (2500, "Professional")]
+#            elo    pace   wobble react  brake_late mistakes drift  boost  avoid  start
+_BOT_TABLE = [(100, 0.505, 22.0, 0.34, 0.30, 0.030, 0.00, 0.10, 0.10, 0.90),
+              (500, 0.585, 18.0, 0.24, 0.20, 0.020, 0.00, 0.30, 0.30, 0.55),
+              (1000, 0.675, 13.0, 0.16, 0.12, 0.014, 0.15, 0.50, 0.55, 0.32),
+              (1500, 0.74, 9.0, 0.11, 0.07, 0.008, 0.45, 0.70, 0.75, 0.20),
+              (2000, 0.78, 5.0, 0.07, 0.03, 0.003, 0.70, 0.85, 0.90, 0.12),
+              (2500, 1.0, 0.0, 0.0, 0.0, 0.0, 1.00, 1.00, 1.00, 0.0)]
+_BOT_KEYS = ("elo", "pace", "wobble", "react", "late", "mistakes", "drift", "boost", "avoid", "start")
+
+
+def bot_level_name(elo):
+    elo = int(elo)
+    best = BOT_LEVELS[0][1]
+    for e, nm in BOT_LEVELS:
+        if elo >= e - 1:
+            best = nm
+    return best
+
+
+def bot_params(elo):
+    elo = clamp(float(elo), 100.0, 2500.0)
+    rows = _BOT_TABLE
+    for a, b in zip(rows, rows[1:]):
+        if elo <= b[0]:
+            t = (elo - a[0]) / (b[0] - a[0])
+            if b[0] == 2500:            # 2000 to 2500 is a big jump: the last stretch is where the bot becomes perfect
+                t = t ** 2.2
+            return {k: a[j] + (b[j] - a[j]) * t for j, k in enumerate(_BOT_KEYS)}
+    return dict(zip(_BOT_KEYS, rows[-1]))
+
+
+class KartBot:
+    """Drives a kart with the same keys a player has. Follows the circuit's racing line at a pace set by its level;
+    lower levels wobble, react late, brake late now and then, waste boost and bump into others; Professional drives the
+    ideal line at the limit, launches perfectly, drifts the hairpins for mini turbos, boosts on the longest straights
+    and steers around other karts."""
+
+    def __init__(self, kart, track, elo, seed=1):
+        self.k, self.tr, self.elo = kart, track, int(elo)
+        self.p = bot_params(elo)
+        self.rng = random.Random(seed * 7919 + int(elo))
+        self.wob_phase = self.rng.random() * 6.28
+        self.mistake = 0.0
+        self.avoid = 0.0
+        self.react_q = []
+        self.boost_plan = self._plan_boost()
+        self.drift_plan = self._plan_drift()
+
+    def _plan_boost(self):
+        """Where boosting gains the most: the starts of the longest stretches of full throttle."""
+        tr = self.tr
+        n = tr.n
+        flat = [tr.vprof[i] >= V_MAX - 2 for i in range(n)]
+        runs = []
+        i = 0
+        start = None
+        # find runs of flat-out (wrapping)
+        first_break = next((j for j in range(n) if not flat[j]), 0)
+        for j in range(n + 1):
+            idx = (first_break + j) % n
+            if flat[idx] and start is None:
+                start = idx
+                i = 0
+            if flat[idx]:
+                i += 1
+            elif start is not None:
+                runs.append((i, start))
+                start = None
+        runs.sort(reverse=True)
+        # boosting lasts about 3 s (about 1300 units at boost speed) and refills in ~14 s: the longest few straights
+        plan = set()
+        for ln, st in runs[:3]:
+            if ln * tr.STEP > 900:
+                plan.add(st)
+        return plan
+
+    def _plan_drift(self):
+        """Corners worth a drift: long, tight arcs where the line is slow."""
+        tr = self.tr
+        n = tr.n
+        out = []
+        i = 0
+        while i < n:
+            if tr.vprof[i] < V_MAX * 0.6 and abs(tr.lcurv[i]) > 1 / 300:
+                j = i
+                while j < i + n and tr.vprof[j % n] < V_MAX * 0.7:
+                    j += 1
+                if (j - i) * tr.STEP > 200:
+                    out.append((i % n, j % n))
+                i = j + 1
+            else:
+                i += 1
+        return out
+
+    def target(self, i, pace, top, brake):
+        tr = self.tr
+        n = tr.n
+        best = top
+        d = 0.0
+        j = i
+        lim = (top * top) / (2 * brake) + 40
+        while d < lim:
+            vc = tr.vcorner[j] * pace
+            if vc < best:
+                v = math.sqrt(vc * vc + 2 * brake * max(0.0, d - 12))
+                if v < best:
+                    best = v
+            d += tr.lseg[j]
+            j = (j + 1) % n
+        return best
+
+    def _in_drift_zone(self, i):
+        for a, b in self.drift_plan:
+            if a <= b and a - 10 <= i <= b - 6:
+                return True
+            if a > b and (i >= a - 10 or i <= b - 6):
+                return True
+        return False
+
+    def think(self, others, t, race_on, dt):
+        k, tr, p = self.k, self.tr, self.p
+        inp = KartInput()
+        if k.dead > 0:
+            return inp
+        if not race_on:
+            return inp
+        i = k.idx if k.idx >= 0 else tr.locate(k.x, k.y)[0]
+        sp = k.speed
+        # where to aim: a point on the racing line ahead, a little wobble for the lower levels
+        look = 28 + sp * 0.30
+        j = (i + int(look / tr.STEP)) % tr.n
+        wob = p["wobble"] * math.sin(t * 0.9 + self.wob_phase) + p["wobble"] * 0.5 * math.sin(t * 2.3)
+        off = tr.line_off[j] + wob + self.avoid
+        off = clamp(off, -tr.hw + 26, tr.hw - 26)
+        tx, ty = tr.cx[j] + off * tr.nx[j], tr.cy[j] + off * tr.ny[j]
+        ang = math.atan2(ty - k.y, tx - k.x)
+        err = wrap_pi(ang - k.h)
+        steer = clamp(err * 3.2 - k.w * 0.22, -1, 1)
+        # the speed it wants: whatever lets it brake in time for every corner ahead (corner speeds at its pace)
+        pace = p["pace"]
+        if self.mistake > 0:                         # a late brake: it carries too much speed into the corner
+            self.mistake -= dt
+        elif p["mistakes"] and tr.corner[(i + 25) % tr.n] and not tr.corner[i] and self.rng.random() < p["mistakes"] * dt * 6:
+            self.mistake = 0.35 + p["late"] * 2.0
+        want = self.target(i, pace * (1.18 if self.mistake > 0 else 1.0),
+                           V_BOOST if k.boosting or k.turbo > 0 else V_MAX * min(1.0, 0.5 + 0.5 * pace),
+                           0.62 * BRAKE * (1.0 + (0.6 if self.mistake > 0 else 0.0)) * (1 - p["late"]))
+        if sp < want:
+            inp.up = 1.0
+        elif sp > want + 8:
+            inp.down = clamp((sp - want) / 50, 0.3, 1.0)
+        # steer in the bot's reaction time
+        self.react_q.append(steer)
+        lag = int(min(0.07, p["react"] * 0.25) / dt)
+        if len(self.react_q) > lag:
+            steer = self.react_q.pop(0)
+        else:
+            steer = self.react_q[0]
+        if steer > 0:
+            inp.right = steer
+        else:
+            inp.left = -steer
+        # drift the planned hairpins (the higher levels)
+        # drift the planned corners (the higher levels): a short tap of the handbrake to kick the kart sideways, then
+        # steering holds the slide through the corner and letting go fires the mini turbo
+        if p["drift"] > 0 and self._in_drift_zone(i) and sp > 170:
+            if not k.drifting and abs(steer) > 0.35 and (p["drift"] >= 1.0 or self.rng.random() < p["drift"] * dt * 8):
+                self.hb_t = 0.12
+        if getattr(self, "hb_t", 0) > 0:
+            self.hb_t -= dt
+            inp.hb = True
+        if k.drifting and not self._in_drift_zone(i) and abs(err) < 0.12:
+            inp.left = inp.right = 0.0          # out of the corner: straighten up, the turbo fires
+        # boost: only where it can be held to the end without braking (Professional burns it all on the straights)
+        if p["boost"] > 0 and k.boost > 1 and sp > 150:
+            clear = self.target(i, pace, V_BOOST, 0.62 * BRAKE) >= V_BOOST - 1 if p["boost"] >= 0.5 else True
+            if p["boost"] >= 1.0:
+                inp.boost = clear and k.boost > (0 if k.boosting else 25)
+            else:
+                if k.boosting:
+                    inp.boost = clear or self.rng.random() > p["boost"]
+                elif self.rng.random() < p["boost"] * dt * 0.5 and clear:
+                    inp.boost = True
+                elif self.rng.random() < (1 - p["boost"]) * dt * 0.05:
+                    inp.boost = True                      # boosting at the wrong moment, like a beginner
+        # other karts in the way: steer around them (well, at the top; late or not at all at the bottom)
+        self.avoid *= 0.97
+        if p["avoid"] > 0:
+            c, s = math.cos(k.h), math.sin(k.h)
+            for o in others:
+                if o is k or o.dead > 0 or o.ghost > 0:
+                    continue
+                dx, dy = o.x - k.x, o.y - k.y
+                ahead_d = dx * c + dy * s
+                side = -dx * s + dy * c
+                closing = sp - (o.vx * c + o.vy * s)
+                if 0 < ahead_d < 70 + closing * 0.9 * p["avoid"] and abs(side) < 40 and closing > 10:
+                    if self.rng.random() < p["avoid"] or p["avoid"] >= 1.0:
+                        oi = o.idx if o.idx >= 0 else i
+                        olat = (o.x - tr.cx[oi]) * tr.nx[oi] + (o.y - tr.cy[oi]) * tr.ny[oi]
+                        room_l = tr.hw - olat
+                        room_r = olat + tr.hw
+                        self.avoid = clamp(self.avoid + (55 if room_l > room_r else -55) * dt * 6, -70, 70)
+                        if p["avoid"] >= 1.0 and closing > 60 and ahead_d < 60:
+                            inp.up = min(inp.up, 0.4)
+        return inp
+
+    def start_reaction(self):
+        """How long after the lights go out it presses the throttle (Professional: a perfect launch)."""
+        p = self.p
+        if p["start"] <= 0:
+            return 0.02
+        return p["start"] * (0.6 + 0.8 * self.rng.random())
+
+
+# ------------------------------------------------------------------------------------------------ a race
+class KartRace:
+    """Everything simulated on this PC: its own karts (the player's, the bot if this PC drives it) plus the others as
+    remote karts. Used headless by the tests and by the race window."""
+
+    def __init__(self, track_i, laps=3, collide=True, boost=True, damage_on=True):
+        self.tr = KartTrack(track_i) if not isinstance(track_i, KartTrack) else track_i
+        self.laps = laps
+        self.opts = {"collide": collide, "boost": boost, "damage": damage_on}
+        self.karts = {}
+        self.bots = {}
+        self.t = -KART_COUNT                  # race clock: 5, 4, 3, 2, 1, GO at 0
+        self.go_press = {}
+        self.remote = set()
+
+    def add(self, seat, slot):
+        x, y, h = self.tr.grid[slot]
+        k = Kart(seat, x, y, h)
+        k.idx = self.tr.locate(x, y)[0]
+        k.checks = 0
+        self.karts[seat] = k
+        return k
+
+    def add_bot(self, seat, slot, elo, seed=1):
+        k = self.add(seat, slot)
+        self.bots[seat] = KartBot(k, self.tr, elo, seed)
+        self.go_press[seat] = self.bots[seat].start_reaction()
+        return k
+
+    def step(self, inputs, dt=KART_DT):
+        """One step: the bots think, every kart simulated here moves, then slipstreams and collisions. Karts in
+        self.remote belong to other PCs: they are only moved by apply_remote(), and a collision with one only pushes
+        the kart simulated here (their PC pushes theirs)."""
+        self.t += dt
+        on = self.t >= 0
+        allk = list(self.karts.values())
+        for seat, bot in self.bots.items():
+            if seat in self.remote:
+                continue
+            if not on or self.t < self.go_press.get(seat, 0):
+                inputs[seat] = KartInput()
+            else:
+                inputs[seat] = bot.think(allk, self.t, on, dt)
+        for seat, k in self.karts.items():
+            if seat in self.remote:
+                continue
+            inp = inputs.get(seat) or KartInput()
+            launch(k, inp, self.t)
+            kart_step(k, inp, self.tr, dt, self.t, on and not k.done, self.opts)
+            if on and not k.done and k.lap >= self.laps:
+                k.done = True
+                k.finish_t = self.t
+                k.ev.append(("finish", self.t))
+        for k in allk:
+            if k.seat not in self.remote:
+                slipstream(k, allk, dt)
+        if self.opts["collide"]:
+            dm = self.opts["damage"]
+            for a in range(len(allk)):
+                for b in range(a + 1, len(allk)):
+                    ka, kb = allk[a], allk[b]
+                    ra, rb = ka.seat in self.remote, kb.seat in self.remote
+                    if ra and rb:
+                        continue
+                    if not ra and not rb:
+                        bump(ka, kb, self.t, dm)
+                    elif ra:
+                        bump_one(kb, ka, self.t, dm)
+                    else:
+                        bump_one(ka, kb, self.t, dm)
+
+    def apply_remote(self, seat, snap, age):
+        """Another PC's kart: put it where its last message says, moved on by its speed for the time since (at most
+        0.25 s), and blended so it never jumps."""
+        k = self.karts.get(seat)
+        if k is None or not snap:
+            return
+        x, y, h, vx, vy, w, hp, fl, lap, prog, boost, tl, steer, dt_ = (list(snap) + [0] * 14)[:14]
+        age = clamp(age, 0.0, 0.25)
+        px, py, ph = x + vx * age, y + vy * age, wrap_pi(h + w * age)
+        jump = math.hypot(px - k.x, py - k.y)
+        if jump > 160 or (fl & 16) or k.dead > 0:
+            k.x, k.y, k.h = px, py, ph
+        else:
+            k.x += (px - k.x) * 0.35
+            k.y += (py - k.y) * 0.35
+            k.h = wrap_pi(k.h + wrap_pi(ph - k.h) * 0.35)
+        k.vx, k.vy, k.w = vx, vy, w
+        k.hp = hp
+        k.boosting, k.hb, k.braking, k.drifting = bool(fl & 1), bool(fl & 2), bool(fl & 4), bool(fl & 8)
+        was_dead = k.dead > 0
+        k.dead = 1.0 if fl & 16 else 0.0
+        if k.dead and not was_dead:
+            k.ev.append(("boom", k.x, k.y))
+        k.ghost = 1.0 if fl & 32 else 0.0
+        k.turbo = 0.2 if fl & 64 else 0.0
+        k.done = bool(fl & 128)
+        k.slip = bool(fl & 256)
+        k.reverse = bool(fl & 512)
+        k.lap, k.prog, k.boost, k.turbo_lvl, k.steer, k.drift_t = int(lap), float(prog), float(boost), int(tl), float(steer), float(dt_)
+        k.smoke = 1.0 if (k.hb and k.speed > 30) or k.drifting else max(0.0, k.smoke - 0.05)
+        k.idx = self.tr.locate(k.x, k.y, k.idx)[0]
+
+    def standings(self):
+        """Seats from first to last: finished karts by time, then by how far round they are."""
+        ks = list(self.karts.values())
+        return sorted(ks, key=lambda k: (0, k.finish_t) if k.done else (1, -k.prog))
+
+
+def launch(k, inp, t):
+    """The start: throttle held before the lights go out means a wheelspin at the start; pressing it within 0.15 s of
+    the lights going out is a perfect launch with a short turbo."""
+    if t < 0:
+        if inp.up > 0 and t > -1.0:
+            k.start_bonus = -1.0                   # jumped the start
+        elif inp.up == 0 and k.start_bonus < 0 and t < -1.0:
+            k.start_bonus = 0.0
+        return
+    if k.start_bonus == 0.0 and inp.up > 0:
+        if t <= 0.15:
+            k.turbo = 0.8
+            k.turbo_lvl = 2
+            k.ev.append(("launch", 1))
+            k.start_bonus = 1.0
+        else:
+            k.start_bonus = 2.0
+    elif k.start_bonus < 0:
+        k.start_pen = 0.7
+        k.start_bonus = 3.0
+        k.ev.append(("launch", -1))
+
+
+# ------------------------------------------------------------------------------------------------ score
+# The score out of 100: a race's average lap pace against the circuit's calibrated times (filled in by calibration,
+# see KART_CAL). Professional bots land at 99-100, the other levels in their bands.
+KART_CAL = {
+    "bay": [(36.045, 100.0), (36.594, 99.6), (41.014, 80.0), (42.796, 65.0), (45.274, 55.0), (49.444, 42.5), (55.119, 28.0)],
+    "pine": [(38.495, 100.0), (39.081, 99.6), (45.215, 80.0), (47.026, 65.0), (50.456, 55.0), (56.481, 42.5), (63.801, 28.0)],
+    "docks": [(42.038, 100.0), (42.678, 99.6), (47.625, 80.0), (49.571, 65.0), (52.711, 55.0), (57.783, 42.5), (64.281, 28.0)],
+}
+KART_START_COST = 1.0
+
+
+def kart_score(track_key, laps_times, total, laps):
+    cal = KART_CAL.get(track_key)
+    if not cal or laps <= 0 or total <= 0:
+        return 0.0
+    per = total / laps + KART_START_COST * (1.0 / 3 - 1.0 / laps)      # calibrated on 3 laps (the standing start)
+    # cal: [(per_lap_seconds, score)] from fastest to slowest
+    if per <= cal[0][0]:
+        return 100.0
+    for (t0, s0), (t1, s1) in zip(cal, cal[1:]):
+        if per <= t1:
+            return round(s0 + (s1 - s0) * (per - t0) / (t1 - t0), 1)
+    tl, sl = cal[-1]
+    return round(max(0.0, sl * tl / per - (per - tl) * 0.2), 1)
+
+
+# ================================================================================================== Karting: drawing
+# 9.2: the circuits are painted once into tiles (ground, run-off, barriers, tarmac, kerbs, the grid, scenery), skid
+# marks are painted into those tiles as they happen, and each frame draws the tiles in view, the karts, the particles
+# and the HUD on top.
+KART_COLS = ["#FF3D6E", "#3DA5FF", "#35E0A1", "#F5C04A"]          # seat colours (the bot is always gold)
+KART_TS = 0.8                    # tile pixels per world unit
+KART_TW = 640                    # world units per tile
+KART_THEMES = {
+    "bay": {"ground": "#D9B98A", "ground2": "#C9A574", "run": "#E8D3A8", "tar": "#3A3D44", "tar2": "#43474F",
+            "wall": "#F4F1EA", "wall2": "#E2453C", "line": "#F7F7F2", "deco": "palm", "sky": "#1B1410"},
+    "pine": {"ground": "#3F7A3A", "ground2": "#356B31", "run": "#7C6A4C", "tar": "#34373D", "tar2": "#3D4047",
+             "wall": "#8A5A32", "wall2": "#F0E6D2", "line": "#F2F2EE", "deco": "pine", "sky": "#0E1A10"},
+    "docks": {"ground": "#1C2030", "ground2": "#232839", "run": "#2B3042", "tar": "#202229", "tar2": "#272A33",
+              "wall": "#2BE3FF", "wall2": "#FF3DD8", "line": "#9AF7FF", "deco": "crate", "sky": "#07080D"},
+}
+
+
+def kart_col(seat: int, bot: bool = False) -> QColor:
+    return QColor("#F5C04A" if bot else KART_COLS[seat % 3])
+
+
+class KartTiles:
+    """The circuit painted into tiles of KART_TW world units, made as they are first needed (or ahead of time)."""
+
+    def __init__(self, track) -> None:
+        self.tr = track
+        self.th = KART_THEMES.get(track.theme, KART_THEMES["bay"])
+        self.tiles: dict = {}
+        x0, y0, x1, y1 = track.bounds
+        self.x0, self.y0 = math.floor(x0 / KART_TW), math.floor(y0 / KART_TW)
+        self.x1, self.y1 = math.floor(x1 / KART_TW), math.floor(y1 / KART_TW)
+        n = track.n
+        self.centre = self._loop([(track.cx[i], track.cy[i]) for i in range(n)])
+        self.line = self._loop([(track.lx[i], track.ly[i]) for i in range(n)])
+        self.edges = [self._loop([(track.cx[i] + s * (track.hw - 7) * track.nx[i], track.cy[i] + s * (track.hw - 7) * track.ny[i])
+                                  for i in range(n)]) for s in (1, -1)]
+        self.walls = [self._loop([(track.cx[i] + s * (track.hw + 9) * track.nx[i], track.cy[i] + s * (track.hw + 9) * track.ny[i])
+                                  for i in range(n)]) for s in (1, -1)]
+        # kerbs: on the inside of every real corner
+        self.kerbs = []
+        i = 0
+        while i < n:
+            c = track.curv[i]
+            if abs(c) > 1 / 520:
+                j = i
+                side = 1 if c > 0 else -1
+                while j < i + n and abs(track.curv[j % n]) > 1 / 700 and (1 if track.curv[j % n] > 0 else -1) == side:
+                    j += 1
+                pts = [(track.cx[k % n] + side * (track.hw - 9) * track.nx[k % n], track.cy[k % n] + side * (track.hw - 9) * track.ny[k % n])
+                       for k in range(i - 4, j + 5)]
+                outer = [(track.cx[k % n] - side * (track.hw - 9) * track.nx[k % n], track.cy[k % n] - side * (track.hw - 9) * track.ny[k % n])
+                         for k in range(i + (j - i) // 3, j + 6)]
+                self.kerbs.append(self._open(pts))
+                if j - i > 20:
+                    self.kerbs.append(self._open(outer))
+                i = j + 1
+            else:
+                i += 1
+        self.decos = self._scenery()
+
+    @staticmethod
+    def _loop(pts) -> QPainterPath:
+        path = QPainterPath(QPointF(*pts[0]))
+        for x, y in pts[1:]:
+            path.lineTo(x, y)
+        path.closeSubpath()
+        return path
+
+    @staticmethod
+    def _open(pts) -> QPainterPath:
+        path = QPainterPath(QPointF(*pts[0]))
+        for x, y in pts[1:]:
+            path.lineTo(x, y)
+        return path
+
+    def _scenery(self) -> list:
+        """Trees, palms, containers and stands outside the walls, the same every time (seeded by the circuit)."""
+        tr = self.tr
+        rng = random.Random(1000 + tr.index)
+        x0, y0, x1, y1 = tr.bounds
+        out = []
+        tries = 0
+        while len(out) < 260 and tries < 4000:
+            tries += 1
+            x, y = rng.uniform(x0, x1), rng.uniform(y0, y1)
+            i, lat, _a = tr.locate(x, y)
+            d = math.hypot(x - tr.cx[i], y - tr.cy[i])
+            if d < tr.hw + 85:
+                continue
+            if d > tr.hw + 900 and rng.random() < 0.6:
+                continue
+            kind = self.th["deco"]
+            if rng.random() < 0.08 and d < tr.hw + 260:
+                kind = "stand"
+            out.append((kind, x, y, rng.uniform(0.7, 1.4), rng.uniform(0, 6.28), rng.random()))
+        return out
+
+    def ready(self) -> bool:
+        return len(self.tiles) >= (self.x1 - self.x0 + 1) * (self.y1 - self.y0 + 1)
+
+    def prepare(self, budget_s: float = 0.03) -> bool:
+        """Paint tiles ahead of time, a few at a time (so the window stays responsive). True when all are done."""
+        t0 = time.perf_counter()
+        for iy in range(self.y0, self.y1 + 1):
+            for ix in range(self.x0, self.x1 + 1):
+                if (ix, iy) not in self.tiles:
+                    self.tile(ix, iy)
+                    if time.perf_counter() - t0 > budget_s:
+                        return False
+        return True
+
+    def tile(self, ix: int, iy: int) -> QPixmap:
+        pm = self.tiles.get((ix, iy))
+        if pm is None:
+            pm = self.tiles[(ix, iy)] = self._paint(ix, iy)
+        return pm
+
+    def _paint(self, ix: int, iy: int) -> QPixmap:
+        side = int(KART_TW * KART_TS)
+        pm = QPixmap(side, side)
+        th, tr = self.th, self.tr
+        pm.fill(QColor(th["ground"]))
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.scale(KART_TS, KART_TS)
+        p.translate(-ix * KART_TW, -iy * KART_TW)
+        rect = QRectF(ix * KART_TW - 400, iy * KART_TW - 400, KART_TW + 800, KART_TW + 800)
+        # ground: soft patches, seeded per patch of world (the same on every PC, no seams between tiles)
+        p.setPen(Qt.PenStyle.NoPen)
+        cell = 320
+        c0x, c0y = math.floor((ix * KART_TW - 200) / cell), math.floor((iy * KART_TW - 200) / cell)
+        for cy_ in range(c0y, c0y + (KART_TW + 400) // cell + 2):
+            for cx_ in range(c0x, c0x + (KART_TW + 400) // cell + 2):
+                cr = random.Random(cx_ * 92821 + cy_ * 68917 + tr.index * 7)
+                for _ in range(3):
+                    x, y = cx_ * cell + cr.uniform(0, cell), cy_ * cell + cr.uniform(0, cell)
+                    r = cr.uniform(50, 170)
+                    g = QRadialGradient(QPointF(x, y), r)
+                    c = QColor(th["ground2"])
+                    g.setColorAt(0, alpha(c, 0.55))
+                    g.setColorAt(1, alpha(c, 0.0))
+                    p.setBrush(g)
+                    p.drawEllipse(QPointF(x, y), r, r)
+        rng = random.Random(ix * 7919 + iy * 104729 + tr.index)
+        if tr.theme == "docks":                                   # painted concrete slabs
+            p.setPen(QPen(QColor(255, 255, 255, 14), 2))
+            for k in range(0, KART_TW + 1, 80):
+                p.drawLine(QPointF(ix * KART_TW + k, iy * KART_TW), QPointF(ix * KART_TW + k, iy * KART_TW + KART_TW))
+                p.drawLine(QPointF(ix * KART_TW, iy * KART_TW + k), QPointF(ix * KART_TW + KART_TW, iy * KART_TW + k))
+        if not self._near(rect):
+            self._scenery_paint(p, rect)
+            p.end()
+            return pm
+        # run-off, then the barrier, then the tarmac
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        pen = QPen(QColor(th["run"]), 2 * tr.hw + 120, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.drawPath(self.centre)
+        p.setPen(QPen(QColor(0, 0, 0, 70), 2 * tr.hw + 44, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        p.drawPath(self.centre)                                   # the barrier's shadow
+        p.setPen(QPen(QColor(th["wall"]), 2 * tr.hw + 30, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        p.drawPath(self.centre)
+        # barrier stripes (tyre stacks, fence posts or neon segments)
+        dash = QPen(QColor(th["wall2"]), 12, Qt.PenStyle.CustomDashLine, Qt.PenCapStyle.FlatCap)
+        dash.setDashPattern([2.2, 2.2] if tr.theme != "docks" else [6, 1.5])
+        if tr.theme == "docks":
+            for w_, a_ in ((26, 0.10), (16, 0.22)):
+                p.setPen(QPen(alpha(th["wall"], a_), w_))
+                for wl in self.walls:
+                    p.drawPath(wl)
+        p.setPen(dash)
+        for wl in self.walls:
+            p.drawPath(wl)
+        tar = QPen(QColor(th["tar"]), 2 * tr.hw, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+        p.setPen(tar)
+        p.drawPath(self.centre)
+        # tarmac grain and a darker driven line
+        p.setPen(QPen(alpha(th["tar2"], 0.9), 2 * tr.hw - 40, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        p.drawPath(self.centre)
+        p.setPen(QPen(QColor(0, 0, 0, 38), 46, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        p.drawPath(self.line)
+        p.setPen(Qt.PenStyle.NoPen)
+        for _ in range(140):
+            x, y = ix * KART_TW + rng.uniform(0, KART_TW), iy * KART_TW + rng.uniform(0, KART_TW)
+            p.setBrush(QColor(255, 255, 255, rng.randint(4, 12)) if rng.random() < 0.5 else QColor(0, 0, 0, rng.randint(8, 20)))
+            p.drawEllipse(QPointF(x, y), rng.uniform(1, 3), rng.uniform(1, 3))
+        # edge lines and kerbs
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(alpha(th["line"], 0.85), 3.5))
+        for e in self.edges:
+            p.drawPath(e)
+        for kb in self.kerbs:
+            p.setPen(QPen(QColor("#F4F4F4"), 15, Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap, Qt.PenJoinStyle.RoundJoin))
+            p.drawPath(kb)
+            kp = QPen(QColor("#E0302E" if tr.theme != "docks" else "#FF3DD8"), 15, Qt.PenStyle.CustomDashLine,
+                      Qt.PenCapStyle.FlatCap, Qt.PenJoinStyle.RoundJoin)
+            kp.setDashPattern([1.4, 1.4])
+            p.setPen(kp)
+            p.drawPath(kb)
+        self._grid_paint(p)
+        self._scenery_paint(p, rect)
+        p.end()
+        return pm
+
+    def _near(self, rect: QRectF) -> bool:
+        tr = self.tr
+        m = tr.hw + 100
+        for i in range(0, tr.n, 4):
+            if rect.left() - m < tr.cx[i] < rect.right() + m and rect.top() - m < tr.cy[i] < rect.bottom() + m:
+                return True
+        return False
+
+    def _grid_paint(self, p: QPainter) -> None:
+        """The start line (chequered), the grid boxes and their numbers."""
+        tr = self.tr
+        i = 0
+        cx, cy, nx, ny, tx, ty = tr.cx[i], tr.cy[i], tr.nx[i], tr.ny[i], tr.tx[i], tr.ty[i]
+        sq = 12.0
+        cols = int(2 * tr.hw / sq)
+        p.setPen(Qt.PenStyle.NoPen)
+        for r in range(2):
+            for c in range(cols):
+                o = -tr.hw + c * sq
+                a = r * sq - sq
+                p.setBrush(QColor("#FFFFFF") if (r + c) % 2 == 0 else QColor("#111111"))
+                poly = QPolygonF([QPointF(cx + nx * o + tx * a, cy + ny * o + ty * a),
+                                  QPointF(cx + nx * (o + sq) + tx * a, cy + ny * (o + sq) + ty * a),
+                                  QPointF(cx + nx * (o + sq) + tx * (a + sq), cy + ny * (o + sq) + ty * (a + sq)),
+                                  QPointF(cx + nx * o + tx * (a + sq), cy + ny * o + ty * (a + sq))])
+                p.drawPolygon(poly)
+        for k, (gx, gy, gh) in enumerate(tr.grid):
+            p.save()
+            p.translate(gx, gy)
+            p.rotate(math.degrees(gh))
+            p.setPen(QPen(QColor(255, 255, 255, 170), 2.5))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawLine(QPointF(KART_LEN * 0.5 + 6, -16), QPointF(KART_LEN * 0.5 + 6, 16))
+            p.drawLine(QPointF(KART_LEN * 0.5 + 6, -16), QPointF(-KART_LEN * 0.5, -16))
+            p.drawLine(QPointF(KART_LEN * 0.5 + 6, 16), QPointF(-KART_LEN * 0.5, 16))
+            p.restore()
+
+    def _scenery_paint(self, p: QPainter, rect: QRectF) -> None:
+        for kind, x, y, sc, rot, v in self.decos:
+            if not rect.contains(QPointF(x, y)):
+                continue
+            p.save()
+            p.translate(x, y)
+            p.rotate(math.degrees(rot))
+            p.scale(sc, sc)
+            p.setPen(Qt.PenStyle.NoPen)
+            if kind == "pine":
+                p.setBrush(QColor(0, 0, 0, 60))
+                p.drawEllipse(QPointF(10, 12), 34, 34)
+                for r, c in ((34, "#1F4A26"), (25, "#2A5E31"), (15, "#37763E")):
+                    star = QPolygonF([QPointF(math.cos(a * math.pi / 5) * (r if a % 2 == 0 else r * 0.62),
+                                              math.sin(a * math.pi / 5) * (r if a % 2 == 0 else r * 0.62)) for a in range(10)])
+                    p.setBrush(QColor(c))
+                    p.drawPolygon(star)
+            elif kind == "palm":
+                p.setBrush(QColor(0, 0, 0, 50))
+                p.drawEllipse(QPointF(12, 14), 30, 30)
+                for a in range(7):
+                    p.save()
+                    p.rotate(a * 360 / 7)
+                    p.setBrush(QColor("#3E8A3A" if a % 2 else "#4FA046"))
+                    p.drawEllipse(QRectF(2, -6, 34, 12))
+                    p.restore()
+                p.setBrush(QColor("#7A5530"))
+                p.drawEllipse(QPointF(0, 0), 6, 6)
+            elif kind == "crate":
+                cols = ["#E2453C", "#2F7DD1", "#F0A030", "#2FBF8F", "#8D5BE0"]
+                p.setBrush(QColor(0, 0, 0, 90))
+                p.drawRect(QRectF(-36, -14, 84, 36))
+                p.setBrush(QColor(cols[int(v * 5) % 5]))
+                p.drawRect(QRectF(-42, -18, 84, 36))
+                p.setPen(QPen(QColor(0, 0, 0, 60), 2))
+                for k in range(-34, 42, 9):
+                    p.drawLine(QPointF(k, -18), QPointF(k, 18))
+            else:                                                  # a grandstand with a crowd
+                p.setBrush(QColor(0, 0, 0, 70))
+                p.drawRect(QRectF(-56, -18, 120, 44))
+                p.setBrush(QColor("#5A5F6B"))
+                p.drawRect(QRectF(-60, -22, 120, 44))
+                rr = random.Random(int(v * 1e6))
+                for k in range(40):
+                    p.setBrush(QColor.fromHsvF(rr.random(), 0.6, 0.95))
+                    p.drawEllipse(QPointF(-54 + (k % 13) * 9, -14 + (k // 13) * 11), 3.2, 3.2)
+            p.restore()
+
+    def skid(self, x1: float, y1: float, x2: float, y2: float, a: float = 0.22, width: float = 4.5) -> None:
+        """A tyre mark, painted for good into the tiles it crosses."""
+        for ix in {math.floor(min(x1, x2) / KART_TW - 0.01), math.floor(max(x1, x2) / KART_TW + 0.01)}:
+            for iy in {math.floor(min(y1, y2) / KART_TW - 0.01), math.floor(max(y1, y2) / KART_TW + 0.01)}:
+                pm = self.tiles.get((ix, iy))
+                if pm is None:
+                    continue
+                p = QPainter(pm)
+                p.setRenderHint(QPainter.RenderHint.Antialiasing)
+                p.scale(KART_TS, KART_TS)
+                p.translate(-ix * KART_TW, -iy * KART_TW)
+                p.setPen(QPen(QColor(10, 10, 12, int(255 * a)), width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawLine(QPointF(x1, y1), QPointF(x2, y2))
+                p.end()
+
+
+class KartFx:
+    """Particles: smoke (grey, or black from the handbrake and a damaged engine), boost flames, drift sparks in the
+    mini turbo's colour, wall sparks, explosions with debris and a shock ring, dust. Plain lists: cheap to draw."""
+    MAX = 900
+
+    def __init__(self) -> None:
+        self.p: list = []          # [kind, x, y, vx, vy, life, max, size, r, g, b, spin]
+        self.rng = random.Random(7)
+
+    def add(self, kind, x, y, vx=0.0, vy=0.0, life=0.6, size=8.0, col=(200, 200, 200), spin=0.0) -> None:
+        if len(self.p) >= self.MAX:
+            self.p.pop(0)
+        self.p.append([kind, x, y, vx, vy, life, life, size, col[0], col[1], col[2], spin])
+
+    def burst(self, x, y, n, kind, speed, life, size, col, spread=6.283, base=0.0) -> None:
+        r = self.rng
+        for _ in range(n):
+            a = base + (r.random() - 0.5) * spread
+            v = speed * (0.35 + r.random() * 0.65)
+            self.add(kind, x, y, math.cos(a) * v, math.sin(a) * v, life * (0.6 + 0.6 * r.random()),
+                     size * (0.6 + 0.8 * r.random()), col, (r.random() - 0.5) * 12)
+
+    def explode(self, x, y) -> None:
+        self.add("ring", x, y, 0, 0, 0.55, 20, (255, 210, 140))
+        self.burst(x, y, 34, "fire", 260, 0.7, 18, (255, 150, 40))
+        self.burst(x, y, 26, "black", 120, 1.6, 22, (30, 30, 32))
+        self.burst(x, y, 18, "debris", 380, 1.1, 6, (60, 60, 64))
+        self.burst(x, y, 24, "spark", 520, 0.45, 3, (255, 220, 120))
+
+    def step(self, dt: float) -> None:
+        keep = []
+        for q in self.p:
+            q[5] -= dt
+            if q[5] <= 0:
+                continue
+            q[1] += q[3] * dt
+            q[2] += q[4] * dt
+            drag = 3.2 if q[0] in ("smoke", "black", "fire", "dust") else 1.6
+            q[3] -= q[3] * drag * dt
+            q[4] -= q[4] * drag * dt
+            if q[0] in ("smoke", "black", "dust"):
+                q[7] += dt * 26
+            keep.append(q)
+        self.p = keep
+
+    def paint(self, p: QPainter, view: QRectF) -> None:
+        p.setPen(Qt.PenStyle.NoPen)
+        for kind, x, y, vx, vy, life, mx, size, r, g, b, spin in self.p:
+            if not view.contains(QPointF(x, y)):
+                continue
+            k = life / mx
+            if kind in ("smoke", "black", "dust"):
+                a = (0.42 if kind == "black" else 0.28) * k
+                p.setBrush(QColor(r, g, b, int(255 * a)))
+                p.drawEllipse(QPointF(x, y), size, size)
+            elif kind == "fire":
+                p.setBrush(QColor(255, int(90 + 150 * k), int(30 * k), int(230 * k)))
+                p.drawEllipse(QPointF(x, y), size * (0.5 + 0.5 * k), size * (0.5 + 0.5 * k))
+            elif kind == "flame":
+                p.setBrush(QColor(r, g, b, int(220 * k)))
+                p.drawEllipse(QPointF(x, y), size * k + 1, size * k + 1)
+            elif kind == "spark":
+                p.setPen(QPen(QColor(r, g, b, int(255 * k)), 2.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawLine(QPointF(x, y), QPointF(x - vx * 0.03, y - vy * 0.03))
+                p.setPen(Qt.PenStyle.NoPen)
+            elif kind == "debris":
+                p.save()
+                p.translate(x, y)
+                p.rotate(spin * (mx - life) * 60)
+                p.setBrush(QColor(r, g, b, int(255 * min(1.0, k * 2))))
+                p.drawRect(QRectF(-size / 2, -size / 3, size, size * 0.66))
+                p.restore()
+            elif kind == "ring":
+                rad = 20 + (1 - k) * 170
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.setPen(QPen(QColor(r, g, b, int(200 * k)), 8 * k + 1))
+                p.drawEllipse(QPointF(x, y), rad, rad)
+                p.setPen(Qt.PenStyle.NoPen)
+
+
+def kart_paint(p: QPainter, k, col: QColor, t: float, label: str = "", me: bool = False, scale: float = 1.0) -> None:
+    """One kart, drawn in world units around its centre: shadow, wheels (the front ones steer), the body in its colour
+    with dents, scorch marks and smoke as its health drops, the driver's helmet, brake lights, the boost flame, the
+    drift sparks, and a see-through flash while it is a ghost."""
+    if k.dead > 0:
+        return
+    hp = max(0.0, min(1.0, k.hp / KART_HP))
+    p.save()
+    p.translate(k.x, k.y)
+    if k.ghost > 0:
+        p.setOpacity(0.35 + 0.3 * (1 if int(t * 9) % 2 else 0))
+    p.rotate(math.degrees(k.h))
+    L, W_ = KART_LEN / 2, KART_WID / 2
+    # shadow
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(0, 0, 0, 80))
+    p.drawRoundedRect(QRectF(-L + 3, -W_ + 4, 2 * L, 2 * W_), 8, 8)
+    # boost / turbo flame behind
+    if k.boosting or k.turbo > 0:
+        fl = 14 + 10 * math.sin(t * 50) + (10 if k.boosting else 0)
+        g = QLinearGradient(QPointF(-L, 0), QPointF(-L - fl - 10, 0))
+        c1 = QColor("#FFFFFF")
+        c2 = QColor("#FF8A1F") if k.boosting else (QColor("#FF9A2E") if k.turbo_lvl >= 2 else QColor("#4FC3FF"))
+        g.setColorAt(0, c1)
+        g.setColorAt(0.35, c2)
+        g.setColorAt(1, alpha(c2, 0))
+        p.setBrush(g)
+        for sy in (-5.0, 5.0):
+            p.drawEllipse(QRectF(-L - fl - 8, sy - 4, fl + 10, 8))
+    # wheels
+    p.setBrush(QColor("#151517"))
+    st = k.steer * 0.42
+    for wx, wy, front in ((L - 7, -W_ - 1, True), (L - 7, W_ + 1, True), (-L + 7, -W_ - 2, False), (-L + 7, W_ + 2, False)):
+        p.save()
+        p.translate(wx, wy)
+        if front:
+            p.rotate(math.degrees(st))
+        p.drawRoundedRect(QRectF(-5.5, -3.2 if front else -3.8, 11, 6.4 if front else 7.6), 2.2, 2.2)
+        p.restore()
+    # body: darker and dirtier as it takes damage
+    base = mix(col, QColor("#2A2A2A"), (1 - hp) * 0.55)
+    body = QPainterPath()
+    body.moveTo(L, 0)
+    body.cubicTo(L, -6, L - 6, -7.5, L - 12, -7.5)
+    body.lineTo(-L + 6, -W_ + 2)
+    body.quadTo(-L, -W_ + 2, -L, -W_ + 7)
+    body.lineTo(-L, W_ - 7)
+    body.quadTo(-L, W_ - 2, -L + 6, W_ - 2)
+    body.lineTo(L - 12, 7.5)
+    body.cubicTo(L - 6, 7.5, L, 6, L, 0)
+    g = QLinearGradient(QPointF(0, -W_), QPointF(0, W_))
+    g.setColorAt(0, base.lighter(135))
+    g.setColorAt(0.5, base)
+    g.setColorAt(1, base.darker(150))
+    p.setBrush(g)
+    p.setPen(QPen(QColor(0, 0, 0, 120), 1.2))
+    p.drawPath(body)
+    # side pods and the rear bumper
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(base.darker(130))
+    if hp > 0.35:
+        p.drawRoundedRect(QRectF(-6, -W_ - 0.5, 14, 4), 1.5, 1.5)
+    p.drawRoundedRect(QRectF(-6, W_ - 3.5, 14, 4), 1.5, 1.5)
+    p.setBrush(QColor("#222326"))
+    p.drawRoundedRect(QRectF(-L - 1.5, -W_ + 3, 3.5, 2 * W_ - 6), 1.5, 1.5)
+    # damage: dents, scorch, cracks (the same places every time for this kart)
+    if hp < 0.8:
+        rr = random.Random(k.seat * 31 + 5)
+        n = int((1 - hp) * 9)
+        for _ in range(n):
+            x, y = rr.uniform(-L + 4, L - 6), rr.uniform(-W_ + 3, W_ - 3)
+            p.setBrush(QColor(20, 18, 16, 130))
+            p.drawEllipse(QPointF(x, y), rr.uniform(1.6, 3.4), rr.uniform(1.2, 2.6))
+        if hp < 0.55:
+            p.setPen(QPen(QColor(10, 10, 10, 170), 0.9))
+            for _ in range(4):
+                x, y = rr.uniform(-L + 6, L - 8), rr.uniform(-W_ + 3, W_ - 3)
+                p.drawLine(QPointF(x, y), QPointF(x + rr.uniform(-6, 6), y + rr.uniform(-4, 4)))
+            p.setPen(Qt.PenStyle.NoPen)
+    # number on the nose
+    p.setBrush(QColor(255, 255, 255, 220))
+    p.drawEllipse(QPointF(L - 9, 0), 3.4, 3.4)
+    # driver
+    p.setBrush(QColor(0, 0, 0, 90))
+    p.drawEllipse(QPointF(-3, 1.2), 6.2, 6.2)
+    hg = QRadialGradient(QPointF(-4.5, -1.5), 7)
+    hg.setColorAt(0, QColor("#FFFFFF"))
+    hg.setColorAt(1, col.darker(120))
+    p.setBrush(hg)
+    p.drawEllipse(QPointF(-3, 0), 5.6, 5.6)
+    p.setBrush(QColor(20, 24, 30, 230))
+    p.drawRoundedRect(QRectF(-0.5, -3.6, 3.6, 7.2), 1.6, 1.6)
+    # brake lights
+    on = k.braking or k.reverse
+    for sy in (-W_ + 5, W_ - 5):
+        if on:
+            glow = QRadialGradient(QPointF(-L - 1, sy), 12)
+            glow.setColorAt(0, QColor(255, 40, 40, 200))
+            glow.setColorAt(1, QColor(255, 40, 40, 0))
+            p.setBrush(glow)
+            p.drawEllipse(QPointF(-L - 1, sy), 12, 12)
+        p.setBrush(QColor("#FF3030") if on else QColor("#6B1414"))
+        p.drawRoundedRect(QRectF(-L - 1.6, sy - 2.2, 2.6, 4.4), 1, 1)
+    # drift sparks under the rear wheels, in the colour of the mini turbo it is charging
+    if k.drifting and k.turbo_lvl > 0:
+        c = QColor("#FF9A2E") if k.turbo_lvl >= 2 else QColor("#4FC3FF")
+        for sy in (-W_ - 2, W_ + 2):
+            for j in range(3):
+                a = t * 40 + j * 2.1 + sy
+                p.setPen(QPen(alpha(c, 0.9), 1.6))
+                p.drawLine(QPointF(-L + 4, sy), QPointF(-L + 4 - 6 - 5 * math.sin(a), sy + 5 * math.cos(a)))
+        p.setPen(Qt.PenStyle.NoPen)
+    if me:
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(alpha("#FFFFFF", 0.55), 1.4))
+        p.drawEllipse(QPointF(0, 0), L + 7, L + 7)
+    p.restore()
+    if label:
+        p.save()
+        p.translate(k.x, k.y - 40)
+        p.scale(1 / scale, 1 / scale)
+        f = font(11, QFont.Weight.Bold)
+        p.setFont(f)
+        w = p.fontMetrics().horizontalAdvance(label) + S(14)
+        r = QRectF(-w / 2, -S(10), w, S(20))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(0, 0, 0, 150))
+        p.drawRoundedRect(r, S(10), S(10))
+        p.setPen(col.lighter(130))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), label)
+        hpw = w - S(14)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(0, 0, 0, 150))
+        p.drawRect(QRectF(-hpw / 2, S(12), hpw, S(3)))
+        p.setBrush(QColor("#35E0A1") if hp > 0.5 else QColor("#F5C04A") if hp > 0.25 else QColor("#FF4D4D"))
+        p.drawRect(QRectF(-hpw / 2, S(12), hpw * hp, S(3)))
+        p.restore()
+
+
+def kart_time(t: float) -> str:
+    if t is None or t <= 0:
+        return "-:--.--"
+    m = int(t // 60)
+    return f"{m}:{t - 60 * m:05.2f}"
+
+
+def kart_keys() -> dict:
+    """The driving keys shown in the HUD: ZQSD in French (AZERTY), WASD otherwise. Both sets always work, as do the
+    arrows (none of them clash: Z and Q mean nothing on WASD, W and A nothing on ZQSD)."""
+    if lang() == "fr":
+        return {"up": "Z", "left": "Q", "down": "S", "right": "D"}
+    return {"up": "W", "left": "A", "down": "S", "right": "D"}
+
+
+class KartView(QWidget):
+    """9.2: the race. Runs the physics at 120 steps a second on a fixed clock, draws at the screen's rate, follows your
+    kart with a camera that looks ahead and pulls back with speed, and paints the HUD: place, laps, times, speed,
+    boost, health, the minimap, the countdown and the race messages."""
+    finished = pyqtSignal(dict)          # my result once I cross the line for the last time
+    send = pyqtSignal(list)              # my kart (and the bot if this PC drives it), ~12 times a second
+
+    def __init__(self, track_i: int, laps: int, seats: list, me: int, bot_seat: int = -1, bot_elo: int = 2500,
+                 bot_here: bool = True, opts: dict = None, line_elo: int = 0, go_at: float = 0.0) -> None:
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setMouseTracking(True)
+        self.setMinimumSize(S(640), S(400))
+        opts = opts or {}
+        self.race = KartRace(track_i, laps, opts.get("collide", True), opts.get("boost", True), opts.get("damage", True))
+        self.tr = self.race.tr
+        self.tiles = KartTiles(self.tr)
+        self.fx = KartFx()
+        self.me, self.bot_seat, self.bot_elo = me, bot_seat, int(bot_elo)
+        self.seats = {int(s["seat"]): s for s in seats}           # seat -> {"seat", "slot", "name", "bot"}
+        for s in seats:
+            seat, slot = int(s["seat"]), int(s["slot"])
+            if s.get("bot"):
+                self.race.add_bot(seat, slot, bot_elo, seed=int(s.get("seed", 1)))
+                if not bot_here:
+                    self.race.remote.add(seat)
+            else:
+                self.race.add(seat, slot)
+                if seat != me:
+                    self.race.remote.add(seat)
+        self.kart = self.race.karts[me]
+        self.line_elo = int(line_elo)
+        self.line_pace = bot_params(line_elo)["pace"] if line_elo else 0.0
+        self.keys: set = set()
+        self.go_at = go_at or (time.monotonic() + KART_COUNT + 1.0)
+        self.race.t = -KART_COUNT
+        self.cam = [self.kart.x, self.kart.y]
+        self.zoom = 1.0
+        self.shake = 0.0
+        self.msgs: list = []           # [text, colour, until, big]
+        self.last_count = 99
+        self.sent_at = 0.0
+        self.remote_seen: dict = {}    # seat -> (snapshot, their race time, my race time when it came)
+        self.result_sent = False
+        self.spectate = me
+        self.skid_last: dict = {}
+        self.audio = KartAudio.get()
+        self._frame = time.monotonic()
+        self._fps = 60.0
+        self.over = False
+        self.minimap = self._minimap_path()
+        self.timer = QTimer(self)
+        self.timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self.timer.setInterval(8)
+        self.timer.timeout.connect(self._tick)
+        self.timer.start()
+
+    # -- the network
+    def feed(self, seat: int, snap: list, their_t: float) -> None:
+        """Another PC's kart (or the bot it drives), with the race time it was sent at."""
+        if seat not in self.race.remote:
+            return
+        self.remote_seen[seat] = (snap, float(their_t))
+        self.race.apply_remote(seat, snap, max(0.0, self.race.t - float(their_t)))
+
+    def snapshot(self) -> list:
+        out = [[self.me, round(self.race.t, 3)] + self.kart.snapshot()]
+        if self.bot_seat >= 0 and self.bot_seat not in self.race.remote:
+            out.append([self.bot_seat, round(self.race.t, 3)] + self.race.karts[self.bot_seat].snapshot())
+        return out
+
+    def take_bot(self, last_snap: list = None) -> None:
+        """The PC that drove the bot left: this one drives it from where it was."""
+        if self.bot_seat in self.race.remote:
+            self.race.remote.discard(self.bot_seat)
+            k = self.race.karts[self.bot_seat]
+            k.ev.clear()
+
+    def drop_seat(self, seat: int) -> None:
+        """A player left the race: their kart goes away."""
+        k = self.race.karts.get(seat)
+        if k is not None and seat in self.race.remote:
+            k.dead = 1e9
+            self.seats.get(seat, {})["left"] = True
+
+    # -- input
+    def _inp(self) -> KartInput:
+        k = self.keys
+        up = 1.0 if (k & {Qt.Key.Key_W, Qt.Key.Key_Z, Qt.Key.Key_Up}) else 0.0
+        down = 1.0 if (k & {Qt.Key.Key_S, Qt.Key.Key_Down}) else 0.0
+        left = 1.0 if (k & {Qt.Key.Key_A, Qt.Key.Key_Q, Qt.Key.Key_Left}) else 0.0
+        right = 1.0 if (k & {Qt.Key.Key_D, Qt.Key.Key_Right}) else 0.0
+        return KartInput(up, down, left, right, Qt.Key.Key_Shift in k, Qt.Key.Key_Space in k, Qt.Key.Key_R in k)
+
+    def keyPressEvent(self, e) -> None:
+        if e.isAutoRepeat():
+            return
+        self.keys.add(Qt.Key(e.key()))
+        if e.key() in (Qt.Key.Key_Tab,) and self.kart.done:
+            others = [s for s in self.race.karts if s != self.spectate and self.race.karts[s].dead < 1e8]
+            if others:
+                self.spectate = others[0]
+
+    def keyReleaseEvent(self, e) -> None:
+        if e.isAutoRepeat():
+            return
+        self.keys.discard(Qt.Key(e.key()))
+
+    def focusOutEvent(self, _e) -> None:
+        self.keys.clear()                    # never a stuck throttle after alt-tab
+
+    def focusNextPrevChild(self, _n) -> bool:
+        return False                         # Tab stays in the race
+
+    # -- the clock
+    def _tick(self) -> None:
+        try:
+            now = time.monotonic()
+            frame_dt = min(0.05, now - self._frame)
+            self._frame = now
+            self._fps = self._fps * 0.95 + (1 / max(1e-3, frame_dt)) * 0.05
+            target = now - self.go_at
+            for seat, (snap, their_t) in list(self.remote_seen.items()):     # the others, moved on every frame
+                if seat in self.race.remote:
+                    self.race.apply_remote(seat, snap, self.race.t - their_t)
+            inp = self._inp() if self.isActiveWindow() or self.hasFocus() else KartInput()
+            steps = 0
+            while self.race.t + KART_DT <= target and steps < 24:
+                self.race.step({self.me: inp})
+                steps += 1
+                self._events()
+            if steps >= 24:
+                self.race.t = target
+            self.fx.step(frame_dt)
+            self._effects(frame_dt)
+            self._camera(frame_dt)
+            self._countdown()
+            if now - self.sent_at > 0.083:
+                self.sent_at = now
+                self.send.emit(self.snapshot())
+            self.audio.engine(self.kart, [k for s, k in self.race.karts.items() if s != self.me], self.race.t >= 0)
+            if self.kart.done and not self.result_sent:
+                self.result_sent = True
+                self.finished.emit(self.result(self.kart))
+            self.update()
+        except RuntimeError:
+            self.timer.stop()
+
+    def result(self, k) -> dict:
+        tot = k.finish_t
+        return {"time": tot, "laps": list(k.laps), "best": k.best_lap, "blowups": k.blowups, "walls": k.wall_hits,
+                "hits": k.hits, "turbos": k.drift_turbos, "top": k.top, "resets": k.resets,
+                "boost": k.boost_used, "line": k.on_line / max(1, k.line_n) * 120,
+                "score": kart_score(self.tr.key, k.laps, tot, self.race.laps)}
+
+    def _countdown(self) -> None:
+        t = self.race.t
+        if t < 0:
+            c = int(math.ceil(-t))
+            if c != self.last_count and c <= KART_COUNT:
+                self.last_count = c
+                self.audio.play("count")
+        elif self.last_count > 0:
+            self.last_count = 0
+            self.audio.play("go")
+            self.say(tr("GO!"), "#35E0A1", 1.0, True)
+
+    def say(self, text: str, col: str = "#FFFFFF", secs: float = 1.6, big: bool = False) -> None:
+        self.msgs = [m for m in self.msgs if m[0] != text][-3:]
+        self.msgs.append([text, col, time.monotonic() + secs, big])
+
+    def _events(self) -> None:
+        for seat, k in self.race.karts.items():
+            mine = seat == self.me
+            near = math.hypot(k.x - self.kart.x, k.y - self.kart.y) < 900
+            for ev in k.ev:
+                kind = ev[0]
+                if kind == "wall":
+                    vn, dmg, (x, y) = ev[1], ev[2], ev[3]
+                    if vn > 90:
+                        self.fx.burst(x, y, int(4 + vn / 40), "spark", 200 + vn, 0.35, 3, (255, 210, 120))
+                    if mine or near:
+                        self.audio.play("thud" if dmg <= 0 else "crash", min(1.0, vn / 400) * (1 if mine else 0.5))
+                    if mine and dmg > 0:
+                        self.shake = max(self.shake, min(14.0, dmg * 0.3))
+                elif kind == "bump":
+                    rv, dmg, (x, y) = ev[1], ev[2], ev[3]
+                    self.fx.burst(x, y, 6, "spark", 220, 0.3, 3, (255, 240, 200))
+                    if mine:
+                        self.audio.play("bump", min(1.0, rv / 300))
+                        self.shake = max(self.shake, 4.0)
+                elif kind == "boom":
+                    self.fx.explode(ev[1], ev[2])
+                    if mine or near:
+                        self.audio.play("boom", 1.0 if mine else 0.6)
+                    if mine:
+                        self.shake = 18.0
+                        self.say(tr("Wrecked! Back in 2 s"), "#FF6B6B", 2.0, True)
+                elif kind == "respawn":
+                    if mine:
+                        self.audio.play("respawn")
+                        self.say(tr("Back on track"), "#8FD3FF", 1.2)
+                elif kind == "turbo":
+                    if mine:
+                        self.audio.play("turbo")
+                        self.say(tr("Super mini turbo!") if ev[1] >= 2 else tr("Mini turbo!"),
+                                 "#FF9A2E" if ev[1] >= 2 else "#4FC3FF", 1.0)
+                elif kind == "launch" and mine:
+                    if ev[1] > 0:
+                        self.audio.play("turbo")
+                        self.say(tr("PERFECT START!"), "#35E0A1", 1.6, True)
+                    else:
+                        self.audio.play("thud", 0.6)
+                        self.say(tr("Too early! Wheelspin"), "#FF6B6B", 1.4)
+                elif kind == "lap" and mine:
+                    left = self.race.laps - ev[1]
+                    if left == 1:
+                        self.audio.play("final")
+                        self.say(tr("FINAL LAP"), "#F5C04A", 2.0, True)
+                    elif left > 1:
+                        self.audio.play("lap")
+                        self.say(tr("Lap {a}/{b}", a=ev[1] + 1, b=self.race.laps) + "   " + kart_time(ev[2]), "#FFFFFF", 1.8)
+                elif kind == "finish" and mine:
+                    self.audio.play("finish")
+                    place = self.place(self.me)
+                    self.say(tr("FINISHED  ·  {p}", p=kart_place(place)), "#F5C04A", 4.0, True)
+            k.ev.clear()
+
+    def _effects(self, dt: float) -> None:
+        """Smoke, flames and skid marks from every kart (yours and the others alike)."""
+        r = self.fx.rng
+        for seat, k in self.race.karts.items():
+            if k.dead > 0:
+                continue
+            c, s = math.cos(k.h), math.sin(k.h)
+            rx, ry = k.x - c * KART_LEN * 0.45, k.y - s * KART_LEN * 0.45
+            sp = k.speed
+            if k.smoke > 0.1 and (sp > 25 or k.hb):            # handbrake and slides: black tyre smoke
+                for sy in (-1, 1):
+                    wx, wy = rx - s * sy * KART_WID * 0.5, ry + c * sy * KART_WID * 0.5
+                    if r.random() < 0.55:
+                        self.fx.add("black" if k.hb else "smoke", wx, wy, -k.vx * 0.15 + r.uniform(-20, 20),
+                                    -k.vy * 0.15 + r.uniform(-20, 20), 0.9, 5, (25, 25, 28) if k.hb else (190, 190, 195))
+                    last = self.skid_last.get((seat, sy))
+                    if last is not None and math.hypot(wx - last[0], wy - last[1]) < 40:
+                        self.tiles.skid(last[0], last[1], wx, wy, 0.18 if k.hb else 0.12)
+                    self.skid_last[(seat, sy)] = (wx, wy)
+            else:
+                self.skid_last.pop((seat, -1), None)
+                self.skid_last.pop((seat, 1), None)
+            if (k.boosting or k.turbo > 0) and r.random() < 0.8:
+                col = (255, 140, 40) if k.boosting else ((255, 154, 46) if k.turbo_lvl >= 2 else (79, 195, 255))
+                self.fx.add("flame", rx - c * 8, ry - s * 8, -c * 160 - k.vx * 0.1 + r.uniform(-25, 25),
+                            -s * 160 - k.vy * 0.1 + r.uniform(-25, 25), 0.22, 6, col)
+            if k.hp < KART_HP * 0.5 and r.random() < (0.5 - k.hp / KART_HP) * 1.6:   # a hurt engine smokes
+                self.fx.add("black" if k.hp < KART_HP * 0.25 else "smoke", k.x - c * 6, k.y - s * 6,
+                            r.uniform(-15, 15), r.uniform(-15, 15), 1.1, 4, (40, 40, 44) if k.hp < 25 else (140, 140, 145))
+            if k.hp < KART_HP * 0.22 and r.random() < 0.35:
+                self.fx.add("fire", k.x - c * 4, k.y - s * 4, r.uniform(-20, 20), r.uniform(-20, 20), 0.3, 5, (255, 140, 40))
+            if k.slip and r.random() < 0.3:
+                self.fx.add("dust", k.x + r.uniform(-14, 14), k.y + r.uniform(-14, 14), -k.vx * 0.05, -k.vy * 0.05,
+                            0.4, 3, (220, 235, 255))
+        self.shake = max(0.0, self.shake - dt * 30)
+
+    def _camera(self, dt: float) -> None:
+        k = self.race.karts.get(self.spectate, self.kart)
+        sp = k.speed
+        tx, ty = k.x + k.vx * 0.32, k.y + k.vy * 0.32
+        a = min(1.0, dt * 4.0)
+        self.cam[0] += (tx - self.cam[0]) * a
+        self.cam[1] += (ty - self.cam[1]) * a
+        base = min(self.width(), self.height() * 1.6) / 1250.0
+        want = base * (1.05 - 0.28 * min(1.0, sp / V_BOOST))
+        self.zoom += (want - self.zoom) * min(1.0, dt * 1.6)
+
+    def place(self, seat: int) -> int:
+        order = [k.seat for k in self.race.standings()]
+        return order.index(seat) + 1 if seat in order else 0
+
+    # -- drawing
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        w, h = self.width(), self.height()
+        th = self.tiles.th
+        p.fillRect(self.rect(), QColor(th["ground"]))
+        z = self.zoom
+        sx = sy = 0.0
+        if self.shake > 0:
+            sx, sy = (random.random() - 0.5) * self.shake, (random.random() - 0.5) * self.shake
+        p.save()
+        p.translate(w / 2 + sx, h / 2 + sy)
+        p.scale(z, z)
+        p.translate(-self.cam[0], -self.cam[1])
+        view = QRectF(self.cam[0] - w / 2 / z - 60, self.cam[1] - h / 2 / z - 60, w / z + 120, h / z + 120)
+        ix0, iy0 = math.floor(view.left() / KART_TW), math.floor(view.top() / KART_TW)
+        ix1, iy1 = math.floor(view.right() / KART_TW), math.floor(view.bottom() / KART_TW)
+        for iy in range(iy0, iy1 + 1):
+            for ix in range(ix0, ix1 + 1):
+                if self.tiles.x0 <= ix <= self.tiles.x1 and self.tiles.y0 <= iy <= self.tiles.y1:
+                    pm = self.tiles.tile(ix, iy)
+                    p.drawPixmap(QRectF(ix * KART_TW, iy * KART_TW, KART_TW + 0.6, KART_TW + 0.6), pm,
+                                 QRectF(0, 0, pm.width(), pm.height()))
+        if self.line_pace:
+            self._paint_line(p, view)
+        t = self.race.t
+        order = sorted(self.race.karts.values(), key=lambda kk: kk.seat == self.me)
+        for k in order:
+            if not view.contains(QPointF(k.x, k.y)) or k.dead > 1e8:
+                continue
+            info = self.seats.get(k.seat, {})
+            bot = bool(info.get("bot"))
+            label = "" if k.seat == self.me else (tr("BOT") + " · " + tr(bot_level_name(self.bot_elo)) if bot else str(info.get("name", "?")))
+            kart_paint(p, k, kart_col(k.seat, bot), t, label, k.seat == self.me, z)
+        self.fx.paint(p, view)
+        p.restore()
+        self._hud(p, w, h)
+
+    def _paint_line(self, p: QPainter, view: QRectF) -> None:
+        """Solo practice: the ideal line for the chosen level, coloured by what to do: green full throttle, yellow
+        lift, red brake, blue drift."""
+        tr_, pace = self.tr, self.line_pace
+        n = tr_.n
+        bot = self.race.bots.get(self.bot_seat) if self.bot_seat >= 0 else None
+        prev = None
+        for i in range(0, n + 1, 2):
+            j = i % n
+            x, y = tr_.lx[j], tr_.ly[j]
+            if prev and view.contains(QPointF(x, y)):
+                v = tr_.vprof[j] * (pace if tr_.vprof[j] < V_MAX - 2 else 1.0)
+                nxt = tr_.vprof[(j + 12) % n] * pace
+                if nxt < v - 20:
+                    col = QColor(255, 70, 70, 190)
+                elif v < V_MAX * 0.6 and abs(tr_.lcurv[j]) > 1 / 300 and pace > 0.7:
+                    col = QColor(80, 190, 255, 190)
+                elif v < V_MAX - 5:
+                    col = QColor(255, 210, 60, 170)
+                else:
+                    col = QColor(60, 230, 140, 160)
+                p.setPen(QPen(col, 7, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+                p.drawLine(QPointF(prev[0], prev[1]), QPointF(x, y))
+            prev = (x, y)
+        _ = bot
+
+    def _minimap_path(self) -> QPainterPath:
+        tr_ = self.tr
+        path = QPainterPath(QPointF(tr_.cx[0], tr_.cy[0]))
+        for i in range(0, tr_.n, 6):
+            path.lineTo(tr_.cx[i], tr_.cy[i])
+        path.closeSubpath()
+        return path
+
+    def _hud(self, p: QPainter, w: int, h: int) -> None:
+        k = self.race.karts.get(self.spectate, self.kart)
+        mine = self.kart
+        pad = S(18)
+        t = self.race.t
+        # top left: place, lap, times
+        place = self.place(self.me)
+        n = len([kk for kk in self.race.karts.values() if kk.dead < 1e8])
+        box = QRectF(pad, pad, S(250), S(118))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(8, 10, 14, 175))
+        p.drawRoundedRect(box, S(14), S(14))
+        p.setFont(font(40, QFont.Weight.Black))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(box.left() + S(14), box.top() + S(4), S(120), S(54)), int(Qt.AlignmentFlag.AlignVCenter),
+                   kart_place(place))
+        p.setFont(font(15, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(box.left() + S(100), box.top() + S(10), S(140), S(24)), int(Qt.AlignmentFlag.AlignRight),
+                   "/ " + str(n))
+        p.setFont(font(13, QFont.Weight.Bold))
+        p.setPen(QColor("#FFFFFF"))
+        lap_now = min(self.race.laps, mine.lap + 1)
+        p.drawText(QRectF(box.left() + S(100), box.top() + S(32), S(140), S(22)), int(Qt.AlignmentFlag.AlignRight),
+                   tr("Lap {a}/{b}", a=lap_now, b=self.race.laps))
+        p.setFont(font(12.5, QFont.Weight.DemiBold))
+        p.setPen(QColor("#E8EAF0"))
+        rt = mine.finish_t if mine.done else max(0.0, t)
+        cur = (t - mine.lap_t0) if t > 0 and not mine.done else 0.0
+        p.drawText(QRectF(box.left() + S(14), box.top() + S(62), S(222), S(20)), int(Qt.AlignmentFlag.AlignLeft),
+                   tr("Time") + "  " + kart_time(rt))
+        p.drawText(QRectF(box.left() + S(14), box.top() + S(62), S(222), S(20)), int(Qt.AlignmentFlag.AlignRight),
+                   tr("Lap") + "  " + kart_time(cur))
+        p.setPen(QColor(GOLD))
+        p.drawText(QRectF(box.left() + S(14), box.top() + S(86), S(222), S(20)), int(Qt.AlignmentFlag.AlignLeft),
+                   tr("Best lap") + "  " + kart_time(mine.best_lap))
+        # left: the running order
+        y = box.bottom() + S(10)
+        for kk in self.race.standings():
+            if kk.dead > 1e8:
+                continue
+            info = self.seats.get(kk.seat, {})
+            bot = bool(info.get("bot"))
+            r = QRectF(pad, y, S(250), S(26))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(8, 10, 14, 150 if kk.seat != self.me else 210))
+            p.drawRoundedRect(r, S(8), S(8))
+            p.setBrush(kart_col(kk.seat, bot))
+            p.drawRoundedRect(QRectF(r.left(), r.top(), S(5), r.height()), S(2), S(2))
+            p.setFont(font(11.5, QFont.Weight.Bold))
+            p.setPen(QColor("#FFFFFF"))
+            name = (tr("BOT") + " " + tr(bot_level_name(self.bot_elo))) if bot else str(info.get("name", "?"))
+            if kk.seat == self.me:
+                name += "  (" + tr("you") + ")"
+            p.drawText(r.adjusted(S(14), 0, -S(8), 0), int(Qt.AlignmentFlag.AlignVCenter),
+                       f"{self.place(kk.seat)}  " + name)
+            p.setPen(QColor(TEXT_DIM))
+            right = kart_time(kk.finish_t) if kk.done else (tr("Lap {a}", a=min(self.race.laps, kk.lap + 1)))
+            p.drawText(r.adjusted(S(14), 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), right)
+            y += S(30)
+        # top right: the minimap
+        self._paint_minimap(p, QRectF(w - pad - S(230), pad, S(230), S(170)))
+        # bottom right: speed, boost, health
+        self._paint_gauges(p, k, QRectF(w - pad - S(300), h - pad - S(150), S(300), S(150)))
+        # bottom left: keys
+        keys = kart_keys()
+        hint = (f"{keys['up']} {keys['left']} {keys['down']} {keys['right']}  " + tr("drive") + "   ·   Shift  " + tr("boost")
+                + "   ·   " + tr("Space") + "  " + tr("handbrake / drift") + "   ·   " + tr("hold R") + "  " + tr("respawn"))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        fw = p.fontMetrics().horizontalAdvance(hint) + S(24)
+        r = QRectF(pad, h - pad - S(30), fw, S(30))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(8, 10, 14, 150))
+        p.drawRoundedRect(r, S(10), S(10))
+        p.setPen(QColor("#D8DBE2"))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), hint)
+        # respawn ring while R is held
+        if mine.reset_t > 0:
+            c = QPointF(w / 2, h / 2 + S(90))
+            p.setPen(QPen(QColor(255, 255, 255, 60), S(6)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(c, S(28), S(28))
+            p.setPen(QPen(QColor("#8FD3FF"), S(6), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            p.drawArc(QRectF(c.x() - S(28), c.y() - S(28), S(56), S(56)), 90 * 16, -int(360 * 16 * mine.reset_t / 2.0))
+            p.setFont(font(12, QFont.Weight.Bold))
+            p.setPen(QColor("#FFFFFF"))
+            p.drawText(QRectF(c.x() - S(28), c.y() - S(28), S(56), S(56)), int(Qt.AlignmentFlag.AlignCenter),
+                       f"{max(0.0, 2.0 - mine.reset_t):.1f}")
+        if mine.wrong and t > 0 and not mine.done:
+            self._banner(p, w, h * 0.3, tr("WRONG WAY"), "#FF4D4D", 30)
+        if mine.dead > 0:
+            self._banner(p, w, h * 0.42, tr("Back in {n} s", n=f"{mine.dead:.1f}"), "#FFFFFF", 22)
+        # the lights: five reds that come on one by one, then all go out on GO
+        if t < 1.0:
+            self._lights(p, w, h, t)
+        now = time.monotonic()
+        self.msgs = [m for m in self.msgs if m[2] > now]
+        yy = h * 0.22
+        for text, col, until, big in self.msgs:
+            fade = min(1.0, (until - now) * 2)
+            p.setOpacity(fade)
+            self._banner(p, w, yy, text, col, 34 if big else 20)
+            p.setOpacity(1.0)
+            yy += S(54 if big else 36)
+        if self.kart.done and len([s for s in self.race.karts if s != self.me]) > 0:
+            self._banner(p, w, h - S(80), tr("Watching: Tab switches kart"), "#B8BCC8", 13)
+
+    def _banner(self, p: QPainter, w: float, y: float, text: str, col: str, size: float) -> None:
+        p.setFont(font(size, QFont.Weight.Black))
+        fw = p.fontMetrics().horizontalAdvance(text) + S(36)
+        r = QRectF(w / 2 - fw / 2, y - S(size) * 0.9, fw, S(size) * 1.8)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(0, 0, 0, 140))
+        p.drawRoundedRect(r, S(12), S(12))
+        p.setPen(QColor(col))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
+
+    def _lights(self, p: QPainter, w: int, h: int, t: float) -> None:
+        n = int(KART_COUNT)
+        size = S(46)
+        gap = S(14)
+        tw = n * size + (n - 1) * gap + S(30)
+        r = QRectF(w / 2 - tw / 2, h * 0.12, tw, size + S(30))
+        a = 1.0 if t < 0 else max(0.0, 1 - t)
+        p.setOpacity(a)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(12, 12, 14, 220))
+        p.drawRoundedRect(r, S(16), S(16))
+        lit = 0 if t >= 0 else min(n, int(n - math.ceil(-t)) + 1)
+        for i in range(n):
+            c = QPointF(r.left() + S(15) + size / 2 + i * (size + gap), r.center().y())
+            on = i < lit
+            col = QColor("#35E0A1") if t >= 0 else (QColor("#FF2D2D") if on else QColor("#3A1010"))
+            if on or t >= 0:
+                g = QRadialGradient(c, size * 0.9)
+                g.setColorAt(0, alpha(col, 0.55))
+                g.setColorAt(1, alpha(col, 0.0))
+                p.setBrush(g)
+                p.drawEllipse(c, size * 0.9, size * 0.9)
+            p.setBrush(col)
+            p.drawEllipse(c, size / 2, size / 2)
+        if t < 0:
+            p.setFont(font(30, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            p.drawText(QRectF(r.left(), r.bottom() + S(6), r.width(), S(44)), int(Qt.AlignmentFlag.AlignCenter),
+                       str(int(math.ceil(-t))))
+            p.setFont(font(12, QFont.Weight.DemiBold))
+            p.setPen(QColor("#D0D3DB"))
+            p.drawText(QRectF(r.left() - S(100), r.bottom() + S(50), r.width() + S(200), S(22)),
+                       int(Qt.AlignmentFlag.AlignCenter), tr("Accelerate right on GO for a perfect start. Too early spins the wheels."))
+        p.setOpacity(1.0)
+
+    def _paint_minimap(self, p: QPainter, r: QRectF) -> None:
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(8, 10, 14, 165))
+        p.drawRoundedRect(r, S(14), S(14))
+        x0, y0, x1, y1 = self.tr.bounds
+        m = 300
+        sc = min((r.width() - S(20)) / (x1 - x0 - 2 * m), (r.height() - S(20)) / (y1 - y0 - 2 * m))
+        p.save()
+        p.translate(r.center())
+        p.scale(sc, sc)
+        p.translate(-(x0 + x1) / 2, -(y0 + y1) / 2)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor(255, 255, 255, 60), 2 * self.tr.hw + 40 / sc * 0.0 + 120))
+        p.drawPath(self.minimap)
+        p.setPen(QPen(QColor(60, 64, 74), 2 * self.tr.hw))
+        p.drawPath(self.minimap)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawRect(QRectF(self.tr.cx[0] - 20 / sc * 0.3, self.tr.cy[0] - 120, 40, 240))
+        for k in self.race.karts.values():
+            if k.dead > 1e8:
+                continue
+            bot = bool(self.seats.get(k.seat, {}).get("bot"))
+            rad = (8 if k.seat == self.me else 6) / sc * S(1)
+            p.setBrush(QColor(0, 0, 0, 200))
+            p.drawEllipse(QPointF(k.x, k.y), rad * 1.35, rad * 1.35)
+            p.setBrush(kart_col(k.seat, bot))
+            p.drawEllipse(QPointF(k.x, k.y), rad, rad)
+        p.restore()
+
+    def _paint_gauges(self, p: QPainter, k, r: QRectF) -> None:
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(8, 10, 14, 175))
+        p.drawRoundedRect(r, S(16), S(16))
+        # speed dial
+        c = QPointF(r.left() + S(80), r.top() + S(84))
+        rad = S(58)
+        sp = k.speed
+        frac = min(1.0, sp / V_BOOST)
+        arc = QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor(255, 255, 255, 30), S(9), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawArc(arc, 225 * 16, -270 * 16)
+        g = QColor("#FF8A1F") if k.boosting else (QColor("#4FC3FF") if k.turbo > 0 else QColor("#FFFFFF"))
+        p.setPen(QPen(g, S(9), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawArc(arc, 225 * 16, -int(270 * 16 * frac))
+        p.setPen(QPen(QColor(255, 255, 255, 90), S(2)))
+        for i in range(0, 11):
+            a = math.radians(225 - 27 * i)
+            p.drawLine(QPointF(c.x() + math.cos(a) * (rad - S(14)), c.y() - math.sin(a) * (rad - S(14))),
+                       QPointF(c.x() + math.cos(a) * (rad - S(9)), c.y() - math.sin(a) * (rad - S(9))))
+        p.setFont(font(30, QFont.Weight.Black))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(c.x() - rad, c.y() - S(22), 2 * rad, S(36)), int(Qt.AlignmentFlag.AlignCenter), str(int(sp * KMH)))
+        p.setFont(font(10, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(c.x() - rad, c.y() + S(14), 2 * rad, S(16)), int(Qt.AlignmentFlag.AlignCenter), "km/h")
+        # bars: boost, health
+        bx = r.left() + S(160)
+        bw = r.right() - S(16) - bx
+        self._bar(p, QRectF(bx, r.top() + S(26), bw, S(16)), k.boost / 100.0,
+                  QColor("#FF8A1F") if k.boosting else QColor("#4FC3FF"),
+                  tr("BOOST"), (tr("recharging") if k.boost_idle >= BOOST_WAIT and k.boost < 100 else
+                                tr("wait") if k.boost < 100 and not k.boosting else ""), segments=10)
+        hpc = QColor("#35E0A1") if k.hp > 50 else (QColor("#F5C04A") if k.hp > 25 else QColor("#FF4D4D"))
+        self._bar(p, QRectF(bx, r.top() + S(82), bw, S(16)), k.hp / KART_HP, hpc, tr("HEALTH"), f"{int(k.hp)}")
+        if k.drifting and k.turbo_lvl:
+            p.setFont(font(10.5, QFont.Weight.Black))
+            p.setPen(QColor("#FF9A2E") if k.turbo_lvl >= 2 else QColor("#4FC3FF"))
+            p.drawText(QRectF(bx, r.top() + S(112), bw, S(18)), int(Qt.AlignmentFlag.AlignLeft), tr("DRIFT ") + "★" * k.turbo_lvl)
+        if k.slip:
+            p.setFont(font(10.5, QFont.Weight.Black))
+            p.setPen(QColor("#DDEBFF"))
+            p.drawText(QRectF(bx, r.top() + S(112), bw, S(18)), int(Qt.AlignmentFlag.AlignRight), tr("SLIPSTREAM"))
+
+    def _bar(self, p: QPainter, r: QRectF, frac: float, col: QColor, title: str, note: str, segments: int = 0) -> None:
+        p.setFont(font(10, QFont.Weight.Black, 1.0))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(r.left(), r.top() - S(18), r.width(), S(16)), int(Qt.AlignmentFlag.AlignLeft), title)
+        p.setFont(font(10, QFont.Weight.Bold))
+        p.drawText(QRectF(r.left(), r.top() - S(18), r.width(), S(16)), int(Qt.AlignmentFlag.AlignRight), note)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(255, 255, 255, 25))
+        p.drawRoundedRect(r, S(5), S(5))
+        p.setBrush(col)
+        p.drawRoundedRect(QRectF(r.left(), r.top(), r.width() * max(0.0, min(1.0, frac)), r.height()), S(5), S(5))
+        if segments:
+            p.setPen(QPen(QColor(8, 10, 14, 200), S(2)))
+            for i in range(1, segments):
+                x = r.left() + r.width() * i / segments
+                p.drawLine(QPointF(x, r.top()), QPointF(x, r.bottom()))
+
+
+def kart_place(n: int) -> str:
+    if lang() == "fr":
+        return "1er" if n == 1 else f"{n}e"
+    return {1: "1st", 2: "2nd", 3: "3rd"}.get(n, f"{n}th")
+
+
+class KartAudio:
+    """9.2: Karting's own sound: a small mixer that streams to the speakers through Windows' waveOut, so the engine
+    hums continuously (its pitch follows your speed, a growl when boosting, tyre squeal in a drift, the others' engines
+    quieter) while the hits, explosions, beeps and turbos play on top. Everything is made in code."""
+    RATE = 22050
+    BUF = 1024                      # ~46 ms per buffer, 4 buffers queued
+    _one = None
+
+    @classmethod
+    def get(cls) -> "KartAudio":
+        if cls._one is None:
+            cls._one = KartAudio()
+        return cls._one
+
+    def __init__(self) -> None:
+        self.ok = False
+        self.lock = threading.Lock()
+        self.voices: list = []      # [samples, pos, gain]
+        self.eng = {"f": 0.0, "a": 0.0, "boost": 0.0, "skid": 0.0, "others": 0.0, "of": 0.0}
+        self.phase = [0.0, 0.0, 0.0]
+        self.noise = random.Random(3)
+        self.run = False
+        self.gen = 0                # each start gets a number: an older audio thread stops as soon as a newer one starts
+        self.samples = {}
+        self.vol = 0.8
+
+    def start(self) -> None:
+        if self.run or not win.IS_WIN or not sfx.enabled:
+            return
+        try:
+            self._make()
+            self._open()
+            self.run = True
+            self.gen += 1
+            dev = (self.gen, self.h, self.hdrs, self.bufs)     # the thread keeps its own device and buffers
+            threading.Thread(target=self._loop, args=dev, name="rb-kart-audio", daemon=True).start()
+        except Exception:  # noqa: BLE001
+            log.exception("kart audio off")
+            self.run = False
+
+    def stop(self) -> None:
+        self.run = False
+        with self.lock:
+            self.voices = []
+        self.eng["a"] = 0.0
+
+    def _make(self) -> None:
+        if self.samples:
+            return
+        R = self.RATE
+        rng = random.Random(9)
+
+        def env(n, att=0.004, dec=6.0):
+            return [min(1.0, (i / R) / att) * math.exp(-dec * i / n) for i in range(n)]
+
+        def tone(f0, f1, secs, dec=5.0, harm=0.3):
+            n = int(R * secs)
+            e = env(n, 0.003, dec)
+            out, ph = [], 0.0
+            for i in range(n):
+                f = f0 + (f1 - f0) * i / n
+                ph += 2 * math.pi * f / R
+                out.append((math.sin(ph) + harm * math.sin(2 * ph)) * e[i])
+            return out
+
+        def noise(secs, dec=6.0, lp=0.3):
+            n = int(R * secs)
+            e = env(n, 0.002, dec)
+            out, y = [], 0.0
+            for i in range(n):
+                y += (rng.uniform(-1, 1) - y) * lp
+                out.append(y * e[i] * 2.2)
+            return out
+
+        def boom(secs):
+            n = int(R * secs)
+            nz = noise(secs, 4.0, 0.08)
+            low = tone(90, 30, secs, 3.5, 0.5)
+            return [nz[i] * 1.6 + low[i] * 0.9 for i in range(n)]
+        self.samples = {
+            "count": tone(660, 660, 0.18, 7, 0.2),
+            "go": tone(1320, 1320, 0.45, 3.5, 0.25),
+            "thud": [a + b for a, b in zip(noise(0.16, 14, 0.12), tone(110, 60, 0.16, 12, 0.3))],
+            "crash": [a * 1.4 + b for a, b in zip(noise(0.38, 8, 0.35), tone(160, 70, 0.38, 8, 0.4))],
+            "bump": [a + b * 0.6 for a, b in zip(noise(0.14, 16, 0.2), tone(220, 120, 0.14, 14, 0.3))],
+            "boom": boom(1.1),
+            "turbo": [a * 0.5 + b * 0.6 for a, b in zip(noise(0.5, 4, 0.5), tone(300, 900, 0.5, 4, 0.4))],
+            "respawn": tone(400, 1200, 0.35, 4, 0.2),
+            "lap": tone(880, 1175, 0.3, 4, 0.2),
+            "final": [a + b for a, b in zip(tone(880, 880, 0.6, 3, 0.2), tone(1320, 1320, 0.6, 3, 0.1))],
+            "finish": [a + b for a, b in zip(tone(784, 1568, 0.9, 2.5, 0.2), tone(523, 1046, 0.9, 2.5, 0.1))],
+        }
+
+    def play(self, name: str, gain: float = 1.0) -> None:
+        if not self.run:
+            self.start()
+        s = self.samples.get(name)
+        if not s or not self.run:
+            return
+        with self.lock:
+            if len(self.voices) > 10:
+                self.voices.pop(0)
+            self.voices.append([s, 0, gain * 0.55])
+
+    def engine(self, k, others, racing: bool) -> None:
+        """Called every frame: where the engine sound should be (it glides there)."""
+        if not self.run:
+            self.start()
+            if not self.run:
+                return
+        sp = k.speed if k.dead <= 0 else 0.0
+        e = self.eng
+        e["f"] = 42 + 105 * min(1.3, sp / V_MAX) + (8 if k.throttle > 0 else 0)
+        e["a"] = 0.10 + 0.16 * min(1.0, sp / V_MAX) + (0.05 if k.throttle > 0 else 0)
+        e["boost"] = 1.0 if (k.boosting or k.turbo > 0) and k.dead <= 0 else 0.0
+        e["skid"] = 1.0 if (k.drifting or k.hb) and sp > 60 else 0.0
+        near = [o for o in others if o.dead <= 0 and o.dead < 1e8]
+        if near:
+            d = min(math.hypot(o.x - k.x, o.y - k.y) for o in near)
+            o = min(near, key=lambda q: math.hypot(q.x - k.x, q.y - k.y))
+            e["others"] = max(0.0, 1 - d / 700) * 0.12
+            e["of"] = 40 + 100 * min(1.3, o.speed / V_MAX)
+        else:
+            e["others"] = 0.0
+
+    def _render(self, n: int) -> bytes:
+        R = self.RATE
+        e = self.eng
+        out = [0.0] * n
+        ph0, ph1, ph2 = self.phase
+        f, a, of, oa = e["f"], e["a"], e["of"], e["others"]
+        boost, skid = e["boost"], e["skid"]
+        rnd = self.noise.random
+        tau = 2 * math.pi / R
+        y = getattr(self, "_lp", 0.0)
+        for i in range(n):
+            ph0 += f * tau
+            ph1 += f * 0.5 * tau
+            ph2 += of * tau
+            # a two-stroke-ish buzz: a pulse rich in harmonics, plus a sub tone
+            s = (math.sin(ph0) + 0.5 * math.sin(2 * ph0 + 0.3) + 0.33 * math.sin(3 * ph0) + 0.6 * math.sin(ph1)) * a
+            if oa > 0:
+                s += (math.sin(ph2) + 0.4 * math.sin(2 * ph2)) * oa
+            if boost or skid:
+                y += (rnd() * 2 - 1 - y) * (0.35 if boost else 0.6)
+                s += y * (0.10 * boost + 0.07 * skid * (0.6 + 0.4 * math.sin(ph0 * 0.21)))
+            out[i] = s * 0.5
+        self.phase = [ph0 % 6.2831853, ph1 % 6.2831853, ph2 % 6.2831853]
+        self._lp = y
+        with self.lock:
+            keep = []
+            for v in self.voices:
+                smp, pos, g = v
+                m = min(n, len(smp) - pos)
+                for i in range(m):
+                    out[i] += smp[pos + i] * g
+                v[1] = pos + m
+                if v[1] < len(smp):
+                    keep.append(v)
+            self.voices = keep
+        import array
+        buf = array.array("h", (int(max(-1.0, min(1.0, x * self.vol)) * 32000) for x in out))
+        return buf.tobytes()
+
+    # -- Windows waveOut, 4 buffers in a ring
+    def _open(self) -> None:
+        import ctypes
+        from ctypes import wintypes as WT
+
+        class WAVEFORMATEX(ctypes.Structure):
+            _fields_ = [("wFormatTag", WT.WORD), ("nChannels", WT.WORD), ("nSamplesPerSec", WT.DWORD),
+                        ("nAvgBytesPerSec", WT.DWORD), ("nBlockAlign", WT.WORD), ("wBitsPerSample", WT.WORD),
+                        ("cbSize", WT.WORD)]
+
+        class WAVEHDR(ctypes.Structure):
+            pass
+        WAVEHDR._fields_ = [("lpData", ctypes.c_void_p), ("dwBufferLength", WT.DWORD), ("dwBytesRecorded", WT.DWORD),
+                            ("dwUser", ctypes.c_size_t), ("dwFlags", WT.DWORD), ("dwLoops", WT.DWORD),
+                            ("lpNext", ctypes.c_void_p), ("reserved", ctypes.c_size_t)]
+        self._ct = ctypes
+        self._HDR = WAVEHDR
+        self.wm = ctypes.WinDLL("winmm")
+        self.wm.waveOutOpen.argtypes = [ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint, ctypes.POINTER(WAVEFORMATEX),
+                                        ctypes.c_size_t, ctypes.c_size_t, WT.DWORD]
+        self.wm.waveOutPrepareHeader.argtypes = [ctypes.c_void_p, ctypes.POINTER(WAVEHDR), ctypes.c_uint]
+        self.wm.waveOutUnprepareHeader.argtypes = [ctypes.c_void_p, ctypes.POINTER(WAVEHDR), ctypes.c_uint]
+        self.wm.waveOutWrite.argtypes = [ctypes.c_void_p, ctypes.POINTER(WAVEHDR), ctypes.c_uint]
+        self.wm.waveOutReset.argtypes = [ctypes.c_void_p]
+        self.wm.waveOutClose.argtypes = [ctypes.c_void_p]
+        fmt = WAVEFORMATEX(1, 1, self.RATE, self.RATE * 2, 2, 16, 0)
+        h = ctypes.c_void_p()
+        if self.wm.waveOutOpen(ctypes.byref(h), 0xFFFFFFFF, ctypes.byref(fmt), 0, 0, 0) != 0:
+            raise OSError("waveOutOpen failed")
+        self.h = h
+        self.hdrs = []
+        self.bufs = []
+        for _ in range(4):
+            b = ctypes.create_string_buffer(self.BUF * 2)
+            hd = WAVEHDR()
+            hd.lpData = ctypes.cast(b, ctypes.c_void_p)
+            hd.dwBufferLength = self.BUF * 2
+            hd.dwFlags = 0
+            self.bufs.append(b)
+            self.hdrs.append(hd)
+
+    def _loop(self, gen, h, hdrs, bufs) -> None:
+        ct = self._ct
+        size = ct.sizeof(self._HDR)
+        queued = [False] * 4
+        try:
+            while self.run and self.gen == gen:
+                for i, hd in enumerate(hdrs):
+                    if queued[i] and not (hd.dwFlags & 1):          # WHDR_DONE not set yet: still playing
+                        continue
+                    if queued[i]:
+                        self.wm.waveOutUnprepareHeader(h, ct.byref(hd), size)
+                    data = self._render(self.BUF)
+                    ct.memmove(bufs[i], data, len(data))
+                    hd.dwFlags = 0
+                    self.wm.waveOutPrepareHeader(h, ct.byref(hd), size)
+                    self.wm.waveOutWrite(h, ct.byref(hd), size)
+                    queued[i] = True
+                time.sleep(0.008)
+        except Exception:  # noqa: BLE001
+            log.exception("kart audio stopped")
+        finally:
+            try:
+                self.wm.waveOutReset(h)
+                for i, hd in enumerate(hdrs):
+                    if queued[i]:
+                        self.wm.waveOutUnprepareHeader(h, ct.byref(hd), size)
+                self.wm.waveOutClose(h)
+            except Exception:  # noqa: BLE001
+                pass
+
+
+# ================================================================================================== Karting: the app
+_KART_TRACKS: dict = {}
+
+
+def kart_track(i: int):
+    """The circuit's geometry, made once (about 0.2 s) and kept."""
+    i = int(i) % len(KART_TRACKS)
+    if i not in _KART_TRACKS:
+        _KART_TRACKS[i] = KartTrack(i)
+    return _KART_TRACKS[i]
+
+
+KART_TICKS = [100, 250, 500, 1000, 1500, 2000, 2500]
+KART_BANDS = {"Rookie": "20-35%", "Amateur": "35-50%", "Racer": "50-60%", "Expert": "60-70%", "Elite": "75-85%",
+              "Professional": "99-100%"}
+
+
+class EloSlider(QWidget):
+    """9.2: the bot's level, 100 to 2500. Lines every 50 up to 1000 (where most players will pick), every 250 after,
+    labels at 100, 250, 500, 1000, 1500, 2000 and 2500; the level's name and the score it races at show above."""
+    changed = pyqtSignal(int)
+
+    def __init__(self, value: int, width: int) -> None:
+        super().__init__()
+        self.v = int(max(100, min(2500, value)))
+        self.setFixedSize(width, S(78))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self._drag = False
+
+    def _x(self, v: float) -> float:
+        l, r = S(14), self.width() - S(14)
+        return l + (r - l) * (v - 100) / 2400
+
+    def _v(self, x: float) -> int:
+        l, r = S(14), self.width() - S(14)
+        v = 100 + 2400 * (x - l) / max(1, r - l)
+        return int(max(100, min(2500, round(v / 50) * 50)))
+
+    def set(self, v: int) -> None:
+        v = int(max(100, min(2500, v)))
+        if v != self.v:
+            self.v = v
+            self.update()
+            self.changed.emit(v)
+
+    def mousePressEvent(self, e) -> None:
+        self._drag = True
+        self.set(self._v(e.position().x()))
+
+    def mouseMoveEvent(self, e) -> None:
+        if self._drag:
+            self.set(self._v(e.position().x()))
+
+    def mouseReleaseEvent(self, _e) -> None:
+        if self._drag:
+            sfx.play("pick")
+        self._drag = False
+
+    def keyPressEvent(self, e) -> None:
+        if e.key() in (Qt.Key.Key_Left, Qt.Key.Key_Down):
+            self.set(self.v - 50)
+        elif e.key() in (Qt.Key.Key_Right, Qt.Key.Key_Up):
+            self.set(self.v + 50)
+        else:
+            super().keyPressEvent(e)
+
+    def wheelEvent(self, e) -> None:
+        self.set(self.v + (50 if e.angleDelta().y() > 0 else -50))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        name = bot_level_name(self.v)
+        col = QColor({"Rookie": "#7BE0A0", "Amateur": "#5EEAD4", "Racer": "#4FC3FF", "Expert": "#9B7BFF",
+                      "Elite": "#FF6FD8", "Professional": "#F5C04A"}[name])
+        p.setFont(font(13, QFont.Weight.Black))
+        p.setPen(col)
+        p.drawText(QRectF(0, 0, self.width(), S(20)), int(Qt.AlignmentFlag.AlignLeft),
+                   f"{self.v}  ·  {tr(name)}")
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(0, 0, self.width(), S(20)), int(Qt.AlignmentFlag.AlignRight),
+                   tr("races at about {s}", s=KART_BANDS[name]))
+        y = S(40)
+        l, r = self._x(100), self._x(2500)
+        g = QLinearGradient(QPointF(l, y), QPointF(r, y))
+        for v, c in ((100, "#7BE0A0"), (1000, "#4FC3FF"), (2000, "#FF6FD8"), (2500, "#F5C04A")):
+            g.setColorAt((v - 100) / 2400, QColor(c))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(255, 255, 255, 22))
+        p.drawRoundedRect(QRectF(l, y - S(3), r - l, S(6)), S(3), S(3))
+        p.setBrush(QBrush(g))
+        p.drawRoundedRect(QRectF(l, y - S(3), self._x(self.v) - l, S(6)), S(3), S(3))
+        for v in list(range(100, 1001, 50)) + list(range(1250, 2501, 250)):
+            x = self._x(v)
+            big = v in KART_TICKS
+            p.setPen(QPen(QColor(255, 255, 255, 150 if big else 60), S(1.5) if big else S(1)))
+            p.drawLine(QPointF(x, y + S(6)), QPointF(x, y + S(14 if big else 10)))
+        p.setFont(font(9.5, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        for v in KART_TICKS:
+            x = self._x(v)
+            p.drawText(QRectF(x - S(24), y + S(16), S(48), S(16)), int(Qt.AlignmentFlag.AlignCenter), str(v))
+        x = self._x(self.v)
+        p.setPen(QPen(QColor(0, 0, 0, 120), S(1)))
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawEllipse(QPointF(x, y), S(9), S(9))
+        p.setBrush(col)
+        p.drawEllipse(QPointF(x, y), S(4.5), S(4.5))
+
+
+class CircuitCard(QWidget):
+    """9.2: a circuit to pick: its shape, name, length and your best score there."""
+    clicked = pyqtSignal()
+
+    def __init__(self, i: int, on: bool, best, width: int) -> None:
+        super().__init__()
+        self.i, self.on, self.best = i, on, best
+        self.setFixedSize(width, S(120))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mouseReleaseEvent(self, e) -> None:
+        if e.button() == Qt.MouseButton.LeftButton:
+            sfx.play("pick")
+            self.clicked.emit()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        tr_ = kart_track(self.i)
+        th = KART_THEMES[tr_.theme]
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, mix(QColor(th["ground"]), QColor("#000000"), 0.35))
+        g.setColorAt(1, mix(QColor(th["ground2"]), QColor("#000000"), 0.6))
+        p.setPen(QPen(QColor("#FFFFFF") if self.on else QColor(255, 255, 255, 30), S(2) if self.on else 1))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+        box = QRectF(r.left() + S(8), r.top() + S(8), r.width() - S(16), r.height() - S(40))
+        x0, y0, x1, y1 = tr_.bounds
+        sc = min(box.width() / (x1 - x0), box.height() / (y1 - y0))
+        path = QPainterPath(QPointF(tr_.cx[0], tr_.cy[0]))
+        for k in range(0, tr_.n, 8):
+            path.lineTo(tr_.cx[k], tr_.cy[k])
+        path.closeSubpath()
+        p.save()
+        p.translate(box.center())
+        p.scale(sc, sc)
+        p.translate(-(x0 + x1) / 2, -(y0 + y1) / 2)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor(th["wall"]), 2 * tr_.hw + 70))
+        p.drawPath(path)
+        p.setPen(QPen(QColor(th["tar"]).lighter(140), 2 * tr_.hw))
+        p.drawPath(path)
+        p.setPen(QPen(QColor("#FFFFFF"), 50))
+        p.drawLine(QPointF(tr_.cx[0] - tr_.nx[0] * tr_.hw, tr_.cy[0] - tr_.ny[0] * tr_.hw),
+                   QPointF(tr_.cx[0] + tr_.nx[0] * tr_.hw, tr_.cy[0] + tr_.ny[0] * tr_.hw))
+        p.restore()
+        p.setFont(font(12.5, QFont.Weight.Black))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(r.left() + S(10), r.bottom() - S(30), r.width() - S(20), S(24)),
+                   int(Qt.AlignmentFlag.AlignVCenter), tr(tr_.name))
+        p.setFont(font(10, QFont.Weight.Bold))
+        p.setPen(QColor(GOLD_TEXT) if self.best else QColor(TEXT_DIM))
+        p.drawText(QRectF(r.left() + S(10), r.bottom() - S(30), r.width() - S(20), S(24)),
+                   int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   (f"{float(self.best):.1f}%" if self.best else f"{tr_.length * KMH / 3.6 / 1000:.2f} km"))
+
+
+def kart_opts(ctx) -> dict:
+    """The race settings last picked on this PC."""
+    d = getattr(ctx, "kart_opts", None)
+    if not isinstance(d, dict):
+        cfg = ctx.cfg
+        try:
+            d = dict(cfg["kart"] or {})
+        except Exception:  # noqa: BLE001
+            d = {}
+        d = {"track": int(d.get("track", 0)), "laps": int(d.get("laps", 3)), "elo": int(d.get("elo", 1000)),
+             "size": int(d.get("size", 1)), "bot": bool(d.get("bot", True)), "collide": bool(d.get("collide", True)),
+             "boost": bool(d.get("boost", True)), "damage": bool(d.get("damage", True))}
+        ctx.kart_opts = d
+    return d
+
+
+def kart_save_opts(ctx) -> None:
+    try:
+        ctx.cfg["kart"] = dict(kart_opts(ctx))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def build_kart(page, lay) -> None:
+    """9.2: Karting in Play > Multiplayer: set up a race (alone against the bot or the ideal line, or a room for up to 3
+    players and one bot), join an open room, your best scores and each circuit's top 5. The race itself opens in its own
+    big window."""
+    ctx = page.ctx
+    link = getattr(ctx, "kart_link", None)
+    top = hbox(spacing=8)
+    back = IconButton("back", 32, tip=tr("Back"))
+    back.clicked.connect(lambda: page.open_sub(None))
+    top.addWidget(back)
+    top.addWidget(Label(tr("Karting"), 16, bold=True), 1)
+    top.addWidget(HelpButton(ctx, "kart"))
+    lay.addLayout(top)
+    if getattr(ctx, "kart_missing", False):
+        return server_wait(ctx, lay, page.W)
+    if link is not None and link.alive():
+        return _kart_room_panel(page, lay, link)
+    host = QWidget()
+    hl = vbox(host, 10)
+    lay.addWidget(host)
+    poll = QTimer(host)
+    poll.setInterval(2500)
+
+    def load() -> None:
+        def got(ok: bool, d) -> None:
+            if not ok:
+                if "soon" in str(d).lower():
+                    ctx.kart_missing = True
+                    if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "kart":
+                        ctx.reload_page("games")
+                return
+            if not isinstance(d, dict):
+                return
+            if d.get("mine") and getattr(ctx, "kart_link", None) is None:
+                KartLink.open(ctx, d["mine"])
+                return ctx.reload_page("games")
+            if d != getattr(ctx, "kart_lobby", None):
+                ctx.kart_lobby = d
+                if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "kart":
+                    ctx.reload_page("games")
+        ctx.online.ask("rb_kart_lobbies", {}, got)
+    poll.timeout.connect(load)
+    poll.start()
+    data = getattr(ctx, "kart_lobby", None)
+    if data is None:
+        load()
+    data = data or {}
+    o = kart_opts(ctx)
+    best = data.get("best") or {}
+    hl.addWidget(Label(tr("Race on 3 circuits, alone or with up to 3 players, and always one bot at the level you pick. "
+                          "After the race everyone gets a score out of 100%."), 10.5, TEXT_DIM, wrap_w=page.W))
+    # the circuit
+    hl.addWidget(heading(tr("Circuit")))
+    row = hbox(spacing=8)
+    cw = (page.W - S(16)) // 3
+    for i in range(3):
+        card = CircuitCard(i, o["track"] == i, best.get(str(i)), cw)
+        card.clicked.connect(lambda i=i: (o.__setitem__("track", i), kart_save_opts(ctx), ctx.reload_page("games")))
+        row.addWidget(card)
+    hl.addLayout(row)
+    # players and laps
+    hl.addWidget(heading(tr("Race")))
+    size = Segmented([tr("Solo"), tr("2 players"), tr("3 players")], max(0, min(2, o["size"] - 1)))
+    size.changed.connect(lambda i: (o.__setitem__("size", i + 1), kart_save_opts(ctx), ctx.reload_page("games")))
+    hl.addWidget(size)
+    laps = Segmented([tr("{n} laps", n=n) for n in (2, 3, 4, 5)], max(0, min(3, o["laps"] - 2)))
+    laps.changed.connect(lambda i: (o.__setitem__("laps", i + 2), kart_save_opts(ctx)))
+    hl.addWidget(laps)
+    if o["size"] == 1:
+        mode = Segmented([tr("Race the bot"), tr("No bot: show the ideal line")], 0 if o["bot"] else 1)
+        mode.changed.connect(lambda i: (o.__setitem__("bot", i == 0), kart_save_opts(ctx)))
+        hl.addWidget(mode)
+    # the bot's level
+    hl.addWidget(heading(tr("Bot level")))
+    elo = EloSlider(o["elo"], page.W)
+    elo.changed.connect(lambda v: (o.__setitem__("elo", int(v)), kart_save_opts(ctx)))
+    hl.addWidget(elo)
+    # switches
+    for key, text in (("collide", "Karts can bump into each other"), ("boost", "Boost"),
+                      ("damage", "Damage: big hits can wreck a kart")):
+        r2 = hbox(spacing=8)
+        r2.addWidget(Label(tr(text), 11.5, TEXT), 1)
+        tg = Toggle(bool(o[key]))
+        tg.toggled_by_user.connect(lambda v, key=key: (o.__setitem__(key, bool(v)), kart_save_opts(ctx)))
+        r2.addWidget(tg)
+        hl.addLayout(r2)
+    go = Button(tr("Start the race") if o["size"] == 1 else tr("Open a room"), "primary", 44, icon="play")
+
+    def create() -> None:
+        go.setEnabled(False)
+
+        def done(ok: bool, d) -> None:
+            if not ok:
+                go.setEnabled(True)
+                return ctx.toast(tr(str(d)), "warn")
+            sfx.play("on")
+            KartLink.open(ctx, d)
+            ctx.reload_page("games")
+        ctx.econ.call("rb_kart_create", {"size": o["size"], "track": o["track"], "laps": o["laps"], "bot_elo": o["elo"],
+                                         "bot": o["bot"] or o["size"] > 1, "collide": o["collide"], "boost": o["boost"],
+                                         "damage": o["damage"]}, done)
+    go.clicked.connect(create)
+    hl.addWidget(go)
+    keys = kart_keys()
+    hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Drive")),
+                              (["Shift"], tr("Boost")), (["Space"], tr("Handbrake, drift")), (["R"], tr("Hold: respawn"))],
+                             page.W))
+    if data.get("cap"):
+        hl.addWidget(Label(tr("Prizes today: {a} of {b}", a=coins_text(int(data.get("today") or 0)),
+                              b=coins_text(int(data.get("cap") or 0))), 10.5, TEXT_DIM))
+    # open rooms
+    rooms = list(data.get("rooms") or [])
+    hl.addWidget(heading(tr("Open rooms") + f"  ·  {len(rooms)}"))
+    if not rooms:
+        hl.addWidget(Label(tr("Nobody is waiting. Open a room and players can join it."), 11, TEXT_FAINT, wrap_w=page.W))
+    for rm in rooms[:10]:
+        r3 = hbox(spacing=8)
+        r3.addWidget(Label(("★ " if rm.get("friend") else "") + str(rm.get("host", "?")), 12, TEXT, bold=True), 1)
+        r3.addWidget(Label(tr(kart_track(int(rm.get("track") or 0)).name) + "  ·  " +
+                           tr("{n} laps", n=int(rm.get("laps") or 3)) + "  ·  " + tr("Bot {n}", n=int(rm.get("bot_elo") or 0)),
+                           10.5, TEXT_DIM).fit())
+        r3.addWidget(Label(tr("{a}/{b} players", a=int(rm.get("seated") or 0), b=int(rm.get("size") or 2)), 11, TEXT_DIM).fit())
+        join = Button(tr("Join"), "primary", 30)
+        join.setFixedWidth(S(80))
+
+        def do_join(_c=False, rid=rm["id"], btn=join) -> None:
+            btn.setEnabled(False)
+
+            def done(ok: bool, d) -> None:
+                if not ok:
+                    btn.setEnabled(True)
+                    return ctx.toast(tr(str(d)), "warn")
+                sfx.play("on")
+                KartLink.open(ctx, d)
+                ctx.reload_page("games")
+            ctx.econ.call("rb_kart_join", {"rid": rid}, done)
+        join.clicked.connect(do_join)
+        r3.addWidget(join)
+        hl.addLayout(r3)
+    # the boards: the top 5 of each circuit (best score)
+    tops = list(data.get("top") or [])
+    if tops:
+        hl.addWidget(heading(tr("Best scores")))
+        for i in range(3):
+            rows = [t for t in tops if int(t.get("t", -1)) == i][:5]
+            if not rows:
+                continue
+            hl.addWidget(Label(tr(kart_track(i).name), 11, TEXT, bold=True))
+            for t in rows:
+                r4 = hbox(spacing=8)
+                r4.addWidget(Label(f"{int(t.get('rk') or 0)}.  {t.get('name', '?')}", 11, TEXT_DIM), 1)
+                if t.get("ms"):
+                    r4.addWidget(Label(kart_time(int(t["ms"]) / 1000), 10.5, TEXT_FAINT).fit())
+                r4.addWidget(Label(f"{float(t.get('score') or 0):.1f}%", 11, GOLD_TEXT, bold=True).fit())
+                hl.addLayout(r4)
+
+
+def _kart_room_panel(page, lay, link) -> None:
+    """In a room: the seats while it fills (the host can start any time), then the race (in its window), then the
+    results."""
+    st = link.st or {}
+    state = st.get("state")
+    tr_ = kart_track(int(st.get("track") or 0))
+    lay.addWidget(Label(tr(tr_.name) + "  ·  " + tr("{n} laps", n=int(st.get("laps") or 3)) + "  ·  " +
+                        (tr("Bot {n} ({l})", n=int(st.get("bot_elo") or 0), l=tr(bot_level_name(int(st.get("bot_elo") or 0))))
+                         if st.get("bot") else tr("No bot: the ideal line")), 12, TEXT, bold=True))
+    flags = [tr("Bumping on") if st.get("collide") else tr("No bumping"), tr("Boost on") if st.get("boost") else tr("No boost"),
+             tr("Damage on") if st.get("damage") else tr("No damage")]
+    lay.addWidget(Label("  ·  ".join(flags), 10.5, TEXT_DIM))
+    players = list(st.get("players") or [])
+    if state == "open":
+        lay.addWidget(Label(tr("Waiting for players: {a}/{b}", a=len(players), b=int(st.get("size") or 2)), 13, TEXT, bold=True))
+        for i in range(int(st.get("size") or 2)):
+            pl = next((x for x in players if int(x.get("seat", -1)) == i), None)
+            r = hbox(spacing=8)
+            dot = Label("●", 14, KART_COLS[i]).fit()
+            r.addWidget(dot)
+            r.addWidget(Label(str(pl.get("name")) if pl else tr("Empty seat"), 12, TEXT if pl else TEXT_FAINT, bold=bool(pl)), 1)
+            lay.addLayout(r)
+        r = hbox(spacing=8)
+        r.addWidget(Label("●", 14, "#F5C04A").fit())
+        r.addWidget(Label(tr("BOT") + " · " + tr(bot_level_name(int(st.get("bot_elo") or 0))), 12, TEXT, bold=True), 1)
+        lay.addLayout(r)
+        row = hbox(spacing=8)
+        leave = Button(tr("Close room") if st.get("mine") else tr("Leave room"), "ghost", 38)
+        leave.clicked.connect(link.leave)
+        row.addWidget(leave, 1)
+        if st.get("mine"):
+            start = Button(tr("Start now"), "primary", 38, icon="play")
+            start.clicked.connect(link.start)
+            row.addWidget(start, 2)
+        lay.addLayout(row)
+        lay.addWidget(Label(tr("The race starts when the room is full, or when the host starts it."), 10.5, TEXT_DIM, wrap_w=page.W))
+    elif state == "live":
+        lay.addWidget(Label(tr("Race on!"), 16, "#35E0A1", bold=True))
+        b = Button(tr("Open the race window"), "primary", 42, icon="play")
+        b.clicked.connect(link.show_window)
+        lay.addWidget(b)
+        lv = Button(tr("Leave the race"), "ghost", 36)
+        lv.clicked.connect(link.leave)
+        lay.addWidget(lv)
+    else:
+        if state == "done":
+            lay.addWidget(KartResults(st, page.W, link.my_result))
+        else:
+            lay.addWidget(Label(tr("The room was closed"), 13, TEXT_DIM, bold=True))
+        b = Button(tr("Back to Karting"), "primary", 40)
+        b.clicked.connect(link.close)
+        lay.addWidget(b)
+
+
+class KartResults(QWidget):
+    """9.2: the scoreboard after a race, like Mini Golf's: place, colour, driver, time and gap, best lap, wrecks,
+    score out of 100 and the prize, then how your race went."""
+
+    def __init__(self, st: dict, width: int, mine: dict = None, big: bool = False) -> None:
+        super().__init__()
+        self.st, self.mine, self.big = st, mine or {}, big
+        rows = []
+        for pl in st.get("players") or []:
+            rows.append({"name": pl.get("name") or "?", "seat": int(pl.get("seat") or 0), "bot": False,
+                         "ms": pl.get("ms"), "best": pl.get("best"), "blowups": pl.get("blowups"),
+                         "score": pl.get("score"), "place": pl.get("place"), "paid": pl.get("paid") or 0,
+                         "me": pl.get("me"), "gone": pl.get("gone")})
+        if st.get("bot"):
+            laps = st.get("bot_laps") or []
+            rows.append({"name": tr("BOT") + " · " + tr(bot_level_name(int(st.get("bot_elo") or 0))), "seat": 3, "bot": True,
+                         "ms": st.get("bot_ms"), "best": min(laps) if laps else None, "blowups": None,
+                         "score": st.get("bot_score"), "place": st.get("bot_place"), "paid": 0, "me": False, "gone": False})
+        rows.sort(key=lambda r: int(r.get("place") or 99))
+        self.rows = rows
+        self.rh = S(44 if big else 38)
+        extra = S(150) if self.mine else S(10)
+        self.setFixedSize(width, S(70) + self.rh * (len(rows) + 1) + extra)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w = self.width()
+        me = next((r for r in self.rows if r["me"]), None)
+        place = int(me["place"] or 0) if me else 0
+        p.setFont(font(26 if self.big else 20, QFont.Weight.Black))
+        p.setPen(QColor("#35E0A1") if place == 1 else QColor("#FFFFFF"))
+        p.drawText(QRectF(0, 0, w, S(40)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("You won!") if place == 1 else (tr("Place {n}", n=kart_place(place)) if place else tr("Results")))
+        if me and me.get("score") is not None:
+            p.setFont(font(26 if self.big else 20, QFont.Weight.Black))
+            p.setPen(QColor(GOLD))
+            p.drawText(QRectF(0, 0, w, S(40)), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       f"{float(me['score']):.1f}%")
+        cols = [(S(34), tr("#")), (0.0, tr("Driver")), (S(96), tr("Time")), (S(78), tr("Gap")), (S(84), tr("Best lap")),
+                (S(60), tr("Wrecks")), (S(70), tr("Score")), (S(70), tr("Prize"))]
+        fixed = sum(c[0] for c in cols)
+        name_w = w - fixed - S(16)
+        y = S(52)
+        p.setFont(font(10, QFont.Weight.Black, 0.6))
+        p.setPen(QColor(TEXT_DIM))
+        x = S(8)
+        for cw, title in cols:
+            cw = cw or name_w
+            p.drawText(QRectF(x, y, cw, S(18)), int(Qt.AlignmentFlag.AlignVCenter), title.upper())
+            x += cw
+        y += S(22)
+        win_ms = next((r["ms"] for r in self.rows if r.get("ms")), None)
+        for r in self.rows:
+            box = QRectF(0, y, w, self.rh - S(6))
+            col = kart_col(r["seat"], r["bot"])
+            paint_surface(p, box, S(10), 0.08 if r["me"] else 0.04, 0.0, edge=alpha(col, 0.6 if r["place"] == 1 else 0.25))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col)
+            p.drawRoundedRect(QRectF(box.left(), box.top() + S(6), S(4), box.height() - S(12)), S(2), S(2))
+            vals = [str(r["place"] or "-"), r["name"] + ("  (" + tr("you") + ")" if r["me"] else "") + ("  · " + tr("left") if r["gone"] else ""),
+                    kart_time(r["ms"] / 1000) if r.get("ms") else tr("DNF"),
+                    ("+" + f"{(r['ms'] - win_ms) / 1000:.2f}" if r.get("ms") and win_ms and r["ms"] != win_ms else "") if r.get("ms") else "",
+                    kart_time(r["best"] / 1000) if r.get("best") else "-",
+                    str(r["blowups"]) if r.get("blowups") is not None else "-",
+                    f"{float(r['score']):.1f}%" if r.get("score") is not None else "-",
+                    ("+" + coins_text(int(r["paid"]))) if r.get("paid") else ""]
+            x = S(8)
+            for k, ((cw, _t), v) in enumerate(zip(cols, vals)):
+                cw = cw or name_w
+                p.setFont(font(13 if k in (0, 6) else 11.5, QFont.Weight.Black if k in (0, 6) else QFont.Weight.DemiBold))
+                p.setPen(QColor(GOLD_TEXT) if (k == 0 and r["place"] == 1) or k in (6, 7) else QColor(TEXT if k in (1, 2) else TEXT_DIM))
+                p.drawText(QRectF(x, box.top(), cw, box.height()), int(Qt.AlignmentFlag.AlignVCenter),
+                           p.fontMetrics().elidedText(v, Qt.TextElideMode.ElideRight, int(cw - S(6))))
+                x += cw
+            y += self.rh
+        if self.mine:
+            m = self.mine
+            y += S(6)
+            p.setFont(font(11, QFont.Weight.Black, 0.6))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(0, y, w, S(18)), int(Qt.AlignmentFlag.AlignLeft), tr("YOUR RACE"))
+            y += S(22)
+            laps = m.get("laps") or []
+            items = [(tr("Laps"), "  ".join(kart_time(t) for t in laps)),
+                     (tr("Top speed"), f"{int(float(m.get('top') or 0) * KMH)} km/h"),
+                     (tr("Mini turbos"), str(int(m.get("turbos") or 0))),
+                     (tr("Bumps"), str(int(m.get("hits") or 0))),
+                     (tr("Wall hits"), str(int(m.get("walls") or 0))),
+                     (tr("On the ideal line"), f"{int(float(m.get('line') or 0) * 100)}%"),
+                     (tr("Respawns"), str(int(m.get("resets") or 0)))]
+            cw = w / 4
+            for k, (a, b) in enumerate(items):
+                xx, yy = (k % 4) * cw, y + (k // 4) * S(44)
+                if k == 0:
+                    xx, yy = 0, y
+                p.setFont(font(9.5, QFont.Weight.Bold))
+                p.setPen(QColor(TEXT_DIM))
+                p.drawText(QRectF(xx, yy, cw * (4 if k == 0 else 1), S(16)), int(Qt.AlignmentFlag.AlignLeft), a)
+                p.setFont(font(12, QFont.Weight.Black))
+                p.setPen(QColor("#FFFFFF"))
+                p.drawText(QRectF(xx, yy + S(16), cw * (4 if k == 0 else 1), S(22)), int(Qt.AlignmentFlag.AlignLeft), b)
+                if k == 0:
+                    y += S(44)
+                    break
+            for k, (a, b) in enumerate(items[1:]):
+                xx, yy = (k % 3) * (w / 3), y + (k // 3) * S(40)
+                p.setFont(font(9.5, QFont.Weight.Bold))
+                p.setPen(QColor(TEXT_DIM))
+                p.drawText(QRectF(xx, yy, w / 3, S(16)), int(Qt.AlignmentFlag.AlignLeft), a)
+                p.setFont(font(12, QFont.Weight.Black))
+                p.setPen(QColor("#FFFFFF"))
+                p.drawText(QRectF(xx, yy + S(16), w / 3, S(22)), int(Qt.AlignmentFlag.AlignLeft), b)
+
+
+class KartWindow(QWidget):
+    """9.2: the race in its own big window (most of the screen; F11 or the button for full screen). The top bar says
+    where you are; closing it leaves the race (after asking)."""
+
+    def __init__(self, link) -> None:
+        super().__init__()
+        self.link = link
+        self.setWindowTitle("Rubenium Karting")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        try:
+            self.setWindowIcon(app_icon())
+        except Exception:  # noqa: BLE001
+            pass
+        self.lay = vbox(self, 0)
+        self.bar = QWidget()
+        self.bar.setFixedHeight(S(44))
+        bl = hbox(self.bar, 8, (S(14), 0, S(10), 0))
+        self.title = Label("", 13, TEXT, bold=True)
+        bl.addWidget(self.title, 1)
+        self.sound = Button(tr("Sound on") if sfx.enabled else tr("Sound off"), "ghost", 30)
+        self.sound.clicked.connect(self._sound)
+        bl.addWidget(self.sound)
+        self.full = Button(tr("Full screen"), "ghost", 30)
+        self.full.clicked.connect(self.toggle_full)
+        bl.addWidget(self.full)
+        self.leave = Button(tr("Leave"), "ghost", 30)
+        self.leave.clicked.connect(self.close)
+        bl.addWidget(self.leave)
+        self.lay.addWidget(self.bar)
+        self.body = QWidget()
+        self.body_lay = vbox(self.body, 0)
+        self.lay.addWidget(self.body, 1)
+        self.view = None
+        self.over = None
+        self._drag = None
+        self.wait_label = Label(tr("Loading the circuit…"), 16, TEXT_DIM, bold=True, align=Qt.AlignmentFlag.AlignCenter)
+        self.body_lay.addWidget(self.wait_label, 1)
+        scr = QGuiApplication.primaryScreen().availableGeometry()
+        w, h = int(scr.width() * 0.9), int(scr.height() * 0.9)
+        self.resize(max(min(scr.width(), S(1000)), w), max(min(scr.height(), S(640)), h))
+        self.move(scr.center().x() - self.width() // 2, scr.center().y() - self.height() // 2)
+
+    def set_view(self, view) -> None:
+        if self.wait_label is not None:
+            self.wait_label.setParent(None)
+            self.wait_label = None
+        self.view = view
+        self.body_lay.addWidget(view, 1)
+        view.setFocus()
+
+    def show_results(self, w: QWidget) -> None:
+        """The scoreboard over the race (the race keeps running behind it)."""
+        if self.over is not None:
+            self.over.setParent(None)
+        self.over = KartOverlay(self.body, w, self.link)
+        self.over.setGeometry(self.body.rect())
+        self.over.show()
+
+    def resizeEvent(self, e) -> None:
+        super().resizeEvent(e)
+        if self.over is not None:
+            self.over.setGeometry(self.body.rect())
+
+    def _sound(self) -> None:
+        sfx.enabled = not sfx.enabled
+        try:
+            self.link.ctx.cfg["sounds"] = sfx.enabled
+        except Exception:  # noqa: BLE001
+            pass
+        if not sfx.enabled:
+            KartAudio.get().stop()
+        self.sound.set_text(tr("Sound on") if sfx.enabled else tr("Sound off"))
+
+    def toggle_full(self) -> None:
+        if self.isFullScreen():
+            self.showNormal()
+            self.full.set_text(tr("Full screen"))
+        else:
+            self.showFullScreen()
+            self.full.set_text(tr("Exit full screen"))
+        if self.view is not None:
+            self.view.setFocus()
+
+    def keyPressEvent(self, e) -> None:
+        if e.key() == Qt.Key.Key_F11:
+            return self.toggle_full()
+        if e.key() == Qt.Key.Key_Escape and self.isFullScreen():
+            return self.toggle_full()
+        super().keyPressEvent(e)
+
+    def mousePressEvent(self, e) -> None:
+        if e.position().y() < S(44):
+            self._drag = e.globalPosition().toPoint() - self.frameGeometry().topLeft()
+
+    def mouseMoveEvent(self, e) -> None:
+        if self._drag is not None and not self.isFullScreen():
+            self.move(e.globalPosition().toPoint() - self._drag)
+
+    def mouseReleaseEvent(self, _e) -> None:
+        self._drag = None
+
+    def mouseDoubleClickEvent(self, e) -> None:
+        if e.position().y() < S(44):
+            self.toggle_full()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.fillRect(self.rect(), QColor(10, 12, 16))
+        p.setPen(QPen(alpha(ui.accent, 0.35), 1))
+        p.drawLine(QPointF(0, S(44) - 0.5), QPointF(self.width(), S(44) - 0.5))
+
+    def closeEvent(self, e) -> None:
+        if self.link.racing() and not getattr(self, "_sure", False):
+            e.ignore()
+
+            def go() -> None:
+                self._sure = True
+                self.link.leave()
+            try:
+                self.link.ctx.window.confirm(tr("Leave the race? You will be out of it."), go, yes=tr("Leave"))
+            except Exception:  # noqa: BLE001
+                go()
+            return
+        KartAudio.get().stop()
+        if self.view is not None:
+            self.view.timer.stop()
+        self.link.window_closed(self)
+        super().closeEvent(e)
+
+
+class KartOverlay(QWidget):
+    """The results over the race window, with the way back."""
+
+    def __init__(self, parent, results: QWidget, link) -> None:
+        super().__init__(parent)
+        self.link = link
+        lay = vbox(self, 12, (0, 0, 0, 0))
+        lay.addStretch(1)
+        row = hbox(spacing=0)
+        row.addStretch(1)
+        card = QWidget()
+        cl = vbox(card, 12, (S(24), S(20), S(24), S(20)))
+        cl.addWidget(results)
+        btns = hbox(spacing=8)
+        again = Button(tr("Race again"), "primary", 42, icon="play")
+        again.clicked.connect(link.again)
+        back = Button(tr("Back to Karting"), "ghost", 42)
+        back.clicked.connect(link.close)
+        btns.addWidget(back, 1)
+        btns.addWidget(again, 1)
+        cl.addLayout(btns)
+        self.card = card
+        row.addWidget(card)
+        row.addStretch(1)
+        lay.addLayout(row)
+        lay.addStretch(1)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.fillRect(self.rect(), QColor(0, 0, 0, 120))
+        r = QRectF(self.card.geometry()).adjusted(-2, -2, 2, 2)
+        p.setPen(QPen(alpha("#FFFFFF", 0.12), 1))
+        p.setBrush(QColor(14, 16, 22, 245))
+        p.drawRoundedRect(r, S(20), S(20))
+
+
+class KartLink(QObject):
+    """9.2: one race room, from the lobby to the results: polls the room, opens the race window when it goes live,
+    swaps karts with the server ~12 times a second, sends the finish (and the bot's, from the PC that drives it)."""
+
+    @classmethod
+    def open(cls, ctx, st: dict) -> "KartLink":
+        old = getattr(ctx, "kart_link", None)
+        if old is not None and old.rid == st.get("id"):
+            old.got_state(st)
+            return old
+        if old is not None:
+            old.stop()
+        link = KartLink(ctx, st)
+        ctx.kart_link = link
+        return link
+
+    def __init__(self, ctx, st: dict) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.rid = st.get("id")
+        self.st = st
+        self.win = None
+        self.view = None
+        self.my_result = None
+        self.sent_finish = False
+        self.sent_bot = False
+        self.in_flight = False
+        self.last_state = 0.0
+        self.closed = False
+        self.rtt = 0.12
+        self.timer = QTimer(self)
+        self.timer.setInterval(40)
+        self.timer.timeout.connect(self._tick)
+        self.timer.start()
+        self.got_state(st)
+
+    def alive(self) -> bool:
+        return not self.closed
+
+    def racing(self) -> bool:
+        return (self.st or {}).get("state") == "live" and self.view is not None and not self.view.kart.done
+
+    # -- the room
+    def got_state(self, st) -> None:
+        if not isinstance(st, dict) or self.closed:
+            return
+        old = (self.st or {}).get("state")
+        self.st = st
+        state = st.get("state")
+        if state == "live" and self.view is None:
+            self._start_race()
+        if state == "done" and old != "done":
+            self.ctx.econ.refresh()
+            sfx.play("coin")
+            if self.win is not None:
+                self.win.show_results(KartResults(st, min(S(860), self.win.width() - S(80)), self.my_result, big=True))
+        if state in ("cancelled",) and self.win is not None:
+            self.win._sure = True
+            self.win.close()
+        if self.ctx.window.showing("games") and getattr(self.ctx, "games_sub", None) == "kart" and old != state:
+            self.ctx.reload_page("games")
+
+    def _start_race(self) -> None:
+        st = self.st
+        seats = []
+        me = 0
+        for pl in st.get("players") or []:
+            seats.append({"seat": int(pl["seat"]), "slot": int(pl.get("slot") or 0), "name": pl.get("name")})
+            if pl.get("me"):
+                me = int(pl["seat"])
+        if st.get("bot"):
+            seats.append({"seat": 3, "slot": int(st.get("bot_slot") or 0), "bot": True, "seed": int(st.get("seed") or 1) % 1000})
+        go_in = float(st.get("go_in") or 7.0)
+        go_at = time.monotonic() + go_in - self.rtt / 2
+        try:
+            view = KartView(int(st.get("track") or 0), int(st.get("laps") or 3), seats, me,
+                            bot_seat=3 if st.get("bot") else -1, bot_elo=int(st.get("bot_elo") or 1000),
+                            bot_here=bool(st.get("bot_here")),
+                            opts={"collide": st.get("collide", True), "boost": st.get("boost", True), "damage": st.get("damage", True)},
+                            line_elo=0 if st.get("bot") else int(st.get("bot_elo") or 1000), go_at=go_at)
+        except Exception:  # noqa: BLE001
+            log.exception("kart view")
+            return
+        self.view = view
+        view.finished.connect(self._finished)
+        self.show_window()
+        self.win.set_view(view)
+        self.win.title.set_text(tr("Karting") + "  ·  " + tr(view.tr.name) + "  ·  " +
+                                tr("{n} laps", n=int(st.get("laps") or 3)) +
+                                (("  ·  " + tr("Bot {n} ({l})", n=int(st.get("bot_elo") or 0), l=tr(bot_level_name(int(st.get("bot_elo") or 0)))))
+                                 if st.get("bot") else "  ·  " + tr("Ideal line: {l}", l=tr(bot_level_name(int(st.get("bot_elo") or 0))))))
+        # paint the circuit while the lights count down (a little each frame)
+        QTimer.singleShot(0, self._prepare)
+
+    def _prepare(self) -> None:
+        if self.view is None or self.closed:
+            return
+        try:
+            if not self.view.tiles.prepare(0.012):
+                QTimer.singleShot(1, self._prepare)
+        except RuntimeError:
+            pass
+
+    def show_window(self) -> None:
+        if self.win is None:
+            self.win = KartWindow(self)
+            if self.view is not None:
+                self.win.set_view(self.view)
+        self.win.show()
+        self.win.raise_()
+        self.win.activateWindow()
+        if self.view is not None:
+            self.view.setFocus()
+
+    def window_closed(self, w) -> None:
+        if self.win is w:
+            self.win = None
+            self.view = None if (self.st or {}).get("state") != "live" else self.view
+            if (self.st or {}).get("state") != "live":
+                self.close()
+
+    # -- the clock
+    def _tick(self) -> None:
+        if self.closed:
+            return
+        now = time.monotonic()
+        state = (self.st or {}).get("state")
+        if self.in_flight:
+            return
+        if state == "live" and self.view is not None:
+            if now - getattr(self, "_sent", 0.0) < 0.08:             # ~12 a second
+                return
+            self._sent = now
+            self.in_flight = True
+            t0 = now
+            snaps = self.view.snapshot()
+
+            def got(ok: bool, d) -> None:
+                self.in_flight = False
+                if not ok or not isinstance(d, dict) or self.view is None:
+                    return
+                self.rtt = self.rtt * 0.8 + (time.monotonic() - t0) * 0.2
+                v = self.view
+                srv = d.get("now")
+                if srv is not None and v.race.t < -0.5:                 # keep the lights in step with the server
+                    want = time.monotonic() - (float(srv) + self.rtt / 2)
+                    v.go_at += (want - v.go_at) * 0.3
+                for snap in d.get("karts") or []:
+                    try:
+                        v.feed(int(snap[0]), snap[2:], float(snap[1]))
+                    except (TypeError, ValueError, IndexError):
+                        pass
+                if d.get("bot_here") and v.bot_seat in v.race.remote:
+                    v.take_bot()
+                for seat in d.get("gone") or []:
+                    v.drop_seat(int(seat))
+                self._bot_done()
+                if d.get("state") != "live":
+                    self._state()
+            self.ctx.online.ask("rb_kart_ping", {"rid": self.rid, "snaps": snaps}, got)
+            if now - self.last_state > 3.0:
+                self.last_state = now
+                self._state()
+            return
+        if state == "open" and now - self.last_state > 1.2:
+            self.last_state = now
+            self._state()
+        elif state == "live" and self.view is None and now - self.last_state > 1.0:
+            self.last_state = now
+            self._state()
+        elif state == "done" and self.sent_finish is False:
+            pass
+
+    def _state(self) -> None:
+        def got(ok: bool, d) -> None:
+            if ok:
+                self.got_state(d)
+            elif "gone" in str(d).lower() or "game is over" in str(d).lower():
+                self.close()
+        self.ctx.online.ask("rb_kart_state", {"rid": self.rid}, got, raw=True)
+
+    def _bot_done(self) -> None:
+        v = self.view
+        if v is None or self.sent_bot or v.bot_seat < 0 or v.bot_seat in v.race.remote:
+            return
+        k = v.race.karts[v.bot_seat]
+        if not k.done:
+            return
+        self.sent_bot = True
+        laps = kart_ms_laps(k.laps, k.finish_t)
+        self.ctx.online.ask("rb_kart_finish", {"rid": self.rid, "ms": int(round(k.finish_t * 1000)), "laps": laps,
+                                               "best": min(laps), "blowups": k.blowups, "hits": k.hits,
+                                               "turbos": k.drift_turbos, "prog": k.prog, "is_bot": True},
+                            lambda ok, d: self.got_state(d) if ok else None)
+
+    def _finished(self, res: dict) -> None:
+        self.my_result = res
+        if self.sent_finish:
+            return
+        self.sent_finish = True
+        k = self.view.kart
+        k.ghost = 1e9                       # over the line: nobody can hit you any more
+        laps = kart_ms_laps(k.laps, k.finish_t)
+
+        def done(ok: bool, d) -> None:
+            if ok:
+                self.got_state(d)
+            else:
+                self.ctx.toast(tr(str(d)), "warn")
+        self.ctx.econ.call("rb_kart_finish", {"rid": self.rid, "ms": int(round(k.finish_t * 1000)), "laps": laps,
+                                              "best": min(laps), "blowups": k.blowups, "hits": k.hits,
+                                              "turbos": k.drift_turbos, "prog": k.prog, "is_bot": False}, done)
+
+    # -- buttons
+    def start(self) -> None:
+        self.ctx.econ.call("rb_kart_start", {"rid": self.rid},
+                           lambda ok, d: self.got_state(d) if ok else self.ctx.toast(tr(str(d)), "warn"))
+
+    def leave(self) -> None:
+        def done(_ok: bool, _d) -> None:
+            self.close()
+        self.ctx.econ.call("rb_kart_leave", {"rid": self.rid}, done)
+
+    def again(self) -> None:
+        """Solo: the same race again at once. In a room: back to Karting to set up the next one."""
+        st = self.st or {}
+        solo = int(st.get("size") or 1) == 1
+        self.close()
+        if solo:
+            o = kart_opts(self.ctx)
+            self.ctx.econ.call("rb_kart_create", {"size": 1, "track": int(st.get("track") or 0), "laps": int(st.get("laps") or 3),
+                                                  "bot_elo": int(st.get("bot_elo") or 1000), "bot": bool(st.get("bot")),
+                                                  "collide": o["collide"], "boost": o["boost"], "damage": o["damage"]},
+                               lambda ok, d: (KartLink.open(self.ctx, d), self.ctx.reload_page("games")) if ok
+                               else self.ctx.toast(tr(str(d)), "warn"))
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        self.timer.stop()
+        if self.win is not None:
+            w, self.win = self.win, None
+            w._sure = True
+            w.close()
+        KartAudio.get().stop()
+        if getattr(self.ctx, "kart_link", None) is self:
+            self.ctx.kart_link = None
+        self.ctx.kart_lobby = None
+        open_games_part(self.ctx, "kart", back="games")
+
+    def stop(self) -> None:
+        self.closed = True
+        self.timer.stop()
+
+
+def kart_ms_laps(laps: list, total: float) -> list:
+    """Lap times in ms that add up exactly to the race time in ms (the server checks the sum)."""
+    ms = [int(round(t * 1000)) for t in laps]
+    if ms:
+        ms[-1] += int(round(total * 1000)) - sum(ms)
+    return ms
+
+
+
+class TermsGate(QWidget):
+    """9.2: shown on the first launch (and when the Terms change): accept the Terms of Use and the Privacy Policy, or
+    quit. Nothing else starts before."""
+
+    @staticmethod
+    def needed(cfg) -> bool:
+        if "--selftest" in sys.argv or any(a.startswith("--selftest-update=") for a in sys.argv):
+            return False
+        try:
+            return int(cfg["terms_seen"] or 0) < TERMS_VERSION
+        except (TypeError, ValueError):
+            return True
+
+    def __init__(self, ctx, on_accept) -> None:
+        super().__init__()
+        self.ctx, self._on_accept = ctx, on_accept
+        self.setWindowTitle("Rubenium")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.W = 380
+        lay = vbox(self, 10, margins=(26, 24, 26, 22))
+        lay.addWidget(Label("Rubenium", 22, TEXT, bold=True))
+        lay.addWidget(Label(tr("Before you start"), 14, TEXT, bold=True))
+        for text in (tr("Rubenium is free. Coins, keys and items have no money value: they can never be bought, sold "
+                        "or cashed out."),
+                     tr("The online part is for people {n} and over. Cheating and trading items for real money are "
+                        "not allowed.", n=MIN_AGE),
+                     tr("By choosing Accept, you agree to the Terms of Use and the Privacy Policy.")):
+            lay.addWidget(Label(text, 11.5, TEXT_DIM, wrap_w=self.W))
+        links = hbox(spacing=8)
+        for text, url in ((tr("Terms of Use"), TERMS_URL), (tr("Privacy Policy"), PRIVACY_URL)):
+            b = Button(text, "ghost", 30)
+            b.clicked.connect(lambda _=False, u=url: open_web(u))
+            links.addWidget(b, 1)
+        lay.addLayout(links)
+        lay.addSpacing(S(4))
+        row = hbox(spacing=8)
+        quit_ = Button(tr("Quit"), "quiet", 38)
+        quit_.clicked.connect(self._quit)
+        ok = Button(tr("Accept"), "primary", 38)
+        ok.clicked.connect(self._accept)
+        row.addWidget(quit_, 1)
+        row.addWidget(ok, 2)
+        lay.addLayout(row)
+        self.setFixedWidth(S(self.W + 52))
+        self.adjustSize()
+        try:
+            from PyQt6.QtGui import QGuiApplication
+            geo = QGuiApplication.primaryScreen().availableGeometry()
+            self.move(geo.center().x() - self.width() // 2, geo.center().y() - self.height() // 2)
+        except Exception:  # noqa: BLE001
+            pass
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.setPen(QPen(QColor(255, 255, 255, 30), 1))
+        p.setBrush(QColor(BG_BOTTOM))
+        p.drawRoundedRect(r, S(18), S(18))
+
+    def _accept(self) -> None:
+        self.ctx.cfg["terms_seen"] = TERMS_VERSION
+        self.ctx.cfg.save()
+        self.hide()
+        self.deleteLater()
+        self._on_accept()
+
+    def _quit(self) -> None:
+        self.hide()
+        self.ctx.qapp.quit()
 
 
 def main() -> int:

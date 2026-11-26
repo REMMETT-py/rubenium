@@ -3,6 +3,8 @@
 -- a flawless run at the top level waits for an admin.
 -- needs_live_snapshot
 begin;
+-- 9.2 doubles skill pay (skill_pay_mult 2): these rule checks use the plain bases
+update public.rb_config set value = 1 where key = 'skill_pay_mult';
 do $$
 declare a uuid := t.player('Alice', 1000, 0); r jsonb; coin int; gid uuid; n int;
 begin
