@@ -104,11 +104,14 @@ jobs:
       - name: Test that an old Rubenium (4.0.0) updates itself to this version
         if: steps.exists.outputs.skip == '0'
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
           $work = Join-Path $env:RUNNER_TEMP "old"
           New-Item -ItemType Directory -Force $work | Out-Null
-          Invoke-WebRequest "https://github.com/REMMETT-py/rubenium/releases/download/v4.0.0/Rubenium.exe" -OutFile "$work\Rubenium.exe"
+          # 9.2: the source repo is private, so the old version is fetched with the workflow's token
+          gh release download v4.0.0 --repo "${{ github.repository }}" --pattern Rubenium.exe --dir "$work" --clobber
           $new = (Resolve-Path dist-portable\Rubenium.exe).Path
           Remove-Item $log -ErrorAction SilentlyContinue
           Start-Process "$work\Rubenium.exe" -ArgumentList "--selftest-update=$new"
@@ -203,3 +206,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ steps.ver.outputs.tag }}" out/* --title "${{ steps.ver.outputs.tag }} - Rubenium ${{ steps.ver.outputs.name }}" --notes-file release_notes.txt --latest
+
+      # 9.2: the source repo is private. Players download and update from the public repo REMMETT-py/rubenium-releases,
+      # which holds only the installer, the portable exe, their checksums, a README, the Terms and the Privacy Policy
+      # (never the source code or the swap files). Needs the secret RELEASES_TOKEN: a fine-grained token with
+      # Contents read and write on that repo only. Without it the step warns and the release above still stands.
+      - name: Publish the installer to the public releases repo
+        if: steps.exists.outputs.skip == '0' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          PUB: REMMETT-py/rubenium-releases
+          TAG: ${{ steps.ver.outputs.tag }}
+          NAME: ${{ steps.ver.outputs.name }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::RELEASES_TOKEN is not set: the installer was NOT published to $PUB"; exit 0
+          fi
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${PUB}.git" pub
+          cp public/README.md TERMS.md PRIVACY.md pub/
+          cd pub
+          git config user.name "Rubenium release"
+          git config user.email "rubenium-release@users.noreply.github.com"
+          git checkout -B main
+          git add README.md TERMS.md PRIVACY.md
+          git diff --cached --quiet || git commit -m "Rubenium $NAME"
+          git push origin main
+          cd ..
+          if gh release view "$TAG" --repo "$PUB" > /dev/null 2>&1; then echo "$TAG is already in $PUB"; exit 0; fi
+          gh release create "$TAG" out/RubeniumSetup.exe out/RubeniumSetup.exe.sha256 out/Rubenium.exe out/Rubenium.exe.sha256 \
+            --repo "$PUB" --title "Rubenium $NAME" --notes-file release_notes.txt --latest

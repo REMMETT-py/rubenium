@@ -9,13 +9,13 @@ begin
     perform t.act(a);
     r := public.rb_my_tier();
     reset role;
-    assert r ->> 'name' = 'Poor' and (r ->> 'next')::numeric = 10000, 'starts Poor: ' || r::text;
-    update public.profiles set coins = 80000 where id = a;
+    assert r ->> 'name' = 'Poor' and (r ->> 'next')::numeric = 25000, 'starts Poor: ' || r::text;
+    update public.profiles set coins = 120000 where id = a;
     perform t.act(a);
     r := public.rb_my_tier();
     reset role;
-    assert r ->> 'name' = 'Investor' and (r ->> 'mult')::numeric = 1.8, 'Investor at 80 000: ' || r::text;
-    assert (r -> 'forge' ->> 'cap')::int = 8 and (r -> 'forge' ->> 'price')::int = 400, 'forge by tier: ' || r::text;
+    assert r ->> 'name' = 'Investor' and (r ->> 'mult')::numeric = 1.8, 'Investor at 120 000: ' || r::text;
+    assert (r -> 'forge' ->> 'cap')::int = 8 and (r -> 'forge' ->> 'price')::int = 600, 'forge by tier: ' || r::text;
     update public.profiles set coins = 100 where id = a;
     r := public.rb_tier(a);
     assert r ->> 'name' = 'Investor', 'the tier is kept below its line: ' || r::text;

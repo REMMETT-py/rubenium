@@ -2,6 +2,7 @@
 -- through a lockdown, held pay, leaderboards with every game, and the admin replays.
 -- needs_live_snapshot
 begin;
+insert into public.rb_config (key, value) values ('reversi_on', 1) on conflict (key) do update set value = 1;   -- 9.2 hid it
 do $$
 declare pa uuid := t.player('Alice', 5000, 0); pb uuid := t.player('Bob', 5000, 0); boss uuid := t.player('Boss', 0, 0);
         r jsonb; err text; gid uuid; m int; guard int; side int; i int; c0 bigint; c1 bigint;
