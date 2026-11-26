@@ -6,6 +6,7 @@ declare a uuid := t.player('Alice', 30000, 2); b uuid := t.player('Bob', 0, 0); 
         r jsonb; err text; n integer; c0 bigint;
 begin
     update public.profiles set admin = true where id = boss;
+    update public.rb_config set value = 25000 where key = 'tier_at_1';      -- 9.4 raised it; this checks the 9.0 rules
     -- tiers come from wealth: 30 000 coins is Average (x1.3); nothing is Poor (x1)
     assert (public.rb_tier(a) ->> 'name') = 'Average', 'Alice should be Average: ' || public.rb_tier(a)::text;
     assert public.rb_tier_mult(a) = 1.3, 'Average is x1.3';
@@ -37,7 +38,7 @@ begin
 
     -- daily reward rows are scaled for the player
     r := public.rb_login_state()::jsonb;
-    assert (r -> 'rewards' -> 0 ->> 'coins')::int = 200, 'day 1 is 150 x 1.3: ' || r::text;
+    assert r -> 'rewards' -> 0 ->> 'case' = 'starter', '9.4: day 1 is a Starter Case: ' || r::text;
 
     -- the Key Forge (9.1): 0.5% of wealth (at least 250), 3 a day for a Poor player
     reset role;

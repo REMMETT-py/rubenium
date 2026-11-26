@@ -1491,7 +1491,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.3.2"   # the version people see
+VERSION_NAME = "9.4"   # the version people see
 BUILD = "2026.11.26.30"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
@@ -3547,6 +3547,7 @@ class Econ(QObject):
                 old = (getattr(self, "tier", None), getattr(self, "forge", None))
                 self.tier = {k: data[k] for k in data if k != "forge"}
                 self.forge = data.get("forge") if isinstance(data.get("forge"), dict) else None
+                self.forge_read_at = _t.monotonic()          # 9.4: the forge and hourly timers count from here
                 if old != (self.tier, self.forge):
                     if (old[0] or {}).get("tier") != self.tier.get("tier"):
                         self.ctx.scratch_odds = None          # the prizes shown follow the tier
@@ -12710,6 +12711,14 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.4", ["A fresh start for everyone: coins, items, badges, mythics, cases, levels, trophies, stats and every "
+             "leaderboard start again, and everyone gets the starter pack",
+             "Tiers are harder: Average 50 000, Investor 250 000, Businessman 1 000 000, Casino Legend 5 000 000, and you "
+             "go up one tier a day at most",
+             "Key Forge: it refills every 12 hours, at midnight and noon, and the first press shows the price before you pay",
+             "Hourly keys: 3 free keys every hour on Rewards",
+             "Daily reward: a free case every day",
+             "Free spin: bigger prizes, up to 7 500 coins times your tier"]),
     ("9.3.2", ["Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone",
                "Stats: one All time view, and every stat starts again from 0",
                "Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies",
@@ -13409,7 +13418,7 @@ FR.update({  # 9.1
     'Poor': 'Pauvre',
     'Average': 'Moyen',
     'Investor': 'Investisseur',
-    'Businessman': 'Homme d’affaires',
+    'Businessman': 'Businessman',
     'Casino Legend': 'Légende du casino',
     'Crown Vault': 'Coffre de la Couronne',
     'A fresh start for everyone: coins and keys go back to 0. Your level, your Common and Rare basic items and the OG tag stay': 'Un nouveau départ pour tous : pièces et clés reviennent à 0. Ton niveau, tes objets de base Communs et Rares et le tag OG restent',
@@ -13431,11 +13440,11 @@ FR.update({  # 9.1
     'One account per PC': 'Un seul compte par PC',
 })  # 9.1 end
 FR.update({  # 9.1.1
-    'Your wealth = your coins + the shop value of every item you got since 9.1. Cases you have not opened and items from before 9.1 do not count. Average at 25 000, Investor at 100 000, Businessman at 250 000, Casino Legend at 1 000 000. Free rewards (spins, scratch cards, daily rewards, quests, mini games and AFK coins) are multiplied by your tier. Once you reach a tier you keep it.': 'Ta richesse = tes pièces + la valeur en boutique de chaque objet reçu depuis la 9.1. Les caisses pas encore ouvertes et les objets d’avant la 9.1 ne comptent pas. Moyen à 25 000, Investisseur à 100 000, Homme d’affaires à 250 000, Légende du casino à 1 000 000. Les récompenses gratuites (roues, cartes à gratter, récompenses du jour, quêtes, mini-jeux et pièces AFK) sont multipliées par ton rang. Un rang atteint est gardé.',
+    'Your wealth = your coins + the shop value of every item you got since 9.1. Cases you have not opened and items from before 9.1 do not count. Average at 25 000, Investor at 100 000, Businessman at 250 000, Casino Legend at 1 000 000. Free rewards (spins, scratch cards, daily rewards, quests, mini games and AFK coins) are multiplied by your tier. Once you reach a tier you keep it.': 'Ta richesse = tes pièces + la valeur en boutique de chaque objet reçu depuis la 9.1. Les caisses pas encore ouvertes et les objets d’avant la 9.1 ne comptent pas. Moyen à 25 000, Investisseur à 100 000, Businessman à 250 000, Légende du casino à 1 000 000. Les récompenses gratuites (roues, cartes à gratter, récompenses du jour, quêtes, mini-jeux et pièces AFK) sont multipliées par ton rang. Un rang atteint est gardé.',
     'Wealth {w} = {c} coins + {i} in items': 'Richesse {w} = {c} pièces + {i} en objets',
     'Wealth {w} / {n} for {name}': 'Richesse {w} / {n} pour {name}',
     'A starter pack for everyone: 2 500 coins, 5 keys, 3 Starter Cases and 5 Standard Cases': 'Un pack de départ pour tout le monde : 2 500 pièces, 5 clés, 3 Caisses Débutant et 5 Caisses Standard',
-    'Lower tiers: Average 25 000, Investor 100 000, Businessman 250 000, Casino Legend 1 000 000. Everyone starts at Poor': 'Des rangs plus bas : Moyen 25 000, Investisseur 100 000, Homme d’affaires 250 000, Légende du casino 1 000 000. Tout le monde commence Pauvre',
+    'Lower tiers: Average 25 000, Investor 100 000, Businessman 250 000, Casino Legend 1 000 000. Everyone starts at Poor': 'Des rangs plus bas : Moyen 25 000, Investisseur 100 000, Businessman 250 000, Légende du casino 1 000 000. Tout le monde commence Pauvre',
     'Your wealth is exact now: your coins + the shop value of the items you got since 9.1. The tier bar shows it, and hovering it shows the coins and items parts': 'Ta richesse est exacte maintenant : tes pièces + la valeur en boutique des objets reçus depuis la 9.1. La barre de rang l’affiche, et en la survolant tu vois la part pièces et la part objets',
 })  # 9.1.1 end
 FR.update({  # 9.2
@@ -34440,7 +34449,7 @@ class Daily(Game):
     # (coins, keys) on each slice
     PRIZES = [(120, 0), (200, 0), (300, 0), (450, 0), (700, 0), (1200, 0), (2500, 0), (0, 1)]   # 6.0: pays more      # as the server numbers them
 
-    PRIZES_90 = [100, 150, 250, 400, 600, 1000, 2000]          # 9.0: times your wealth tier
+    PRIZES_90 = [100, 200, 400, 750, 1500, 3000, 7500]         # 9.4: times your wealth tier
 
     def prizes(self) -> list:
         """3.1: a 9th slice, GOLD (the Golden Wheel). 4.0: a 10th, an XP coupon (keys = -3). 9.0: scaled by tier."""
@@ -39805,6 +39814,8 @@ class DayTile(QWidget):
         super().__init__()
         self.k, self.reward, self.state = k, reward, state          # state: done / today / later
         self.setFixedSize(S(38), S(56))
+        if reward.get("case"):                                     # 9.4: a case every day
+            self.setToolTip(tr(CASE_NAMES.get(reward["case"], "Case")))
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -39819,6 +39830,13 @@ class DayTile(QWidget):
         p.setFont(font(8.5, QFont.Weight.Bold))
         p.drawText(QRectF(r.left(), r.top() + S(3), r.width(), S(12)), int(Qt.AlignmentFlag.AlignCenter), tr("Day {n}", n=self.k + 1))
         rw = self.reward
+        if rw.get("case") and not rw.get("coins") and not rw.get("keys"):     # 9.4: just the case
+            paint_case(p, QRectF(r.left() + S(5), r.top() + S(17), r.width() - S(10), S(30)), rw["case"])
+            if self.state == "done":
+                p.setPen(QPen(QColor("#3DDC84"), S(2)))
+                p.drawLine(QPointF(r.right() - S(12), r.top() + S(18)), QPointF(r.right() - S(8), r.top() + S(22)))
+                p.drawLine(QPointF(r.right() - S(8), r.top() + S(22)), QPointF(r.right() - S(2), r.top() + S(14)))
+            return
         p.save()
         p.translate(r.center().x(), r.center().y() + S(1))
         p.scale(0.8, 0.8)
@@ -39856,9 +39874,10 @@ class LoginWindow(FloatWindow):
         col.addWidget(Label(tr("Daily reward"), 16, bold=True))
         head.addLayout(col, 1)
         lay.addLayout(head)
-        lay.addWidget(Label(tr("Day 7 gives a free case. Missing a day resets the streak."),
-                            11, TEXT_DIM, wrap_w=S(294)))
         rewards = list(state.get("rewards") or [])
+        every_case = bool(rewards) and all(rw.get("case") and not rw.get("coins") for rw in rewards)
+        lay.addWidget(Label(tr("A free case every day. Missing a day starts again from day 1.") if every_case else
+                            tr("Day 7 gives a free case. Missing a day resets the streak."), 11, TEXT_DIM, wrap_w=S(294)))
         today = int(state.get("day") or 0)
         row = hbox(spacing=4)
         for k, rw in enumerate(rewards[:7]):
@@ -39889,7 +39908,7 @@ class LoginWindow(FloatWindow):
             if rw.get("keys"):
                 parts.append(tr("+{n} key(s)", n=rw["keys"]))
             if rw.get("case"):
-                parts.append(tr("+1 free case"))
+                parts.append("+" + tr(CASE_NAMES.get(rw["case"], "Case")) if not rw.get("coins") else tr("+1 free case"))
             self.ctx.toast("  ".join(parts) + "  ·  " + tr("Day {n}", n=data.get("streak", 1)))
             self.ctx.econ.streak, self.ctx.econ.streak_day = int(data.get("streak") or 1), datetime.date.today().isoformat()
             self.ctx.econ.refresh()
@@ -50786,8 +50805,8 @@ def tier_info(ctx) -> dict:
     return {"tier": i, "name": tiers[i][0], "mult": tiers[i][2], "wealth": bal, "next": nxt}
 
 
-WEALTH_TIERS = [("Poor", 0, 1.0, "#9AA5B1"), ("Average", 25000, 1.3, "#5FD3A0"), ("Investor", 100000, 1.8, "#4FC3FF"),
-                ("Businessman", 250000, 2.6, "#F5C04A"), ("Casino Legend", 1000000, 4.0, "#FF5CA8")]     # 9.1.1
+WEALTH_TIERS = [("Poor", 0, 1.0, "#9AA5B1"), ("Average", 50000, 1.3, "#5FD3A0"), ("Investor", 250000, 1.8, "#4FC3FF"),
+                ("Businessman", 1000000, 2.6, "#F5C04A"), ("Casino Legend", 5000000, 4.0, "#FF5CA8")]     # 9.4
 TIER_ICONS = ("coin", "chart", "gem", "briefcase", "crown")
 
 
@@ -50921,11 +50940,10 @@ class TierBanner(QWidget):
         self.setFixedHeight(S(92))
         lay = hbox(self, 6, (S(14), S(8), S(10), 0))
         lay.addStretch(1)
-        lay.addWidget(HelpDot(tr("Your wealth = your coins + the shop value of every item you got since 9.1. Cases you "
-                                 "have not opened and items from before 9.1 do not count. Average at 25 000, Investor at "
-                                 "100 000, Businessman at 250 000, Casino Legend at 1 000 000. Free rewards (spins, scratch "
-                                 "cards, daily rewards, quests, mini games and AFK coins) are multiplied by your tier. Once "
-                                 "you reach a tier you keep it."), tr("Wealth tier")), 0, Qt.AlignmentFlag.AlignTop)
+        lay.addWidget(HelpDot(tr("Your wealth = your coins + the shop value of your items. Average at 50 000, Investor at "
+                                 "250 000, Businessman at 1 000 000, Casino Legend at 5 000 000. You go up one tier a day at "
+                                 "most. Free rewards are multiplied by your tier, and a tier you reach is yours for good."),
+                              tr("Wealth tier")), 0, Qt.AlignmentFlag.AlignTop)
         self._fill = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
         self._want = None
         self.setCursor(Qt.CursorShape.PointingHandCursor)       # 9.2.1: a click shows what every tier gets
@@ -51002,6 +51020,8 @@ class TierBanner(QWidget):
         p.setFont(font(10, QFont.Weight.DemiBold))
         label = tr("Top tier") if not nxt else tr("Wealth {w} / {n} for {name}", w=coins_text(int(t.get("wealth") or 0)),
                                                   name=tr(WEALTH_TIERS[i + 1][0]), n=coins_text(int(nxt)))
+        if nxt and t.get("wait"):                                   # 9.4: one tier a day
+            label = tr("{name} tomorrow", name=tr(WEALTH_TIERS[i + 1][0]))
         p.drawText(QRectF(r.left() + S(60), r.top() + S(12), r.width() - S(60) - S(44), S(22)),
                    int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), label)
         # the track: five stops; the part to the next stop charges up
@@ -51061,7 +51081,8 @@ FR.update({'Play the bot for free. Win to earn coins.': 'Joue contre le bot grat
            'Click a square to place a mark': 'Clique sur une case pour poser un pion'})  # 9.3.2
 FR.update({'All time': 'Depuis le début', 'Change, all time': 'Évolution, depuis le début',
            'Free coins, all time': 'Pièces gratuites, depuis le début'})  # 9.3.2
-FR.update({'See what every tier gets': 'Voir ce que chaque rang apporte', 'No limit': 'Sans limite', 'Free rewards': 'Récompenses gratuites', 'Mini game coins a day (each game)': 'Pièces des mini-jeux par jour (chaque jeu)', 'Karting prizes a day': 'Gains de Karting par jour', 'AFK coins a day': 'Pièces AFK par jour', 'Keys kept from time': 'Clés gardées avec le temps', 'Key Forge a day': 'Forge à clés par jour', 'Keys found in games a day': 'Clés trouvées en jouant par jour', 'Biggest duel bet': 'Plus grosse mise en duel', 'UP': 'PLUS', 'RANK UP': 'NOUVEAU RANG', 'WHAT YOU UNLOCKED': 'CE QUE TU DÉBLOQUES', 'Wealth tiers': 'Rangs de richesse', 'Every tier pays more and lifts your daily limits. A tier you reach is yours for good. Click a tier to see what it gets.': 'Chaque rang paie plus et relève tes limites par jour. Un rang atteint est à toi pour de bon. Clique sur un rang pour voir ce qu’il apporte.', "Let's go": 'C’est parti', 'Casino Legend is the top tier: no daily limits on mini games, Karting or AFK coins.': 'Légende du casino est le rang le plus haut : aucune limite par jour sur les mini-jeux, le Karting ou les pièces AFK.', 'Next: {name} at {n} wealth.': 'Prochain : {name} à {n} de richesse.', 'Rank up! You are now {name}': 'Nouveau rang ! Tu es maintenant {name}', 'Prizes today: {a} (no daily limit)': 'Gains du jour : {a} (sans limite par jour)', 'Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all': 'Des limites de gains plus hautes qui suivent ton rang de richesse : les mini-jeux, le Karting et les pièces AFK paient jusqu’à deux fois plus par jour pour Pauvre, jusqu’à 6 fois pour Homme d’affaires, et Légende du casino n’a plus aucune limite par jour', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms': 'Les rangs plus hauts gardent aussi plus de clés avec le temps, forgent plus de clés par jour, trouvent plus de clés en jouant et peuvent miser plus en duel et dans les salons', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets': 'Un écran de nouveau rang quand tu atteins un rang, avec tout ce qu’il débloque. Clique sur la barre de rang dans Accueil quand tu veux pour voir ce que chaque rang apporte'})   # 9.2.1: prize limits by tier, the rank-up screen
+FR.update({'See what every tier gets': 'Voir ce que chaque rang apporte', 'No limit': 'Sans limite', 'Free rewards': 'Récompenses gratuites', 'Mini game coins a day (each game)': 'Pièces des mini-jeux par jour (chaque jeu)', 'Karting prizes a day': 'Gains de Karting par jour', 'AFK coins a day': 'Pièces AFK par jour', 'Keys kept from time': 'Clés gardées avec le temps', 'Key Forge a day': 'Forge à clés par jour', 'Keys found in games a day': 'Clés trouvées en jouant par jour', 'Biggest duel bet': 'Plus grosse mise en duel', 'UP': 'PLUS', 'RANK UP': 'NOUVEAU RANG', 'WHAT YOU UNLOCKED': 'CE QUE TU DÉBLOQUES', 'Wealth tiers': 'Rangs de richesse', 'Every tier pays more and lifts your daily limits. A tier you reach is yours for good. Click a tier to see what it gets.': 'Chaque rang paie plus et relève tes limites par jour. Un rang atteint est à toi pour de bon. Clique sur un rang pour voir ce qu’il apporte.', "Let's go": 'C’est parti', 'Casino Legend is the top tier: no daily limits on mini games, Karting or AFK coins.': 'Légende du casino est le rang le plus haut : aucune limite par jour sur les mini-jeux, le Karting ou les pièces AFK.', 'Next: {name} at {n} wealth.': 'Prochain : {name} à {n} de richesse.', 'Rank up! You are now {name}': 'Nouveau rang ! Tu es maintenant {name}', 'Prizes today: {a} (no daily limit)': 'Gains du jour : {a} (sans limite par jour)', 'Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all': 'Des limites de gains plus hautes qui suivent ton rang de richesse : les mini-jeux, le Karting et les pièces AFK paient jusqu’à deux fois plus par jour pour Pauvre, jusqu’à 6 fois pour Businessman, et Légende du casino n’a plus aucune limite par jour', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms': 'Les rangs plus hauts gardent aussi plus de clés avec le temps, forgent plus de clés par jour, trouvent plus de clés en jouant et peuvent miser plus en duel et dans les salons', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets': 'Un écran de nouveau rang quand tu atteins un rang, avec tout ce qu’il débloque. Clique sur la barre de rang dans Accueil quand tu veux pour voir ce que chaque rang apporte'})   # 9.2.1: prize limits by tier, the rank-up screen
+FR.update({'A fresh start for everyone: coins, items, badges, mythics, cases, levels, trophies, stats and every leaderboard start again, and everyone gets the starter pack': 'Un nouveau départ pour tout le monde : pièces, objets, badges, mythiques, caisses, niveaux, trophées, stats et tous les classements repartent de zéro, et chacun reçoit le pack de départ', 'Tiers are harder: Average 50 000, Investor 250 000, Businessman 1 000 000, Casino Legend 5 000 000, and you go up one tier a day at most': 'Les rangs sont plus durs : Moyen 50 000, Investisseur 250 000, Businessman 1 000 000, Légende du casino 5 000 000, et tu montes d’un rang par jour au maximum', 'Key Forge: it refills every 12 hours, at midnight and noon, and the first press shows the price before you pay': 'Forge à clés : elle se recharge toutes les 12 heures, à minuit et à midi, et le premier clic montre le prix avant de payer', 'Hourly keys: 3 free keys every hour on Rewards': 'Clés horaires : 3 clés gratuites chaque heure dans Récompenses', 'Daily reward: a free case every day': 'Récompense du jour : une caisse gratuite chaque jour', 'Free spin: bigger prizes, up to 7 500 coins times your tier': 'Tour gratuit : de plus gros gains, jusqu’à 7 500 pièces fois ton rang', 'A free case every day. Missing a day starts again from day 1.': 'Une caisse gratuite chaque jour. Si tu rates un jour, tu repars du jour 1.', 'Your wealth = your coins + the shop value of your items. Average at 50 000, Investor at 250 000, Businessman at 1 000 000, Casino Legend at 5 000 000. You go up one tier a day at most. Free rewards are multiplied by your tier, and a tier you reach is yours for good.': 'Ta richesse = tes pièces + la valeur en boutique de tes objets. Moyen à 50 000, Investisseur à 250 000, Businessman à 1 000 000, Légende du casino à 5 000 000. Tu montes d’un rang par jour au maximum. Les récompenses gratuites sont multipliées par ton rang, et un rang atteint est à toi pour de bon.', '{name} tomorrow': '{name} demain', 'A free case every day': 'Une caisse gratuite chaque jour', 'Pay coins for a key. The price is 0.5% of your wealth (at least 250 coins). The forge refills at midnight and at noon, and higher tiers can forge more keys.': 'Paie des pièces pour une clé. Le prix est 0,5 % de ta richesse (au moins 250 pièces). La forge se recharge à minuit et à midi, et les rangs plus hauts forgent plus de clés.', 'refills in {t}': 'recharge dans {t}', '{n} of {cap} left': '{n} sur {cap} restantes', 'Refills in {t}': 'Recharge dans {t}', 'Pay {c}': 'Payer {c}', 'Hourly keys': 'Clés horaires', 'Next in {t}': 'Prochaines dans {t}', '{n} free keys every hour': '{n} clés gratuites chaque heure', 'Claim {n} keys': 'Prendre {n} clés'})   # 9.4: harder tiers, the 12 hour forge, hourly keys, daily cases
 
 
 # ================================================================ 9.2.1: what each tier gets, and the rank-up screen
@@ -51605,7 +51626,7 @@ class RewardsPage(Page):
                  ready=lambda: int(getattr(ec, "scratch_in", 0) or 0) <= 0, note=hours("scratch_hours", 12)),
             Tile(tr("Daily reward"), lambda: tr("Claim") if streak_ready() else tr("Day {n}", n=max(1, int(ec.streak or 0))),
                  "flame", ("#FF8A3D", "#7A1F0A"), lambda: check_login_reward(ctx, force=True), height=132, ready=streak_ready,
-                 note=tr("Once a day: more each day in a row")),
+                 note=tr("A free case every day")),
             Tile(tr("Quests"), lambda: (tr("{n} to claim", n=quests_ready(getattr(ctx, "quests_data", None)))
                                         if quests_ready(getattr(ctx, "quests_data", None)) else tr("Goals")),
                  "spark", ("#35E0A1", "#0B4A5A"), lambda: open_games_part(ctx, None, "quests_open", back="rewards"),
@@ -51614,12 +51635,20 @@ class RewardsPage(Page):
         ], 2))
         if getattr(ec, "tier", None):                 # a 9.0 server
             lay.addWidget(KeyForge(ctx))
+            if "hourly" in (getattr(ec, "forge", None) or {}):      # 9.4: free keys every hour
+                lay.addWidget(HourlyKeys(ctx))
         lay.addStretch(1)
 
 
+def forge_left_at(ctx) -> float:
+    """9.4: when (monotonic) the forge and hourly timers were last read from the server."""
+    return float(getattr(ctx.econ, "forge_read_at", 0.0) or 0.0)
+
+
 class KeyForge(QWidget):
-    """9.1: coins in, a key out. One clear line: the price, how many forges are left today (dots), and a big button.
-    The price is a small share of your wealth (0.5%, at least 250); higher tiers get more forges a day."""
+    """9.1: coins in, a key out. One clear line: the price, how many forges are left (dots), and a big button.
+    9.4: the forges come back every 12 hours (midnight and noon), and nothing is paid until you press twice: the first
+    press shows the price on the button."""
 
     def __init__(self, ctx) -> None:
         super().__init__()
@@ -51629,8 +51658,8 @@ class KeyForge(QWidget):
         col = vbox(spacing=4)
         top = hbox(spacing=6)
         top.addWidget(Label(tr("Key Forge"), 15, weight=QFont.Weight.ExtraBold).fit())
-        top.addWidget(HelpDot(tr("Pay coins, get a key. The price is 0.5% of your wealth (at least 250 coins). "
-                                 "Higher tiers can forge more keys a day."), tr("Key Forge")))
+        top.addWidget(HelpDot(tr("Pay coins for a key. The price is 0.5% of your wealth (at least 250 coins). The forge "
+                                 "refills at midnight and at noon, and higher tiers can forge more keys."), tr("Key Forge")))
         top.addStretch(1)
         col.addLayout(top)
         self.price = Label("", 13, TEXT, bold=True)
@@ -51649,6 +51678,11 @@ class KeyForge(QWidget):
         self._anim.setInterval(16)
         self._anim.timeout.connect(self._step)
         self._busy = False
+        self._armed = 0.0                             # 9.4: the first press asks, the second pays
+        self._clock = QTimer(self)
+        self._clock.setInterval(1000)
+        self._clock.timeout.connect(self._fill)
+        self._clock.start()
         self._fill()
         ctx.econ.looks_changed.connect(self._fill)
         ctx.wallet.changed.connect(self._fill)
@@ -51670,8 +51704,19 @@ class KeyForge(QWidget):
             return
         self.price.set_text(tr("{c} coins → 1 key", c=coins_text(price)))
         rich = self.ctx.wallet.balance() >= price
-        self.sub.set_text(tr("{n} of {cap} left today", n=left, cap=cap) if left and rich else
-                          tr("Come back tomorrow") if not left else tr("Not enough coins"))
+        f = getattr(self.ctx.econ, "forge", None) or {}
+        back = ""
+        if f.get("resets") is not None:               # 9.4: every 12 hours
+            back = clock_text(max(0, int(f["resets"]) - int(time.monotonic() - forge_left_at(self.ctx))))
+        if left and rich:
+            self.sub.set_text(tr("{n} of {cap} left", n=left, cap=cap) + (("  ·  " + tr("refills in {t}", t=back)) if back else ""))
+        elif not left:
+            self.sub.set_text(tr("Refills in {t}", t=back) if back else tr("Come back tomorrow"))
+        else:
+            self.sub.set_text(tr("Not enough coins"))
+        if self._armed and time.monotonic() - self._armed > 4:
+            self._armed = 0.0
+        self.btn.set_text(tr("Pay {c}", c=coins_text(price)) if self._armed else tr("Forge a key"))
         self.btn.setEnabled(left > 0 and rich and not self._busy)
         self.update()
 
@@ -51679,6 +51724,11 @@ class KeyForge(QWidget):
         ctx = self.ctx
         if self._busy:
             return
+        if not self._armed:                           # 9.4: the first press only shows the price
+            self._armed = time.monotonic()
+            sfx.play("on")
+            return self._fill()
+        self._armed = 0.0
         self._busy = True
         self.btn.setEnabled(False)
 
@@ -51690,7 +51740,8 @@ class KeyForge(QWidget):
                 return
             if ok and isinstance(data, dict):
                 ctx.econ.absorb(data)
-                ctx.econ.forge = data.get("forge") or ctx.econ.forge
+                if data.get("forge"):
+                    ctx.econ.forge, ctx.econ.forge_read_at = data["forge"], time.monotonic()
                 sfx.play("key") if "key" in Sfx.SOUNDS else sfx.play("coin")
                 self._strike()
                 ctx.wallet.changed.emit()
@@ -51778,6 +51829,99 @@ class KeyForge(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(mix(QColor("#FFD27A"), QColor(KEY_BLUE), 1 - life), life))
             p.drawEllipse(QPointF(x, y), S(1.8), S(1.8))
+
+
+class HourlyKeys(QWidget):
+    """9.4: free keys every hour (3), with a clock instead of the anvil so it never looks like the forge."""
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.setFixedHeight(S(84))
+        lay = hbox(self, 10, (S(118), S(10), S(14), S(10)))
+        col = vbox(spacing=4)
+        col.addWidget(Label(tr("Hourly keys"), 15, weight=QFont.Weight.ExtraBold).fit())
+        self.sub = Label("", 10.5, TEXT_DIM)
+        col.addWidget(self.sub)
+        col.addStretch(1)
+        lay.addLayout(col, 1)
+        self.btn = Button("", "primary", 44, icon="key")
+        self.btn.setFixedWidth(S(160))
+        self.btn.clicked.connect(self._claim)
+        lay.addWidget(self.btn, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._busy = False
+        self._pop = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self._clock = QTimer(self)
+        self._clock.setInterval(1000)
+        self._clock.timeout.connect(self._fill)
+        self._clock.start()
+        self._fill()
+
+    def _wait(self) -> tuple:
+        f = getattr(self.ctx.econ, "forge", None) or {}
+        n = int(f.get("hourly", 3) or 3)
+        wait = int(f.get("hourly_in", 0) or 0) - int(time.monotonic() - forge_left_at(self.ctx))
+        return n, max(0, wait)
+
+    def _fill(self) -> None:
+        try:
+            self.sub.isVisible()
+        except RuntimeError:
+            return
+        n, wait = self._wait()
+        self.sub.set_text(tr("{n} free keys every hour", n=n) if not wait else tr("Next in {t}", t=clock_text(wait)))
+        self.btn.set_text(tr("Claim {n} keys", n=n) if not wait else clock_text(wait))
+        self.btn.setEnabled(not wait and not self._busy)
+        self.update()
+
+    def _claim(self) -> None:
+        ctx = self.ctx
+        if self._busy:
+            return
+        self._busy = True
+        self.btn.setEnabled(False)
+
+        def got(ok: bool, data) -> None:
+            self._busy = False
+            try:
+                self.isVisible()
+            except RuntimeError:
+                return
+            if ok and isinstance(data, dict):
+                ctx.econ.absorb(data)
+                if data.get("forge"):
+                    ctx.econ.forge, ctx.econ.forge_read_at = data["forge"], time.monotonic()
+                sfx.play("key") if "key" in Sfx.SOUNDS else sfx.play("coin")
+                ctx.toast(tr("+{n} key(s)", n=int(data.get("won_keys") or 0)))
+                self._pop.jump(1.0)
+                self._pop.to(0.0, int(700 * ui.motion))
+                ctx.wallet.changed.emit()
+            else:
+                ctx.toast(tr(str(data)), "warn")
+                ctx.econ.fetch_tier(force=True)
+            self._fill()
+        ctx.econ.call("rb_hourly_keys", {}, got)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        gold = QColor(GOLD_TEXT)
+        paint_surface(p, r, S(16), 0.04, 0.0, tint=gold, tint_a=0.10)
+        c = QPointF(S(60), self.height() / 2)
+        n, wait = self._wait()
+        frac = 1.0 - min(1.0, wait / 3600.0)
+        p.setPen(QPen(alpha("#FFFFFF", 0.10), S(4)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(c, S(26), S(26))
+        p.setPen(QPen(gold, S(4), Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.drawArc(QRectF(c.x() - S(26), c.y() - S(26), S(52), S(52)), 90 * 16, -int(360 * 16 * frac))
+        h = self._pop.level
+        p.save()
+        p.translate(c.x(), c.y() - S(4) * h)
+        p.scale(S(20) / 20 * (1 + 0.3 * h), S(20) / 20 * (1 + 0.3 * h))
+        draw_icon(p, "key", mix(gold, QColor("#FFFFFF"), 0.2 + 0.6 * h))
+        p.restore()
 
 
 class ScreenPage(Combined):
@@ -59905,8 +60049,14 @@ class WalletChip(QWidget):
         self._sec.setInterval(1000)
         self._sec.timeout.connect(self.update)
         self._sec.start()
-        ctx.wallet.changed.connect(lambda: self._tick.start())
+        ctx.wallet.changed.connect(self._wake)
         self._fit()
+
+    def _wake(self) -> None:
+        try:
+            self._tick.start()
+        except RuntimeError:                          # 9.4: this bar was closed (a language change rebuilds it)
+            pass
 
     def _fit(self) -> None:
         f = font(14, QFont.Weight.ExtraBold)
