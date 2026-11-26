@@ -35952,10 +35952,6 @@ class MazeBoard(QWidget):
         p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
         p.setBrush(QColor(10, 12, 16))
         p.drawRoundedRect(board, S(12), S(12))
-        if self.my_turn():                                       # 9.3.2: your turn: the board lights up in your colour
-            p.setPen(QPen(alpha(MAZE_COLS[mine], 0.75), S(2)))
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawRoundedRect(board.adjusted(-S(1), -S(1), S(1), S(1)), S(13), S(13))
         legal = set(self.d.get("legal") or []) if self.my_turn() else set()
         my_goal, their_goal = (0, 8) if side == 1 else (8, 0)
         for cell in range(81):
@@ -36159,10 +36155,6 @@ class TriBoard(QWidget):
         p.setPen(QPen(alpha("#FFFFFF", 0.08), 1))
         p.setBrush(QColor(10, 12, 16))
         p.drawRoundedRect(board, S(14), S(14))
-        if self.my_turn():                                      # 9.3.2: your turn: the board lights up in your colour
-            p.setPen(QPen(alpha(MAZE_COLS[side - 1], 0.75), S(2)))
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawRoundedRect(board.adjusted(-S(1), -S(1), S(1), S(1)), S(15), S(15))
         mine = q1 if side == 1 else q2
         mine_turn = self.my_turn()
         goes = mine[0] if mine_turn and len(mine) >= 3 and self._free(self.hover) else -1
