@@ -1,6 +1,7 @@
-Rubenium 9.3.1
+Rubenium 9.3.2
 
-- Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor and up to 6 times for Businessman
-- Casino Legend has no daily prize limit at all
-- Higher tiers keep more keys, forge more and can bet more in duels and rooms
-- A rank-up screen shows what your new tier unlocks, and clicking the tier bar on Home shows what every tier gets
+- Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone
+- Stats: one All time view, and every stat starts again from 0
+- Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies
+- Clearer game menus: shorter rules in plain words, and no more win counters
+- Hoops: smoother bots, shorter replays you can turn off, an OPEN badge when your team-mate is free, and a stronger Professional

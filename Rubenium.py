@@ -1491,8 +1491,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.3.1"   # the version people see
-BUILD = "2026.11.26.29"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "9.3.2"   # the version people see
+BUILD = "2026.11.26.30"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12710,6 +12710,12 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.3.2", ["Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone",
+               "Stats: one All time view, and every stat starts again from 0",
+               "Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies",
+               "Clearer game menus: shorter rules in plain words, and no more win counters",
+               "Hoops: smoother bots, shorter replays you can turn off, an OPEN badge when your team-mate is free, and a "
+               "stronger Professional"]),
     ("9.3.1", ['Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets']),
     ("9.3", ["NEW: Hoops, 2 v 2 basketball. You and a bot team-mate against two bots: Club, Regional, National or Professional. Dribble with Space, pass round the defence (lobs, bounce and curved passes), time your shots on the meter, steal, block and intercept. Ties go to overtime, every basket gets a replay, and wins pay more at a higher tier"]),
     ("9.2", ["NEW: Karting, a racing game for 1 to 3 players and always one bot, on 3 circuits. Boost, drift for mini turbos, slipstream, bump the others, and big crashes wreck your kart. Pick the bot from 100 to 2500 (Professional is a perfect driver), and after each race everyone gets a score out of 100%", "Mini Golf rooms: pick the bots' level, from Easy to Professional. Bots play every hole with the real ball physics, and Professional finds a hole in one wherever there is one", 'Mini games pay double: Timing, Cups, Colour Pick, SFX Match, Connect 4, Beat Tap, Parking, Memory, Block Blast, Minesweeper and every bot game', 'The top bot is called Professional in every game, and it plays the strongest moves it can find', 'NEW: Trifade, endless noughts and crosses. You only keep 3 marks: your 4th takes your oldest away, so the game goes on until someone wins. Against bots from Easy to Professional (it always starts and plays the best move every time), or against players', 'NEW: Mazelock, a duel board game. Race your pawn to the other side and place walls to block the way. Against bots from Easy to Professional (it always starts and plays the strongest moves it can find), or against players', 'Play is clearer: Mini games, then Duels (Connect 4, Battleships, Mazelock, Trifade, each against a bot or a player), then Multiplayer (Mini Golf and Wave Rush, up to 4 players)', 'Wave Rush rooms for 2 to 4 players: everyone races live in their own colour, and after a crash you watch the others (switch with the arrows or by clicking a name). The longest run wins the pot', 'Wave Rush: the practice ghost has its own clear card, and it never shows in races against players', 'Trophies have their own page in the side menu', 'A new Home: your tier, the free rewards waiting for you, the game that is live now and the games you played last', 'Jackpot and Horse Racing take turns every 20 minutes on a fixed clock. The next one stays locked with a countdown, and bots keep both going', 'Stats: look up any player by typing a few letters of their name, and a new Records page. Player numbers moved out of Friends into Stats', 'Fresh season: everyone restarts with 2 500 coins and 5 keys, and every leaderboard, streak and quest starts again. Items stay, except for OG players, who start completely fresh with the starter pack. Leaderboards are Global only', 'Fixes: starting a mini game no longer says you already have one going, the scratch card takes you back when it is done and its chances sit under the card, readable text on light buttons', 'LEAVE CASINO door, animation previews that play when you hover them, one online menu size, the daily reward sits lower', 'Coinflip: fewer huge bot flips, and bots take longer to match a big flip (up to 2 min, you are told). Reversi is gone, and so are the Titanium White and Black fonts']),
@@ -51044,6 +51050,15 @@ class TierBanner(QWidget):
             p.drawText(bx, int(al | Qt.AlignmentFlag.AlignVCenter), tr(WEALTH_TIERS[k][0]))
 
 
+FR.update({"Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone":
+           "Accueil : ton profil, tes badges et ta vitrine sont sous les quatre boutons, et « Reprendre » a disparu",
+           "Stats: one All time view, and every stat starts again from 0": "Stats : une seule vue « Depuis le début », et toutes les stats repartent de 0",
+           "Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies":
+           "Duels plus rapides : ton coup s’affiche tout de suite, un bandeau clair pour le tour et un bot qui répond plus vite",
+           "Clearer game menus: shorter rules in plain words, and no more win counters":
+           "Menus de jeu plus clairs : des règles plus courtes et simples, sans compteurs de victoires",
+           "Hoops: smoother bots, shorter replays you can turn off, an OPEN badge when your team-mate is free, and a stronger Professional":
+           "Hoops : des bots plus fluides, des ralentis plus courts que tu peux couper, un badge DÉMARQUÉ quand ton coéquipier est démarqué, et un Professionnel plus fort"})  # 9.3.2
 FR.update({'Play the bot for free. Win to earn coins.': 'Joue contre le bot gratuitement. Gagne pour remporter des pièces.',
            'Be the first to reach the other side. On your turn, move one square or build a wall to block the other player. You have 10 walls.':
            'Sois le premier à atteindre l’autre côté. À ton tour, avance d’une case ou pose un mur pour bloquer l’autre joueur. Tu as 10 murs.',
