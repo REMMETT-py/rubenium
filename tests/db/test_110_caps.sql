@@ -1,5 +1,5 @@
 -- needs_live_snapshot
--- 9.2.1 (090): the daily caps follow the wealth tier (Casino Legend has none), the biggest duel bet and the keys follow
+-- 9.2.1 (091): the daily caps follow the wealth tier (Casino Legend has none), the biggest duel bet and the keys follow
 -- it too, nothing the app sends can raise a cap, and the rank-up screen's 'seen' tier never goes above the real tier.
 begin;
 do $$
