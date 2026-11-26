@@ -206,6 +206,7 @@ language sql stable security definer set search_path to '' as $$
            || jsonb_build_object('coinflip', (select jsonb_build_object('rounds', rounds, 'wins', wins, 'bigwin', bigwin) from f))
            || jsonb_build_object('wave', coalesce((select jsonb_build_object('rounds', rounds, 'wins', wins) from s where g = 'wave'),
                                                   '{}'::jsonb) || jsonb_build_object('best', public.rb_wave_best_since(who, public.rb_ach_from()) / 100)) $$;
+revoke execute on function public.rb_ach_stats(uuid) from public, anon, authenticated;   -- internal (as live)
 
 -- ---------------------------------------------------------------- 4. Jackpot and Horse Racing on a fixed clock
 create or replace function public.rb_arena_slot_kind(k bigint) returns text

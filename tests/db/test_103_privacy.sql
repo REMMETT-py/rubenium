@@ -1,5 +1,6 @@
 -- 9.2 (088): privacy. Deleting an account leaves nothing that names the player (backups included), a player can
 -- download their data (without hidden game state), terms are accepted once, and rv_search is not in the API.
+-- needs_live_snapshot (rb_ach and other live-only tables)
 begin;
 do $$
 declare a uuid := t.player('Gone'); b uuid := t.player('Stays'); n bigint; d jsonb; err text; st json; c uuid; v numeric := public.rb_cfg('terms_version');
