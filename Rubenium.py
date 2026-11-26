@@ -8202,7 +8202,8 @@ class KeyPoll(QWidget):
         from PyQt6.QtGui import QCursor
         try:
             if self.foreground_only and not win.is_foreground(int(self.window().winId())):
-                return False
+                top = self.window()                   # another app is in front: only with the mouse over Rubenium
+                return top.isVisible() and top.frameGeometry().contains(QCursor.pos())
             if self.running is not None and self.running():
                 return True
             top = self.window()
