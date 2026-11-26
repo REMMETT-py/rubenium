@@ -2087,7 +2087,7 @@ DEFAULTS: dict = {
     "online_tab": "hub",                 # 3.2: the last part of the online menu that was open (9.0: Home first)
     "recent_games": [],                  # 9.0: the casino games played last (Home's "Jump back in")
     "kart": {"track": 0, "laps": 3, "elo": 1000, "size": 1, "bot": True, "collide": True, "boost": True, "damage": True},
-    "hoops": {"level": "Regional", "mins": 3},
+    "hoops": {"level": "Regional", "mins": 3, "replays": 1},
     "casino_bet": 50,                    # 9.0: the last bet, kept between sessions
     "hilo_help": False,
     "my_stats": ["cases", "trades", "rounds", "casino"],     # 5.13: the bottom row of your stats card
@@ -13806,6 +13806,10 @@ FR.update({  # 9.2
     'The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. Levels differ in how quickly they react, how well they time things and how good their decisions are. Professional is very strong.': 'Les bots jouent avec les mêmes règles que toi : même vitesse, même cercle de dribble et même jauge de tir. Les niveaux diffèrent par la vitesse de réaction, le timing et la qualité des décisions. Professionnel est très fort.',
     'A win pays by the bots\' level (3 minutes: Club 120, Regional 220, National 380, Professional 650), a loss a little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows with your tier; Casino Legend has none.': 'Une victoire paie selon le niveau des bots (3 minutes : Club 120, Régional 220, National 380, Professionnel 650), une défaite un peu. Les matchs plus courts paient moins, les plus longs plus, et ton rang de richesse multiplie le tout. La limite par jour grandit avec ton rang ; Légende du casino n’en a pas.',
     'Leaving a match counts as a loss and pays nothing.': 'Quitter un match compte comme une défaite et ne paie rien.',
+    'Replay every basket': 'Replay à chaque panier',
+    'Replay big plays': 'Replay des grandes actions',
+    'No replays': 'Pas de replay',
+    'OPEN': 'DÉMARQUÉ',
 })  # 9.2 end
 
 # --------------------------------------------------------------------------- #
@@ -72505,7 +72509,7 @@ SHOT_C = 0.80                          # the perfect release, on the meter
 FAKE_T = 0.32
 PASS_WIND = 0.70                       # charging a pass to full
 SHOT_CLOCK = 14.0
-COUNT_START, COUNT_AFTER = 5.0, 3.0
+COUNT_START, COUNT_AFTER = 5.0, 2.0
 REF_SIGMA = 0.05                       # the release spread the shown % assumes (a good, not perfect, shooter)
 
 HOOPS_LEVELS = ["Club", "Regional", "National", "Professional"]
@@ -72521,8 +72525,8 @@ HOOPS_BOT = {
     "National":     {"react": 0.19, "speed": 0.96, "sigma": 0.046, "shoot_min": 0.40, "risk": 0.25, "spin": 0.45,
                      "fake": 0.18, "bite": 0.35, "steal": 0.55, "steal_read": 0.78, "help": 0.70, "space": 0.85,
                      "cut": 0.45, "fancy": 0.45, "box": 0.75, "deny": 0.65, "gap": 1.3, "jump_read": 0.8},
-    "Professional": {"react": 0.11, "speed": 1.00, "sigma": 0.030, "shoot_min": 0.46, "risk": 0.10, "spin": 0.80,
-                     "fake": 0.34, "bite": 0.15, "steal": 0.70, "steal_read": 0.95, "help": 0.92, "space": 1.0,
+    "Professional": {"react": 0.10, "speed": 1.00, "sigma": 0.027, "shoot_min": 0.46, "risk": 0.08, "spin": 0.85,
+                     "fake": 0.38, "bite": 0.12, "steal": 0.88, "steal_read": 0.95, "help": 0.92, "space": 1.0,
                      "cut": 0.80, "fancy": 0.80, "box": 0.95, "deny": 0.90, "gap": 1.15, "jump_read": 0.95},
 }
 
@@ -74082,18 +74086,19 @@ class HoopsBot:
         else:
             man = attackers[0]
         self.assign = man.i
-        ms = g.past(man.i, lag)
-        mx_, mz_, mvx, mvz = ms
-        # predict where they'll be
-        px, pz = mx_ + mvx * lag, mz_ + mvz * lag
         if c is not None and man is c:
             # on the ball: between them and the hoop, a step off; stance; swipe when the ball is on my side and low
-            gx, gz = norm(my_hoop - px, HOOP_Z - pz)
-            gap = k["gap"] + (0.4 if hyp(my_hoop - px, HOOP_Z - pz) > 9 else 0.0)
-            tx, tz = px + gx * gap, pz + gz * gap
+            def guard(man=man, lag=lag, gap0=k["gap"]):
+                # followed every step, from where the dribbler was `lag` ago: the bot reacts late but never freezes
+                mx2, mz2, vx2, vz2 = g.past(man.i, lag)
+                qx, qz = mx2 + vx2 * lag, mz2 + vz2 * lag
+                ux, uz = norm(my_hoop - qx, HOOP_Z - qz)
+                gp = gap0 + (0.4 if hyp(my_hoop - qx, HOOP_Z - qz) > 9 else 0.0)
+                return qx + ux * gp, qz + uz * gp
+            tx, tz = guard()
             inp.shift = True
             inp.mx, inp.mz = self._to(tx, tz, 0.35)
-            self.plan = {"to": (tx, tz), "slow": 0.35}
+            self.plan = {"to": guard, "slow": 0.35}
             # contest a shot (or bite on a fake)
             if c.act in ("shoot", "fake") and hyp(c.x - p.x, c.z - p.z) < 2.6:
                 if p.h <= 0 and p.jump_cd <= 0:
@@ -74107,7 +74112,9 @@ class HoopsBot:
                 db = hyp(b.x - hxp, b.z - hzp)
                 body = hyp(c.x - p.x, c.z - p.z)
                 exposed = hyp(b.x - p.x, b.z - p.z) <= body + 0.18
-                if db < STEAL_REACH + 0.25 and rng.random() < k["steal"]:
+                # how keen to swipe, per second (not per look, so quick-thinking bots don't swipe more often)
+                keen = 1 - (1 - k["steal"]) ** (k["react"] / 0.3)
+                if db < STEAL_REACH + 0.25 and rng.random() < keen:
                     good = exposed and db <= STEAL_REACH and b.h < 1.1
                     if good and rng.random() < k["steal_read"]:
                         # wait for the ball to come down: the better bots time it for the bounce
@@ -74115,24 +74122,31 @@ class HoopsBot:
                     elif not good and rng.random() > k["steal_read"]:
                         self.plan["lmb_once"] = True              # a bad swipe (the weaker bots)
         else:
-            # off the ball: between my man and the hoop, shaded towards the ball; deny the pass (the good ones)
-            bx, bz = b.x, b.z
-            gx, gz = norm(my_hoop - px, HOOP_Z - pz)
-            dm = hyp(my_hoop - px, HOOP_Z - pz)
-            tx, tz = px + gx * min(2.2, dm * 0.3), pz + gz * min(2.2, dm * 0.3)
-            # shade to the ball
+            # off the ball: between my man and the hoop, shaded towards the ball; deny the pass (the good ones).
+            # What to do is decided now; where to stand is followed every step (seen `lag` late).
+            deny = c is not None and rng.random() < k["deny"]
+            helps = c is not None and hyp(my_hoop - c.x, HOOP_Z - c.z) < 4.5 and rng.random() < k["help"]
             sh = 0.25 + 0.35 * k["help"]
-            tx, tz = lerp(tx, bx, sh * 0.5), lerp(tz, bz, sh * 0.5)
-            # deny: stand in the passing lane
-            if c is not None and rng.random() < k["deny"]:
-                lx, lz = lerp(c.x, px, 0.72), lerp(c.z, pz, 0.72)
-                tx, tz = lerp(tx, lx, 0.55), lerp(tz, lz, 0.55)
-            # help: the dribbler driving to the hoop, nobody between: step in
-            if c is not None and hyp(my_hoop - c.x, HOOP_Z - c.z) < 4.5 and rng.random() < k["help"]:
-                tx, tz = lerp(c.x, my_hoop, 0.45), lerp(c.z, HOOP_Z, 0.45)
+
+            def spot(man=man, lag=lag):
+                mx2, mz2, vx2, vz2 = g.past(man.i, lag)
+                qx, qz = mx2 + vx2 * lag, mz2 + vz2 * lag
+                cc = g.carrier()
+                ux, uz = norm(my_hoop - qx, HOOP_Z - qz)
+                dm = hyp(my_hoop - qx, HOOP_Z - qz)
+                sx, sz = qx + ux * min(2.2, dm * 0.3), qz + uz * min(2.2, dm * 0.3)
+                sx, sz = lerp(sx, g.ball.x, sh * 0.5), lerp(sz, g.ball.z, sh * 0.5)
+                if cc is not None and cc.team != p.team:
+                    if deny:
+                        lx, lz = lerp(cc.x, qx, 0.72), lerp(cc.z, qz, 0.72)
+                        sx, sz = lerp(sx, lx, 0.55), lerp(sz, lz, 0.55)
+                    if helps:
+                        sx, sz = lerp(cc.x, my_hoop, 0.45), lerp(cc.z, HOOP_Z, 0.45)
+                return sx, sz
+            tx, tz = spot()
             inp.shift = hyp(tx - p.x, tz - p.z) < 1.5
             inp.mx, inp.mz = self._to(tx, tz, 0.5)
-            self.plan = {"to": (tx, tz), "slow": 0.5}
+            self.plan = {"to": spot, "slow": 0.5}
         # a pass in the air: go for it if I can get there (the better bots see more passes)
         if b.mode == "pass" and b.f and b.f.get("by", -1) >= 0 and g.players[b.f["by"]].team != p.team:
             self._chase_pass()
@@ -74988,13 +75002,15 @@ class HoopsView(QWidget):
     the coin flip, the countdowns, the goal explosion and its replay, the pause menu and the final whistle."""
     finished = pyqtSignal(dict)
 
-    def __init__(self, level: str = "National", mins: float = 3.0, seed: int = 0, name: str = "") -> None:
+    def __init__(self, level: str = "National", mins: float = 3.0, seed: int = 0, name: str = "", replays: int = 1) -> None:
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
         self.setMinimumSize(S(720), S(420))
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.level, self.mins = level, mins
+        self.replays = int(replays)
+        self.last_perfect = False
         self.seed = seed or random.randrange(1, 10 ** 9)
         self.name = name or tr("You")
         self.g = HoopsGame(level=level, mins=mins, seed=self.seed, humans=(0,))
@@ -75171,13 +75187,26 @@ class HoopsView(QWidget):
     def _flow(self, dt) -> None:
         g = self.g
         # the score: the explosion for 1.7 s, then a wipe into the replay
-        if g.phase == "score" and self.replay is None and self.wipe_then is None and g.phase_t > 1.7:
-            self._start_wipe(lambda: self._start_replay(), HOOPS_TEAM[g.last_score["team"]]["main"])
+        if g.phase == "score" and self.replay is None and self.wipe_then is None and g.phase_t > 1.3:
+            col = HOOPS_TEAM[g.last_score["team"]]["main"]
+            if self._want_replay():
+                self._start_wipe(lambda: self._start_replay(), col)
+            else:
+                self._start_wipe(self._after_replay, col)
         if g.phase == "over":
             self.over_t += dt
             if self.over_t > 2.6 and not self.result_sent:
                 self.result_sent = True
                 self.finished.emit(self.result())
+
+    def _want_replay(self) -> bool:
+        """Replays: 0 every basket, 1 the big plays (a three, a perfect release, the last 20 seconds, overtime), 2 none."""
+        if self.replays == 0:
+            return True
+        if self.replays == 2:
+            return False
+        ls = self.g.last_score or {}
+        return ls.get("pts") == 3 or self.last_perfect or self.g.overtime or self.g.clock < 20
 
     def _start_wipe(self, then, col) -> None:
         self.wipe = 0.0
@@ -75201,8 +75230,8 @@ class HoopsView(QWidget):
     def _start_replay(self) -> None:
         g = self.g
         ls = g.last_score
-        t_end = ls["t"] + 1.1
-        t_start = ls["t"] - 4.6
+        t_end = ls["t"] + 0.8
+        t_start = ls["t"] - 3.4
         frames = [(t, s) for t, s, ph in self.rec if t_start <= t <= t_end and ph in ("play", "score")]
         if len(frames) < 30:
             return self._after_replay()
@@ -75218,7 +75247,7 @@ class HoopsView(QWidget):
             return self._end_replay()
         t = fr[i][0]
         # slow motion for the last second before the ball drops through
-        slow = r["t_score"] - 1.0 <= t <= r["t_score"] + 0.2
+        slow = r["t_score"] - 0.8 <= t <= r["t_score"] + 0.15
         r["slow"] = slow
         r["pos"] += dt * 60 * (0.33 if slow else 1.0)
         if t >= r["t_score"] - 0.02 and not r["net_done"]:
@@ -75313,6 +75342,7 @@ class HoopsView(QWidget):
                 pass
             elif kind == "shot":
                 p = g.players[d["p"]]
+                self.last_perfect = bool(d.get("perfect"))
                 if p.human:
                     txt = {"green": tr("PERFECT") if d["perfect"] else tr("GOOD RELEASE"),
                            "yellow": tr("EARLY") if d["m"] < SHOT_C else tr("LATE"),
@@ -75711,13 +75741,21 @@ class HoopsView(QWidget):
             elif pl.team == 0:
                 # my team-mate: their number; a pass badge when I have the ball
                 carrying = g.ball.owner == me_i
-                r = QRectF(top.x() - S(22), top.y() - S(26), S(44), S(20))
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(QColor(255, 255, 255, 235) if carrying else QColor(10, 14, 24, 170))
-                p.drawRoundedRect(r, S(10), S(10))
+                # open: a quick pass would be safe and they'd have a good shot (or a clear run to the rim)
+                is_open = False
+                if carrying and g.phase == "play":
+                    risk, _f = g.pass_risk(g.players[me_i], "chest", 0.55, None)
+                    _gw, dd, _c, pct = g.shot_window(pl)
+                    is_open = risk < 0.35 and (pct >= 0.42 or dd < 2.5)
+                txt = (tr("OPEN") + " ➜ " if is_open else "➜ " if carrying else "") + str(pl.num)
                 p.setFont(font(10, QFont.Weight.Black))
-                p.setPen(QColor(HOOPS_TEAM[0]["dark"]) if carrying else QColor(HOOPS_TEAM[0]["light"]))
-                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), ("➜ " if carrying else "") + str(pl.num))
+                tw = p.fontMetrics().horizontalAdvance(txt) + S(18)
+                r = QRectF(top.x() - tw / 2, top.y() - S(26), tw, S(20))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#3BE38A") if is_open else QColor(255, 255, 255, 235) if carrying else QColor(10, 14, 24, 170))
+                p.drawRoundedRect(r, S(10), S(10))
+                p.setPen(QColor("#062814") if is_open else QColor(HOOPS_TEAM[0]["dark"]) if carrying else QColor(HOOPS_TEAM[0]["light"]))
+                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), txt)
             else:
                 r = QRectF(top.x() - S(16), top.y() - S(22), S(32), S(16))
                 p.setPen(Qt.PenStyle.NoPen)
@@ -76238,7 +76276,8 @@ def hoops_opts(ctx) -> dict:
         except Exception:  # noqa: BLE001
             d = {}
         lv = d.get("level", "Regional")
-        d = {"level": lv if lv in HOOPS_LEVELS else "Regional", "mins": int(d.get("mins", 3)) if int(d.get("mins", 3)) in (2, 3, 4, 5) else 3}
+        d = {"level": lv if lv in HOOPS_LEVELS else "Regional", "mins": int(d.get("mins", 3)) if int(d.get("mins", 3)) in (2, 3, 4, 5) else 3,
+             "replays": int(d.get("replays", 1)) if int(d.get("replays", 1)) in (0, 1, 2) else 1}
         ctx.hoops_opts = d
     return d
 
@@ -76347,8 +76386,11 @@ def build_hoops(page, lay) -> None:
     mins.changed.connect(lambda i: (o.__setitem__("mins", [2, 3, 4, 5][i]), hoops_save_opts(ctx)))
     hl.addWidget(mins)
     hl.addWidget(Label(tr("A tie at the buzzer goes to overtime: the next basket wins."), 10, TEXT_FAINT, wrap_w=page.W))
+    reps = Segmented([tr("Replay every basket"), tr("Replay big plays"), tr("No replays")], o["replays"])
+    reps.changed.connect(lambda i: (o.__setitem__("replays", i), hoops_save_opts(ctx)))
+    hl.addWidget(reps)
     go = Button(tr("Play"), "primary", 44, icon="play")
-    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"]))
+    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"], o["replays"]))
     hl.addWidget(go)
     keys = hoops_keys()
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Move")),
@@ -76532,7 +76574,7 @@ class HoopsLink(QObject):
     _cur = None
 
     @classmethod
-    def start(cls, ctx, level: str, mins: int) -> None:
+    def start(cls, ctx, level: str, mins: int, replays: int = 1) -> None:
         if cls._cur is not None and cls._cur.win is not None:
             try:
                 cls._cur.win.raise_()
@@ -76540,11 +76582,11 @@ class HoopsLink(QObject):
                 return
             except RuntimeError:
                 cls._cur = None
-        cls._cur = HoopsLink(ctx, level, mins)
+        cls._cur = HoopsLink(ctx, level, mins, replays)
 
-    def __init__(self, ctx, level: str, mins: int) -> None:
+    def __init__(self, ctx, level: str, mins: int, replays: int = 1) -> None:
         super().__init__()
-        self.ctx, self.level, self.mins = ctx, level, mins
+        self.ctx, self.level, self.mins, self.replays = ctx, level, mins, replays
         self.gid = None
         self.win = None
         self.view = None
@@ -76560,7 +76602,7 @@ class HoopsLink(QObject):
         if self.win is None:
             self.win = HoopsWindow(self)
             self.win.show()
-        view = HoopsView(self.level, float(self.mins), 0, "")
+        view = HoopsView(self.level, float(self.mins), 0, "", self.replays)
         view.finished.connect(self._finished)
         if self.win.view is not None:
             self.win.view.timer.stop()
