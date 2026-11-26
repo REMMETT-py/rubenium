@@ -1491,8 +1491,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.2"       # the version people see
-BUILD = "2026.11.26.27"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "9.3"       # the version people see
+BUILD = "2026.11.26.28"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2087,6 +2087,7 @@ DEFAULTS: dict = {
     "online_tab": "hub",                 # 3.2: the last part of the online menu that was open (9.0: Home first)
     "recent_games": [],                  # 9.0: the casino games played last (Home's "Jump back in")
     "kart": {"track": 0, "laps": 3, "elo": 1000, "size": 1, "bot": True, "collide": True, "boost": True, "damage": True},
+    "hoops": {"level": "Regional", "mins": 3},
     "casino_bet": 50,                    # 9.0: the last bet, kept between sessions
     "hilo_help": False,
     "my_stats": ["cases", "trades", "rounds", "casino"],     # 5.13: the bottom row of your stats card
@@ -12680,6 +12681,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.3", ["NEW: Hoops, 2 v 2 basketball. You and a bot team-mate against two bots: Club, Regional, National or Professional. Dribble with Space, pass round the defence (lobs, bounce and curved passes), time your shots on the meter, steal, block and intercept. Ties go to overtime, every basket gets a replay, and wins pay more at a higher tier"]),
     ("9.2", ["NEW: Karting, a racing game for 1 to 3 players and always one bot, on 3 circuits. Boost, drift for mini turbos, slipstream, bump the others, and big crashes wreck your kart. Pick the bot from 100 to 2500 (Professional is a perfect driver), and after each race everyone gets a score out of 100%", "Mini Golf rooms: pick the bots' level, from Easy to Professional. Bots play every hole with the real ball physics, and Professional finds a hole in one wherever there is one", 'Mini games pay double: Timing, Cups, Colour Pick, SFX Match, Connect 4, Beat Tap, Parking, Memory, Block Blast, Minesweeper and every bot game', 'The top bot is called Professional in every game, and it plays the strongest moves it can find', 'NEW: Trifade, endless noughts and crosses. You only keep 3 marks: your 4th takes your oldest away, so the game goes on until someone wins. Against bots from Easy to Professional (it always starts and plays the best move every time), or against players', 'NEW: Mazelock, a duel board game. Race your pawn to the other side and place walls to block the way. Against bots from Easy to Professional (it always starts and plays the strongest moves it can find), or against players', 'Play is clearer: Mini games, then Duels (Connect 4, Battleships, Mazelock, Trifade, each against a bot or a player), then Multiplayer (Mini Golf and Wave Rush, up to 4 players)', 'Wave Rush rooms for 2 to 4 players: everyone races live in their own colour, and after a crash you watch the others (switch with the arrows or by clicking a name). The longest run wins the pot', 'Wave Rush: the practice ghost has its own clear card, and it never shows in races against players', 'Trophies have their own page in the side menu', 'A new Home: your tier, the free rewards waiting for you, the game that is live now and the games you played last', 'Jackpot and Horse Racing take turns every 20 minutes on a fixed clock. The next one stays locked with a countdown, and bots keep both going', 'Stats: look up any player by typing a few letters of their name, and a new Records page. Player numbers moved out of Friends into Stats', 'Fresh season: everyone restarts with 2 500 coins and 5 keys, and every leaderboard, streak and quest starts again. Items stay, except for OG players, who start completely fresh with the starter pack. Leaderboards are Global only', 'Fixes: starting a mini game no longer says you already have one going, the scratch card takes you back when it is done and its chances sit under the card, readable text on light buttons', 'LEAVE CASINO door, animation previews that play when you hover them, one online menu size, the daily reward sits lower', 'Coinflip: fewer huge bot flips, and bots take longer to match a big flip (up to 2 min, you are told). Reversi is gone, and so are the Titanium White and Black fonts']),
     ("9.1.1", ['A starter pack for everyone: 2 500 coins, 5 keys, 3 Starter Cases and 5 Standard Cases', 'Lower tiers: Average 25 000, Investor 100 000, Businessman 250 000, Casino Legend 1 000 000. Everyone starts at Poor', 'Your wealth is exact now: your coins + the shop value of the items you got since 9.1. The tier bar shows it, and hovering it shows the coins and items parts']),
     ("9.1", ['A fresh start for everyone: coins and keys go back to 0. Your level, your Common and Rare basic items and the OG tag stay', 'Five wealth tiers, from Poor to Casino Legend: a tier you reach is yours for good, and it multiplies every free reward', 'Leaderboards have their own tab in the side menu, with every game: casino, mini games, Horse Racing and every duel', 'A new Stats tab: your wealth, casino results by game, mini game coins and where your free coins came from, all in graphs', 'Play is now an ENTER CASINO door (casino games, Jackpot, Horse Racing, Coinflip behind it) and the mini games', 'Mini games are free and pay by how well you play, judged on the server. No daily limit: your first 8 rounds of each game every day pay double', "NEW: Reversi and Battleships against bots from Easy to Insane. The bots play on the server, so they can't be tricked", 'NEW: Duels. Connect 4, Reversi and Battleships 1 v 1 against other players, free or for the same bet (the winner takes the pot, less 5%), next to Mini Golf and Wave Rush', 'Separate cases for each kind of item, and the Crown Vault (20 000) that holds them all. The Key Forge gives more keys at higher tiers', '5 animations, each with versions you unlock by owning the original', 'Badge layouts that fit how many badges you show: a row, spread out, stacked or a pyramid', "The online doors are Rubenium doors now, buttons take the colours of the song's cover, and the menu widens while you play a game", 'Lyrics stay in time with the song, and the lyrics picked match the version you are playing', 'Horse Racing shows wins properly, scratch cards never get stuck, and Rewards says how often each one comes back', 'The tutorial shows the app as it is now', 'Rubenium installs in one place (AppData\\Local\\Rubenium\\App), and Settings > UPDATE can uninstall it: hold the red button. Your online account is never touched', 'One account per PC']),
@@ -13647,6 +13649,133 @@ FR.update({  # 9.2
         "La partie en ligne est réservée aux {n} ans et plus. La triche et l'échange d'objets contre de l'argent réel sont interdits.",
     "By choosing Accept, you agree to the Terms of Use and the Privacy Policy.":
         "En choisissant Accepter, tu acceptes les Conditions d'utilisation et la Politique de confidentialité.",
+    'NEW: Hoops, 2 v 2 basketball. You and a bot team-mate against two bots: Club, Regional, National or Professional. Dribble with Space, pass round the defence (lobs, bounce and curved passes), time your shots on the meter, steal, block and intercept. Ties go to overtime, every basket gets a replay, and wins pay more at a higher tier': 'NOUVEAU : Hoops, du basket en 2 contre 2. Toi et un coéquipier bot contre deux bots : Club, Régional, National ou Professionnel. Dribble avec Espace, fais tourner la balle (lobs, passes à terre et passes brossées), tire au bon moment sur la jauge, intercepte, contre et vole la balle. Une égalité mène à la prolongation, chaque panier a son replay, et les victoires paient plus aux rangs élevés',
+    'Hoops': 'Hoops',
+    '2 v 2 against bots': '2 contre 2 contre des bots',
+    '2 v 2 basketball, side on. You and a bot team-mate against two bots. Dribble, pass round the defence, time your shots, and win the game on the last basket.': 'Du basket en 2 contre 2, vu de côté. Toi et un coéquipier bot contre deux bots. Dribble, fais tourner la balle, tire au bon moment et gagne le match sur le dernier panier.',
+    'Easy-going: slow to react, takes bad shots and bites on every fake.': 'Tranquille : lent à réagir, prend de mauvais tirs et mord à chaque feinte.',
+    'Solid basketball, but makes mistakes you can punish.': 'Du basket solide, mais des erreurs que tu peux punir.',
+    'Quick and smart: reads passes, times steals, rarely misses an open shot.': 'Rapide et malin : lit les passes, vole au bon moment, rate rarement un tir ouvert.',
+    'Very strong: fakes, lobs and curved passes, tight defence and deadly shooting.': 'Très fort : feintes, lobs et passes brossées, défense serrée et tir redoutable.',
+    'Opponents': 'Adversaires',
+    'Match': 'Match',
+    'A tie at the buzzer goes to overtime: the next basket wins.': 'Une égalité à la sirène mène à la prolongation : le prochain panier gagne.',
+    'Move': 'Bouger',
+    'Dribble (with a direction) / jump': 'Dribbler (avec une direction) / sauter',
+    'Aim at the hoop / defend': 'Viser le panier / défendre',
+    'Shoot (in aim) / pass / steal': 'Tirer (en visée) / passer / voler',
+    'Quick pass / fake / switch player': 'Passe rapide / feinte / changer de joueur',
+    'Left click': 'Clic gauche',
+    'Right click': 'Clic droit',
+    'Esc': 'Échap',
+    'Pause': 'Pause',
+    'Offline: matches are for fun until the server answers (no prize).': 'Hors ligne : les matchs sont pour le plaisir tant que le serveur ne répond pas (pas de prix).',
+    'Prizes today: {a}': 'Prix du jour : {a}',
+    'limit {b}': 'limite {b}',
+    'no daily limit': 'pas de limite par jour',
+    'your tier pays ×{m}': 'ton rang paie ×{m}',
+    '{w} W · {l} L': '{w} V · {l} D',
+    'Win: {c}': 'Victoire : {c}',
+    'You lose': 'Tu perds',
+    'in overtime': 'en prolongation',
+    'vs {lv}': 'contre {lv}',
+    'BLUE': 'BLEU',
+    'RED': 'ROUGE',
+    'Blue': 'Bleu',
+    'Red': 'Rouge',
+    'Player': 'Joueur',
+    'PTS': 'PTS',
+    'FG': 'TIRS',
+    '3PT': '3PTS',
+    'AST': 'PD',
+    'REB': 'REB',
+    'STL': 'INT',
+    'BLK': 'CTR',
+    'TOV': 'PB',
+    'Blue · you and your team-mate': 'Bleus · toi et ton coéquipier',
+    'Red · {lv}': 'Rouges · {lv}',
+    'Checking the result…': 'Vérification du résultat…',
+    'Prize: {c}': 'Prix : {c}',
+    'daily limit reached': 'limite du jour atteinte',
+    "No prize: the server didn't start this match.": 'Pas de prix : le serveur n’a pas lancé ce match.',
+    'Back to Hoops': 'Retour à Hoops',
+    'Warming up…': 'Échauffement…',
+    'Leave the match? It counts as a loss and pays nothing.': 'Quitter le match ? Il compte comme une défaite et ne paie rien.',
+    'STEAL!': 'INTERCEPTION !',
+    'INTERCEPTED!': 'PASSE INTERCEPTÉE !',
+    'Deflected!': 'Déviée !',
+    'BLOCKED!': 'CONTRÉ !',
+    'Reach-in: off balance': 'Main dans le corps : déséquilibré',
+    'PERFECT': 'PARFAIT',
+    'GOOD RELEASE': 'BON LÂCHER',
+    'EARLY': 'TROP TÔT',
+    'LATE': 'TROP TARD',
+    'WAY TOO EARLY': 'BEAUCOUP TROP TÔT',
+    'WAY TOO LATE': 'BEAUCOUP TROP TARD',
+    'Air ball': 'Air ball',
+    'Out of bounds': 'Sortie',
+    'Shot clock violation': 'Violation des 14 secondes',
+    'Charge! Offensive foul': 'Passage en force ! Faute offensive',
+    'BLUE BALL': 'BALLE AUX BLEUS',
+    'RED BALL': 'BALLE AUX ROUGES',
+    'OVERTIME': 'PROLONGATION',
+    'Next basket wins': 'Le prochain panier gagne',
+    'NEXT BASKET WINS': 'LE PROCHAIN PANIER GAGNE',
+    'OT': 'PROL.',
+    'YOU WIN!': 'TU GAGNES !',
+    'RED WINS': 'LES ROUGES GAGNENT',
+    '{pts} POINTS': '{pts} POINTS',
+    'BUCKET!': 'PANIER !',
+    '{who} scores · assist {a}': '{who} marque · passe de {a}',
+    '{who} scores': '{who} marque',
+    'COIN FLIP': 'PILE OU FACE',
+    'Chest pass': 'Passe à deux mains',
+    'Bounce pass': 'Passe à terre',
+    'Lob': 'Lob',
+    'Curve pass': 'Passe brossée',
+    'Safe': 'Sûre',
+    'Risky': 'Risquée',
+    'Will be cut off': 'Sera interceptée',
+    'Contested': 'Contesté',
+    'lob': 'lob',
+    'bounce': 'à terre',
+    'curve': 'brossée',
+    'Release': 'Relâcher',
+    'pass': 'passer',
+    'fake': 'feinte',
+    'Hold left': 'Clic gauche maintenu',
+    'shoot, let go in the green': 'tirer, lâche dans le vert',
+    'pump fake': 'feinte de tir',
+    'dribble': 'dribbler',
+    'charge a pass': 'charger une passe',
+    'quick pass': 'passe rapide',
+    'aim at the hoop': 'viser le panier',
+    'move': 'bouger',
+    'switch player': 'changer de joueur',
+    'defend': 'défendre',
+    'steal': 'voler',
+    'jump': 'sauter',
+    'Shift': 'Maj',
+    '{team} #{n}': '{team} n°{n}',
+    '{who}  ·  {pts} points': '{who}  ·  {pts} points',
+    'assist {a}': 'passe de {a}',
+    'Space or click: skip': 'Espace ou clic : passer',
+    'SLOW MOTION': 'RALENTI',
+    'PAUSED': 'PAUSE',
+    'Resume': 'Reprendre',
+    'Restart the match': 'Recommencer le match',
+    'Esc or P: resume': 'Échap ou P : reprendre',
+    'Two teams of two on a full court, 2 to 5 minutes. You are blue, with a bot team-mate; red is two bots at the level you pick. Move with W A S D (Z Q S D in French) or the arrows.': 'Deux équipes de deux sur tout le terrain, de 2 à 5 minutes. Tu es bleu, avec un coéquipier bot ; les rouges sont deux bots au niveau choisi. Bouge avec Z Q S D (W A S D en anglais) ou les flèches.',
+    'With the ball: the circle on the floor (only you see it) is how far you can walk without dribbling. Hold Space with a direction to dribble: the circle follows the ball. Space + back spins you round fast, and a spin can\'t be stolen.': 'Avec la balle : le cercle au sol (toi seul le vois) montre jusqu’où tu peux marcher sans dribbler. Maintiens Espace avec une direction pour dribbler : le cercle suit la balle. Espace + arrière te fait pivoter vite, et un pivot ne peut pas être volé.',
+    'Passing: right click is a quick pass to your team-mate (the badge over their head). Hold left click to charge a pass and aim it with the mouse; while charging, up throws a lob, down a bounce pass, left or right curves it. The line is white when it\'s safe, orange when risky, red when a defender will cut it off. Right click while charging is a pass fake.': 'Passes : clic droit pour une passe rapide à ton coéquipier (le badge au-dessus de sa tête). Maintiens clic gauche pour charger une passe et vise à la souris ; en chargeant, haut fait un lob, bas une passe à terre, gauche ou droite la brosse. La ligne est blanche si c’est sûr, orange si c’est risqué, rouge si un défenseur va la couper. Clic droit en chargeant : feinte de passe.',
+    'Shooting: hold Shift to aim. The line shows your chance from there (lower further out and with a defender in your face). Hold left click to rise and let go when the marker is in the green: green goes in almost every time, yellow sometimes, red rarely. The green gets smaller with distance. Right click while aiming is a pump fake.': 'Tir : maintiens Maj pour viser. La ligne montre ta chance d’ici (plus faible de loin et avec un défenseur sur toi). Maintiens clic gauche pour t’élever et lâche quand le curseur est dans le vert : le vert rentre presque à chaque fois, le jaune parfois, le rouge rarement. Le vert rétrécit avec la distance. Clic droit en visée : feinte de tir.',
+    'Defence: hold Shift to slide in a stance. Left click swipes at the ball: it only works on a dribble that\'s on your side and low; into the body it\'s a reach-in and you\'re off balance. Space jumps to contest, block or get a lob. Right click switches to your other player. Running into the dribbler never takes the ball, but a dribbler who runs into a defender standing still is called for a charge.': 'Défense : maintiens Maj pour glisser en position. Clic gauche tente de voler la balle : ça ne marche que sur un dribble de ton côté et bas ; dans le corps c’est une faute de main et tu es déséquilibré. Espace saute pour contester, contrer ou prendre un lob. Clic droit change de joueur. Foncer dans le dribbleur ne prend jamais la balle, mais un dribbleur qui fonce dans un défenseur immobile commet un passage en force.',
+    'Passing beats pressing: a bot team-mate who is open will usually score. Lobs go over defenders, bounce passes under jumping ones.': 'La passe bat la course : un coéquipier bot démarqué marque souvent. Les lobs passent au-dessus des défenseurs, les passes à terre sous ceux qui sautent.',
+    'Pump fake a defender who flies at you, then drive past while they are in the air.': 'Feinte de tir face à un défenseur qui se jette sur toi, puis passe-le pendant qu’il est en l’air.',
+    'A 14 second shot clock: shoot before it runs out. Inside the arc is 2 points, outside 3.': 'Une horloge des tirs de 14 secondes : tire avant la fin. À l’intérieur de l’arc c’est 2 points, à l’extérieur 3.',
+    'The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. Levels differ in how quickly they react, how well they time things and how good their decisions are. Professional is very strong.': 'Les bots jouent avec les mêmes règles que toi : même vitesse, même cercle de dribble et même jauge de tir. Les niveaux diffèrent par la vitesse de réaction, le timing et la qualité des décisions. Professionnel est très fort.',
+    'A win pays by the bots\' level (3 minutes: Club 120, Regional 220, National 380, Professional 650), a loss a little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows with your tier; Casino Legend has none.': 'Une victoire paie selon le niveau des bots (3 minutes : Club 120, Régional 220, National 380, Professionnel 650), une défaite un peu. Les matchs plus courts paient moins, les plus longs plus, et ton rang de richesse multiplie le tout. La limite par jour grandit avec ton rang ; Légende du casino n’en a pas.',
+    'Leaving a match counts as a loss and pays nothing.': 'Quitter un match compte comme une défaite et ne paie rien.',
 })  # 9.2 end
 
 # --------------------------------------------------------------------------- #
@@ -37008,7 +37137,7 @@ MINI_COLOURS = {"Timing": ("#3DDC84", "#0F5A3A"), "Connect 4": ("#FF5C5C", "#2A2
                 "Mini Golf": ("#8BE36B", "#1F6B2A"), "Wave Rush": ("#5EEAD4", "#1A3A8A"),
                 "Reversi": ("#3FCF7A", "#0B4A2A"), "Battleships": ("#5AA8FF", "#0A2A5A"),
                 "Mazelock": ("#5BD6FF", "#B5561A"), "Trifade": ("#9B7BFF", "#2B2F8F"),
-                "Karting": ("#FF7A3D", "#7A1038")}
+                "Karting": ("#FF7A3D", "#7A1038"), "Hoops": ("#FF9A3D", "#1F3FA8")}
 
 
 def paint_mini_glyph(p: QPainter, name: str, c: QPointF, size: float) -> None:
@@ -37119,6 +37248,16 @@ def paint_mini_glyph(p: QPainter, name: str, c: QPointF, size: float) -> None:
         p.drawPolygon(QPolygonF([QPointF(3, -13), QPointF(14, -9), QPointF(3, -5)]))
         p.setBrush(white)
         p.drawEllipse(QPointF(-9, 9), 3.4, 3.4)
+    elif name == "Hoops":                               # 9.3: a basketball with its seams
+        p.drawEllipse(QPointF(0, 0), 12.5, 12.5)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor(0, 0, 0, 120), 1.8))
+        p.drawLine(QPointF(-12.5, 0), QPointF(12.5, 0))
+        p.drawLine(QPointF(0, -12.5), QPointF(0, 12.5))
+        p.drawArc(QRectF(-20, -12, 14, 24), -60 * 16, 120 * 16)
+        p.drawArc(QRectF(6, -12, 14, 24), 120 * 16, 120 * 16)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(white)
     elif name == "Karting":                             # 9.2: a chequered flag on its pole
         p.drawRoundedRect(QRectF(-11, -13, 2.6, 27), 1.2, 1.2)
         for r_ in range(4):
@@ -37692,6 +37831,9 @@ class GamesPage(Page):
             if sub == "wave":                                        # 4.3: Wave Rush, solo or 1 v 1
                 build_wave(self, lay)
                 return
+            if sub == "hoops":                                       # 9.3: Hoops
+                build_hoops(self, lay)
+                return
             if sub == "kart":                                        # 9.2: Karting
                 build_kart(self, lay)
                 return
@@ -37754,8 +37896,9 @@ class GamesPage(Page):
         lay.addWidget(help_row(tr("Multiplayer"), tr("Play with up to 4 players at once, for fun or for a bet.")))
         multi = [("Mini Golf", "Up to 4 players", lambda: open_games_part(ctx, "duels", back="games")),
                  ("Wave Rush", "Up to 4 players", lambda: open_games_part(ctx, "wave", back="games")),
-                 ("Karting", "3 players + bot", lambda: open_games_part(ctx, "kart", back="games"))]
-        lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(multi)], 3))
+                 ("Karting", "3 players + bot", lambda: open_games_part(ctx, "kart", back="games")),
+                 ("Hoops", "2 v 2 against bots", lambda: open_games_part(ctx, "hoops", back="games"))]
+        lay.addWidget(tile_grid([MiniTile(n, note, fn, 40 * k) for k, (n, note, fn) in enumerate(multi)], 2))
 
     def _hall(self, lay) -> None:
         """9.1: behind the casino door: the live events, Coinflip and the games of chance."""
@@ -53759,6 +53902,34 @@ HELP = {
         "Alone: each hole pays by strokes: 60, 35, 20, 10, 5, then nothing.",
         "Online: the best player takes all the players' bets, minus a {golf}% fee. Everyone also earns coins by strokes.",
         "Running out of time counts as a stroke. 6 strokes at most a hole."]),
+    "hoops": ("Hoops", [
+        "Two teams of two on a full court, 2 to 5 minutes. You are blue, with a bot team-mate; red is two bots at the "
+        "level you pick. Move with W A S D (Z Q S D in French) or the arrows.",
+        "With the ball: the circle on the floor (only you see it) is how far you can walk without dribbling. Hold Space "
+        "with a direction to dribble: the circle follows the ball. Space + back spins you round fast, and a spin can't "
+        "be stolen.",
+        "Passing: right click is a quick pass to your team-mate (the badge over their head). Hold left click to charge a "
+        "pass and aim it with the mouse; while charging, up throws a lob, down a bounce pass, left or right curves it. "
+        "The line is white when it's safe, orange when risky, red when a defender will cut it off. Right click while "
+        "charging is a pass fake.",
+        "Shooting: hold Shift to aim. The line shows your chance from there (lower further out and with a defender in "
+        "your face). Hold left click to rise and let go when the marker is in the green: green goes in almost every "
+        "time, yellow sometimes, red rarely. The green gets smaller with distance. Right click while aiming is a pump fake.",
+        "Defence: hold Shift to slide in a stance. Left click swipes at the ball: it only works on a dribble that's on "
+        "your side and low; into the body it's a reach-in and you're off balance. Space jumps to contest, block or get "
+        "a lob. Right click switches to your other player. Running into the dribbler never takes the ball, but a "
+        "dribbler who runs into a defender standing still is called for a charge."], [
+        "Passing beats pressing: a bot team-mate who is open will usually score. Lobs go over defenders, bounce passes "
+        "under jumping ones.",
+        "Pump fake a defender who flies at you, then drive past while they are in the air.",
+        "A 14 second shot clock: shoot before it runs out. Inside the arc is 2 points, outside 3."], [
+        "The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. "
+        "Levels differ in how quickly they react, how well they time things and how good their decisions are. "
+        "Professional is very strong.",
+        "A win pays by the bots' level (3 minutes: Club 120, Regional 220, National 380, Professional 650), a loss a "
+        "little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows "
+        "with your tier; Casino Legend has none.",
+        "Leaving a match counts as a loss and pays nothing."]),
     "kart": ("Karting", [
         "Race 1 to 3 players and always one bot over 2 to 5 laps. Up, left, down, right: W A S D (Z Q S D in French) or the arrows.",
         "Shift boosts while the bar lasts. It refills slowly once you have not boosted for 2 seconds, so save it for the long straights.",
@@ -71896,6 +72067,4175 @@ class TermsGate(QWidget):
     def _quit(self) -> None:
         self.hide()
         self.ctx.qapp.quit()
+
+
+
+# ==================================================================================================
+# SECTION: hoops (9.3)
+# ==================================================================================================
+# Hoops: 2 v 2 basketball against bots. The rules, ball and bots (no Qt), then the drawing and the match view,
+# then the lobby, window and the server calls.
+
+# -- the court (metres). x runs along the court (blue defends the left hoop), z is the depth (0 = the near sideline,
+# the camera side; 15 = the far one), h is the height above the floor.
+HOOPS_DT = 1.0 / 120.0
+COURT_L, COURT_W = 28.0, 15.0
+HALF_L = COURT_L / 2
+HOOP_X, HOOP_Z, RIM_H, RIM_R = 12.425, 7.5, 3.05, 0.23
+BOARD_X, BOARD_HW, BOARD_LO, BOARD_HI = 12.8, 0.9, 2.9, 3.95
+THREE_R, THREE_SIDE = 6.75, 6.6
+KEY_HW, KEY_LEN = 2.45, 5.8            # the painted area: half width, length from the baseline
+HB_BALL_R = 0.12
+P_R = 0.38                             # players are cylinders this wide
+GRAV = 9.8
+
+# -- movement (m/s, m/s2)
+RUN, DRIB, STANCE, ACC, DEC = 6.3, 5.7, 3.9, 26.0, 32.0
+ZONE_R = 1.05                          # how far you can walk holding the ball without dribbling
+GATHER_T = 0.12                        # picking the ball up / starting a dribble
+SPIN_T, SPIN_CD = 0.30, 0.85
+STEAL_T, STEAL_CD, STEAL_REACH = 0.22, 0.85, 0.78
+OFF_BAL = 0.38                         # a missed steal leaves you off balance this long (moving at 45%)
+REACH_IN = 0.65                        # a swipe into the dribbler's body
+JUMP_V, JUMP_CD = 3.9, 0.35            # about 0.78 m off the floor, 0.8 s in the air
+HAND_H, HAND_UP = 2.3, 2.45            # reach standing; arms up adds this to the jump height + 0.5
+SHOT_T, LAY_T = 0.85, 0.58             # the shot meter fills in this long
+SHOT_C = 0.80                          # the perfect release, on the meter
+FAKE_T = 0.32
+PASS_WIND = 0.70                       # charging a pass to full
+SHOT_CLOCK = 14.0
+COUNT_START, COUNT_AFTER = 5.0, 3.0
+REF_SIGMA = 0.05                       # the release spread the shown % assumes (a good, not perfect, shooter)
+
+HOOPS_LEVELS = ["Club", "Regional", "National", "Professional"]
+# Every bot uses the same rules, speeds and shot meter as you. Levels differ in how fast they see things, how well
+# they time things, and how good their decisions are.
+HOOPS_BOT = {
+    "Club":         {"react": 0.42, "speed": 0.86, "sigma": 0.10, "shoot_min": 0.24, "risk": 0.75, "spin": 0.00,
+                     "fake": 0.00, "bite": 0.85, "steal": 0.30, "steal_read": 0.25, "help": 0.15, "space": 0.35,
+                     "cut": 0.00, "fancy": 0.00, "box": 0.2, "deny": 0.10, "gap": 1.75, "jump_read": 0.3},
+    "Regional":     {"react": 0.30, "speed": 0.91, "sigma": 0.072, "shoot_min": 0.33, "risk": 0.45, "spin": 0.15,
+                     "fake": 0.06, "bite": 0.60, "steal": 0.40, "steal_read": 0.50, "help": 0.40, "space": 0.6,
+                     "cut": 0.15, "fancy": 0.15, "box": 0.45, "deny": 0.35, "gap": 1.5, "jump_read": 0.55},
+    "National":     {"react": 0.19, "speed": 0.96, "sigma": 0.046, "shoot_min": 0.40, "risk": 0.25, "spin": 0.45,
+                     "fake": 0.18, "bite": 0.35, "steal": 0.55, "steal_read": 0.78, "help": 0.70, "space": 0.85,
+                     "cut": 0.45, "fancy": 0.45, "box": 0.75, "deny": 0.65, "gap": 1.3, "jump_read": 0.8},
+    "Professional": {"react": 0.11, "speed": 1.00, "sigma": 0.030, "shoot_min": 0.46, "risk": 0.10, "spin": 0.80,
+                     "fake": 0.34, "bite": 0.15, "steal": 0.70, "steal_read": 0.95, "help": 0.92, "space": 1.0,
+                     "cut": 0.80, "fancy": 0.80, "box": 0.95, "deny": 0.90, "gap": 1.15, "jump_read": 0.95},
+}
+
+
+def hyp(x, z):
+    return math.sqrt(x * x + z * z)
+
+
+def norm(x, z):
+    d = math.sqrt(x * x + z * z)
+    return (x / d, z / d) if d > 1e-9 else (0.0, 0.0)
+
+
+def hoop_of(team):
+    """The hoop this team attacks: blue (0) the right one, red (1) the left one."""
+    return HOOP_X if team == 0 else -HOOP_X
+
+
+def is_three(team, x, z):
+    hx = hoop_of(team)
+    return hyp(x - hx, z - HOOP_Z) >= THREE_R or (abs(z - HOOP_Z) >= THREE_SIDE and abs(x - hx) < 3.0)
+
+
+# -- the shot model: the shown % is the chance of a shooter whose release lands on the meter with a spread of
+# REF_SIGMA. Inside the green: 97% in; the yellow: 40%; the red: 3%. The green shrinks with distance and contest.
+SHOT_CURVE = [(0.0, 0.86), (1.5, 0.80), (3.0, 0.61), (5.0, 0.49), (6.75, 0.39), (9.0, 0.27), (12.4, 0.15),
+              (16.0, 0.07), (20.0, 0.035), (30.0, 0.015)]
+GREEN_IN, YELLOW_IN, RED_IN, YELLOW_K = 0.97, 0.40, 0.03, 2.2
+
+
+def _erf_band(g, sigma):
+    return math.erf(g / (sigma * math.sqrt(2)))
+
+
+def make_chance(g, sigma=REF_SIGMA):
+    a = _erf_band(g, sigma)
+    b = _erf_band(g * YELLOW_K, sigma)
+    return GREEN_IN * a + YELLOW_IN * (b - a) + RED_IN * (1 - b)
+
+
+def target_pct(d):
+    for (d0, p0), (d1, p1) in zip(SHOT_CURVE, SHOT_CURVE[1:]):
+        if d <= d1:
+            return lerp(p0, p1, (d - d0) / (d1 - d0))
+    return SHOT_CURVE[-1][1]
+
+
+_G_TABLE = []
+
+
+def _green_for(p):
+    """The half-width of the green that gives this % for the reference shooter."""
+    lo, hi = 0.0005, 0.4
+    for _ in range(40):
+        mid = (lo + hi) / 2
+        if make_chance(mid) < p:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+for _i in range(0, 301):
+    _G_TABLE.append(_green_for(target_pct(_i * 0.1)))
+
+
+def green_open(d):
+    i = clamp(d * 10, 0, 299.999)
+    k = int(i)
+    return lerp(_G_TABLE[k], _G_TABLE[k + 1], i - k)
+
+
+class HoopsInput:
+    """One player's controls this step, from the keyboard and mouse or from a bot."""
+    __slots__ = ("mx", "mz", "space", "shift", "lmb", "rmb", "aim")
+
+    def __init__(self, mx=0.0, mz=0.0, space=False, shift=False, lmb=False, rmb=False, aim=None):
+        self.mx, self.mz, self.space, self.shift, self.lmb, self.rmb, self.aim = mx, mz, space, shift, lmb, rmb, aim
+
+    def copy(self):
+        return HoopsInput(self.mx, self.mz, self.space, self.shift, self.lmb, self.rmb, self.aim)
+
+
+class HoopsPlayer:
+    def __init__(self, idx, team, num, human=False, level="National"):
+        self.i, self.team, self.num, self.human, self.level = idx, team, num, human, level
+        self.x, self.z, self.vx, self.vz = 0.0, 0.0, 0.0, 0.0
+        self.h, self.vh = 0.0, 0.0
+        self.fx, self.fz = (1.0 if team == 0 else -1.0), 0.0       # facing
+        self.act = "free"         # free hold dribble gather passwind shoot fake steal stun spin
+        self.act_t = 0.0          # time in this act
+        self.zx, self.zz = 0.0, 0.0                                   # the dribble zone's centre
+        self.hand = 1             # the dribble hand: +1 right of the facing, -1 left
+        self.hand_to = 1
+        self.cross = 0.0          # 0..1 while the ball crosses over
+        self.phase = 0.0          # the dribble's phase 0..1 (0 and 1 in the hand, 0.5 on the floor)
+        self.steal_cd = 0.0
+        self.spin_cd = 0.0
+        self.jump_cd = 0.0
+        self.stun = 0.0
+        self.shot_m = 0.0         # the shot meter
+        self.shot_lay = False
+        self.pass_c = 0.0         # pass charge
+        self.pass_kind = "chest"
+        self.prev = HoopsInput()
+        self.ctrl = False         # driven by a human's input this step
+        self.queued = False       # a click during the pick-up
+        self.drib_at = -9.0       # when it last dribbled (a layup comes off the dribble)
+        self.run_ph = 0.0         # for the legs
+        self.arms_up = 0.0
+        self.catch_t = 0.0        # just caught (for the drawing)
+        self.celebrate = 0.0
+        self.st = {"pts": 0, "fg": 0, "fga": 0, "three": 0, "threea": 0, "ast": 0, "stl": 0, "blk": 0, "reb": 0,
+                   "to": 0, "perfect": 0}
+
+    @property
+    def jumping(self):
+        return self.h > 0.02 or self.vh > 0
+
+    def hand_h(self):
+        return self.h + (HAND_UP if self.arms_up > 0.5 else HAND_H)
+
+    def speed(self):
+        return hyp(self.vx, self.vz)
+
+
+class HoopsBall:
+    def __init__(self):
+        self.x, self.z, self.h = 0.0, HOOP_Z, 1.0
+        self.vx, self.vz, self.vh = 0.0, 0.0, 0.0
+        self.owner = -1
+        self.mode = "dead"        # held (in someone's hands or dribble), pass, shot, loose, dead
+        self.f = None             # the flight: dict
+        self.last_team = -1
+        self.spin = 0.0           # for the drawing
+        self.from_shot = False    # a loose ball that came off the rim (for rebounds)
+
+
+class HoopsGame:
+    """One match: 2 v 2 (or 1 v 1 for tests). HoopsPlayer 0 is blue's human (if any). Steps at 120 Hz."""
+
+    def __init__(self, level="National", mins=3.0, seed=1, humans=(0,), team_size=2, mate_level=None):
+        self.rng = random.Random(seed)
+        self.seed = seed
+        self.level = level
+        self.mins = mins
+        self.clock = mins * 60.0
+        self.shot_clock = SHOT_CLOCK
+        self.t = 0.0
+        self.score = [0, 0]
+        self.overtime = False
+        self.players = []
+        n = 0
+        for team in (0, 1):
+            for k in range(team_size):
+                human = n in humans
+                lv = (mate_level or level) if team == 0 else level
+                self.players.append(HoopsPlayer(n, team, [7, 23, 11, 3][n % 4] if team == 0 else [10, 4, 32, 9][k % 4],
+                                           human, lv))
+                n += 1
+        self.ball = HoopsBall()
+        self.poss = -1             # the team with the ball (or the last one to have it)
+        self.phase = "intro"       # intro toss count play score dead over
+        self.phase_t = 0.0
+        self.count_len = COUNT_START
+        self.ctrl = {0: 0}         # human team -> the player they control (the view sends its input as player -1)
+        self.inputs = {}
+        self.events = []           # (kind, data) for the drawing and the sound, taken each frame
+        self.flip_team = self.rng.randint(0, 1)
+        self.toss_to = -1
+        self.last_score = None     # {"team", "pts", "by", "assist", "t"}
+        self.last_pass = None      # (passer, team, t) for assists
+        self.result = None
+        self.human_teams = {p.team for p in self.players if p.human}
+        self._ctrl_poss = {}       # team -> the team that had the ball last time we checked (auto switch once)
+        self.bots = {}
+        for p in self.players:
+            if not p.human:
+                self.bots[p.i] = HoopsBot(self, p)
+        self.hist = []             # recent positions: [(t, [(x, z) per player])] for the bots' reaction delay
+        self.dead_for = 0.0
+        self.dead_then = None
+        self.buzzer = False
+        self.reset_positions()
+
+    # ---------------------------------------------------------------------------------------------- helpers
+    def ev(self, what, **data):
+        self.events.append((what, data))
+
+    def team(self, t):
+        return [p for p in self.players if p.team == t]
+
+    def mate(self, p):
+        m = [q for q in self.players if q.team == p.team and q is not p]
+        return m[0] if m else None
+
+    def opps(self, p):
+        return [q for q in self.players if q.team != p.team]
+
+    def carrier(self):
+        b = self.ball
+        return self.players[b.owner] if b.owner >= 0 else None
+
+    def past(self, i, lag):
+        """Where player i was `lag` seconds ago (what a bot with that reaction time sees)."""
+        want = self.t - lag
+        for t, pos in reversed(self.hist):
+            if t <= want:
+                return pos[i]
+        p = self.players[i]
+        return (p.x, p.z, p.vx, p.vz)
+
+    def reset_positions(self):
+        """Kick-off: on each team the human (or the first player) is at the back near their own hoop, the other in front."""
+        for p in self.players:
+            side = -1 if p.team == 0 else 1
+            k = [q.i for q in self.team(p.team)].index(p.i)
+            if k == 0:
+                p.x, p.z = side * 8.6, HOOP_Z + (-0.4 if p.team == 0 else 0.4)
+            else:
+                p.x, p.z = side * 3.2, HOOP_Z + (-2.6 if p.team == 0 else 2.6)
+            p.vx = p.vz = p.h = p.vh = 0.0
+            p.fx, p.fz = (1.0 if p.team == 0 else -1.0), 0.0
+            p.act, p.act_t, p.stun, p.arms_up = "free", 0.0, 0.0, 0.0
+            p.steal_cd = p.spin_cd = p.jump_cd = 0.0
+        b = self.ball
+        b.owner, b.mode, b.f = -1, "dead", None
+        b.x, b.z, b.h, b.vx, b.vz, b.vh = 0.0, -0.6, 1.4, 0.0, 0.0, 0.0      # with the referee, near side
+        self.shot_clock = SHOT_CLOCK
+
+    # ---------------------------------------------------------------------------------------------- the match flow
+    def start_toss(self, team):
+        """The referee throws the ball to a random player of this team; then the countdown."""
+        self.reset_positions()
+        tm = self.team(team)
+        target = tm[self.rng.randrange(len(tm))]
+        self.toss_to = target.i
+        b = self.ball
+        b.mode = "pass"
+        tx, tz = target.x + target.fx * 0.35, target.z
+        b.f = {"kind": "toss", "x0": b.x, "z0": b.z, "h0": b.h, "x1": tx, "z1": tz, "h1": 1.25, "T": 1.05,
+               "t": 0.0, "apex": 3.4, "curve": 0.0, "to": target.i, "by": -1}
+        self.poss = team
+        self.phase, self.phase_t = "toss", 0.0
+        self.ev("whistle_short")
+        self.ev("toss", team=team, to=target.i)
+
+    def step(self, inputs=None):
+        """One 1/120 s step. inputs: {player index: HoopsInput} for the humans."""
+        dt = HOOPS_DT
+        self.t += dt
+        self.phase_t += dt
+        if inputs:
+            self.inputs = inputs
+        ph = self.phase
+        if ph == "intro":
+            if self.phase_t >= 2.6:                         # the coin flip shows for 2.6 s
+                self.start_toss(self.flip_team)
+            return
+        if ph == "toss":
+            self._ball_step(dt)
+            for p in self.players:
+                self._idle(p, dt)
+            if self.ball.mode == "held":
+                self.phase, self.phase_t = "count", 0.0
+                self.ev("count_start", n=self.count_len)
+            return
+        if ph == "count":
+            for p in self.players:
+                self._idle(p, dt)
+            self._hold_ball()
+            if self.phase_t >= self.count_len:
+                self.phase, self.phase_t = "play", 0.0
+                self.ev("whistle")
+                c = self.carrier()
+                if c is not None:
+                    self.shot_clock = SHOT_CLOCK
+                    c.act, c.act_t = "hold", 0.0
+                    c.zx, c.zz = c.x, c.z
+                    self._control_carrier()
+            return
+        if ph == "score":
+            self._ball_step(dt)
+            for p in self.players:
+                self._idle(p, dt, celebrate=True)
+            return
+        if ph == "dead":
+            for p in self.players:
+                self._idle(p, dt)
+            self._ball_step(dt) if self.ball.mode != "held" else self._hold_ball()
+            if self.phase_t >= self.dead_for and self.dead_then:
+                fn = self.dead_then
+                self.dead_then = None
+                fn()
+            return
+        if ph == "over":
+            for p in self.players:
+                self._idle(p, dt, celebrate=True)
+            self._ball_step(dt) if self.ball.mode != "held" else self._hold_ball()
+            return
+        # -- play
+        if not self.overtime:
+            self.clock = max(0.0, self.clock - dt)
+        if self.ball.mode in ("held",) or (self.ball.mode == "pass" and self.ball.f.get("kind") != "toss"):
+            self.shot_clock = max(0.0, self.shot_clock - dt)
+        self.hist.append((self.t, [(p.x, p.z, p.vx, p.vz) for p in self.players]))
+        if len(self.hist) > 150:
+            del self.hist[:30]
+        ins = {}
+        src = inputs or self.inputs
+        for p in self.players:
+            # the player a human controls (on a team with a human) takes that human's input; everyone else is a bot
+            p.ctrl = p.team in self.human_teams and self.ctrl.get(p.team, -1) == p.i
+            ins[p.i] = src.get(p.i, src.get(-p.team - 1, HoopsInput())) if p.ctrl else None
+        # a human's team-mate who is not controlled is driven by a bot brain too
+        for p in self.players:
+            if ins[p.i] is None:
+                if p.i not in self.bots:
+                    self.bots[p.i] = HoopsBot(self, p)
+                ins[p.i] = self.bots[p.i].think(HOOPS_DT)
+        for p in self.players:
+            self._player_step(p, ins[p.i], dt)
+            p.prev = ins[p.i]
+        self._collide(dt)
+        self._ball_step(dt)
+        # the clocks
+        if self.shot_clock <= 0 and self.ball.mode == "held" and self.phase == "play":
+            self.violation("shot_clock")
+        if self.clock <= 0 and not self.overtime and self.phase == "play":
+            b = self.ball
+            if not (b.mode == "shot" or (b.mode == "loose" and b.from_shot and b.f is None and False)):
+                self.buzzer = True
+                self.end_regulation()
+
+    def end_regulation(self):
+        self.ev("buzzer")
+        if self.score[0] == self.score[1]:
+            self.overtime = True
+            self.phase, self.phase_t = "dead", 0.0
+            self.dead_for = 3.2
+            self.ev("overtime")
+            self.dead_then = lambda: (setattr(self, "count_len", COUNT_AFTER), self._ot_toss())
+        else:
+            self.finish()
+
+    def _ot_toss(self):
+        self.flip_team = self.rng.randint(0, 1)
+        self.phase, self.phase_t = "intro", 0.0
+        self.ev("flip", team=self.flip_team)
+
+    def finish(self):
+        self.phase, self.phase_t = "over", 0.0
+        win = 0 if self.score[0] > self.score[1] else 1
+        self.result = {"win": win, "score": list(self.score), "ot": self.overtime}
+        self.ev("final", win=win)
+
+    def violation(self, kind, spot=None, team=None):
+        """Whistle: the other team gets the ball where it happened (inside the court), after a short pause."""
+        b = self.ball
+        lose = self.poss if team is None else 1 - team
+        to = 1 - lose
+        sx, sz = spot if spot else (b.x, b.z)
+        sx, sz = clamp(sx, -HALF_L + 0.6, HALF_L - 0.6), clamp(sz, 0.6, COURT_W - 0.6)
+        c = self.carrier()
+        if c is not None:
+            c.st["to"] += 1
+            c.act = "free"
+        b.owner, b.mode, b.f = -1, "dead", None
+        b.vx = b.vz = b.vh = 0.0
+        self.phase, self.phase_t = "dead", 0.0
+        self.dead_for = 1.4
+        self.ev("whistle")
+        self.ev("violation", kind=kind, team=to)
+
+        def give():
+            tm = self.team(to)
+            p = min(tm, key=lambda q: hyp(q.x - sx, q.z - sz))
+            p.x, p.z = sx, sz
+            for q in self.players:                            # nobody stands on top of the inbound spot
+                if q is not p and hyp(q.x - sx, q.z - sz) < 1.6:
+                    dx, dz = norm(q.x - sx, q.z - sz) if hyp(q.x - sx, q.z - sz) > 0.01 else (0.0, 1.0)
+                    q.x, q.z = sx + dx * 1.7, sz + dz * 1.7
+            self._give(p)
+            self.shot_clock = SHOT_CLOCK
+            self.phase, self.phase_t = "count", 0.0
+            self.count_len = 1.0
+            self.ev("restart")
+        self.dead_then = give
+
+    def _give(self, p):
+        b = self.ball
+        b.owner, b.mode, b.f = p.i, "held", None
+        b.from_shot = False
+        p.act, p.act_t = "hold", 0.0
+        p.zx, p.zz = p.x, p.z
+        p.catch_t = 0.25
+        if self.poss != p.team:
+            self.shot_clock = SHOT_CLOCK
+        self.poss = p.team
+        b.last_team = p.team
+        self._control_carrier()
+
+    def _control_carrier(self):
+        c = self.carrier()
+        if c is not None:
+            for team in self.human_teams:
+                if team != c.team:
+                    near = min(self.team(team), key=lambda q: hyp(q.x - c.x, q.z - c.z))
+                    if self.ctrl.get(team) != near.i and self._ctrl_poss.get(team) != c.team:
+                        self.ctrl[team] = near.i
+                        self.ev("switch", to=near.i)
+                self._ctrl_poss[team] = c.team
+        if c is not None and c.team in self.ctrl and any(q.human for q in self.team(c.team)):
+            if self.ctrl[c.team] != c.i:
+                self.ctrl[c.team] = c.i
+                self.ev("switch", to=c.i)
+
+    def switch_control(self, team):
+        """Right click without the ball: the other team-mate."""
+        if team not in self.ctrl:
+            return
+        c = self.carrier()
+        if c is not None and c.team == team:
+            return
+        cur = self.ctrl[team]
+        others = [q.i for q in self.team(team) if q.i != cur]
+        if others:
+            self.ctrl[team] = others[0]
+            self.bots.setdefault(cur, HoopsBot(self, self.players[cur]))
+            self.ev("switch", to=others[0])
+
+    def scored(self, team, pts, shooter):
+        self.score[team] += pts
+        p = self.players[shooter]
+        p.st["pts"] += pts
+        p.st["fg"] += 1
+        if pts == 3:
+            p.st["three"] += 1
+        assist = -1
+        lp = self.last_pass
+        if lp and lp[1] == team and lp[0] != shooter and self.t - lp[2] < 4.0:
+            assist = lp[0]
+            self.players[assist].st["ast"] += 1
+        self.last_score = {"team": team, "pts": pts, "by": shooter, "assist": assist, "t": self.t}
+        self.phase, self.phase_t = "score", 0.0
+        self.ev("score", team=team, pts=pts, by=shooter, assist=assist)
+        for q in self.team(team):
+            q.celebrate = 2.5
+
+    def after_score(self):
+        """Called by the view once the replay is done (or straight away in a test): the other team's kick-off."""
+        if self.overtime:
+            return self.finish()
+        if self.clock <= 0:
+            return self.finish()
+        self.count_len = COUNT_AFTER
+        self.start_toss(1 - self.last_score["team"])
+
+    # ---------------------------------------------------------------------------------------------- players
+    def _idle(self, p, dt, celebrate=False):
+        """Outside play: slow down, face the ball, the toss's catcher steps in."""
+        p.vx *= max(0.0, 1 - 6 * dt)
+        p.vz *= max(0.0, 1 - 6 * dt)
+        p.x += p.vx * dt
+        p.z += p.vz * dt
+        self._air(p, dt)
+        p.arms_up = max(0.0, p.arms_up - dt * 3)
+        p.celebrate = max(0.0, p.celebrate - dt)
+        p.catch_t = max(0.0, p.catch_t - dt)
+        b = self.ball
+        if b.owner != p.i:
+            dx, dz = norm(b.x - p.x, b.z - p.z)
+            if dx or dz:
+                p.fx, p.fz = lerp(p.fx, dx, 0.08), lerp(p.fz, dz, 0.08)
+                p.fx, p.fz = norm(p.fx, p.fz)
+        if p.act not in ("free", "hold"):
+            p.act = "hold" if b.owner == p.i else "free"
+        if celebrate and p.celebrate > 0 and p.h <= 0 and p.vh <= 0 and self.rng.random() < dt * 1.5:
+            p.vh = 2.6
+
+    def _air(self, p, dt):
+        if p.h > 0 or p.vh > 0:
+            p.vh -= GRAV * dt
+            p.h += p.vh * dt
+            if p.h <= 0:
+                p.h, p.vh = 0.0, 0.0
+                p.jump_cd = JUMP_CD
+                self.ev("land", p=p.i)
+
+    def _hold_ball(self):
+        c = self.carrier()
+        if c is not None:
+            b = self.ball
+            b.x, b.z, b.h = c.x + c.fx * 0.32, c.z + c.fz * 0.32, c.h + 1.15
+            b.vx = b.vz = b.vh = 0.0
+
+    def _player_step(self, p, inp, dt):
+        b = self.ball
+        has = b.owner == p.i
+        p.act_t += dt
+        p.steal_cd = max(0.0, p.steal_cd - dt)
+        p.spin_cd = max(0.0, p.spin_cd - dt)
+        p.jump_cd = max(0.0, p.jump_cd - dt)
+        p.stun = max(0.0, p.stun - dt)
+        p.catch_t = max(0.0, p.catch_t - dt)
+        p.celebrate = max(0.0, p.celebrate - dt)
+        pv = p.prev
+        mx, mz = inp.mx, inp.mz
+        ml = hyp(mx, mz)
+        if ml > 1:
+            mx, mz = mx / ml, mz / ml
+        lmb_down = inp.lmb and not pv.lmb
+        lmb_up = pv.lmb and not inp.lmb
+        rmb_down = inp.rmb and not pv.rmb
+        space_down = inp.space and not pv.space
+        want_v = 0.0
+        stance = False
+        if has:
+            want_v = self._carrier_step(p, inp, dt, mx, mz, lmb_down, lmb_up, rmb_down, space_down)
+            if b.owner != p.i:                    # passed or shot this step
+                has = False
+        else:
+            if p.act in ("hold", "dribble", "gather", "passwind", "shoot", "fake", "spin"):
+                if p.act == "shoot" and p.h > 0:
+                    pass
+                else:
+                    p.act = "free"
+            # defence and off the ball
+            if p.act == "steal" and p.act_t >= STEAL_T:
+                p.act = "free"
+            if lmb_down and p.act == "free" and p.steal_cd <= 0 and p.stun <= 0 and p.h <= 0:
+                self._steal(p)
+            if space_down and p.h <= 0 and p.jump_cd <= 0 and p.stun <= 0:
+                p.vh = JUMP_V
+                p.arms_up = 1.0
+                self.ev("jump", p=p.i)
+            if rmb_down and p.ctrl:
+                self.switch_control(p.team)
+            stance = inp.shift
+            want_v = STANCE if stance else RUN
+        if p.h > 0:
+            p.arms_up = max(p.arms_up, 0.6) if not has else p.arms_up
+        elif p.act != "shoot":
+            p.arms_up = max(0.0, p.arms_up - dt * 2.5)
+        if p.stun > 0:
+            want_v *= 0.45
+        if not p.ctrl:
+            want_v *= HOOPS_BOT[p.level]["speed"]
+        if p.act == "steal":
+            want_v *= 0.5
+        # move
+        tvx, tvz = mx * want_v, mz * want_v
+        if p.h > 0:                                  # in the air you keep your speed
+            tvx, tvz = p.vx, p.vz
+        ax = ACC if hyp(tvx, tvz) > hyp(p.vx, p.vz) else DEC
+        dvx, dvz = tvx - p.vx, tvz - p.vz
+        dl = hyp(dvx, dvz)
+        if dl > ax * dt:
+            dvx, dvz = dvx / dl * ax * dt, dvz / dl * ax * dt
+        p.vx += dvx
+        p.vz += dvz
+        nx, nz = p.x + p.vx * dt, p.z + p.vz * dt
+        # the zone: holding the ball, you can't leave it
+        if has and p.act in ("hold", "passwind", "gather", "fake") or (has and p.act == "shoot" and p.h <= 0):
+            dx, dz = nx - p.zx, nz - p.zz
+            d = hyp(dx, dz)
+            if d > ZONE_R:
+                nx, nz = p.zx + dx / d * ZONE_R, p.zz + dz / d * ZONE_R
+                # slide along the edge
+                rx, rz = dx / d, dz / d
+                vn = p.vx * rx + p.vz * rz
+                if vn > 0:
+                    p.vx -= vn * rx
+                    p.vz -= vn * rz
+        p.x = clamp(nx, -HALF_L - 1.2, HALF_L + 1.2)
+        p.z = clamp(nz, -1.2, COURT_W + 1.2)
+        self._air(p, dt)
+        sp = p.speed()
+        p.run_ph += sp * dt * 1.25
+        # facing: the carrier faces where they go (or the hoop when aiming); others face the ball, turning their body
+        if has and p.act in ("hold", "passwind", "shoot", "fake") and inp.shift:
+            hx = hoop_of(p.team)
+            tx, tz = norm(hx - p.x, HOOP_Z - p.z)
+            k = 0.25
+        elif has and p.act == "passwind":
+            m = self.mate(p)
+            tx, tz = norm(m.x - p.x, m.z - p.z) if m else (p.fx, p.fz)
+            k = 0.25
+        elif has and sp > 0.6:
+            tx, tz = norm(p.vx, p.vz)
+            k = 0.5 if p.act == "spin" else 0.18
+        elif not has:
+            if sp > 3.2 and not stance:
+                tx, tz = norm(p.vx, p.vz)
+            else:
+                tx, tz = norm(b.x - p.x, b.z - p.z)
+            k = 0.15
+        else:
+            tx, tz = p.fx, p.fz
+            k = 0.1
+        if tx or tz:
+            p.fx, p.fz = norm(lerp(p.fx, tx, k), lerp(p.fz, tz, k))
+            if not (p.fx or p.fz):
+                p.fx, p.fz = tx, tz
+
+    def _carrier_step(self, p, inp, dt, mx, mz, lmb_down, lmb_up, rmb_down, space_down):
+        ml = hyp(mx, mz)
+        a = p.act
+        # -- the shot (Shift aims, then the left button: press to rise, release at the green)
+        if a == "shoot":
+            p.shot_m = min(1.0, p.act_t / (LAY_T if p.shot_lay else SHOT_T))
+            p.arms_up = 1.0
+            if p.act_t > 0.05 and p.h <= 0 and p.vh <= 0 and p.shot_m < 0.4:
+                p.vh = JUMP_V * (0.7 if p.shot_lay else 0.85)           # off the floor at the start of the meter
+            if (not inp.lmb) or p.shot_m >= 1.0:
+                self._release(p)
+            return 0.0 if not p.shot_lay else DRIB * 0.6
+        if a == "fake":
+            p.arms_up = 1.0 if p.act_t < FAKE_T * 0.6 else 0.3
+            if p.act_t >= FAKE_T:
+                p.act, p.act_t = "hold", 0.0
+            return RUN * 0.5
+        if a == "passwind":
+            p.pass_c = min(1.0, p.act_t / PASS_WIND)
+            # the keys shape the pass while you charge it: up = lob, down = bounce, left / right = curve
+            p.pass_kind = pass_shape(p, mx, mz, self)
+            if rmb_down:                                  # a pass fake
+                p.act, p.act_t = "fake", 0.0
+                self.ev("pass_fake", p=p.i)
+                return 0.0
+            if not inp.lmb:
+                self._pass(p, p.pass_kind, p.pass_c, inp.aim)
+            return 0.0
+        if a == "gather":
+            if lmb_down:
+                p.queued = True
+            if p.act_t >= GATHER_T:
+                p.act, p.act_t = ("dribble" if inp.space else "hold"), 0.0
+                p.zx, p.zz = p.x, p.z
+            return DRIB * 0.4
+        if a == "spin":
+            self._dribble_ball(p, dt)
+            if p.act_t >= SPIN_T:
+                p.act, p.act_t = "dribble", 0.0
+            return DRIB * 1.15
+        # hold or dribble: start a shot, a pass, a fake (a click during the pick-up counts if it's still held)
+        if p.queued:
+            p.queued = False
+            if inp.lmb:
+                lmb_down = True
+        if a == "dribble":
+            p.drib_at = self.t
+        if lmb_down and inp.shift and p.h <= 0:
+            hx = hoop_of(p.team)
+            d = hyp(hx - p.x, HOOP_Z - p.z)
+            p.shot_lay = d < 2.3 and self.t - p.drib_at < 0.45
+            p.act, p.act_t = "shoot", 0.0
+            p.shot_m = 0.0
+            p.shot_x, p.shot_z = p.x, p.z
+            self.ev("shot_start", p=p.i, lay=p.shot_lay)
+            return 0.0
+        if rmb_down and inp.shift:
+            p.act, p.act_t = "fake", 0.0
+            self.ev("pump_fake", p=p.i)
+            return 0.0
+        if rmb_down:                                      # a quick pass to the team-mate
+            self._pass(p, "chest", 0.55, None)
+            return 0.0
+        if lmb_down and not inp.shift:
+            p.act, p.act_t = "passwind", 0.0
+            p.pass_c = 0.0
+            return 0.0
+        if a == "hold":
+            if inp.space and ml > 0.2 and not inp.shift:
+                p.act, p.act_t = "gather", GATHER_T * 0.5          # half as long to put it down as to pick it up
+                p.phase = 0.0
+                return DRIB * 0.4
+            return RUN * 0.55                            # pivot steps inside the zone
+        if a == "dribble":
+            if not inp.space or inp.shift:
+                p.act, p.act_t = "gather", 0.0
+                return DRIB * 0.4
+            # a spin: back + dribble turns you round fast
+            if ml > 0.3 and p.spin_cd <= 0 and p.speed() > 1.5:
+                dot = (mx * p.fx + mz * p.fz) / ml
+                if dot < -0.55:
+                    p.act, p.act_t = "spin", 0.0
+                    p.spin_cd = SPIN_CD
+                    p.fx, p.fz = norm(mx, mz)
+                    p.vx, p.vz = p.vx * 0.2 + mx * DRIB * 0.9, p.vz * 0.2 + mz * DRIB * 0.9
+                    self.ev("spin", p=p.i)
+            self._dribble_ball(p, dt)
+            return DRIB
+        return RUN * 0.5
+
+    def _dribble_ball(self, p, dt):
+        b = self.ball
+        sp = p.speed()
+        period = lerp(0.52, 0.36, clamp(sp / DRIB, 0, 1))
+        old = p.phase
+        p.phase = (p.phase + dt / period) % 1.0
+        # the hand that dribbles: away from the nearest opponent; it changes at the floor (a crossover in front)
+        near = min(self.opps(p), key=lambda q: hyp(q.x - p.x, q.z - p.z))
+        sx, sz = -p.fz, p.fx                         # right of the facing
+        side = (near.x - p.x) * sx + (near.z - p.z) * sz
+        if hyp(near.x - p.x, near.z - p.z) < 3.0 and side * p.hand > 0.25:
+            p.hand_to = -p.hand
+        if old < 0.5 <= p.phase:                     # the bounce
+            self.ev("bounce", p=p.i, x=b.x, z=b.z, v=sp)
+            p.zx, p.zz = b.x, b.z
+            if p.hand_to != p.hand:
+                p.cross = 1.0
+                p.hand = p.hand_to
+        p.cross = max(0.0, p.cross - dt / (period * 0.5))
+        hand = p.hand * (1 - p.cross) - p.hand * p.cross   # through the middle while crossing
+        ahead = 0.30 + 0.06 * sp
+        b.x = p.x + p.fx * ahead + sx * 0.34 * hand
+        b.z = p.z + p.fz * ahead + sz * 0.34 * hand
+        b.h = 0.95 * abs(math.cos(math.pi * p.phase)) + HB_BALL_R
+        b.spin += dt * 8
+
+    def _steal(self, p):
+        """A swipe at the ball. It only works on a dribbled ball, in reach, on your side of the dribbler; into the
+        body it's a reach-in; anything else misses and you're off balance."""
+        b = self.ball
+        p.act, p.act_t = "steal", 0.0
+        p.steal_cd = STEAL_CD
+        self.ev("swipe", p=p.i)
+        c = self.carrier()
+        hx, hz = p.x + p.fx * 0.45, p.z + p.fz * 0.45
+        if c is None or c.team == p.team:
+            if b.mode == "loose" and hyp(b.x - hx, b.z - hz) < STEAL_REACH and b.h < 2.0:
+                self._take(p)
+            return
+        d_ball = hyp(b.x - hx, b.z - hz)
+        if d_ball > STEAL_REACH + 0.25:
+            p.stun = OFF_BAL
+            return
+        if c.act in ("hold", "passwind", "fake", "gather") or (c.act == "shoot" and c.h > 0.3):
+            p.stun = OFF_BAL * 0.8                       # tied up in the hands
+            self.ev("tied", p=p.i)
+            return
+        if c.act == "spin":
+            p.stun = OFF_BAL
+            return
+        if c.act == "shoot":                             # a strip on the way up
+            if d_ball < STEAL_REACH and self.rng.random() < 0.35:
+                return self._strip(p, c)
+            p.stun = OFF_BAL
+            return
+        # the body in the way: the ball further from the defender than the dribbler's body by a margin
+        d_body = hyp(c.x - p.x, c.z - p.z)
+        if hyp(b.x - p.x, b.z - p.z) > d_body + 0.18:
+            p.stun = REACH_IN
+            self.ev("reach_in", p=p.i)
+            return
+        # low on the bounce is easiest; in the hand it's protected
+        if d_ball <= STEAL_REACH and b.h < 0.85:
+            return self._strip(p, c)
+        p.stun = OFF_BAL
+
+    def _strip(self, p, c):
+        b = self.ball
+        c.act, c.act_t = "free", 0.0
+        c.stun = 0.3
+        b.owner, b.mode, b.f = -1, "loose", None
+        dx, dz = norm(b.x - c.x, b.z - c.z)
+        ex, ez = norm(p.fx, p.fz)
+        b.vx, b.vz, b.vh = (dx * 0.4 - ex * 0.3) * 4.0, (dz * 0.4 - ez * 0.3) * 4.0, 1.2
+        b.vx, b.vz = -p.fx * 2.6 + dx * 1.0, -p.fz * 2.6 + dz * 1.0       # back towards the defender
+        b.from_shot = False
+        b.last_team = p.team
+        p.st["stl"] += 1
+        c.st["to"] += 1
+        self.ev("steal", p=p.i, c=c.i)
+
+    def _take(self, p):
+        b = self.ball
+        if b.mode == "shot" or b.owner == p.i:
+            return
+        reb = b.mode == "loose" and b.from_shot
+        if reb:
+            p.st["reb"] += 1
+        b.owner, b.mode, b.f = p.i, "held", None
+        old = self.poss
+        self.poss = p.team
+        if old != p.team or reb:
+            self.shot_clock = SHOT_CLOCK
+        b.last_team = p.team
+        b.from_shot = False
+        if p.h > 0:
+            p.act = "hold"
+        else:
+            p.act = "hold"
+        p.act_t = 0.0
+        p.zx, p.zz = p.x, p.z
+        p.catch_t = 0.25
+        self.ev("catch", p=p.i, reb=reb, turn=old != p.team)
+        self._control_carrier()
+
+    # ---------------------------------------------------------------------------------------------- passes
+    def pass_path(self, p, kind, charge, aim):
+        """Where a pass from p would go: (x0, z0, h0, x1, z1, h1, T, apex, curve, to)."""
+        m = self.mate(p)
+        if m is None:
+            return None
+        speed = 7.5 + 11.0 * charge
+        # lead the receiver: where they will be when the ball gets there (their bot runs on to it)
+        d = hyp(m.x - p.x, m.z - p.z)
+        T = d / speed
+        lx, lz = m.x + m.vx * T * 0.9, m.z + m.vz * T * 0.9
+        if aim is not None and hyp(aim[0] - lx, aim[1] - lz) < 5.0:
+            # the mouse near the receiver leads the pass into space, up to 3.5 m from them
+            ax, az = aim
+            dx, dz = ax - lx, az - lz
+            dl = hyp(dx, dz)
+            if dl > 3.5:
+                dx, dz = dx / dl * 3.5, dz / dl * 3.5
+            lx, lz = lx + dx, lz + dz
+        lx, lz = clamp(lx, -HALF_L + 0.4, HALF_L - 0.4), clamp(lz, 0.4, COURT_W - 0.4)
+        d = max(0.5, hyp(lx - p.x, lz - p.z))
+        sp = speed * {"chest": 1.0, "bounce": 0.85, "lob": 0.62, "curve_l": 0.88, "curve_r": 0.88}[kind]
+        T = d / sp + (0.12 if kind == "lob" else 0.0)
+        apex = {"chest": 1.55, "bounce": 0.0, "lob": 3.4 + d * 0.05, "curve_l": 1.6, "curve_r": 1.6}[kind]
+        curve = {"curve_l": 1.0, "curve_r": -1.0}.get(kind, 0.0) * min(2.2, d * 0.22)
+        return (p.x + p.fx * 0.3, p.z + p.fz * 0.3, p.h + 1.2, lx, lz, 1.25, T, apex, curve, m.i)
+
+    def path_at(self, f, s):
+        """The ball's place on a pass at fraction s (0..1)."""
+        x = lerp(f["x0"], f["x1"], s)
+        z = lerp(f["z0"], f["z1"], s)
+        if f["curve"]:
+            dx, dz = norm(f["x1"] - f["x0"], f["z1"] - f["z0"])
+            k = 4 * s * (1 - s) * f["curve"]
+            x += -dz * k
+            z += dx * k
+        h0, h1 = f["h0"], f["h1"]
+        if f["kind"] == "bounce":
+            hb = 0.0
+            # down to the floor at 55% then up to the hands
+            if s < 0.55:
+                u = s / 0.55
+                h = lerp(h0, hb, u) + 0.25 * math.sin(math.pi * u) * 0.5
+            else:
+                u = (s - 0.55) / 0.45
+                h = lerp(hb, h1, u) + 0.55 * math.sin(math.pi * u)
+            return x, z, max(HB_BALL_R, h)
+        base = lerp(h0, h1, s)
+        top = f["apex"]
+        bump = max(0.0, top - max(h0, h1))
+        h = base + 4 * s * (1 - s) * bump
+        return x, z, h
+
+    def pass_risk(self, p, kind, charge, aim):
+        """How safe the pass looks, honestly, from where everyone is now: 0 safe .. 1 a defender is sure to get it.
+        Used for the line's colour and by the bots."""
+        pp = self.pass_path(p, kind, charge, aim)
+        if pp is None:
+            return 1.0, None
+        f = dict(zip(("x0", "z0", "h0", "x1", "z1", "h1", "T", "apex", "curve", "to"), pp))
+        f["kind"] = kind
+        worst = 0.0
+        n = 14
+        for q in self.opps(p):
+            reach_r = 0.62
+            for k in range(1, n + 1):
+                s = k / n
+                bx, bz, bh = self.path_at(f, s)
+                tb = f["T"] * s
+                can_h = HAND_UP + 0.75 if q.jump_cd <= 0 else HAND_H
+                if bh > can_h or bh < 0.15:
+                    continue
+                d = hyp(bx - q.x, bz - q.z) - reach_r
+                run = max(0.0, tb - 0.16) * RUN * 0.85
+                margin = d - run
+                if margin < 0:
+                    worst = max(worst, clamp(0.55 - margin * 0.6, 0.55, 1.0))
+                else:
+                    worst = max(worst, clamp(0.5 - margin * 0.45, 0.0, 0.5))
+        return worst, f
+
+    def _pass(self, p, kind, charge, aim):
+        risk, f = self.pass_risk(p, kind, charge, aim)
+        if f is None:
+            p.act = "hold"
+            return
+        b = self.ball
+        f["t"] = 0.0
+        f["by"] = p.i
+        b.owner, b.mode, b.f = -1, "pass", f
+        b.last_team = p.team
+        p.act, p.act_t = "free", 0.0
+        self.last_pass = (p.i, p.team, self.t)
+        self.ev("pass", p=p.i, kind=kind, to=f["to"])
+
+    # ---------------------------------------------------------------------------------------------- shots
+    def shot_window(self, p, x=None, z=None):
+        """(green half-width, distance, contest 0..1, the shown %) for a shot by p from (x, z) now."""
+        x = p.x if x is None else x
+        z = p.z if z is None else z
+        hx = hoop_of(p.team)
+        d = hyp(hx - x, HOOP_Z - z)
+        g = green_open(d)
+        c = 0.0
+        tx, tz = norm(hx - x, HOOP_Z - z)
+        for q in self.opps(p):
+            dq = hyp(q.x - x, q.z - z)
+            if dq > 2.4:
+                continue
+            ux, uz = norm(q.x - x, q.z - z)
+            front = ux * tx + uz * tz                # in front of the shooter (towards the hoop) contests more
+            if front < -0.2:
+                continue
+            k = clamp((2.4 - dq) / 1.6, 0, 1) * (0.55 + 0.45 * clamp(front, 0, 1))
+            if q.h > 0.15 or q.arms_up > 0.5:
+                k *= 1.25
+            c = max(c, clamp(k, 0, 1))
+        g *= 1 - 0.55 * c
+        return g, d, c, make_chance(g)
+
+    def _release(self, p):
+        b = self.ball
+        g, d, c, pct = self.shot_window(p)
+        if p.shot_lay:
+            g *= 1.15
+        r = p.shot_m
+        off = abs(r - SHOT_C)
+        if off <= g:
+            zone = "green"
+            chance = GREEN_IN
+        elif off <= g * YELLOW_K:
+            zone = "yellow"
+            chance = YELLOW_IN
+        else:
+            zone = "red"
+            chance = RED_IN
+        perfect = off <= g * 0.3
+        if perfect:
+            chance = 0.995 if d < 9 else 0.98
+            p.st["perfect"] += 1
+        made = self.rng.random() < chance
+        three = is_three(p.team, p.x, p.z)
+        hx = hoop_of(p.team)
+        p.st["fga"] += 1
+        if three:
+            p.st["threea"] += 1
+        early = r < SHOT_C
+        # the flight: to the rim (made: through the middle; missed: off the front or back of the rim, or short)
+        x0, z0, h0 = p.x + p.fx * 0.25, p.z + p.fz * 0.25, p.h + 2.35
+        if made:
+            tx, tz, th = hx, HOOP_Z, RIM_H + 0.05
+            how = "swish" if (perfect or self.rng.random() < 0.6) else "rim_in"
+        else:
+            how = "rim_out"
+            miss = 0.18 + (off - g) * 2.5 if zone != "yellow" else 0.2
+            if zone == "red" and off > g * 4:
+                how = "air"
+                miss = 0.55 + off
+            dirx, dirz = norm(hx - x0, HOOP_Z - z0)
+            sgn = -1 if early else 1                 # early = short, late = long
+            side = self.rng.uniform(-0.12, 0.12)
+            tx = hx + dirx * sgn * miss - dirz * side
+            tz = HOOP_Z + dirz * sgn * miss + dirx * side
+            th = RIM_H + (0.0 if how == "rim_out" else -0.05)
+        T = 0.62 + 0.055 * d if not p.shot_lay else 0.45
+        apex = max(h0, RIM_H) + (0.9 + 0.11 * d if not p.shot_lay else 0.55)
+        b.owner, b.mode = -1, "shot"
+        b.f = {"kind": "shot", "x0": x0, "z0": z0, "h0": h0, "x1": tx, "z1": tz, "h1": th, "T": T, "t": 0.0,
+               "apex": apex, "curve": 0.0, "by": p.i, "team": p.team, "made": made, "how": how, "zone": zone,
+               "pts": 3 if three else 2, "perfect": perfect, "m": r, "g": g, "lay": p.shot_lay, "early": early,
+               "before_buzzer": self.clock > 0 or self.overtime, "pct": pct, "dist": d}
+        b.last_team = p.team
+        p.act, p.act_t = "free", 0.0
+        p.arms_up = 1.0
+        self.ev("shot", p=p.i, zone=zone, made=made, perfect=perfect, pts=3 if three else 2, m=r, g=g)
+
+    # ---------------------------------------------------------------------------------------------- the ball
+    def _ball_step(self, dt):
+        b = self.ball
+        if b.mode == "held":
+            c = self.carrier()
+            if c is None:
+                b.mode = "loose"
+                return
+            if c.act not in ("dribble", "spin"):
+                up = c.arms_up > 0.5 and c.act in ("shoot", "fake")
+                b.x = c.x + c.fx * (0.18 if up else 0.33)
+                b.z = c.z + c.fz * (0.18 if up else 0.33)
+                b.h = c.h + (lerp(1.2, 2.3, c.shot_m if c.act == "shoot" else 0.7) if up else 1.15)
+            return
+        if b.mode in ("pass", "shot"):
+            f = b.f
+            f["t"] += dt
+            s = min(1.0, f["t"] / f["T"])
+            ox, oz, oh = b.x, b.z, b.h
+            if b.mode == "shot":
+                b.x, b.z, b.h = self.path_at(f, s)
+            else:
+                b.x, b.z, b.h = self.path_at(f, s)
+            b.vx, b.vz, b.vh = (b.x - ox) / dt, (b.z - oz) / dt, (b.h - oh) / dt
+            b.spin += dt * (14 if b.mode == "shot" else 9)
+            if b.mode == "pass":
+                if f["kind"] == "bounce" and f["t"] - dt < f["T"] * 0.55 <= f["t"]:
+                    self.ev("bounce", p=-1, x=b.x, z=b.z, v=5.0)
+                self._pass_catch(f, s)
+            else:
+                self._shot_fly(f, s)
+            return
+        if b.mode in ("loose", "dead"):
+            self._loose(dt)
+
+    def _pass_catch(self, f, s):
+        b = self.ball
+        if f["kind"] == "toss":
+            if s >= 1.0:
+                p = self.players[f["to"]]
+                b.owner, b.mode, b.f = p.i, "held", None
+                p.act, p.act_t = "hold", 0.0
+                p.zx, p.zz = p.x, p.z
+                p.catch_t = 0.25
+                self.poss = p.team
+                b.last_team = p.team
+                self.ev("catch", p=p.i, reb=False, turn=False)
+                self._control_carrier()
+            return
+        # a defender in reach takes it (a deflection if it's moving fast and only just in reach)
+        by = self.players[f["by"]] if f["by"] >= 0 else None
+        if s > 0.08:
+            for q in self.players:
+                if by is not None and q.team == by.team:
+                    continue
+                d = hyp(b.x - q.x, b.z - q.z)
+                lo = 0.15 if q.act != "free" or q.h > 0 else 0.15
+                hi = q.h + (HAND_UP + 0.25 if q.arms_up > 0.5 or q.h > 0 else HAND_H)
+                if d < 0.62 and lo <= b.h <= hi and q.stun <= 0:
+                    speed = hyp(b.vx, b.vz)
+                    if d > 0.45 and speed > 13:
+                        self._deflect(q)
+                    else:
+                        q.st["stl"] += 1
+                        by.st["to"] += 1
+                        self.ev("intercept", p=q.i, by=by.i)
+                        self._take(q)
+                    return
+        # the receiver
+        m = self.players[f["to"]]
+        d = hyp(b.x - m.x, b.z - m.z)
+        if (d < 0.85 and b.h <= m.h + HAND_UP + 0.3 and s > 0.6) or (s >= 1.0 and d < 1.25):
+            self._take(m)
+            return
+        if s >= 1.0:                                   # nobody there: it carries on, loose
+            b.mode = "loose"
+            b.f = None
+            b.from_shot = False
+            self.ev("loose")
+
+    def _deflect(self, q):
+        b = self.ball
+        b.mode, b.f = "loose", None
+        b.vx, b.vz = b.vx * -0.25 + self.rng.uniform(-1.5, 1.5), b.vz * -0.25 + self.rng.uniform(-1.5, 1.5)
+        b.vh = 1.8
+        b.last_team = q.team
+        b.from_shot = False
+        self.ev("deflect", p=q.i)
+
+    def _shot_fly(self, f, s):
+        b = self.ball
+        # a block: a jumping defender's hand on the ball while it's still going up
+        if s < 0.42 and not f.get("checked_block"):
+            for q in self.players:
+                if q.team == f["team"] or q.h < 0.12:
+                    continue
+                if hyp(b.x - q.x, b.z - q.z) < 0.62 and b.h <= q.h + HAND_UP + 0.2:
+                    f["checked_block"] = True
+                    b.mode, b.f = "loose", None
+                    b.vx, b.vz = -b.vx * 0.35 + (q.fx * 3.0), -b.vz * 0.35 + (q.fz * 3.0)
+                    b.vh = -1.0
+                    b.from_shot = True
+                    b.last_team = q.team
+                    q.st["blk"] += 1
+                    self.ev("block", p=q.i, by=f["by"])
+                    return
+        if s < 1.0:
+            return
+        hx = f["x1"] if f["made"] else hoop_of(f["team"])
+        if f["made"]:
+            b.mode = "loose"
+            b.f = None
+            b.x, b.z = hoop_of(f["team"]), HOOP_Z
+            b.vx, b.vz, b.vh = 0.0, 0.0, -2.5
+            b.from_shot = False
+            b.last_team = 1 - f["team"]
+            counts = f["before_buzzer"]
+            self.ev("net", how=f["how"], team=f["team"], pts=f["pts"])
+            if counts:
+                self.scored(f["team"], f["pts"], f["by"])
+            elif self.phase == "play":
+                self.end_regulation()
+            return
+        # a miss: off the rim (or nothing at all)
+        b.mode = "loose"
+        b.f = None
+        b.from_shot = True
+        hx = hoop_of(f["team"])
+        if f["how"] == "rim_out":
+            ox, oz = norm(b.x - hx, b.z - HOOP_Z)
+            if not (ox or oz):
+                ox, oz = (-1.0 if f["team"] == 0 else 1.0), 0.0
+            sp = self.rng.uniform(2.2, 4.4)
+            b.vx, b.vz, b.vh = ox * sp, oz * sp, self.rng.uniform(1.8, 3.6)
+            self.ev("rim", x=b.x, z=b.z)
+        else:
+            self.ev("airball", p=f["by"])
+        self.shot_clock = SHOT_CLOCK
+        if self.clock <= 0 and not self.overtime and self.phase == "play":
+            self.end_regulation()
+
+    def _loose(self, dt):
+        b = self.ball
+        b.vh -= GRAV * dt
+        b.x += b.vx * dt
+        b.z += b.vz * dt
+        b.h += b.vh * dt
+        b.spin += dt * hyp(b.vx, b.vz) * 2
+        # the backboards
+        for sgn in (-1, 1):
+            bx = sgn * BOARD_X
+            if abs(b.z - HOOP_Z) < BOARD_HW and BOARD_LO < b.h < BOARD_HI and (b.x - bx) * sgn > -HB_BALL_R \
+                    and (b.x - b.vx * dt - bx) * sgn <= -HB_BALL_R and b.vx * sgn > 0:
+                b.x = bx - sgn * HB_BALL_R
+                b.vx = -b.vx * 0.6
+                self.ev("board")
+        if b.h <= HB_BALL_R:
+            b.h = HB_BALL_R
+            if b.vh < -0.8:
+                self.ev("bounce", p=-1, x=b.x, z=b.z, v=-b.vh)
+            b.vh = -b.vh * 0.72
+            b.vx *= 0.86
+            b.vz *= 0.86
+            if abs(b.vh) < 0.6:
+                b.vh = 0.0
+                b.vx *= 0.96
+                b.vz *= 0.96
+        if self.phase != "play" or b.mode == "dead":
+            return
+        # out of bounds: the ball on the floor outside the lines, or flying low out past them
+        out = abs(b.x) > HALF_L + HB_BALL_R or b.z < -HB_BALL_R or b.z > COURT_W + HB_BALL_R
+        if out and b.h < 1.2:
+            self.violation("out", (b.x, b.z), team=b.last_team)
+            return
+        # someone picks it up: the nearest player whose hands reach it
+        best, bd = None, 9.0
+        for q in self.players:
+            if q.stun > 0.2:
+                continue
+            d = hyp(b.x - q.x, b.z - q.z)
+            reach = q.h + (HAND_UP + 0.2 if q.h > 0 else HAND_H)
+            if d < 0.58 and b.h < reach and (b.h < 1.6 or q.h > 0 or b.from_shot):
+                if d < bd:
+                    best, bd = q, d
+        if best is not None:
+            self._take(best)
+
+    def _collide(self, dt):
+        ps = self.players
+        b = self.ball
+        for i in range(len(ps)):
+            for j in range(i + 1, len(ps)):
+                a, c = ps[i], ps[j]
+                dx, dz = c.x - a.x, c.z - a.z
+                d = hyp(dx, dz)
+                if d < 2 * P_R and d > 1e-6:
+                    nx, nz = dx / d, dz / d
+                    push = (2 * P_R - d) / 2
+                    # a charge: the dribbler running hard into a defender who was standing set in front of them
+                    if a.team != c.team and self.phase == "play":
+                        for att, de, sgn in ((a, c, 1), (c, a, -1)):
+                            if b.owner == att.i and att.act in ("dribble", "spin"):
+                                vdot = (att.vx * nx + att.vz * nz) * sgn
+                                if vdot > 3.6 and de.speed() < 1.4 and de.h <= 0 and de.stun <= 0:
+                                    self.ev("charge", p=att.i, d=de.i)
+                                    self.violation("charge", (att.x, att.z))
+                                    return
+                    a.x -= nx * push
+                    a.z -= nz * push
+                    c.x += nx * push
+                    c.z += nz * push
+                    rv = (c.vx - a.vx) * nx + (c.vz - a.vz) * nz
+                    if rv < 0:
+                        a.vx += nx * rv * 0.5
+                        a.vz += nz * rv * 0.5
+                        c.vx -= nx * rv * 0.5
+                        c.vz -= nz * rv * 0.5
+
+    # ---------------------------------------------------------------------------------------------- snapshots
+    def snap(self):
+        """Everything the drawing needs, for the replay."""
+        b = self.ball
+        return ([(p.x, p.z, p.h, p.fx, p.fz, p.act, p.run_ph, p.arms_up, p.speed(), p.hand, p.phase, p.celebrate,
+                  p.vx, p.vz) for p in self.players],
+                (b.x, b.z, b.h, b.spin, b.owner, b.mode))
+
+
+def pass_shape(p, mx, mz, g):
+    """The pass's kind from the keys held while charging: up (W/Z) lob, down (S) bounce, left/right a curve to that
+    side of the pass line. Up and down are the screen's (the depth)."""
+    m = g.mate(p)
+    if mz > 0.5 and abs(mz) >= abs(mx):
+        return "lob"
+    if mz < -0.5 and abs(mz) >= abs(mx):
+        return "bounce"
+    if abs(mx) > 0.5 and m is not None:
+        dx, dz = norm(m.x - p.x, m.z - p.z)
+        # the left of the pass line from the passer's eyes; on screen we map "A" to curve to screen-left
+        # (towards -x) side and "D" to +x: pick the curve whose bulge goes that way
+        lx = -dz                                  # the bulge's x for curve +1
+        if abs(lx) < 0.25:                        # passing left/right along the court: A/D can't bend sideways,
+            return "curve_l" if mx * (1 if dx > 0 else -1) < 0 else "curve_r"   # so A = towards the near side
+        return "curve_l" if lx * mx > 0 else "curve_r"
+    return "chest"
+
+
+# ================================================================================================== the bots
+class HoopsBot:
+    """A bot's mind. It reads the game the same way you do (positions, a delay of `react`), and drives its player
+    through the same HoopsInput you have: the same speeds, the same dribble zone, the same shot meter. Levels change how
+    fast it sees things, how well it times them, and how good its choices are."""
+
+    def __init__(self, g, p):
+        self.g, self.p = g, p
+        self.k = HOOPS_BOT[p.level]
+        self.rng = random.Random(g.seed * 7919 + p.i * 104729)
+        self.next = 0.0
+        self.plan = {}
+        self.inp = HoopsInput()
+        self.shot_at = None         # when to release the shot (seconds into the shot)
+        self.hold_t = 0.0
+        self.fake_used = 0.0
+        self.last_poss = -2
+        self.spot = None
+        self.charge_to = 0.0
+        self.contest_seen = -1.0
+        self.assign = -1
+        self.patience = 0.0
+
+    # -- small helpers
+    def _to(self, tx, tz, slow=0.25):
+        p = self.p
+        dx, dz = tx - p.x, tz - p.z
+        d = hyp(dx, dz)
+        if d < 0.12:
+            return 0.0, 0.0
+        s = 1.0 if d > slow else d / slow
+        return dx / d * s, dz / d * s
+
+    def think(self, dt):
+        g, p, k = self.g, self.p, self.k
+        b = g.ball
+        inp = self.inp
+        # the shot in progress: release on the bot's timing
+        if b.owner == p.i and p.act == "shoot":
+            if self.shot_at is not None and p.act_t >= self.shot_at:
+                inp.lmb = False
+            return inp.copy()
+        if b.owner == p.i and p.act == "passwind":
+            if p.act_t >= self.charge_to:
+                inp.lmb = False
+            return inp.copy()
+        if g.t < self.next:
+            # keep moving the same way; but re-aim the legs every step towards the plan's target
+            return self._continue()
+        self.next = g.t + k["react"] * self.rng.uniform(0.7, 1.3)
+        inp.lmb = False
+        inp.rmb = False
+        inp.space = False
+        inp.shift = False
+        if b.owner == p.i:
+            self._offence_ball()
+        elif b.mode == "pass" and b.f and b.f.get("to") == p.i and b.f.get("kind") != "toss":
+            self._receive()
+        elif b.mode == "pass" and b.f and b.f.get("by", -1) >= 0:
+            if g.players[b.f["by"]].team == p.team:
+                self._offence_off()
+            else:
+                self._defence()
+        elif b.mode == "shot":
+            self._loose()
+        elif b.owner >= 0 and g.players[b.owner].team == p.team:
+            self._offence_off()
+        elif b.owner >= 0:
+            self._defence()
+        else:
+            self._loose()
+        return inp.copy()
+
+    def _continue(self):
+        inp = self.inp
+        t = self.plan.get("to")
+        if t is not None:
+            tx, tz = t() if callable(t) else t
+            inp.mx, inp.mz = self._to(tx, tz, self.plan.get("slow", 0.4))
+        # one-step presses
+        if inp.rmb and self.plan.get("rmb_once"):
+            inp.rmb = False
+            self.plan["rmb_once"] = False
+        out = inp.copy()
+        if self.plan.get("lmb_once"):
+            self.plan["lmb_once"] = False
+            out.lmb = True
+            inp.lmb = False
+        if self.plan.get("space_once"):
+            self.plan["space_once"] = False
+            out.space = True
+            inp.space = False
+        return out
+
+    # -- with the ball
+    def _offence_ball(self):
+        g, p, k = self.g, self.p, self.k
+        inp = self.inp
+        rng = self.rng
+        hx = hoop_of(p.team)
+        lag = k["react"]
+        opps = g.opps(p)
+        mate = g.mate(p)
+        self.plan = {}
+        if p.act in ("fake", "gather"):
+            inp.space = p.act == "gather" and self.plan.get("drive", True)
+            return
+        g_w, d, c, _shown = g.shot_window(p)
+        pct = make_chance(g_w * (1.15 if (d < 2.3 and p.act == "dribble") else 1.0), max(k["sigma"], 0.02) * 1.1 + 0.012)
+        three = is_three(p.team, p.x, p.z)
+        pts = 3 if three else 2
+        # the nearest defender, as this bot sees them
+        seen = [(g.past(q.i, lag), q) for q in opps]
+        near_d, near = min(((hyp(s[0] - p.x, s[1] - p.z), q) for s, q in seen), key=lambda t: t[0])
+        # how good a shot would the team-mate have, and is the pass safe?
+        mate_pct, mate_pts, risk, kind = 0.0, 2, 1.0, "chest"
+        if mate is not None:
+            mg, md, mc, _m = g.shot_window(mate)
+            mate_pct = make_chance(mg, max(k["sigma"], 0.02) * 1.1 + 0.012)
+            mate_pts = 3 if is_three(mate.team, mate.x, mate.z) else 2
+            kinds = ["chest"] + (["bounce", "lob", "curve_l", "curve_r"] if rng.random() < 0.3 + 0.7 * k["fancy"]
+                                 else [])
+            best = None
+            for kd in kinds:
+                r, _f = g.pass_risk(p, kd, 0.85, None)
+                r = r * (1 - k["risk"]) + rng.uniform(0, k["risk"]) * 0.4       # the weaker bots misjudge it
+                if best is None or r < best[0] - 0.02:
+                    best = (r, kd)
+            risk, kind = best
+        ev_shoot = pct * pts
+        ev_pass = mate_pct * mate_pts * (1 - risk) * 0.92
+        clock = g.shot_clock
+        # how open: the shot % (with the contest) and whether a defender is about to arrive
+        closing = 0.0
+        if near_d < 4.0:
+            s = g.past(near.i, lag)
+            ux, uz = norm(p.x - s[0], p.z - s[1])
+            closing = s[2] * ux + s[3] * uz
+        want_shot = pct >= k["shoot_min"] and (ev_shoot >= ev_pass * 0.95 or risk > 0.5)
+        if pts == 3 and pct >= 0.3 and ev_shoot >= 1.02 + 0.12 * k["space"] and ev_shoot >= ev_pass * 0.9 and c < 0.25:
+            want_shot = True                          # an open three
+        if clock < 2.2 and pct > 0.05:
+            want_shot = True
+        # pump fake when a defender is flying at you
+        if want_shot and closing > 3.0 and near_d < 2.4 and rng.random() < k["fake"] * 2 and g.t - self.fake_used > 2.5:
+            self.fake_used = g.t
+            inp.shift = True
+            inp.rmb = True
+            self.plan["rmb_once"] = True
+            return
+        if want_shot and p.act in ("hold", "dribble"):
+            return self._shoot()
+        # pass
+        if mate is not None and risk < 0.45 and (ev_pass > ev_shoot * 1.15 or (near_d < 1.2 and risk < 0.3)
+                                                 or clock < 4 and mate_pct > pct):
+            if mate_pct > 0.2 or near_d < 1.4:
+                return self._pass(kind, risk)
+        # drive: pick the best direction to the hoop, away from defenders
+        self._drive(hx, seen, near_d, near)
+
+    def _shoot(self):
+        g, p, k = self.g, self.p, self.k
+        inp = self.inp
+        hx = hoop_of(p.team)
+        d = hyp(hx - p.x, HOOP_Z - p.z)
+        lay = d < 2.3 and p.act == "dribble"
+        T = LAY_T if lay else SHOT_T
+        err = self.rng.gauss(0, k["sigma"])
+        self.shot_at = (SHOT_C + err) * T
+        inp.shift = True
+        inp.lmb = True
+        inp.space = False
+        inp.mx = inp.mz = 0.0
+        if p.act == "dribble" and not lay:
+            # pick it up first; shoot next think
+            self.next = g.t + GATHER_T + 0.02
+            inp.lmb = False
+            return
+        self.plan = {}
+
+    def _pass(self, kind, risk):
+        g, p, k = self.g, self.p, self.k
+        inp = self.inp
+        if p.act == "dribble":
+            inp.space = False                  # pick it up, pass next think
+            self.next = g.t + GATHER_T + 0.02
+            inp.mx = inp.mz = 0.0
+            return
+        # charge: harder passes are safer; the better bots know how much
+        self.charge_to = PASS_WIND * clamp(0.6 + 0.4 * (1 - k["risk"]) + self.rng.uniform(-0.1, 0.1), 0.3, 1.0)
+        inp.lmb = True
+        inp.shift = False
+        mx, mz = {"chest": (0, 0), "lob": (0, 1), "bounce": (0, -1)}.get(kind, (0, 0))
+        if kind.startswith("curve"):
+            # find the key that gives this curve
+            for tx in (-1, 1):
+                if pass_shape(p, tx, 0, g) == kind:
+                    mx = tx
+        inp.mx, inp.mz = mx, mz
+        self.plan = {}
+
+    def _drive(self, hx, seen, near_d, near):
+        g, p, k = self.g, self.p, self.k
+        inp = self.inp
+        rng = self.rng
+        best, bestv = None, -1e9
+        ang0 = math.atan2(HOOP_Z - p.z, hx - p.x)
+        for i in range(16):
+            a = ang0 + (i - 8) * (math.pi / 8)
+            dx, dz = math.cos(a), math.sin(a)
+            tx, tz = p.x + dx * 2.2, p.z + dz * 2.2
+            if not (-HALF_L + 0.8 < tx < HALF_L - 0.8 and 0.8 < tz < COURT_W - 0.8):
+                continue
+            prog = hyp(hx - p.x, HOOP_Z - p.z) - hyp(hx - tx, HOOP_Z - tz)
+            danger = 0.0
+            for s, q in seen:
+                dq = hyp(s[0] - tx, s[1] - tz)
+                danger += max(0.0, 2.4 - dq) * 1.6
+                # running straight at a defender: a charge or a steal waiting to happen
+                ux, uz = norm(s[0] - p.x, s[1] - p.z)
+                if hyp(s[0] - p.x, s[1] - p.z) < 2.5 and dx * ux + dz * uz > 0.8:
+                    danger += 2.0
+            v = prog * 1.0 - danger * (0.4 + 0.6 * k["space"]) + rng.uniform(0, 0.6 * (1 - k["space"]))
+            # don't dribble under the hoop past it
+            if hyp(hx - tx, HOOP_Z - tz) < 0.8:
+                v -= 2
+            if v > bestv:
+                best, bestv = (dx, dz), v
+        if best is None:
+            best = norm(hx - p.x, HOOP_Z - p.z)
+        # a spin when the defender is right in front (the good bots)
+        if near_d < 1.3 and p.act == "dribble" and p.spin_cd <= 0 and rng.random() < k["spin"] * 0.6:
+            ux, uz = norm(near.x - p.x, near.z - p.z)
+            if p.fx * ux + p.fz * uz > 0.6:
+                inp.mx, inp.mz = -p.fx, -p.fz
+                inp.space = True
+                self.next = g.t + SPIN_T * 0.6
+                self.plan = {}
+                return
+        # close to the hoop with space: a layup next
+        inp.mx, inp.mz = best
+        inp.space = True
+        tgt = (p.x + best[0] * 3, p.z + best[1] * 3)
+        self.plan = {"to": tgt, "slow": 0.01, "drive": True}
+
+    # -- a pass coming to me: meet the ball
+    def _receive(self):
+        g, _p = self.g, self.p
+        f = g.ball.f
+        tx, tz = f["x1"], f["z1"]
+        # meet it a little early if a defender is near the lane
+        self.inp.shift = False
+        self.inp.space = False
+        self.inp.mx, self.inp.mz = self._to(tx, tz, 0.3)
+        self.plan = {"to": (tx, tz), "slow": 0.3}
+
+    # -- off the ball, my team has it: get open
+    def _offence_off(self):
+        g, p, k = self.g, self.p, self.k
+        inp = self.inp
+        rng = self.rng
+        c = g.carrier()
+        hx = hoop_of(p.team)
+        side = 1 if p.team == 0 else -1
+        # spots in the half we attack (x measured from our hoop)
+        spots = [(hx - side * 6.9, HOOP_Z), (hx - side * 5.2, HOOP_Z - 4.6), (hx - side * 5.2, HOOP_Z + 4.6),
+                 (hx - side * 1.0, HOOP_Z - 6.7), (hx - side * 1.0, HOOP_Z + 6.7), (hx - side * 2.2, HOOP_Z - 2.6),
+                 (hx - side * 2.2, HOOP_Z + 2.6), (hx - side * 8.0, HOOP_Z - 3.5), (hx - side * 8.0, HOOP_Z + 3.5)]
+        # the carrier far back (transition): run ahead of the ball first
+        if c is not None and (c.x - hx) * -side > 9:
+            spots = [(hx - side * 4.5, HOOP_Z - 4.0), (hx - side * 4.5, HOOP_Z + 4.0), (hx - side * 2.0, HOOP_Z)]
+        lag = k["react"]
+        opps = g.opps(p)
+        best, bestv = None, -1e9
+        for sx, sz in spots:
+            if c is not None and hyp(sx - c.x, sz - c.z) < 4.0:
+                continue
+            open_ = min(hyp(g.past(q.i, lag)[0] - sx, g.past(q.i, lag)[1] - sz) for q in opps)
+            dist = hyp(sx - p.x, sz - p.z)
+            pct = make_chance(green_open(hyp(hx - sx, HOOP_Z - sz)), max(k["sigma"], 0.02) * 1.1 + 0.012)
+            pts = 3 if is_three(p.team, sx, sz) else 2
+            v = min(open_, 4.0) * (0.4 + 0.6 * k["space"]) + pct * pts * 1.4 - dist * 0.12 + rng.uniform(0, 0.8 * (1 - k["space"]))
+            if self.spot and hyp(sx - self.spot[0], sz - self.spot[1]) < 0.5:
+                v += 0.6                                      # don't dither
+            if v > bestv:
+                best, bestv = (sx, sz), v
+        # a back-door cut: my defender is watching the ball and is between me and the hoop... go behind them
+        my_def = min(opps, key=lambda q: hyp(q.x - p.x, q.z - p.z))
+        if rng.random() < k["cut"] * 0.35 and hyp(my_def.x - p.x, my_def.z - p.z) < 2.0:
+            bx, bz = g.ball.x, g.ball.z
+            fx, fz = my_def.fx, my_def.fz
+            watching = (bx - my_def.x) * fx + (bz - my_def.z) * fz > 0
+            if watching:
+                best = (hx - side * 1.4, HOOP_Z + (0.9 if p.z > HOOP_Z else -0.9))
+        if best is None:
+            best = (hx - side * 6.0, HOOP_Z + (4 if p.z > HOOP_Z else -4))
+        self.spot = best
+        inp.mx, inp.mz = self._to(*best, slow=0.8)
+        self.plan = {"to": best, "slow": 0.8}
+
+    # -- defence
+    def _defence(self):
+        g, p, k = self.g, self.p, self.k
+        inp = self.inp
+        rng = self.rng
+        c = g.carrier()
+        b = g.ball
+        my_hoop = hoop_of(1 - p.team)               # the hoop I defend (the one they attack)
+        lag = k["react"]
+        mate = g.mate(p)
+        # who do I guard? the human's controlled player always guards whoever they like; a bot picks the attacker
+        # that its team-mate isn't guarding (man to man, the nearer one)
+        attackers = g.team(1 - p.team)
+        if mate is not None and len(attackers) > 1:
+            a0, a1 = attackers
+            cost_keep = hyp(p.x - a0.x, p.z - a0.z) + hyp(mate.x - a1.x, mate.z - a1.z)
+            cost_swap = hyp(p.x - a1.x, p.z - a1.z) + hyp(mate.x - a0.x, mate.z - a0.z)
+            if mate.human and g.ctrl.get(mate.team) == mate.i:
+                # the human chooses: take the attacker nearest to them... the other one is mine
+                mh = min(attackers, key=lambda a: hyp(a.x - mate.x, a.z - mate.z))
+                man = a1 if mh is a0 else a0
+            else:
+                pref = a0 if cost_keep <= cost_swap else a1
+                if self.assign >= 0 and self.assign in (a0.i, a1.i):
+                    cur = g.players[self.assign]
+                    other = a1 if cur is a0 else a0
+                    cur_cost = cost_keep if cur is a0 else cost_swap
+                    alt_cost = cost_swap if cur is a0 else cost_keep
+                    pref = cur if cur_cost < alt_cost + 2.0 else other
+                # both bots: the one with the lower index decides, the other takes the rest
+                if not mate.human and mate.i < p.i and g.bots.get(mate.i) and g.bots[mate.i].assign >= 0:
+                    taken = g.bots[mate.i].assign
+                    pref = a1 if taken == a0.i else a0
+                man = pref
+        else:
+            man = attackers[0]
+        self.assign = man.i
+        ms = g.past(man.i, lag)
+        mx_, mz_, mvx, mvz = ms
+        # predict where they'll be
+        px, pz = mx_ + mvx * lag, mz_ + mvz * lag
+        if c is not None and man is c:
+            # on the ball: between them and the hoop, a step off; stance; swipe when the ball is on my side and low
+            gx, gz = norm(my_hoop - px, HOOP_Z - pz)
+            gap = k["gap"] + (0.4 if hyp(my_hoop - px, HOOP_Z - pz) > 9 else 0.0)
+            tx, tz = px + gx * gap, pz + gz * gap
+            inp.shift = True
+            inp.mx, inp.mz = self._to(tx, tz, 0.35)
+            self.plan = {"to": (tx, tz), "slow": 0.35}
+            # contest a shot (or bite on a fake)
+            if c.act in ("shoot", "fake") and hyp(c.x - p.x, c.z - p.z) < 2.6:
+                if p.h <= 0 and p.jump_cd <= 0:
+                    real = c.act == "shoot"
+                    if (real and rng.random() < 0.5 + 0.5 * k["jump_read"]) or (not real and rng.random() < k["bite"]):
+                        self.plan["space_once"] = True
+                        inp.mx, inp.mz = self._to(c.x, c.z, 0.1)
+            # steal: the ball low and on my side, in reach
+            elif p.steal_cd <= 0 and p.stun <= 0 and c.act in ("dribble",):
+                hxp, hzp = p.x + p.fx * 0.45, p.z + p.fz * 0.45
+                db = hyp(b.x - hxp, b.z - hzp)
+                body = hyp(c.x - p.x, c.z - p.z)
+                exposed = hyp(b.x - p.x, b.z - p.z) <= body + 0.18
+                if db < STEAL_REACH + 0.25 and rng.random() < k["steal"]:
+                    good = exposed and db <= STEAL_REACH and b.h < 1.1
+                    if good and rng.random() < k["steal_read"]:
+                        # wait for the ball to come down: the better bots time it for the bounce
+                        self.plan["lmb_once"] = True
+                    elif not good and rng.random() > k["steal_read"]:
+                        self.plan["lmb_once"] = True              # a bad swipe (the weaker bots)
+        else:
+            # off the ball: between my man and the hoop, shaded towards the ball; deny the pass (the good ones)
+            bx, bz = b.x, b.z
+            gx, gz = norm(my_hoop - px, HOOP_Z - pz)
+            dm = hyp(my_hoop - px, HOOP_Z - pz)
+            tx, tz = px + gx * min(2.2, dm * 0.3), pz + gz * min(2.2, dm * 0.3)
+            # shade to the ball
+            sh = 0.25 + 0.35 * k["help"]
+            tx, tz = lerp(tx, bx, sh * 0.5), lerp(tz, bz, sh * 0.5)
+            # deny: stand in the passing lane
+            if c is not None and rng.random() < k["deny"]:
+                lx, lz = lerp(c.x, px, 0.72), lerp(c.z, pz, 0.72)
+                tx, tz = lerp(tx, lx, 0.55), lerp(tz, lz, 0.55)
+            # help: the dribbler driving to the hoop, nobody between: step in
+            if c is not None and hyp(my_hoop - c.x, HOOP_Z - c.z) < 4.5 and rng.random() < k["help"]:
+                tx, tz = lerp(c.x, my_hoop, 0.45), lerp(c.z, HOOP_Z, 0.45)
+            inp.shift = hyp(tx - p.x, tz - p.z) < 1.5
+            inp.mx, inp.mz = self._to(tx, tz, 0.5)
+            self.plan = {"to": (tx, tz), "slow": 0.5}
+        # a pass in the air: go for it if I can get there (the better bots see more passes)
+        if b.mode == "pass" and b.f and b.f.get("by", -1) >= 0 and g.players[b.f["by"]].team != p.team:
+            self._chase_pass()
+
+    def _chase_pass(self):
+        g, p, k = self.g, self.p, self.k
+        b = g.ball
+        f = b.f
+        best = None
+        for i in range(1, 13):
+            s = min(1.0, f["t"] / f["T"] + i / 12 * (1 - f["t"] / f["T"]))
+            bx, bz, bh = g.path_at(f, s)
+            tleft = (s * f["T"]) - f["t"]
+            dq = hyp(bx - p.x, bz - p.z) - 0.55
+            if dq <= RUN * k["speed"] * max(0.0, tleft - k["react"] * 0.5) and bh < HAND_UP + 0.7:
+                best = (bx, bz, bh)
+                break
+        if best and self.rng.random() < 0.3 + 0.7 * k["steal_read"]:
+            self.inp.shift = False
+            self.inp.mx, self.inp.mz = self._to(best[0], best[1], 0.05)
+            self.plan = {"to": (best[0], best[1]), "slow": 0.05}
+            if best[2] > HAND_H and p.h <= 0 and p.jump_cd <= 0:
+                self.plan["space_once"] = True
+
+    # -- a loose ball (a rebound, a deflection, a pass nobody caught)
+    def _loose(self):
+        g, p, k = self.g, self.p, self.k
+        b = g.ball
+        inp = self.inp
+        # where will it be low enough to grab?
+        x, z, h, vx, vz, vh = b.x, b.z, b.h, b.vx, b.vz, b.vh
+        if b.mode in ("shot",):
+            f = b.f
+            mine = f["team"] == p.team
+            hx = hoop_of(f["team"])
+            # rebound position: in front of the hoop; the good ones box out (between their man and the hoop)
+            side = 1 if hx > 0 else -1
+            tx, tz = hx - side * 2.2, HOOP_Z + (1.3 if p.z > HOOP_Z else -1.3)
+            if not mine and self.rng.random() < k["box"]:
+                foe = min(g.opps(p), key=lambda q: hyp(q.x - p.x, q.z - p.z))
+                ux, uz = norm(hx - foe.x, HOOP_Z - foe.z)
+                tx, tz = foe.x + ux * 0.8, foe.z + uz * 0.8
+            if mine and f["by"] == p.i:
+                tx, tz = p.x, p.z                    # the shooter lands
+            inp.mx, inp.mz = self._to(tx, tz, 0.4)
+            self.plan = {"to": (tx, tz), "slow": 0.4}
+            return
+        t, tx, tz = 0.0, x, z
+        for _ in range(60):
+            t += 0.03
+            vh -= GRAV * 0.03
+            x += vx * 0.03
+            z += vz * 0.03
+            h += vh * 0.03
+            if h < HB_BALL_R:
+                h, vh = HB_BALL_R, -vh * 0.72
+                vx *= 0.86
+                vz *= 0.86
+            if h < HAND_H + 0.1 and hyp(x - p.x, z - p.z) <= RUN * k["speed"] * max(0.0, t - k["react"] * 0.5) + 0.5:
+                tx, tz = x, z
+                break
+            tx, tz = x, z
+        inp.shift = False
+        inp.mx, inp.mz = self._to(tx, tz, 0.05)
+        self.plan = {"to": (tx, tz), "slow": 0.05}
+        if h > HAND_H and hyp(tx - p.x, tz - p.z) < 1.0 and p.h <= 0 and p.jump_cd <= 0 and b.from_shot:
+            self.plan["space_once"] = True
+
+
+def hoops_simulate(level_a, level_b, mins=3.0, seed=1, verbose=False):
+    """A match with no humans (both teams bots), for testing: blue at level_a, red at level_b."""
+    g = HoopsGame(level=level_b, mins=mins, seed=seed, humans=(), mate_level=level_a)
+    for p in g.players:
+        g.bots[p.i] = HoopsBot(g, p)
+    steps = 0
+    while g.phase != "over" and steps < 120 * 60 * 30:
+        g.step({})
+        steps += 1
+        if g.phase == "score" and g.phase_t > 1.5:
+            g.after_score()
+        g.events.clear()
+    return g
+
+
+# ================================================================================================== Hoops: drawing
+# 9.3: a side view of an indoor arena. The floor is painted once, top-down, into an image and drawn through a
+# perspective transform; the stands, lights, hoops, players, ball, shadows and floor reflections are drawn each frame,
+# far to near. The camera follows the play along the court.
+HOOPS_TEAM = [{"main": "#2F7BFF", "dark": "#123A8C", "trim": "#FFFFFF", "light": "#8CB8FF", "name": "Blue"},
+              {"main": "#FF3B4E", "dark": "#8C1222", "trim": "#FFFFFF", "light": "#FF9AA5", "name": "Red"},
+              {"main": "#EDEDED", "dark": "#1A1A1A", "trim": "#1A1A1A", "light": "#FFFFFF", "name": "Ref"}]
+HOOPS_SKIN = ["#8D5524", "#C68642", "#E0AC69", "#F1C27D", "#5C3A1E", "#FFDBAC"]
+HOOPS_HAIR = ["#1B1B1B", "#3B2416", "#1B1B1B", "#6B4423", "#0E0E0E", "#B8860B"]
+HOOPS_LEVEL_COL = {"Club": "#7BE0A0", "Regional": "#4FC3FF", "National": "#9B7BFF", "Professional": "#F5C04A"}
+HOOPS_PPM = 44                 # floor image pixels per metre
+HOOPS_APRON = 1.6              # metres of floor drawn past the lines
+
+
+def hoops_lv(level: str) -> str:
+    """A bot level's name ("Club" has another meaning in the French dictionary: the card suit)."""
+    if lang() == "fr":
+        return {"Club": "Club", "Regional": "Régional", "National": "National", "Professional": "Professionnel"}.get(level, level)
+    return level
+
+
+def hoops_keys() -> dict:
+    """ZQSD in French (AZERTY), WASD otherwise. Both sets always work, as do the arrows."""
+    if lang() == "fr":
+        return {"up": "Z", "left": "Q", "down": "S", "right": "D"}
+    return {"up": "W", "left": "A", "down": "S", "right": "D"}
+
+
+class HoopsCam:
+    """A pinhole camera beside the near sideline, CH metres up and CD back; F sets the zoom."""
+
+    def __init__(self) -> None:
+        self.cx = 0.0
+        self.W, self.H = 1280.0, 720.0
+        self.CD, self.CH = 17.0, 8.0
+        self.F, self.Y0 = 1.0, 0.0
+        self.zoom = 1.0
+        self.shx = self.shy = 0.0
+        self.lift = 0.0                 # the replay camera comes down a little
+
+    def setup(self, w: float, h: float) -> None:
+        self.W, self.H = float(w), float(h)
+        # the near sideline at 93% of the height, the far one at 40%
+        k = 8.0 * (1 / 17.0 - 1 / 32.0)
+        self.F = 0.53 * self.H / k * self.zoom
+        self.Y0 = 0.93 * self.H - 8.0 * self.F / 17.0 + (self.zoom - 1) * self.H * 0.42 + self.lift
+
+    def scale(self, z: float) -> float:
+        return self.F / (self.CD + z)
+
+    def pt(self, x: float, z: float, h: float = 0.0) -> QPointF:
+        s = self.F / (self.CD + z)
+        return QPointF(self.W / 2 + (x - self.cx) * s + self.shx, self.Y0 + (self.CH - h) * s + self.shy)
+
+    def floor_at(self, sx: float, sy: float):
+        """The court point under a screen point (for the mouse)."""
+        s = (sy - self.shy - self.Y0) / self.CH
+        if s <= 1e-6:
+            return None
+        z = self.F / s - self.CD
+        x = self.cx + (sx - self.shx - self.W / 2) / s
+        return x, z
+
+
+class HoopsArt:
+    """The things painted once: the floor (top-down), the crowd strip."""
+    _floor = None
+    _crowd = None
+
+    @classmethod
+    def floor(cls) -> QImage:
+        if cls._floor is None:
+            cls._floor = cls._paint_floor()
+        return cls._floor
+
+    @classmethod
+    def _paint_floor(cls) -> QImage:
+        k = HOOPS_PPM
+        W = int((COURT_L + 2 * HOOPS_APRON) * k)
+        H = int((COURT_W + 2 * HOOPS_APRON) * k)
+        img = QImage(W, H, QImage.Format.Format_ARGB32_Premultiplied)
+        img.fill(QColor("#1A1F2B"))
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        def X(x):
+            return (x + HALF_L + HOOPS_APRON) * k
+
+        def Z(z):
+            return (COURT_W - z + HOOPS_APRON) * k          # the far sideline at the top of the image
+
+        rng = random.Random(5)
+        # the apron: dark with a sheen
+        g = QLinearGradient(0, 0, 0, H)
+        g.setColorAt(0, QColor("#202838"))
+        g.setColorAt(1, QColor("#141923"))
+        p.fillRect(QRectF(0, 0, W, H), QBrush(g))
+        # maple planks along the court
+        court = QRectF(X(-HALF_L), Z(COURT_W), COURT_L * k, COURT_W * k)
+        p.save()
+        p.setClipRect(court)
+        pw = 0.22 * k
+        y = court.top()
+        row = 0
+        while y < court.bottom():
+            x = court.left() - rng.uniform(0, 3) * k
+            while x < court.right():
+                L = rng.uniform(1.6, 3.4) * k
+                tone = rng.uniform(-1, 1)
+                base = QColor.fromHsvF(0.085 + tone * 0.008, 0.48 + tone * 0.05, 0.80 + tone * 0.05)
+                p.fillRect(QRectF(x, y, L, pw), base)
+                p.fillRect(QRectF(x, y, L, pw * 0.18), QColor(255, 255, 255, 14))
+                p.fillRect(QRectF(x + L - 1, y, 1.2, pw), QColor(60, 30, 10, 60))
+                x += L
+            p.fillRect(QRectF(court.left(), y + pw - 0.8, court.width(), 0.8), QColor(70, 35, 10, 55))
+            y += pw
+            row += 1
+        # a soft varnish shine down the middle
+        sh = QLinearGradient(0, court.top(), 0, court.bottom())
+        sh.setColorAt(0.0, QColor(255, 240, 220, 0))
+        sh.setColorAt(0.5, QColor(255, 240, 220, 26))
+        sh.setColorAt(1.0, QColor(255, 240, 220, 0))
+        p.fillRect(court, QBrush(sh))
+        p.restore()
+        lw = 0.06 * k
+        white = QColor("#F7F3EA")
+        # the painted areas, in each team's colour (blue defends the left)
+        for sgn, team in ((-1, 0), (1, 1)):
+            col = QColor(HOOPS_TEAM[team]["main"])
+            col.setAlpha(150)
+            base_x = X(sgn * HALF_L)
+            inner_x = X(sgn * (HALF_L - KEY_LEN))
+            r = QRectF(min(base_x, inner_x), Z(HOOP_Z + KEY_HW), abs(inner_x - base_x), 2 * KEY_HW * k)
+            p.fillRect(r, col)
+            # the three-point area, faintly tinted
+            path = QPainterPath()
+            hx = X(sgn * HOOP_X)
+            rr = THREE_R * k
+            a = math.degrees(math.asin(THREE_SIDE / THREE_R))
+            path.moveTo(base_x, Z(HOOP_Z + THREE_SIDE))
+            if sgn < 0:
+                path.lineTo(hx + math.cos(math.radians(a)) * rr, Z(HOOP_Z + THREE_SIDE))
+                path.arcTo(QRectF(hx - rr, Z(HOOP_Z) - rr, 2 * rr, 2 * rr), a, -2 * a)
+            else:
+                path.lineTo(hx - math.cos(math.radians(a)) * rr, Z(HOOP_Z + THREE_SIDE))
+                path.arcTo(QRectF(hx - rr, Z(HOOP_Z) - rr, 2 * rr, 2 * rr), 180 - a, 2 * a)
+            path.lineTo(base_x, Z(HOOP_Z - THREE_SIDE))
+            path.closeSubpath()
+            tint = QColor(HOOPS_TEAM[team]["main"])
+            tint.setAlpha(34)
+            p.fillPath(path, tint)
+            p.setPen(QPen(white, lw))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+            p.drawRect(r)
+            # the free throw circle and the no-charge semicircle
+            ft = QPointF(inner_x, Z(HOOP_Z))
+            p.drawEllipse(ft, 1.8 * k, 1.8 * k)
+            p.drawArc(QRectF(hx - 1.25 * k, Z(HOOP_Z) - 1.25 * k, 2.5 * k, 2.5 * k), (90 if sgn > 0 else -90) * 16, 180 * 16)
+        # the outline, the halfway line, the centre circle and the logo
+        p.setPen(QPen(white, lw * 1.4))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRect(court)
+        p.drawLine(QPointF(X(0), Z(COURT_W)), QPointF(X(0), Z(0)))
+        c = QPointF(X(0), Z(HOOP_Z))
+        p.setPen(Qt.PenStyle.NoPen)
+        cg = QRadialGradient(c, 1.8 * k)
+        cg.setColorAt(0, QColor(25, 30, 45, 210))
+        cg.setColorAt(1, QColor(25, 30, 45, 150))
+        p.setBrush(QBrush(cg))
+        p.drawEllipse(c, 1.8 * k, 1.8 * k)
+        p.setPen(QPen(white, lw))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(c, 1.8 * k, 1.8 * k)
+        p.drawEllipse(c, 0.6 * k, 0.6 * k)
+        # the logo: an R in a hexagon, gold
+        hexp = QPainterPath()
+        for i in range(7):
+            a = math.radians(60 * i + 30)
+            q = QPointF(c.x() + math.cos(a) * 1.15 * k, c.y() + math.sin(a) * 1.15 * k)
+            hexp.moveTo(q) if i == 0 else hexp.lineTo(q)
+        p.setPen(QPen(QColor("#F5C04A"), lw * 1.2))
+        p.drawPath(hexp)
+        f = QFont()
+        f.setPixelSize(int(1.3 * k))
+        f.setWeight(QFont.Weight.Black)
+        p.setFont(f)
+        p.setPen(QColor("#F5C04A"))
+        p.drawText(QRectF(c.x() - k, c.y() - k, 2 * k, 2 * k), int(Qt.AlignmentFlag.AlignCenter), "R")
+        # the name along the near sideline, on the apron
+        f.setPixelSize(int(0.75 * k))
+        f.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 0.35 * k)
+        p.setFont(f)
+        p.setPen(QColor(255, 255, 255, 70))
+        p.drawText(QRectF(X(-6), Z(0) + 0.25 * k, 12 * k, 1.1 * k), int(Qt.AlignmentFlag.AlignCenter), "RUBENIUM ARENA")
+        p.end()
+        return img
+
+    @classmethod
+    def crowd(cls) -> QImage:
+        """A strip of the crowd in the stands (tiles across), 2048 x 300."""
+        if cls._crowd is None:
+            W, H = 2048, 300
+            img = QImage(W, H, QImage.Format.Format_ARGB32_Premultiplied)
+            img.fill(Qt.GlobalColor.transparent)
+            p = QPainter(img)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            rng = random.Random(11)
+            shirts = ["#2F7BFF", "#FF3B4E", "#F5C04A", "#E8E8E8", "#3A3F4B", "#2BD48F", "#8E6BFF", "#1F2430"]
+            rows = 9
+            for r in range(rows):
+                y = H - (r + 1) * (H / rows) + 6
+                sc = 1.0 - r * 0.045
+                # the row's step
+                p.fillRect(QRectF(0, y + 22 * sc, W, H / rows), QColor(18 + r * 2, 20 + r * 2, 30 + r * 3))
+                x = rng.uniform(-10, 6)
+                while x < W:
+                    w = rng.uniform(15, 21) * sc
+                    if rng.random() < 0.08:          # an empty seat
+                        x += w
+                        continue
+                    shirt = QColor(rng.choice(shirts)).darker(int(110 + r * 9))
+                    skin = QColor(rng.choice(HOOPS_SKIN)).darker(int(110 + r * 9))
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(shirt)
+                    p.drawRoundedRect(QRectF(x, y + 8 * sc, w * 0.9, 22 * sc), 5 * sc, 5 * sc)
+                    p.setBrush(skin)
+                    p.drawEllipse(QPointF(x + w * 0.45, y + 4 * sc), 5.2 * sc, 5.8 * sc)
+                    x += w
+            p.end()
+            cls._crowd = img
+        return cls._crowd
+
+
+class HoopsFx:
+    """Sparks, confetti, rings and floating text."""
+
+    def __init__(self) -> None:
+        self.parts: list = []          # [x, z, h, vx, vz, vh, life, max, colour, size, kind]
+        self.rings: list = []          # [x, z, h, t, max, colour]
+        self.texts: list = []          # [x, z, h, text, colour, t, max, size]
+
+    def burst(self, x, z, h, col, n=60, speed=7.0, kind="spark") -> None:
+        for _ in range(n):
+            a = random.uniform(0, math.tau)
+            e = random.uniform(-0.3, 1.2)
+            v = random.uniform(0.3, 1.0) * speed
+            life = random.uniform(0.6, 1.4) if kind == "spark" else random.uniform(1.6, 3.0)
+            self.parts.append([x, z, h, math.cos(a) * math.cos(e) * v, math.sin(a) * math.cos(e) * v * 0.6,
+                               math.sin(e) * v + (2 if kind == "confetti" else 0), life, life, QColor(col),
+                               random.uniform(0.05, 0.11), kind, random.uniform(0, math.tau)])
+
+    def ring(self, x, z, h, col, dur=0.8) -> None:
+        self.rings.append([x, z, h, 0.0, dur, QColor(col)])
+
+    def text(self, x, z, h, s, col, dur=1.2, size=34) -> None:
+        self.texts.append([x, z, h, s, QColor(col), 0.0, dur, size])
+
+    def step(self, dt) -> None:
+        keep = []
+        for q in self.parts:
+            q[6] -= dt
+            if q[6] <= 0:
+                continue
+            if q[10] == "confetti":
+                q[3] *= 1 - 1.6 * dt
+                q[4] *= 1 - 1.6 * dt
+                q[5] = max(q[5] - 4.0 * dt, -1.1)
+                q[11] += dt * 9
+            else:
+                q[5] -= 9.8 * dt
+            q[0] += q[3] * dt
+            q[1] += q[4] * dt
+            q[2] += q[5] * dt
+            if q[2] < 0:
+                q[2] = 0
+                q[5] = -q[5] * 0.3
+                q[3] *= 0.6
+                q[4] *= 0.6
+            keep.append(q)
+        self.parts = keep[-900:]
+        for r in self.rings:
+            r[3] += dt
+        self.rings = [r for r in self.rings if r[3] < r[4]]
+        for t in self.texts:
+            t[5] += dt
+            t[2] += dt * 0.6
+        self.texts = [t for t in self.texts if t[5] < t[6]]
+
+    def clear(self) -> None:
+        self.parts, self.rings, self.texts = [], [], []
+
+
+def hoops_draw_player(p: QPainter, cam: HoopsCam, d: tuple, team: int, num: int, skin: int, t: float,
+                      ball=None, ghost: float = 1.0, mirror: bool = False) -> None:
+    """One player. d is a snapshot row: (x, z, h, fx, fz, act, run_ph, arms_up, speed, hand, phase, celebrate, vx, vz).
+    ball: the ball's (x, z, h) when this player dribbles or holds it, so a hand reaches it."""
+    x, z, h, fx, fz, act, run_ph, arms_up, sp, hand, dph, cel = d[:12]
+    s = cam.scale(z)
+    foot = cam.pt(x, z, 0.0)
+    T = HOOPS_TEAM[team]
+    face = 1.0 if fx >= -0.05 else -1.0
+    crouch = 0.0
+    if act in ("steal",):
+        crouch = 0.12
+    elif act in ("dribble", "spin", "hold", "passwind", "gather"):
+        crouch = 0.07
+    elif sp < 4.0 and act == "free":
+        crouch = 0.05
+    k = min(1.0, sp / 6.0)
+    ph = run_ph * 2 * math.pi * 0.42
+    if mirror:
+        p.save()
+        p.translate(foot.x(), foot.y())
+        p.scale(1, -0.55)
+        p.translate(-foot.x(), -foot.y())
+    p.save()
+    p.translate(foot.x(), foot.y() - h * s)
+    p.scale(s * face, s)               # metres, y up is negative; facing right is +x
+    if ghost < 1:
+        p.setOpacity(ghost)
+    hip = 0.96 - crouch
+    sho = 1.50 - crouch * 0.8
+    head_c = 1.73 - crouch * 0.6
+    skin_c = QColor(HOOPS_SKIN[skin % len(HOOPS_SKIN)])
+    hair_c = QColor(HOOPS_HAIR[skin % len(HOOPS_HAIR)])
+    jersey = QColor(T["main"])
+    jersey_d = QColor(T["dark"])
+    outline = QPen(QColor(10, 12, 18, 200), 0.025)
+    outline.setCapStyle(Qt.PenCapStyle.RoundCap)
+    outline.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+    def leg(sw, back):
+        # thigh and shin, a knee that bends on the swing
+        a = sw * 0.75 * (0.25 + k)
+        knee_x = math.sin(a) * 0.46
+        knee_y = -hip + math.cos(a) * 0.46
+        bend = max(0.0, -math.sin(ph if not back else ph + math.pi)) * 0.9 * k + 0.12 + crouch * 2.2
+        fa = a - bend
+        fx_ = knee_x + math.sin(fa) * 0.48
+        fy_ = knee_y + math.cos(fa) * 0.48
+        if h <= 0.01:
+            fy_ = min(fy_, 0.0)
+        col = QColor(skin_c).darker(118 if back else 100)
+        pen = QPen(col, 0.13)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(pen)
+        p.drawLine(QPointF(0.0, -hip), QPointF(knee_x, knee_y))
+        p.drawLine(QPointF(knee_x, knee_y), QPointF(fx_, fy_))
+        # sock and shoe
+        p.setPen(QPen(QColor("#F2F2F2"), 0.11, cap=Qt.PenCapStyle.RoundCap))
+        p.drawLine(QPointF(lerp(knee_x, fx_, 0.72), lerp(knee_y, fy_, 0.72)), QPointF(fx_, fy_ - 0.02))
+        p.setPen(outline)
+        p.setBrush(QColor(T["dark"]) if back else QColor("#F4F4F4"))
+        shoe = QPainterPath()
+        shoe.addRoundedRect(QRectF(fx_ - 0.09, fy_ - 0.09, 0.3, 0.11), 0.05, 0.05)
+        p.drawPath(shoe)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(jersey)
+        p.drawRect(QRectF(fx_ - 0.07, fy_ - 0.03, 0.26, 0.025))
+        return fx_, fy_
+
+    def arm(sx_, sy_, hx_, hy_, back):
+        # shoulder to hand with an elbow bent outwards
+        mx_, my_ = (sx_ + hx_) / 2, (sy_ + hy_) / 2
+        dx_, dy_ = hx_ - sx_, hy_ - sy_
+        L = math.hypot(dx_, dy_)
+        bend = max(0.0, 0.62 - L) * 0.6
+        ex_, ey_ = mx_ - dy_ / max(L, 1e-3) * bend * -1, my_ + dx_ / max(L, 1e-3) * bend * -1
+        col = QColor(skin_c).darker(118 if back else 100)
+        pen = QPen(col, 0.105)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        p.setPen(pen)
+        p.drawLine(QPointF(sx_, sy_), QPointF(ex_, ey_))
+        p.drawLine(QPointF(ex_, ey_), QPointF(hx_, hy_))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(col)
+        p.drawEllipse(QPointF(hx_, hy_), 0.065, 0.065)
+        # the jersey's sleeve trim
+        p.setBrush(jersey_d if back else jersey)
+        p.drawEllipse(QPointF(sx_ + (ex_ - sx_) * 0.15, sy_ + (ey_ - sy_) * 0.15), 0.085, 0.085)
+
+    # the hands' targets
+    sw = math.sin(ph)
+    up = arms_up > 0.5 or act == "shoot"
+    has_ball = ball is not None
+    bx_l = by_l = None
+    if has_ball:
+        bx, bz, bh = ball
+        # the ball in my local frame: along the facing on screen
+        bp = cam.pt(bx, bz, bh)
+        bx_l = (bp.x() - foot.x()) / (s * face)
+        by_l = (bp.y() - (foot.y() - h * s)) / s
+    # back arm (far side), back leg
+    if up:
+        back_hand = (0.10, -(sho + 0.72))
+    elif act == "steal":
+        back_hand = (0.55, -(sho - 0.35))
+    elif act in ("dribble", "spin") and has_ball and hand * face < 0 and bx_l is not None:
+        back_hand = (bx_l, min(by_l, -0.55))
+    elif act in ("hold", "passwind", "gather", "fake") and has_ball:
+        back_hand = (0.30, -(sho - 0.28))
+    elif cel > 0:
+        back_hand = (-0.15, -(sho + 0.65))
+    else:
+        back_hand = (-sw * 0.30 * (0.3 + k) - 0.02, -(sho - 0.58))
+    arm(-0.02, -sho, back_hand[0], back_hand[1], True)
+    leg(-sw, True)
+    # shorts
+    p.setPen(outline)
+    p.setBrush(jersey_d)
+    shorts = QPainterPath()
+    shorts.addRoundedRect(QRectF(-0.21, -(hip + 0.08), 0.42, 0.36), 0.06, 0.06)
+    p.drawPath(shorts)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(T["trim"]))
+    p.drawRect(QRectF(0.17, -(hip + 0.06), 0.035, 0.32))
+    leg(sw, False)
+    # torso (a jersey), leaning with speed
+    lean = 0.12 * k if act != "shoot" else -0.04
+    p.save()
+    p.translate(0, -hip)
+    p.rotate(math.degrees(lean))
+    body = QPainterPath()
+    body.moveTo(-0.20, 0.02)
+    body.lineTo(-0.24, -(sho - hip) + 0.06)
+    body.quadTo(-0.20, -(sho - hip) - 0.03, -0.05, -(sho - hip) - 0.02)
+    body.lineTo(0.08, -(sho - hip) - 0.02)
+    body.quadTo(0.22, -(sho - hip) - 0.03, 0.25, -(sho - hip) + 0.06)
+    body.lineTo(0.21, 0.02)
+    body.closeSubpath()
+    g = QLinearGradient(QPointF(-0.25, 0), QPointF(0.25, 0))
+    g.setColorAt(0, jersey_d)
+    g.setColorAt(0.55, jersey)
+    g.setColorAt(1, QColor(T["light"]))
+    p.setPen(outline)
+    p.setBrush(QBrush(g))
+    p.drawPath(body)
+    # trim and number
+    p.setPen(QPen(QColor(T["trim"]), 0.025))
+    p.drawLine(QPointF(-0.05, -(sho - hip) - 0.01), QPointF(0.03, -(sho - hip) + 0.08))
+    p.drawLine(QPointF(0.03, -(sho - hip) + 0.08), QPointF(0.09, -(sho - hip) - 0.01))
+    p.save()
+    p.scale(face, 1)
+    f = QFont()
+    f.setPixelSize(100)
+    f.setWeight(QFont.Weight.Black)
+    p.setFont(f)
+    p.scale(0.0028, 0.0028)
+    p.setPen(QColor(T["trim"]))
+    p.drawText(QRectF(-80, -(sho - hip) / 0.0028 + 18, 160, 110), int(Qt.AlignmentFlag.AlignCenter), str(num))
+    p.restore()
+    p.restore()
+    # head: neck, face, hair, headband
+    hx0 = lean * (sho - hip) * 1.0 + 0.02
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(skin_c.darker(110))
+    p.drawRect(QRectF(hx0 - 0.05, -(head_c - 0.08), 0.1, 0.12))
+    hg = QRadialGradient(QPointF(hx0 + 0.04, -head_c - 0.03), 0.17)
+    hg.setColorAt(0, skin_c.lighter(112))
+    hg.setColorAt(1, skin_c.darker(108))
+    p.setPen(outline)
+    p.setBrush(QBrush(hg))
+    p.drawEllipse(QPointF(hx0, -head_c), 0.125, 0.14)
+    # hair cap
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(hair_c)
+    hair = QPainterPath()
+    hair.moveTo(hx0 - 0.13, -head_c + 0.01)
+    hair.quadTo(hx0 - 0.12, -head_c - 0.17, hx0 + 0.03, -head_c - 0.15)
+    hair.quadTo(hx0 + 0.13, -head_c - 0.12, hx0 + 0.12, -head_c - 0.05)
+    hair.lineTo(hx0 - 0.02, -head_c - 0.06)
+    hair.closeSubpath()
+    p.drawPath(hair)
+    p.setBrush(QColor(T["trim"]))
+    p.drawRect(QRectF(hx0 - 0.125, -head_c - 0.075, 0.25, 0.035))
+    # an eye and an ear: which way they look
+    p.setBrush(QColor(20, 20, 24))
+    p.drawEllipse(QPointF(hx0 + 0.075, -head_c - 0.01), 0.016, 0.02)
+    p.setBrush(skin_c.darker(125))
+    p.drawEllipse(QPointF(hx0 - 0.03, -head_c + 0.005), 0.025, 0.035)
+    # front arm
+    if up:
+        front_hand = (0.16 + (0.04 if act == "shoot" else 0), -(sho + 0.74))
+    elif act == "steal":
+        front_hand = (0.62, -(sho - 0.55))
+    elif act in ("dribble", "spin") and has_ball and hand * face >= 0 and bx_l is not None:
+        front_hand = (bx_l, min(by_l, -0.55))
+    elif act in ("hold", "passwind", "gather", "fake") and has_ball:
+        front_hand = (0.34, -(sho - 0.34))
+    elif act == "passwind":
+        front_hand = (0.38, -(sho - 0.2))
+    elif cel > 0:
+        front_hand = (0.18, -(sho + 0.66))
+    else:
+        front_hand = (sw * 0.30 * (0.3 + k) + 0.04, -(sho - 0.58))
+    arm(0.04, -sho, front_hand[0], front_hand[1], False)
+    p.restore()
+    if mirror:
+        p.restore()
+
+
+def hoops_draw_ball(p: QPainter, cam: HoopsCam, x, z, h, spin, glow: QColor = None) -> None:
+    s = cam.scale(z)
+    c = cam.pt(x, z, h)
+    r = max(3.0, HB_BALL_R * s * 1.45)
+    if glow is not None:
+        gg = QRadialGradient(c, r * 3)
+        gc = QColor(glow)
+        gc.setAlpha(90)
+        gg.setColorAt(0, gc)
+        gc2 = QColor(glow)
+        gc2.setAlpha(0)
+        gg.setColorAt(1, gc2)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(gg))
+        p.drawEllipse(c, r * 3, r * 3)
+    g = QRadialGradient(QPointF(c.x() - r * 0.35, c.y() - r * 0.4), r * 1.4)
+    g.setColorAt(0, QColor("#FFB061"))
+    g.setColorAt(0.55, QColor("#E8721C"))
+    g.setColorAt(1, QColor("#9C3E08"))
+    p.setPen(QPen(QColor(40, 15, 0, 200), max(1.0, r * 0.08)))
+    p.setBrush(QBrush(g))
+    p.drawEllipse(c, r, r)
+    p.save()
+    p.translate(c)
+    p.rotate(math.degrees(spin))
+    p.setPen(QPen(QColor(35, 12, 0, 210), max(0.8, r * 0.09)))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.drawLine(QPointF(-r, 0), QPointF(r, 0))
+    p.drawLine(QPointF(0, -r), QPointF(0, r))
+    p.drawArc(QRectF(-r * 1.6, -r, r * 1.2, r * 2), -60 * 16, 120 * 16)
+    p.drawArc(QRectF(r * 0.4, -r, r * 1.2, r * 2), 120 * 16, 120 * 16)
+    p.restore()
+
+
+def hoops_draw_hoop(p: QPainter, cam: HoopsCam, sgn: int, team_col: str, net_kick: float, t: float, part: str) -> None:
+    """A hoop: part 'back' (the stanchion, the board, the far half of the rim and net) or 'front' (the near half)."""
+    hx = sgn * HOOP_X
+    bx = sgn * BOARD_X
+    if part == "back":
+        # the stanchion: a padded base behind the baseline, a pole, an arm to the board
+        base_x = sgn * (HALF_L + 1.25)
+        pole = [cam.pt(base_x, HOOP_Z, 0), cam.pt(base_x, HOOP_Z, 3.55)]
+        s = cam.scale(HOOP_Z)
+        p.setPen(Qt.PenStyle.NoPen)
+        b0, b1 = cam.pt(base_x - sgn * 0.0, HOOP_Z - 0.9, 0), cam.pt(base_x + sgn * 1.0, HOOP_Z - 0.9, 0)
+        b2, _b3 = cam.pt(base_x + sgn * 1.0, HOOP_Z + 0.9, 0), cam.pt(base_x, HOOP_Z + 0.9, 0)
+        top = [cam.pt(base_x, HOOP_Z - 0.9, 0.9), cam.pt(base_x + sgn * 1.0, HOOP_Z - 0.9, 0.9),
+               cam.pt(base_x + sgn * 1.0, HOOP_Z + 0.9, 0.9), cam.pt(base_x, HOOP_Z + 0.9, 0.9)]
+        p.setBrush(QColor(team_col).darker(170))
+        p.drawPolygon(QPolygonF([b0, b1, top[1], top[0]]))
+        p.setBrush(QColor(team_col).darker(140))
+        p.drawPolygon(QPolygonF(top))
+        p.setPen(QPen(QColor("#2A2F3A"), max(2.0, 0.16 * s), cap=Qt.PenCapStyle.RoundCap))
+        p.drawLine(pole[0], pole[1])
+        p.setPen(QPen(QColor("#323846"), max(2.0, 0.12 * s), cap=Qt.PenCapStyle.RoundCap))
+        p.drawLine(pole[1], cam.pt(bx + sgn * 0.05, HOOP_Z, 3.35))
+        p.drawLine(cam.pt(base_x, HOOP_Z, 2.7), cam.pt(bx + sgn * 0.05, HOOP_Z, 3.05))
+        # the board: glass with a white frame and the target square
+        q = [cam.pt(bx, HOOP_Z - BOARD_HW, BOARD_LO), cam.pt(bx, HOOP_Z + BOARD_HW, BOARD_LO),
+             cam.pt(bx, HOOP_Z + BOARD_HW, BOARD_HI), cam.pt(bx, HOOP_Z - BOARD_HW, BOARD_HI)]
+        p.setPen(QPen(QColor(255, 255, 255, 230), max(1.5, 0.05 * s)))
+        p.setBrush(QColor(200, 225, 255, 55))
+        p.drawPolygon(QPolygonF(q))
+        sq = [cam.pt(bx, HOOP_Z - 0.3, 3.05 + 0.15), cam.pt(bx, HOOP_Z + 0.3, 3.2),
+              cam.pt(bx, HOOP_Z + 0.3, 3.65), cam.pt(bx, HOOP_Z - 0.3, 3.65)]
+        p.setPen(QPen(QColor(255, 255, 255, 200), max(1.0, 0.035 * s)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPolygon(QPolygonF(sq))
+        # the shot clock box on top of the board, in the team's colour
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(team_col))
+        p.drawPolygon(QPolygonF([cam.pt(bx, HOOP_Z - 0.35, BOARD_HI), cam.pt(bx, HOOP_Z + 0.35, BOARD_HI),
+                                 cam.pt(bx, HOOP_Z + 0.35, BOARD_HI + 0.06), cam.pt(bx, HOOP_Z - 0.35, BOARD_HI + 0.06)]))
+    # the rim (a ring of points) and the net
+    n = 20
+    ring = []
+    for i in range(n):
+        a = i / n * math.tau
+        ring.append((hx + math.cos(a) * RIM_R, HOOP_Z + math.sin(a) * RIM_R))
+    sway = math.sin(t * 18) * net_kick * 0.06
+    low = []
+    for i in range(n):
+        a = i / n * math.tau
+        low.append((hx + math.cos(a) * RIM_R * 0.62 + sway, HOOP_Z + math.sin(a) * RIM_R * 0.62))
+    nh = RIM_H - 0.45 - net_kick * 0.12
+    s = cam.scale(HOOP_Z)
+    far = part == "back"
+    p.setPen(QPen(QColor(255, 255, 255, 200 if not far else 150), max(0.8, 0.018 * s)))
+    for i in range(n):
+        zf = ring[i][1] > HOOP_Z
+        if zf != far:
+            continue
+        a0 = cam.pt(ring[i][0], ring[i][1], RIM_H)
+        b0 = cam.pt(low[i][0], low[i][1], nh)
+        b1 = cam.pt(low[(i + 2) % n][0], low[(i + 2) % n][1], nh)
+        b2 = cam.pt(low[(i - 2) % n][0], low[(i - 2) % n][1], nh)
+        p.drawLine(a0, b1)
+        p.drawLine(a0, b2)
+    # the net's bottom ring and the middle row
+    pts = [cam.pt(xx, zz, nh) for xx, zz in low]
+    mid = [cam.pt((ring[i][0] + low[i][0]) / 2, (ring[i][1] + low[i][1]) / 2, (RIM_H + nh) / 2) for i in range(n)]
+    for i in range(n):
+        zf = low[i][1] > HOOP_Z
+        if zf == far:
+            p.drawLine(pts[i], pts[(i + 1) % n])
+            p.drawLine(mid[i], mid[(i + 1) % n])
+    # the rim itself: orange, the far half then the near half
+    p.setPen(QPen(QColor("#FF6A1A") if not far else QColor("#D9520F"), max(1.6, 0.045 * s), cap=Qt.PenCapStyle.RoundCap))
+    for i in range(n):
+        zf = ring[i][1] > HOOP_Z
+        if zf != far:
+            continue
+        p.drawLine(cam.pt(ring[i][0], ring[i][1], RIM_H), cam.pt(ring[(i + 1) % n][0], ring[(i + 1) % n][1], RIM_H))
+    if far:
+        # the bracket from the board to the rim
+        p.setPen(QPen(QColor("#D9520F"), max(1.4, 0.04 * s)))
+        p.drawLine(cam.pt(bx, HOOP_Z, RIM_H), cam.pt(hx + sgn * RIM_R, HOOP_Z, RIM_H))
+
+
+class HoopsAudio(KartAudio):
+    """Hoops' sound: Karting's little mixer, with a crowd instead of the engine: the arena murmurs, swells when the
+    play gets close to a hoop, and roars on a basket. Everything is made in code."""
+    _one = None
+
+    @classmethod
+    def get(cls) -> "HoopsAudio":
+        if cls._one is None:
+            cls._one = HoopsAudio()
+        return cls._one
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.crowd = {"a": 0.0, "hype": 0.0}
+        self._c = [0.0, 0.0, 0.0]
+
+    def _make(self) -> None:
+        if self.samples:
+            return
+        R = self.RATE
+        rng = random.Random(21)
+
+        def env(n, att=0.003, dec=6.0):
+            return [min(1.0, (i / R) / att) * math.exp(-dec * i / n) for i in range(n)]
+
+        def tone(f0, f1, secs, dec=5.0, harm=0.3, att=0.003):
+            n = int(R * secs)
+            e = env(n, att, dec)
+            out, ph = [], 0.0
+            for i in range(n):
+                f = f0 + (f1 - f0) * i / n
+                ph += 2 * math.pi * f / R
+                out.append((math.sin(ph) + harm * math.sin(2 * ph)) * e[i])
+            return out
+
+        def noise(secs, dec=6.0, lp=0.3, att=0.002):
+            n = int(R * secs)
+            e = env(n, att, dec)
+            out, y = [], 0.0
+            for i in range(n):
+                y += (rng.uniform(-1, 1) - y) * lp
+                out.append(y * e[i] * 2.2)
+            return out
+
+        def mix(*parts):
+            n = max(len(a) for a, _g in parts)
+            out = [0.0] * n
+            for a, g in parts:
+                for i, v in enumerate(a):
+                    out[i] += v * g
+            return out
+
+        def whistle(secs, trill=True):
+            n = int(R * secs)
+            out, ph = [], 0.0
+            for i in range(n):
+                tt = i / R
+                f = 2850 + (180 * math.sin(2 * math.pi * 34 * tt) if trill else 0)
+                ph += 2 * math.pi * f / R
+                a = min(1.0, tt / 0.015) * min(1.0, (secs - tt) / 0.05)
+                out.append((math.sin(ph) * 0.7 + rng.uniform(-0.25, 0.25)) * a)
+            return out
+
+        def buzzer(secs):
+            n = int(R * secs)
+            out = []
+            for i in range(n):
+                tt = i / R
+                v = (1 if math.sin(2 * math.pi * 196 * tt) > 0 else -1) * 0.5 + (1 if math.sin(2 * math.pi * 233 * tt) > 0 else -1) * 0.3
+                a = min(1.0, tt / 0.01) * min(1.0, (secs - tt) / 0.06)
+                out.append(v * a * 0.6)
+            return out
+
+        def roar(secs):
+            n = int(R * secs)
+            out, y1, y2 = [], 0.0, 0.0
+            for i in range(n):
+                tt = i / R
+                y1 += (rng.uniform(-1, 1) - y1) * 0.12
+                y2 += (rng.uniform(-1, 1) - y2) * 0.4
+                a = min(1.0, tt / 0.25) * math.exp(-1.6 * max(0.0, tt - 0.4))
+                out.append((y1 * 2.0 + y2 * 0.6) * a)
+            return out
+        bounce = mix((tone(150, 70, 0.11, 18, 0.4), 1.0), (noise(0.05, 30, 0.25), 0.5))
+        self.samples = {
+            "bounce": bounce,
+            "bounce_far": [v * 0.45 for v in bounce],
+            "swish": mix((noise(0.35, 5, 0.75, 0.04), 0.55), (noise(0.25, 7, 0.35, 0.02), 0.3)),
+            "rim": mix((tone(620, 600, 0.45, 7, 0.6), 0.6), (tone(1340, 1320, 0.35, 9, 0.2), 0.35), (noise(0.08, 25, 0.5), 0.4)),
+            "board": mix((tone(180, 120, 0.22, 10, 0.5), 0.8), (noise(0.12, 16, 0.3), 0.6)),
+            "whistle": whistle(0.55),
+            "whistle_short": whistle(0.22, False),
+            "buzzer": buzzer(1.1),
+            "squeak": tone(2300, 3100, 0.09, 6, 0.1),
+            "pass": mix((noise(0.18, 8, 0.6, 0.03), 0.45),),
+            "catch": mix((noise(0.05, 30, 0.45), 0.9), (tone(240, 160, 0.06, 20, 0.3), 0.5)),
+            "swipe": mix((noise(0.12, 10, 0.7, 0.01), 0.4),),
+            "steal": mix((noise(0.06, 25, 0.45), 0.8), (tone(520, 880, 0.18, 6, 0.2), 0.45)),
+            "block": mix((noise(0.1, 18, 0.3), 1.0), (tone(160, 80, 0.2, 9, 0.5), 0.8)),
+            "count": tone(660, 660, 0.18, 7, 0.2),
+            "go": tone(1320, 1320, 0.45, 3.5, 0.25),
+            "coin": mix((tone(1900, 1900, 0.5, 5, 0.1), 0.5), (tone(2800, 2800, 0.4, 6, 0.1), 0.3)),
+            "roar": roar(3.2),
+            "boom": mix((noise(1.1, 4.0, 0.08), 1.4), (tone(90, 30, 1.1, 3.5, 0.5), 0.9)),
+            "jump": tone(300, 520, 0.08, 10, 0.1),
+            "ooh": [v * 0.6 for v in roar(1.4)],
+            "tick": tone(1500, 1500, 0.04, 20, 0.1),
+            "spin": mix((noise(0.15, 8, 0.6, 0.01), 0.3), (tone(2500, 3300, 0.08, 6, 0.1), 0.4)),
+        }
+
+    def set_crowd(self, a: float, hype: float) -> None:
+        self.crowd["a"] = a
+        self.crowd["hype"] = hype
+
+    def engine(self, *_a) -> None:
+        if not self.run:
+            self.start()
+
+    def _render(self, n: int) -> bytes:
+        out = [0.0] * n
+        a = self.crowd["a"] * (1 + self.crowd["hype"] * 1.4)
+        y1, y2, y3 = self._c
+        rnd = self.noise.random
+        for i in range(n):
+            y1 += (rnd() * 2 - 1 - y1) * 0.05
+            y2 += (rnd() * 2 - 1 - y2) * 0.18
+            y3 += (rnd() * 2 - 1 - y3) * 0.5
+            out[i] = (y1 * 1.6 + y2 * 0.55 + y3 * 0.08) * a
+        self._c = [y1, y2, y3]
+        with self.lock:
+            keep = []
+            for v in self.voices:
+                smp, pos, g = v
+                m = min(n, len(smp) - pos)
+                for i in range(m):
+                    out[i] += smp[pos + i] * g
+                v[1] = pos + m
+                if v[1] < len(smp):
+                    keep.append(v)
+            self.voices = keep
+        import array
+        buf = array.array("h", (int(max(-1.0, min(1.0, x * self.vol)) * 32000) for x in out))
+        return buf.tobytes()
+
+
+class HoopsView(QWidget):
+    """9.3: the match. Runs the game at 120 steps a second on a fixed clock, draws at the screen's rate, and handles
+    the coin flip, the countdowns, the goal explosion and its replay, the pause menu and the final whistle."""
+    finished = pyqtSignal(dict)
+
+    def __init__(self, level: str = "National", mins: float = 3.0, seed: int = 0, name: str = "") -> None:
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setMouseTracking(True)
+        self.setMinimumSize(S(720), S(420))
+        self.setCursor(Qt.CursorShape.CrossCursor)
+        self.level, self.mins = level, mins
+        self.seed = seed or random.randrange(1, 10 ** 9)
+        self.name = name or tr("You")
+        self.g = HoopsGame(level=level, mins=mins, seed=self.seed, humans=(0,))
+        self.cam = HoopsCam()
+        self.fx = HoopsFx()
+        self.audio = HoopsAudio.get()
+        self.keys: set = set()
+        self.lmb = self.rmb = False
+        self.mouse = QPointF(0, 0)
+        self.paused = False
+        self.msgs: list = []                 # [text, colour, until, big]
+        self.flash = 0.0
+        self.flash_col = QColor("#FFFFFF")
+        self.shake = 0.0
+        self.net_kick = [0.0, 0.0]           # left, right
+        self.rec: list = []                  # the replay buffer: (game time, snapshot)
+        self.replay = None                   # {"frames", "i", "t", "info"}
+        self.wipe = 0.0                      # a transition: 0..1..0
+        self.wipe_then = None
+        self.wipe_col = QColor("#2F7BFF")
+        self.last_count = 99
+        self.shot_flash = None               # (text, colour, until)
+        self.hype = 0.0
+        self.result_sent = False
+        self.over_t = 0.0
+        self.toast_ctrl = 0.0
+        self.squeak_cd = 0.0
+        self.skins = [random.Random(self.seed + i).randrange(len(HOOPS_SKIN)) for i in range(4)]
+        self._frame = time.monotonic()
+        self._acc = 0.0
+        self.T = 0.0                         # the view's own clock (for animations)
+        self.timer = QTimer(self)
+        self.timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self.timer.setInterval(8)
+        self.timer.timeout.connect(self._tick)
+        self.timer.start()
+        self.audio.set_crowd(0.18, 0.0)
+        self.g.ev("flip", team=self.g.flip_team)
+
+    # -- input
+    def _inp(self) -> "HoopsInput":
+        k = self.keys
+        up = 1.0 if (k & {Qt.Key.Key_W, Qt.Key.Key_Z, Qt.Key.Key_Up}) else 0.0
+        down = 1.0 if (k & {Qt.Key.Key_S, Qt.Key.Key_Down}) else 0.0
+        left = 1.0 if (k & {Qt.Key.Key_A, Qt.Key.Key_Q, Qt.Key.Key_Left}) else 0.0
+        right = 1.0 if (k & {Qt.Key.Key_D, Qt.Key.Key_Right}) else 0.0
+        aim = self.cam.floor_at(self.mouse.x(), self.mouse.y())
+        return HoopsInput(right - left, up - down, Qt.Key.Key_Space in k, Qt.Key.Key_Shift in k, self.lmb, self.rmb, aim)
+
+    def keyPressEvent(self, e) -> None:
+        if e.isAutoRepeat():
+            return
+        key = e.key()
+        if key in (Qt.Key.Key_Escape, Qt.Key.Key_P):
+            if self.g.phase != "over":
+                self.paused = not self.paused
+                self.audio.play("tick")
+            return
+        if self.replay is not None and key in (Qt.Key.Key_Space, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self._end_replay()
+            return
+        self.keys.add(Qt.Key(key))
+
+    def keyReleaseEvent(self, e) -> None:
+        if e.isAutoRepeat():
+            return
+        self.keys.discard(Qt.Key(e.key()))
+
+    def mousePressEvent(self, e) -> None:
+        self.setFocus()
+        if self.paused:
+            return self._pause_click(e.position())
+        if self.replay is not None:
+            self._end_replay()
+            return
+        if e.button() == Qt.MouseButton.LeftButton:
+            self.lmb = True
+        elif e.button() == Qt.MouseButton.RightButton:
+            self.rmb = True
+
+    def mouseReleaseEvent(self, e) -> None:
+        if e.button() == Qt.MouseButton.LeftButton:
+            self.lmb = False
+        elif e.button() == Qt.MouseButton.RightButton:
+            self.rmb = False
+
+    def mouseMoveEvent(self, e) -> None:
+        self.mouse = e.position()
+
+    def contextMenuEvent(self, e) -> None:
+        e.accept()
+
+    def focusOutEvent(self, _e) -> None:
+        self.keys.clear()
+        self.lmb = self.rmb = False
+        if self.g.phase in ("play", "count") and self.replay is None:
+            self.paused = True
+
+    def focusNextPrevChild(self, _n) -> bool:
+        return False
+
+    def _pause_click(self, pos: QPointF) -> None:
+        for name, r in getattr(self, "_pause_btns", []):
+            if r.contains(pos):
+                self.audio.play("tick")
+                if name == "resume":
+                    self.paused = False
+                elif name == "restart":
+                    self.restart()
+                elif name == "quit":
+                    w = self.window()
+                    if w is not None:
+                        w._sure = True
+                        w.close()
+                return
+
+    def restart(self) -> None:
+        self.seed = random.randrange(1, 10 ** 9)
+        self.g = HoopsGame(level=self.level, mins=self.mins, seed=self.seed, humans=(0,))
+        self.g.ev("flip", team=self.g.flip_team)
+        self.fx.clear()
+        self.msgs = []
+        self.rec = []
+        self.replay = None
+        self.paused = False
+        self.result_sent = False
+        self.last_count = 99
+
+    # -- the clock
+    def _tick(self) -> None:
+        try:
+            now = time.monotonic()
+            dt = min(0.05, now - self._frame)
+            self._frame = now
+            self.T += dt
+            g = self.g
+            if not self.paused:
+                if self.replay is not None:
+                    self._replay_step(dt)
+                elif self.wipe_then is None or self.wipe < 0.5:
+                    self._acc += dt
+                    inp = {-1: self._inp()} if (self.isActiveWindow() or self.hasFocus()) else {-1: HoopsInput()}
+                    n = 0
+                    while self._acc >= HOOPS_DT and n < 12:
+                        self._acc -= HOOPS_DT
+                        g.step(inp)
+                        n += 1
+                        if int(g.t * 120) % 2 == 0:
+                            self.rec.append((g.t, g.snap(), g.phase))
+                            if len(self.rec) > 60 * 10:
+                                del self.rec[:60]
+                        self._events()
+                    if n >= 12:
+                        self._acc = 0.0
+                self.fx.step(dt * (0.35 if self.replay and self.replay.get("slow") else 1.0))
+            self._transition(dt)
+            self._camera(dt)
+            self._countdown()
+            self._flow(dt)
+            self.audio.set_crowd(0.16 + 0.06 * self._near_hoop(), self.hype)
+            self.hype = max(0.0, self.hype - dt * 0.35)
+            self.flash = max(0.0, self.flash - dt * 2.2)
+            self.shake = max(0.0, self.shake - dt * 2.5)
+            self.net_kick = [max(0.0, v - dt * 1.6) for v in self.net_kick]
+            self.squeak_cd = max(0.0, self.squeak_cd - dt)
+            self.update()
+        except RuntimeError:
+            self.timer.stop()
+
+    def _near_hoop(self) -> float:
+        b = self.g.ball
+        return clamp(1 - (HOOP_X - abs(b.x)) / 8, 0, 1)
+
+    def _flow(self, dt) -> None:
+        g = self.g
+        # the score: the explosion for 1.7 s, then a wipe into the replay
+        if g.phase == "score" and self.replay is None and self.wipe_then is None and g.phase_t > 1.7:
+            self._start_wipe(lambda: self._start_replay(), HOOPS_TEAM[g.last_score["team"]]["main"])
+        if g.phase == "over":
+            self.over_t += dt
+            if self.over_t > 2.6 and not self.result_sent:
+                self.result_sent = True
+                self.finished.emit(self.result())
+
+    def _start_wipe(self, then, col) -> None:
+        self.wipe = 0.0
+        self.wipe_then = then
+        self.wipe_col = QColor(col)
+        self.audio.play("pass", 0.8)
+
+    def _transition(self, dt) -> None:
+        if self.wipe_then is not None:
+            self.wipe += dt / 0.45
+            if self.wipe >= 0.5 and not getattr(self, "_wiped", False):
+                self._wiped = True
+                fn = self.wipe_then
+                fn()
+            if self.wipe >= 1.0:
+                self.wipe = 0.0
+                self.wipe_then = None
+                self._wiped = False
+
+    # -- the replay
+    def _start_replay(self) -> None:
+        g = self.g
+        ls = g.last_score
+        t_end = ls["t"] + 1.1
+        t_start = ls["t"] - 4.6
+        frames = [(t, s) for t, s, ph in self.rec if t_start <= t <= t_end and ph in ("play", "score")]
+        if len(frames) < 30:
+            return self._after_replay()
+        self.replay = {"frames": frames, "pos": 0.0, "info": dict(ls), "t_score": ls["t"], "slow": False,
+                       "net_done": False}
+        self.fx.clear()
+
+    def _replay_step(self, dt) -> None:
+        r = self.replay
+        fr = r["frames"]
+        i = int(r["pos"])
+        if i >= len(fr) - 1:
+            return self._end_replay()
+        t = fr[i][0]
+        # slow motion for the last second before the ball drops through
+        slow = r["t_score"] - 1.0 <= t <= r["t_score"] + 0.2
+        r["slow"] = slow
+        r["pos"] += dt * 60 * (0.33 if slow else 1.0)
+        if t >= r["t_score"] - 0.02 and not r["net_done"]:
+            r["net_done"] = True
+            team = r["info"]["team"]
+            sgn = 1 if team == 0 else -1
+            self.fx.burst(sgn * HOOP_X, HOOP_Z, RIM_H, HOOPS_TEAM[team]["main"], 50, 6)
+            self.fx.ring(sgn * HOOP_X, HOOP_Z, RIM_H - 0.3, HOOPS_TEAM[team]["light"], 0.9)
+            self.net_kick[0 if sgn < 0 else 1] = 1.0
+            self.audio.play("swish")
+            self.flash = 0.6
+            self.flash_col = QColor(HOOPS_TEAM[team]["main"])
+
+    def _end_replay(self) -> None:
+        if self.replay is None or self.wipe_then is not None:
+            return
+        self._start_wipe(self._after_replay, "#0B0F18")
+
+    def _after_replay(self) -> None:
+        self.replay = None
+        self.fx.clear()
+        self.rec = []
+        self.g.after_score()
+        self.last_count = 99
+
+    # -- events into sound, effects and messages
+    def _msg(self, text, col="#FFFFFF", dur=1.4, big=False) -> None:
+        self.msgs = [m for m in self.msgs if m[3] != big]
+        self.msgs.append([text, QColor(col), self.T + dur, big, self.T])
+
+    def _vol(self, x) -> float:
+        return clamp(1.1 - abs(x - self.cam.cx) / 16, 0.25, 1.0)
+
+    def _events(self) -> None:
+        g = self.g
+        me_team = 0
+        for kind, d in g.events:
+            if kind == "bounce":
+                self.audio.play("bounce", 0.55 * self._vol(d.get("x", 0)) * clamp(0.5 + d.get("v", 3) / 8, 0.5, 1.1))
+            elif kind == "flip":
+                self.audio.play("coin")
+            elif kind in ("whistle", "whistle_short"):
+                self.audio.play(kind, 0.7)
+            elif kind == "toss":
+                self.audio.play("pass", 0.6)
+            elif kind == "pass":
+                self.audio.play("pass", 0.5 * self._vol(g.ball.x))
+            elif kind == "catch":
+                self.audio.play("catch", 0.5 * self._vol(g.ball.x))
+                if d.get("turn") and g.phase == "play":
+                    p = g.players[d["p"]]
+                    if d.get("reb"):
+                        pass
+            elif kind == "swipe":
+                self.audio.play("swipe", 0.4)
+            elif kind == "steal":
+                p = g.players[d["p"]]
+                self.audio.play("steal", 0.8)
+                self._msg(tr("STEAL!"), HOOPS_TEAM[p.team]["light"])
+                self.hype = min(1.0, self.hype + 0.5)
+                self.fx.burst(g.ball.x, g.ball.z, 0.8, HOOPS_TEAM[p.team]["main"], 18, 3)
+            elif kind == "intercept":
+                p = g.players[d["p"]]
+                self.audio.play("steal", 0.8)
+                self._msg(tr("INTERCEPTED!"), HOOPS_TEAM[p.team]["light"])
+                self.hype = min(1.0, self.hype + 0.5)
+            elif kind == "deflect":
+                self.audio.play("catch", 0.6)
+                self._msg(tr("Deflected!"), "#FFFFFF", 1.0)
+            elif kind == "block":
+                p = g.players[d["p"]]
+                self.audio.play("block", 1.0)
+                self._msg(tr("BLOCKED!"), HOOPS_TEAM[p.team]["light"], 1.6)
+                self.shake = 0.5
+                self.hype = min(1.0, self.hype + 0.8)
+                self.audio.play("ooh", 0.6)
+                self.fx.burst(g.ball.x, g.ball.z, g.ball.h, "#FFFFFF", 22, 4)
+            elif kind == "reach_in":
+                if g.players[d["p"]].team == me_team or True:
+                    self._msg(tr("Reach-in: off balance"), "#FFB04A", 1.0)
+            elif kind == "tied":
+                pass
+            elif kind == "spin":
+                self.audio.play("spin", 0.5 * self._vol(g.ball.x))
+            elif kind == "jump":
+                pass
+            elif kind == "land":
+                pass
+            elif kind == "shot_start":
+                pass
+            elif kind == "pump_fake":
+                pass
+            elif kind == "shot":
+                p = g.players[d["p"]]
+                if p.human:
+                    txt = {"green": tr("PERFECT") if d["perfect"] else tr("GOOD RELEASE"),
+                           "yellow": tr("EARLY") if d["m"] < SHOT_C else tr("LATE"),
+                           "red": tr("WAY TOO EARLY") if d["m"] < SHOT_C else tr("WAY TOO LATE")}[d["zone"]]
+                    col = {"green": "#3BE38A", "yellow": "#FFC94A", "red": "#FF5A5A"}[d["zone"]]
+                    self.shot_flash = (txt, QColor(col), self.T + 1.2)
+                self.hype = min(1.0, self.hype + 0.3)
+            elif kind == "rim":
+                self.audio.play("rim", 0.9 * self._vol(d["x"]))
+                self.audio.play("ooh", 0.4)
+            elif kind == "board":
+                self.audio.play("board", 0.8)
+            elif kind == "airball":
+                self._msg(tr("Air ball"), "#FFFFFF", 1.2)
+            elif kind == "net":
+                team = d["team"]
+                sgn = 1 if team == 0 else -1
+                self.net_kick[0 if sgn < 0 else 1] = 1.0
+                self.audio.play("swish", 1.0)
+            elif kind == "score":
+                self._explode(d)
+            elif kind == "violation":
+                k = d["kind"]
+                txt = {"out": tr("Out of bounds"), "shot_clock": tr("Shot clock violation"),
+                       "charge": tr("Charge! Offensive foul")}.get(k, k)
+                self._msg(txt, "#FFFFFF", 1.5, False)
+                self._msg(tr("BLUE BALL") if d["team"] == 0 else tr("RED BALL"), HOOPS_TEAM[d["team"]]["light"], 1.5, True)
+            elif kind == "count_start":
+                self.last_count = 99
+            elif kind == "switch":
+                pass
+            elif kind == "buzzer":
+                self.audio.play("buzzer", 0.9)
+            elif kind == "overtime":
+                self._msg(tr("OVERTIME"), "#F5C04A", 3.0, True)
+                self._msg(tr("Next basket wins"), "#FFFFFF", 3.0)
+                self.hype = 1.0
+                self.audio.play("roar", 0.6)
+            elif kind == "final":
+                win = d["win"]
+                self._msg(tr("YOU WIN!") if win == 0 else tr("RED WINS"), HOOPS_TEAM[win]["light"], 60, True)
+                self.audio.play("roar", 1.0 if win == 0 else 0.5)
+                if win == 0:
+                    for k_ in range(3):
+                        self.fx.burst(self.cam.cx + random.uniform(-6, 6), random.uniform(4, 11), 5,
+                                      HOOPS_TEAM[0]["main"], 50, 4, "confetti")
+                        self.fx.burst(self.cam.cx + random.uniform(-6, 6), random.uniform(4, 11), 5, "#F5C04A",
+                                      30, 4, "confetti")
+            elif kind == "restart":
+                pass
+        # squeaks on hard cuts near the camera
+        if self.squeak_cd <= 0 and g.phase == "play":
+            for p in g.players:
+                if p.speed() > 4.5 and abs(p.vx * p.fz - p.vz * p.fx) > 3.5 and random.random() < 0.05:
+                    self.audio.play("squeak", 0.25 * self._vol(p.x))
+                    self.squeak_cd = 0.6
+                    break
+        g.events.clear()
+
+    def _explode(self, d) -> None:
+        team, pts = d["team"], d["pts"]
+        sgn = 1 if team == 0 else -1
+        col = HOOPS_TEAM[team]["main"]
+        hx = sgn * HOOP_X
+        self.fx.burst(hx, HOOP_Z, RIM_H, col, 110, 9)
+        self.fx.burst(hx, HOOP_Z, RIM_H, "#FFFFFF", 40, 6)
+        self.fx.burst(hx, HOOP_Z, RIM_H + 0.5, col, 80, 5, "confetti")
+        self.fx.burst(hx, HOOP_Z, RIM_H + 0.5, "#F5C04A", 40, 5, "confetti")
+        self.fx.ring(hx, HOOP_Z, RIM_H, HOOPS_TEAM[team]["light"], 0.9)
+        self.fx.ring(hx, HOOP_Z, 0.02, col, 1.3)
+        self.fx.text(hx - sgn * 1.0, HOOP_Z, RIM_H + 1.0, f"+{pts}", HOOPS_TEAM[team]["light"], 1.6, 64)
+        self.flash = 1.0
+        self.flash_col = QColor(col)
+        self.shake = 1.0
+        self.hype = 1.0
+        self.audio.play("boom", 0.9)
+        self.audio.play("roar", 0.9)
+        by = self.g.players[d["by"]]
+        who = tr(HOOPS_TEAM[by.team]["name"]) + " #" + str(by.num)
+        self._msg(tr("{pts} POINTS", pts=pts) if pts == 3 else tr("BUCKET!"), HOOPS_TEAM[team]["light"], 1.7, True)
+        if d.get("assist", -1) >= 0:
+            a = self.g.players[d["assist"]]
+            self._msg(tr("{who} scores · assist {a}", who=who, a="#" + str(a.num)), "#FFFFFF", 1.7)
+        else:
+            self._msg(tr("{who} scores", who=who), "#FFFFFF", 1.7)
+
+    def _countdown(self) -> None:
+        g = self.g
+        if g.phase == "count" and g.count_len >= 2:
+            left = g.count_len - g.phase_t
+            c = int(math.ceil(left))
+            if c != self.last_count and c >= 1:
+                self.last_count = c
+                self.audio.play("count", 0.6)
+        elif g.phase == "play" and self.last_count != 0 and self.last_count < 99:
+            self.last_count = 0
+            self.audio.play("go", 0.6)
+            self._msg(tr("GO!"), "#FFFFFF", 0.8, True)
+
+    def _camera(self, dt) -> None:
+        cam = self.cam
+        g = self.g
+        if self.replay is not None:
+            fr = self.replay["frames"][min(int(self.replay["pos"]), len(self.replay["frames"]) - 1)][1]
+            bx = fr[1][0]
+            target = bx
+            zoom = 1.22
+        else:
+            b = g.ball
+            c = g.carrier()
+            me = g.players[g.ctrl.get(0, 0)]
+            target = b.x + (c.vx * 0.35 if c is not None else b.vx * 0.15)
+            # keep my player in view when the ball is far
+            if abs(me.x - target) > 7:
+                target = lerp(target, me.x, 0.35)
+            zoom = 1.0
+            if g.phase == "intro":
+                target = 0.0
+        half = (self.width() / 2) / max(1.0, cam.scale(HOOP_Z))
+        lim = HALF_L + 2.6 - half
+        target = clamp(target, -max(0.0, lim), max(0.0, lim))
+        cam.cx = lerp(cam.cx, target, clamp(dt * 3.2, 0, 1))
+        cam.zoom = lerp(cam.zoom, zoom, clamp(dt * 3, 0, 1))
+        a = self.shake
+        cam.shx = math.sin(self.T * 53) * a * S(9)
+        cam.shy = math.cos(self.T * 41) * a * S(7)
+        cam.setup(self.width(), self.height())
+
+    # -- the result for the results screen and the server
+    def result(self) -> dict:
+        g = self.g
+        tot = []
+        for team in (0, 1):
+            t = {}
+            for p in g.team(team):
+                for k, v in p.st.items():
+                    t[k] = t.get(k, 0) + v
+            tot.append(t)
+        return {"level": self.level, "mins": self.mins, "score": list(g.score), "win": g.result["win"] == 0 if g.result else False,
+                "ot": g.overtime, "me": tot[0], "opp": tot[1], "seed": self.seed}
+
+    # ---------------------------------------------------------------------------------------------- drawing
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        g = self.g
+        cam = self.cam
+        cam.setup(self.width(), self.height())
+        if self.replay is not None:
+            r = self.replay
+            fr = r["frames"][min(int(r["pos"]), len(r["frames"]) - 1)][1]
+            players, ball = fr
+        else:
+            s = g.snap()
+            players, ball = s
+        self._arena(p)
+        self._floor(p)
+        self._lights(p)
+        # floor marks under everyone: the zone, the shadows, my ring
+        self._under(p, players, ball)
+        # reflections (faint, flipped under the floor)
+        p.save()
+        p.setOpacity(0.16)
+        for i in sorted(range(len(players)), key=lambda i: -players[i][1]):
+            pl = g.players[i]
+            hoops_draw_player(p, cam, players[i], pl.team, pl.num, self.skins[i], self.T, None, 1.0, mirror=True)
+        p.restore()
+        # far to near: the hoops (back parts at their depth), players, ball, hoop fronts
+        items = []
+        for sgn in (-1, 1):
+            items.append((HOOP_Z + 0.01, "hoop_back", sgn))
+            items.append((HOOP_Z - 0.3, "hoop_front", sgn))
+        for i, d in enumerate(players):
+            items.append((d[1], "player", i))
+        items.append((ball[1] - 0.02, "ball", 0))
+        if g.phase in ("intro", "toss") and self.replay is None:
+            items.append((-0.9, "ref", 0))
+        items.sort(key=lambda it: -it[0])
+        for zz, kind, k in items:
+            if kind == "hoop_back":
+                hoops_draw_hoop(p, cam, k, HOOPS_TEAM[0 if k < 0 else 1]["main"], self.net_kick[0 if k < 0 else 1], self.T, "back")
+            elif kind == "hoop_front":
+                # the ball inside the net goes behind the near half of the net
+                hoops_draw_hoop(p, cam, k, HOOPS_TEAM[0 if k < 0 else 1]["main"], self.net_kick[0 if k < 0 else 1], self.T, "front")
+            elif kind == "player":
+                d = players[k]
+                pl = g.players[k]
+                holds = ball[4] == k
+                hoops_draw_player(p, cam, d, pl.team, pl.num, self.skins[k], self.T,
+                                  (ball[0], ball[1], ball[2]) if holds else None)
+            elif kind == "ball":
+                if ball[5] != "dead" or g.phase in ("intro", "toss", "dead", "over", "count", "score"):
+                    glow = None
+                    if self.replay is None and g.ball.mode == "shot" and g.ball.f and g.ball.f.get("perfect"):
+                        glow = QColor("#3BE38A")
+                    hoops_draw_ball(p, cam, ball[0], ball[1], ball[2], ball[3], glow)
+            elif kind == "ref":
+                self._ref(p)
+        self._fx(p)
+        self._over_heads(p, players, ball)
+        if self.replay is None:
+            self._aim(p)
+        if self.replay is None:
+            self._hud(p)
+        else:
+            self._replay_hud(p)
+        self._messages(p)
+        if g.phase == "intro":
+            self._coin(p)
+        if g.phase == "count" and g.count_len >= 2:
+            self._count(p)
+        if self.flash > 0:
+            c = QColor(self.flash_col)
+            c.setAlpha(int(90 * self.flash))
+            p.fillRect(self.rect(), c)
+        if self.wipe_then is not None or self.wipe > 0:
+            self._wipe(p)
+        if self.paused:
+            self._pause(p)
+
+    def _arena(self, p: QPainter) -> None:
+        w, h = self.width(), self.height()
+        cam = self.cam
+        g = QLinearGradient(0, 0, 0, h)
+        g.setColorAt(0, QColor("#05070D"))
+        g.setColorAt(0.5, QColor("#0D1220"))
+        g.setColorAt(1, QColor("#0A0D16"))
+        p.fillRect(self.rect(), QBrush(g))
+        # the stands: the crowd strip behind the far sideline, moving with the camera at that depth
+        img = HoopsArt.crowd()
+        far = cam.pt(cam.cx, COURT_W + 3.0, 0.0)
+        top = cam.pt(cam.cx, COURT_W + 3.0, 7.5)
+        sh = far.y() - top.y()
+        if sh > 4:
+            sw = img.width() * sh / img.height()
+            s = cam.scale(COURT_W + 3.0)
+            off = -(cam.cx * s) % sw
+            bob = math.sin(self.T * 9) * self.hype * S(3)
+            x = off - sw
+            while x < w:
+                p.drawImage(QRectF(x, top.y() + bob, sw, sh), img)
+                x += sw
+            # the ad boards along the far side
+            ad = [cam.pt(-HALF_L - 6, COURT_W + 1.2, 0), cam.pt(HALF_L + 6, COURT_W + 1.2, 0),
+                  cam.pt(HALF_L + 6, COURT_W + 1.2, 0.9), cam.pt(-HALF_L - 6, COURT_W + 1.2, 0.9)]
+            gg = QLinearGradient(ad[3], ad[0])
+            gg.setColorAt(0, QColor("#141A2A"))
+            gg.setColorAt(1, QColor("#0B0F1A"))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QBrush(gg))
+            p.drawPolygon(QPolygonF(ad))
+            # LED strip text, scrolling
+            p.save()
+            p.setClipRect(QRectF(0, ad[3].y(), w, ad[0].y() - ad[3].y()))
+            f = font(max(8, (ad[0].y() - ad[3].y()) * 0.55 / max(0.01, ui.scale)), QFont.Weight.Black, 4)
+            p.setFont(f)
+            sc = cam.scale(COURT_W + 1.2)
+            seg = 9.0
+            k0 = int((cam.cx - 30) // seg)
+            for i in range(k0, k0 + 10):
+                xx = i * seg
+                a = cam.pt(xx, COURT_W + 1.2, 0.45)
+                c = QColor(HOOPS_TEAM[i % 2]["main"]) if i % 3 else QColor("#F5C04A")
+                c.setAlpha(170 + int(80 * self.hype))
+                p.setPen(c)
+                p.drawText(QRectF(a.x() - seg * sc / 2, ad[3].y(), seg * sc, ad[0].y() - ad[3].y()),
+                           int(Qt.AlignmentFlag.AlignCenter), "RUBENIUM" if i % 3 else "HOOPS")
+            p.restore()
+        # light rigs high up: a row of lamps
+        for i in range(-3, 4):
+            q = cam.pt(cam.cx * 0.3 + i * 7.5, COURT_W + 6, 13.5)
+            rg = QRadialGradient(q, S(60))
+            rg.setColorAt(0, QColor(255, 244, 220, 120))
+            rg.setColorAt(1, QColor(255, 244, 220, 0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QBrush(rg))
+            p.drawEllipse(q, S(60), S(60))
+            p.setBrush(QColor(255, 250, 235, 230))
+            p.drawEllipse(q, S(5), S(3))
+
+    def _floor(self, p: QPainter) -> None:
+        cam = self.cam
+        img = HoopsArt.floor()
+        x0, x1 = -HALF_L - HOOPS_APRON, HALF_L + HOOPS_APRON
+        z0, z1 = -HOOPS_APRON, COURT_W + HOOPS_APRON
+        src = QPolygonF([QPointF(0, 0), QPointF(img.width(), 0), QPointF(img.width(), img.height()),
+                         QPointF(0, img.height())])
+        dst = QPolygonF([cam.pt(x0, z1), cam.pt(x1, z1), cam.pt(x1, z0), cam.pt(x0, z0)])
+        tf = QTransform()
+        if QTransform.quadToQuad(src, dst, tf):
+            p.save()
+            p.setTransform(tf)
+            p.drawImage(0, 0, img)
+            p.restore()
+        # the floor's edge (a dark lip towards the camera)
+        near_l, near_r = cam.pt(x0, z0), cam.pt(x1, z0)
+        p.fillRect(QRectF(0, max(near_l.y(), near_r.y()), self.width(), self.height()), QColor("#0B0E16"))
+
+    def _lights(self, p: QPainter) -> None:
+        """Pools of light on the floor (warm) and a vignette."""
+        cam = self.cam
+        p.save()
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+        for x in (-HOOP_X + 2.5, 0.0, HOOP_X - 2.5):
+            c = cam.pt(x, HOOP_Z, 0)
+            s = cam.scale(HOOP_Z)
+            rg = QRadialGradient(c, 7.5 * s)
+            rg.setColorAt(0, QColor(70, 55, 35, 60))
+            rg.setColorAt(1, QColor(0, 0, 0, 0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QBrush(rg))
+            p.save()
+            p.translate(c)
+            p.scale(1.0, 0.42)
+            p.drawEllipse(QPointF(0, 0), 7.5 * s, 7.5 * s)
+            p.restore()
+        p.restore()
+        w, h = self.width(), self.height()
+        vg = QRadialGradient(QPointF(w / 2, h * 0.55), max(w, h) * 0.75)
+        vg.setColorAt(0.55, QColor(0, 0, 0, 0))
+        vg.setColorAt(1, QColor(0, 0, 0, 150))
+        p.fillRect(self.rect(), QBrush(vg))
+
+    def _ellipse(self, p: QPainter, x, z, r, h=0.0) -> None:
+        """A circle on the floor (or at height h), in perspective."""
+        poly = QPolygonF([self.cam.pt(x + math.cos(a) * r, z + math.sin(a) * r, h)
+                          for a in (i / 28 * math.tau for i in range(29))])
+        p.drawPolygon(poly)
+
+    def _under(self, p: QPainter, players, ball) -> None:
+        g = self.g
+        # shadows
+        p.setPen(Qt.PenStyle.NoPen)
+        for d in players:
+            k = clamp(1 - d[2] / 1.5, 0.35, 1.0)
+            p.setBrush(QColor(0, 0, 0, int(95 * k)))
+            self._ellipse(p, d[0], d[1], 0.42 * (0.7 + 0.3 * k))
+        bk = clamp(1 - ball[2] / 4, 0.2, 1.0)
+        p.setBrush(QColor(0, 0, 0, int(110 * bk)))
+        self._ellipse(p, ball[0], ball[1], 0.14 * (0.6 + 0.4 * bk))
+        if self.replay is not None:
+            return
+        me_i = g.ctrl.get(0, 0)
+        me = g.players[me_i]
+        T = HOOPS_TEAM[0]
+        # my ring: a glowing ring under my player
+        pulse = 0.5 + 0.5 * math.sin(self.T * 5)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor(T["light"]), S(2.6)))
+        self._ellipse(p, me.x, me.z, 0.52 + 0.04 * pulse)
+        c = QColor(T["main"])
+        c.setAlpha(60)
+        p.setBrush(c)
+        p.setPen(Qt.PenStyle.NoPen)
+        self._ellipse(p, me.x, me.z, 0.5)
+        # the dribble zone (only I see mine): white; amber at the edge; it follows the bounce when dribbling
+        if g.ball.owner == me_i and g.phase in ("play", "count"):
+            d = hyp(me.x - me.zx, me.z - me.zz)
+            edge = d > ZONE_R - 0.12 and me.act in ("hold", "passwind", "gather", "fake")
+            col = QColor("#FFC94A") if edge else QColor(255, 255, 255, 200)
+            pen = QPen(col, S(2))
+            if me.act in ("dribble", "spin"):
+                pen.setStyle(Qt.PenStyle.DashLine)
+                col.setAlpha(140)
+                pen.setColor(col)
+            p.setPen(pen)
+            fill = QColor(255, 255, 255, 18)
+            p.setBrush(fill)
+            self._ellipse(p, me.zx, me.zz, ZONE_R)
+
+    def _over_heads(self, p: QPainter, players, ball) -> None:
+        """Above heads: my marker; my team-mate's pass badge when I have the ball; the bots' levels on the red side."""
+        if self.replay is not None or self.g.phase in ("intro",):
+            return
+        g = self.g
+        cam = self.cam
+        me_i = g.ctrl.get(0, 0)
+        for i, d in enumerate(players):
+            pl = g.players[i]
+            top = cam.pt(d[0], d[1], d[2] + 2.25)
+            s = cam.scale(d[1])
+            if i == me_i:
+                # a chevron in my colour
+                a = S(7) + s * 0.05
+                yy = top.y() - S(6) + math.sin(self.T * 4) * S(2)
+                path = QPainterPath()
+                path.moveTo(top.x() - a, yy - a)
+                path.lineTo(top.x(), yy)
+                path.lineTo(top.x() + a, yy - a)
+                p.setPen(QPen(QColor(0, 0, 0, 140), S(5), cap=Qt.PenCapStyle.RoundCap, join=Qt.PenJoinStyle.RoundJoin))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawPath(path)
+                p.setPen(QPen(QColor(HOOPS_TEAM[0]["light"]), S(3), cap=Qt.PenCapStyle.RoundCap, join=Qt.PenJoinStyle.RoundJoin))
+                p.drawPath(path)
+            elif pl.team == 0:
+                # my team-mate: their number; a pass badge when I have the ball
+                carrying = g.ball.owner == me_i
+                r = QRectF(top.x() - S(22), top.y() - S(26), S(44), S(20))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(255, 255, 255, 235) if carrying else QColor(10, 14, 24, 170))
+                p.drawRoundedRect(r, S(10), S(10))
+                p.setFont(font(10, QFont.Weight.Black))
+                p.setPen(QColor(HOOPS_TEAM[0]["dark"]) if carrying else QColor(HOOPS_TEAM[0]["light"]))
+                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), ("➜ " if carrying else "") + str(pl.num))
+            else:
+                r = QRectF(top.x() - S(16), top.y() - S(22), S(32), S(16))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(10, 14, 24, 150))
+                p.drawRoundedRect(r, S(8), S(8))
+                p.setFont(font(9, QFont.Weight.Black))
+                p.setPen(QColor(HOOPS_TEAM[1]["light"]))
+                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), str(pl.num))
+            # off balance: little stars
+            if pl.stun > 0 and g.phase == "play":
+                for k in range(3):
+                    a = self.T * 6 + k * 2.1
+                    q = QPointF(top.x() + math.cos(a) * S(12), top.y() + S(6) + math.sin(a) * S(4))
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(QColor("#FFC94A"))
+                    p.drawEllipse(q, S(2.5), S(2.5))
+
+    def _aim(self, p: QPainter) -> None:
+        """My pass line or my shot line and meter."""
+        g = self.g
+        cam = self.cam
+        me_i = g.ctrl.get(0, 0)
+        me = g.players[me_i]
+        if g.ball.owner != me_i or g.phase != "play":
+            if me.act == "shoot" or (g.ball.mode == "shot" and g.ball.f and g.ball.f.get("by") == me_i and g.ball.f["t"] < 0.6):
+                self._meter(p, me, released=True)
+            return
+        inp = self._inp()
+        # the pass line: while charging (left button), or a faint one for the quick pass when the mouse is near
+        if me.act == "passwind":
+            kind = me.pass_kind
+            risk, f = g.pass_risk(me, kind, me.pass_c, inp.aim)
+            if f is not None:
+                col = QColor("#FFFFFF") if risk < 0.35 else QColor("#FFB04A") if risk < 0.6 else QColor("#FF4D5E")
+                pts = [cam.pt(*g.path_at(f, i / 30)) for i in range(31)]
+                pen = QPen(QColor(0, 0, 0, 120), S(5), cap=Qt.PenCapStyle.RoundCap, join=Qt.PenJoinStyle.RoundJoin)
+                p.setPen(pen)
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawPolyline(QPolygonF(pts))
+                pen = QPen(col, S(2.6), cap=Qt.PenCapStyle.RoundCap, join=Qt.PenJoinStyle.RoundJoin)
+                pen.setStyle(Qt.PenStyle.DashLine)
+                pen.setDashOffset(-self.T * 12)
+                p.setPen(pen)
+                p.drawPolyline(QPolygonF(pts))
+                # the landing spot
+                p.setPen(QPen(col, S(2)))
+                c2 = QColor(col)
+                c2.setAlpha(50)
+                p.setBrush(c2)
+                self._ellipse(p, f["x1"], f["z1"], 0.45)
+                # the kind and the charge, by my player
+                at = cam.pt(me.x, me.z, me.h + 2.45)
+                names = {"chest": tr("Chest pass"), "bounce": tr("Bounce pass"), "lob": tr("Lob"),
+                         "curve_l": tr("Curve pass"), "curve_r": tr("Curve pass")}
+                p.setFont(font(10.5, QFont.Weight.Black))
+                txt = names[kind] + "  ·  " + (tr("Safe") if risk < 0.35 else tr("Risky") if risk < 0.6 else tr("Will be cut off"))
+                tw = p.fontMetrics().horizontalAdvance(txt) + S(16)
+                r = QRectF(at.x() - tw / 2, at.y() - S(40), tw, S(20))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(8, 10, 18, 200))
+                p.drawRoundedRect(r, S(10), S(10))
+                p.setPen(col)
+                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), txt)
+                # the charge bar
+                cb = QRectF(at.x() - S(30), at.y() - S(16), S(60), S(6))
+                p.setBrush(QColor(255, 255, 255, 40))
+                p.drawRoundedRect(cb, S(3), S(3))
+                p.setBrush(col)
+                p.drawRoundedRect(QRectF(cb.left(), cb.top(), cb.width() * me.pass_c, cb.height()), S(3), S(3))
+            return
+        # the shot line: Shift held (aiming); the meter once the shot starts
+        if inp.shift or me.act == "shoot":
+            gw, d, cst, pct = g.shot_window(me)
+            hx = hoop_of(0)
+            col = QColor.fromHsvF(clamp(pct, 0, 0.9) * 0.36, 0.75, 1.0)
+            # a thin arc, dotted, to the rim
+            pts = []
+            apex = max(g.ball.h, RIM_H) + 0.9 + 0.11 * d
+            for i in range(25):
+                s_ = i / 24
+                x = lerp(g.ball.x, hx, s_)
+                z = lerp(g.ball.z, HOOP_Z, s_)
+                h = lerp(g.ball.h, RIM_H, s_) + 4 * s_ * (1 - s_) * (apex - max(g.ball.h, RIM_H))
+                pts.append(cam.pt(x, z, h))
+            pen = QPen(col, S(2), cap=Qt.PenCapStyle.RoundCap)
+            pen.setStyle(Qt.PenStyle.DotLine)
+            c2 = QColor(col)
+            c2.setAlpha(170)
+            pen.setColor(c2)
+            p.setPen(pen)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPolyline(QPolygonF(pts))
+            mid = pts[12]
+            three = is_three(0, me.x, me.z)
+            txt = f"{int(round(pct * 100))}%" + ("  ·  3" if three else "")
+            p.setFont(font(12, QFont.Weight.Black))
+            tw = p.fontMetrics().horizontalAdvance(txt) + S(14)
+            r = QRectF(mid.x() - tw / 2, mid.y() - S(26), tw, S(20))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(8, 10, 18, 190))
+            p.drawRoundedRect(r, S(10), S(10))
+            p.setPen(col)
+            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), txt)
+            if cst > 0.15:
+                p.setFont(font(9.5, QFont.Weight.Bold))
+                p.setPen(QColor("#FFB04A"))
+                p.drawText(QRectF(r.left() - S(40), r.bottom() + S(1), r.width() + S(80), S(14)),
+                           int(Qt.AlignmentFlag.AlignCenter), tr("Contested"))
+            self._meter(p, me)
+
+    def _meter(self, p: QPainter, me, released: bool = False) -> None:
+        """The shot meter beside my player: red, a yellow band, the green window; the marker rises."""
+        g = self.g
+        cam = self.cam
+        gw, d, cst, pct = g.shot_window(me) if not released else (None, None, None, None)
+        f = g.ball.f if released else None
+        if released and f is not None and f.get("kind") == "shot":
+            gw = f["g"] / (1.15 if f.get("lay") else 1.0)
+            m = f["m"]
+        elif released:
+            return
+        else:
+            m = me.shot_m if me.act == "shoot" else 0.0
+        if me.shot_lay or (f and f.get("lay")):
+            gw = gw * 1.15
+        base = cam.pt(me.x, me.z, me.h)
+        s = cam.scale(me.z)
+        H = S(120)
+        W = S(12)
+        x = base.x() + (S(34) + 0.4 * s) * (1 if me.fx < 0 else -1) - W / 2
+        y = base.y() - 1.2 * s - H / 2
+        r = QRectF(x, y, W, H)
+        p.setPen(QPen(QColor(0, 0, 0, 160), S(4)))
+        p.setBrush(QColor(20, 22, 30, 220))
+        p.drawRoundedRect(r.adjusted(-S(2), -S(2), S(2), S(2)), S(6), S(6))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#D93A45"))
+        p.drawRoundedRect(r, S(5), S(5))
+
+        def band(c, hw, col):
+            y0 = r.bottom() - (c + hw) * H
+            y1 = r.bottom() - (c - hw) * H
+            p.setBrush(QColor(col))
+            p.drawRect(QRectF(r.left(), max(r.top(), y0), W, min(r.bottom(), y1) - max(r.top(), y0)))
+        band(SHOT_C, gw * YELLOW_K, "#FFC94A")
+        band(SHOT_C, gw, "#3BE38A")
+        band(SHOT_C, max(gw * 0.3, 0.004), "#E8FFF0")
+        # the marker
+        my = r.bottom() - m * H
+        p.setBrush(QColor("#FFFFFF"))
+        p.setPen(QPen(QColor(0, 0, 0, 200), S(1.5)))
+        p.drawRoundedRect(QRectF(r.left() - S(5), my - S(3), W + S(10), S(6)), S(3), S(3))
+        if self.shot_flash and self.T < self.shot_flash[2]:
+            txt, col, _u = self.shot_flash
+            p.setFont(font(12, QFont.Weight.Black))
+            tw = p.fontMetrics().horizontalAdvance(txt) + S(14)
+            rr = QRectF(r.center().x() - tw / 2, r.top() - S(28), tw, S(22))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(8, 10, 18, 210))
+            p.drawRoundedRect(rr, S(11), S(11))
+            p.setPen(col)
+            p.drawText(rr, int(Qt.AlignmentFlag.AlignCenter), txt)
+
+    def _fx(self, p: QPainter) -> None:
+        cam = self.cam
+        p.setPen(Qt.PenStyle.NoPen)
+        for q in self.fx.parts:
+            c = QColor(q[8])
+            life = q[6] / q[7]
+            c.setAlphaF(clamp(life * 1.3, 0, 1))
+            pt = cam.pt(q[0], q[1], q[2])
+            s = cam.scale(q[1]) * q[9]
+            p.setBrush(c)
+            if q[10] == "confetti":
+                p.save()
+                p.translate(pt)
+                p.rotate(math.degrees(q[11]))
+                p.drawRect(QRectF(-s, -s * 0.5 * abs(math.sin(q[11])), 2 * s, s * abs(math.sin(q[11])) + 1))
+                p.restore()
+            else:
+                p.drawEllipse(pt, max(1.0, s), max(1.0, s))
+        for x, z, h, t, dur, col in self.fx.rings:
+            k = t / dur
+            c = QColor(col)
+            c.setAlphaF(clamp(1 - k, 0, 1))
+            p.setPen(QPen(c, S(4) * (1 - k) + 1))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            self._ellipse(p, x, z, 0.3 + k * 4.0, h)
+        for x, z, h, s, col, t, dur, size in self.fx.texts:
+            k = t / dur
+            c = QColor(col)
+            c.setAlphaF(clamp(1.6 - k * 1.6, 0, 1))
+            pt = cam.pt(x, z, h)
+            pop = 1 + max(0.0, 0.35 - t) * 1.6
+            p.setFont(font(size * pop, QFont.Weight.Black))
+            p.setPen(QColor(0, 0, 0, int(c.alpha() * 0.6)))
+            p.drawText(QRectF(pt.x() - S(200) + S(3), pt.y() - S(60) + S(3), S(400), S(120)), int(Qt.AlignmentFlag.AlignCenter), s)
+            p.setPen(c)
+            p.drawText(QRectF(pt.x() - S(200), pt.y() - S(60), S(400), S(120)), int(Qt.AlignmentFlag.AlignCenter), s)
+
+    def _ref(self, p: QPainter) -> None:
+        """The referee who throws the ball up: a striped shirt at the near side of the halfway line."""
+        cam = self.cam
+        d = (0.0, -0.9, 0.0, 0.0, 1.0, "free", 0.0, 1.0 if self.g.phase == "toss" and self.g.phase_t < 0.4 else 0.0,
+             0.0, 1, 0.0, 0.0, 0.0, 0.0)
+        p.save()
+        hoops_draw_player(p, cam, d, 2, 0, 2, self.T)
+        p.restore()
+        # stripes over the shirt
+        top = cam.pt(0.0, -0.9, 1.5)
+        bot = cam.pt(0.0, -0.9, 0.95)
+        s = cam.scale(-0.9)
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(5):
+            x = top.x() - 0.22 * s + i * 0.1 * s
+            p.setBrush(QColor(15, 15, 15) if i % 2 == 0 else QColor(240, 240, 240))
+            p.drawRect(QRectF(x, top.y(), 0.1 * s, bot.y() - top.y()))
+
+    def _hud(self, p: QPainter) -> None:
+        g = self.g
+        w = self.width()
+        # the scoreboard: blue score · clock · red score, the shot clock under it
+        bw, bh = S(420), S(64)
+        r = QRectF(w / 2 - bw / 2, S(12), bw, bh)
+        p.setPen(QPen(QColor(255, 255, 255, 30), 1))
+        p.setBrush(QColor(8, 10, 18, 225))
+        p.drawRoundedRect(r, S(16), S(16))
+        for team in (0, 1):
+            T = HOOPS_TEAM[team]
+            side = QRectF(r.left() + (0 if team == 0 else bw - S(150)), r.top(), S(150), bh)
+            g2 = QLinearGradient(side.topLeft(), side.topRight())
+            c0, c1 = QColor(T["main"]), QColor(T["main"])
+            c0.setAlpha(150 if team == 0 else 0)
+            c1.setAlpha(0 if team == 0 else 150)
+            g2.setColorAt(0, c0)
+            g2.setColorAt(1, c1)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QBrush(g2))
+            path = QPainterPath()
+            path.addRoundedRect(r, S(16), S(16))
+            p.save()
+            p.setClipPath(path)
+            p.drawRect(side)
+            p.restore()
+            p.setFont(font(10, QFont.Weight.Black, 1.5))
+            p.setPen(QColor(255, 255, 255, 200))
+            nm = (tr("BLUE") + "  ·  " + tr("YOU")) if team == 0 else (tr("RED") + "  ·  " + hoops_lv(self.level).upper())
+            p.drawText(QRectF(side.left() + S(14), side.top() + S(8), side.width() - S(28), S(14)),
+                       int(Qt.AlignmentFlag.AlignLeft if team == 0 else Qt.AlignmentFlag.AlignRight), nm)
+            p.setFont(font(28, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            p.drawText(QRectF(side.left() + S(14), side.top() + S(20), side.width() - S(28), S(40)),
+                       int((Qt.AlignmentFlag.AlignLeft if team == 0 else Qt.AlignmentFlag.AlignRight) | Qt.AlignmentFlag.AlignVCenter),
+                       str(g.score[team]))
+            # possession: a small ball by the team with it
+            if g.poss == team and g.phase in ("play", "count", "dead"):
+                bx = side.left() + S(98) if team == 0 else side.right() - S(98)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#E8721C"))
+                p.drawEllipse(QPointF(bx, side.top() + S(40)), S(5), S(5))
+        # the clock
+        if g.overtime:
+            ct, cc = tr("OT"), QColor("#F5C04A")
+        else:
+            secs = math.ceil(g.clock * 10) / 10 if g.clock < 10 else math.ceil(g.clock)
+            ct = f"{int(secs // 60)}:{int(secs % 60):02d}" if g.clock >= 10 else f"{g.clock:.1f}"
+            cc = QColor("#FF5A5A") if g.clock < 10 else QColor("#FFFFFF")
+        p.setFont(font(20, QFont.Weight.Black))
+        p.setPen(cc)
+        p.drawText(QRectF(r.center().x() - S(60), r.top() + S(6), S(120), S(30)), int(Qt.AlignmentFlag.AlignCenter), ct)
+        if g.overtime:
+            p.setFont(font(9, QFont.Weight.Black, 1))
+            p.setPen(QColor("#F5C04A"))
+            p.drawText(QRectF(r.center().x() - S(60), r.top() + S(36), S(120), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("NEXT BASKET WINS"))
+        else:
+            sc = max(0.0, g.shot_clock)
+            p.setFont(font(13, QFont.Weight.Black))
+            p.setPen(QColor("#FFC94A") if sc > 5 else QColor("#FF5A5A"))
+            p.drawText(QRectF(r.center().x() - S(40), r.top() + S(34), S(80), S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       f"{int(math.ceil(sc))}" if sc >= 5 else f"{sc:.1f}")
+        # the controls hint, small, bottom left; it changes with what you can do
+        if self.replay is None and g.phase in ("play", "count"):
+            keys = hoops_keys()
+            me_i = g.ctrl.get(0, 0)
+            me = g.players[me_i]
+            mv = keys["up"] + keys["left"] + keys["down"] + keys["right"]
+            if g.ball.owner == me_i:
+                if me.act == "passwind":
+                    tips = [(keys["up"], tr("lob")), (keys["down"], tr("bounce")), (keys["left"] + "/" + keys["right"], tr("curve")),
+                            (tr("Release"), tr("pass")), (tr("Right"), tr("fake"))]
+                elif self._inp().shift:
+                    tips = [(tr("Hold left"), tr("shoot, let go in the green")), (tr("Right"), tr("pump fake"))]
+                else:
+                    tips = [(tr("Space") + " + " + mv, tr("dribble")), (tr("Left"), tr("charge a pass")), (tr("Right"), tr("quick pass")),
+                            (tr("Shift"), tr("aim at the hoop"))]
+            elif g.poss == 0:
+                tips = [(mv, tr("move")), (tr("Right"), tr("switch player"))]
+            else:
+                tips = [(mv, tr("move")), (tr("Shift"), tr("defend")), (tr("Left"), tr("steal")), (tr("Space"), tr("jump")),
+                        (tr("Right"), tr("switch player"))]
+            x = S(14)
+            y = self.height() - S(34)
+            for k, t in tips:
+                p.setFont(font(10, QFont.Weight.Black))
+                kw = p.fontMetrics().horizontalAdvance(k) + S(12)
+                p.setFont(font(10, QFont.Weight.DemiBold))
+                tw = p.fontMetrics().horizontalAdvance(t) + S(8)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(8, 10, 18, 190))
+                p.drawRoundedRect(QRectF(x - S(4), y - S(3), kw + tw + S(8), S(24)), S(8), S(8))
+                p.setBrush(QColor(255, 255, 255, 230))
+                p.drawRoundedRect(QRectF(x, y, kw, S(18)), S(5), S(5))
+                p.setFont(font(10, QFont.Weight.Black))
+                p.setPen(QColor("#0B0F18"))
+                p.drawText(QRectF(x, y, kw, S(18)), int(Qt.AlignmentFlag.AlignCenter), k)
+                p.setFont(font(10, QFont.Weight.DemiBold))
+                p.setPen(QColor("#FFFFFF"))
+                p.drawText(QRectF(x + kw + S(4), y, tw, S(18)), int(Qt.AlignmentFlag.AlignVCenter), t)
+                x += kw + tw + S(16)
+
+    def _messages(self, p: QPainter) -> None:
+        w, h = self.width(), self.height()
+        self.msgs = [m for m in self.msgs if m[2] > self.T]
+        for text, col, until, big, t0 in self.msgs:
+            age = self.T - t0
+            left = until - self.T
+            a = clamp(min(age / 0.12, left / 0.25), 0, 1)
+            pop = 1 + max(0.0, 0.18 - age) * 2.5
+            c = QColor(col)
+            c.setAlphaF(a)
+            if big:
+                p.setFont(font(46 * pop, QFont.Weight.Black, 2))
+                rr = QRectF(0, h * 0.30, w, S(70))
+            else:
+                p.setFont(font(17 * pop, QFont.Weight.Black, 1))
+                rr = QRectF(0, h * 0.30 + S(66), w, S(30))
+            p.setPen(QColor(0, 0, 0, int(160 * a)))
+            p.drawText(rr.translated(S(2), S(3)), int(Qt.AlignmentFlag.AlignCenter), text)
+            p.setPen(c)
+            p.drawText(rr, int(Qt.AlignmentFlag.AlignCenter), text)
+
+    def _coin(self, p: QPainter) -> None:
+        """The coin flip: a coin spins in the air, slows, and lands on blue or red."""
+        g = self.g
+        t = g.phase_t
+        w, h = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(0, 0, 0, int(110 * clamp(1.0 - max(0, t - 2.2) / 0.4, 0, 1))))
+        c = QPointF(w / 2, h * 0.45 - math.sin(min(1.0, t / 1.6) * math.pi) * S(70))
+        R = S(64)
+        spin_end = 1.6
+        if t < spin_end:
+            ang = (1 - (1 - t / spin_end) ** 2) * 14.5 * math.pi        # it slows down
+        else:
+            ang = 14.5 * math.pi if g.flip_team == 0 else 15.5 * math.pi
+        if t < spin_end:
+            face = 0 if math.cos(ang) > 0 else 1
+            if face != g.flip_team and t > spin_end - 0.06:
+                face = g.flip_team
+        else:
+            face = g.flip_team
+        sx = abs(math.cos(ang)) if t < spin_end else 1.0
+        T = HOOPS_TEAM[face]
+        p.save()
+        p.translate(c)
+        p.scale(max(0.06, sx), 1)
+        p.setPen(QPen(QColor("#F5C04A"), S(5)))
+        gg = QRadialGradient(QPointF(-R * 0.3, -R * 0.3), R * 1.5)
+        gg.setColorAt(0, QColor(T["light"]))
+        gg.setColorAt(1, QColor(T["dark"]))
+        p.setBrush(QBrush(gg))
+        p.drawEllipse(QPointF(0, 0), R, R)
+        p.setFont(font(40, QFont.Weight.Black))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(-R, -R, 2 * R, 2 * R), int(Qt.AlignmentFlag.AlignCenter), "R")
+        p.restore()
+        p.setFont(font(15, QFont.Weight.Black, 2))
+        p.setPen(QColor(255, 255, 255, 220))
+        p.drawText(QRectF(0, h * 0.45 + S(80), w, S(26)), int(Qt.AlignmentFlag.AlignCenter), tr("COIN FLIP"))
+        if t >= spin_end:
+            k = clamp((t - spin_end) / 0.2, 0, 1)
+            p.setFont(font(34 * (1 + (1 - k) * 0.3), QFont.Weight.Black, 2))
+            col = QColor(T["light"])
+            col.setAlphaF(k)
+            p.setPen(col)
+            who = tr("BLUE BALL") if face == 0 else tr("RED BALL")
+            p.drawText(QRectF(0, h * 0.45 + S(108), w, S(50)), int(Qt.AlignmentFlag.AlignCenter), who)
+        if not getattr(self, "_coin_landed", False) and t >= spin_end:
+            self._coin_landed = True
+            self.audio.play("coin", 0.8)
+        if t < 0.1:
+            self._coin_landed = False
+
+    def _count(self, p: QPainter) -> None:
+        g = self.g
+        left = g.count_len - g.phase_t
+        n = int(math.ceil(left))
+        frac = n - left
+        w, h = self.width(), self.height()
+        c = QPointF(w / 2, h * 0.24)
+        R = S(46)
+        p.setPen(QPen(QColor(255, 255, 255, 40), S(6)))
+        p.setBrush(QColor(8, 10, 18, 170))
+        p.drawEllipse(c, R, R)
+        p.setPen(QPen(QColor("#FFFFFF"), S(6), cap=Qt.PenCapStyle.RoundCap))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawArc(QRectF(c.x() - R, c.y() - R, 2 * R, 2 * R), 90 * 16, int(-360 * 16 * (1 - frac)))
+        p.setFont(font(44 * (1 + max(0.0, 0.25 - frac)), QFont.Weight.Black))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(c.x() - R, c.y() - R, 2 * R, 2 * R), int(Qt.AlignmentFlag.AlignCenter), str(max(1, n)))
+        who = g.carrier()
+        if who is not None:
+            p.setFont(font(13, QFont.Weight.Black, 2))
+            p.setPen(QColor(HOOPS_TEAM[who.team]["light"]))
+            p.drawText(QRectF(0, c.y() + R + S(10), w, S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("BLUE BALL") if who.team == 0 else tr("RED BALL"))
+
+    def _replay_hud(self, p: QPainter) -> None:
+        w, h = self.width(), self.height()
+        r = self.replay
+        bar = S(56)
+        p.fillRect(QRectF(0, 0, w, bar), QColor(0, 0, 0, 235))
+        p.fillRect(QRectF(0, h - bar, w, bar), QColor(0, 0, 0, 235))
+        # REPLAY with a red dot that blinks
+        if int(self.T * 2) % 2 == 0:
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor("#FF3B4E"))
+            p.drawEllipse(QPointF(S(30), bar / 2), S(7), S(7))
+        p.setFont(font(20, QFont.Weight.Black, 3))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(S(46), 0, S(300), bar), int(Qt.AlignmentFlag.AlignVCenter), tr("REPLAY"))
+        info = r["info"]
+        team = info["team"]
+        by = self.g.players[info["by"]]
+        who = tr("{team} #{n}", team=tr(HOOPS_TEAM[team]["name"]), n=by.num)
+        line = tr("{who}  ·  {pts} points", who=who, pts=info["pts"])
+        if info.get("assist", -1) >= 0:
+            a = self.g.players[info["assist"]]
+            line += "  ·  " + tr("assist {a}", a="#" + str(a.num))
+        p.setFont(font(16, QFont.Weight.Black))
+        p.setPen(QColor(HOOPS_TEAM[team]["light"]))
+        p.drawText(QRectF(0, h - bar, w, bar), int(Qt.AlignmentFlag.AlignCenter), line)
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.setPen(QColor(255, 255, 255, 150))
+        p.drawText(QRectF(0, 0, w - S(20), bar), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   tr("Space or click: skip") + ("   ·   " + tr("SLOW MOTION") if r.get("slow") else ""))
+        # a thin progress line
+        k = r["pos"] / max(1, len(r["frames"]) - 1)
+        p.fillRect(QRectF(0, bar - S(3), w * k, S(3)), QColor(HOOPS_TEAM[team]["main"]))
+
+    def _wipe(self, p: QPainter) -> None:
+        """A transition: team-coloured stripes sweep across, cover, then uncover."""
+        w, h = self.width(), self.height()
+        k = self.wipe
+        cover = 1 - abs(k - 0.5) * 2              # 0 -> 1 -> 0
+        n = 6
+        for i in range(n):
+            delay = i * 0.06
+            c = clamp((cover - delay) / (1 - delay * 1.5), 0, 1)
+            if c <= 0:
+                continue
+            col = QColor(self.wipe_col) if i % 2 == 0 else QColor(self.wipe_col).darker(140)
+            y0 = h * i / n
+            bw = (w + S(200)) * c
+            x0 = -S(100) if k < 0.5 else w + S(100) - bw
+            path = QPainterPath()
+            path.moveTo(x0, y0)
+            path.lineTo(x0 + bw, y0)
+            path.lineTo(x0 + bw - S(60), y0 + h / n + 1)
+            path.lineTo(x0 - S(60), y0 + h / n + 1)
+            path.closeSubpath()
+            p.fillPath(path, col)
+        if cover > 0.85:
+            p.setFont(font(30, QFont.Weight.Black, 6))
+            p.setPen(QColor(255, 255, 255, int(255 * (cover - 0.85) / 0.15)))
+            p.drawText(self.rect(), int(Qt.AlignmentFlag.AlignCenter), "RUBENIUM HOOPS")
+
+    def _pause(self, p: QPainter) -> None:
+        w, h = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(4, 6, 12, 190))
+        p.setFont(font(40, QFont.Weight.Black, 3))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(0, h * 0.26, w, S(60)), int(Qt.AlignmentFlag.AlignCenter), tr("PAUSED"))
+        btns = [("resume", tr("Resume")), ("restart", tr("Restart the match")), ("quit", tr("Leave the match"))]
+        self._pause_btns = []
+        y = h * 0.26 + S(90)
+        for i, (name, text) in enumerate(btns):
+            r = QRectF(w / 2 - S(150), y, S(300), S(46))
+            hover = r.contains(self.mouse)
+            p.setPen(QPen(QColor(255, 255, 255, 60), 1))
+            p.setBrush(QColor(HOOPS_TEAM[0]["main"]) if (i == 0 or hover) else QColor(255, 255, 255, 18))
+            p.drawRoundedRect(r, S(12), S(12))
+            p.setFont(font(14, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
+            self._pause_btns.append((name, r))
+            y += S(58)
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.setPen(QColor(255, 255, 255, 140))
+        p.drawText(QRectF(0, y + S(10), w, S(20)), int(Qt.AlignmentFlag.AlignCenter), tr("Esc or P: resume"))
+
+
+# ================================================================================================== Hoops: the app
+HOOPS_ABOUT = {
+    "Club": "Easy-going: slow to react, takes bad shots and bites on every fake.",
+    "Regional": "Solid basketball, but makes mistakes you can punish.",
+    "National": "Quick and smart: reads passes, times steals, rarely misses an open shot.",
+    "Professional": "Very strong: fakes, lobs and curved passes, tight defence and deadly shooting.",
+}
+HOOPS_PAY = {"Club": (120, 25), "Regional": (220, 40), "National": (380, 60), "Professional": (650, 90)}  # win, loss (3 min)
+
+
+def hoops_opts(ctx) -> dict:
+    d = getattr(ctx, "hoops_opts", None)
+    if not isinstance(d, dict):
+        try:
+            d = dict(ctx.cfg["hoops"] or {})
+        except Exception:  # noqa: BLE001
+            d = {}
+        lv = d.get("level", "Regional")
+        d = {"level": lv if lv in HOOPS_LEVELS else "Regional", "mins": int(d.get("mins", 3)) if int(d.get("mins", 3)) in (2, 3, 4, 5) else 3}
+        ctx.hoops_opts = d
+    return d
+
+
+def hoops_save_opts(ctx) -> None:
+    try:
+        ctx.cfg["hoops"] = dict(hoops_opts(ctx))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+class HoopsLevelCard(QWidget):
+    """A bot level to pick: its name, what it's like, your record against it and what a win pays."""
+    clicked = pyqtSignal()
+
+    def __init__(self, level: str, on: bool, rec: dict, mult: float, width: int) -> None:
+        super().__init__()
+        self.level, self.on, self.rec, self.mult = level, on, rec or {}, mult
+        self.setFixedSize(width, S(132))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._hover = False
+
+    def enterEvent(self, _e) -> None:
+        self._hover = True
+        self.update()
+
+    def leaveEvent(self, _e) -> None:
+        self._hover = False
+        self.update()
+
+    def mousePressEvent(self, _e) -> None:
+        sfx.play("pick")
+        self.clicked.emit()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        col = QColor(HOOPS_LEVEL_COL[self.level])
+        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        paint_surface(p, r, S(14), 0.10 if self.on else 0.04, 0.04 if self._hover else 0.0,
+                      edge=alpha(col, 0.9 if self.on else 0.25))
+        # the level's pips (1 to 4)
+        k = HOOPS_LEVELS.index(self.level) + 1
+        for i in range(4):
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col if i < k else QColor(255, 255, 255, 30))
+            p.drawRoundedRect(QRectF(S(14) + i * S(14), S(14), S(10), S(6)), S(3), S(3))
+        p.setFont(font(15, QFont.Weight.Black))
+        p.setPen(col)
+        p.drawText(QRectF(S(14), S(24), r.width() - S(28), S(26)), int(Qt.AlignmentFlag.AlignVCenter), hoops_lv(self.level))
+        p.setFont(font(10, QFont.Weight.DemiBold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(S(14), S(50), r.width() - S(28), S(44)),
+                   int(Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), tr(HOOPS_ABOUT[self.level]))
+        w_, l_ = int(self.rec.get("w") or 0), int(self.rec.get("l") or 0)
+        p.setFont(font(10.5, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT))
+        p.drawText(QRectF(S(14), r.bottom() - S(26), r.width() - S(28), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("{w} W · {l} L", w=w_, l=l_))
+        win = int(round(HOOPS_PAY[self.level][0] * self.mult))
+        p.setPen(QColor(GOLD_TEXT))
+        p.drawText(QRectF(S(14), r.bottom() - S(26), r.width() - S(28), S(18)),
+                   int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), tr("Win: {c}", c=coins_text(win)))
+
+
+def build_hoops(page, lay) -> None:
+    """9.3: Hoops in Play > Multiplayer: 2 v 2 basketball, you and a bot team-mate against two bots. Pick the level
+    and the length; the match opens in its own big window."""
+    ctx = page.ctx
+    top = hbox(spacing=8)
+    back = IconButton("back", 32, tip=tr("Back"))
+    back.clicked.connect(lambda: page.open_sub(None))
+    top.addWidget(back)
+    top.addWidget(Label(tr("Hoops"), 16, bold=True), 1)
+    top.addWidget(HelpButton(ctx, "hoops"))
+    lay.addLayout(top)
+    host = QWidget()
+    hl = vbox(host, 10)
+    lay.addWidget(host)
+
+    def load() -> None:
+        def got(ok: bool, d) -> None:
+            if ok and isinstance(d, dict) and d != getattr(ctx, "hoops_lobby", None):
+                ctx.hoops_lobby = d
+                if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "hoops":
+                    ctx.reload_page("games")
+            elif not ok:
+                ctx.hoops_lobby = ctx.hoops_lobby if isinstance(getattr(ctx, "hoops_lobby", None), dict) else {"off": True}
+        ctx.online.ask("rb_hoops_lobby", {}, got)
+    data = getattr(ctx, "hoops_lobby", None)
+    if data is None:
+        load()
+    data = data or {}
+    o = hoops_opts(ctx)
+    mult = float(data.get("mult") or 1.0)
+    hl.addWidget(Label(tr("2 v 2 basketball, side on. You and a bot team-mate against two bots. Dribble, pass round "
+                          "the defence, time your shots, and win the game on the last basket."), 10.5, TEXT_DIM, wrap_w=page.W))
+    hl.addWidget(heading(tr("Opponents")))
+    grid = QGridLayout()
+    grid.setSpacing(S(8))
+    cw = (page.W - S(8)) // 2
+    rec = data.get("rec") or {}
+    for i, lv in enumerate(HOOPS_LEVELS):
+        card = HoopsLevelCard(lv, o["level"] == lv, rec.get(lv), mult, cw)
+        card.clicked.connect(lambda lv=lv: (o.__setitem__("level", lv), hoops_save_opts(ctx), ctx.reload_page("games")))
+        grid.addWidget(card, i // 2, i % 2)
+    hl.addLayout(grid)
+    hl.addWidget(heading(tr("Match")))
+    mins = Segmented([tr("{n} min", n=n) for n in (2, 3, 4, 5)], [2, 3, 4, 5].index(o["mins"]))
+    mins.changed.connect(lambda i: (o.__setitem__("mins", [2, 3, 4, 5][i]), hoops_save_opts(ctx)))
+    hl.addWidget(mins)
+    hl.addWidget(Label(tr("A tie at the buzzer goes to overtime: the next basket wins."), 10, TEXT_FAINT, wrap_w=page.W))
+    go = Button(tr("Play"), "primary", 44, icon="play")
+    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"]))
+    hl.addWidget(go)
+    keys = hoops_keys()
+    hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Move")),
+                              (["Space"], tr("Dribble (with a direction) / jump")),
+                              (["Shift"], tr("Aim at the hoop / defend")),
+                              ([tr("Left click")], tr("Shoot (in aim) / pass / steal")),
+                              ([tr("Right click")], tr("Quick pass / fake / switch player")),
+                              ([tr("Esc")], tr("Pause"))], page.W))
+    if not data:
+        pass                                          # the prizes line comes once the server answered
+    elif data.get("off"):
+        hl.addWidget(Label(tr("Offline: matches are for fun until the server answers (no prize)."), 10.5, TEXT_FAINT, wrap_w=page.W))
+    else:
+        cap = data.get("cap")
+        txt = tr("Prizes today: {a}", a=coins_text(int(data.get("today") or 0)))
+        txt += ("  ·  " + tr("limit {b}", b=coins_text(int(cap)))) if cap else ("  ·  " + tr("no daily limit"))
+        if mult > 1:
+            txt += "  ·  " + tr("your tier pays ×{m}", m=f"{mult:g}")
+        hl.addWidget(Label(txt, 10.5, TEXT_DIM, wrap_w=page.W))
+
+
+class HoopsResults(QWidget):
+    """9.3: after the final buzzer: the score, your line, your team-mate's, and the prize."""
+
+    def __init__(self, res: dict, paid, width: int) -> None:
+        super().__init__()
+        self.res, self.paid = res, paid
+        self.setFixedSize(min(width, S(720)), S(296))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = self.res
+        w = self.width()
+        win = r.get("win")
+        p.setFont(font(28, QFont.Weight.Black))
+        p.setPen(QColor("#3BE38A") if win else QColor("#FF6B78"))
+        title = tr("You win!") if win else tr("You lose")
+        if r.get("ot"):
+            title += "  ·  " + tr("in overtime")
+        p.drawText(QRectF(0, 0, w, S(40)), int(Qt.AlignmentFlag.AlignVCenter), title)
+        p.setFont(font(13, QFont.Weight.Bold))
+        p.setPen(QColor(TEXT_DIM))
+        p.drawText(QRectF(0, 0, w, S(40)), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   tr("vs {lv}", lv=hoops_lv(r.get("level", ""))))
+        # the score, big
+        y = S(52)
+        for team in (0, 1):
+            T = HOOPS_TEAM[team]
+            box = QRectF((w / 2 + S(6)) * team, y, w / 2 - S(6), S(70))
+            c = QColor(T["main"])
+            c.setAlpha(60)
+            p.setPen(QPen(QColor(T["main"]), 1.5))
+            p.setBrush(c)
+            p.drawRoundedRect(box, S(14), S(14))
+            p.setFont(font(11, QFont.Weight.Black, 1.5))
+            p.setPen(QColor(T["light"]))
+            p.drawText(box.adjusted(S(16), S(8), -S(16), 0), int(Qt.AlignmentFlag.AlignTop),
+                       tr("BLUE") + " · " + tr("YOU") if team == 0 else tr("RED") + " · " + hoops_lv(r.get("level", "")).upper())
+            p.setFont(font(34, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            p.drawText(box.adjusted(S(16), 0, -S(16), -S(4)), int(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight),
+                       str(r["score"][team]))
+        # the box score: you and your team-mate
+        y += S(86)
+        cols = [(tr("Player"), 0.0), (tr("PTS"), S(52)), (tr("FG"), S(62)), (tr("3PT"), S(56)), (tr("AST"), S(48)),
+                (tr("REB"), S(48)), (tr("STL"), S(48)), (tr("BLK"), S(48)), (tr("TOV"), S(44)), (tr("Perfect"), S(66))]
+        fixed = sum(c[1] for c in cols)
+        name_w = w - fixed
+        p.setFont(font(9.5, QFont.Weight.Black, 0.6))
+        p.setPen(QColor(TEXT_DIM))
+        x = 0.0
+        for t, cw in cols:
+            cw = cw or name_w
+            p.drawText(QRectF(x, y, cw, S(18)), int(Qt.AlignmentFlag.AlignVCenter), t.upper())
+            x += cw
+        y += S(22)
+        for who, st in ((tr("Blue · you and your team-mate"), r["me"]), (tr("Red · {lv}", lv=hoops_lv(r.get("level", ""))), r["opp"])):
+            vals = [who, str(st["pts"]), f"{st['fg']}/{st['fga']}", f"{st['three']}/{st['threea']}", str(st["ast"]),
+                    str(st["reb"]), str(st["stl"]), str(st["blk"]), str(st["to"]), str(st["perfect"])]
+            box = QRectF(-S(6), y - S(3), w + S(12), S(30))
+            paint_surface(p, box, S(8), 0.05, 0.0)
+            x = 0.0
+            for k, ((t, cw), v) in enumerate(zip(cols, vals)):
+                cw = cw or name_w
+                p.setFont(font(12 if k else 11.5, QFont.Weight.Black if k == 1 else QFont.Weight.DemiBold))
+                p.setPen(QColor(TEXT) if k <= 1 else QColor(TEXT_DIM))
+                p.drawText(QRectF(x, y, cw, S(24)), int(Qt.AlignmentFlag.AlignVCenter), v)
+                x += cw
+            y += S(34)
+        # the prize
+        y += S(10)
+        p.setFont(font(14, QFont.Weight.Black))
+        if self.paid is None:
+            p.setPen(QColor(TEXT_DIM))
+            txt = tr("Checking the result…")
+        elif isinstance(self.paid, str):
+            p.setPen(QColor(TEXT_DIM))
+            txt = self.paid
+        else:
+            p.setPen(QColor(GOLD_TEXT))
+            txt = tr("Prize: {c}", c=coins_text(int(self.paid.get("paid") or 0)))
+            if self.paid.get("xp"):
+                txt += "   ·   +" + str(int(self.paid["xp"])) + " XP"
+            if self.paid.get("capped"):
+                txt += "   ·   " + tr("daily limit reached")
+        p.drawText(QRectF(0, y, w, S(26)), int(Qt.AlignmentFlag.AlignVCenter), txt)
+
+    def set_paid(self, paid) -> None:
+        self.paid = paid
+        self.update()
+
+
+class HoopsWindow(KartWindow):
+    """The match in its own big window (Karting's, with Hoops' title and sound)."""
+
+    def __init__(self, link) -> None:
+        super().__init__(link)
+        self.setWindowTitle("Rubenium Hoops")
+        self.wait_label.set_text(tr("Warming up…"))
+
+    def show_results(self, w: QWidget) -> None:
+        if self.over is not None:
+            self.over.setParent(None)
+        self.over = HoopsOverlay(self.body, w, self.link)
+        self.over.setGeometry(self.body.rect())
+        self.over.show()
+
+    def _sound(self) -> None:
+        super()._sound()
+        if not sfx.enabled:
+            HoopsAudio.get().stop()
+
+    def closeEvent(self, e) -> None:
+        if self.link.racing() and not getattr(self, "_sure", False):
+            e.ignore()
+
+            def go() -> None:
+                self._sure = True
+                self.close()
+            try:
+                self.link.ctx.window.confirm(tr("Leave the match? It counts as a loss and pays nothing."), go, yes=tr("Leave"))
+            except Exception:  # noqa: BLE001
+                go()
+            return
+        HoopsAudio.get().stop()
+        if self.view is not None:
+            self.view.timer.stop()
+        self.link.window_closed(self)
+        QWidget.closeEvent(self, e)
+
+
+class HoopsOverlay(KartOverlay):
+    """The results over the match, with the way back."""
+
+    def __init__(self, parent, results: QWidget, link) -> None:
+        QWidget.__init__(self, parent)
+        self.link = link
+        lay = vbox(self, 12, (0, 0, 0, 0))
+        lay.addStretch(1)
+        row = hbox(spacing=0)
+        row.addStretch(1)
+        card = QWidget()
+        cl = vbox(card, 12, (S(24), S(20), S(24), S(20)))
+        cl.addWidget(results)
+        btns = hbox(spacing=8)
+        back = Button(tr("Back to Hoops"), "ghost", 42)
+        back.clicked.connect(link.close)
+        again = Button(tr("Play again"), "primary", 42, icon="play")
+        again.clicked.connect(link.again)
+        btns.addWidget(back, 1)
+        btns.addWidget(again, 1)
+        cl.addLayout(btns)
+        self.card = card
+        row.addWidget(card)
+        row.addStretch(1)
+        lay.addLayout(row)
+        lay.addStretch(1)
+
+
+class HoopsLink(QObject):
+    """9.3: one match: asks the server for a match id (for the prize), opens the window, sends the result."""
+    _cur = None
+
+    @classmethod
+    def start(cls, ctx, level: str, mins: int) -> None:
+        if cls._cur is not None and cls._cur.win is not None:
+            try:
+                cls._cur.win.raise_()
+                cls._cur.win.activateWindow()
+                return
+            except RuntimeError:
+                cls._cur = None
+        cls._cur = HoopsLink(ctx, level, mins)
+
+    def __init__(self, ctx, level: str, mins: int) -> None:
+        super().__init__()
+        self.ctx, self.level, self.mins = ctx, level, mins
+        self.gid = None
+        self.win = None
+        self.view = None
+        self.results = None
+        self.done = False
+        sfx.play("on")
+        self._open()
+
+    def _open(self) -> None:
+        self.gid = None
+        self.done = False
+        self.ctx.econ.call("rb_hoops_start", {"level": self.level, "mins": self.mins}, self._started)
+        if self.win is None:
+            self.win = HoopsWindow(self)
+            self.win.show()
+        view = HoopsView(self.level, float(self.mins), 0, "")
+        view.finished.connect(self._finished)
+        if self.win.view is not None:
+            self.win.view.timer.stop()
+            self.win.view.setParent(None)
+            self.win.view = None
+        if self.win.over is not None:
+            self.win.over.setParent(None)
+            self.win.over = None
+        self.win.set_view(view)
+        self.view = view
+        self.win.title.set_text(tr("Hoops") + "  ·  " + hoops_lv(self.level) + "  ·  " + tr("{n} min", n=self.mins))
+
+    def _started(self, ok: bool, d) -> None:
+        if ok and isinstance(d, dict):
+            self.gid = d.get("id")
+
+    def _finished(self, res: dict) -> None:
+        self.done = True
+        self.results = HoopsResults(res, None, max(S(560), int(self.win.width() * 0.6)))
+        self.win.show_results(self.results)
+        if not self.gid:
+            self.results.set_paid(tr("No prize: the server didn't start this match."))
+            return
+        me = res["me"]
+        stats = {k: int(me.get(k) or 0) for k in ("pts", "fg", "fga", "three", "threea", "ast", "reb", "stl", "blk", "to", "perfect")}
+
+        def paid(ok: bool, d) -> None:
+            if self.results is None:
+                return
+            try:
+                if ok and isinstance(d, dict):
+                    self.results.set_paid(d)
+                    self.ctx.hoops_lobby = None
+                else:
+                    self.results.set_paid(tr(str(d)))
+            except RuntimeError:
+                pass
+        self.ctx.econ.call("rb_hoops_finish", {"gid": self.gid, "me_pts": int(res["score"][0]), "opp_pts": int(res["score"][1]),
+                                               "ot": bool(res.get("ot")), "stats": stats}, paid, once=True)
+
+    # what the window and the overlay ask
+    def racing(self) -> bool:
+        return self.view is not None and not self.done and self.view.g.phase != "over"
+
+    def leave(self) -> None:
+        if self.win is not None:
+            self.win._sure = True
+            self.win.close()
+
+    def again(self) -> None:
+        sfx.play("on")
+        self._open()
+
+    def close(self) -> None:
+        if self.win is not None:
+            self.win._sure = True
+            self.win.close()
+
+    def window_closed(self, _w) -> None:
+        self.win = None
+        self.view = None
+        self.results = None
+        HoopsLink._cur = None
+        try:
+            if self.ctx.window.showing("games") and getattr(self.ctx, "games_sub", None) == "hoops":
+                self.ctx.hoops_lobby = None
+                self.ctx.reload_page("games")
+        except Exception:  # noqa: BLE001
+            pass
+
 
 
 def main() -> int:
