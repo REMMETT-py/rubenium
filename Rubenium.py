@@ -1491,8 +1491,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.3.1"   # the version people see
-BUILD = "2026.11.26.29"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "9.3.2"   # the version people see
+BUILD = "2026.11.26.30"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2087,7 +2087,7 @@ DEFAULTS: dict = {
     "online_tab": "hub",                 # 3.2: the last part of the online menu that was open (9.0: Home first)
     "recent_games": [],                  # 9.0: the casino games played last (Home's "Jump back in")
     "kart": {"track": 0, "laps": 3, "elo": 1000, "size": 1, "bot": True, "collide": True, "boost": True, "damage": True},
-    "hoops": {"level": "Regional", "mins": 3},
+    "hoops": {"level": "Regional", "mins": 3, "replays": 1},
     "casino_bet": 50,                    # 9.0: the last bet, kept between sessions
     "hilo_help": False,
     "my_stats": ["cases", "trades", "rounds", "casino"],     # 5.13: the bottom row of your stats card
@@ -12710,6 +12710,12 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.3.2", ["Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone",
+               "Stats: one All time view, and every stat starts again from 0",
+               "Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies",
+               "Clearer game menus: shorter rules in plain words, and no more win counters",
+               "Hoops: smoother bots, shorter replays you can turn off, an OPEN badge when your team-mate is free, and a "
+               "stronger Professional"]),
     ("9.3.1", ['Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets']),
     ("9.3", ["NEW: Hoops, 2 v 2 basketball. You and a bot team-mate against two bots: Club, Regional, National or Professional. Dribble with Space, pass round the defence (lobs, bounce and curved passes), time your shots on the meter, steal, block and intercept. Ties go to overtime, every basket gets a replay, and wins pay more at a higher tier"]),
     ("9.2", ["NEW: Karting, a racing game for 1 to 3 players and always one bot, on 3 circuits. Boost, drift for mini turbos, slipstream, bump the others, and big crashes wreck your kart. Pick the bot from 100 to 2500 (Professional is a perfect driver), and after each race everyone gets a score out of 100%", "Mini Golf rooms: pick the bots' level, from Easy to Professional. Bots play every hole with the real ball physics, and Professional finds a hole in one wherever there is one", 'Mini games pay double: Timing, Cups, Colour Pick, SFX Match, Connect 4, Beat Tap, Parking, Memory, Block Blast, Minesweeper and every bot game', 'The top bot is called Professional in every game, and it plays the strongest moves it can find', 'NEW: Trifade, endless noughts and crosses. You only keep 3 marks: your 4th takes your oldest away, so the game goes on until someone wins. Against bots from Easy to Professional (it always starts and plays the best move every time), or against players', 'NEW: Mazelock, a duel board game. Race your pawn to the other side and place walls to block the way. Against bots from Easy to Professional (it always starts and plays the strongest moves it can find), or against players', 'Play is clearer: Mini games, then Duels (Connect 4, Battleships, Mazelock, Trifade, each against a bot or a player), then Multiplayer (Mini Golf and Wave Rush, up to 4 players)', 'Wave Rush rooms for 2 to 4 players: everyone races live in their own colour, and after a crash you watch the others (switch with the arrows or by clicking a name). The longest run wins the pot', 'Wave Rush: the practice ghost has its own clear card, and it never shows in races against players', 'Trophies have their own page in the side menu', 'A new Home: your tier, the free rewards waiting for you, the game that is live now and the games you played last', 'Jackpot and Horse Racing take turns every 20 minutes on a fixed clock. The next one stays locked with a countdown, and bots keep both going', 'Stats: look up any player by typing a few letters of their name, and a new Records page. Player numbers moved out of Friends into Stats', 'Fresh season: everyone restarts with 2 500 coins and 5 keys, and every leaderboard, streak and quest starts again. Items stay, except for OG players, who start completely fresh with the starter pack. Leaderboards are Global only', 'Fixes: starting a mini game no longer says you already have one going, the scratch card takes you back when it is done and its chances sit under the card, readable text on light buttons', 'LEAVE CASINO door, animation previews that play when you hover them, one online menu size, the daily reward sits lower', 'Coinflip: fewer huge bot flips, and bots take longer to match a big flip (up to 2 min, you are told). Reversi is gone, and so are the Titanium White and Black fonts']),
@@ -13806,6 +13812,10 @@ FR.update({  # 9.2
     'The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. Levels differ in how quickly they react, how well they time things and how good their decisions are. Professional is very strong.': 'Les bots jouent avec les mêmes règles que toi : même vitesse, même cercle de dribble et même jauge de tir. Les niveaux diffèrent par la vitesse de réaction, le timing et la qualité des décisions. Professionnel est très fort.',
     'A win pays by the bots\' level (3 minutes: Club 120, Regional 220, National 380, Professional 650), a loss a little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows with your tier; Casino Legend has none.': 'Une victoire paie selon le niveau des bots (3 minutes : Club 120, Régional 220, National 380, Professionnel 650), une défaite un peu. Les matchs plus courts paient moins, les plus longs plus, et ton rang de richesse multiplie le tout. La limite par jour grandit avec ton rang ; Légende du casino n’en a pas.',
     'Leaving a match counts as a loss and pays nothing.': 'Quitter un match compte comme une défaite et ne paie rien.',
+    'Replay every basket': 'Replay à chaque panier',
+    'Replay big plays': 'Replay des grandes actions',
+    'No replays': 'Pas de replay',
+    'OPEN': 'DÉMARQUÉ',
 })  # 9.2 end
 
 # --------------------------------------------------------------------------- #
@@ -35792,6 +35802,7 @@ class MazeBoard(QWidget):
     """Mazelock: a 9 x 9 board. Click a lit square to step, or a groove between squares to drop a wall there.
     Your side is always at the bottom."""
     moved = pyqtSignal(int)
+    blocked = pyqtSignal()                 # 9.3.2: a click while it is not your turn
 
     def __init__(self, width: int) -> None:
         super().__init__()
@@ -35817,8 +35828,9 @@ class MazeBoard(QWidget):
                 self._flash.to(0.0, 900)
                 self._from = {i: int(c) for i, c in enumerate(old.get("p") or [])}
                 self._glide.jump(0.0)
-                self._glide.to(1.0, 260)
+                self._glide.to(1.0, 220)
             self._last_n = n
+        self.setCursor(Qt.CursorShape.PointingHandCursor if self.my_turn() else Qt.CursorShape.ArrowCursor)
         self.update()
 
     def my_turn(self) -> bool:
@@ -35914,6 +35926,8 @@ class MazeBoard(QWidget):
             self.moved.emit(hit[1])
         elif hit is not None and hit[0] == "wall" and self.my_turn():
             sfx.play("tick")
+        elif hit is not None and self.d.get("state") == "live" and not self.my_turn():
+            self.blocked.emit()
 
     # -- drawing
     def paintEvent(self, _e) -> None:
@@ -36023,6 +36037,7 @@ class TriBoard(QWidget):
     so the oldest of a full set is shown fading. Click an empty square to play there."""
     moved = pyqtSignal(int)
     LINES = ((0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6))
+    blocked = pyqtSignal()
 
     def __init__(self, width: int) -> None:
         super().__init__()
@@ -36047,6 +36062,7 @@ class TriBoard(QWidget):
                 self._flash.jump(1.0)
                 self._flash.to(0.0, 700)
             self._last_n = n
+        self.setCursor(Qt.CursorShape.PointingHandCursor if self.my_turn() else Qt.CursorShape.ArrowCursor)
         self.update()
 
     def my_turn(self) -> bool:
@@ -36097,6 +36113,8 @@ class TriBoard(QWidget):
             self.moved.emit(cell)
         elif cell >= 0 and self.my_turn():
             sfx.play("tick")
+        elif cell >= 0 and self.d.get("state") == "live":
+            self.blocked.emit()
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -36197,6 +36215,7 @@ class TriBoard(QWidget):
 class ArenaBoard(QWidget):
     """The board of an Arena game, drawn from what the server sent. A click sends a move (the server checks it)."""
     moved = pyqtSignal(int)
+    blocked = pyqtSignal()
 
     def __init__(self, kind: str, width: int) -> None:
         super().__init__()
@@ -36223,6 +36242,7 @@ class ArenaBoard(QWidget):
                 self._flash.jump(1.0)
                 self._flash.to(0.0, 900)
             self._last_n = n
+        self.setCursor(Qt.CursorShape.PointingHandCursor if self.my_turn() else Qt.CursorShape.ArrowCursor)
         self.update()
 
     def my_turn(self) -> bool:
@@ -36285,6 +36305,8 @@ class ArenaBoard(QWidget):
         if self._legal(m):
             sfx.play("drop" if self.kind == "c4" else "chip" if self.kind == "reversi" else "putt")
             self.moved.emit(m)
+        elif m >= 0 and self.d.get("state") == "live" and not self.my_turn():
+            self.blocked.emit()
 
     # -- drawing
     def paintEvent(self, _e) -> None:
@@ -36292,6 +36314,16 @@ class ArenaBoard(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         try:
             (self._paint_c4 if self.kind == "c4" else self._paint_rv if self.kind == "reversi" else self._paint_sh)(p)
+            if self.my_turn():                             # 9.3.2: your turn: the board you play on lights up
+                if self.kind == "c4":
+                    fr, rad = QRectF(0, 0, self.width(), self.height() - S(8)), S(14)
+                elif self.kind == "reversi":
+                    fr, rad = QRectF(self.rect()), S(8)
+                else:
+                    fr, rad = self._ships_rects()[0], S(8)
+                p.setPen(QPen(alpha("#FFD34D", 0.75), S(2)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(fr.adjusted(S(1), S(1), -S(1), -S(1)), rad, rad)
         except Exception as exc:  # noqa: BLE001
             log.debug("arena paint: %s", exc)
 
@@ -36419,6 +36451,11 @@ class ArenaBoard(QWidget):
             if v == "o":
                 p.setBrush(QColor(255, 255, 255, 90))
                 p.drawEllipse(c, cs * 0.12, cs * 0.12)
+            elif v == "p":                                  # 9.3.2: your shot, on its way
+                p.setPen(QPen(QColor("#FFD34D"), S(2)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(c, cs * 0.3, cs * 0.3)
+                p.setPen(Qt.PenStyle.NoPen)
             elif v in "xs":
                 p.setBrush(QColor("#FF5C3A") if v == "x" else QColor("#8E1A10"))
                 p.drawEllipse(c, cs * 0.32, cs * 0.32)
@@ -36445,6 +36482,15 @@ class ArenaBoard(QWidget):
         self._grid(p, small, str(d.get("taken") or ""), d.get("fleet") or [], False, tr("YOUR FLEET"))
 
 
+def arena_secs_left(d: dict):
+    """9.3.2: the seconds left for this turn, counted down smoothly from when the server last said."""
+    if d.get("secs") is None or d.get("state") != "live":
+        return None
+    t = d.get("_t")
+    gone = time.monotonic() - float(t) if t is not None else 0.0
+    return max(0, int(math.ceil(float(d.get("secs") or 0) - gone)))
+
+
 def arena_status(ctx, d: dict) -> tuple:
     """(text, colour) for the line above the board."""
     st, side = d.get("state"), int(d.get("side") or 0)
@@ -36466,10 +36512,111 @@ def arena_status(ctx, d: dict) -> tuple:
             return (tr("You won!") + (f" ({why})" if why else "") +
                     (f"  ·  +{coins_text(paid)}" if paid else "")), "#5BE08A"
         return tr("{name} won", name=other) + (f" ({why})" if why else ""), "#FF7A7A"
-    secs = int(d.get("secs") or 0)
+    left = arena_secs_left(d)
+    clock = f"  ·  {left} s" if left is not None and left <= 15 else ""      # 9.3.2: the clock only when it matters
     if int(d.get("turn") or 0) == side:
-        return tr("Your turn") + f"  ·  {secs} s", "#FFD34D"
-    return tr("{name} is thinking…", name=other) + f"  ·  {secs} s", TEXT_DIM
+        return tr("Your turn") + clock, "#FFD34D"
+    return tr("{name} is thinking…", name=other) + clock, TEXT
+
+
+def arena_turn_cols(d: dict) -> tuple:
+    """(your colour, their colour) in this game."""
+    side, kind = int(d.get("side") or 0), d.get("kind")
+    if not side:
+        return TEXT, TEXT
+    if kind == "c4":
+        return ARENA_SIDES[side - 1], ARENA_SIDES[2 - side]
+    if kind in ("maze", "tri"):
+        return MAZE_COLS[side - 1], MAZE_COLS[2 - side]
+    return "#FFD34D", "#9AA4AD"
+
+
+class TurnBanner(QWidget):
+    """9.3.2: whose turn it is, big and plain. Your turn: a band in your colour that breathes. Their turn: their
+    colour and dots that move while they think. A click out of turn gives it a little shake."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._text, self._col, self._mode, self._dot = "", QColor(TEXT), "", QColor(TEXT)
+        self._shake = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
+        self._anim = QTimer(self)
+        self._anim.setInterval(50)
+        self._anim.timeout.connect(self.update)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setFixedHeight(S(40))
+
+    def set_text(self, text: str) -> None:
+        if text != self._text:
+            self._text = text
+            self.update()
+
+    def set_color(self, color) -> None:
+        self._col = QColor(color)
+        self.update()
+
+    def set_game(self, ctx, d: dict) -> None:
+        text, col = arena_status(ctx, d)
+        mine_col, their_col = arena_turn_cols(d)
+        mode = ""
+        if d.get("state") == "live":
+            mode = "mine" if int(d.get("turn") or 0) == int(d.get("side") or -1) else "wait"
+        self._mode = mode
+        self._dot = QColor(mine_col if mode == "mine" else their_col)
+        if mode and not self._anim.isActive():
+            self._anim.start()
+        elif not mode:
+            self._anim.stop()
+        self.set_color(col)
+        self.set_text(text)
+
+    def nudge(self) -> None:
+        self._shake.jump(1.0)
+        self._shake.to(0.0, 420)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        r = QRectF(self.rect()).adjusted(S(1), S(2), -S(1), -S(2))
+        r.translate(math.sin(now * 46.0) * S(6) * self._shake.level, 0)
+        rad = r.height() / 2
+        if self._mode == "mine":
+            beat = 0.5 + 0.5 * math.sin(now * 3.4)
+            p.setPen(QPen(alpha(self._dot, 0.55 + 0.35 * beat), S(1.6)))
+            p.setBrush(alpha(self._dot, 0.14 + 0.08 * beat))
+        else:
+            p.setPen(QPen(alpha("#FFFFFF", 0.10), 1))
+            p.setBrush(alpha("#FFFFFF", 0.045))
+        p.drawRoundedRect(r, rad, rad)
+        x = r.left() + S(16)
+        if self._mode:
+            dc = QPointF(x + S(5), r.center().y())
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(self._dot)
+            p.drawEllipse(dc, S(5.5), S(5.5))
+            x += S(20)
+        text = self._text
+        dots = ""
+        if self._mode == "wait" and "…" in text:            # the thinking dots move
+            head, _sep, tail = text.partition("…")
+            text, dots = head, "." * (1 + int(now * 3.0) % 3)
+        else:
+            tail = ""
+        f = font(13.5, QFont.Weight.ExtraBold if self._mode == "mine" else QFont.Weight.Bold)
+        p.setFont(f)
+        fm = p.fontMetrics()
+        p.setPen(self._col)
+        tr_ = QRectF(x, r.top(), r.right() - x - S(12), r.height())
+        p.drawText(tr_, int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), text)
+        if dots or tail:
+            x2 = x + fm.horizontalAdvance(text)
+            p.drawText(QRectF(x2, r.top(), fm.horizontalAdvance("..."), r.height()),
+                       int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), dots)
+            if tail:
+                x3 = x2 + fm.horizontalAdvance("...")
+                p.drawText(QRectF(x3, r.top(), max(0.0, r.right() - x3 - S(12)), r.height()),
+                           int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), tail)
 
 
 def arena_discs(d: dict) -> str:
@@ -36492,25 +36639,123 @@ def arena_call(page, fn: str, args: dict, then=None) -> None:
     ctx.econ.call(fn, args, done)
 
 
+ARENA_TURN_SECS = {"reversi": 45, "ships": 30, "maze": 60, "tri": 30, "c4": 30}     # the server's rb_bg_turn_secs
+ARENA_THINK_MS = {"easy": (380, 620), "medium": (450, 750), "hard": (550, 880), "insane": (650, 1000)}
+
+
+def arena_think_ms(level) -> int:
+    """9.3.2: the least time a bot's answer takes on screen, so its move never snaps in on top of yours. The bot
+    itself thinks on the server for as long as it needs (Professional uses its whole budget), so this only pads
+    quick answers and never slows a bot down or makes it weaker."""
+    import random
+    lo, hi = ARENA_THINK_MS.get(str(level or ""), (450, 750))
+    return int(random.uniform(lo, hi))
+
+
+def arena_local_move(d: dict, m: int):
+    """9.3.2: your move, drawn the moment you click (the server still checks it and has the last word).
+    Returns the game as it looks after your move, or None when it can't be shown ahead."""
+    kind, side = d.get("kind"), int(d.get("side") or 0)
+    if not side or d.get("state") != "live" or int(d.get("turn") or 0) != side:
+        return None
+    out = dict(d)
+    try:
+        if kind == "maze":
+            b = dict(d.get("board") or {})
+            h, v = str(b.get("h") or "." * 64), str(b.get("v") or "." * 64)
+            pos, walls = list(b.get("p") or [76, 4]), list(b.get("w") or [10, 10])
+            if 0 <= m <= 80:
+                if m not in (d.get("legal") or []):
+                    return None
+                pos[side - 1] = m
+            else:
+                if not mz_wall_ok(b, side, m):
+                    return None
+                a = m % 100
+                if m < 200:
+                    h = h[:a] + str(side) + h[a + 1:]
+                else:
+                    v = v[:a] + str(side) + v[a + 1:]
+                walls[side - 1] = int(walls[side - 1]) - 1
+            b.update(h=h, v=v, p=pos, w=walls)
+            out["board"] = b
+            out.pop("legal", None)
+        elif kind == "tri":
+            b = dict(d.get("board") or {})
+            q = [[int(c) for c in x] for x in (b.get("q") or [[], []])]
+            if m in q[0] or m in q[1] or not 0 <= m <= 8:
+                return None
+            mine = q[side - 1]
+            q[side - 1] = (mine[1:] if len(mine) >= 3 else mine) + [m]
+            b["q"] = q
+            out["board"] = b
+        elif kind == "c4":
+            bd = list(str(d.get("board") or ""))
+            row = next((r for r in range(6) if len(bd) == 42 and bd[r * 7 + m] == "."), None)
+            if row is None:
+                return None
+            bd[row * 7 + m] = str(side)
+            out["board"] = "".join(bd)
+        elif kind == "reversi":
+            bd = str(d.get("board") or "")
+            flips = rv_flips_py(bd, m, str(side))
+            if not flips:
+                return None
+            cells = list(bd)
+            for x in flips + [m]:
+                cells[x] = str(side)
+            out["board"] = "".join(cells)
+            out.pop("legal", None)
+        elif kind == "ships":                        # hit or miss is the server's secret: a ring until it answers
+            shots = str(d.get("shots") or "")
+            if len(shots) != 100 or shots[m] != ".":
+                return None
+            out["shots"] = shots[:m] + "p" + shots[m + 1:]
+            return out
+        else:
+            return None
+    except (TypeError, ValueError, IndexError, AttributeError):
+        return None
+    out.update(turn=3 - side, n=int(d.get("n") or 0) + 1, last={"s": side, "m": m},
+               secs=ARENA_TURN_SECS.get(kind, 30), _t=time.monotonic())
+    return out
+
+
+def arena_show(page, d: dict) -> None:
+    """9.3.2: draw a game state on the screen in place (the board, whose turn, the discs)."""
+    board = getattr(page, "arena_board", None)
+    try:
+        if board is not None:
+            board.set_data(d)
+        line = getattr(page, "arena_line", None)
+        if line is not None:
+            line.set_game(page.ctx, d)
+        discs = getattr(page, "arena_discs", None)
+        if discs is not None:
+            discs.set_text(arena_discs(d))
+    except RuntimeError:
+        pass
+
+
 def arena_take(page, d) -> None:
     """A new game state from the server: the board updates in place; a new phase rebuilds the screen."""
     ctx = page.ctx
     if not isinstance(d, dict) or not d.get("id"):
         return
+    d["_t"] = time.monotonic()
     old = getattr(ctx, "arena_game", None) or {}
     ctx.arena_game = d
     board = getattr(page, "arena_board", None)
     try:
         if board is not None and old.get("id") == d.get("id") and old.get("state") == d.get("state"):
-            board.set_data(d)
-            line = getattr(page, "arena_line", None)
-            if line is not None:
-                text, col = arena_status(ctx, d)
-                line.set_text(text)
-                line.set_color(col)
-            discs = getattr(page, "arena_discs", None)
-            if discs is not None:
-                discs.set_text(arena_discs(d))
+            shown = dict(board.d or {})
+            side = int(d.get("side") or 0)
+            if (d.get("state") == "live" and int(d.get("n") or 0) > int(shown.get("n") or 0)
+                    and (d.get("last") or {}).get("s") not in (None, side)):
+                lm = int((d.get("last") or {}).get("m") if (d.get("last") or {}).get("m") is not None else -1)
+                sfx.play("drop" if d.get("kind") == "c4" else "chip" if d.get("kind") == "maze" and lm >= 100
+                         else "pick")                         # 9.3.2: you hear their move land
+            arena_show(page, d)
             shuf = getattr(page, "arena_shuffle", None)
             if shuf is not None and int(d.get("n") or 0) > 0:
                 shuf.hide()                              # only before the first shot
@@ -36575,9 +36820,10 @@ def build_arena(page, lay) -> None:
     else:
         _arena_duel_setup(page, hl, kind, lobby, poll)
     if kind == "maze":
-        lay.addWidget(ControlsBar([("LMB", tr("Lit square: step")), ("LMB", tr("Groove: place a wall"))], page.W))
+        lay.addWidget(ControlsBar([("LMB", tr("Click a square to move")), ("LMB", tr("Click between squares to build a wall"))],
+                                  page.W))
     elif kind == "tri":
-        lay.addWidget(ControlsBar([("LMB", tr("Empty square: place a mark"))], page.W))
+        lay.addWidget(ControlsBar([("LMB", tr("Click a square to place a mark"))], page.W))
     else:
         lay.addWidget(ControlsBar([("LMB", tr("Play a move"))], page.W))
 
@@ -36601,31 +36847,82 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
     vs = Label(f"{them} ●", 12, their_col, bold=True, align=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
     names.addWidget(vs, 1)
     lay.addLayout(names)
-    text, col = arena_status(ctx, g)
-    line = Label(text, 13, col, bold=True)
+    line = TurnBanner()                                 # 9.3.2: whose turn it is, big and clear
     page.arena_line = line
     lay.addWidget(line)
+    if g.get("_t") is None:
+        g["_t"] = time.monotonic()
     board = (MazeBoard(page.W) if g.get("kind") == "maze" else TriBoard(page.W) if g.get("kind") == "tri"
              else ArenaBoard(g.get("kind"), page.W))
-    board.set_data(g)
     page.arena_board = board
-    lay.addWidget(board, 0, Qt.AlignmentFlag.AlignHCenter)
     page.arena_discs = page.arena_shuffle = None
+    side_ = int(g.get("side") or 0)
+    last_ = g.get("last") or {}
+    intro = (getattr(ctx, "arena_intro", None) == g.get("id") and g.get("bot") and g.get("state") == "live"
+             and g.get("kind") in ("maze", "tri") and int(g.get("n") or 0) == 1 and last_.get("s") not in (None, side_))
+    ctx.arena_intro = None
+    if intro:            # 9.3.2: the bot starts: show the empty board first, then its opening move lands
+        pre = dict(g)
+        pre.update(n=0, last=None, turn=3 - side_, legal=[],
+                   board=({"p": [76, 4], "w": [10, 10], "h": "." * 64, "v": "." * 64} if g.get("kind") == "maze"
+                          else {"q": [[], []]}))
+        board.set_data(pre)
+        line.set_game(ctx, pre)
+    else:
+        board.set_data(g)
+        line.set_game(ctx, g)
+    lay.addWidget(board, 0, Qt.AlignmentFlag.AlignHCenter)
     if g.get("kind") == "reversi" and g.get("board") and g.get("state") in ("live", "done"):
         page.arena_discs = Label(arena_discs(g), 11, TEXT_DIM)
         lay.addWidget(page.arena_discs)
+    if intro:
+        state["busy"] = True
+
+        def opening() -> None:
+            state["busy"] = False
+            if (getattr(ctx, "arena_game", None) or {}).get("id") == g.get("id"):
+                arena_take(page, ctx.arena_game)
+        QTimer.singleShot(arena_think_ms(g.get("level")), opening)
+
+    def not_yet() -> None:
+        """A click while the other side is still to play: a soft sound and the banner shakes."""
+        sfx.play("tick")
+        try:
+            line.nudge()
+        except RuntimeError:
+            pass
 
     def move(m: int) -> None:
         if state["busy"]:
-            return
+            return not_yet()
+        before = dict(board.d or {})
+        mid = arena_local_move(before, m)               # 9.3.2: your move shows at once
         state["busy"] = True
+        state["seq"] = state.get("seq", 0) + 1
+        t0 = time.monotonic()
+        if mid is not None:
+            arena_show(page, mid)
 
         def after(d) -> None:
-            state["busy"] = False
-            if d:
+            if not d:
+                state["busy"] = False
+                if mid is not None:                     # the server said no: put the board back
+                    arena_show(page, before)
+                return
+            wait = 0
+            if d.get("bot") and int(d.get("n") or 0) > int(before.get("n") or 0) + 1:
+                wait = arena_think_ms(d.get("level")) - int((time.monotonic() - t0) * 1000)
+
+            def land() -> None:
+                state["busy"] = False
                 arena_take(page, d)
-        arena_call(page, "rb_bg_move", {"gid": g["id"], "m": int(m), "n": int(board.d.get("n") or 0)}, after)
+            if wait > 30:
+                QTimer.singleShot(wait, land)
+            else:
+                land()
+        arena_call(page, "rb_bg_move", {"gid": g["id"], "m": int(m), "n": int(before.get("n") or 0)}, after)
     board.moved.connect(move)
+    board.blocked.connect(not_yet)
     row = hbox(spacing=8)
     st = g.get("state")
     if st == "open":
@@ -36651,8 +36948,11 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
         def play_again() -> None:
             ctx.arena_game = None
             if g.get("bot"):
+                again.setEnabled(False)
+                again.set_text(tr("Starting…"))
                 arena_call(page, "rb_bg_bot", {"kind": g.get("kind"), "level": g.get("level") or "easy"},
-                           lambda d: arena_take(page, d) if d else ctx.reload_page("games"))
+                           lambda d: (setattr(ctx, "arena_intro", d.get("id")), arena_take(page, d)) if d
+                           else ctx.reload_page("games"))
             else:
                 ctx.reload_page("games")
         again.clicked.connect(play_again)
@@ -36668,29 +36968,39 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
                                 wrap_w=page.W))
 
     def tick() -> None:
+        """9.3.2: twice a second. A person's move arrives within half a second; while it is your turn (or a bot's)
+        it only checks now and then, for the clock."""
         cur = getattr(ctx, "arena_game", None) or {}
         if cur.get("id") != g.get("id") or cur.get("state") not in ("open", "live"):
             poll.stop()
             return
         state["tick"] += 1
-        if cur.get("secs") is not None and cur.get("state") == "live":
-            cur["secs"] = max(0, int(cur.get("secs") or 0) - 1)
+        if not state["busy"]:
             try:
-                text_, col_ = arena_status(ctx, cur)
-                line.set_text(text_)
-                line.set_color(col_)
+                line.set_game(ctx, board.d or cur)
             except RuntimeError:
                 return poll.stop()
         mine_turn = cur.get("state") == "live" and int(cur.get("turn") or 0) == side
-        if state["busy"] or (mine_turn and state["tick"] % 4):
+        every = 8 if mine_turn else 4 if cur.get("bot") else 2 if cur.get("state") == "open" else 1
+        if state["busy"] or state.get("asking") or state["tick"] % every:
             return
-        state["busy"] = True
+        state["asking"] = True
+        seq = state.get("seq", 0)
 
         def got(ok: bool, d) -> None:
-            state["busy"] = False
-            if ok and isinstance(d, dict):
-                arena_take(page, d)
+            state["asking"] = False
+            if not ok or not isinstance(d, dict) or state["busy"] or seq != state.get("seq", 0):
+                return                                  # a move went out meanwhile: its answer is newer
+            shown = getattr(board, "d", None) or {}
+            try:
+                if (d.get("id") == shown.get("id") and d.get("state") == shown.get("state")
+                        and int(d.get("n") or 0) < int(shown.get("n") or 0)):
+                    return                              # older than what is on screen
+            except RuntimeError:
+                return
+            arena_take(page, d)
         ctx.online.ask("rb_bg_state", {"gid": g["id"]}, got)
+    poll.setInterval(500)
     poll.timeout.connect(tick)
     if st in ("open", "live"):
         poll.start()
@@ -36699,16 +37009,13 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
 def _arena_bot_setup(page, lay, kind: str, lobby: dict) -> None:
     ctx = page.ctx
     lvl = int(getattr(ctx, "arena_level_" + kind, 1) or 0)
-    lay.addWidget(Label(tr("Against the bot. Free, no bet: a win pays by the level and by how well you win."), 11,
-                        TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Play the bot for free. Win to earn coins."), 11, TEXT_DIM, wrap_w=page.W))
     if kind == "maze":
-        lay.addWidget(Label(tr("Race your pawn to the far side. Each turn, step one square or place one of your 10 "
-                               "walls to slow the other side down. A wall can never close a pawn in. Professional "
-                               "always starts and plays the strongest moves it can find."), 10.5, TEXT_FAINT, wrap_w=page.W))
+        lay.addWidget(Label(tr("Be the first to reach the other side. On your turn, move one square or build a wall "
+                               "to block the other player. You have 10 walls."), 10.5, TEXT_FAINT, wrap_w=page.W))
     elif kind == "tri":
-        lay.addWidget(Label(tr("Three in a row wins, but you only keep 3 marks: your 4th takes your oldest away (it fades "
-                               "first). The game goes on until someone wins. Professional always starts and always "
-                               "plays the best move."), 10.5, TEXT_FAINT, wrap_w=page.W))
+        lay.addWidget(Label(tr("Get 3 in a row to win. You only keep 3 marks: a new one removes your oldest (the faded "
+                               "one)."), 10.5, TEXT_FAINT, wrap_w=page.W))
     seg = Segmented([arena_level_name(kind, k) for k, _n in ARENA_LEVELS], lvl)
     lay.addWidget(seg)
     skill = (lobby.get("skill") or {}).get(kind) or {}
@@ -36720,25 +37027,18 @@ def _arena_bot_setup(page, lay, kind: str, lobby: dict) -> None:
     def show_pay(i: int) -> None:
         key = ARENA_LEVELS[i][0]
         best = scaled(int(round(ARENA_PAY[kind][key] * 1.5)), mult) * (2 if fresh > 0 else 1)
-        pay.set_text(tr("A win pays up to {n} coins", n=coins_text(best)) +
-                    ("  ·  " + tr("Fresh bonus ×2: {n} left today", n=fresh) if fresh > 0 else ""))
+        pay.set_text(tr("A win pays up to {n} coins", n=coins_text(best)))
     show_pay(lvl)
     seg.changed.connect(lambda i: (setattr(ctx, "arena_level_" + kind, i), show_pay(i)))
-    rec = (lobby.get("record") or {})
-    parts = []
-    for key, name in ARENA_LEVELS:
-        r = rec.get(f"{kind}:{key}") or {}
-        if r:
-            parts.append(f"{tr(name)} {int(r.get('won') or 0)}/{int(r.get('played') or 0)}")
-    if parts:
-        lay.addWidget(Label(tr("Your wins") + ":  " + "  ·  ".join(parts), 10.5, TEXT_DIM, wrap_w=page.W))
     go = Button(tr("Play"), "primary", 40, icon="play")
 
     def start() -> None:
         go.setEnabled(False)
+        go.set_text(tr("Starting…"))
         key = ARENA_LEVELS[seg.index() if hasattr(seg, "index") else int(getattr(ctx, "arena_level_" + kind, 1) or 0)][0]
         arena_call(page, "rb_bg_bot", {"kind": kind, "level": key},
-                   lambda d: arena_take(page, d) if d else go.setEnabled(True))
+                   lambda d: (setattr(ctx, "arena_intro", d.get("id")), arena_take(page, d)) if d
+                   else (go.setEnabled(True), go.set_text(tr("Play"))))
     go.clicked.connect(start)
     lay.addWidget(go)
     duel = Button(tr("Play a person instead"), "ghost", 32, icon="users")
@@ -50742,6 +51042,25 @@ class TierBanner(QWidget):
             p.drawText(bx, int(al | Qt.AlignmentFlag.AlignVCenter), tr(WEALTH_TIERS[k][0]))
 
 
+FR.update({"Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone":
+           "Accueil : ton profil, tes badges et ta vitrine sont sous les quatre boutons, et « Reprendre » a disparu",
+           "Stats: one All time view, and every stat starts again from 0": "Stats : une seule vue « Depuis le début », et toutes les stats repartent de 0",
+           "Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies":
+           "Duels plus rapides : ton coup s’affiche tout de suite, un bandeau clair pour le tour et un bot qui répond plus vite",
+           "Clearer game menus: shorter rules in plain words, and no more win counters":
+           "Menus de jeu plus clairs : des règles plus courtes et simples, sans compteurs de victoires",
+           "Hoops: smoother bots, shorter replays you can turn off, an OPEN badge when your team-mate is free, and a stronger Professional":
+           "Hoops : des bots plus fluides, des ralentis plus courts que tu peux couper, un badge DÉMARQUÉ quand ton coéquipier est démarqué, et un Professionnel plus fort"})  # 9.3.2
+FR.update({'Play the bot for free. Win to earn coins.': 'Joue contre le bot gratuitement. Gagne pour remporter des pièces.',
+           'Be the first to reach the other side. On your turn, move one square or build a wall to block the other player. You have 10 walls.':
+           'Sois le premier à atteindre l’autre côté. À ton tour, avance d’une case ou pose un mur pour bloquer l’autre joueur. Tu as 10 murs.',
+           'Get 3 in a row to win. You only keep 3 marks: a new one removes your oldest (the faded one).':
+           'Aligne 3 pions pour gagner. Tu ne gardes que 3 pions : un nouveau enlève ton plus ancien (celui qui pâlit).',
+           'Click a square to move': 'Clique sur une case pour avancer',
+           'Click between squares to build a wall': 'Clique entre deux cases pour poser un mur',
+           'Click a square to place a mark': 'Clique sur une case pour poser un pion'})  # 9.3.2
+FR.update({'All time': 'Depuis le début', 'Change, all time': 'Évolution, depuis le début',
+           'Free coins, all time': 'Pièces gratuites, depuis le début'})  # 9.3.2
 FR.update({'See what every tier gets': 'Voir ce que chaque rang apporte', 'No limit': 'Sans limite', 'Free rewards': 'Récompenses gratuites', 'Mini game coins a day (each game)': 'Pièces des mini-jeux par jour (chaque jeu)', 'Karting prizes a day': 'Gains de Karting par jour', 'AFK coins a day': 'Pièces AFK par jour', 'Keys kept from time': 'Clés gardées avec le temps', 'Key Forge a day': 'Forge à clés par jour', 'Keys found in games a day': 'Clés trouvées en jouant par jour', 'Biggest duel bet': 'Plus grosse mise en duel', 'UP': 'PLUS', 'RANK UP': 'NOUVEAU RANG', 'WHAT YOU UNLOCKED': 'CE QUE TU DÉBLOQUES', 'Wealth tiers': 'Rangs de richesse', 'Every tier pays more and lifts your daily limits. A tier you reach is yours for good. Click a tier to see what it gets.': 'Chaque rang paie plus et relève tes limites par jour. Un rang atteint est à toi pour de bon. Clique sur un rang pour voir ce qu’il apporte.', "Let's go": 'C’est parti', 'Casino Legend is the top tier: no daily limits on mini games, Karting or AFK coins.': 'Légende du casino est le rang le plus haut : aucune limite par jour sur les mini-jeux, le Karting ou les pièces AFK.', 'Next: {name} at {n} wealth.': 'Prochain : {name} à {n} de richesse.', 'Rank up! You are now {name}': 'Nouveau rang ! Tu es maintenant {name}', 'Prizes today: {a} (no daily limit)': 'Gains du jour : {a} (sans limite par jour)', 'Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all': 'Des limites de gains plus hautes qui suivent ton rang de richesse : les mini-jeux, le Karting et les pièces AFK paient jusqu’à deux fois plus par jour pour Pauvre, jusqu’à 6 fois pour Homme d’affaires, et Légende du casino n’a plus aucune limite par jour', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms': 'Les rangs plus hauts gardent aussi plus de clés avec le temps, forgent plus de clés par jour, trouvent plus de clés en jouant et peuvent miser plus en duel et dans les salons', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets': 'Un écran de nouveau rang quand tu atteins un rang, avec tout ce qu’il débloque. Clique sur la barre de rang dans Accueil quand tu veux pour voir ce que chaque rang apporte'})   # 9.2.1: prize limits by tier, the rank-up screen
 
 
@@ -51181,7 +51500,7 @@ class HomeHero(QWidget):
 
 class HubPage(Page):
     """9.0: the online Home. 9.2: its own page, not a copy of Rewards: hello and what is waiting for you, the one live
-    game on now, the games you played last, and where to go."""
+    game on now and where to go. 9.3.2: no "Jump back in"; a preview of your own profile under the four tiles."""
     key = "hub"
 
     def __init__(self, ctx) -> None:
@@ -51195,21 +51514,50 @@ class HubPage(Page):
         lay.addWidget(help_row(tr("Live now"), tr("Jackpot and Horse Racing take turns every 20 minutes, all day. "
                                                   "Bots play when nobody else does.")))
         lay.addWidget(LiveSlot(self))
-        recent = [int(i) for i in (ctx.cfg["recent_games"] or []) if str(i).isdigit() and int(i) < GamesPage.PICKER][:3]
-        if not recent:
-            recent = [GamesPage.NAMES.index(n) for n in ("Blackjack", "Plinko", "Roulette")]
-        lay.addWidget(help_row(tr("Jump back in")))
-        tiles = [Tile(tr(GamesPage.NAMES[i]), "", "", GAME_COLOURS.get(GamesPage.NAMES[i], ("#888", "#333")),
-                      lambda i=i: open_game(ctx, i, "hub"), height=104, art=game_art(GamesPage.NAMES[i])) for i in recent]
-        lay.addWidget(tile_grid(tiles, 3))
-        lay.addWidget(help_row(tr("Go to")))
         lay.addWidget(tile_grid([
             Tile(tr("Casino"), tr("Enter"), "dice", ("#F5C04A", "#5A1A0A"), lambda: open_games_part(ctx, "casino"), height=96),
             Tile(tr("Mini games"), tr("Free"), "spark", ("#35E0A1", "#0B4A5A"), lambda: ctx.window.nav("games"), height=96),
             Tile(tr("Duels"), tr("1 v 1"), "shield", ("#5AA8FF", "#0A2A5A"), lambda: open_arena(ctx, "c4", "duel"), height=96),
             Tile(tr("Leaderboards"), tr("Global"), "trophy", ("#FF6FA8", "#5A1A7A"), lambda: ctx.window.nav("leaders"),
                  height=96)], 2))
+        self._preview(lay)                           # 9.3.2: a look at your own profile (nothing to click)
         lay.addStretch(1)
+
+    def _preview(self, lay) -> None:
+        ctx = self.ctx
+        name = ctx.online.username() if ctx.online.logged_in() else ""
+        if not name:
+            return
+        prof = getattr(ctx, "home_profile", None)
+        if not isinstance(prof, dict) or str(prof.get("username", "")).lower() != name.lower():
+            prof = None
+        if prof is None or time.monotonic() - float(getattr(ctx, "home_profile_at", 0) or 0) > 60:
+            ctx.home_profile_at = time.monotonic()        # one ask a minute at most
+
+            def got(ok: bool, data) -> None:
+                if not ok or not isinstance(data, dict):
+                    return
+                changed = data != getattr(ctx, "home_profile", None)
+                ctx.home_profile, ctx.home_profile_at = data, time.monotonic()
+                if changed and ctx.window.showing("hub"):
+                    ctx.reload_page("hub")
+            ctx.online.ask("rb_profile", {"name": name}, got)
+        if prof is None:
+            return
+        lay.addWidget(help_row(tr("Your profile")))
+        lay.addWidget(ProfileCard(ctx, prof, self.W))
+        badges = list(prof.get("badges") or [])
+        owned = set(badges)
+        eq = prof.get("equip") or {}
+        worn = [w for w in (eq.get(k) for k in ("badge1", "badge2", "badge3")) if w and
+                (w in owned or (w.endswith(":grey") and any(b.startswith(w[:-4]) for b in owned)))]
+        lay.addWidget(Showcase3(ctx, worn, self.W, False))
+        shelf = [eq.get(k) for k in ("trophy1", "trophy2", "trophy3") if eq.get(k)]
+        if shelf:
+            lay.addWidget(TrophyShelf(shelf, self.W))
+        if badges:
+            lay.addWidget(Label(tr("Badges") + f"  ·  {len(badges)}", 11, TEXT_DIM, bold=True))
+            lay.addWidget(BadgeStrip(ctx, badges[:18], [w for w in worn if w in badges[:18]], self.W))
 
     def open_sub(self, name) -> None:
         open_games_part(self.ctx, name, back="hub")
@@ -51881,10 +52229,11 @@ class PlayerPicker(QWidget):
 
 
 class StatsPage(Page):
-    """9.1: every graph in one place: your wealth, the casino, the mini games and the rewards, over 7, 30 or 90 days.
+    """9.1: every graph in one place: your wealth, the casino, the mini games and the rewards. 9.3.2: all time only,
+    counted from the stats reset (rb_config stats_from).
     9.2: any player's numbers too (Find a player), and Records: the numbers and history that were in Social."""
     key = "stats"
-    PERIODS = (7, 30, 90)
+    PERIODS = (0,)                                    # 9.3.2: all time only (0 = since the stats reset)
     PARTS = ("Overview", "Casino", "Mini games", "Rewards", "Records")
 
     def __init__(self, ctx) -> None:
@@ -51905,13 +52254,11 @@ class StatsPage(Page):
         head.addWidget(find, 0, Qt.AlignmentFlag.AlignTop)
         lay.addLayout(head)
         part = int(getattr(ctx, "stats_part", 0) or 0)
-        days = int(getattr(ctx, "stats_days", 30) or 30)
+        days = 0
         parts = Segmented([tr(x) for x in self.PARTS], part)
         parts.changed.connect(lambda i: (setattr(ctx, "stats_part", i), ctx.reload_page("stats")))
         lay.addWidget(parts)
-        period = Segmented([tr("{n} days", n=n) for n in self.PERIODS], self.PERIODS.index(days) if days in self.PERIODS else 1)
-        period.changed.connect(lambda i: (setattr(ctx, "stats_days", self.PERIODS[i]), self.fetch(True)))
-        lay.addWidget(period)
+        lay.addWidget(Segmented([tr("All time")], 0))
         if not ctx.online.logged_in():
             lay.addWidget(Label(tr("Log in to see your stats"), 12, TEXT_DIM))
             return
@@ -51969,7 +52316,7 @@ class StatsPage(Page):
 
     def fetch(self, force: bool = False) -> None:
         ctx = self.ctx
-        days = int(getattr(ctx, "stats_days", 30) or 30)
+        days = 0
         cache = getattr(ctx, "stats_data", None) or {}
         if days in cache and not force:
             return ctx.reload_page("stats")
@@ -52011,7 +52358,7 @@ class StatsPage(Page):
         net = sum(int(x.get("net") or 0) for x in s)
         tier = (now.get("tier") or {}).get("name") or ""
         lay.addWidget(StatTiles([(coins_text(int(now.get("coins") or 0)), tr("Coins now"), GOLD_TEXT),
-                                 (("+" if net > 0 else "") + coins_text(net), tr("Change in {n} days", n=len(s)),
+                                 (("+" if net > 0 else "") + coins_text(net), tr("Change, all time"),
                                   WIN if net > 0 else LOSE if net < 0 else None),
                                  (tr(tier), tr("Tier"), None), (str(int(now.get("level") or 0)), tr("Level"), None)]))
         lay.addWidget(StatChart(tr("Your coins"), "line", labels, [(tr("Coins"), [x.get("balance") for x in s], STAT_SERIES[0])],
@@ -52093,7 +52440,7 @@ class StatsPage(Page):
         best = max([sum(day) for day in per] + [0])
         keys = sum(int(x.get("keys") or 0) for x in s)
         mult = float((now.get("tier") or {}).get("mult") or 1)
-        lay.addWidget(StatTiles([(coins_text(total), tr("Free coins in {n} days", n=len(s)), GOLD_TEXT),
+        lay.addWidget(StatTiles([(coins_text(total), tr("Free coins, all time"), GOLD_TEXT),
                                  (coins_text(best), tr("Best day"), None), (str(keys), tr("Keys earned"), None),
                                  (f"×{mult:g}", tr("Your tier boost"), None)]))
         series = [(tr(name), [day[k] for day in per], STAT_SERIES[k]) for k, (name, _key) in enumerate(REWARD_SOURCES)]
@@ -55492,7 +55839,9 @@ class ConnectFour(Game):
                 self.page.sync()
                 return
             self.pending = ans
-            wait = float(ans.get("think") or 0)
+            # 9.3.2: the server suggests a long show of thinking (up to 6 s on Professional). The bot has already
+            # found its move by now, so it lands after a short, natural pause instead: same move, no long wait.
+            wait = min(1.1, max(0.35, float(ans.get("think") or 0) * 0.3))
             self.thinking_until = self.sent_at + wait if ans.get("bot", -1) >= 0 else 0
             QTimer.singleShot(int(max(0.0, self.thinking_until - time.monotonic()) * 1000) + 30, self._land)
             self.page.sync()
@@ -72478,7 +72827,7 @@ SHOT_C = 0.80                          # the perfect release, on the meter
 FAKE_T = 0.32
 PASS_WIND = 0.70                       # charging a pass to full
 SHOT_CLOCK = 14.0
-COUNT_START, COUNT_AFTER = 5.0, 3.0
+COUNT_START, COUNT_AFTER = 5.0, 2.0
 REF_SIGMA = 0.05                       # the release spread the shown % assumes (a good, not perfect, shooter)
 
 HOOPS_LEVELS = ["Club", "Regional", "National", "Professional"]
@@ -72494,8 +72843,8 @@ HOOPS_BOT = {
     "National":     {"react": 0.19, "speed": 0.96, "sigma": 0.046, "shoot_min": 0.40, "risk": 0.25, "spin": 0.45,
                      "fake": 0.18, "bite": 0.35, "steal": 0.55, "steal_read": 0.78, "help": 0.70, "space": 0.85,
                      "cut": 0.45, "fancy": 0.45, "box": 0.75, "deny": 0.65, "gap": 1.3, "jump_read": 0.8},
-    "Professional": {"react": 0.11, "speed": 1.00, "sigma": 0.030, "shoot_min": 0.46, "risk": 0.10, "spin": 0.80,
-                     "fake": 0.34, "bite": 0.15, "steal": 0.70, "steal_read": 0.95, "help": 0.92, "space": 1.0,
+    "Professional": {"react": 0.10, "speed": 1.00, "sigma": 0.027, "shoot_min": 0.46, "risk": 0.08, "spin": 0.85,
+                     "fake": 0.38, "bite": 0.12, "steal": 0.88, "steal_read": 0.95, "help": 0.92, "space": 1.0,
                      "cut": 0.80, "fancy": 0.80, "box": 0.95, "deny": 0.90, "gap": 1.15, "jump_read": 0.95},
 }
 
@@ -74055,18 +74404,19 @@ class HoopsBot:
         else:
             man = attackers[0]
         self.assign = man.i
-        ms = g.past(man.i, lag)
-        mx_, mz_, mvx, mvz = ms
-        # predict where they'll be
-        px, pz = mx_ + mvx * lag, mz_ + mvz * lag
         if c is not None and man is c:
             # on the ball: between them and the hoop, a step off; stance; swipe when the ball is on my side and low
-            gx, gz = norm(my_hoop - px, HOOP_Z - pz)
-            gap = k["gap"] + (0.4 if hyp(my_hoop - px, HOOP_Z - pz) > 9 else 0.0)
-            tx, tz = px + gx * gap, pz + gz * gap
+            def guard(man=man, lag=lag, gap0=k["gap"]):
+                # followed every step, from where the dribbler was `lag` ago: the bot reacts late but never freezes
+                mx2, mz2, vx2, vz2 = g.past(man.i, lag)
+                qx, qz = mx2 + vx2 * lag, mz2 + vz2 * lag
+                ux, uz = norm(my_hoop - qx, HOOP_Z - qz)
+                gp = gap0 + (0.4 if hyp(my_hoop - qx, HOOP_Z - qz) > 9 else 0.0)
+                return qx + ux * gp, qz + uz * gp
+            tx, tz = guard()
             inp.shift = True
             inp.mx, inp.mz = self._to(tx, tz, 0.35)
-            self.plan = {"to": (tx, tz), "slow": 0.35}
+            self.plan = {"to": guard, "slow": 0.35}
             # contest a shot (or bite on a fake)
             if c.act in ("shoot", "fake") and hyp(c.x - p.x, c.z - p.z) < 2.6:
                 if p.h <= 0 and p.jump_cd <= 0:
@@ -74080,7 +74430,9 @@ class HoopsBot:
                 db = hyp(b.x - hxp, b.z - hzp)
                 body = hyp(c.x - p.x, c.z - p.z)
                 exposed = hyp(b.x - p.x, b.z - p.z) <= body + 0.18
-                if db < STEAL_REACH + 0.25 and rng.random() < k["steal"]:
+                # how keen to swipe, per second (not per look, so quick-thinking bots don't swipe more often)
+                keen = 1 - (1 - k["steal"]) ** (k["react"] / 0.3)
+                if db < STEAL_REACH + 0.25 and rng.random() < keen:
                     good = exposed and db <= STEAL_REACH and b.h < 1.1
                     if good and rng.random() < k["steal_read"]:
                         # wait for the ball to come down: the better bots time it for the bounce
@@ -74088,24 +74440,31 @@ class HoopsBot:
                     elif not good and rng.random() > k["steal_read"]:
                         self.plan["lmb_once"] = True              # a bad swipe (the weaker bots)
         else:
-            # off the ball: between my man and the hoop, shaded towards the ball; deny the pass (the good ones)
-            bx, bz = b.x, b.z
-            gx, gz = norm(my_hoop - px, HOOP_Z - pz)
-            dm = hyp(my_hoop - px, HOOP_Z - pz)
-            tx, tz = px + gx * min(2.2, dm * 0.3), pz + gz * min(2.2, dm * 0.3)
-            # shade to the ball
+            # off the ball: between my man and the hoop, shaded towards the ball; deny the pass (the good ones).
+            # What to do is decided now; where to stand is followed every step (seen `lag` late).
+            deny = c is not None and rng.random() < k["deny"]
+            helps = c is not None and hyp(my_hoop - c.x, HOOP_Z - c.z) < 4.5 and rng.random() < k["help"]
             sh = 0.25 + 0.35 * k["help"]
-            tx, tz = lerp(tx, bx, sh * 0.5), lerp(tz, bz, sh * 0.5)
-            # deny: stand in the passing lane
-            if c is not None and rng.random() < k["deny"]:
-                lx, lz = lerp(c.x, px, 0.72), lerp(c.z, pz, 0.72)
-                tx, tz = lerp(tx, lx, 0.55), lerp(tz, lz, 0.55)
-            # help: the dribbler driving to the hoop, nobody between: step in
-            if c is not None and hyp(my_hoop - c.x, HOOP_Z - c.z) < 4.5 and rng.random() < k["help"]:
-                tx, tz = lerp(c.x, my_hoop, 0.45), lerp(c.z, HOOP_Z, 0.45)
+
+            def spot(man=man, lag=lag):
+                mx2, mz2, vx2, vz2 = g.past(man.i, lag)
+                qx, qz = mx2 + vx2 * lag, mz2 + vz2 * lag
+                cc = g.carrier()
+                ux, uz = norm(my_hoop - qx, HOOP_Z - qz)
+                dm = hyp(my_hoop - qx, HOOP_Z - qz)
+                sx, sz = qx + ux * min(2.2, dm * 0.3), qz + uz * min(2.2, dm * 0.3)
+                sx, sz = lerp(sx, g.ball.x, sh * 0.5), lerp(sz, g.ball.z, sh * 0.5)
+                if cc is not None and cc.team != p.team:
+                    if deny:
+                        lx, lz = lerp(cc.x, qx, 0.72), lerp(cc.z, qz, 0.72)
+                        sx, sz = lerp(sx, lx, 0.55), lerp(sz, lz, 0.55)
+                    if helps:
+                        sx, sz = lerp(cc.x, my_hoop, 0.45), lerp(cc.z, HOOP_Z, 0.45)
+                return sx, sz
+            tx, tz = spot()
             inp.shift = hyp(tx - p.x, tz - p.z) < 1.5
             inp.mx, inp.mz = self._to(tx, tz, 0.5)
-            self.plan = {"to": (tx, tz), "slow": 0.5}
+            self.plan = {"to": spot, "slow": 0.5}
         # a pass in the air: go for it if I can get there (the better bots see more passes)
         if b.mode == "pass" and b.f and b.f.get("by", -1) >= 0 and g.players[b.f["by"]].team != p.team:
             self._chase_pass()
@@ -74961,13 +75320,15 @@ class HoopsView(QWidget):
     the coin flip, the countdowns, the goal explosion and its replay, the pause menu and the final whistle."""
     finished = pyqtSignal(dict)
 
-    def __init__(self, level: str = "National", mins: float = 3.0, seed: int = 0, name: str = "") -> None:
+    def __init__(self, level: str = "National", mins: float = 3.0, seed: int = 0, name: str = "", replays: int = 1) -> None:
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
         self.setMinimumSize(S(720), S(420))
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.level, self.mins = level, mins
+        self.replays = int(replays)
+        self.last_perfect = False
         self.seed = seed or random.randrange(1, 10 ** 9)
         self.name = name or tr("You")
         self.g = HoopsGame(level=level, mins=mins, seed=self.seed, humans=(0,))
@@ -75144,13 +75505,26 @@ class HoopsView(QWidget):
     def _flow(self, dt) -> None:
         g = self.g
         # the score: the explosion for 1.7 s, then a wipe into the replay
-        if g.phase == "score" and self.replay is None and self.wipe_then is None and g.phase_t > 1.7:
-            self._start_wipe(lambda: self._start_replay(), HOOPS_TEAM[g.last_score["team"]]["main"])
+        if g.phase == "score" and self.replay is None and self.wipe_then is None and g.phase_t > 1.3:
+            col = HOOPS_TEAM[g.last_score["team"]]["main"]
+            if self._want_replay():
+                self._start_wipe(lambda: self._start_replay(), col)
+            else:
+                self._start_wipe(self._after_replay, col)
         if g.phase == "over":
             self.over_t += dt
             if self.over_t > 2.6 and not self.result_sent:
                 self.result_sent = True
                 self.finished.emit(self.result())
+
+    def _want_replay(self) -> bool:
+        """Replays: 0 every basket, 1 the big plays (a three, a perfect release, the last 20 seconds, overtime), 2 none."""
+        if self.replays == 0:
+            return True
+        if self.replays == 2:
+            return False
+        ls = self.g.last_score or {}
+        return ls.get("pts") == 3 or self.last_perfect or self.g.overtime or self.g.clock < 20
 
     def _start_wipe(self, then, col) -> None:
         self.wipe = 0.0
@@ -75174,8 +75548,8 @@ class HoopsView(QWidget):
     def _start_replay(self) -> None:
         g = self.g
         ls = g.last_score
-        t_end = ls["t"] + 1.1
-        t_start = ls["t"] - 4.6
+        t_end = ls["t"] + 0.8
+        t_start = ls["t"] - 3.4
         frames = [(t, s) for t, s, ph in self.rec if t_start <= t <= t_end and ph in ("play", "score")]
         if len(frames) < 30:
             return self._after_replay()
@@ -75191,7 +75565,7 @@ class HoopsView(QWidget):
             return self._end_replay()
         t = fr[i][0]
         # slow motion for the last second before the ball drops through
-        slow = r["t_score"] - 1.0 <= t <= r["t_score"] + 0.2
+        slow = r["t_score"] - 0.8 <= t <= r["t_score"] + 0.15
         r["slow"] = slow
         r["pos"] += dt * 60 * (0.33 if slow else 1.0)
         if t >= r["t_score"] - 0.02 and not r["net_done"]:
@@ -75286,6 +75660,7 @@ class HoopsView(QWidget):
                 pass
             elif kind == "shot":
                 p = g.players[d["p"]]
+                self.last_perfect = bool(d.get("perfect"))
                 if p.human:
                     txt = {"green": tr("PERFECT") if d["perfect"] else tr("GOOD RELEASE"),
                            "yellow": tr("EARLY") if d["m"] < SHOT_C else tr("LATE"),
@@ -75684,13 +76059,21 @@ class HoopsView(QWidget):
             elif pl.team == 0:
                 # my team-mate: their number; a pass badge when I have the ball
                 carrying = g.ball.owner == me_i
-                r = QRectF(top.x() - S(22), top.y() - S(26), S(44), S(20))
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(QColor(255, 255, 255, 235) if carrying else QColor(10, 14, 24, 170))
-                p.drawRoundedRect(r, S(10), S(10))
+                # open: a quick pass would be safe and they'd have a good shot (or a clear run to the rim)
+                is_open = False
+                if carrying and g.phase == "play":
+                    risk, _f = g.pass_risk(g.players[me_i], "chest", 0.55, None)
+                    _gw, dd, _c, pct = g.shot_window(pl)
+                    is_open = risk < 0.35 and (pct >= 0.42 or dd < 2.5)
+                txt = (tr("OPEN") + " ➜ " if is_open else "➜ " if carrying else "") + str(pl.num)
                 p.setFont(font(10, QFont.Weight.Black))
-                p.setPen(QColor(HOOPS_TEAM[0]["dark"]) if carrying else QColor(HOOPS_TEAM[0]["light"]))
-                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), ("➜ " if carrying else "") + str(pl.num))
+                tw = p.fontMetrics().horizontalAdvance(txt) + S(18)
+                r = QRectF(top.x() - tw / 2, top.y() - S(26), tw, S(20))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#3BE38A") if is_open else QColor(255, 255, 255, 235) if carrying else QColor(10, 14, 24, 170))
+                p.drawRoundedRect(r, S(10), S(10))
+                p.setPen(QColor("#062814") if is_open else QColor(HOOPS_TEAM[0]["dark"]) if carrying else QColor(HOOPS_TEAM[0]["light"]))
+                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), txt)
             else:
                 r = QRectF(top.x() - S(16), top.y() - S(22), S(32), S(16))
                 p.setPen(Qt.PenStyle.NoPen)
@@ -76211,7 +76594,8 @@ def hoops_opts(ctx) -> dict:
         except Exception:  # noqa: BLE001
             d = {}
         lv = d.get("level", "Regional")
-        d = {"level": lv if lv in HOOPS_LEVELS else "Regional", "mins": int(d.get("mins", 3)) if int(d.get("mins", 3)) in (2, 3, 4, 5) else 3}
+        d = {"level": lv if lv in HOOPS_LEVELS else "Regional", "mins": int(d.get("mins", 3)) if int(d.get("mins", 3)) in (2, 3, 4, 5) else 3,
+             "replays": int(d.get("replays", 1)) if int(d.get("replays", 1)) in (0, 1, 2) else 1}
         ctx.hoops_opts = d
     return d
 
@@ -76266,11 +76650,7 @@ class HoopsLevelCard(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.drawText(QRectF(S(14), S(50), r.width() - S(28), S(44)),
                    int(Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), tr(HOOPS_ABOUT[self.level]))
-        w_, l_ = int(self.rec.get("w") or 0), int(self.rec.get("l") or 0)
         p.setFont(font(10.5, QFont.Weight.Bold))
-        p.setPen(QColor(TEXT))
-        p.drawText(QRectF(S(14), r.bottom() - S(26), r.width() - S(28), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("{w} W · {l} L", w=w_, l=l_))
         win = int(round(HOOPS_PAY[self.level][0] * self.mult))
         p.setPen(QColor(GOLD_TEXT))
         p.drawText(QRectF(S(14), r.bottom() - S(26), r.width() - S(28), S(18)),
@@ -76324,8 +76704,11 @@ def build_hoops(page, lay) -> None:
     mins.changed.connect(lambda i: (o.__setitem__("mins", [2, 3, 4, 5][i]), hoops_save_opts(ctx)))
     hl.addWidget(mins)
     hl.addWidget(Label(tr("A tie at the buzzer goes to overtime: the next basket wins."), 10, TEXT_FAINT, wrap_w=page.W))
+    reps = Segmented([tr("Replay every basket"), tr("Replay big plays"), tr("No replays")], o["replays"])
+    reps.changed.connect(lambda i: (o.__setitem__("replays", i), hoops_save_opts(ctx)))
+    hl.addWidget(reps)
     go = Button(tr("Play"), "primary", 44, icon="play")
-    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"]))
+    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"], o["replays"]))
     hl.addWidget(go)
     keys = hoops_keys()
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Move")),
@@ -76342,8 +76725,6 @@ def build_hoops(page, lay) -> None:
         cap = data.get("cap")
         txt = tr("Prizes today: {a}", a=coins_text(int(data.get("today") or 0)))
         txt += ("  ·  " + tr("limit {b}", b=coins_text(int(cap)))) if cap else ("  ·  " + tr("no daily limit"))
-        if mult > 1:
-            txt += "  ·  " + tr("your tier pays ×{m}", m=f"{mult:g}")
         hl.addWidget(Label(txt, 10.5, TEXT_DIM, wrap_w=page.W))
 
 
@@ -76511,7 +76892,7 @@ class HoopsLink(QObject):
     _cur = None
 
     @classmethod
-    def start(cls, ctx, level: str, mins: int) -> None:
+    def start(cls, ctx, level: str, mins: int, replays: int = 1) -> None:
         if cls._cur is not None and cls._cur.win is not None:
             try:
                 cls._cur.win.raise_()
@@ -76519,11 +76900,11 @@ class HoopsLink(QObject):
                 return
             except RuntimeError:
                 cls._cur = None
-        cls._cur = HoopsLink(ctx, level, mins)
+        cls._cur = HoopsLink(ctx, level, mins, replays)
 
-    def __init__(self, ctx, level: str, mins: int) -> None:
+    def __init__(self, ctx, level: str, mins: int, replays: int = 1) -> None:
         super().__init__()
-        self.ctx, self.level, self.mins = ctx, level, mins
+        self.ctx, self.level, self.mins, self.replays = ctx, level, mins, replays
         self.gid = None
         self.win = None
         self.view = None
@@ -76539,7 +76920,7 @@ class HoopsLink(QObject):
         if self.win is None:
             self.win = HoopsWindow(self)
             self.win.show()
-        view = HoopsView(self.level, float(self.mins), 0, "")
+        view = HoopsView(self.level, float(self.mins), 0, "", self.replays)
         view.finished.connect(self._finished)
         if self.win.view is not None:
             self.win.view.timer.stop()
