@@ -37,7 +37,7 @@ s = {"access_token": "stub." + uid, "refresh_token": "stub." + uid, "expires_at"
 open(path, "wb").write(base64.b64encode(json.dumps(s).encode()))
 PY
   fi
-  printf '{"schema": 3, "v53_fresh": true, "v5_fresh": true, "lang": "%s", "tutorial_done": true}' "$lang" > "$home/Documents/Rubenium/settings.json"
+  printf '{"schema": 3, "v53_fresh": true, "v5_fresh": true, "lang": "%s", "tutorial_done": true, "terms_seen": 20261126}' "$lang" > "$home/Documents/Rubenium/settings.json"
   local extra=""; [ -n "$uid" ] && extra=--online
   HOME="$home" QT_QPA_PLATFORM="offscreen:configfile=$OUT/screen_$name.json" RUBENIUM_API=http://127.0.0.1:$PORT timeout 1200 python3 "$HERE/crawl.py" "$REPO/$SCRIPT" \
       --out "$OUT/$name" --lang "$lang" --max "${MAX:-400}" $extra > "$OUT/$name.out" 2>&1 || status=1

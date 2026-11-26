@@ -26,6 +26,6 @@ s = {"access_token": "stub." + uid, "refresh_token": "stub." + uid, "expires_at"
 open(path, "wb").write(base64.b64encode(json.dumps(s).encode()))
 PY
 fi
-printf '{"schema": 3, "v53_fresh": true, "v5_fresh": true, "lang": "en", "tutorial_done": true}' > "$home/Documents/Rubenium/settings.json"
+printf '{"schema": 3, "v53_fresh": true, "v5_fresh": true, "lang": "en", "tutorial_done": true, "terms_seen": 20261126}' > "$home/Documents/Rubenium/settings.json"
 HOME="$home" QT_QPA_PLATFORM="offscreen:configfile=/tmp/shoot_screen.json" RUBENIUM_API=http://127.0.0.1:$PORT timeout 600 \
   python3 "$HERE/shoot.py" "$REPO/${SCRIPT:-Rubenium.py}" --out "$OUT" $ONLINE "$@" 2>&1 | grep -v "^qt\.\|propagateSizeHints" | tail -30

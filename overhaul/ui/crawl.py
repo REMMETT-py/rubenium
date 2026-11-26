@@ -196,10 +196,24 @@ def driver(app, rb):
         if not rb.online.logged_in():
             ERRORS.append({"where": "online", "error": "not logged in: the online menu cannot open"})
         else:
+            M = sys.modules["__rb__"]
             rb.enter_online()
+            yield 2500
+            if hasattr(M, "TERMS_VERSION") and not getattr(rb, "_terms_ok", False) and not rb.online_mode:
+                shot("online terms")                          # 9.2: the one-time terms prompt, then accept it
+                done = {}
+                rb.online.ask("rb_accept_terms", {"version": M.TERMS_VERSION, "adult": True},
+                              lambda ok, data: done.update(ok=ok, data=data))
+                for _ in range(30):
+                    if done:
+                        break
+                    yield 300
+                if not done.get("ok"):
+                    ERRORS.append({"where": "online terms", "error": f"accepting the terms failed: {done.get('data')}"})
+                yield from clear("online terms")
+                rb.enter_online()
             yield 4500
             ow = win()
-            M = sys.modules["__rb__"]
             keys = list(M.nav_keys()) if hasattr(M, "nav_keys") else list(M.SECTIONS) + sorted(M.LIVE_TABS)
             for _ in range(20):                               # the garage doors open first (a few seconds)
                 if getattr(ow, "stage", None) is None:
