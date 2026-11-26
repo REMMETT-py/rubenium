@@ -36575,9 +36575,10 @@ def build_arena(page, lay) -> None:
     else:
         _arena_duel_setup(page, hl, kind, lobby, poll)
     if kind == "maze":
-        lay.addWidget(ControlsBar([("LMB", tr("Lit square: step")), ("LMB", tr("Groove: place a wall"))], page.W))
+        lay.addWidget(ControlsBar([("LMB", tr("Click a square to move")), ("LMB", tr("Click between squares to build a wall"))],
+                                  page.W))
     elif kind == "tri":
-        lay.addWidget(ControlsBar([("LMB", tr("Empty square: place a mark"))], page.W))
+        lay.addWidget(ControlsBar([("LMB", tr("Click a square to place a mark"))], page.W))
     else:
         lay.addWidget(ControlsBar([("LMB", tr("Play a move"))], page.W))
 
@@ -36699,16 +36700,13 @@ def _arena_game(page, lay, g: dict, poll: QTimer, state: dict) -> None:
 def _arena_bot_setup(page, lay, kind: str, lobby: dict) -> None:
     ctx = page.ctx
     lvl = int(getattr(ctx, "arena_level_" + kind, 1) or 0)
-    lay.addWidget(Label(tr("Against the bot. Free, no bet: a win pays by the level and by how well you win."), 11,
-                        TEXT_DIM, wrap_w=page.W))
+    lay.addWidget(Label(tr("Play the bot for free. Win to earn coins."), 11, TEXT_DIM, wrap_w=page.W))
     if kind == "maze":
-        lay.addWidget(Label(tr("Race your pawn to the far side. Each turn, step one square or place one of your 10 "
-                               "walls to slow the other side down. A wall can never close a pawn in. Professional "
-                               "always starts and plays the strongest moves it can find."), 10.5, TEXT_FAINT, wrap_w=page.W))
+        lay.addWidget(Label(tr("Be the first to reach the other side. On your turn, move one square or build a wall "
+                               "to block the other player. You have 10 walls."), 10.5, TEXT_FAINT, wrap_w=page.W))
     elif kind == "tri":
-        lay.addWidget(Label(tr("Three in a row wins, but you only keep 3 marks: your 4th takes your oldest away (it fades "
-                               "first). The game goes on until someone wins. Professional always starts and always "
-                               "plays the best move."), 10.5, TEXT_FAINT, wrap_w=page.W))
+        lay.addWidget(Label(tr("Get 3 in a row to win. You only keep 3 marks: a new one removes your oldest (the faded "
+                               "one)."), 10.5, TEXT_FAINT, wrap_w=page.W))
     seg = Segmented([arena_level_name(kind, k) for k, _n in ARENA_LEVELS], lvl)
     lay.addWidget(seg)
     skill = (lobby.get("skill") or {}).get(kind) or {}
@@ -36720,18 +36718,9 @@ def _arena_bot_setup(page, lay, kind: str, lobby: dict) -> None:
     def show_pay(i: int) -> None:
         key = ARENA_LEVELS[i][0]
         best = scaled(int(round(ARENA_PAY[kind][key] * 1.5)), mult) * (2 if fresh > 0 else 1)
-        pay.set_text(tr("A win pays up to {n} coins", n=coins_text(best)) +
-                    ("  ·  " + tr("Fresh bonus ×2: {n} left today", n=fresh) if fresh > 0 else ""))
+        pay.set_text(tr("A win pays up to {n} coins", n=coins_text(best)))
     show_pay(lvl)
     seg.changed.connect(lambda i: (setattr(ctx, "arena_level_" + kind, i), show_pay(i)))
-    rec = (lobby.get("record") or {})
-    parts = []
-    for key, name in ARENA_LEVELS:
-        r = rec.get(f"{kind}:{key}") or {}
-        if r:
-            parts.append(f"{tr(name)} {int(r.get('won') or 0)}/{int(r.get('played') or 0)}")
-    if parts:
-        lay.addWidget(Label(tr("Your wins") + ":  " + "  ·  ".join(parts), 10.5, TEXT_DIM, wrap_w=page.W))
     go = Button(tr("Play"), "primary", 40, icon="play")
 
     def start() -> None:
@@ -50742,6 +50731,16 @@ class TierBanner(QWidget):
             p.drawText(bx, int(al | Qt.AlignmentFlag.AlignVCenter), tr(WEALTH_TIERS[k][0]))
 
 
+FR.update({'Play the bot for free. Win to earn coins.': 'Joue contre le bot gratuitement. Gagne pour remporter des pièces.',
+           'Be the first to reach the other side. On your turn, move one square or build a wall to block the other player. You have 10 walls.':
+           'Sois le premier à atteindre l’autre côté. À ton tour, avance d’une case ou pose un mur pour bloquer l’autre joueur. Tu as 10 murs.',
+           'Get 3 in a row to win. You only keep 3 marks: a new one removes your oldest (the faded one).':
+           'Aligne 3 pions pour gagner. Tu ne gardes que 3 pions : un nouveau enlève ton plus ancien (celui qui pâlit).',
+           'Click a square to move': 'Clique sur une case pour avancer',
+           'Click between squares to build a wall': 'Clique entre deux cases pour poser un mur',
+           'Click a square to place a mark': 'Clique sur une case pour poser un pion'})  # 9.3.2
+FR.update({'All time': 'Depuis le début', 'Change, all time': 'Évolution, depuis le début',
+           'Free coins, all time': 'Pièces gratuites, depuis le début'})  # 9.3.2
 FR.update({'See what every tier gets': 'Voir ce que chaque rang apporte', 'No limit': 'Sans limite', 'Free rewards': 'Récompenses gratuites', 'Mini game coins a day (each game)': 'Pièces des mini-jeux par jour (chaque jeu)', 'Karting prizes a day': 'Gains de Karting par jour', 'AFK coins a day': 'Pièces AFK par jour', 'Keys kept from time': 'Clés gardées avec le temps', 'Key Forge a day': 'Forge à clés par jour', 'Keys found in games a day': 'Clés trouvées en jouant par jour', 'Biggest duel bet': 'Plus grosse mise en duel', 'UP': 'PLUS', 'RANK UP': 'NOUVEAU RANG', 'WHAT YOU UNLOCKED': 'CE QUE TU DÉBLOQUES', 'Wealth tiers': 'Rangs de richesse', 'Every tier pays more and lifts your daily limits. A tier you reach is yours for good. Click a tier to see what it gets.': 'Chaque rang paie plus et relève tes limites par jour. Un rang atteint est à toi pour de bon. Clique sur un rang pour voir ce qu’il apporte.', "Let's go": 'C’est parti', 'Casino Legend is the top tier: no daily limits on mini games, Karting or AFK coins.': 'Légende du casino est le rang le plus haut : aucune limite par jour sur les mini-jeux, le Karting ou les pièces AFK.', 'Next: {name} at {n} wealth.': 'Prochain : {name} à {n} de richesse.', 'Rank up! You are now {name}': 'Nouveau rang ! Tu es maintenant {name}', 'Prizes today: {a} (no daily limit)': 'Gains du jour : {a} (sans limite par jour)', 'Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all': 'Des limites de gains plus hautes qui suivent ton rang de richesse : les mini-jeux, le Karting et les pièces AFK paient jusqu’à deux fois plus par jour pour Pauvre, jusqu’à 6 fois pour Homme d’affaires, et Légende du casino n’a plus aucune limite par jour', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms': 'Les rangs plus hauts gardent aussi plus de clés avec le temps, forgent plus de clés par jour, trouvent plus de clés en jouant et peuvent miser plus en duel et dans les salons', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets': 'Un écran de nouveau rang quand tu atteins un rang, avec tout ce qu’il débloque. Clique sur la barre de rang dans Accueil quand tu veux pour voir ce que chaque rang apporte'})   # 9.2.1: prize limits by tier, the rank-up screen
 
 
@@ -51181,7 +51180,7 @@ class HomeHero(QWidget):
 
 class HubPage(Page):
     """9.0: the online Home. 9.2: its own page, not a copy of Rewards: hello and what is waiting for you, the one live
-    game on now, the games you played last, and where to go."""
+    game on now and where to go. 9.3.2: no "Jump back in"; a preview of your own profile under the four tiles."""
     key = "hub"
 
     def __init__(self, ctx) -> None:
@@ -51195,21 +51194,50 @@ class HubPage(Page):
         lay.addWidget(help_row(tr("Live now"), tr("Jackpot and Horse Racing take turns every 20 minutes, all day. "
                                                   "Bots play when nobody else does.")))
         lay.addWidget(LiveSlot(self))
-        recent = [int(i) for i in (ctx.cfg["recent_games"] or []) if str(i).isdigit() and int(i) < GamesPage.PICKER][:3]
-        if not recent:
-            recent = [GamesPage.NAMES.index(n) for n in ("Blackjack", "Plinko", "Roulette")]
-        lay.addWidget(help_row(tr("Jump back in")))
-        tiles = [Tile(tr(GamesPage.NAMES[i]), "", "", GAME_COLOURS.get(GamesPage.NAMES[i], ("#888", "#333")),
-                      lambda i=i: open_game(ctx, i, "hub"), height=104, art=game_art(GamesPage.NAMES[i])) for i in recent]
-        lay.addWidget(tile_grid(tiles, 3))
-        lay.addWidget(help_row(tr("Go to")))
         lay.addWidget(tile_grid([
             Tile(tr("Casino"), tr("Enter"), "dice", ("#F5C04A", "#5A1A0A"), lambda: open_games_part(ctx, "casino"), height=96),
             Tile(tr("Mini games"), tr("Free"), "spark", ("#35E0A1", "#0B4A5A"), lambda: ctx.window.nav("games"), height=96),
             Tile(tr("Duels"), tr("1 v 1"), "shield", ("#5AA8FF", "#0A2A5A"), lambda: open_arena(ctx, "c4", "duel"), height=96),
             Tile(tr("Leaderboards"), tr("Global"), "trophy", ("#FF6FA8", "#5A1A7A"), lambda: ctx.window.nav("leaders"),
                  height=96)], 2))
+        self._preview(lay)                           # 9.3.2: a look at your own profile (nothing to click)
         lay.addStretch(1)
+
+    def _preview(self, lay) -> None:
+        ctx = self.ctx
+        name = ctx.online.username() if ctx.online.logged_in() else ""
+        if not name:
+            return
+        prof = getattr(ctx, "home_profile", None)
+        if not isinstance(prof, dict) or str(prof.get("username", "")).lower() != name.lower():
+            prof = None
+        if prof is None or time.monotonic() - float(getattr(ctx, "home_profile_at", 0) or 0) > 60:
+            ctx.home_profile_at = time.monotonic()        # one ask a minute at most
+
+            def got(ok: bool, data) -> None:
+                if not ok or not isinstance(data, dict):
+                    return
+                changed = data != getattr(ctx, "home_profile", None)
+                ctx.home_profile, ctx.home_profile_at = data, time.monotonic()
+                if changed and ctx.window.showing("hub"):
+                    ctx.reload_page("hub")
+            ctx.online.ask("rb_profile", {"name": name}, got)
+        if prof is None:
+            return
+        lay.addWidget(help_row(tr("Your profile")))
+        lay.addWidget(ProfileCard(ctx, prof, self.W))
+        badges = list(prof.get("badges") or [])
+        owned = set(badges)
+        eq = prof.get("equip") or {}
+        worn = [w for w in (eq.get(k) for k in ("badge1", "badge2", "badge3")) if w and
+                (w in owned or (w.endswith(":grey") and any(b.startswith(w[:-4]) for b in owned)))]
+        lay.addWidget(Showcase3(ctx, worn, self.W, False))
+        shelf = [eq.get(k) for k in ("trophy1", "trophy2", "trophy3") if eq.get(k)]
+        if shelf:
+            lay.addWidget(TrophyShelf(shelf, self.W))
+        if badges:
+            lay.addWidget(Label(tr("Badges") + f"  ·  {len(badges)}", 11, TEXT_DIM, bold=True))
+            lay.addWidget(BadgeStrip(ctx, badges[:18], [w for w in worn if w in badges[:18]], self.W))
 
     def open_sub(self, name) -> None:
         open_games_part(self.ctx, name, back="hub")
@@ -51881,10 +51909,11 @@ class PlayerPicker(QWidget):
 
 
 class StatsPage(Page):
-    """9.1: every graph in one place: your wealth, the casino, the mini games and the rewards, over 7, 30 or 90 days.
+    """9.1: every graph in one place: your wealth, the casino, the mini games and the rewards. 9.3.2: all time only,
+    counted from the stats reset (rb_config stats_from).
     9.2: any player's numbers too (Find a player), and Records: the numbers and history that were in Social."""
     key = "stats"
-    PERIODS = (7, 30, 90)
+    PERIODS = (0,)                                    # 9.3.2: all time only (0 = since the stats reset)
     PARTS = ("Overview", "Casino", "Mini games", "Rewards", "Records")
 
     def __init__(self, ctx) -> None:
@@ -51905,13 +51934,11 @@ class StatsPage(Page):
         head.addWidget(find, 0, Qt.AlignmentFlag.AlignTop)
         lay.addLayout(head)
         part = int(getattr(ctx, "stats_part", 0) or 0)
-        days = int(getattr(ctx, "stats_days", 30) or 30)
+        days = 0
         parts = Segmented([tr(x) for x in self.PARTS], part)
         parts.changed.connect(lambda i: (setattr(ctx, "stats_part", i), ctx.reload_page("stats")))
         lay.addWidget(parts)
-        period = Segmented([tr("{n} days", n=n) for n in self.PERIODS], self.PERIODS.index(days) if days in self.PERIODS else 1)
-        period.changed.connect(lambda i: (setattr(ctx, "stats_days", self.PERIODS[i]), self.fetch(True)))
-        lay.addWidget(period)
+        lay.addWidget(Segmented([tr("All time")], 0))
         if not ctx.online.logged_in():
             lay.addWidget(Label(tr("Log in to see your stats"), 12, TEXT_DIM))
             return
@@ -51969,7 +51996,7 @@ class StatsPage(Page):
 
     def fetch(self, force: bool = False) -> None:
         ctx = self.ctx
-        days = int(getattr(ctx, "stats_days", 30) or 30)
+        days = 0
         cache = getattr(ctx, "stats_data", None) or {}
         if days in cache and not force:
             return ctx.reload_page("stats")
@@ -52011,7 +52038,7 @@ class StatsPage(Page):
         net = sum(int(x.get("net") or 0) for x in s)
         tier = (now.get("tier") or {}).get("name") or ""
         lay.addWidget(StatTiles([(coins_text(int(now.get("coins") or 0)), tr("Coins now"), GOLD_TEXT),
-                                 (("+" if net > 0 else "") + coins_text(net), tr("Change in {n} days", n=len(s)),
+                                 (("+" if net > 0 else "") + coins_text(net), tr("Change, all time"),
                                   WIN if net > 0 else LOSE if net < 0 else None),
                                  (tr(tier), tr("Tier"), None), (str(int(now.get("level") or 0)), tr("Level"), None)]))
         lay.addWidget(StatChart(tr("Your coins"), "line", labels, [(tr("Coins"), [x.get("balance") for x in s], STAT_SERIES[0])],
@@ -52093,7 +52120,7 @@ class StatsPage(Page):
         best = max([sum(day) for day in per] + [0])
         keys = sum(int(x.get("keys") or 0) for x in s)
         mult = float((now.get("tier") or {}).get("mult") or 1)
-        lay.addWidget(StatTiles([(coins_text(total), tr("Free coins in {n} days", n=len(s)), GOLD_TEXT),
+        lay.addWidget(StatTiles([(coins_text(total), tr("Free coins, all time"), GOLD_TEXT),
                                  (coins_text(best), tr("Best day"), None), (str(keys), tr("Keys earned"), None),
                                  (f"×{mult:g}", tr("Your tier boost"), None)]))
         series = [(tr(name), [day[k] for day in per], STAT_SERIES[k]) for k, (name, _key) in enumerate(REWARD_SOURCES)]
@@ -76266,11 +76293,7 @@ class HoopsLevelCard(QWidget):
         p.setPen(QColor(TEXT_DIM))
         p.drawText(QRectF(S(14), S(50), r.width() - S(28), S(44)),
                    int(Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), tr(HOOPS_ABOUT[self.level]))
-        w_, l_ = int(self.rec.get("w") or 0), int(self.rec.get("l") or 0)
         p.setFont(font(10.5, QFont.Weight.Bold))
-        p.setPen(QColor(TEXT))
-        p.drawText(QRectF(S(14), r.bottom() - S(26), r.width() - S(28), S(18)), int(Qt.AlignmentFlag.AlignVCenter),
-                   tr("{w} W · {l} L", w=w_, l=l_))
         win = int(round(HOOPS_PAY[self.level][0] * self.mult))
         p.setPen(QColor(GOLD_TEXT))
         p.drawText(QRectF(S(14), r.bottom() - S(26), r.width() - S(28), S(18)),
@@ -76342,8 +76365,6 @@ def build_hoops(page, lay) -> None:
         cap = data.get("cap")
         txt = tr("Prizes today: {a}", a=coins_text(int(data.get("today") or 0)))
         txt += ("  ·  " + tr("limit {b}", b=coins_text(int(cap)))) if cap else ("  ·  " + tr("no daily limit"))
-        if mult > 1:
-            txt += "  ·  " + tr("your tier pays ×{m}", m=f"{mult:g}")
         hl.addWidget(Label(txt, 10.5, TEXT_DIM, wrap_w=page.W))
 
 
