@@ -1492,7 +1492,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "9.3.1"   # the version people see
-BUILD = "2026.11.26.28"      # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.26.29"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:

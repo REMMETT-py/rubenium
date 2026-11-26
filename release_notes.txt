@@ -1,6 +1,6 @@
-Rubenium 9.3
+Rubenium 9.3.1
 
-- NEW: Hoops, 2 v 2 basketball. You and a bot team-mate against two bots at Club, Regional, National or Professional level
-- Dribble, pass round the defence (lobs, bounce and curved passes), time your shots on the meter, steal, block and intercept
-- Ties go to overtime and every basket gets a replay
-- Wins pay more at a higher reward level, with a daily limit that grows with your tier (Casino Legend has none)
+- Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor and up to 6 times for Businessman
+- Casino Legend has no daily prize limit at all
+- Higher tiers keep more keys, forge more and can bet more in duels and rooms
+- A rank-up screen shows what your new tier unlocks, and clicking the tier bar on Home shows what every tier gets
