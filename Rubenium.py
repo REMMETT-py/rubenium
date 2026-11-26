@@ -39568,16 +39568,45 @@ BOARD_NOTES.update({"g:timing": "Best pay in one round", "g:colour": "Best pay i
                     "kart": "Best Karting score (%) on any circuit"})
 
 
+def leader_value(kind: str, row: dict) -> tuple:
+    """9.4: a board's number as text, and its colour."""
+    v = int(row.get("value") or 0)
+    gold = kind in ("coins", "worth", "horses") or kind.startswith("g:")
+    if kind == "level":
+        return tr("Lv {n}", n=int(row.get("level") or 0) or level_of_xp(v)), TEXT
+    if kind == "kart":
+        return f"{v / 10:.1f}%", TEXT
+    if kind == "sweeper":
+        secs = row.get("secs")
+        return (f"{float(secs):.1f} s" if secs is not None else "-"), TEXT
+    if kind == "wave":
+        return f"{coins_text(v)} m", TEXT
+    if gold:
+        return coins_text(v), GOLD_TEXT
+    if kind == "tap":
+        return f"{v}%", TEXT
+    if kind == "streak":
+        return tr("{n} days", n=v), TEXT
+    if kind == "hours":
+        return f"{v} h", TEXT
+    return str(v), TEXT
+
+
+MEDALS = {1: "#FFD34D", 2: "#C9D1D9", 3: "#D98A4A"}
+
+
 class LeaderRow(QWidget):
-    def __init__(self, row: dict, kind: str) -> None:
+    """9.4: one place on a board, roomier: the rank, their picture and frame, their name and tag, the number."""
+
+    def __init__(self, row: dict, kind: str, ctx=None) -> None:
         super().__init__()
-        self.row, self.kind = row, kind
-        self.setFixedHeight(S(30))
+        self.row, self.kind, self.ctx = row, kind, ctx
+        self.setFixedHeight(S(44))
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        r = QRectF(self.rect()).adjusted(0.5, 2.5, -0.5, -2.5)
         row = self.row
         rank = int(row.get("rank") or 0)
         if row.get("me"):
@@ -39586,59 +39615,128 @@ class LeaderRow(QWidget):
         else:
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha("#FFFFFF", 0.035))
-        p.drawRoundedRect(r, S(8), S(8))
-        medal = {1: "#FFD34D", 2: "#C9D1D9", 3: "#D98A4A"}.get(rank)
-        if medal:
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(medal))
-            p.drawEllipse(QPointF(r.left() + S(16), r.center().y()), S(9), S(9))
-            p.setPen(QColor("#0B0E10"))
-        else:
-            p.setPen(QColor(TEXT_DIM))
-        p.setFont(font(10.5, QFont.Weight.Bold))
-        p.drawText(QRectF(r.left() + S(4), r.top(), S(24), r.height()), int(Qt.AlignmentFlag.AlignCenter), str(rank))
-        p.setPen(QColor(TEXT))
-        p.setFont(font(11.5, QFont.Weight.DemiBold))
+        p.drawRoundedRect(r, S(10), S(10))
+        medal = MEDALS.get(rank)
+        p.setPen(QColor(medal) if medal else QColor(TEXT_DIM))
+        p.setFont(font(11, QFont.Weight.ExtraBold))
+        p.drawText(QRectF(r.left() + S(6), r.top(), S(34), r.height()), int(Qt.AlignmentFlag.AlignCenter),
+                   str(rank) if rank else "-")
         name = str(row.get("name", ""))
-        p.drawText(QRectF(r.left() + S(34), r.top(), r.width() - S(140), r.height()), int(Qt.AlignmentFlag.AlignVCenter), name)
-        pass
+        x = r.left() + S(44)
+        if self.ctx is not None and name:
+            paint_face(p, QRectF(x, r.center().y() - S(14), S(28), S(28)), self.ctx, name, 0)
+            x += S(38)
+        p.setPen(QColor(TEXT))
+        p.setFont(font(11.5, QFont.Weight.Bold))
+        fm = p.fontMetrics()
+        shown = fm.elidedText(name, Qt.TextElideMode.ElideRight, int(r.width() * 0.45))
+        p.drawText(QRectF(x, r.top(), r.width(), r.height()), int(Qt.AlignmentFlag.AlignVCenter), shown)
         tag = ECON.look_of(name).get("tag") if ECON is not None else ""
         if tag:
-            pass
-            paint_tag(p, r.left() + S(40) + p.fontMetrics().horizontalAdvance(name), r.center().y(), tag, 0.0, 8)
-        v = int(row.get("value") or 0)
-        if self.kind == "level":                              # 4.0: the level (from the XP), with its badge
-            pass
-            lv = int(row.get("level") or 0)
-            if not lv:
-                pass
-                lv = level_of_xp(v)
-            paint_level_badge(p, QPointF(r.right() - S(70), r.center().y()), S(26), lv, 0.0, aura=False)
+            paint_tag(p, x + S(8) + fm.horizontalAdvance(shown), r.center().y(), tag, 0.0, 8)
+        text, col = leader_value(self.kind, row)
+        right = r.adjusted(0, 0, -S(14), 0)
+        if self.kind == "level":
+            lv = int(row.get("level") or 0) or level_of_xp(int(row.get("value") or 0))
+            p.setFont(font(11.5, QFont.Weight.Bold))
+            w = p.fontMetrics().horizontalAdvance(text)
+            paint_level_badge(p, QPointF(right.right() - w - S(18), r.center().y()), S(24), lv, 0.0, aura=False)
+        p.setPen(QColor(col))
+        p.setFont(font(12, QFont.Weight.ExtraBold))
+        p.drawText(right, int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
+
+
+class LeaderPodium(QWidget):
+    """9.4: the top three side by side (2nd, 1st, 3rd): their banner, picture and frame, name, tag and number."""
+
+    def __init__(self, ctx, rows: list, kind: str, width: int) -> None:
+        super().__init__()
+        self.ctx, self.rows, self.kind = ctx, rows[:3], kind
+        self.setFixedSize(width, S(176))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._t = QTimer(self)
+        self._t.setInterval(50)
+        self._t.timeout.connect(self.update)
+        self._t.start()
+
+    def _slots(self) -> list:
+        w, gap = self.width(), S(10)
+        cw = (w - 2 * gap) / 3
+        order = [1, 0, 2]                          # 2nd on the left, 1st in the middle, 3rd on the right
+        out = []
+        for col, k in enumerate(order):
+            if k >= len(self.rows):
+                continue
+            top = S(0) if k == 0 else S(18)
+            out.append((QRectF(col * (cw + gap), top, cw, self.height() - top), self.rows[k]))
+        return out
+
+    def mouseReleaseEvent(self, e) -> None:
+        for rect, row in self._slots():
+            if rect.contains(e.position()) and row.get("name"):
+                try:
+                    open_player_stats(self.ctx, row["name"])
+                except Exception:  # noqa: BLE001
+                    log.exception("podium click")
+                return
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        for rect, row in self._slots():
+            r = rect.adjusted(0.5, 0.5, -0.5, -0.5)
+            rank = int(row.get("rank") or 0)
+            medal = QColor(MEDALS.get(rank, "#9AA5B1"))
+            name = str(row.get("name", ""))
+            look = ECON.look_of(name) if ECON is not None else {}
+            clip = QPainterPath()
+            clip.addRoundedRect(r, S(16), S(16))
+            p.save()
+            p.setClipPath(clip)
+            if look.get("banner"):
+                paint_banner(p, r, look["banner"], now, S(16), 0.55, int(look.get("gold") or 0))
+            else:
+                paint_surface(p, r, S(16), 0.05, 0.0, tint=medal, tint_a=0.14)
+            shade = QLinearGradient(r.topLeft(), r.bottomLeft())
+            shade.setColorAt(0, alpha("#000000", 0.05))
+            shade.setColorAt(1, alpha("#000000", 0.62))
+            p.fillRect(r, shade)
+            p.restore()
+            p.setPen(QPen(alpha(medal, 0.9 if rank == 1 else 0.6), S(1.6) if rank == 1 else S(1.2)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(r, S(16), S(16))
+            face = S(58) if rank == 1 else S(48)
+            fr = QRectF(r.center().x() - face / 2, r.top() + S(16), face, face)
+            glow = QRadialGradient(fr.center(), face)
+            glow.setColorAt(0, alpha(medal, 0.35))
+            glow.setColorAt(1, alpha(medal, 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(glow)
+            p.drawEllipse(fr.center(), face, face * 0.8)
+            paint_face(p, fr, self.ctx, name, 0, now=now)
+            p.setPen(Qt.PenStyle.NoPen)                          # the place, on a medal under the picture
+            p.setBrush(medal)
+            mc = QPointF(fr.center().x(), fr.bottom() + S(2))
+            p.drawEllipse(mc, S(11), S(11))
+            p.setPen(QColor("#0B0E10"))
+            p.setFont(font(10.5, QFont.Weight.Black))
+            p.drawText(QRectF(mc.x() - S(11), mc.y() - S(11), S(22), S(22)), int(Qt.AlignmentFlag.AlignCenter), str(rank))
             p.setPen(QColor(TEXT))
-            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                       tr("Lv {n}", n=lv))
-            return
-        if self.kind == "kart":                               # 9.2: tenths of a %
-            p.setPen(QColor(TEXT))
-            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                       f"{v / 10:.1f}%")
-            return
-        if self.kind == "sweeper":
-            secs = row.get("secs")
-            p.setPen(QColor(TEXT))
-            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                       f"{float(secs):.1f} s" if secs is not None else "-")
-            return
-        if self.kind == "wave":
-            p.setPen(QColor(TEXT))
-            p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
-                       f"{coins_text(v)} m")
-            return
-        text = coins_text(v) if self.kind in ("coins", "worth", "horses") or self.kind.startswith("g:") else (f"{v}%" if self.kind == "tap" else
-                                                                       (tr("{n} days", n=v) if self.kind == "streak" else
-                                                                        (f"{v} h" if self.kind == "hours" else str(v))))
-        p.setPen(QColor(GOLD_TEXT if self.kind in ("coins", "worth", "horses") or self.kind.startswith("g:") else TEXT))
-        p.drawText(r.adjusted(0, 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), text)
+            p.setFont(font(12.5 if rank == 1 else 11.5, QFont.Weight.ExtraBold))
+            fm = p.fontMetrics()
+            shown = fm.elidedText(name, Qt.TextElideMode.ElideRight, int(r.width() - S(16)))
+            ny = mc.y() + S(16)
+            p.drawText(QRectF(r.left() + S(8), ny, r.width() - S(16), S(20)), int(Qt.AlignmentFlag.AlignCenter), shown)
+            text, col = leader_value(self.kind, row)
+            p.setPen(QColor(col))
+            p.setFont(font(13 if rank == 1 else 12, QFont.Weight.Black))
+            p.drawText(QRectF(r.left() + S(8), ny + S(20), r.width() - S(16), S(22)), int(Qt.AlignmentFlag.AlignCenter), text)
+            if look.get("tag"):
+                p.save()
+                tw = S(70)
+                paint_tag(p, r.center().x() - tw / 2 + S(10), r.bottom() - S(14), look["tag"], now, 8)
+                p.restore()
 
 
 def build_leaders(page, lay) -> None:
@@ -39688,13 +39786,18 @@ def build_leaders(page, lay) -> None:
     rows = data[1]
     lay.addWidget(Label(tr(BOARD_NOTES[kind]), 10.5, TEXT_DIM))
     me = rows.get("me") or {}
-    if me:
-        lay.addWidget(Label(tr("Your rank: #{n}", n=me.get("rank", "?")), 11.5, GOLD_TEXT, bold=True))
     top = rows.get("top") or []
     if not top:
-        lay.addWidget(Label(tr("Nobody here yet."), 11.5, TEXT_DIM))
-    for row in top[:50]:
-        lay.addWidget(LeaderRow(row, kind))
+        return lay.addWidget(Label(tr("Nobody here yet."), 11.5, TEXT_DIM))
+    lay.addSpacing(S(4))
+    lay.addWidget(LeaderPodium(ctx, top, kind, page.W))            # 9.4: the top three, then everyone else
+    lay.addSpacing(S(6))
+    if me and not any(r_.get("me") for r_ in top[:50]):             # you, pinned, when you are further down
+        mine = dict(me, name=ctx.online.username() or "", me=True)
+        lay.addWidget(LeaderRow(mine, kind, ctx))
+        lay.addSpacing(S(4))
+    for row in top[3:50]:
+        lay.addWidget(LeaderRow(row, kind, ctx))
 
 
 # ================================================================ trade history
