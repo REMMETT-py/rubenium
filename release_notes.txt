@@ -1,6 +1,6 @@
-Rubenium 9.0.1
+Rubenium 9.3
 
-- The online side menu works again (it could not be clicked)
-- Leaving a free game takes you back to Rewards, not an old games list
-
-Already have Rubenium? It updates by itself. New here? Download RubeniumSetup.exe below.
+- NEW: Hoops, 2 v 2 basketball. You and a bot team-mate against two bots at Club, Regional, National or Professional level
+- Dribble, pass round the defence (lobs, bounce and curved passes), time your shots on the meter, steal, block and intercept
+- Ties go to overtime and every basket gets a replay
+- Wins pay more at a higher reward level, with a daily limit that grows with your tier (Casino Legend has none)
