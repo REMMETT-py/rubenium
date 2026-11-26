@@ -1533,7 +1533,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "9.4"   # the version people see
-BUILD = "2026.11.26.30"      # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.27.31"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12765,7 +12765,13 @@ NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritte
              "Key Forge: it refills every 12 hours, at midnight and noon, and the first press shows the price before you pay",
              "Hourly keys: 3 free keys every hour on Rewards",
              "Daily reward: a free case every day",
-             "Free spin: bigger prizes, up to 7 500 coins times your tier"]),
+             "Free spin: bigger prizes, up to 7 500 coins times your tier",
+             "Karting: tighter driving, the race plays inside the menu, half as loud engines, full grip kerbs, faster "
+             "bots and a 10 second countdown",
+             "Karting: the 10 fastest 3 lap times of each circuit, and you can race any of them as a ghost",
+             "Bots: Easy and Medium make real mistakes, Professional is much harder",
+             "Leaderboards: a podium for the top 3 and cleaner rows",
+             "Wave Rush is a solo mini game in Mini games"]),
     ("9.3.2", ["Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone",
                "Stats: one All time view, and every stat starts again from 0",
                "Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies",
@@ -51260,6 +51266,7 @@ FR.update({'All time': 'Depuis le début', 'Change, all time': 'Évolution, depu
            'Free coins, all time': 'Pièces gratuites, depuis le début'})  # 9.3.2
 FR.update({'See what every tier gets': 'Voir ce que chaque rang apporte', 'No limit': 'Sans limite', 'Free rewards': 'Récompenses gratuites', 'Mini game coins a day (each game)': 'Pièces des mini-jeux par jour (chaque jeu)', 'Karting prizes a day': 'Gains de Karting par jour', 'AFK coins a day': 'Pièces AFK par jour', 'Keys kept from time': 'Clés gardées avec le temps', 'Key Forge a day': 'Forge à clés par jour', 'Keys found in games a day': 'Clés trouvées en jouant par jour', 'Biggest duel bet': 'Plus grosse mise en duel', 'UP': 'PLUS', 'RANK UP': 'NOUVEAU RANG', 'WHAT YOU UNLOCKED': 'CE QUE TU DÉBLOQUES', 'Wealth tiers': 'Rangs de richesse', 'Every tier pays more and lifts your daily limits. A tier you reach is yours for good. Click a tier to see what it gets.': 'Chaque rang paie plus et relève tes limites par jour. Un rang atteint est à toi pour de bon. Clique sur un rang pour voir ce qu’il apporte.', "Let's go": 'C’est parti', 'Casino Legend is the top tier: no daily limits on mini games, Karting or AFK coins.': 'Légende du casino est le rang le plus haut : aucune limite par jour sur les mini-jeux, le Karting ou les pièces AFK.', 'Next: {name} at {n} wealth.': 'Prochain : {name} à {n} de richesse.', 'Rank up! You are now {name}': 'Nouveau rang ! Tu es maintenant {name}', 'Prizes today: {a} (no daily limit)': 'Gains du jour : {a} (sans limite par jour)', 'Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all': 'Des limites de gains plus hautes qui suivent ton rang de richesse : les mini-jeux, le Karting et les pièces AFK paient jusqu’à deux fois plus par jour pour Pauvre, jusqu’à 6 fois pour Businessman, et Légende du casino n’a plus aucune limite par jour', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms': 'Les rangs plus hauts gardent aussi plus de clés avec le temps, forgent plus de clés par jour, trouvent plus de clés en jouant et peuvent miser plus en duel et dans les salons', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets': 'Un écran de nouveau rang quand tu atteins un rang, avec tout ce qu’il débloque. Clique sur la barre de rang dans Accueil quand tu veux pour voir ce que chaque rang apporte'})   # 9.2.1: prize limits by tier, the rank-up screen
 FR.update({'A fresh start for everyone: coins, items, badges, mythics, cases, levels, trophies, stats and every leaderboard start again, and everyone gets the starter pack': 'Un nouveau départ pour tout le monde : pièces, objets, badges, mythiques, caisses, niveaux, trophées, stats et tous les classements repartent de zéro, et chacun reçoit le pack de départ', 'Tiers are harder: Average 50 000, Investor 250 000, Businessman 1 000 000, Casino Legend 5 000 000, and you go up one tier a day at most': 'Les rangs sont plus durs : Moyen 50 000, Investisseur 250 000, Businessman 1 000 000, Légende du casino 5 000 000, et tu montes d’un rang par jour au maximum', 'Key Forge: it refills every 12 hours, at midnight and noon, and the first press shows the price before you pay': 'Forge à clés : elle se recharge toutes les 12 heures, à minuit et à midi, et le premier clic montre le prix avant de payer', 'Hourly keys: 3 free keys every hour on Rewards': 'Clés horaires : 3 clés gratuites chaque heure dans Récompenses', 'Daily reward: a free case every day': 'Récompense du jour : une caisse gratuite chaque jour', 'Free spin: bigger prizes, up to 7 500 coins times your tier': 'Tour gratuit : de plus gros gains, jusqu’à 7 500 pièces fois ton rang', 'A free case every day. Missing a day starts again from day 1.': 'Une caisse gratuite chaque jour. Si tu rates un jour, tu repars du jour 1.', 'Your wealth = your coins + the shop value of your items. Average at 50 000, Investor at 250 000, Businessman at 1 000 000, Casino Legend at 5 000 000. You go up one tier a day at most. Free rewards are multiplied by your tier, and a tier you reach is yours for good.': 'Ta richesse = tes pièces + la valeur en boutique de tes objets. Moyen à 50 000, Investisseur à 250 000, Businessman à 1 000 000, Légende du casino à 5 000 000. Tu montes d’un rang par jour au maximum. Les récompenses gratuites sont multipliées par ton rang, et un rang atteint est à toi pour de bon.', '{name} tomorrow': '{name} demain', 'A free case every day': 'Une caisse gratuite chaque jour', 'Pay coins for a key. The price is 0.5% of your wealth (at least 250 coins). The forge refills at midnight and at noon, and higher tiers can forge more keys.': 'Paie des pièces pour une clé. Le prix est 0,5 % de ta richesse (au moins 250 pièces). La forge se recharge à minuit et à midi, et les rangs plus hauts forgent plus de clés.', 'refills in {t}': 'recharge dans {t}', '{n} of {cap} left': '{n} sur {cap} restantes', 'Refills in {t}': 'Recharge dans {t}', 'Pay {c}': 'Payer {c}', 'Hourly keys': 'Clés horaires', 'Next in {t}': 'Prochaines dans {t}', '{n} free keys every hour': '{n} clés gratuites chaque heure', 'Claim {n} keys': 'Prendre {n} clés'})   # 9.4: harder tiers, the 12 hour forge, hourly keys, daily cases
+FR.update({'Karting: tighter driving, the race plays inside the menu, half as loud engines, full grip kerbs, faster bots and a 10 second countdown': 'Karting : une conduite plus précise, la course se joue dans le menu, des moteurs deux fois moins forts, des vibreurs qui accrochent, des bots plus rapides et un compte à rebours de 10 secondes', 'Karting: the 10 fastest 3 lap times of each circuit, and you can race any of them as a ghost': 'Karting : les 10 meilleurs temps en 3 tours de chaque circuit, et tu peux affronter chacun en fantôme', 'Bots: Easy and Medium make real mistakes, Professional is much harder': 'Bots : Facile et Moyen font de vraies erreurs, Professionnel est bien plus dur', 'Leaderboards: a podium for the top 3 and cleaner rows': 'Classements : un podium pour le top 3 et des lignes plus claires', 'Wave Rush is a solo mini game in Mini games': 'Wave Rush devient un mini-jeu solo dans Mini-jeux', 'Fastest times': 'Meilleurs temps', 'The 10 fastest 3 lap races of each circuit. Press Race to drive against that run as a ghost.': 'Les 10 courses en 3 tours les plus rapides de chaque circuit. Appuie sur Course pour affronter cette course en fantôme.', 'No times yet. Finish a 3 lap race to be the first.': 'Pas encore de temps. Termine une course en 3 tours pour être le premier.', 'This run could not be loaded.': 'Impossible de charger cette course.', 'Your best: {t} (#{n})': 'Ton meilleur : {t} (n°{n})', 'Ghost: {name}': 'Fantôme : {name}', 'Top 10 time on {c}: #{n}': 'Top 10 sur {c} : n°{n}'})   # 9.4: karting time boards and ghosts
 
 
 # ================================================================ 9.2.1: what each tier gets, and the rank-up screen
@@ -71342,11 +71349,68 @@ class KartView(QWidget):
         self._fps = 60.0
         self.over = False
         self.minimap = self._minimap_path()
+        self.rec: list = []            # 9.4: my run, a few times a second (the time boards' ghosts)
+        self._rec_n = 0
+        self.ghost = None              # 9.4: a run from the time board, raced as a see-through kart (seat 9)
         self.timer = QTimer(self)
         self.timer.setTimerType(Qt.TimerType.PreciseTimer)
         self.timer.setInterval(8)
         self.timer.timeout.connect(self._tick)
         self.timer.start()
+
+    # -- 9.4: ghosts
+    GHOST_SEAT = 9
+
+    def add_ghost(self, name: str, frames: list) -> None:
+        """A run from the time board: a kart nobody can touch that drives exactly as that player did."""
+        if not frames:
+            return
+        mine = self.seats.get(self.me, {})
+        k = self.race.add(self.GHOST_SEAT, int(mine.get("slot") or 0))
+        self.race.remote.add(self.GHOST_SEAT)
+        k.ghost = 1e9
+        self.seats[self.GHOST_SEAT] = {"seat": self.GHOST_SEAT, "slot": int(mine.get("slot") or 0), "name": name, "ghost": True}
+        self.ghost = {"frames": frames, "i": 0, "name": name}
+        self.line_elo, self.line_pace, self.line_drift = 0, 0.0, 0.0        # no ideal line in a ghost race
+
+    def _ghost_move(self) -> None:
+        g = self.ghost
+        if g is None:
+            return
+        fr, t = g["frames"], self.race.t
+        k = self.race.karts.get(self.GHOST_SEAT)
+        if k is None or t < fr[0][0]:
+            return
+        i = g["i"]
+        while i + 1 < len(fr) and fr[i + 1][0] <= t:
+            i += 1
+        g["i"] = i
+        a = fr[i]
+        b = fr[i + 1] if i + 1 < len(fr) else a
+        u = 0.0 if b[0] <= a[0] else clamp((t - a[0]) / (b[0] - a[0]), 0.0, 1.0)
+        snap = list(a[1:15]) + [0] * max(0, 14 - len(a[1:15]))
+        snap[0] = a[1] + (b[1] - a[1]) * u
+        snap[1] = a[2] + (b[2] - a[2]) * u
+        snap[2] = a[3] + wrap_pi(b[3] - a[3]) * u
+        snap[7] = int(snap[7]) | 32                                          # always see-through
+        k.x, k.y, k.h = snap[0], snap[1], snap[2]
+        self.race.apply_remote(self.GHOST_SEAT, snap, 0.0)
+        k.x, k.y, k.h = snap[0], snap[1], snap[2]
+        k.ghost = 1e9
+        if i + 1 >= len(fr) and not k.done:
+            k.done, k.finish_t = True, a[0]
+
+    def _record(self) -> None:
+        self._rec_n += 1
+        if self._rec_n % 8 == 0 and self.race.t >= 0 and not self.kart.done:      # 15 a second
+            self.rec.append([round(self.race.t, 3)] + self.kart.snapshot())
+
+    def recording(self) -> str:
+        """My run, packed for the server (zlib + base64 of the frames)."""
+        import base64
+        import zlib
+        frames = self.rec + [[round(self.kart.finish_t, 3)] + self.kart.snapshot()] if self.kart.done else self.rec
+        return base64.b64encode(zlib.compress(json.dumps(frames, separators=(",", ":")).encode(), 9)).decode()
 
     # -- the network
     def feed(self, seat: int, snap: list, their_t: float) -> None:
@@ -71443,7 +71507,9 @@ class KartView(QWidget):
             while self.race.t + KART_DT <= target and steps < 24:
                 self.race.step({self.me: inp})
                 steps += 1
+                self._record()
                 self._events()
+            self._ghost_move()
             if steps >= 24:
                 self.race.t = target
             self._auto_watch()
@@ -72507,23 +72573,88 @@ def build_kart(page, lay) -> None:
         join.clicked.connect(do_join)
         r3.addWidget(join)
         hl.addLayout(r3)
-    # the boards: the top 5 of each circuit (best score)
-    tops = list(data.get("top") or [])
-    if tops:
-        hl.addWidget(heading(tr("Best scores")))
-        for i in range(3):
-            rows = [t for t in tops if int(t.get("t", -1)) == i][:5]
-            if not rows:
-                continue
-            hl.addWidget(Label(tr(kart_track(i).name), 11, TEXT, bold=True))
-            for t in rows:
-                r4 = hbox(spacing=8)
-                r4.addWidget(Label(f"{int(t.get('rk') or 0)}.  {t.get('name', '?')}", 11, TEXT_DIM), 1)
-                if t.get("ms"):
-                    r4.addWidget(Label(kart_time(int(t["ms"]) / 1000), 10.5, TEXT_FAINT).fit())
-                r4.addWidget(Label(f"{float(t.get('score') or 0):.1f}%", 11, GOLD_TEXT, bold=True).fit())
-                hl.addLayout(r4)
+    # 9.4: the time boards: the 10 fastest 3 lap races of each circuit; race any of them as a ghost
+    _kart_times_panel(page, hl, o)
 
+
+def _kart_times_panel(page, hl, o) -> None:
+    ctx = page.ctx
+    if getattr(ctx, "kart_times_missing", False):
+        return
+    cache = getattr(ctx, "kart_times", None)
+    if not isinstance(cache, dict):
+        cache = ctx.kart_times = {}
+    tab = int(getattr(ctx, "kart_times_tab", o["track"]))
+    hl.addWidget(heading(tr("Fastest times")))
+    hl.addWidget(Label(tr("The 10 fastest 3 lap races of each circuit. Press Race to drive against that run as a ghost."),
+                       10.5, TEXT_DIM, wrap_w=page.W))
+    seg = Segmented([tr(kart_track(i).name) for i in range(3)], tab)
+    seg.changed.connect(lambda i: (setattr(ctx, "kart_times_tab", i), ctx.reload_page("games")))
+    hl.addWidget(seg)
+    d = cache.get(tab)
+    if d is None:
+        def got(ok: bool, r) -> None:
+            if not ok:
+                if "function" in str(r).lower() or "soon" in str(r).lower():
+                    ctx.kart_times_missing = True
+                return
+            ctx.kart_times[tab] = r if isinstance(r, dict) else {"top": []}
+            if ctx.window.showing("games") and getattr(ctx, "games_sub", None) == "kart":
+                ctx.reload_page("games")
+        ctx.online.ask("rb_kart_times", {"track": tab}, got)
+        hl.addWidget(Label(tr("Loading…"), 11, TEXT_FAINT))
+        return
+    top = list(d.get("top") or [])
+    if not top:
+        hl.addWidget(Label(tr("No times yet. Finish a 3 lap race to be the first."), 11, TEXT_FAINT, wrap_w=page.W))
+
+    def race(gid: str, btn) -> None:
+        btn.setEnabled(False)
+
+        def got(ok: bool, g) -> None:
+            if not ok or not isinstance(g, dict):
+                btn.setEnabled(True)
+                return ctx.toast(tr(str(g)), "warn")
+            try:
+                import base64
+                import zlib
+                frames = json.loads(zlib.decompress(base64.b64decode(str(g.get("data") or ""))).decode())
+            except Exception:  # noqa: BLE001
+                btn.setEnabled(True)
+                return ctx.toast(tr("This run could not be loaded."), "warn")
+            ctx.kart_ghost_next = {"name": g.get("name") or "?", "ms": int(g.get("ms") or 0),
+                                   "track": int(g.get("track") or 0), "frames": frames}
+
+            def made(ok2: bool, r) -> None:
+                if not ok2:
+                    ctx.kart_ghost_next = None
+                    btn.setEnabled(True)
+                    return ctx.toast(tr(str(r)), "warn")
+                sfx.play("on")
+                KartLink.open(ctx, r)
+                ctx.reload_page("games")
+            ctx.econ.call("rb_kart_create", {"size": 1, "track": int(g.get("track") or 0), "laps": 3,
+                                             "bot_elo": o["elo"], "bot": False, "collide": o["collide"],
+                                             "boost": o["boost"], "damage": o["damage"]}, made)
+        ctx.online.ask("rb_kart_ghost", {"gid": gid}, got)
+
+    for t in top[:10]:
+        r = hbox(spacing=8)
+        rk = int(t.get("rank") or 0)
+        num = Label(f"{rk}.", 12, MEDALS.get(rk, TEXT_DIM), bold=True)
+        num.setFixedWidth(S(28))
+        r.addWidget(num)
+        r.addWidget(Label(str(t.get("name") or "?"), 12, TEXT, bold=bool(t.get("me"))), 1)
+        r.addWidget(Label(kart_time(int(t.get("ms") or 0) / 1000), 12, GOLD_TEXT, bold=True).fit())
+        btn = Button(tr("Race"), "ghost", 30, icon="play")
+        btn.setFixedWidth(S(86))
+        btn.clicked.connect(lambda _c=False, gid=str(t.get("id")), b=btn: race(gid, b))
+        r.addWidget(btn)
+        hl.addLayout(r)
+    mine = d.get("mine")
+    if isinstance(mine, dict) and not any(t.get("me") for t in top[:10]):
+        hl.addWidget(Label(tr("Your best: {t} (#{n})", t=kart_time(int(mine.get("ms") or 0) / 1000),
+                              n=int(mine.get("rank") or 0)), 11, TEXT_DIM))
 
 def _kart_room_panel(page, lay, link) -> None:
     """In a room: the seats while it fills (the host can start any time), then the race (in its window), then the
@@ -73133,12 +73264,20 @@ class KartLink(QObject):
         self.view = view
         view.first_timer = kart_opts(self.ctx).get("races", 0) < 3
         view.finished.connect(self._finished)
+        gh = getattr(self.ctx, "kart_ghost_next", None)               # 9.4: racing a run from the time board
+        self.ghost = None
+        if isinstance(gh, dict) and int(gh.get("track", -1)) == int(st.get("track") or 0) and len(seats) == 1:
+            self.ghost = gh
+            view.add_ghost(str(gh.get("name") or "?"), gh.get("frames") or [])
+        self.ctx.kart_ghost_next = None
         self.show_window()
         self.win.set_view(view)
         self.win.title.set_text(tr("Karting") + "  ·  " + tr(view.tr.name) + "  ·  " +
                                 tr("{n} laps", n=int(st.get("laps") or 3)) +
                                 (("  ·  " + tr("Bot {n} ({l})", n=int(st.get("bot_elo") or 0), l=tr(bot_level_name(int(st.get("bot_elo") or 0)))))
-                                 if st.get("bot") else "  ·  " + tr("Ideal line: {l}", l=tr(bot_level_name(int(st.get("bot_elo") or 0))))))
+                                 if st.get("bot") else
+                                 ("  ·  " + tr("Ghost: {name}", name=str(self.ghost.get("name") or "?"))) if self.ghost else
+                                 "  ·  " + tr("Ideal line: {l}", l=tr(bot_level_name(int(st.get("bot_elo") or 0))))))
         # paint the circuit while the lights count down (a little each frame)
         QTimer.singleShot(0, self._prepare)
 
@@ -73256,11 +73395,30 @@ class KartLink(QObject):
         def done(ok: bool, d) -> None:
             if ok:
                 self.got_state(d)
+                self._save_run()
             else:
                 self.ctx.toast(tr(str(d)), "warn")
         self.ctx.econ.call("rb_kart_finish", {"rid": self.rid, "ms": int(round(k.finish_t * 1000)), "laps": laps,
                                               "best": min(laps), "blowups": k.blowups, "hits": k.hits,
                                               "turbos": k.drift_turbos, "prog": k.prog, "is_bot": False}, done)
+
+    def _save_run(self) -> None:
+        """9.4: a 3 lap race: the run goes to the time board (the server keeps it if the finish counted)."""
+        v = self.view
+        if v is None or int((self.st or {}).get("laps") or 3) != 3 or not v.kart.done or len(v.rec) < 20:
+            return
+        try:
+            data = v.recording()
+        except Exception:  # noqa: BLE001
+            return log.exception("kart run")
+        track = int((self.st or {}).get("track") or 0)
+
+        def got(ok: bool, d) -> None:
+            if ok and isinstance(d, dict) and d.get("saved") and int(d.get("rank") or 99) <= 10:
+                sfx.play("levelup")
+                self.ctx.toast(tr("Top 10 time on {c}: #{n}", c=tr(kart_track(track).name), n=int(d["rank"])))
+            self.ctx.kart_times = {}
+        self.ctx.online.ask("rb_kart_ghost_save", {"rid": self.rid, "data": data}, got)
 
     # -- buttons
     def start(self) -> None:
@@ -73276,6 +73434,8 @@ class KartLink(QObject):
         """Solo: the same race again at once. In a room: back to Karting to set up the next one."""
         st = self.st or {}
         solo = int(st.get("size") or 1) == 1
+        if solo and getattr(self, "ghost", None):                 # 9.4: the same ghost again
+            self.ctx.kart_ghost_next = self.ghost
         self.close()
         if solo:
             o = kart_opts(self.ctx)
