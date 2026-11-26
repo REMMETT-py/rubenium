@@ -1491,7 +1491,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.3"       # the version people see
+VERSION_NAME = "9.3.1"   # the version people see
 BUILD = "2026.11.26.28"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
@@ -3372,8 +3372,14 @@ class Econ(QObject):
 
     def afk_capped(self) -> bool:
         """Today's AFK coins are all earned (the timer still runs for keys)."""
+        t = getattr(self, "tier", None) if isinstance(getattr(self, "tier", None), dict) else {}
         try:
             cap = int(float(self.cfg.get("coin_day_cap", 0) or 0)) + self.streak_bonus() * 72
+            if "cap_x" in t:                                  # 9.2.1: the cap follows the tier (0 = none)
+                cx = float(t.get("cap_x") or 0)
+                if cx <= 0:
+                    return False
+                cap = int(cap * float(t.get("mult") or 1) * cx)
         except (TypeError, ValueError):
             return False
         return cap > 0 and self.day_coins >= cap
@@ -3545,7 +3551,30 @@ class Econ(QObject):
                     if (old[0] or {}).get("tier") != self.tier.get("tier"):
                         self.ctx.scratch_odds = None          # the prizes shown follow the tier
                     self.looks_changed.emit()
+                self._rank_up_check()
         self.online.ask("rb_my_tier", {}, got)
+
+    def _rank_up_check(self) -> None:
+        """9.2.1: a tier higher than the last one shown gets the rank-up screen, once (the server keeps 'seen').
+        A server that never showed one before just remembers the tier now, without a screen."""
+        t = getattr(self, "tier", None)
+        if not isinstance(t, dict) or "seen" not in t:
+            return                                            # an older server: no rank-up screen
+        try:
+            cur, seen = int(t.get("tier") or 0), t.get("seen")
+        except (TypeError, ValueError):
+            return
+        if seen is None:
+            self.online.ask("rb_tier_seen", {"t": cur}, lambda _ok, _d: None)
+            t["seen"] = cur
+            return
+        seen = int(seen)
+        if cur <= seen or getattr(self, "_rank_shown", -1) >= cur:
+            return
+        self._rank_shown = cur
+        t["seen"] = cur
+        self.online.ask("rb_tier_seen", {"t": cur}, lambda _ok, _d: None)
+        QTimer.singleShot(400, lambda: show_rank_up(self.ctx, seen, cur))
 
     # -- 4.0: levels and locks
     def take_xp(self, x) -> None:
@@ -12681,6 +12710,7 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.3.1", ['Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets']),
     ("9.3", ["NEW: Hoops, 2 v 2 basketball. You and a bot team-mate against two bots: Club, Regional, National or Professional. Dribble with Space, pass round the defence (lobs, bounce and curved passes), time your shots on the meter, steal, block and intercept. Ties go to overtime, every basket gets a replay, and wins pay more at a higher tier"]),
     ("9.2", ["NEW: Karting, a racing game for 1 to 3 players and always one bot, on 3 circuits. Boost, drift for mini turbos, slipstream, bump the others, and big crashes wreck your kart. Pick the bot from 100 to 2500 (Professional is a perfect driver), and after each race everyone gets a score out of 100%", "Mini Golf rooms: pick the bots' level, from Easy to Professional. Bots play every hole with the real ball physics, and Professional finds a hole in one wherever there is one", 'Mini games pay double: Timing, Cups, Colour Pick, SFX Match, Connect 4, Beat Tap, Parking, Memory, Block Blast, Minesweeper and every bot game', 'The top bot is called Professional in every game, and it plays the strongest moves it can find', 'NEW: Trifade, endless noughts and crosses. You only keep 3 marks: your 4th takes your oldest away, so the game goes on until someone wins. Against bots from Easy to Professional (it always starts and plays the best move every time), or against players', 'NEW: Mazelock, a duel board game. Race your pawn to the other side and place walls to block the way. Against bots from Easy to Professional (it always starts and plays the strongest moves it can find), or against players', 'Play is clearer: Mini games, then Duels (Connect 4, Battleships, Mazelock, Trifade, each against a bot or a player), then Multiplayer (Mini Golf and Wave Rush, up to 4 players)', 'Wave Rush rooms for 2 to 4 players: everyone races live in their own colour, and after a crash you watch the others (switch with the arrows or by clicking a name). The longest run wins the pot', 'Wave Rush: the practice ghost has its own clear card, and it never shows in races against players', 'Trophies have their own page in the side menu', 'A new Home: your tier, the free rewards waiting for you, the game that is live now and the games you played last', 'Jackpot and Horse Racing take turns every 20 minutes on a fixed clock. The next one stays locked with a countdown, and bots keep both going', 'Stats: look up any player by typing a few letters of their name, and a new Records page. Player numbers moved out of Friends into Stats', 'Fresh season: everyone restarts with 2 500 coins and 5 keys, and every leaderboard, streak and quest starts again. Items stay, except for OG players, who start completely fresh with the starter pack. Leaderboards are Global only', 'Fixes: starting a mini game no longer says you already have one going, the scratch card takes you back when it is done and its chances sit under the card, readable text on light buttons', 'LEAVE CASINO door, animation previews that play when you hover them, one online menu size, the daily reward sits lower', 'Coinflip: fewer huge bot flips, and bots take longer to match a big flip (up to 2 min, you are told). Reversi is gone, and so are the Titanium White and Black fonts']),
     ("9.1.1", ['A starter pack for everyone: 2 500 coins, 5 keys, 3 Starter Cases and 5 Standard Cases', 'Lower tiers: Average 25 000, Investor 100 000, Businessman 250 000, Casino Legend 1 000 000. Everyone starts at Poor', 'Your wealth is exact now: your coins + the shop value of the items you got since 9.1. The tier bar shows it, and hovering it shows the coins and items parts']),
@@ -36738,14 +36768,16 @@ def _arena_duel_setup(page, lay, kind: str, lobby: dict, poll: QTimer) -> None:
         lay.addLayout(row)
     lay.addWidget(heading(tr("Open a duel")))
     bi = int(getattr(ctx, "arena_bet", 0) or 0)
-    seg = Segmented([tr("Free") if b == 0 else coins_text(b) for b in ARENA_BETS], bi)
+    arena_bets = duel_bets(ctx, ARENA_BETS)                   # 9.2.1: bigger bets by tier
+    bi = min(bi, len(arena_bets) - 1)
+    seg = Segmented([tr("Free") if b == 0 else coins_text(b) for b in arena_bets], bi)
     seg.changed.connect(lambda i: setattr(ctx, "arena_bet", i))
     lay.addWidget(seg)
     go = Button(tr("Open a duel"), "primary", 40, icon="users")
 
     def create() -> None:
         go.setEnabled(False)
-        bet = ARENA_BETS[int(getattr(ctx, "arena_bet", 0) or 0)]
+        bet = arena_bets[min(len(arena_bets) - 1, int(getattr(ctx, "arena_bet", 0) or 0))]
         arena_call(page, "rb_bg_create", {"kind": kind, "bet": bet},
                    lambda d: arena_take(page, d) if d else go.setEnabled(True))
     go.clicked.connect(create)
@@ -50596,10 +50628,16 @@ class TierBanner(QWidget):
                                  "you reach a tier you keep it."), tr("Wealth tier")), 0, Qt.AlignmentFlag.AlignTop)
         self._fill = Tween(self, 0.0, self.update, QEasingCurve.Type.OutCubic)
         self._want = None
+        self.setCursor(Qt.CursorShape.PointingHandCursor)       # 9.2.1: a click shows what every tier gets
+        self.setToolTip(tr("See what every tier gets"))
         self._t = QTimer(self)
         self._t.setInterval(40)
         self._t.timeout.connect(self._tick)
         self._t.start()
+
+    def mouseReleaseEvent(self, e) -> None:
+        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
+            open_tier_guide(self.ctx)
 
     def _frac(self, t: dict) -> float:
         i = int(t.get("tier", 0) or 0)
@@ -50702,6 +50740,339 @@ class TierBanner(QWidget):
             al = Qt.AlignmentFlag.AlignLeft if k == 0 else Qt.AlignmentFlag.AlignRight if k == n - 1 else Qt.AlignmentFlag.AlignHCenter
             bx = QRectF(cx - (0 if k == 0 else S(90) if k == n - 1 else S(45)), y + S(7), S(90), S(14))
             p.drawText(bx, int(al | Qt.AlignmentFlag.AlignVCenter), tr(WEALTH_TIERS[k][0]))
+
+
+FR.update({'See what every tier gets': 'Voir ce que chaque rang apporte', 'No limit': 'Sans limite', 'Free rewards': 'Récompenses gratuites', 'Mini game coins a day (each game)': 'Pièces des mini-jeux par jour (chaque jeu)', 'Karting prizes a day': 'Gains de Karting par jour', 'AFK coins a day': 'Pièces AFK par jour', 'Keys kept from time': 'Clés gardées avec le temps', 'Key Forge a day': 'Forge à clés par jour', 'Keys found in games a day': 'Clés trouvées en jouant par jour', 'Biggest duel bet': 'Plus grosse mise en duel', 'UP': 'PLUS', 'RANK UP': 'NOUVEAU RANG', 'WHAT YOU UNLOCKED': 'CE QUE TU DÉBLOQUES', 'Wealth tiers': 'Rangs de richesse', 'Every tier pays more and lifts your daily limits. A tier you reach is yours for good. Click a tier to see what it gets.': 'Chaque rang paie plus et relève tes limites par jour. Un rang atteint est à toi pour de bon. Clique sur un rang pour voir ce qu’il apporte.', "Let's go": 'C’est parti', 'Casino Legend is the top tier: no daily limits on mini games, Karting or AFK coins.': 'Légende du casino est le rang le plus haut : aucune limite par jour sur les mini-jeux, le Karting ou les pièces AFK.', 'Next: {name} at {n} wealth.': 'Prochain : {name} à {n} de richesse.', 'Rank up! You are now {name}': 'Nouveau rang ! Tu es maintenant {name}', 'Prizes today: {a} (no daily limit)': 'Gains du jour : {a} (sans limite par jour)', 'Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all': 'Des limites de gains plus hautes qui suivent ton rang de richesse : les mini-jeux, le Karting et les pièces AFK paient jusqu’à deux fois plus par jour pour Pauvre, jusqu’à 6 fois pour Homme d’affaires, et Légende du casino n’a plus aucune limite par jour', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms': 'Les rangs plus hauts gardent aussi plus de clés avec le temps, forgent plus de clés par jour, trouvent plus de clés en jouant et peuvent miser plus en duel et dans les salons', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets': 'Un écran de nouveau rang quand tu atteins un rang, avec tout ce qu’il débloque. Clique sur la barre de rang dans Accueil quand tu veux pour voir ce que chaque rang apporte'})   # 9.2.1: prize limits by tier, the rank-up screen
+
+
+# ================================================================ 9.2.1: what each tier gets, and the rank-up screen
+# The server sends the real numbers (rb_my_tier 'perks', from Admin > Economy); this copy is only used by an app that
+# talks to an older server. None = no daily limit.
+TIER_PERKS_FALLBACK = [
+    {"tier": 0, "mult": 1.0, "mini_cap": 6000, "kart_cap": 5000, "afk_cap": 4800, "key_cap": 10, "forge": 5,
+     "key_find": 16, "duel_max": 10000},
+    {"tier": 1, "mult": 1.3, "mini_cap": 11700, "kart_cap": 9750, "afk_cap": 9360, "key_cap": 15, "forge": 8,
+     "key_find": 20, "duel_max": 20000},
+    {"tier": 2, "mult": 1.8, "mini_cap": 21600, "kart_cap": 18000, "afk_cap": 17280, "key_cap": 20, "forge": 12,
+     "key_find": 25, "duel_max": 40000},
+    {"tier": 3, "mult": 2.6, "mini_cap": 46800, "kart_cap": 39000, "afk_cap": 37440, "key_cap": 30, "forge": 20,
+     "key_find": 35, "duel_max": 75000},
+    {"tier": 4, "mult": 4.0, "mini_cap": None, "kart_cap": None, "afk_cap": None, "key_cap": 50, "forge": 40,
+     "key_find": 60, "duel_max": 150000}]
+DUEL_BIG_BETS = (10000, 25000, 50000, 100000, 150000)
+
+
+def tier_perks(ctx) -> list:
+    """What every wealth tier gets, Poor first (from the server when it says, else the 9.2.1 defaults)."""
+    t = getattr(getattr(ctx, "econ", None), "tier", None)
+    perks = t.get("perks") if isinstance(t, dict) else None
+    if isinstance(perks, list) and len(perks) == len(WEALTH_TIERS) and all(isinstance(x, dict) for x in perks):
+        return perks
+    return TIER_PERKS_FALLBACK
+
+
+def tier_duel_max(ctx) -> int:
+    i = max(0, min(len(WEALTH_TIERS) - 1, int(tier_info(ctx).get("tier", 0) or 0)))
+    try:
+        return int(tier_perks(ctx)[i].get("duel_max") or 5000)
+    except (TypeError, ValueError):
+        return 5000
+
+
+def duel_bets(ctx, base: list, cap: int | None = None) -> list:
+    """The bets to pick from in a duel or a room: the usual ones, then the two biggest your tier allows (9.2.1)."""
+    top = tier_duel_max(ctx) if cap is None else int(cap)
+    big = [b for b in DUEL_BIG_BETS if b > max(base) and b <= top][-2:]
+    return list(base) + big
+
+
+def perk_lines(perk: dict) -> list:
+    """(what, value text, sort value) for one tier. The sort value is how good it is (no limit is the best)."""
+    def cap(v):
+        return (tr("No limit"), float("inf")) if v is None else (coins_text(int(v)), float(v))
+
+    def num(v, d):
+        try:
+            return int(float(v if v is not None else d))
+        except (TypeError, ValueError):
+            return d
+    rows = [(tr("Free rewards"), "×" + f"{float(perk.get('mult') or 1):g}", float(perk.get("mult") or 1))]
+    for key, what in (("mini_cap", tr("Mini game coins a day (each game)")), ("kart_cap", tr("Karting prizes a day")),
+                      ("afk_cap", tr("AFK coins a day"))):
+        rows.append((what, *cap(perk.get(key))))
+    for key, what, d in (("key_cap", tr("Keys kept from time"), 10), ("forge", tr("Key Forge a day"), 5),
+                         ("key_find", tr("Keys found in games a day"), 16)):
+        n = num(perk.get(key), d)
+        rows.append((what, str(n), float(n)))
+    n = num(perk.get("duel_max"), 5000)
+    rows.append((tr("Biggest duel bet"), coins_text(n), float(n)))
+    return rows
+
+
+class RankUpHero(QWidget):
+    """The top of the rank-up screen: the tier's emblem in its colour, turning rays, RANK UP and old → new."""
+
+    def __init__(self, old: int, new: int, title: str, width: int) -> None:
+        super().__init__()
+        self.old, self.new, self.title = old, new, title
+        self.setFixedSize(width, S(176))
+        self._born = time.monotonic()
+        self._t = QTimer(self)
+        self._t.setInterval(33)
+        self._t.timeout.connect(self.update)
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        now = time.monotonic()
+        k = min(1.0, (now - self._born) / 0.6)
+        rise = 1 - (1 - k) ** 3
+        i = max(0, min(len(WEALTH_TIERS) - 1, self.new))
+        col = QColor(WEALTH_TIERS[i][3])
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        paint_surface(p, r, S(18), 0.05, 0.0, tint=col, tint_a=0.18)
+        c = QPointF(r.center().x(), r.top() + S(62))
+        p.save()                                               # rays, inside the card's round corners
+        clip = QPainterPath()
+        clip.addRoundedRect(r, S(18), S(18))
+        p.setClipPath(clip)
+        p.translate(c)
+        p.rotate(now * 18)
+        p.setPen(Qt.PenStyle.NoPen)
+        for _k in range(14):
+            p.rotate(360 / 14)
+            ray = QPainterPath(QPointF(0, 0))
+            ray.lineTo(-S(9), -S(150) * rise)
+            ray.lineTo(S(9), -S(150) * rise)
+            ray.closeSubpath()
+            p.setBrush(alpha(col, 0.10))
+            p.drawPath(ray)
+        p.restore()
+        glow = QRadialGradient(c, S(56))
+        glow.setColorAt(0, alpha(col, 0.55))
+        glow.setColorAt(1, alpha(col, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, S(56), S(56))
+        pulse = 1 + 0.04 * math.sin(now * 4)
+        rad = S(34) * (0.5 + 0.5 * rise) * pulse
+        p.setBrush(alpha(col, 0.22))
+        p.setPen(QPen(mix(col, QColor("#FFFFFF"), 0.3), S(2)))
+        p.drawEllipse(c, rad, rad)
+        p.save()
+        p.translate(c)
+        sc = rad / S(34) * S(40) / 20
+        p.scale(sc, sc)
+        draw_icon(p, TIER_ICONS[i], mix(col, QColor("#FFFFFF"), 0.45))
+        p.restore()
+        p.setOpacity(min(1.0, k * 1.5))
+        p.setFont(font(22, QFont.Weight.Black, 3))
+        p.setPen(mix(col, QColor("#FFFFFF"), 0.35))
+        p.drawText(QRectF(r.left(), c.y() + S(40), r.width(), S(30)), int(Qt.AlignmentFlag.AlignCenter), self.title)
+        p.setFont(font(13, QFont.Weight.Bold))
+        if self.old < self.new:
+            o = max(0, min(len(WEALTH_TIERS) - 1, self.old))
+            a, b = tr(WEALTH_TIERS[o][0]), tr(WEALTH_TIERS[i][0])
+            fm = p.fontMetrics()
+            arrow = "  →  "
+            wa, wr, wb = fm.horizontalAdvance(a), fm.horizontalAdvance(arrow), fm.horizontalAdvance(b)
+            x = r.center().x() - (wa + wr + wb) / 2
+            y = QRectF(0, c.y() + S(70), 0, S(22))
+            p.setPen(QColor(WEALTH_TIERS[o][3]))
+            p.drawText(QRectF(x, y.top(), wa + S(2), y.height()), int(Qt.AlignmentFlag.AlignVCenter), a)
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(x + wa, y.top(), wr + S(2), y.height()), int(Qt.AlignmentFlag.AlignVCenter), arrow)
+            p.setPen(col)
+            p.drawText(QRectF(x + wa + wr, y.top(), wb + S(4), y.height()), int(Qt.AlignmentFlag.AlignVCenter), b)
+        else:
+            p.setPen(col)
+            p.drawText(QRectF(r.left(), c.y() + S(70), r.width(), S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr(WEALTH_TIERS[i][0]))
+
+
+class PerkRow(QWidget):
+    """One thing a tier gets: what it is, then before → after in the tier's colour, with UP when it got better."""
+
+    def __init__(self, what: str, before: str, after: str, better: bool, colour: str, width: int, odd: bool) -> None:
+        super().__init__()
+        self.what, self.before, self.after, self.better, self.col, self.odd = what, before, after, better, colour, odd
+        self.setFixedSize(width, S(32))
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect())
+        col = QColor(self.col)
+        if self.odd:
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha("#FFFFFF", 0.035))
+            p.drawRoundedRect(r, S(8), S(8))
+        p.setFont(font(11, QFont.Weight.DemiBold))
+        p.setPen(QColor(TEXT))
+        p.drawText(r.adjusted(S(10), 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter), self.what)
+        right = r.right() - S(10)
+        if self.better:                                       # the UP chip
+            p.setFont(font(8.5, QFont.Weight.Black, 1))
+            cw = p.fontMetrics().horizontalAdvance(tr("UP")) + S(12)
+            chip = QRectF(right - cw, r.center().y() - S(8), cw, S(16))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.25))
+            p.drawRoundedRect(chip, S(8), S(8))
+            p.setPen(mix(col, QColor("#FFFFFF"), 0.4))
+            p.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), tr("UP"))
+            right = chip.left() - S(8)
+        p.setFont(font(12, QFont.Weight.ExtraBold))
+        aw = p.fontMetrics().horizontalAdvance(self.after)
+        p.setPen(mix(col, QColor("#FFFFFF"), 0.25) if self.better else QColor(TEXT))
+        p.drawText(QRectF(right - aw - S(2), r.top(), aw + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), self.after)
+        right -= aw + S(4)
+        if self.before and self.before != self.after:
+            p.setFont(font(10.5, QFont.Weight.DemiBold))
+            txt = self.before + "  →"
+            bw = p.fontMetrics().horizontalAdvance(txt)
+            p.setPen(QColor(TEXT_FAINT))
+            p.drawText(QRectF(right - bw - S(4), r.top(), bw + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), txt)
+
+
+class TierPicker(QWidget):
+    """Five emblems in a row, one per tier: click one to see what it gets. Yours has a ring."""
+    picked = pyqtSignal(int)
+
+    def __init__(self, mine: int, shown: int, width: int) -> None:
+        super().__init__()
+        self.mine, self.shown = mine, shown
+        self.setFixedSize(width, S(66))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def _at(self, k: int) -> QPointF:
+        n = len(WEALTH_TIERS)
+        step = self.width() / n
+        return QPointF(step * (k + 0.5), S(22))
+
+    def mouseReleaseEvent(self, e) -> None:
+        k = int(e.position().x() / max(1.0, self.width() / len(WEALTH_TIERS)))
+        k = max(0, min(len(WEALTH_TIERS) - 1, k))
+        if k != self.shown:
+            self.shown = k
+            self.update()
+            self.picked.emit(k)
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        step = self.width() / len(WEALTH_TIERS)
+        for k, (name, _at, _m, c) in enumerate(WEALTH_TIERS):
+            col = QColor(c)
+            cen = self._at(k)
+            sel = k == self.shown
+            rad = S(17) if sel else S(14)
+            p.setPen(QPen(mix(col, QColor("#FFFFFF"), 0.3), S(2)) if k == self.mine else Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.32 if sel else 0.14 if k <= self.mine else 0.07))
+            p.drawEllipse(cen, rad, rad)
+            p.save()
+            p.translate(cen)
+            sc = (S(18) if sel else S(15)) / 20
+            p.scale(sc, sc)
+            draw_icon(p, TIER_ICONS[k], mix(col, QColor("#FFFFFF"), 0.4) if sel or k <= self.mine else alpha(col, 0.55))
+            p.restore()
+            p.setFont(font(8.5, QFont.Weight.Bold if sel else QFont.Weight.DemiBold))
+            p.setPen(col if sel else QColor(TEXT_DIM if k <= self.mine else TEXT_FAINT))
+            p.drawText(QRectF(step * k, S(42), step, S(18)), int(Qt.AlignmentFlag.AlignCenter), tr(name))
+
+
+class RankUpSheet(QWidget):
+    """9.2.1: shown inside the menu when you reach a new wealth tier (mode 'rankup'): what the new tier unlocks next to
+    what you had. Clicking the tier bar opens it as a guide to every tier (mode 'tiers')."""
+
+    def __init__(self, ctx, old: int, new: int, mode: str = "rankup") -> None:
+        super().__init__()
+        self.ctx, self.mode = ctx, mode
+        w = ctx.window.page_w()
+        self.W = w
+        self.setFixedWidth(w)
+        self.perks = tier_perks(ctx)
+        n = len(WEALTH_TIERS)
+        self.old, self.new = max(0, min(n - 1, old)), max(0, min(n - 1, new))
+        lay = vbox(self, 8)
+        self.lay = lay
+        if mode == "rankup":
+            lay.addWidget(RankUpHero(self.old, self.new, tr("RANK UP"), w))
+            lay.addWidget(Label(tr("WHAT YOU UNLOCKED"), 10, TEXT_DIM, weight=QFont.Weight.Bold))
+        else:
+            lay.addWidget(Label(tr("Wealth tiers"), 17, TEXT, bold=True))
+            lay.addWidget(Label(tr("Every tier pays more and lifts your daily limits. A tier you reach is yours for "
+                                   "good. Click a tier to see what it gets."), 10.5, TEXT_DIM, wrap_w=w))
+            pick = TierPicker(self.old, self.new, w)
+            pick.picked.connect(self._show)
+            lay.addWidget(pick)
+        self.rows = QWidget()
+        self.rows.setFixedWidth(w)
+        self.rows_lay = vbox(self.rows, 2)
+        lay.addWidget(self.rows)
+        self.foot = Label("", 10.5, TEXT_DIM, wrap_w=w)
+        lay.addWidget(self.foot)
+        ok = Button(tr("Let's go") if mode == "rankup" else tr("Close"), "primary", 38)
+        ok.clicked.connect(lambda: ctx.window.unembed(self))
+        lay.addSpacing(S(4))
+        lay.addWidget(ok)
+        self._show(self.new)
+
+    def _show(self, k: int) -> None:
+        while self.rows_lay.count():
+            it = self.rows_lay.takeAt(0)
+            if it.widget():
+                it.widget().deleteLater()
+        base = self.old if self.mode == "rankup" else max(0, min(len(WEALTH_TIERS) - 1, int(tier_info(self.ctx).get("tier", 0) or 0)))
+        before = perk_lines(self.perks[base])
+        after = perk_lines(self.perks[k])
+        col = WEALTH_TIERS[k][3]
+        for j, ((what, a_txt, a_v), (_w, b_txt, b_v)) in enumerate(zip(after, before)):
+            show_before = b_txt if k > base else ""          # only an upgrade shows what you have now
+            self.rows_lay.addWidget(PerkRow(what, show_before, a_txt, a_v > b_v, col, self.W, j % 2 == 0))
+        nxt = k + 1
+        if k >= len(WEALTH_TIERS) - 1:
+            self.foot.set_text(tr("Casino Legend is the top tier: no daily limits on mini games, Karting or AFK coins."))
+        else:
+            at = self.perks[nxt].get("at") if isinstance(self.perks[nxt], dict) else None
+            at = int(at if at is not None else WEALTH_TIERS[nxt][1])
+            self.foot.set_text(tr("Next: {name} at {n} wealth.", name=tr(WEALTH_TIERS[nxt][0]), n=coins_text(at)))
+        self.rows.adjustSize()
+        self.adjustSize()
+
+
+def open_tier_guide(ctx) -> None:
+    i = max(0, min(len(WEALTH_TIERS) - 1, int(tier_info(ctx).get("tier", 0) or 0)))
+    ctx.window.embed(RankUpSheet(ctx, i, i, "tiers"))
+
+
+def show_rank_up(ctx, old: int, new: int) -> None:
+    """A burst over the screen and the rank-up screen in the menu, once per tier (the server remembers it)."""
+    try:
+        ctx.window.embed(RankUpSheet(ctx, old, new, "rankup"))
+    except Exception:  # noqa: BLE001
+        log.exception("rank-up screen failed")
+        return
+    try:
+        from PyQt6.QtGui import QGuiApplication
+        w = ctx.window
+        card = w.card_global() if w.expanded else w.ball.frameGeometry()
+        screen = QGuiApplication.screenAt(card.center()) or QGuiApplication.primaryScreen()
+        fx = FxOverlay(ctx, screen)
+        centre = fx.local(card.center())
+        col = QColor(WEALTH_TIERS[max(0, min(len(WEALTH_TIERS) - 1, new))][3])
+        spark_burst(fx, centre, col, n=48, reach=S(260), dur=1.2)
+        spark_burst(fx, centre, QColor("#FFE08A"), n=28, reach=S(190), dur=1.0)
+        sfx.tune("levelup")
+    except Exception:  # noqa: BLE001
+        log.exception("rank-up burst failed")
+    ctx.toast(tr("Rank up! You are now {name}", name=tr(WEALTH_TIERS[max(0, min(len(WEALTH_TIERS) - 1, new))][0])))
 
 
 class HomeHero(QWidget):
@@ -63087,7 +63458,7 @@ def _rooms_lobby(page, lay) -> None:
     size = Segmented([tr("2 players"), tr("3 players"), tr("4 players")], max(0, min(2, si - 2)))
     size.changed.connect(lambda i: setattr(ctx, "wroom_size", i + 2))
     hl.addWidget(size)
-    bets = [b for b in WROOM_BETS if b == 0 or b <= cap]
+    bets = [b for b in duel_bets(ctx, WROOM_BETS, cap) if b == 0 or b <= cap]      # 9.2.1: bigger bets by tier
     bi = min(len(bets) - 1, int(getattr(ctx, "wroom_bet", 0) or 0))
     bet = Segmented([tr("Free") if b == 0 else coins_text(b) for b in bets], bi)
     bet.changed.connect(lambda i: setattr(ctx, "wroom_bet", i))
@@ -71341,7 +71712,10 @@ def build_kart(page, lay) -> None:
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Drive")),
                               (["Shift"], tr("Boost")), (["Space"], tr("Handbrake, drift")), (["R"], tr("Hold: respawn"))],
                              page.W))
-    if data.get("cap"):
+    if data.get("nocap"):                                    # 9.2.1: Casino Legend
+        hl.addWidget(Label(tr("Prizes today: {a} (no daily limit)", a=coins_text(int(data.get("today") or 0))),
+                           10.5, TEXT_DIM))
+    elif data.get("cap"):
         hl.addWidget(Label(tr("Prizes today: {a} of {b}", a=coins_text(int(data.get("today") or 0)),
                               b=coins_text(int(data.get("cap") or 0))), 10.5, TEXT_DIM))
     # open rooms

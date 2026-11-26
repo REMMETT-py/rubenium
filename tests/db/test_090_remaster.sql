@@ -49,9 +49,9 @@ begin
     perform t.act(b);
     r := public.rb_key_forge();
     assert (r ->> 'paid')::int = 250 and (r ->> 'keys')::int = 1, 'forge at the 250 floor: ' || r::text;
-    for n in 1 .. 2 loop perform public.rb_key_forge(); end loop;
+    for n in 1 .. 4 loop perform public.rb_key_forge(); end loop;               -- 9.2.1: Poor forges 5 a day
     err := t.try('select public.rb_key_forge()');
-    assert err like '%rb_too_many%', 'three a day: ' || err;
+    assert err like '%rb_too_many%', 'five a day (9.2.1): ' || err;
     assert (public.rb_my_tier() -> 'forge' ->> 'left')::int = 0, 'none left today';
 
     -- the market is closed
