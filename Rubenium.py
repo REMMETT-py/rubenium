@@ -73615,6 +73615,12 @@ HOOPS_BOT = {
 }
 
 
+# 9.5: stand still with the ball this long (seconds, by the bots' level) and both defenders rush you to take it; aiming
+# a shot gives one more second. A red edge builds up on screen as it gets close.
+HOOPS_PRESS = {"Club": 6.0, "Regional": 5.0, "National": 4.0, "Professional": 3.0}
+HOOPS_MATE_MIN = "National"           # 9.5: your team-mate reads the game at least this well (it gets open, it defends)
+
+
 def hyp(x, z):
     return math.sqrt(x * x + z * z)
 
@@ -73681,6 +73687,11 @@ def green_open(d):
     i = clamp(d * 10, 0, 299.999)
     k = int(i)
     return lerp(_G_TABLE[k], _G_TABLE[k + 1], i - k)
+
+
+def hoops_mate_level(level):
+    """9.5: the human's bot team-mate: the opponents' level, but never below HOOPS_MATE_MIN."""
+    return HOOPS_LEVELS[max(HOOPS_LEVELS.index(level), HOOPS_LEVELS.index(HOOPS_MATE_MIN))]
 
 
 class HoopsInput:
@@ -73767,7 +73778,7 @@ class HoopsGame:
         for team in (0, 1):
             for k in range(team_size):
                 human = n in humans
-                lv = (mate_level or level) if team == 0 else level
+                lv = (mate_level or hoops_mate_level(level)) if team == 0 else level
                 self.players.append(HoopsPlayer(n, team, [7, 23, 11, 3][n % 4] if team == 0 else [10, 4, 32, 9][k % 4],
                                            human, lv))
                 n += 1
@@ -73794,6 +73805,9 @@ class HoopsGame:
         self.dead_for = 0.0
         self.dead_then = None
         self.buzzer = False
+        self.hold_idle = 0.0       # 9.5: how long the human has stood still with the ball
+        self.press = False         # ... past their level's limit: the defenders rush the ball
+        self.press_lim = HOOPS_PRESS.get(level, 5.0)
         self.reset_positions()
 
     # ---------------------------------------------------------------------------------------------- helpers
@@ -73931,6 +73945,7 @@ class HoopsGame:
                 if p.i not in self.bots:
                     self.bots[p.i] = HoopsBot(self, p)
                 ins[p.i] = self.bots[p.i].think(HOOPS_DT)
+        self._press_step(ins, dt)
         for p in self.players:
             self._player_step(p, ins[p.i], dt)
             p.prev = ins[p.i]
@@ -73944,6 +73959,27 @@ class HoopsGame:
             if not (b.mode == "shot" or (b.mode == "loose" and b.from_shot and b.f is None and False)):
                 self.buzzer = True
                 self.end_regulation()
+
+    def _press_step(self, ins, dt):
+        """9.5: a human holding the ball without moving: after their level's time (one more while aiming a shot) the
+        defenders rush them, and a swipe can take a held ball."""
+        c = self.carrier()
+        if c is None or not c.ctrl or c.i != getattr(self, "_press_c", -1):
+            self._press_c = c.i if c is not None and c.ctrl else -1
+            self.hold_idle = 0.0
+            self.press = False
+            return
+        i = ins.get(c.i) or HoopsInput()
+        moving = hyp(i.mx, i.mz) > 0.2 and c.speed() > 0.6
+        if moving:
+            self.hold_idle = max(0.0, self.hold_idle - dt * 4)
+        else:
+            self.hold_idle += dt
+        self.press_lim = HOOPS_PRESS.get(self.level, 5.0) + (1.0 if (i.shift or c.act == "shoot") else 0.0)
+        was = self.press
+        self.press = self.hold_idle >= self.press_lim
+        if self.press and not was:
+            self.ev("press", p=c.i)
 
     def end_regulation(self):
         self.ev("buzzer")
@@ -74001,6 +74037,8 @@ class HoopsGame:
         self.dead_then = give
 
     def _give(self, p):
+        self.hold_idle = 0.0
+        self.press = False
         b = self.ball
         b.owner, b.mode, b.f = p.i, "held", None
         b.from_shot = False
@@ -74349,6 +74387,10 @@ class HoopsGame:
         if d_ball > STEAL_REACH + 0.25:
             p.stun = OFF_BAL
             return
+        if self.press and c.act in ("hold", "passwind", "fake", "gather", "shoot") and d_ball <= STEAL_REACH + 0.1:
+            self.hold_idle = 0.0                         # 9.5: stood still too long: the rush takes it
+            self.press = False
+            return self._strip(p, c)
         if c.act in ("hold", "passwind", "fake", "gather") or (c.act == "shoot" and c.h > 0.3):
             p.stun = OFF_BAL * 0.8                       # tied up in the hands
             self.ev("tied", p=p.i)
@@ -74814,6 +74856,27 @@ class HoopsGame:
                 (b.x, b.z, b.h, b.spin, b.owner, b.mode))
 
 
+def hoops_lerp_snap(a, b, t):
+    """9.5: a drawing snapshot between two steps (t 0..1): positions, heights and facings blend; the rest is b's.
+    A jump of more than 2 m (a restart) is not blended."""
+    if t >= 0.999 or a is None:
+        return b
+    pa, ba = a
+    pb, bb = b
+    out = []
+    for qa, qb in zip(pa, pb):
+        if abs(qa[0] - qb[0]) + abs(qa[1] - qb[1]) > 2.0:
+            out.append(qb)
+            continue
+        out.append((qa[0] + (qb[0] - qa[0]) * t, qa[1] + (qb[1] - qa[1]) * t, qa[2] + (qb[2] - qa[2]) * t,
+                    qa[3] + (qb[3] - qa[3]) * t, qa[4] + (qb[4] - qa[4]) * t) + tuple(qb[5:]))
+    if abs(ba[0] - bb[0]) + abs(ba[1] - bb[1]) + abs(ba[2] - bb[2]) > 2.0:
+        ball = bb
+    else:
+        ball = (ba[0] + (bb[0] - ba[0]) * t, ba[1] + (bb[1] - ba[1]) * t, ba[2] + (bb[2] - ba[2]) * t) + tuple(bb[3:])
+    return out, ball
+
+
 def pass_shape(p, mx, mz, g):
     """The pass's kind from the keys held while charging: up (W/Z) lob, down (S) bounce, left/right a curve to that
     side of the pass line. Up and down are the screen's (the depth)."""
@@ -74904,7 +74967,13 @@ class HoopsBot:
             self._defence()
         else:
             self._loose()
-        return inp.copy()
+        out = inp.copy()
+        if out.lmb and p.prev.lmb and p.act not in ("shoot", "passwind"):
+            # 9.5: the button is still down from the last press: let go for one step so this press counts (a bot
+            # could otherwise hold it forever and stand frozen with the ball)
+            out.lmb = False
+            self.next = min(self.next, g.t + 0.02)
+        return out
 
     def _continue(self):
         inp = self.inp
@@ -75101,20 +75170,41 @@ class HoopsBot:
         spots = [(hx - side * 6.9, HOOP_Z), (hx - side * 5.2, HOOP_Z - 4.6), (hx - side * 5.2, HOOP_Z + 4.6),
                  (hx - side * 1.0, HOOP_Z - 6.7), (hx - side * 1.0, HOOP_Z + 6.7), (hx - side * 2.2, HOOP_Z - 2.6),
                  (hx - side * 2.2, HOOP_Z + 2.6), (hx - side * 8.0, HOOP_Z - 3.5), (hx - side * 8.0, HOOP_Z + 3.5)]
-        # the carrier far back (transition): run ahead of the ball first
+        # the carrier far back (transition): 9.5: run ahead of the ball but stay in passing range (5-7 m ahead, off to
+        # one side), never camp under the far basket out of reach
         if c is not None and (c.x - hx) * -side > 9:
-            spots = [(hx - side * 4.5, HOOP_Z - 4.0), (hx - side * 4.5, HOOP_Z + 4.0), (hx - side * 2.0, HOOP_Z)]
+            ax = c.x + side * 6.0
+            ax = min(ax, hx - side * 2.0) if side > 0 else max(ax, hx - side * 2.0)
+            spots = [(ax, clamp(c.z + 3.6, 1.2, COURT_W - 1.2)), (ax, clamp(c.z - 3.6, 1.2, COURT_W - 1.2)),
+                     (c.x + side * 4.0, clamp(c.z + 4.6, 1.2, COURT_W - 1.2)), (c.x + side * 4.0, clamp(c.z - 4.6, 1.2, COURT_W - 1.2))]
         lag = k["react"]
         opps = g.opps(p)
+        # 9.5: the carrier is stuck (a defender on them, or a human standing still): come back to the ball for an
+        # easy outlet pass, away from the defenders
+        outlet = False
+        if c is not None and c.team == p.team:
+            near_def = min(hyp(q.x - c.x, q.z - c.z) for q in opps)
+            if (near_def < 1.5 and c.act in ("hold", "gather")) or (c.ctrl and g.hold_idle > 1.2):
+                outlet = True
+                for a in range(8):
+                    ang = a * math.pi / 4
+                    ox, oz = c.x + math.cos(ang) * 4.2, c.z + math.sin(ang) * 4.2
+                    if -HALF_L + 1 < ox < HALF_L - 1 and 1.0 < oz < COURT_W - 1.0:
+                        spots.append((ox, oz))
         best, bestv = None, -1e9
         for sx, sz in spots:
-            if c is not None and hyp(sx - c.x, sz - c.z) < 4.0:
+            if c is not None and hyp(sx - c.x, sz - c.z) < (3.0 if outlet else 4.0):
                 continue
             open_ = min(hyp(g.past(q.i, lag)[0] - sx, g.past(q.i, lag)[1] - sz) for q in opps)
             dist = hyp(sx - p.x, sz - p.z)
             pct = make_chance(green_open(hyp(hx - sx, HOOP_Z - sz)), max(k["sigma"], 0.02) * 1.1 + 0.012)
             pts = 3 if is_three(p.team, sx, sz) else 2
             v = min(open_, 4.0) * (0.4 + 0.6 * k["space"]) + pct * pts * 1.4 - dist * 0.12 + rng.uniform(0, 0.8 * (1 - k["space"]))
+            if c is not None:                                 # 9.5: a pass has to reach me: stay within ~8 m
+                dc = hyp(sx - c.x, sz - c.z)
+                v -= max(0.0, dc - 8.0) * 0.9
+                if outlet and 3.0 < dc < 5.0:
+                    v += 1.6
             if self.spot and hyp(sx - self.spot[0], sz - self.spot[1]) < 0.5:
                 v += 0.6                                      # don't dither
             if v > bestv:
@@ -75143,6 +75233,14 @@ class HoopsBot:
         my_hoop = hoop_of(1 - p.team)               # the hoop I defend (the one they attack)
         lag = k["react"]
         mate = g.mate(p)
+        if g.press and c is not None and c.team != p.team:
+            # 9.5: the human stood still with the ball too long: both defenders rush it and swipe
+            inp.shift = False
+            inp.mx, inp.mz = self._to(b.x, b.z, 0.05)
+            self.plan = {"to": lambda: (g.ball.x, g.ball.z), "slow": 0.05}
+            if p.steal_cd <= 0 and p.stun <= 0 and hyp(b.x - (p.x + p.fx * 0.45), b.z - (p.z + p.fz * 0.45)) < STEAL_REACH:
+                self.plan["lmb_once"] = True
+            return
         # who do I guard? the human's controlled player always guards whoever they like; a bot picks the attacker
         # that its team-mate isn't guarding (man to man, the nearer one)
         attackers = g.team(1 - p.team)
@@ -75151,9 +75249,13 @@ class HoopsBot:
             cost_keep = hyp(p.x - a0.x, p.z - a0.z) + hyp(mate.x - a1.x, mate.z - a1.z)
             cost_swap = hyp(p.x - a1.x, p.z - a1.z) + hyp(mate.x - a0.x, mate.z - a0.z)
             if mate.human and g.ctrl.get(mate.team) == mate.i:
-                # the human chooses: take the attacker nearest to them... the other one is mine
+                # the human chooses: take the attacker nearest to them... the other one is mine. 9.5: only when the
+                # human is really on them (within 3.5 m); otherwise I take the ball (the human is out of the play)
                 mh = min(attackers, key=lambda a: hyp(a.x - mate.x, a.z - mate.z))
-                man = a1 if mh is a0 else a0
+                if hyp(mh.x - mate.x, mh.z - mate.z) > 3.5 and c is not None and c.team != p.team:
+                    man = c
+                else:
+                    man = a1 if mh is a0 else a0
             else:
                 pref = a0 if cost_keep <= cost_swap else a1
                 if self.assign >= 0 and self.assign in (a0.i, a1.i):
@@ -76240,6 +76342,7 @@ class HoopsView(QWidget):
                     n = 0
                     while self._acc >= HOOPS_DT and n < 12:
                         self._acc -= HOOPS_DT
+                        self._prev = g.snap()          # 9.5: drawn between the last two steps (smooth at any frame rate)
                         g.step(inp)
                         n += 1
                         if int(g.t * 120) % 2 == 0:
@@ -76578,10 +76681,14 @@ class HoopsView(QWidget):
         cam.setup(self.width(), self.height())
         if self.replay is not None:
             r = self.replay
-            fr = r["frames"][min(int(r["pos"]), len(r["frames"]) - 1)][1]
-            players, ball = fr
+            i = min(int(r["pos"]), len(r["frames"]) - 1)
+            players, ball = hoops_lerp_snap(r["frames"][i][1], r["frames"][min(i + 1, len(r["frames"]) - 1)][1],
+                                            r["pos"] - int(r["pos"]))
         else:
             s = g.snap()
+            prev = getattr(self, "_prev", None)
+            if prev is not None and not self.paused and g.phase != "intro":
+                s = hoops_lerp_snap(prev, s, clamp(self._acc / HOOPS_DT, 0.0, 1.0))
             players, ball = s
         self._arena(p)
         self._floor(p)
