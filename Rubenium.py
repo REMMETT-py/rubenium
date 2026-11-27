@@ -55821,6 +55821,10 @@ HELP = {
         "charging, up throws a lob, down a bounce pass, left or right curves it. The line is white when it's safe, "
         "orange when risky, red when a defender will cut it off.",
         "Faking: press F. You pretend to shoot, the defender jumps, and you drive past while they are in the air.",
+        "Dunking: close to the hoop with the ball, an E shows over your head: press E to take off. Three keys then "
+        "show (E, R, C or X), each with a ring closing on it: press each key as its ring closes. All three: a monster "
+        "dunk that even goes in over a defender. Two: a dunk. Fewer: you blow it off the rim. A defender in the air at "
+        "the rim blocks anything but a monster dunk.",
         "WITHOUT THE BALL: left click steals (it works on a low dribble on your side), right click switches to your other "
         "player, Space jumps to block, Shift slides in a defensive stance."], [
         "Passing beats pressing: a bot team-mate who is open will usually score. Lobs go over defenders, bounce passes "
@@ -74257,6 +74261,25 @@ def _guide_hoops(p, r, t, k):
     p.drawLine(QPointF(r.left() + S(10), fl), QPointF(r.right() - S(10), fl))
     keys = hoops_keys()
     cx = r.center().x()
+    if k == "dunk":                               # 9.6: run in, E, up to the rim on three keys, slam
+        ph = (t % 3.2) / 3.2
+        hx = r.right() - S(34)
+        rim_y = fl - S(70)
+        p.setPen(QPen(QColor(255, 255, 255, 90), S(3)))
+        p.drawLine(QPointF(hx + S(16), fl), QPointF(hx + S(16), rim_y - S(18)))
+        p.setPen(QPen(QColor("#E8721C"), S(3)))
+        p.drawLine(QPointF(hx - S(14), rim_y), QPointF(hx + S(14), rim_y))
+        run = clamp(ph / 0.35, 0, 1)
+        air = clamp((ph - 0.35) / 0.4, 0, 1)
+        x = lerp(r.left() + S(30), hx - S(40), run) + air * S(26)
+        y = fl - math.sin(min(1.0, air) * math.pi * 0.5) * S(52) * (1 if ph < 0.8 else max(0.0, 1 - (ph - 0.8) / 0.2))
+        _gman(p, x, y, HOOPS_TEAM[0]["main"], 0.9, arms=1.0 if ph > 0.35 else 0.0)
+        _gball(p, x + S(10), y - S(40) if ph > 0.35 else y - S(18), S(5))
+        if ph < 0.35:
+            return ["E"]
+        if ph < 0.75:
+            return [["R", "C", "X"][min(2, int((ph - 0.35) / 0.4 * 3))]]
+        return []
     if k == "move":
         ph = (t % 4.0) / 4.0
         dirs = [(1, 0, keys["right"]), (0, -1, keys["up"]), (-1, 0, keys["left"]), (0, 1, keys["down"])]
@@ -74439,6 +74462,7 @@ GUIDES = {
         ("shoot", lambda: tr("Shoot"), lambda: tr("Hold left click, let go in the green. Past half-way only.")),
         ("steal", lambda: tr("Defend and steal"), lambda: tr("No ball: left click steals, Shift guards, Space blocks.")),
         ("fake", lambda: tr("Fakes and moves"), lambda: tr("F: fake a shot, then drive past. Back + Space: spin move.")),
+        ("dunk", lambda: tr("Dunk"), lambda: tr("Near the hoop press E, then each key as its ring closes.")),
     ], lambda: tr("Tab scoreboard  ·  Esc pause.  Don't stand still with the ball: the defenders rush you.")),
     "kart": (lambda: tr("How to play Karting"), _guide_kart, [
         ("drive", lambda: tr("Drive"), lambda: tr("Throttle and steer. Stay on the tarmac: grass slows you down.")),
@@ -75250,6 +75274,20 @@ FAKE_T = 0.32
 PASS_WIND = 0.70                       # charging a pass to full
 SHOT_CLOCK = 14.0
 COUNT_START, COUNT_AFTER = 5.0, 2.0
+# 9.6: the dunk. Close to the hoop with the ball, E takes off; then three keys show one after the other, each with a
+# ring closing on it: press each key as its ring closes. 3 of 3: a monster dunk (it even goes in over a defender),
+# 2 of 3: a dunk, fewer: blown off the rim. A defender in the air at the rim blocks anything but a monster dunk.
+DUNK_R = 2.6                           # the furthest from the hoop's centre you can take off
+DUNK_KEYS = "ERCX"                     # next to the movement keys, the same on QWERTY and AZERTY
+DUNK_LOAD = 0.35                       # two steps on the floor, then off
+DUNK_BEATS = (0.40, 0.70, 1.00)        # when each key's ring closes (seconds after E)
+DUNK_WIN = 0.12                        # how far off a press can be and still count
+DUNK_SLAM = 1.15
+DUNK_PEAK = 1.05                       # metres off the floor at the slam (hands above the rim)
+DUNK_G = 2 * DUNK_PEAK / (DUNK_SLAM - DUNK_LOAD) ** 2        # floatier than a jump: the hang time
+DUNK_V = DUNK_G * (DUNK_SLAM - DUNK_LOAD)
+DUNK_SKILL = {"Club": 0.55, "Regional": 0.70, "National": 0.86, "Professional": 1.0}   # a bot's chance per key
+DUNK_WANT = {"Club": 0.25, "Regional": 0.45, "National": 0.7, "Professional": 1.0}     # ... and how keen it is
 REF_SIGMA = 0.05                       # the release spread the shown % assumes (a good, not perfect, shooter)
 
 HOOPS_LEVELS = ["Club", "Regional", "National", "Professional"]
@@ -75354,13 +75392,14 @@ def hoops_mate_level(level):
 
 class HoopsInput:
     """One player's controls this step, from the keyboard and mouse or from a bot."""
-    __slots__ = ("mx", "mz", "space", "shift", "lmb", "rmb", "aim")
+    __slots__ = ("mx", "mz", "space", "shift", "lmb", "rmb", "aim", "key", "kid")
 
-    def __init__(self, mx=0.0, mz=0.0, space=False, shift=False, lmb=False, rmb=False, aim=None):
+    def __init__(self, mx=0.0, mz=0.0, space=False, shift=False, lmb=False, rmb=False, aim=None, key="", kid=0):
         self.mx, self.mz, self.space, self.shift, self.lmb, self.rmb, self.aim = mx, mz, space, shift, lmb, rmb, aim
+        self.key, self.kid = key, kid       # 9.6: the last letter key pressed (the dunk) and its press number
 
     def copy(self):
-        return HoopsInput(self.mx, self.mz, self.space, self.shift, self.lmb, self.rmb, self.aim)
+        return HoopsInput(self.mx, self.mz, self.space, self.shift, self.lmb, self.rmb, self.aim, self.key, self.kid)
 
 
 class HoopsPlayer:
@@ -75392,6 +75431,10 @@ class HoopsPlayer:
         self.arms_up = 0.0
         self.catch_t = 0.0        # just caught (for the drawing)
         self.celebrate = 0.0
+        self.dk = None            # 9.6: the dunk in progress
+        self.kid_seen = 0         # ... the last key press already used
+        self.key_now = ""         # ... a key pressed this step
+        self.hang = 0.0           # ... hanging on the rim after a dunk
         self.st = {"pts": 0, "fg": 0, "fga": 0, "three": 0, "threea": 0, "ast": 0, "stl": 0, "blk": 0, "reb": 0,
                    "to": 0, "perfect": 0, "sc": 0.0}
 
@@ -75640,7 +75683,8 @@ class HoopsGame:
         # the clocks
         if self.clock <= 0 and not self.overtime and self.phase == "play":
             b = self.ball
-            if not (b.mode == "shot" or (b.mode == "loose" and b.from_shot and b.f is None and False)):
+            c2 = self.carrier()
+            if not (b.mode == "shot" or (c2 is not None and c2.act == "dunk")):
                 self.buzzer = True
                 self.end_regulation()
 
@@ -75826,6 +75870,8 @@ class HoopsGame:
         if self.overtime:
             return self.finish()
         if self.clock <= 0:
+            if self.score[0] == self.score[1]:              # 9.6: a basket on the buzzer that ties it: overtime
+                return self.end_regulation()
             return self.finish()
         self.count_len = COUNT_AFTER
         self.start_toss(1 - self.last_score["team"])
@@ -75853,8 +75899,14 @@ class HoopsGame:
             p.vh = 2.6
 
     def _air(self, p, dt):
+        if p.hang > 0:                                       # 9.6: on the rim after a dunk
+            p.hang = max(0.0, p.hang - dt)
+            p.vh = 0.0
+            p.vx *= 0.8
+            p.vz *= 0.8
+            return
         if p.h > 0 or p.vh > 0:
-            p.vh -= GRAV * dt
+            p.vh -= (DUNK_G if p.act == "dunk" else GRAV) * dt
             p.h += p.vh * dt
             if p.h <= 0:
                 p.h, p.vh = 0.0, 0.0
@@ -75887,14 +75939,20 @@ class HoopsGame:
         lmb_up = pv.lmb and not inp.lmb
         rmb_down = inp.rmb and not pv.rmb
         space_down = inp.space and not pv.space
+        p.key_now = ""
+        if getattr(inp, "kid", 0) != p.kid_seen:               # 9.6: a new key press (each one counts once)
+            p.kid_seen = inp.kid
+            p.key_now = (inp.key or "").upper()
         want_v = 0.0
         stance = False
         if has:
             want_v = self._carrier_step(p, inp, dt, mx, mz, lmb_down, lmb_up, rmb_down, space_down)
+            if p.act == "dunk":                   # 9.6: the dunk moves the player itself
+                return
             if b.owner != p.i:                    # passed or shot this step
                 has = False
         else:
-            if p.act in ("hold", "dribble", "gather", "passwind", "shoot", "fake", "spin"):
+            if p.act in ("hold", "dribble", "gather", "passwind", "shoot", "fake", "spin", "dunk"):
                 if p.act == "shoot" and p.h > 0:
                     pass
                 else:
@@ -75982,6 +76040,9 @@ class HoopsGame:
     def _carrier_step(self, p, inp, dt, mx, mz, lmb_down, lmb_up, rmb_down, space_down):
         ml = hyp(mx, mz)
         a = p.act
+        if a == "dunk":
+            self._dunk_step(p, dt)
+            return 0.0
         # -- the shot (Shift aims, then the left button: press to rise, release at the green)
         if a == "shoot":
             p.shot_m = min(1.0, p.act_t / (LAY_T if p.shot_lay else SHOT_T))
@@ -76026,6 +76087,9 @@ class HoopsGame:
                 lmb_down = True
         if a == "dribble":
             p.drib_at = self.t
+        if p.key_now == "E" and a in ("hold", "dribble") and p.h <= 0 and self.can_dunk(p):
+            self._dunk_start(p)                           # 9.6
+            return 0.0
         if lmb_down and inp.shift and p.h <= 0 and p.x * (1 if hoop_of(p.team) > 0 else -1) < 0:
             # 9.5: no shots from your own half: cross the half-way line first
             if p.ctrl:
@@ -76074,6 +76138,126 @@ class HoopsGame:
             self._dribble_ball(p, dt)
             return DRIB
         return RUN * 0.5
+
+    # ---------------------------------------------------------------------------------------------- 9.6: the dunk
+    def can_dunk(self, p):
+        """Close enough to take off for a dunk: in front of the hoop (not behind the board), during play."""
+        if self.phase != "play" or self.ball.owner != p.i:
+            return False
+        hx = hoop_of(p.team)
+        d = hyp(hx - p.x, HOOP_Z - p.z)
+        return 0.35 <= d <= DUNK_R and abs(p.x) <= HOOP_X + 0.05
+
+    def _dunk_start(self, p):
+        hx = hoop_of(p.team)
+        ux, uz = norm(p.x - hx, p.z - HOOP_Z)
+        if not (ux or uz):
+            ux, uz = (-1.0 if hx > 0 else 1.0), 0.0
+        seq, last = "", ""
+        for _ in DUNK_BEATS:
+            k = self.rng.choice([c for c in DUNK_KEYS if c != last])
+            seq += k
+            last = k
+        p.dk = {"seq": seq, "hits": [None] * len(DUNK_BEATS), "x0": p.x, "z0": p.z,
+                "sx": hx + ux * 0.55, "sz": HOOP_Z + uz * 0.55, "ux": ux, "uz": uz}
+        p.act, p.act_t = "dunk", 0.0
+        p.arms_up = 0.4
+        p.st["fga"] += 1
+        self.ev("dunk_start", p=p.i, seq=seq)
+
+    def _dunk_step(self, p, dt):
+        dk = p.dk
+        t = p.act_t
+        hits = dk["hits"]
+        if p.ctrl:
+            k = p.key_now
+            if k:
+                for i, bt in enumerate(DUNK_BEATS):
+                    if hits[i] is None and t >= bt - 0.26:      # a press long before the first ring is ignored
+                        hits[i] = abs(t - bt) <= DUNK_WIN and k == dk["seq"][i]
+                        self.ev("dunk_beat", p=p.i, i=i, ok=hits[i])
+                        break
+            for i, bt in enumerate(DUNK_BEATS):
+                if hits[i] is None and t > bt + DUNK_WIN:       # let it go by
+                    hits[i] = False
+                    self.ev("dunk_beat", p=p.i, i=i, ok=False)
+        else:
+            sk = DUNK_SKILL.get(p.level, 0.7)
+            for i, bt in enumerate(DUNK_BEATS):
+                if hits[i] is None and t >= bt:
+                    hits[i] = self.rng.random() < sk
+                    self.ev("dunk_beat", p=p.i, i=i, ok=hits[i])
+        # the run-up, the take-off and the flight to the rim
+        s = clamp(t / DUNK_SLAM, 0.0, 1.0)
+        e = s * s * (3 - 2 * s)
+        nx, nz = lerp(dk["x0"], dk["sx"], e), lerp(dk["z0"], dk["sz"], e)
+        p.vx, p.vz = (nx - p.x) / dt, (nz - p.z) / dt
+        p.x, p.z = nx, nz
+        p.fx, p.fz = norm(lerp(p.fx, -dk["ux"], 0.3), lerp(p.fz, -dk["uz"], 0.3))
+        p.run_ph += hyp(p.vx, p.vz) * dt * 1.25
+        if t >= DUNK_LOAD and p.h <= 0 and p.vh <= 0 and not dk.get("up"):
+            dk["up"] = True
+            p.vh = DUNK_V
+            self.ev("jump", p=p.i)
+        p.arms_up = 0.4 if t < DUNK_LOAD else 1.0
+        self._air(p, dt)
+        if t >= DUNK_SLAM:
+            self._dunk_slam(p)
+
+    def _dunk_slam(self, p):
+        dk = p.dk
+        n = sum(1 for h in dk["hits"] if h)
+        hx = hoop_of(p.team)
+        b = self.ball
+        blocker = None
+        for q in self.opps(p):
+            if q.h >= 0.25 and hyp(q.x - dk["sx"], q.z - dk["sz"]) < 1.15 and q.hand_h() >= RIM_H:
+                blocker = q
+                break
+        p.act, p.act_t = "free", 0.0
+        p.dk = None
+        p.arms_up = 1.0
+        b.owner, b.f = -1, None
+        b.last_team = p.team
+        if blocker is not None and n < len(DUNK_BEATS):
+            b.mode = "loose"
+            b.from_shot = True
+            b.x, b.z, b.h = dk["sx"], dk["sz"], RIM_H + 0.25
+            b.vx, b.vz, b.vh = dk["ux"] * 4.5 + blocker.fx * 1.5, dk["uz"] * 4.5 + blocker.fz * 1.5, 0.5
+            b.last_team = blocker.team
+            blocker.st["blk"] += 1
+            self.ev("block", p=blocker.i, by=p.i, dunk=True)
+            self.award(blocker.i, "REJECTED", 80)
+            self.shot_clock = SHOT_CLOCK
+            return
+        if n >= 2:
+            b.mode = "loose"
+            b.from_shot = False
+            b.x, b.z, b.h = hx, HOOP_Z, RIM_H - 0.05
+            b.vx = b.vz = 0.0
+            b.vh = -4.5
+            b.last_team = 1 - p.team
+            monster = n >= len(DUNK_BEATS)
+            p.hang = 0.4
+            self._last_how = "monster" if monster else "dunk"
+            self.ev("net", how=self._last_how, team=p.team, pts=2)
+            self.ev("dunk", p=p.i, n=n, monster=monster, poster=blocker is not None)
+            self.scored(p.team, 2, p.i)
+            self.award(p.i, "MONSTER DUNK" if monster else "DUNK", 90 if monster else 40)
+            if blocker is not None:
+                self.award(p.i, "POSTERIZED", 60)
+            return
+        # blown: off the back of the rim
+        b.mode = "loose"
+        b.from_shot = True
+        b.x, b.z, b.h = hx + dk["ux"] * 0.2, HOOP_Z + dk["uz"] * 0.2, RIM_H + 0.1
+        sp = self.rng.uniform(2.5, 4.0)
+        b.vx, b.vz, b.vh = -dk["ux"] * sp * 0.6 + self.rng.uniform(-1.2, 1.2), -dk["uz"] * sp * 0.6 + self.rng.uniform(-1.2, 1.2), 3.2
+        self.ev("rim", x=b.x, z=b.z)
+        self.ev("dunk_miss", p=p.i)
+        self.shot_clock = SHOT_CLOCK
+        if self.clock <= 0 and not self.overtime and self.phase == "play":
+            self.end_regulation()
 
     def _ball_to(self, tx, tz, dt):
         """9.5: the ball in someone's hands follows them, but never jumps: a quick turn or a spin sweeps it round
@@ -76394,7 +76578,7 @@ class HoopsGame:
                 b.mode = "loose"
                 return
             if c.act not in ("dribble", "spin"):
-                up = c.arms_up > 0.5 and c.act in ("shoot", "fake")
+                up = c.arms_up > 0.5 and c.act in ("shoot", "fake", "dunk")
                 self._ball_to(c.x + c.fx * (0.18 if up else 0.33), c.z + c.fz * (0.18 if up else 0.33), dt)
                 b.h = c.h + (lerp(1.2, 2.3, c.shot_m if c.act == "shoot" else 0.7) if up else 1.15)
             return
@@ -76815,6 +76999,13 @@ class HoopsBot:
             s = g.past(near.i, lag)
             ux, uz = norm(p.x - s[0], p.z - s[1])
             closing = s[2] * ux + s[3] * uz
+        # 9.6: close to the rim: the better bots go up for the dunk (more often with nobody in the way)
+        if p.act in ("hold", "dribble") and g.can_dunk(p) and hyp(hx - p.x, HOOP_Z - p.z) <= DUNK_R - 0.2:
+            want = DUNK_WANT.get(p.level, 0.5) * (1.0 if near_d > 1.4 else 0.6)
+            if rng.random() < want:
+                inp.key, inp.kid = "E", inp.kid + 1
+                inp.lmb = inp.rmb = inp.shift = False
+                return
         own_half = p.x * (1 if hx > 0 else -1) < 0                  # 9.5: no shots from your own half
         want_shot = pct >= k["shoot_min"] and (ev_shoot >= ev_pass * 0.95 or risk > 0.5)
         if pts == 3 and pct >= 0.3 and ev_shoot >= 1.02 + 0.12 * k["space"] and ev_shoot >= ev_pass * 0.9 and c < 0.25:
@@ -77068,8 +77259,16 @@ class HoopsBot:
             inp.shift = True
             inp.mx, inp.mz = self._to(tx, tz, 0.35)
             self.plan = {"to": guard, "slow": 0.35}
+            # 9.6: a dunk: get to the rim and go up just before the slam (the good ones time it)
+            if c.act == "dunk" and c.dk is not None:
+                inp.shift = False
+                inp.mx, inp.mz = self._to(c.dk["sx"], c.dk["sz"], 0.1)
+                self.plan = {}
+                if p.h <= 0 and p.jump_cd <= 0 and c.act_t >= DUNK_SLAM - 0.45 \
+                        and hyp(c.dk["sx"] - p.x, c.dk["sz"] - p.z) < 1.4 and rng.random() < 0.3 + 0.7 * k["jump_read"]:
+                    self.plan["space_once"] = True
             # contest a shot (or bite on a fake)
-            if c.act in ("shoot", "fake") and hyp(c.x - p.x, c.z - p.z) < 2.6:
+            elif c.act in ("shoot", "fake") and hyp(c.x - p.x, c.z - p.z) < 2.6:
                 if p.h <= 0 and p.jump_cd <= 0:
                     real = c.act == "shoot"
                     if (real and rng.random() < 0.5 + 0.5 * k["jump_read"]) or (not real and rng.random() < k["bite"]):
@@ -78027,7 +78226,7 @@ class HoopsView(QWidget):
         self.g.ev("flip", team=self.g.flip_team)
 
     # -- input
-    def _inp(self) -> "HoopsInput":
+    def _inp(self, consume: bool = True) -> "HoopsInput":
         k = self.keys
         up = 1.0 if (k & {Qt.Key.Key_W, Qt.Key.Key_Z, Qt.Key.Key_Up}) else 0.0
         down = 1.0 if (k & {Qt.Key.Key_S, Qt.Key.Key_Down}) else 0.0
@@ -78042,7 +78241,8 @@ class HoopsView(QWidget):
         has = me is not None and g.ball.owner == me.i
         shift, lmb, rmb = Qt.Key.Key_Shift in k, self.lmb, self.rmb
         fake = getattr(self, "_fake_q", False)
-        self._fake_q = False
+        if consume:                                  # 9.6: drawing the aim line must not eat an F press
+            self._fake_q = False
         if has:
             if me.act == "shoot":
                 shift, lmb, rmb = True, self.lmb, False
@@ -78056,7 +78256,8 @@ class HoopsView(QWidget):
                 shift, lmb, rmb = False, True, False
             else:
                 shift, lmb, rmb = False, False, False
-        return HoopsInput(right - left, up - down, Qt.Key.Key_Space in k, shift, lmb, rmb, aim)
+        return HoopsInput(right - left, up - down, Qt.Key.Key_Space in k, shift, lmb, rmb, aim,
+                          getattr(self, "_dk_key", ""), getattr(self, "_dk_n", 0))
 
     def keyPressEvent(self, e) -> None:
         if e.isAutoRepeat():
@@ -78076,6 +78277,10 @@ class HoopsView(QWidget):
             return
         if key == Qt.Key.Key_F:                      # 9.5: the fake has its own key
             self._fake_q = True
+        dk = {Qt.Key.Key_E: "E", Qt.Key.Key_R: "R", Qt.Key.Key_C: "C", Qt.Key.Key_X: "X"}.get(key)
+        if dk:                                       # 9.6: the dunk keys (each press counted once by the game)
+            self._dk_key = dk
+            self._dk_n = getattr(self, "_dk_n", 0) + 1
         self.keys.add(Qt.Key(key))
 
     def keyReleaseEvent(self, e) -> None:
@@ -78346,6 +78551,47 @@ class HoopsView(QWidget):
             elif kind == "deflect":
                 self.audio.play("catch", 0.6)
                 self._msg(tr("Deflected!"), "#FFFFFF", 1.0)
+            elif kind == "dunk_start":                       # 9.6
+                self.audio.play("spin", 0.8)
+                self.hype = min(1.0, self.hype + 0.4)
+            elif kind == "dunk_beat":
+                pl = g.players[d["p"]]
+                if pl.ctrl and pl.team == me_team:
+                    self.audio.play("catch" if d["ok"] else "swipe", 0.7)
+            elif kind == "dunk":
+                pl = g.players[d["p"]]
+                sgn = 1 if pl.team == 0 else -1
+                hx = sgn * HOOP_X
+                col = HOOPS_TEAM[pl.team]["main"]
+                monster = d.get("monster")
+                self.shake = 1.6 if monster else 1.15
+                self.flash = 1.0
+                self.flash_col = QColor("#FFFFFF" if monster else col)
+                self.net_kick[0 if sgn < 0 else 1] = 1.0
+                self.fx.burst(hx, HOOP_Z, RIM_H, "#FFFFFF", 70 if monster else 40, 8)
+                self.fx.burst(hx, HOOP_Z, RIM_H, "#F5C04A", 90 if monster else 40, 10)
+                self.fx.burst(hx, HOOP_Z, 0.05, col, 60, 7)
+                self.fx.ring(hx, HOOP_Z, RIM_H, "#F5C04A", 1.4)
+                self.fx.ring(hx, HOOP_Z, 0.02, "#FFFFFF", 2.0)
+                if monster:
+                    self.fx.ring(hx, HOOP_Z, RIM_H, "#FFFFFF", 2.2)
+                self.audio.play("block", 1.0)
+                self.audio.play("boom", 1.0)
+                if d.get("poster"):
+                    self._msg(tr("POSTERIZED!"), "#F5C04A", 2.0)
+            elif kind == "dunk_miss":
+                pl = g.players[d["p"]]
+                self._msg(tr("Blown dunk!"), "#FFB04A", 1.4)
+                self.audio.play("ooh", 0.8)
+                self.shake = max(self.shake, 0.4)
+            elif kind == "block" and d.get("dunk"):
+                p = g.players[d["p"]]
+                self.audio.play("block", 1.0)
+                self._msg(tr("REJECTED!"), HOOPS_TEAM[p.team]["light"], 1.8)
+                self.shake = 0.9
+                self.hype = 1.0
+                self.audio.play("ooh", 0.9)
+                self.fx.burst(g.ball.x, g.ball.z, g.ball.h, "#FFFFFF", 40, 6)
             elif kind == "block":
                 p = g.players[d["p"]]
                 self.audio.play("block", 1.0)
@@ -78471,7 +78717,10 @@ class HoopsView(QWidget):
         self.audio.play("roar", 0.9)
         by = self.g.players[d["by"]]
         who = tr(HOOPS_TEAM[by.team]["name"]) + " #" + str(by.num)
-        self._msg(tr("{pts} POINTS", pts=pts) if pts == 3 else tr("BUCKET!"), HOOPS_TEAM[team]["light"], 1.7, True)
+        how = getattr(self.g, "_last_how", "")
+        big = tr("MONSTER DUNK!") if how == "monster" else tr("SLAM DUNK!") if how == "dunk" else \
+            tr("{pts} POINTS", pts=pts) if pts == 3 else tr("BUCKET!")
+        self._msg(big, "#F5C04A" if how in ("dunk", "monster") else HOOPS_TEAM[team]["light"], 2.0 if how else 1.7, True)
         if d.get("assist", -1) >= 0:
             a = self.g.players[d["assist"]]
             self._msg(tr("{who} scores · assist {a}", who=who, a="#" + str(a.num)), "#FFFFFF", 1.7)
@@ -78989,11 +79238,15 @@ class HoopsView(QWidget):
         cam = self.cam
         me_i = g.ctrl.get(0, 0)
         me = g.players[me_i]
+        if me.act == "dunk" and me.dk is not None:
+            return self._dunk_hud(p, me)
         if g.ball.owner != me_i or g.phase != "play":
             if me.act == "shoot" or (g.ball.mode == "shot" and g.ball.f and g.ball.f.get("by") == me_i and g.ball.f["t"] < 0.6):
                 self._meter(p, me, released=True)
             return
-        inp = self._inp()
+        inp = self._inp(consume=False)
+        if me.act in ("hold", "dribble") and g.can_dunk(me):
+            self._dunk_prompt(p, me)
         # the pass line: while charging (left button), or a faint one for the quick pass when the mouse is near
         if me.act == "passwind":
             kind = me.pass_kind
@@ -79075,6 +79328,75 @@ class HoopsView(QWidget):
                 p.drawText(QRectF(r.left() - S(40), r.bottom() + S(1), r.width() + S(80), S(14)),
                            int(Qt.AlignmentFlag.AlignCenter), tr("Contested"))
             self._meter(p, me)
+
+    def _keycap(self, p: QPainter, c: QPointF, letter: str, size: float, fill: QColor, edge: QColor, txt: QColor) -> None:
+        r = QRectF(c.x() - size / 2, c.y() - size / 2, size, size)
+        p.setPen(QPen(QColor(0, 0, 0, 170), S(3)))
+        p.setBrush(fill)
+        p.drawRoundedRect(r, size * 0.22, size * 0.22)
+        p.setPen(QPen(edge, S(2)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRoundedRect(r.adjusted(S(2), S(2), -S(2), -S(2)), size * 0.18, size * 0.18)
+        p.setPen(txt)
+        p.setFont(font(max(8.0, size / S(1) * 0.42), QFont.Weight.Black))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), letter)
+
+    def _dunk_prompt(self, p: QPainter, me) -> None:
+        """9.6: close enough to dunk: E over my player's head, pulsing."""
+        top = self.cam.pt(me.x, me.z, me.h + 2.35)
+        pulse = 0.5 + 0.5 * math.sin(self.T * 9)
+        size = S(26) + S(4) * pulse
+        c = QPointF(top.x(), top.y() - S(30))
+        gold = QColor("#F5C04A")
+        glow = QColor(gold)
+        glow.setAlpha(int(60 + 80 * pulse))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(c, size * 0.95, size * 0.95)
+        self._keycap(p, c, "E", size, QColor(20, 22, 30, 235), gold, QColor("#FFFFFF"))
+        p.setFont(font(10, QFont.Weight.Black))
+        p.setPen(gold)
+        p.drawText(QRectF(c.x() - S(60), c.y() + size / 2 + S(2), S(120), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("DUNK"))
+
+    def _dunk_hud(self, p: QPainter, me) -> None:
+        """9.6: the dunk's keys over my player: each ring closes on its key; press the key as it closes."""
+        dk = me.dk
+        t = me.act_t
+        top = self.cam.pt(me.x, me.z, me.h + 2.4)
+        n = len(DUNK_BEATS)
+        size = S(34)
+        gap = S(14)
+        x0 = top.x() - (n * size + (n - 1) * gap) / 2 + size / 2
+        y = top.y() - S(44)
+        for i, bt in enumerate(DUNK_BEATS):
+            c = QPointF(x0 + i * (size + gap), y)
+            hit = dk["hits"][i]
+            if hit is None:
+                near = clamp(1 - abs(t - bt) / 0.3, 0, 1)
+                fill, edge = QColor(20, 22, 30, 235), mix(QColor("#FFFFFF"), QColor("#F5C04A"), near)
+                tcol = QColor("#FFFFFF")
+                left = bt - t
+                if -DUNK_WIN <= left <= 0.45:                     # the ring closing on the key
+                    k = clamp(left / 0.45, 0, 1)
+                    rad = size * 0.55 + S(34) * k
+                    ring = QColor("#F5C04A") if abs(left) <= DUNK_WIN else QColor("#FFFFFF")
+                    ring.setAlpha(int(255 * (1 - 0.5 * k)))
+                    p.setPen(QPen(ring, S(3)))
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+                    p.drawEllipse(c, rad, rad)
+                elif left > 0.45:
+                    fill = QColor(20, 22, 30, 150)
+                    tcol = QColor(255, 255, 255, 120)
+            elif hit:
+                fill, edge, tcol = QColor("#1F8F57"), QColor("#3BE38A"), QColor("#FFFFFF")
+            else:
+                fill, edge, tcol = QColor("#7A1F27"), QColor("#FF5A5A"), QColor(255, 255, 255, 200)
+            self._keycap(p, c, dk["seq"][i], size, fill, edge, tcol)
+        p.setFont(font(10, QFont.Weight.Black))
+        p.setPen(QColor("#F5C04A"))
+        p.drawText(QRectF(top.x() - S(120), y + size / 2 + S(4), S(240), S(16)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Press each key as its ring closes"))
 
     def _meter(self, p: QPainter, me, released: bool = False) -> None:
         """The shot meter beside my player: red, a yellow band, the green window; the marker rises."""
@@ -79248,14 +79570,19 @@ class HoopsView(QWidget):
             me = g.players[me_i]
             mv = keys["up"] + keys["left"] + keys["down"] + keys["right"]
             if g.ball.owner == me_i:
+                # 9.6: the same buttons as the guide and the controls bar (left shoots, right passes, F fakes)
                 if me.act == "passwind":
                     tips = [(keys["up"], tr("lob")), (keys["down"], tr("bounce")), (keys["left"] + "/" + keys["right"], tr("curve")),
-                            (tr("Release"), tr("pass")), (tr("Right"), tr("fake"))]
-                elif self._inp().shift:
-                    tips = [(tr("Hold left"), tr("shoot, let go in the green")), (tr("Right"), tr("pump fake"))]
+                            (tr("Let go of right"), tr("pass"))]
+                elif me.act == "shoot":
+                    tips = [(tr("Let go of left"), tr("in the green"))]
+                elif me.act == "dunk":
+                    tips = [("E R C X", tr("each key as its ring closes"))]
                 else:
-                    tips = [(tr("Space") + " + " + mv, tr("dribble")), (tr("Left"), tr("charge a pass")), (tr("Right"), tr("quick pass")),
-                            (tr("Shift"), tr("aim at the hoop"))]
+                    tips = [(tr("Space") + " + " + mv, tr("dribble")), (tr("Left"), tr("shoot")), (tr("Right"), tr("pass")),
+                            ("F", tr("fake"))]
+                    if me.act in ("hold", "dribble") and g.can_dunk(me):
+                        tips.insert(0, ("E", tr("DUNK")))
             elif g.poss == 0:
                 tips = [(mv, tr("move")), (tr("Right"), tr("switch player"))]
             else:
@@ -79605,6 +79932,7 @@ def build_hoops(page, lay) -> None:
                               ([tr("Left click")], tr("Shoot (no ball: steal)")),
                               ([tr("Right click")], tr("Pass (no ball: switch player)")),
                               (["F"], tr("Fake a shot")),
+                              (["E"], tr("Dunk (near the hoop)")),
                               (["Space"], tr("Dribble (no ball: jump)")),
                               (["Shift"], tr("Guard (no ball)")),
                               ([tr("Esc")], tr("Pause"))], page.W))
@@ -85516,3 +85844,5 @@ def main() -> int:
 if __name__ == "__main__":
     sys.exit(main())
 FR.update({'The free spin wheel lands on every prize again (it was stuck on 100 coins)': 'La roue gratuite peut de nouveau tomber sur tous les lots (elle restait bloquée sur 100 pièces)', 'The scratch card always shows your prize (it could stay blank after scratching)': 'La carte à gratter affiche toujours ton lot (elle pouvait rester vide après avoir gratté)', 'Rocket and roulette results are random again (the rocket crashed at once and the roulette always landed on gold)': 'Les résultats de la fusée et de la roulette sont de nouveau aléatoires (la fusée explosait tout de suite et la roulette tombait toujours sur l’or)'})
+FR.update({'Dunking: close to the hoop with the ball, an E shows over your head: press E to take off. Three keys then show (E, R, C or X), each with a ring closing on it: press each key as its ring closes. All three: a monster dunk that even goes in over a defender. Two: a dunk. Fewer: you blow it off the rim. A defender in the air at the rim blocks anything but a monster dunk.': 'Smasher : près du panier avec le ballon, un E s’affiche au-dessus de ta tête : appuie sur E pour décoller. Trois touches s’affichent ensuite (E, R, C ou X), chacune avec un cercle qui se referme : appuie sur chaque touche quand son cercle se referme. Les trois : un monster dunk qui rentre même par-dessus un défenseur. Deux : un dunk. Moins : tu le rates sur le cercle. Un défenseur en l’air au cercle contre tout sauf un monster dunk.', 'Dunk': 'Dunk', 'Near the hoop press E, then each key as its ring closes.': 'Près du panier appuie sur E, puis sur chaque touche quand son cercle se referme.', 'Dunk (near the hoop)': 'Dunk (près du panier)', 'DUNK': 'DUNK', 'Press each key as its ring closes': 'Appuie sur chaque touche quand son cercle se referme', 'POSTERIZED!': 'POSTERISÉ !', 'Blown dunk!': 'Dunk raté !', 'REJECTED!': 'CONTRÉ !', 'MONSTER DUNK!': 'MONSTER DUNK !', 'SLAM DUNK!': 'SLAM DUNK !', 'MONSTER DUNK': 'MONSTER DUNK', 'REJECTED': 'CONTRÉ', 'POSTERIZED': 'POSTERISÉ'})
+FR.update({'shoot': 'tirer', 'Let go of right': 'Lâche le clic droit', 'Let go of left': 'Lâche le clic gauche', 'in the green': 'dans le vert', 'each key as its ring closes': 'chaque touche quand son cercle se referme'})
