@@ -7,43 +7,46 @@ The one place for the game's rules and decisions. Read STATUS.md for where the w
   modules and no new packages (the script updater only downloads Rubenium.py).
 - The simulation has no Qt, runs at 120 steps a second and is deterministic: same seed and inputs, same state hash.
   It never reads the clock or the global random, and uses its own trig.
-- Players and bots drive through the same `AerialInput`, and bots never read the other player's inputs. As the owner
-  decided, bots get hidden help that grows with rank (`AERIAL_BOT_KIT`, applied in the sim so replays match): less boost
-  used for the same push, the ball sticking to the car, a touch more reach on fast balls, and full-speed flicks and
-  pinches off a held ball. Never extra top speed.
-- Hidden until released: only shows when the app starts with `--aerial`.
+- Players and bots drive through the same `AerialInput`, and bots never read the other player's inputs.
+- The name is "Rubenium League", in English and French.
 - Never change VERSION, VERSION_NAME or BUILD; never merge to main; never run SQL on the live server.
 
-## The game
-1 v 1, side view, keyboard and mouse. 2:30 clock that runs only while the ball is live, 3-2-1-GO, 0:00 waits for a
-floor touch, golden-goal overtime, goal replays. Points as in Rocket League, no shot points. Three cars (Comet,
-Blade, Titan) differ only in hitbox. Boost refills on the ground and faster on the ball.
+## The game (10.0: flat and top-down)
+1 v 1 car soccer on a flat pitch seen from above. No jumps, no air: everything happens on the ground (dribbles, drift
+flicks, wall pinches, fakes, saves). 2:30 clock that runs only while the ball is live, 3-2-1-GO, mirrored kickoffs
+(3 spots, the same for both sides turned half round the centre) with a 1 s settle after the first touch that caps the
+ball speed, so a kickoff cannot go straight in. Golden-goal overtime, goal explosion, goal replays. Points as in
+Rocket League (no shot points), plus Pinch Goal and Flick Goal bonuses.
 
-Controls (mouse, the default): W/Z drive toward the crosshair, S brake then reverse, Space jump, Shift boost; the
-crosshair rides on a ring round the car (put it behind the car to turn round, the car points at it in the air);
-W/S in the air pitch forward/back and pick a front/back flip; left click air roll left, right click air roll right.
-Keys only: A/D (Q/D on AZERTY) drive and turn in the air, Q/E (A/E on AZERTY) air roll left/right.
+Boost only from the pitch: 6 big orbs along the sides (full tank, back after 10 s) and 32 small pads (12, back after
+4 s). A used pad shows a ring that fills until it is back.
+
+Cars: Comet balanced, Blade sleek and agile (turns and drifts best, lightest), Titan compact and sturdy (heaviest,
+hits hardest, wins 50/50s). Same top speed and boost for all. The bot always drives a different car from yours.
+
+Controls: W/Z or Up drive, S or Down brake then reverse, A/Q or Left and D or Right steer (WASD and ZQSD both work at
+the same time), Shift or left click boost, Ctrl or right click powerslide (no right-click menu while playing), Space
+or Enter skips a goal replay. Free Play: infinite boost (B), R reset, T ball in front, G slow motion, H hitbox.
+
+Modes: Ranked 1 v 1 (against the bot of your rank), Private match (any bot up to one rank above yours, its car, 2:30
+or 5:00, no MMR), practice, Free Play. Private matches against friends need the online update.
 
 ## Ranks
 10 ranks: Rookie (Débutant) 1-3, Challenger 1-3, Master 1-3, Rubenite. One bot per rank, and ranked is always against
 the bot of your rank. 5 more wins than losses against it and you go up; 5 more losses than wins and you go down.
-Rating shown as MMR 0-1000 (100 a rank, 10 a net win). Admins can close ranked (lock `league_ranked`, Admin > Locks or
-the admin button in the lobby).
+Rating shown as MMR 0-1000. Admins can close ranked (lock `league_ranked`) or hide the whole game from players (lock
+`league`), in Admin > Locks or with the admin buttons in the lobby.
 
-## Bots (rank, level; each knows everything the ones below know, plus its own)
-Milo (Rookie 1) basics · Tito (Rookie 2) + double jumps, flips · Rocco (Rookie 3) + aerials, wall clears · Flash
-(Challenger 1) + fast aerials, wave dashes · Viper (Challenger 2) + carries and flicks · Storm (Challenger 3) + air
-dribbles, ground pinches, fake challenges · Vortex (Master 1) + ceiling pinches, musty flicks · Phantom (Master 2) +
-flip resets, reads your boost · Oracle (Master 3) + reset chains · Ruben (Rubenite) everything, catches every touch.
-(Internal keys stay pip ... apex, ruben, so saved history keeps working.)
-
-Each bot is the same `AerialBot`; its level sets reaction time, how often it re-plans, how far and how well it reads
-the ball, aim and timing error, blunders, which mechanics it tries and how often they come off. The kit adds the
-possession plays, how often it goes for them and mixes one into another, how cleanly they come off, how often it waits
-in goal for a play coming at it, fakes (brakes in front of you), reading the other car's boost, thinking every 1-4
-steps at the top, and the hidden help (less boost used, ball sticking to the car, reach on fast balls and more on shots
-at its own goal, flicks and pinches that reach the goal in a time set by rank).
+## Bots
+Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle, Ruben (internal keys pip ... apex, ruben, so saved
+history keeps working). Each is the same `AerialBot`; its level sets reaction, re-planning, how far and how well it
+reads the ball, aim and line error, randomness in choices and blunders. It weighs its options each time it thinks
+(save, carry, shoot at a post or the middle, bank off a wall, pinch, clear, shadow, fake, pads, boost denial) and
+holds a plan for a moment instead of flickering. The kit (`AERIAL_BOT_KIT`) adds plays by rank and a touch-precision
+help that grows with rank (where its touch goes, and the power of a touch it means as a shot). As the owner decided:
+fair boost and speed up to Master 1; Phantom 1.15x boost and 1.03x speed, Oracle 1.3x and 1.06x, Ruben 1.5x and 1.10x.
+All of it lives in the sim through the inputs, so replays play back the same.
 
 ## Calibrating
 `overhaul/aerial/arena.py` plays headless bot matches on all cores (`ladder N`, `pairs N a:b,...`). Goal set by the
-owner: each bot all but unbeatable for the one below, and Ruben harder still. Change levels and kits, never physics.
+owner: each bot clearly stronger than the one below, Milo already like a Challenger 2, Ruben practically unbeatable.
