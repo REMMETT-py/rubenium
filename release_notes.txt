@@ -1,7 +1,17 @@
-Rubenium 9.3.2
+Rubenium 9.5
 
-- Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone
-- Stats: one All time view, and every stat starts again from 0
-- Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies
-- Clearer game menus: shorter rules in plain words, and no more win counters
-- Hoops: smoother bots, shorter replays you can turn off, an OPEN badge when your team-mate is free, and a stronger Professional
+- Hoops plays inside Rubenium now, smoother, and your bot team-mate gets open for passes and plays defence
+- Hoops: hold the ball too long and the bots rush you (6 seconds on Club down to 3 on Professional, a red edge warns you), bots fake, 3 baskets in a row puts you On Fire, and ankle breakers
+- Hoops and Karting: a points feed at the top (passes, shots, saves, overtakes and more), Tab shows the scoreboard, and a short How to play the first time
+- Hoops: an MVP card, quick chat on 1 to 4, a YOU marker, clearer passes, and replays of big plays and swishes
+- Away for 45 seconds in Hoops or Karting: you are disqualified and get no prize
+- Karting: the bots are rebuilt. The old Professional is now Expert (1500), and Elite and Professional are faster than any player. Every bot shows on the time boards with its best time
+- Karting: a live split against your best lap
+- Volume sliders for the interface, game effects and crowd and engines, in Settings and in game. Game sounds are quieter
+- Animations: a free Basic one, 6 new ones (Black Hole, Warp, Glitch, Origami, Pixel Dust, Ripple), Shattered Shard rebuilt as a Mythic, finishes colour the whole effect, and Titanium is for Mythics only
+- Inventory: select several items and sell them together, and the pawn shop shows each one
+- Daily reward: coins and a case every day, with more coins for every week of your streak
+- Comeback top-up: once a day, if you drop under your floor you are topped up to it (1 000 for Poor, up to 30 000 for Casino Legend)
+- Quests: a bot challenge every hour, day and week, and a case with every weekly quest
+- Bets: up to 20% of your coins (from 1 000 to 250 000). Horse Racing bets over 10 000 work again
+- Friends: see what your friends last played
