@@ -227,7 +227,9 @@ language sql stable set search_path to '' as $$
                      [(extract(epoch from date_trunc('week', now()))::bigint / 604800 + length(quest) + ascii(right(quest, 1))) % 8 + 1])
         when quest like 'db\_%' then jsonb_build_object('keys', 1, 'case', 'standard')
         when quest like 'hb\_%' then jsonb_build_object('keys', 1, 'case', null)
-        else public.rb_quest_prize(reward) end $$;
+        else case when reward < 300 then jsonb_build_object('keys', 1, 'case', null)      -- rb_quest_prize(reward)
+                  when reward < 1000 then jsonb_build_object('keys', 1, 'case', 'standard')
+                  else jsonb_build_object('keys', 2, 'case', 'premium') end end $$;
 
 create or replace function public.rb_quests() returns json
 language sql stable security definer set search_path to '' as $$
