@@ -77878,7 +77878,7 @@ class AerialRng:
 # published Sideswipe values.
 AERIAL_TUNE = {
     "gravity": 650.0,
-    "arena_hw": 1350.0, "arena_h": 1200.0, "goal_h": 420.0, "goal_d": 320.0, "ramp_r": 200.0,
+    "arena_hw": 1700.0, "arena_h": 1200.0, "goal_h": 420.0, "goal_d": 320.0, "ramp_r": 200.0,
     "corner_r": 320.0, "goal_corner_r": 70.0, "crossbar_r": 30.0,
     "ball_r": 92.0, "ball_max": 6000.0, "ball_drag": 0.03, "ball_bounce": 0.6, "ball_friction": 0.28,
     "ball_spin_max": 6.0, "ball_roll_drag": 0.08,
@@ -78668,7 +78668,7 @@ class AerialSim:
         t = self.t
         b = self.ball
         b.x, b.y, b.vx, b.vy, b.w, b.a = 0.0, t["ball_r"], 0.0, 0.0, 0.0, 0.0
-        dist = (820.0, 700.0, 940.0)[variant % 3]
+        dist = (1000.0, 860.0, 1140.0)[variant % 3]
         for c in self.cars:
             s = -1.0 if c.team == 0 else 1.0
             c.reset(s * dist, c.r, -s)
@@ -79051,7 +79051,7 @@ AERIAL_BOT_ROSTER = [
     ("rattle", "Rattle", "Challenger", 730, 0.37, "Flips into everything.", {"flippy": 1}),
     ("skid", "Skid", "Challenger", 870, 0.43, "A defender who clears off the walls.", {"aggro": -0.45, "save": 0.1}),
     ("vapor", "Vapor", "Challenger", 1010, 0.48, "Quick aerials, sloppy finishes.", {"aerial_early": 0.15, "aim": 1.7}),
-    ("jinx", "Jinx", "Challenger", 1150, 0.53, "Fakes kickoffs and waits for your mistake.", {"fake_kick": 0.7}),
+    ("jinx", "Jinx", "Challenger", 1150, 0.53, "Fakes kickoffs and waits for your mistake.", {"fake_kick": 0.4}),
     ("halo", "Halo", "Elite", 1320, 0.58, "The gatekeeper. Clean aerials.", {"aim": 0.7}),
     ("torque", "Torque", "Elite", 1500, 0.63, "Power hits and wall play.", {"flippy": 1, "power": 1}),
     ("mirage", "Mirage", "Elite", 1680, 0.67, "Patient. Fakes, then punishes.", {"aggro": -0.5, "fake": 0.35}),
@@ -79091,6 +79091,7 @@ def aerial_bot_profile(key: str, lv_override: float = None) -> dict:
         "timing": 0.0 if machine else 0.16 * q ** 1.3 + 0.008,  # seconds
         "late": (0.0 if machine else 0.05 * q) + tr.get("late", 0.0),
         "whiff": 0.0 if machine else 0.22 * q ** 2,
+        "blunder": 0.0 if machine else 0.5 * q ** 1.6,          # a plain bad decision now and then
         "jump_will": tr.get("jump_will", 0.35 + 0.65 * min(1.0, L * 3)),
         "aggro": tr.get("aggro", 0.0) + (0.6 * q if not machine else 0.0),   # high: chases the ball
         "position": 1.0 if machine else 0.15 + 0.8 * L,
@@ -79332,6 +79333,8 @@ class AerialBot:
         bx = ball[0]
         cands = self._candidates(m, me, ocar, path, goal_in)
         best = max(cands, key=lambda c: c["value"]) if cands else None
+        if cands and self.rng.random() < p["blunder"]:
+            best = self.rng.pick(cands)                     # misjudges which ball to go for
         keep = self.plan
         if keep is not None and keep.get("t", 0) > sim.tick + 3 and best is not None:
             if best["value"] < keep.get("value", -9) + 0.25:
@@ -79432,13 +79435,71 @@ class AerialBot:
                 v -= 0.15 * max(0.0, (x - own) * self.s / 4800.0 - 0.5) * (1.0 - min(1.0, p["aggro"] + 0.5))
                 if goal_in is not None:
                     v += 1.5                               # a save beats everything
+                else:
+                    # a touch far up the pitch that might not come off leaves its goal open
+                    fail = {"g": 0.15, "j": 0.3, "d": 0.45, "a": 0.5}.get(how, 0.3) * (1.25 - p["position"])
+                    up = max(0.0, (x - own) * self.s / (2 * sim.arena.hw) - 0.45)
+                    v -= 1.6 * fail * up
                 v += p["aggro"] * 0.5 * max(0.0, 1.0 - tm)   # low ranks chase the nearest ball
                 out.append({"value": v, "tm": tm, "x": x, "y": y, "vx": vx, "vy": vy, "how": how,
                             "cx": cx, "cy": cy, "dx": Dx, "dy": Dy, "clear": clear})
             if len(out) > 40:
                 break
         thresh = -0.35 - 0.4 * p["aggro"]
-        return [c for c in out if c["value"] > thresh]
+        out = [c for c in out if c["value"] > thresh]
+        # think it through: where would the ball go after this touch? (better bots check more touches, more often)
+        checks = 0 if p["position"] < 0.2 else (2 if p["position"] < 0.5 else (4 if p["position"] < 0.85 else 7))
+        if p["machine"]:
+            checks = 10
+        if checks and out:
+            out.sort(key=lambda c: -c["value"])
+            for c in out[:checks]:
+                c["value"] += self._outcome(m, me, c)
+        return out
+
+    def _outcome(self, m, me, c) -> float:
+        """Roughly how the ball leaves this touch (Rocket League's hit model, the car's likely speed), then where it
+        goes in the next 2 seconds: in their goal is great, in its own goal is a disaster, near its own goal is bad."""
+        sim = m.sim
+        Dx, Dy = c["dx"], c["dy"]
+        if c["how"] == "a":
+            sp = 1500.0
+            vcx, vcy = Dx * sp, Dy * sp
+        else:
+            sp = abs(c["cx"] - me.x) / max(0.12, c["tm"]) * 1.1
+            sp = 600.0 if sp < 600.0 else (2100.0 if sp > 2100.0 else sp)
+            vcx, vcy = (1.0 if Dx > 0 else -1.0) * sp, 0.0
+        bvx, bvy = c["vx"], c["vy"]
+        rx, ry = vcx - bvx, vcy - bvy
+        vn = rx * Dx + ry * Dy
+        nvx, nvy = bvx, bvy
+        if vn > 0:
+            k = vn * 1.6 * 0.857
+            nvx += Dx * k
+            nvy += Dy * k
+        rel = _ae_sqrt(rx * rx + ry * ry)
+        hx, hy = Dx, Dy * 0.35
+        hL = _ae_sqrt(hx * hx + hy * hy) or 1.0
+        k = min(rel, 4600.0) * _ae_hit_scale(min(rel, 4600.0))
+        nvx += hx / hL * k
+        nvy += hy / hL * k
+        err = self.p["read"] * 2.0
+        if err:
+            nvx *= 1.0 + self.rng.gauss(err)
+            nvy *= 1.0 + self.rng.gauss(err)
+        path = AerialBallPath(sim, 2.2, c["x"], c["y"], nvx, nvy, 0.0)
+        if path.goal_t is not None:
+            mine = path.goal_side == (-1 if self.s > 0 else 1)
+            return -3.0 if mine else 2.0 + 0.5 * max(0.0, 2.0 - path.goal_t)
+        if not path.pts:
+            return 0.0
+        hw = sim.arena.hw
+        end = path.pts[-1]
+        worst = min(x * self.s for (_t, x, _y, _vx, _vy) in path.pts[::6])
+        v = 0.5 * (end[1] * self.s) / hw
+        if worst < -hw * 0.6:
+            v -= 0.8 * (-worst / hw - 0.6) / 0.4          # it comes back near its own goal
+        return v
 
     def _plan_from(self, m, me, c, ocar) -> dict:
         sim, p = m.sim, self.p
@@ -79573,6 +79634,9 @@ class AerialBot:
             return
         need = abs(d) / max(0.05, t_left)
         v = me.vx * s
+        if not arrive_fast and v > 200 and abs(d) < v * v / 7000.0 + 40:
+            inp.ix = -int(s)                               # brake in time (and turn to face the play)
+            return
         over = self.p["overshoot"]
         if over > 0 and self.rng.random() < 0.02:
             need *= 1.0 + over
@@ -79762,6 +79826,12 @@ class AerialBot:
         if p["traits"].get("poke"):
             back = 650
         target = bx - self.s * back * (0.5 + 0.5 * p["position"])
+        # the ball is up in their half or flying at their wall: it will come back, so wait in front of the goal
+        b0 = sim.ball
+        if p["position"] >= 0.3 and (bx * self.s > 0 or b0.y > 520) and b0.vx * self.s > -400:
+            keeper = own + self.s * (330 + 250 * (1.0 - p["position"]))
+            if (target - keeper) * self.s > 0:
+                target = keeper
         lim = own + self.s * 200
         if (target - lim) * self.s < 0:
             target = lim
@@ -79816,16 +79886,20 @@ class AerialBot:
         if self.kick is None:
             r = self.rng.random()
             fake = p["traits"].get("fake_kick", 0.0) + p["traits"].get("fake", 0.0) * 0.3
+            # A boosted kickoff sends the ball to their back wall and it comes straight back at your own goal, so
+            # good players arrive under control; low ranks just drive in.
             if p["machine"]:
-                style = "fake" if self.opp_kick_fast < 0.25 and r < 0.3 else "hard"
+                style = "hard"
+            elif p["lv"] >= 0.5 and r < 0.75 + 0.25 * p["lv"]:
+                style = "read"                         # watch the other car: contest a hard kickoff, else stay calm
             elif r < fake:
                 style = "fake"
-            elif p["lv"] < 0.2:
-                style = "slow"
-            elif r < fake + 0.15 * (1 - p["lv"]):
+            elif r < fake + 0.10 + 0.6 * max(0.0, p["lv"] - 0.5) / 0.5:
+                style = "hard"                         # the top ranks win kickoffs with a flip
+            elif r < fake + 0.22 and p["lv"] > 0.3:
                 style = "late"
             else:
-                style = "hard"
+                style = "slow"
             self.kick = style
             self.kick_go = sim.tick + (int(self.rng.uniform(0.15, 0.45) * AERIAL_HZ) if style == "late" else
                                        int(max(0, self.rng.gauss(p["timing"] * 2)) * AERIAL_HZ) + p["react"] // 2)
@@ -79834,12 +79908,19 @@ class AerialBot:
             return inp
         style = self.kick
         d = ball[0] - me.x
+        if style == "read":
+            o = sim.cars[1 - self.team]
+            coming = (ball[0] - o.x) * o.vx > 0 and abs(o.vx) > 950
+            if coming or (p["machine"] and abs(o.x - ball[0]) < abs(d) - 150):
+                style = self.kick = "hard"
+            elif abs(d) < 900:
+                style = "slow"
         if style == "fake":
             target = self._goal_x(True) + self.s * 500
             self._drive_to(me, target, 1.0, inp, arrive_fast=False)
             return inp
         inp.ix = 1 if d > 0 else -1
-        inp.boost = style in ("hard", "late") and me.boost > 0
+        inp.boost = style == "hard" and me.boost > 0
         if style == "hard" and not self.kick_flip and abs(d) < 520 + abs(me.vx) * 0.08 and me.ground:
             self.kick_flip = True
             if "flip_hit" in p["mech"]:
@@ -81220,6 +81301,17 @@ class AerialResults(QWidget):
         super().__init__()
         self.res, self.lo, self.bot_key = res, ladder_out, bot_key
         self.setFixedSize(min(width, S(640)), S(390 if ladder_out else 330))
+        self.t0 = time.monotonic()
+        self._t = QTimer(self)                       # the emblem is forged on a promotion (rays, a flash, a pop)
+        self._t.setInterval(30)
+        self._t.timeout.connect(self._anim)
+        if ladder_out and (ladder_out.get("promoted") or ladder_out.get("series")):
+            self._t.start()
+
+    def _anim(self) -> None:
+        if time.monotonic() - self.t0 > 4.0:
+            self._t.stop()
+        self.update()
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -81269,7 +81361,20 @@ class AerialResults(QWidget):
             y += S(8)
             d = lo.get("delta", 0)
             info = aerial_rank(lo["after"])
-            aerial_draw_emblem(p, QRectF(0, y, S(56), S(56)), info["rank"], info["tier"], info["div"], time.monotonic())
+            age = time.monotonic() - self.t0
+            if lo.get("promoted") and age < 4.0 and getattr(ui, "motion", 1.0) > 0.01:
+                c = QPointF(S(28), y + S(28))
+                k = min(1.0, age / 0.6)
+                for i in range(12):                  # rays
+                    a = i * math.pi / 6 + age * 0.8
+                    p.setPen(QPen(alpha(info["colour"], 0.5 * (1 - age / 4.0)), S(3)))
+                    p.drawLine(c, QPointF(c.x() + math.cos(a) * S(60) * k, c.y() + math.sin(a) * S(60) * k))
+                sz = S(56) * (0.4 + 0.6 * k + 0.08 * math.sin(min(age, 1.2) * 9) * (1 - min(1.0, age)))
+                aerial_draw_emblem(p, QRectF(c.x() - sz / 2, c.y() - sz / 2, sz, sz), info["rank"], info["tier"],
+                                   info["div"], time.monotonic())
+            else:
+                aerial_draw_emblem(p, QRectF(0, y, S(56), S(56)), info["rank"], info["tier"], info["div"],
+                                   time.monotonic())
             p.setFont(font(14, QFont.Weight.Black))
             p.setPen(QColor(info["colour"]))
             p.drawText(QRectF(S(66), y + S(4), w, S(22)), int(Qt.AlignmentFlag.AlignLeft), info["label"])
@@ -81946,6 +82051,10 @@ def build_aerial(page, lay) -> None:
     s = st.ladder.series
     go.clicked.connect(lambda: AerialStage.start(ctx, {"mode": "ranked", "bot": aerial_pick_ranked(st)}))
     lay.addWidget(go)
+    pm = Button(tr("Private match"), "ghost", 40)
+    pm.fade = 0.55
+    pm.clicked.connect(lambda: ctx.toast(tr("Private matches against players arrive with the online update"), "warn"))
+    lay.addWidget(pm)
     lay.addWidget(Label(tr("Rank-up series: best of {n} against {b}. Win it to go up.", n=s["need"],
                            b=AERIAL_BOTS[s["bot"]]["name"]) if s else
                         tr("Against a bot of your rank. Ranked against players and private matches come with the "
@@ -82123,7 +82232,7 @@ def aerial_selftest(ctx) -> None:
         raise RuntimeError("Rubenium League self-test failed")
 
 
-FR.update({'Rubenium League plays in the online menu': 'Rubenium League se joue dans le menu en ligne', 'Leave the match first': 'Quitte d’abord le match', 'Restart': 'Recommencer', 'Air control: keys': 'Contrôle en l’air : clavier', 'Air control: mouse': 'Contrôle en l’air : souris', 'Forfeit and leave': 'Abandonner et quitter', 'GOAL!': 'BUT !', 'OWN GOAL': 'CONTRE SON CAMP', 'Flip reset': 'Flip reset', '0:00 · the next floor touch ends it': '0:00 · le prochain rebond au sol termine le match', 'Own goal': 'Contre son camp', 'Jump to skip the replay': 'Saute pour passer le ralenti', 'R reset · T ball on car · B infinite boost: {b} · G slow motion: {s} · H hitbox · 1-5 drills': 'R réinitialiser · T balle sur la voiture · B boost infini : {b} · G ralenti : {s} · H hitbox · 1-5 exercices', 'off': 'non', 'on': 'oui', 'The match goes on': 'Le match continue', 'Defeat': 'Défaite', 'Forfeit': 'Abandon', 'Victory': 'Victoire', 'overtime': 'prolongation', 'Epic saves': 'Arrêts épiques', 'Saves': 'Arrêts', 'Aerial hits': 'Touches aériennes', 'Clears': 'Dégagements', 'Touches': 'Touches', 'Flip resets': 'Flip resets', 'Rank-up series vs {b}: {w}-{l} (best of {n})': 'Série de promotion contre {b} : {w}-{l} (au meilleur des {n})', 'Promoted!': 'Promu !', 'Free Play': 'Jeu libre', 'Practice': 'Entraînement', 'Ranked': 'Classé', 'Replay': 'Rediffusion', 'Rubenium League could not start': 'Rubenium League n’a pas pu démarrer', 'Leave this ranked match? It counts as a loss.': 'Quitter ce match classé ? Il compte comme une défaite.', '1 v 1 car soccer · ranked ladder · 22 bots': 'Foot en voiture en 1 contre 1 · classement · 22 bots', 'PLAY': 'JOUER', 'Division {d}': 'Division {d}', 'Rank-up series vs {b} · best of {n} · {w} won, {l} lost': 'Série de promotion contre {b} · au meilleur des {n} · {w} gagnés, {l} perdus', 'Shield: you cannot drop out of this rank for {n} more matches': 'Bouclier : tu ne peux pas descendre de ce rang pendant encore {n} matchs', 'The top of the ladder': 'Le sommet du classement', '{n} MMR to the next division': '{n} MMR jusqu’à la division suivante', 'Play ranked to see your MMR over time': 'Joue en classé pour voir ton MMR au fil du temps', 'That replay is gone': 'Cette rediffusion n’existe plus', 'This replay was made by another version: it may play differently': 'Cette rediffusion vient d’une autre version : elle peut se jouer autrement', 'Save replay': 'Enregistrer la rediffusion', 'Replay saved': 'Rediffusion enregistrée', 'Could not save the replay': 'Impossible d’enregistrer la rediffusion', 'vs {b}': 'contre {b}', 'pts': 'pts', 'goals': 'buts', 'saves': 'arrêts', 'Ladder': 'Rangs', 'Tracker': 'Suivi', 'Play ranked': 'Jouer en classé', 'Rank-up series: best of {n} against {b}. Win it to go up.': 'Série de promotion : au meilleur des {n} contre {b}. Gagne-la pour monter.', 'Against a bot of your rank. Ranked against players and private matches come with the online update.': 'Contre un bot de ton rang. Le classé contre des joueurs et les matchs privés arrivent avec la mise à jour en ligne.', 'Your car': 'Ta voiture', 'Practice and training': 'Entraînement', 'Free Play and drills': 'Jeu libre et exercices', 'Play any bot below: no MMR, just practice.': 'Affronte n’importe quel bot ci-dessous : pas de MMR, juste de l’entraînement.', 'Jump / double jump': 'Sauter / double saut', 'Flip (direction + jump)': 'Flip (direction + saut)', 'Mouse': 'Souris', 'Point the car in the air': 'Oriente la voiture en l’air', 'Air roll': 'Air roll', 'Menu': 'Menu', 'Matches': 'Matchs', 'Wins': 'Victoires', 'Peak': 'Meilleur rang', 'MMR': 'MMR', 'Match history': 'Historique des matchs', 'Your last 200 matches. The last 10 keep their replay: watch it here or save the file to keep or share it.': 'Tes 200 derniers matchs. Les 10 derniers gardent leur rediffusion : regarde-la ici ou enregistre le fichier pour le garder ou le partager.', 'Open the replays folder': 'Ouvrir le dossier des rediffusions', 'Five ranks, each with tiers 1 to 3 and divisions I to III. Wins against stronger opponents give more; losses cost a little more at every rank. Reaching a new rank takes a best-of series against its gatekeeper.': 'Cinq rangs, chacun avec les niveaux 1 à 3 et les divisions I à III. Battre plus fort que soi rapporte plus ; une défaite coûte un peu plus à chaque rang. Pour atteindre un nouveau rang, il faut gagner une série contre son gardien.', 'you are here': 'tu es ici', 'From {m} MMR · {s} per division': 'Dès {m} MMR · {s} par division', 'gate: {b}, best of {n}': 'gardien : {b}, au meilleur des {n}', 'Bots: {b}': 'Bots : {b}', 'Challenger': 'Challenger', 'Rubenite': 'Rubenite', 'Kickoff': 'Engagement', 'Aerial save': 'Arrêt aérien', 'Air dribble': 'Air dribble', 'Double tap': 'Double tap', 'Goal': 'But', 'Epic Save': 'Arrêt épique', 'First Touch': 'Première touche', 'Aerial Hit': 'Touche aérienne', 'Hat Trick': 'Triplé', 'Savior': 'Sauveur', 'Aerial Goal': 'But aérien', 'Long Goal': 'But de loin', 'Overtime Goal': 'But en prolongation', 'Flip Reset Goal': 'But en flip reset', 'Double Tap': 'Double tap', 'Medium and round. Good at everything.': 'Moyenne et arrondie. Bonne partout.', 'Long and low. Easier dribbles and flicks.': 'Longue et basse. Dribbles et flicks plus faciles.', 'Short and tall. Wins more 50/50s.': 'Courte et haute. Gagne plus de 50/50.', 'Drives at the ball. Rarely jumps.': 'Fonce sur la balle. Saute rarement.', 'Jumps late, every time.': 'Saute en retard, à chaque fois.', 'Always overshoots.': 'Va toujours trop loin.', 'Fast, and wastes all its boost.': 'Rapide, et gaspille tout son boost.', 'Stays back and pokes the ball.': 'Reste en retrait et pousse la balle.', 'Trying its first aerials.': 'Tente ses premiers aériens.', 'The gatekeeper. Solid on the ground.': 'Le gardien. Solide au sol.', 'Flips into everything.': 'Flippe dans tout.', 'A defender who clears off the walls.': 'Un défenseur qui dégage sur les murs.', 'Quick aerials, sloppy finishes.': 'Aériens rapides, finitions approximatives.', 'Fakes kickoffs and waits for your mistake.': 'Feinte les engagements et attend ton erreur.', 'The gatekeeper. Clean aerials.': 'Le gardien. Aériens propres.', 'Power hits and wall play.': 'Frappes puissantes et jeu sur les murs.', 'Patient. Fakes, then punishes.': 'Patient. Feinte, puis punit.', 'Starting to air dribble.': 'Commence à faire des air dribbles.', 'Reads the back wall. Some double taps.': 'Lit le mur du fond. Quelques double taps.', 'The gatekeeper. Consistent air dribbles.': 'Le gardien. Air dribbles réguliers.', 'Lives on the ceiling and the high ball.': 'Vit au plafond et sur les balles hautes.', 'Flip resets.': 'Flip resets.', 'Relentless pressure.': 'Pression sans relâche.', 'The last gate. Has everything.': 'Le dernier gardien. Il a tout.', 'Ruben. Beyond human.': 'Ruben. Au-delà de l’humain.', '1 v 1 car soccer seen from the side. Put the ball in the other goal. 2 minutes; the clock only runs while the ball is in play. At 0:00 play goes on until the ball touches the floor. A tie goes to overtime: the next goal wins.': 'Foot en voiture en 1 contre 1, vu de côté. Mets la balle dans l’autre but. 2 minutes ; le chrono ne tourne que quand la balle est en jeu. À 0:00, le jeu continue jusqu’à ce que la balle touche le sol. En cas d’égalité, prolongation : le prochain but gagne.', 'Drive with A and D (Q and D in French) or the arrows. Jump with Space or the right mouse button, and press it again in the air for a double jump. Hold a direction while you press it to flip: a flip hits the ball harder.': 'Conduis avec Q et D (A et D en anglais) ou les flèches. Saute avec Espace ou le clic droit, et appuie de nouveau en l’air pour un double saut. Garde une direction en appuyant pour faire un flip : un flip frappe la balle plus fort.', 'Boost with Shift or the left mouse button. It refills while your wheels are on a surface, and much faster while you touch the ball. In the air the car points at your mouse; E is air roll.': 'Boost avec Maj ou le clic gauche. Il se recharge quand tes roues touchent une surface, et bien plus vite quand tu touches la balle. En l’air, la voiture pointe vers ta souris ; E fait un air roll.', 'Touching the ball with all your wheels in the air gives your jump back: a flip reset.': 'Toucher la balle avec toutes tes roues en l’air te rend ton saut : un flip reset.', 'Watch the ball bounce off the back wall: a hard shot comes back at your goal.': 'Attention au rebond sur le mur du fond : un tir puissant revient vers ton but.', 'Land on your wheels: you get your jump back and your boost refills.': 'Atterris sur tes roues : tu récupères ton saut et ton boost se recharge.', 'Free Play has drills (keys 1 to 5): kickoff, aerial save, air dribble, flip reset, double tap.': 'Le jeu libre a des exercices (touches 1 à 5) : engagement, arrêt aérien, air dribble, flip reset, double tap.', 'Points as in Rocket League: goal 100, save 50, epic save 75, clear 20, first touch 10, aerial hit 10, and bonuses for aerial goals, long goals, overtime goals, double taps and flip reset goals.': 'Les points comme dans Rocket League : but 100, arrêt 50, arrêt épique 75, dégagement 20, première touche 10, touche aérienne 10, et des bonus pour les buts aériens, de loin, en prolongation, en double tap et en flip reset.', 'Ranked: Rookie, Challenger, Elite, Champion and Rubenite, each with tiers 1 to 3 and divisions I to III. A win against a stronger opponent gives more; a loss costs a little more at every rank. A new rank needs a best-of series against its gatekeeper; after a promotion you are shielded for 3 matches.': 'Classé : Rookie, Challenger, Élite, Champion et Rubenite, chacun avec les niveaux 1 à 3 et les divisions I à III. Battre plus fort que soi rapporte plus ; une défaite coûte un peu plus à chaque rang. Un nouveau rang demande une série contre son gardien ; après une promotion, tu es protégé pendant 3 matchs.', 'Bots play by the same physics as you, with the same speed, boost and hit power. They differ in how quickly they react, how well they read the ball, how precisely they aim and which mechanics they know. Ruben is the only Rubenite bot.': 'Les bots suivent la même physique que toi, avec la même vitesse, le même boost et la même puissance. Ils diffèrent par leurs réflexes, leur lecture de la balle, leur précision et les techniques qu’ils connaissent. Ruben est le seul bot Rubenite.'})
+FR.update({'Private match': 'Match privé', 'Private matches against players arrive with the online update': 'Les matchs privés contre des joueurs arrivent avec la mise à jour en ligne', 'Rubenium League plays in the online menu': 'Rubenium League se joue dans le menu en ligne', 'Leave the match first': 'Quitte d’abord le match', 'Restart': 'Recommencer', 'Air control: keys': 'Contrôle en l’air : clavier', 'Air control: mouse': 'Contrôle en l’air : souris', 'Forfeit and leave': 'Abandonner et quitter', 'GOAL!': 'BUT !', 'OWN GOAL': 'CONTRE SON CAMP', 'Flip reset': 'Flip reset', '0:00 · the next floor touch ends it': '0:00 · le prochain rebond au sol termine le match', 'Own goal': 'Contre son camp', 'Jump to skip the replay': 'Saute pour passer le ralenti', 'R reset · T ball on car · B infinite boost: {b} · G slow motion: {s} · H hitbox · 1-5 drills': 'R réinitialiser · T balle sur la voiture · B boost infini : {b} · G ralenti : {s} · H hitbox · 1-5 exercices', 'off': 'non', 'on': 'oui', 'The match goes on': 'Le match continue', 'Defeat': 'Défaite', 'Forfeit': 'Abandon', 'Victory': 'Victoire', 'overtime': 'prolongation', 'Epic saves': 'Arrêts épiques', 'Saves': 'Arrêts', 'Aerial hits': 'Touches aériennes', 'Clears': 'Dégagements', 'Touches': 'Touches', 'Flip resets': 'Flip resets', 'Rank-up series vs {b}: {w}-{l} (best of {n})': 'Série de promotion contre {b} : {w}-{l} (au meilleur des {n})', 'Promoted!': 'Promu !', 'Free Play': 'Jeu libre', 'Practice': 'Entraînement', 'Ranked': 'Classé', 'Replay': 'Rediffusion', 'Rubenium League could not start': 'Rubenium League n’a pas pu démarrer', 'Leave this ranked match? It counts as a loss.': 'Quitter ce match classé ? Il compte comme une défaite.', '1 v 1 car soccer · ranked ladder · 22 bots': 'Foot en voiture en 1 contre 1 · classement · 22 bots', 'PLAY': 'JOUER', 'Division {d}': 'Division {d}', 'Rank-up series vs {b} · best of {n} · {w} won, {l} lost': 'Série de promotion contre {b} · au meilleur des {n} · {w} gagnés, {l} perdus', 'Shield: you cannot drop out of this rank for {n} more matches': 'Bouclier : tu ne peux pas descendre de ce rang pendant encore {n} matchs', 'The top of the ladder': 'Le sommet du classement', '{n} MMR to the next division': '{n} MMR jusqu’à la division suivante', 'Play ranked to see your MMR over time': 'Joue en classé pour voir ton MMR au fil du temps', 'That replay is gone': 'Cette rediffusion n’existe plus', 'This replay was made by another version: it may play differently': 'Cette rediffusion vient d’une autre version : elle peut se jouer autrement', 'Save replay': 'Enregistrer la rediffusion', 'Replay saved': 'Rediffusion enregistrée', 'Could not save the replay': 'Impossible d’enregistrer la rediffusion', 'vs {b}': 'contre {b}', 'pts': 'pts', 'goals': 'buts', 'saves': 'arrêts', 'Ladder': 'Rangs', 'Tracker': 'Suivi', 'Play ranked': 'Jouer en classé', 'Rank-up series: best of {n} against {b}. Win it to go up.': 'Série de promotion : au meilleur des {n} contre {b}. Gagne-la pour monter.', 'Against a bot of your rank. Ranked against players and private matches come with the online update.': 'Contre un bot de ton rang. Le classé contre des joueurs et les matchs privés arrivent avec la mise à jour en ligne.', 'Your car': 'Ta voiture', 'Practice and training': 'Entraînement', 'Free Play and drills': 'Jeu libre et exercices', 'Play any bot below: no MMR, just practice.': 'Affronte n’importe quel bot ci-dessous : pas de MMR, juste de l’entraînement.', 'Jump / double jump': 'Sauter / double saut', 'Flip (direction + jump)': 'Flip (direction + saut)', 'Mouse': 'Souris', 'Point the car in the air': 'Oriente la voiture en l’air', 'Air roll': 'Air roll', 'Menu': 'Menu', 'Matches': 'Matchs', 'Wins': 'Victoires', 'Peak': 'Meilleur rang', 'MMR': 'MMR', 'Match history': 'Historique des matchs', 'Your last 200 matches. The last 10 keep their replay: watch it here or save the file to keep or share it.': 'Tes 200 derniers matchs. Les 10 derniers gardent leur rediffusion : regarde-la ici ou enregistre le fichier pour le garder ou le partager.', 'Open the replays folder': 'Ouvrir le dossier des rediffusions', 'Five ranks, each with tiers 1 to 3 and divisions I to III. Wins against stronger opponents give more; losses cost a little more at every rank. Reaching a new rank takes a best-of series against its gatekeeper.': 'Cinq rangs, chacun avec les niveaux 1 à 3 et les divisions I à III. Battre plus fort que soi rapporte plus ; une défaite coûte un peu plus à chaque rang. Pour atteindre un nouveau rang, il faut gagner une série contre son gardien.', 'you are here': 'tu es ici', 'From {m} MMR · {s} per division': 'Dès {m} MMR · {s} par division', 'gate: {b}, best of {n}': 'gardien : {b}, au meilleur des {n}', 'Bots: {b}': 'Bots : {b}', 'Challenger': 'Challenger', 'Rubenite': 'Rubenite', 'Kickoff': 'Engagement', 'Aerial save': 'Arrêt aérien', 'Air dribble': 'Air dribble', 'Double tap': 'Double tap', 'Goal': 'But', 'Epic Save': 'Arrêt épique', 'First Touch': 'Première touche', 'Aerial Hit': 'Touche aérienne', 'Hat Trick': 'Triplé', 'Savior': 'Sauveur', 'Aerial Goal': 'But aérien', 'Long Goal': 'But de loin', 'Overtime Goal': 'But en prolongation', 'Flip Reset Goal': 'But en flip reset', 'Double Tap': 'Double tap', 'Medium and round. Good at everything.': 'Moyenne et arrondie. Bonne partout.', 'Long and low. Easier dribbles and flicks.': 'Longue et basse. Dribbles et flicks plus faciles.', 'Short and tall. Wins more 50/50s.': 'Courte et haute. Gagne plus de 50/50.', 'Drives at the ball. Rarely jumps.': 'Fonce sur la balle. Saute rarement.', 'Jumps late, every time.': 'Saute en retard, à chaque fois.', 'Always overshoots.': 'Va toujours trop loin.', 'Fast, and wastes all its boost.': 'Rapide, et gaspille tout son boost.', 'Stays back and pokes the ball.': 'Reste en retrait et pousse la balle.', 'Trying its first aerials.': 'Tente ses premiers aériens.', 'The gatekeeper. Solid on the ground.': 'Le gardien. Solide au sol.', 'Flips into everything.': 'Flippe dans tout.', 'A defender who clears off the walls.': 'Un défenseur qui dégage sur les murs.', 'Quick aerials, sloppy finishes.': 'Aériens rapides, finitions approximatives.', 'Fakes kickoffs and waits for your mistake.': 'Feinte les engagements et attend ton erreur.', 'The gatekeeper. Clean aerials.': 'Le gardien. Aériens propres.', 'Power hits and wall play.': 'Frappes puissantes et jeu sur les murs.', 'Patient. Fakes, then punishes.': 'Patient. Feinte, puis punit.', 'Starting to air dribble.': 'Commence à faire des air dribbles.', 'Reads the back wall. Some double taps.': 'Lit le mur du fond. Quelques double taps.', 'The gatekeeper. Consistent air dribbles.': 'Le gardien. Air dribbles réguliers.', 'Lives on the ceiling and the high ball.': 'Vit au plafond et sur les balles hautes.', 'Flip resets.': 'Flip resets.', 'Relentless pressure.': 'Pression sans relâche.', 'The last gate. Has everything.': 'Le dernier gardien. Il a tout.', 'Ruben. Beyond human.': 'Ruben. Au-delà de l’humain.', '1 v 1 car soccer seen from the side. Put the ball in the other goal. 2 minutes; the clock only runs while the ball is in play. At 0:00 play goes on until the ball touches the floor. A tie goes to overtime: the next goal wins.': 'Foot en voiture en 1 contre 1, vu de côté. Mets la balle dans l’autre but. 2 minutes ; le chrono ne tourne que quand la balle est en jeu. À 0:00, le jeu continue jusqu’à ce que la balle touche le sol. En cas d’égalité, prolongation : le prochain but gagne.', 'Drive with A and D (Q and D in French) or the arrows. Jump with Space or the right mouse button, and press it again in the air for a double jump. Hold a direction while you press it to flip: a flip hits the ball harder.': 'Conduis avec Q et D (A et D en anglais) ou les flèches. Saute avec Espace ou le clic droit, et appuie de nouveau en l’air pour un double saut. Garde une direction en appuyant pour faire un flip : un flip frappe la balle plus fort.', 'Boost with Shift or the left mouse button. It refills while your wheels are on a surface, and much faster while you touch the ball. In the air the car points at your mouse; E is air roll.': 'Boost avec Maj ou le clic gauche. Il se recharge quand tes roues touchent une surface, et bien plus vite quand tu touches la balle. En l’air, la voiture pointe vers ta souris ; E fait un air roll.', 'Touching the ball with all your wheels in the air gives your jump back: a flip reset.': 'Toucher la balle avec toutes tes roues en l’air te rend ton saut : un flip reset.', 'Watch the ball bounce off the back wall: a hard shot comes back at your goal.': 'Attention au rebond sur le mur du fond : un tir puissant revient vers ton but.', 'Land on your wheels: you get your jump back and your boost refills.': 'Atterris sur tes roues : tu récupères ton saut et ton boost se recharge.', 'Free Play has drills (keys 1 to 5): kickoff, aerial save, air dribble, flip reset, double tap.': 'Le jeu libre a des exercices (touches 1 à 5) : engagement, arrêt aérien, air dribble, flip reset, double tap.', 'Points as in Rocket League: goal 100, save 50, epic save 75, clear 20, first touch 10, aerial hit 10, and bonuses for aerial goals, long goals, overtime goals, double taps and flip reset goals.': 'Les points comme dans Rocket League : but 100, arrêt 50, arrêt épique 75, dégagement 20, première touche 10, touche aérienne 10, et des bonus pour les buts aériens, de loin, en prolongation, en double tap et en flip reset.', 'Ranked: Rookie, Challenger, Elite, Champion and Rubenite, each with tiers 1 to 3 and divisions I to III. A win against a stronger opponent gives more; a loss costs a little more at every rank. A new rank needs a best-of series against its gatekeeper; after a promotion you are shielded for 3 matches.': 'Classé : Rookie, Challenger, Élite, Champion et Rubenite, chacun avec les niveaux 1 à 3 et les divisions I à III. Battre plus fort que soi rapporte plus ; une défaite coûte un peu plus à chaque rang. Un nouveau rang demande une série contre son gardien ; après une promotion, tu es protégé pendant 3 matchs.', 'Bots play by the same physics as you, with the same speed, boost and hit power. They differ in how quickly they react, how well they read the ball, how precisely they aim and which mechanics they know. Ruben is the only Rubenite bot.': 'Les bots suivent la même physique que toi, avec la même vitesse, le même boost et la même puissance. Ils diffèrent par leurs réflexes, leur lecture de la balle, leur précision et les techniques qu’ils connaissent. Ruben est le seul bot Rubenite.'})
 # END SECTION: aerial
 
 

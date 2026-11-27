@@ -14,7 +14,7 @@ for Karting), and one self-test step.
   air roll, mouse air control (or keys), flip resets on the ball, landing on walls and the ceiling, turtle recovery,
   ball spin and bounces, Rocket League's extra hit impulse (stronger in a flip), car to car bumps.
   Own sine, cosine and arc tangent, so two PCs give the same result.
-- **Pitch**: Sideswipe proportions (car 118 long, ball 184 wide, pitch 2700 wide and 1200 high), rounded top corners,
+- **Pitch**: Sideswipe proportions (car 118 long, ball 184 wide, pitch 3400 wide and 1200 high), rounded top corners,
   goals a little above the floor with a smooth ramp in, rounded goal corners and crossbars. Rolling balls go in.
 - **Match**: 3-2-1-GO with mirrored kickoffs (3 kickoff spots), 2:00 clock that only runs while the ball is live, the
   0:00 floor rule, golden-goal overtime, anti-stall kickoff after 8 s of a dead ball, goals counted once when the whole
@@ -40,8 +40,13 @@ for Karting), and one self-test step.
 
 ## Open
 
-- **Bot calibration is not finished.** The order is mostly right but not strict, and Ruben does not yet win 98 of
-  100 against Apex. The tool is `aerial_bot_match`; the plan is in BRIEF.md.
+- **Bot calibration is not finished.** Neighbouring bots now mostly beat the one below (8-match samples), Apex beats
+  Pip about 10 times in 12 and Ruben beat Apex 7 of 8, but the order is not yet strict everywhere and Ruben is not yet
+  at 98 of 100. Lessons so far: a boosted kickoff on this short pitch rebounds into your own goal, so most bots now
+  arrive under control and the top ones contest a hard kickoff when they see one coming; bots wait in front of their
+  goal while the ball is up the other end; they check where the ball goes after each planned touch.
 - Ranked and private matches against players need the online phase (server functions and netcode).
-- Key rebinding, engine sound and the rank-up scene are not built yet.
+- Key rebinding and engine sound are not built yet. Private match is a button that says it comes with the online update.
+- The `database` CI job fails on `tests/db/test_111_v94.sql` on main too (4 old migrations do not apply in the test
+  database, so `rb_ach` is missing). Nothing in this branch touches the database.
 - What only a real Windows PC can show: feel at 144/240 Hz, mouse aim on a real desktop, sound levels.
