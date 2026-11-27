@@ -72813,6 +72813,13 @@ def build_kart(page, lay) -> None:
     _kart_times_panel(page, hl, o)
 
 
+# 9.5: each bot level's best clean 3 lap race on each circuit (measured with the bot driving alone), shown on the
+# time boards beside the players' times
+KART_BOT_TIMES = {0: {100: 122.78, 500: 115.45, 1000: 107.84, 1500: 96.27, 2000: 87.76, 2500: 82.86},
+                  1: {100: 136.06, 500: 124.65, 1000: 114.65, 1500: 99.62, 2000: 90.37, 2500: 84.59},
+                  2: {100: 143.71, 500: 134.78, 1000: 127.18, 1500: 115.79, 2000: 106.94, 2500: 100.76}}
+
+
 def _kart_times_panel(page, hl, o) -> None:
     ctx = page.ctx
     if getattr(ctx, "kart_times_missing", False):
@@ -72842,7 +72849,7 @@ def _kart_times_panel(page, hl, o) -> None:
         return
     top = list(d.get("top") or [])
     if not top:
-        hl.addWidget(Label(tr("No times yet. Finish a 3 lap race to be the first."), 11, TEXT_FAINT, wrap_w=page.W))
+        hl.addWidget(Label(tr("No player times yet. Finish a 3 lap race to be the first."), 11, TEXT_FAINT, wrap_w=page.W))
 
     def race(gid: str, btn) -> None:
         btn.setEnabled(False)
@@ -72874,14 +72881,46 @@ def _kart_times_panel(page, hl, o) -> None:
                                              "boost": o["boost"], "damage": o["damage"]}, made)
         ctx.online.ask("rb_kart_ghost", {"gid": gid}, got)
 
-    for t in top[:10]:
+    def race_bot(elo: int, btn) -> None:
+        btn.setEnabled(False)
+
+        def made(ok: bool, r) -> None:
+            if not ok:
+                btn.setEnabled(True)
+                return ctx.toast(tr(str(r)), "warn")
+            sfx.play("on")
+            KartLink.open(ctx, r)
+            ctx.reload_page("games")
+        ctx.econ.call("rb_kart_create", {"size": 1, "track": tab, "laps": 3, "bot_elo": elo, "bot": True,
+                                         "collide": o["collide"], "boost": o["boost"], "damage": o["damage"]}, made)
+
+    # the players' top 10 with the bots slotted in by time (a bot takes no place in the ranking)
+    rows = [(int(t.get("ms") or 0) / 1000, 0, t) for t in top[:10]]
+    rows += [(sec, 1, elo) for elo, sec in KART_BOT_TIMES.get(tab, {}).items()]
+    rows.sort(key=lambda x: (x[0], x[1]))
+    for sec, is_bot, t in rows:
         r = hbox(spacing=8)
+        if is_bot:
+            num = Label(tr("BOT"), 9.5, TEXT_FAINT, bold=True)
+            num.setFixedWidth(S(34))
+            r.addWidget(num)
+            r.addWidget(Label(tr(bot_level_name(t)), 12, TEXT_DIM), 1)
+            r.addWidget(Label(f"{t} Elo", 10, TEXT_FAINT).fit())
+            r.addSpacing(S(10))
+            r.addWidget(Label(kart_time(sec), 12, TEXT_DIM, bold=True).fit())
+            btn = Button(tr("Race"), "ghost", 30, icon="play")
+            btn.setFixedWidth(S(86))
+            btn.setToolTip(tr("Race this bot on this circuit"))
+            btn.clicked.connect(lambda _c=False, e=t, b=btn: race_bot(e, b))
+            r.addWidget(btn)
+            hl.addLayout(r)
+            continue
         rk = int(t.get("rank") or 0)
         num = Label(f"{rk}.", 12, MEDALS.get(rk, TEXT_DIM), bold=True)
-        num.setFixedWidth(S(28))
+        num.setFixedWidth(S(34))
         r.addWidget(num)
         r.addWidget(Label(str(t.get("name") or "?"), 12, TEXT, bold=bool(t.get("me"))), 1)
-        r.addWidget(Label(kart_time(int(t.get("ms") or 0) / 1000), 12, GOLD_TEXT, bold=True).fit())
+        r.addWidget(Label(kart_time(sec), 12, GOLD_TEXT, bold=True).fit())
         btn = Button(tr("Race"), "ghost", 30, icon="play")
         btn.setFixedWidth(S(86))
         btn.clicked.connect(lambda _c=False, gid=str(t.get("id")), b=btn: race(gid, b))
