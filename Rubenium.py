@@ -2017,15 +2017,23 @@ class Sfx:
         return fade(buf, 30), g
 
     def _make(self, name: str) -> str:
-        path = DATA_DIR / "sounds" / f"{name}_{self.VER}.wav"
+        vol = int(getattr(self, "vol", 100))
+        path = DATA_DIR / "sounds" / (f"{name}_{self.VER}.wav" if vol >= 100 else f"{name}_{self.VER}_v{vol}.wav")
         if not path.is_file():
             buf, gain = self._render(name)
             peak = max(1e-6, max(abs(v) for v in buf))
-            self._write(path, buf, gain / peak)          # every sound peaks at its own loudness
+            self._write(path, buf, gain / peak * vol / 100)   # every sound peaks at its own loudness (9.5: x volume)
         return str(path)
 
+    def set_volume(self, v) -> None:
+        """9.5: the interface sounds' volume, 0-100 (in 10s; each level is its own little set of files)."""
+        v = int(round(clamp(float(v), 0, 100) / 10) * 10)
+        if v != getattr(self, "vol", 100):
+            self.vol = v
+            self._files = {}
+
     def play(self, name: str) -> None:
-        if not self.enabled or name not in self.SOUNDS or not win.IS_WIN:
+        if not self.enabled or name not in self.SOUNDS or not win.IS_WIN or getattr(self, "vol", 100) <= 0:
             return
         import time
         now = time.monotonic()
@@ -2129,6 +2137,10 @@ DEFAULTS: dict = {
     "recent_games": [],                  # 9.0: the casino games played last (Home's "Jump back in")
     "kart": {"track": 0, "laps": 3, "elo": 1000, "size": 1, "bot": True, "collide": True, "boost": True, "damage": True},
     "hoops": {"level": "Regional", "mins": 3, "replays": 1},
+    "vol_ui": 100,                       # 9.5: interface sounds, 0-100
+    "vol_fx": 40,                        # 9.5: Karting and Hoops: hits, whistles, turbos... (they were too loud)
+    "vol_amb": 60,                       # 9.5: Karting's engines and Hoops' crowd (the background)
+    "guides_seen": [],                   # 9.5: the "how to play" guides already shown once
     "casino_bet": 50,                    # 9.0: the last bet, kept between sessions
     "hilo_help": False,
     "my_stats": ["cases", "trades", "rounds", "casino"],     # 5.13: the bottom row of your stats card
@@ -23547,7 +23559,24 @@ class SettingsPage(StylePart, Page):
             snd = Toggle(cfg["sounds"])
             snd.toggled_by_user.connect(sounds)
             lay.addWidget(row(tr("Interface sounds"), snd))
-            pass
+            # 9.5: volumes, from off (all the way left) to full
+            pct = lambda v: f"{int(v)}%"                        # noqa: E731
+
+            def set_ui(v: float) -> None:
+                cfg["vol_ui"] = int(v)
+                sfx.set_volume(v)
+
+            r_ui = SliderRow(tr("Interface"), 0, 100, cfg["vol_ui"], 10, 100, pct, label_w=120)
+            r_ui.changed.connect(set_ui)
+            r_ui.released.connect(lambda _v: sfx.play("on"))
+            lay.addWidget(r_ui)
+            lay.addWidget(heading(tr("Karting and Hoops")))
+            for key, label, dflt in (("vol_fx", tr("Game effects"), 40), ("vol_amb", tr("Crowd and engines"), 60)):
+                rr = SliderRow(label, 0, 100, cfg[key], 5, dflt, pct, label_w=120)
+                rr.changed.connect(lambda v, key=key: (cfg.__setitem__(key, int(v)), KartAudio.levels(cfg)))
+                lay.addWidget(rr)
+            lay.addWidget(Label(tr("All the way left turns it off. You can change these during a race or a match too."),
+                                10, TEXT_FAINT, wrap_w=self.W))
             settings_section(ctx, lay)
 
         elif sec == 3:                                  # ---------------------------------------------- Account
@@ -67679,6 +67708,8 @@ class App(QObject):
         set_lang(self.cfg["lang"] or ("fr" if QLocale.system().language() == QLocale.Language.French else "en"))
         apply_look(self.cfg)
         sfx.enabled = bool(self.cfg["sounds"])
+        sfx.set_volume(self.cfg["vol_ui"])                  # 9.5: the volume sliders
+        KartAudio.levels(self.cfg)
         self.welcome = None
         self._preview = ""
         self._apps = None
@@ -69259,6 +69290,8 @@ class App(QObject):
         set_lang(self.cfg["lang"] or "en")
         apply_look(self.cfg)
         sfx.enabled = bool(self.cfg["sounds"])
+        sfx.set_volume(self.cfg["vol_ui"])                  # 9.5: the volume sliders
+        KartAudio.levels(self.cfg)
         self.media.set_preferred(self.cfg["source"])
         self.refresh_accent()
         self.rebuild_ui()
@@ -72036,8 +72069,19 @@ class KartAudio:
         self.samples = {}
         self.vol = 0.8
 
+    # 9.5: two levels from the settings (0-1): the effects on top and the background (engines / crowd)
+    fx_l, amb_l = 0.40, 0.60
+
+    @staticmethod
+    def levels(cfg) -> None:
+        try:
+            KartAudio.fx_l = clamp(float(cfg["vol_fx"]) / 100, 0.0, 1.0)
+            KartAudio.amb_l = clamp(float(cfg["vol_amb"]) / 100, 0.0, 1.0)
+        except Exception:  # noqa: BLE001
+            pass
+
     def start(self) -> None:
-        if self.run or not win.IS_WIN or not sfx.enabled:
+        if self.run or not win.IS_WIN or not sfx.enabled or (KartAudio.fx_l <= 0 and KartAudio.amb_l <= 0):
             return
         try:
             self._make()
@@ -72156,13 +72200,14 @@ class KartAudio:
             if boost or skid:
                 y += (rnd() * 2 - 1 - y) * (0.35 if boost else 0.6)
                 s += y * (0.10 * boost + 0.07 * skid * (0.6 + 0.4 * math.sin(ph0 * 0.21)))
-            out[i] = s * 0.5
+            out[i] = s * 0.5 * KartAudio.amb_l
         self.phase = [ph0 % 6.2831853, ph1 % 6.2831853, ph2 % 6.2831853]
         self._lp = y
         with self.lock:
             keep = []
             for v in self.voices:
                 smp, pos, g = v
+                g *= KartAudio.fx_l                         # 9.5: the effects slider
                 m = min(n, len(smp) - pos)
                 for i in range(m):
                     out[i] += smp[pos + i] * g
@@ -72542,7 +72587,13 @@ def build_kart(page, lay) -> None:
                                          "bot": o["bot"] or o["size"] > 1, "collide": o["collide"], "boost": o["boost"],
                                          "damage": o["damage"]}, done)
     go.clicked.connect(create)
-    hl.addWidget(go)
+    how = Button(tr("How to play"), "ghost", 44)            # 9.5: the animated guide (shown by itself the first time)
+    how.clicked.connect(lambda: open_guide(ctx, "kart", force=True))
+    prow = hbox(spacing=8)
+    prow.addWidget(how)
+    prow.addWidget(go, 1)
+    hl.addLayout(prow)
+    QTimer.singleShot(450, lambda: open_guide(ctx, "kart"))
     keys = kart_keys()
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Drive")),
                               (["Shift"], tr("Boost")), (["Space"], tr("Handbrake, drift")), (["R"], tr("Hold: respawn"))],
@@ -72965,6 +73016,437 @@ class KartWindow(QWidget):
         super().closeEvent(e)
 
 
+# ================================================================================================== 9.5: how to play
+def _gk(p: QPainter, x: float, y: float, text: str, lit: bool = False) -> float:
+    """A key cap at (x, y) (its top left); lit = pressed right now. Returns its width."""
+    p.setFont(font(9.5, QFont.Weight.Black))
+    w = max(S(22), p.fontMetrics().horizontalAdvance(text) + S(12))
+    r = QRectF(x, y + (S(2) if lit else 0), w, S(22))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(0, 0, 0, 120))
+    p.drawRoundedRect(r.translated(0, S(3) if not lit else S(1)), S(6), S(6))
+    p.setBrush(QColor("#F5C04A") if lit else QColor(240, 244, 255))
+    p.drawRoundedRect(r, S(6), S(6))
+    p.setPen(QColor("#1A1300") if lit else QColor("#0B0F18"))
+    p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
+    return w
+
+
+def _gball(p, x, y, r, col="#E8721C"):
+    p.setPen(QPen(QColor(0, 0, 0, 120), 1))
+    p.setBrush(QColor(col))
+    p.drawEllipse(QPointF(x, y), r, r)
+
+
+def _gman(p, x, y, col, s=1.0, arms=0.0, label=""):
+    """A little player seen from the side: a body, a head, arms up by `arms` (0..1)."""
+    c = QColor(col)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(0, 0, 0, 70))
+    p.drawEllipse(QPointF(x, y + S(2)), S(11) * s, S(3) * s)
+    p.setBrush(c)
+    p.drawRoundedRect(QRectF(x - S(7) * s, y - S(30) * s, S(14) * s, S(22) * s), S(4) * s, S(4) * s)
+    p.drawRect(QRectF(x - S(5) * s, y - S(9) * s, S(4) * s, S(9) * s))
+    p.drawRect(QRectF(x + S(1) * s, y - S(9) * s, S(4) * s, S(9) * s))
+    p.setBrush(QColor("#C98A5A"))
+    p.drawEllipse(QPointF(x, y - S(36) * s), S(6) * s, S(6) * s)
+    p.setPen(QPen(QColor("#C98A5A"), S(3) * s, cap=Qt.PenCapStyle.RoundCap))
+    ay = lerp(-S(16), -S(44), arms) * s
+    p.drawLine(QPointF(x - S(7) * s, y - S(26) * s), QPointF(x - S(10) * s, y + ay * 0.6 - S(4) * s))
+    p.drawLine(QPointF(x + S(7) * s, y - S(26) * s), QPointF(x + S(10) * s, y + ay * 0.6 - S(4) * s))
+    if label:
+        p.setFont(font(8, QFont.Weight.Black))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(x - S(7) * s, y - S(28) * s, S(14) * s, S(16) * s), int(Qt.AlignmentFlag.AlignCenter), label)
+
+
+def _gkart(p, x, y, ang, col, smoke=0.0, flame=0.0, turbo=None):
+    p.save()
+    p.translate(x, y)
+    p.rotate(math.degrees(ang))
+    if smoke > 0:
+        for k in range(4):
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(220, 220, 230, int(70 * smoke)))
+            p.drawEllipse(QPointF(-S(16) - k * S(7), (k % 2 * 2 - 1) * S(6)), S(5) + k * S(2), S(5) + k * S(2))
+    if flame > 0:
+        g = QLinearGradient(QPointF(-S(14), 0), QPointF(-S(34), 0))
+        g.setColorAt(0, QColor(255, 220, 120, int(255 * flame)))
+        g.setColorAt(1, QColor(255, 80, 30, 0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(g))
+        p.drawEllipse(QRectF(-S(36), -S(5), S(24), S(10)))
+    if turbo:
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(turbo))
+        for sy in (-1, 1):
+            p.drawEllipse(QPointF(-S(13), sy * S(8)), S(4), S(4))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(20, 20, 26))
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            p.drawRoundedRect(QRectF(sx * S(8) - S(4), sy * S(9) - S(2.5), S(8), S(5)), S(2), S(2))
+    p.setBrush(QColor(col))
+    p.drawRoundedRect(QRectF(-S(13), -S(7), S(26), S(14)), S(5), S(5))
+    p.setBrush(QColor(255, 255, 255, 200))
+    p.drawEllipse(QPointF(S(1), 0), S(3.5), S(3.5))
+    p.restore()
+
+
+def _guide_hoops(p, r, t, k):
+    """One animated tile of the Hoops guide. k: which one. t: seconds. Returns the keys lit (for the caption)."""
+    fl = r.bottom() - S(18)                       # the floor line
+    p.setPen(QPen(QColor(255, 255, 255, 30), 1))
+    p.drawLine(QPointF(r.left() + S(10), fl), QPointF(r.right() - S(10), fl))
+    keys = hoops_keys()
+    cx = r.center().x()
+    if k == "move":
+        ph = (t % 4.0) / 4.0
+        dirs = [(1, 0, keys["right"]), (0, -1, keys["up"]), (-1, 0, keys["left"]), (0, 1, keys["down"])]
+        i = int(ph * 4)
+        f = ph * 4 - i
+        pts = [(-1, 1), (1, 1), (1, -1), (-1, -1)]
+        a, b = pts[i], pts[(i + 1) % 4]
+        x = cx + lerp(a[0], b[0], f) * S(44)
+        y = fl - S(8) + lerp(a[1], b[1], f) * S(10)
+        _gman(p, x, y, HOOPS_TEAM[0]["main"], 0.9)
+        return [d[2] for d in dirs if d[2] == dirs[i][2]]
+    if k == "dribble":
+        ph = (t % 3.0) / 3.0
+        x = r.left() + S(30) + ph * (r.width() - S(60))
+        bounce = abs(math.sin(t * 7.5))
+        _gman(p, x, fl, HOOPS_TEAM[0]["main"], 0.9)
+        _gball(p, x + S(12), fl - S(4) - bounce * S(22), S(5))
+        return ["Space", keys["right"]]
+    if k == "pass":
+        ph = (t % 2.6) / 2.6
+        ax, bx = r.left() + S(36), r.right() - S(36)
+        _gman(p, ax, fl, HOOPS_TEAM[0]["main"], 0.9, arms=0.4 if ph < 0.45 else 0.0)
+        _gman(p, bx, fl, HOOPS_TEAM[0]["main"], 0.9, arms=0.5 if ph > 0.55 else 0.0)
+        if ph < 0.45:                               # charging
+            c = ph / 0.45
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 255, 255, 40))
+            p.drawRoundedRect(QRectF(ax - S(16), fl - S(58), S(32), S(5)), S(2), S(2))
+            p.setBrush(QColor("#3BE38A"))
+            p.drawRoundedRect(QRectF(ax - S(16), fl - S(58), S(32) * c, S(5)), S(2), S(2))
+            _gball(p, ax + S(10), fl - S(24), S(5))
+            return [tr("Hold left")]
+        f = min(1.0, (ph - 0.45) / 0.35)
+        x = lerp(ax + S(10), bx - S(10), f)
+        y = fl - S(24) - math.sin(f * math.pi) * S(26)
+        _gball(p, x, y, S(5))
+        return [tr("Release")]
+    if k == "shoot":
+        ph = (t % 3.2) / 3.2
+        hx = r.right() - S(30)
+        p.setPen(QPen(QColor(230, 230, 240), S(2)))
+        p.drawLine(QPointF(hx + S(8), fl), QPointF(hx + S(8), fl - S(70)))
+        p.setPen(QPen(QColor("#FF6B3D"), S(2.5)))
+        p.drawLine(QPointF(hx - S(12), fl - S(62)), QPointF(hx + S(6), fl - S(62)))
+        sx = r.left() + S(40)
+        meter = min(1.0, ph / 0.5)
+        jump = math.sin(min(1.0, ph / 0.5) * math.pi) * S(10) if ph < 0.5 else 0.0
+        _gman(p, sx, fl - jump, HOOPS_TEAM[0]["main"], 0.9, arms=1.0 if ph < 0.55 else 0.2)
+        # the meter, with its green
+        mr = QRectF(sx + S(18), fl - S(64), S(7), S(44))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(255, 255, 255, 35))
+        p.drawRoundedRect(mr, S(3), S(3))
+        p.setBrush(QColor(59, 227, 138, 170))
+        p.drawRect(QRectF(mr.left(), mr.bottom() - mr.height() * 0.86, mr.width(), mr.height() * 0.12))
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawRect(QRectF(mr.left() - S(2), mr.bottom() - mr.height() * min(meter, 0.8) - S(1), mr.width() + S(4), S(3)))
+        if ph < 0.5:
+            _gball(p, sx + S(6), fl - S(46) - jump, S(5))
+            return ["Shift", tr("Hold left")]
+        f = min(1.0, (ph - 0.5) / 0.32)
+        x = lerp(sx + S(6), hx - S(3), f)
+        y = lerp(fl - S(46), fl - S(62), f) - math.sin(f * math.pi) * S(40)
+        _gball(p, x, y, S(5))
+        if f >= 1.0:
+            p.setFont(font(10, QFont.Weight.Black))
+            p.setPen(QColor("#3BE38A"))
+            p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("PERFECT"))
+        return [tr("Let go in the green")]
+    if k == "steal":
+        ph = (t % 2.4) / 2.4
+        ox = cx + S(26)
+        bounce = abs(math.sin(t * 7.5))
+        took = ph > 0.55
+        _gman(p, ox, fl, HOOPS_TEAM[1]["main"], 0.9)
+        if not took:
+            _gball(p, ox - S(14), fl - S(4) - bounce * S(20), S(5))
+        dx = cx - S(26) + (S(10) if 0.4 < ph < 0.6 else 0)
+        _gman(p, dx, fl, HOOPS_TEAM[0]["main"], 0.9, arms=0.5 if 0.4 < ph < 0.6 else 0.1)
+        if took:
+            _gball(p, dx + S(10), fl - S(24), S(5))
+            p.setFont(font(10, QFont.Weight.Black))
+            p.setPen(QColor(HOOPS_TEAM[0]["light"]))
+            p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("STEAL!"))
+        return ["Shift", tr("Left click")] if 0.35 < ph < 0.6 else ["Shift"]
+    if k == "fake":
+        ph = (t % 2.6) / 2.6
+        up = 0.2 < ph < 0.45
+        _gman(p, cx - S(22), fl, HOOPS_TEAM[0]["main"], 0.9, arms=1.0 if up else 0.2)
+        _gball(p, cx - S(16), fl - (S(46) if up else S(24)), S(5))
+        jump = math.sin(clamp((ph - 0.3) / 0.35, 0, 1) * math.pi) * S(22)
+        _gman(p, cx + S(22), fl - jump, HOOPS_TEAM[1]["main"], 0.9, arms=1.0 if jump > 1 else 0.2)
+        if ph > 0.55:
+            p.setFont(font(10, QFont.Weight.Black))
+            p.setPen(QColor("#F5C04A"))
+            p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("HE BIT!"))
+        return ["Shift", tr("Right click")] if up else ["Shift"]
+    return []
+
+
+def _guide_kart(p, r, t, k):
+    keys = kart_keys()
+    # a road: a gentle bend
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(60, 64, 72))
+    p.drawRoundedRect(r.adjusted(S(10), S(24), -S(10), -S(10)), S(10), S(10))
+    p.setPen(QPen(QColor(255, 255, 255, 60), S(2), Qt.PenStyle.DashLine))
+    mid = r.center().y() + S(7)
+    p.drawLine(QPointF(r.left() + S(16), mid), QPointF(r.right() - S(16), mid))
+    L, R = r.left() + S(30), r.right() - S(30)
+    if k == "drive":
+        ph = (t % 3.0) / 3.0
+        x = lerp(L, R, ph)
+        y = mid + math.sin(ph * math.pi * 2) * S(18)
+        ang = math.atan2(math.cos(ph * math.pi * 2) * S(18) * 2 * math.pi, R - L)
+        _gkart(p, x, y, ang, "#3DA5FF")
+        return [keys["up"], keys["right"] if math.cos(ph * math.pi * 2) > 0 else keys["left"]]
+    if k == "brake":
+        ph = (t % 2.6) / 2.6
+        f = 1 - (1 - min(1.0, ph / 0.7)) ** 2
+        x = lerp(L, R - S(30), f)
+        _gkart(p, x, mid, 0.0, "#3DA5FF", smoke=1.0 if 0.35 < ph < 0.7 else 0.0)
+        return [keys["down"]] if 0.35 < ph < 0.8 else [keys["up"]]
+    if k == "drift":
+        ph = (t % 3.2) / 3.2
+        a = ph * math.pi * 0.9
+        x = r.center().x() + math.cos(math.pi + a) * S(52)
+        y = mid + S(12) - math.sin(a) * S(26)
+        drifting = 0.15 < ph < 0.75
+        tur = None if not drifting else ("#4FC3FF" if ph < 0.45 else "#FF9F1C")
+        _gkart(p, x, y, -a + (0.5 if drifting else 0.0), "#3DA5FF", smoke=1.0 if drifting else 0.0,
+               flame=1.0 if ph > 0.78 else 0.0, turbo=tur)
+        if ph > 0.78:
+            p.setFont(font(10, QFont.Weight.Black))
+            p.setPen(QColor("#FF9F1C"))
+            p.drawText(QRectF(r.left(), r.top() + S(4), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("MINI TURBO!"))
+        return ["Space", keys["left"]] if drifting else ([tr("Let go")] if ph > 0.75 else [keys["up"]])
+    if k == "boost":
+        ph = (t % 2.8) / 2.8
+        x = lerp(L, R, ph)
+        on = 0.25 < ph < 0.8
+        _gkart(p, x, mid, 0.0, "#3DA5FF", flame=1.0 if on else 0.0)
+        bar = QRectF(r.left() + S(16), r.top() + S(6), S(70), S(6))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(255, 255, 255, 40))
+        p.drawRoundedRect(bar, S(3), S(3))
+        p.setBrush(QColor("#FF9F1C"))
+        p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * (1 - clamp((ph - 0.25) / 0.6, 0, 1) * 0.8), bar.height()), S(3), S(3))
+        return ["Shift"] if on else [keys["up"]]
+    if k == "slip":
+        ph = (t % 3.0) / 3.0
+        x2 = lerp(L + S(50), R - S(10), ph)
+        x1 = x2 - S(48) + (S(30) * clamp((ph - 0.6) / 0.4, 0, 1))
+        y1 = mid + (S(16) * clamp((ph - 0.6) / 0.3, 0, 1))
+        _gkart(p, x2, mid, 0.0, "#FF3D6E")
+        for k_ in range(3):
+            p.setPen(QPen(QColor(255, 255, 255, 90), S(1.5)))
+            yy = mid - S(5) + k_ * S(5)
+            p.drawLine(QPointF(x2 - S(16), yy), QPointF(x2 - S(30) - (k_ % 2) * S(6), yy))
+        _gkart(p, x1, y1, 0.25 if ph > 0.6 else 0.0, "#3DA5FF")
+        return [keys["up"]] if ph < 0.6 else [keys["up"], keys["down"] if False else keys["right"]]
+    if k == "reset":
+        ph = (t % 3.0) / 3.0
+        _gkart(p, r.center().x(), mid, 0.4 if ph < 0.66 else 0.0, "#3DA5FF")
+        if ph < 0.66:
+            c = ph / 0.66
+            p.setPen(QPen(QColor("#F5C04A"), S(3)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawArc(QRectF(r.center().x() - S(22), mid - S(22), S(44), S(44)), 90 * 16, int(-360 * 16 * c))
+            return ["R"]
+        return []
+    return []
+
+
+GUIDES = {
+    "hoops": (lambda: tr("How to play Hoops"), _guide_hoops, [
+        ("move", lambda: tr("Move"), lambda: tr("Run anywhere. The ring under your feet is you.")),
+        ("dribble", lambda: tr("Dribble"), lambda: tr("Hold Space while moving. Without it you can only pivot.")),
+        ("pass", lambda: tr("Pass"), lambda: tr("Hold left click to charge, let go to pass. Right click: quick pass.")),
+        ("shoot", lambda: tr("Shoot"), lambda: tr("Hold Shift to aim, hold left click, let go in the green.")),
+        ("steal", lambda: tr("Defend and steal"), lambda: tr("Shift to guard. Left click swipes when the ball is low.")),
+        ("fake", lambda: tr("Fakes and moves"), lambda: tr("Shift + right click: pump fake. Back + Space: spin move.")),
+    ], lambda: tr("1 Pass!  ·  2 Shoot!  ·  3 Help!  ·  4 What a save!  ·  Tab scoreboard  ·  Esc pause.  "
+                  "Don't stand still with the ball: the defenders rush you.")),
+    "kart": (lambda: tr("How to play Karting"), _guide_kart, [
+        ("drive", lambda: tr("Drive"), lambda: tr("Throttle and steer. Stay on the tarmac: grass slows you down.")),
+        ("brake", lambda: tr("Brake"), lambda: tr("Brake before the corner, not in it. Hold it to reverse.")),
+        ("drift", lambda: tr("Drift for a mini turbo"), lambda: tr("Tap Space in a corner and keep steering. Let go for the turbo.")),
+        ("boost", lambda: tr("Boost"), lambda: tr("Hold Shift on the straights. It refills on its own.")),
+        ("slip", lambda: tr("Slipstream"), lambda: tr("Stay right behind a kart: more top speed, then pass it.")),
+        ("reset", lambda: tr("Stuck?"), lambda: tr("Hold R for 2 seconds to get back on the track.")),
+    ], lambda: tr("Tab scoreboard  ·  Esc leave.  Big crashes wreck your kart. Not touching anything for 45 s gets you disqualified.")),
+}
+
+
+class GameGuide(QWidget):
+    """9.5: an animated 'how to play': six small looping scenes, each with the keys lighting up as they're used.
+    Opens over its parent (the online menu or the race); shown once by itself, then from the How to play button."""
+
+    def __init__(self, parent: QWidget, key: str, on_close=None) -> None:
+        super().__init__(parent)
+        self.key, self.on_close = key, on_close
+        self.title, self.draw, self.tiles, self.foot = GUIDES[key]
+        self.t = 0.0
+        self._t0 = time.monotonic()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._tick)
+        self.timer.start(33)
+        self._btn = QRectF()
+        self.setMouseTracking(True)
+        self.setGeometry(parent.rect())
+        self.show()
+        self.raise_()
+
+    def _tick(self) -> None:
+        self.t = time.monotonic() - self._t0
+        if self.parent() is not None and self.geometry() != self.parent().rect():
+            self.setGeometry(self.parent().rect())
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        if self._btn.contains(e.position()):
+            sfx.play("on")
+            self.close_guide()
+
+    def keyPressEvent(self, e) -> None:
+        if e.key() in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
+            self.close_guide()
+
+    def close_guide(self) -> None:
+        self.timer.stop()
+        self.hide()
+        self.deleteLater()
+        if self.on_close:
+            self.on_close()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w, h = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(4, 6, 12, 215))
+        cols = 3 if w > S(760) else 2
+        tw = min(S(250), (w - S(60) - (cols - 1) * S(14)) / cols)
+        th = tw * 0.62 + S(58)
+        rows = math.ceil(len(self.tiles) / cols)
+        total_h = S(60) + rows * th + (rows - 1) * S(14) + S(110)
+        y0 = max(S(16), (h - total_h) / 2)
+        x0 = (w - (cols * tw + (cols - 1) * S(14))) / 2
+        p.setFont(font(22, QFont.Weight.Black, 1))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(0, y0, w, S(40)), int(Qt.AlignmentFlag.AlignCenter), self.title())
+        y = y0 + S(56)
+        for i, (k, name, desc) in enumerate(self.tiles):
+            cx = x0 + (i % cols) * (tw + S(14))
+            cy = y + (i // cols) * (th + S(14))
+            card = QRectF(cx, cy, tw, th)
+            p.setPen(QPen(QColor(255, 255, 255, 30), 1))
+            p.setBrush(QColor(16, 20, 30, 240))
+            p.drawRoundedRect(card, S(14), S(14))
+            scene = QRectF(cx + S(8), cy + S(8), tw - S(16), tw * 0.62)
+            p.save()
+            path = QPainterPath()
+            path.addRoundedRect(scene, S(10), S(10))
+            p.setClipPath(path)
+            p.fillRect(scene, QColor(26, 32, 46))
+            lit = self.draw(p, scene, self.t + i * 0.37, k) or []
+            p.restore()
+            # the keys of this move, lit while they're used
+            kx = scene.left()
+            ky = scene.bottom() + S(6)
+            allk = []
+            for kk in lit:
+                if kk not in allk:
+                    allk.append(kk)
+            p.setFont(font(12, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            p.drawText(QRectF(scene.left(), ky, scene.width(), S(22)), int(Qt.AlignmentFlag.AlignVCenter), name())
+            p.setFont(font(12, QFont.Weight.Black))
+            nx = scene.left() + p.fontMetrics().horizontalAdvance(name()) + S(10)
+            for kk in allk:
+                nx += _gk(p, nx, ky, kk, True) + S(4)
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(scene.left(), ky + S(24), scene.width(), S(30)),
+                       int(Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), desc())
+        yb = y + rows * th + (rows - 1) * S(14) + S(16)
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.setPen(QColor(255, 255, 255, 190))
+        p.drawText(QRectF(S(20), yb, w - S(40), S(36)), int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap), self.foot())
+        self._btn = QRectF(w / 2 - S(130), yb + S(46), S(260), S(44))
+        hover = self._btn.contains(self.mapFromGlobal(QCursor.pos()).toPointF())
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FFFFFF") if not hover else QColor("#F5C04A"))
+        p.drawRoundedRect(self._btn, S(12), S(12))
+        p.setFont(font(13, QFont.Weight.Black))
+        p.setPen(QColor("#0B0F18"))
+        p.drawText(self._btn, int(Qt.AlignmentFlag.AlignCenter), tr("Got it, let's play"))
+
+
+def open_guide(ctx, key: str, parent: QWidget = None, force: bool = False, then=None):
+    """Shows a game's guide over the online menu (or `parent`). Without force, only the first time."""
+    try:
+        seen = list(ctx.cfg["guides_seen"] or [])
+    except Exception:  # noqa: BLE001
+        seen = []
+    if not force and key in seen:
+        return None
+    if key not in seen:
+        seen.append(key)
+        try:
+            ctx.cfg["guides_seen"] = seen
+        except Exception:  # noqa: BLE001
+            pass
+    host = parent if parent is not None else ctx.window
+    g = GameGuide(host, key, then)
+    g.setFocus()
+    return g
+
+
+class GameVolume(QWidget):
+    """9.5: in the race / match top bar: two small sliders, effects and crowd/engines (left = off). They are the same
+    settings as Settings > Sounds."""
+
+    def __init__(self, ctx, on_change=None) -> None:
+        super().__init__()
+        self.ctx = ctx
+        lay = hbox(self, 6)
+        for key, icon_txt, tip in (("vol_fx", tr("Effects"), tr("Game effects")), ("vol_amb", tr("Crowd / engines"), tr("Crowd and engines"))):
+            lab = Label(icon_txt, 10, TEXT_DIM, bold=True)
+            sl = Slider(0, 100, float(ctx.cfg[key]), 5, None)
+            sl.setFixedWidth(S(84))
+            sl.setToolTip(tip)
+            sl.changed.connect(lambda v, key=key: self._set(key, v, on_change))
+            lay.addWidget(lab)
+            lay.addWidget(sl)
+            lay.addSpacing(S(6))
+
+    def _set(self, key, v, on_change) -> None:
+        try:
+            self.ctx.cfg[key] = int(v)
+        except Exception:  # noqa: BLE001
+            pass
+        KartAudio.levels(self.ctx.cfg)
+        if on_change:
+            on_change()
+
+
 class KartStage(QWidget):
     """9.2: the race. 9.3.2: inside the online menu, not a window of its own: the menu first grows sideways (as wide as
     the screen allows), then the race fades in over it; when you leave it fades out and the menu goes back to its
@@ -72982,8 +73464,7 @@ class KartStage(QWidget):
         bl = hbox(self.bar, 8, (S(14), 0, S(10), 0))
         self.title = Label("", 13, TEXT, bold=True)
         bl.addWidget(self.title, 1)
-        self.sound = Button(tr("Sound on") if sfx.enabled else tr("Sound off"), "ghost", 30)
-        self.sound.clicked.connect(self._sound)
+        self.sound = GameVolume(link.ctx, self.focus)          # 9.5: sliders instead of on / off
         bl.addWidget(self.sound)
         self.leave = Button(tr("Leave"), "ghost", 30)
         self.leave.clicked.connect(self.ask_leave)
@@ -73108,17 +73589,6 @@ class KartStage(QWidget):
         super().resizeEvent(e)
         if self.over is not None:
             self.over.setGeometry(self.body.rect())
-
-    def _sound(self) -> None:
-        sfx.enabled = not sfx.enabled
-        try:
-            self.link.ctx.cfg["sounds"] = sfx.enabled
-        except Exception:  # noqa: BLE001
-            pass
-        if not sfx.enabled:
-            KartAudio.get().stop()
-        self.sound.set_text(tr("Sound on") if sfx.enabled else tr("Sound off"))
-        self.focus()
 
     def ask_leave(self) -> None:
         if not self.link.racing():
@@ -76238,12 +76708,13 @@ class HoopsAudio(KartAudio):
             y1 += (rnd() * 2 - 1 - y1) * 0.05
             y2 += (rnd() * 2 - 1 - y2) * 0.18
             y3 += (rnd() * 2 - 1 - y3) * 0.5
-            out[i] = (y1 * 1.6 + y2 * 0.55 + y3 * 0.08) * a
+            out[i] = (y1 * 1.6 + y2 * 0.55 + y3 * 0.08) * a * KartAudio.amb_l
         self._c = [y1, y2, y3]
         with self.lock:
             keep = []
             for v in self.voices:
                 smp, pos, g = v
+                g *= KartAudio.fx_l                         # 9.5: the effects slider
                 m = min(n, len(smp) - pos)
                 for i in range(m):
                     out[i] += smp[pos + i] * g
@@ -77846,7 +78317,13 @@ def build_hoops(page, lay) -> None:
     # 9.5: replays are always on (the big plays and every swish); the choice is gone
     go = Button(tr("Play"), "primary", 44, icon="play")
     go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"], 1))
-    hl.addWidget(go)
+    how = Button(tr("How to play"), "ghost", 44)            # 9.5: the animated guide (shown by itself the first time)
+    how.clicked.connect(lambda: open_guide(ctx, "hoops", force=True))
+    prow = hbox(spacing=8)
+    prow.addWidget(how)
+    prow.addWidget(go, 1)
+    hl.addLayout(prow)
+    QTimer.singleShot(450, lambda: open_guide(ctx, "hoops"))
     keys = hoops_keys()
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Move")),
                               (["Space"], tr("Dribble (with a direction) / jump")),
@@ -77977,11 +78454,6 @@ class HoopsStage(KartStage):
     def close_stage(self) -> None:
         HoopsAudio.get().stop()
         super().close_stage()
-
-    def _sound(self) -> None:
-        super()._sound()
-        if not sfx.enabled:
-            HoopsAudio.get().stop()
 
     def ask_leave(self) -> None:
         if not self.link.racing():
