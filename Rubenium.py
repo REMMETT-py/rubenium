@@ -1532,8 +1532,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.4"   # the version people see
-BUILD = "2026.11.27.31"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "9.5"   # the version people see
+BUILD = "2026.11.27.32"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12758,6 +12758,12 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.5", ["Rubenium League: a new 1 v 1 car soccer game in Play, seen from the side, with flips, aerials, air dribbles and flip resets",
+             "Rubenium League ranked: 10 ranks from Rookie 1 to Rubenite, one bot to beat at each rank, 5 wins up and 5 losses down",
+             "Rubenium League bots: Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle and Ruben, each one harder and with more moves",
+             "Rubenium League: a tracker with your MMR, your last 200 matches and replays of your last 10 you can watch or save",
+             "Rubenium League: practise against any bot up to one rank above yours, Free Play with drills, mouse or keyboard controls",
+             "Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team"]),
     ("9.4", ["A fresh start for everyone: coins, items, badges, mythics, cases, levels, trophies, stats and every "
              "leaderboard start again, and everyone gets the starter pack",
              "Tiers are harder: Average 50 000, Investor 250 000, Businessman 1 000 000, Casino Legend 5 000 000, and you "
@@ -13872,10 +13878,10 @@ FR.update({  # 9.2
     'With the ball: the circle on the floor (only you see it) is how far you can walk without dribbling. Hold Space with a direction to dribble: the circle follows the ball. Space + back spins you round fast, and a spin can\'t be stolen.': 'Avec la balle : le cercle au sol (toi seul le vois) montre jusqu’où tu peux marcher sans dribbler. Maintiens Espace avec une direction pour dribbler : le cercle suit la balle. Espace + arrière te fait pivoter vite, et un pivot ne peut pas être volé.',
     'Passing: right click is a quick pass to your team-mate (the badge over their head). Hold left click to charge a pass and aim it with the mouse; while charging, up throws a lob, down a bounce pass, left or right curves it. The line is white when it\'s safe, orange when risky, red when a defender will cut it off. Right click while charging is a pass fake.': 'Passes : clic droit pour une passe rapide à ton coéquipier (le badge au-dessus de sa tête). Maintiens clic gauche pour charger une passe et vise à la souris ; en chargeant, haut fait un lob, bas une passe à terre, gauche ou droite la brosse. La ligne est blanche si c’est sûr, orange si c’est risqué, rouge si un défenseur va la couper. Clic droit en chargeant : feinte de passe.',
     'Shooting: hold Shift to aim. The line shows your chance from there (lower further out and with a defender in your face). Hold left click to rise and let go when the marker is in the green: green goes in almost every time, yellow sometimes, red rarely. The green gets smaller with distance. Right click while aiming is a pump fake.': 'Tir : maintiens Maj pour viser. La ligne montre ta chance d’ici (plus faible de loin et avec un défenseur sur toi). Maintiens clic gauche pour t’élever et lâche quand le curseur est dans le vert : le vert rentre presque à chaque fois, le jaune parfois, le rouge rarement. Le vert rétrécit avec la distance. Clic droit en visée : feinte de tir.',
-    'Defence: hold Shift to slide in a stance. Left click swipes at the ball: it only works on a dribble that\'s on your side and low; into the body it\'s a reach-in and you\'re off balance. Space jumps to contest, block or get a lob. Right click switches to your other player. Running into the dribbler never takes the ball, but a dribbler who runs into a defender standing still is called for a charge.': 'Défense : maintiens Maj pour glisser en position. Clic gauche tente de voler la balle : ça ne marche que sur un dribble de ton côté et bas ; dans le corps c’est une faute de main et tu es déséquilibré. Espace saute pour contester, contrer ou prendre un lob. Clic droit change de joueur. Foncer dans le dribbleur ne prend jamais la balle, mais un dribbleur qui fonce dans un défenseur immobile commet un passage en force.',
+    'Defence: hold Shift to slide in a stance. Left click swipes at the ball: it only works on a dribble that\'s on your side and low; into the body it\'s a reach-in and you\'re off balance. Space jumps to contest, block or get a lob. Right click switches to your other player. Running into the dribbler never takes the ball.': 'Défense : maintiens Maj pour glisser en position. Clic gauche tente de voler la balle : ça ne marche que sur un dribble de ton côté et bas ; dans le corps c’est une faute de main et tu es déséquilibré. Espace saute pour contester, contrer ou prendre un lob. Clic droit change de joueur. Foncer dans le dribbleur ne prend jamais la balle.',
     'Passing beats pressing: a bot team-mate who is open will usually score. Lobs go over defenders, bounce passes under jumping ones.': 'La passe bat la course : un coéquipier bot démarqué marque souvent. Les lobs passent au-dessus des défenseurs, les passes à terre sous ceux qui sautent.',
     'Pump fake a defender who flies at you, then drive past while they are in the air.': 'Feinte de tir face à un défenseur qui se jette sur toi, puis passe-le pendant qu’il est en l’air.',
-    'A 14 second shot clock: shoot before it runs out. Inside the arc is 2 points, outside 3.': 'Une horloge des tirs de 14 secondes : tire avant la fin. À l’intérieur de l’arc c’est 2 points, à l’extérieur 3.',
+    'No shot clock and no fouls. Inside the arc is 2 points, outside 3. Throw the ball out and the other team gets it.': 'Pas d’horloge des tirs ni de fautes. À l’intérieur de l’arc c’est 2 points, à l’extérieur 3. Si tu envoies la balle dehors, l’autre équipe la récupère.',
     'The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. Levels differ in how quickly they react, how well they time things and how good their decisions are. Professional is very strong.': 'Les bots jouent avec les mêmes règles que toi : même vitesse, même cercle de dribble et même jauge de tir. Les niveaux diffèrent par la vitesse de réaction, le timing et la qualité des décisions. Professionnel est très fort.',
     'A win pays by the bots\' level (3 minutes: Club 120, Regional 220, National 380, Professional 650), a loss a little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows with your tier; Casino Legend has none.': 'Une victoire paie selon le niveau des bots (3 minutes : Club 120, Régional 220, National 380, Professionnel 650), une défaite un peu. Les matchs plus courts paient moins, les plus longs plus, et ton rang de richesse multiplie le tout. La limite par jour grandit avec ton rang ; Légende du casino n’en a pas.',
     'Leaving a match counts as a loss and pays nothing.': 'Quitter un match compte comme une défaite et ne paie rien.',
@@ -54977,12 +54983,12 @@ HELP = {
         "time, yellow sometimes, red rarely. The green gets smaller with distance. Right click while aiming is a pump fake.",
         "Defence: hold Shift to slide in a stance. Left click swipes at the ball: it only works on a dribble that's on "
         "your side and low; into the body it's a reach-in and you're off balance. Space jumps to contest, block or get "
-        "a lob. Right click switches to your other player. Running into the dribbler never takes the ball, but a "
-        "dribbler who runs into a defender standing still is called for a charge."], [
+        "a lob. Right click switches to your other player. Running into the dribbler never takes the ball."], [
         "Passing beats pressing: a bot team-mate who is open will usually score. Lobs go over defenders, bounce passes "
         "under jumping ones.",
         "Pump fake a defender who flies at you, then drive past while they are in the air.",
-        "A 14 second shot clock: shoot before it runs out. Inside the arc is 2 points, outside 3."], [
+        "No shot clock and no fouls. Inside the arc is 2 points, outside 3. Throw the ball out and the other team "
+        "gets it."], [
         "The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. "
         "Levels differ in how quickly they react, how well they time things and how good their decisions are. "
         "Professional is very strong.",
@@ -73952,8 +73958,6 @@ class HoopsGame:
         self._collide(dt)
         self._ball_step(dt)
         # the clocks
-        if self.shot_clock <= 0 and self.ball.mode == "held" and self.phase == "play":
-            self.violation("shot_clock")
         if self.clock <= 0 and not self.overtime and self.phase == "play":
             b = self.ball
             if not (b.mode == "shot" or (b.mode == "loose" and b.from_shot and b.f is None and False)):
@@ -73985,7 +73989,7 @@ class HoopsGame:
     def violation(self, kind, spot=None, team=None):
         """Whistle: the other team gets the ball where it happened (inside the court), after a short pause."""
         b = self.ball
-        lose = self.poss if team is None else 1 - team
+        lose = self.poss if team is None else team         # 9.5: the team that put it out loses it
         to = 1 - lose
         sx, sz = spot if spot else (b.x, b.z)
         sx, sz = clamp(sx, -HALF_L + 0.6, HALF_L - 0.6), clamp(sz, 0.6, COURT_W - 0.6)
@@ -74791,7 +74795,6 @@ class HoopsGame:
 
     def _collide(self, dt):
         ps = self.players
-        b = self.ball
         for i in range(len(ps)):
             for j in range(i + 1, len(ps)):
                 a, c = ps[i], ps[j]
@@ -74800,15 +74803,6 @@ class HoopsGame:
                 if d < 2 * P_R and d > 1e-6:
                     nx, nz = dx / d, dz / d
                     push = (2 * P_R - d) / 2
-                    # a charge: the dribbler running hard into a defender who was standing set in front of them
-                    if a.team != c.team and self.phase == "play":
-                        for att, de, sgn in ((a, c, 1), (c, a, -1)):
-                            if b.owner == att.i and att.act in ("dribble", "spin"):
-                                vdot = (att.vx * nx + att.vz * nz) * sgn
-                                if vdot > 3.6 and de.speed() < 1.4 and de.h <= 0 and de.stun <= 0:
-                                    self.ev("charge", p=att.i, d=de.i)
-                                    self.violation("charge", (att.x, att.z))
-                                    return
                     a.x -= nx * push
                     a.z -= nz * push
                     c.x += nx * push
@@ -77130,12 +77124,6 @@ class HoopsView(QWidget):
             p.setPen(QColor("#F5C04A"))
             p.drawText(QRectF(r.center().x() - S(60), r.top() + S(36), S(120), S(16)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("NEXT BASKET WINS"))
-        else:
-            sc = max(0.0, g.shot_clock)
-            p.setFont(font(13, QFont.Weight.Black))
-            p.setPen(QColor("#FFC94A") if sc > 5 else QColor("#FF5A5A"))
-            p.drawText(QRectF(r.center().x() - S(40), r.top() + S(34), S(80), S(22)), int(Qt.AlignmentFlag.AlignCenter),
-                       f"{int(math.ceil(sc))}" if sc >= 5 else f"{sc:.1f}")
         # the controls hint, small, bottom left; it changes with what you can do
         if self.replay is None and g.phase in ("play", "count"):
             keys = hoops_keys()
@@ -77879,7 +77867,8 @@ class AerialRng:
 # published Sideswipe values.
 AERIAL_TUNE = {
     "gravity": 650.0,
-    "arena_hw": 1500.0, "arena_h": 1150.0, "goal_h": 470.0, "goal_d": 330.0, "ramp_r": 380.0,
+    "arena_hw": 1500.0, "arena_h": 1150.0, "goal_h": 470.0, "goal_d": 330.0, "floor_r": 150.0, "goal_lip": 200.0,
+    "lip_r": 40.0,
     "corner_r": 320.0, "goal_corner_r": 70.0, "crossbar_r": 30.0,
     "ball_r": 106.0, "ball_max": 6000.0, "ball_drag": 0.03, "ball_bounce": 0.6, "ball_friction": 0.28,
     "ball_spin_max": 6.0, "ball_roll_drag": 0.08,
@@ -77953,18 +77942,20 @@ class AerialArena:
         self.hw, self.h, self.gh, self.gd = t["arena_hw"], t["arena_h"], t["goal_h"], t["goal_d"]
         hw, h, gh, gd = self.hw, self.h, self.gh, self.gd
         rc, rg, rx = t["corner_r"], t["goal_corner_r"], t["crossbar_r"]
-        # the goals sit a little above the floor: a smooth ramp (up 30 degrees and level again) leads into each
-        rr = t["ramp_r"]
-        sn, cs = 0.5, _ae_sqrt(3.0) / 2.0                 # 30 degrees, exactly the same on every PC
-        lip = self.lip = 2.0 * rr * (1.0 - cs)
-        x0 = hw - 2.0 * rr * sn
+        # as in Sideswipe: a flat floor that curves up into each side wall, and the goal in the wall a little way up
+        # (a rounded edge under its mouth, a rounded crossbar over it): a ball has to be lifted in
+        rb, lip, rl = t["floor_r"], t["goal_lip"], t["lip_r"]
+        self.lip = lip
+        x0 = hw - rb
         self.ramp_x = x0
         self.prims = []
         self.outline = []
         right = []
-        right.append(("arc", (x0, rr), rr, None, True, (x0, 0.0), (x0 + rr * sn, rr - rr * cs)))
-        right.append(("arc", (hw, lip - rr), rr, None, False, (x0 + rr * sn, rr - rr * cs), (hw, lip)))
-        right.append(("seg", (hw, lip), (hw + gd - rg, lip), (0.0, 1.0)))
+        right.append(("arc", (x0, rb), rb, None, True, (x0, 0.0), (hw, rb)))
+        if lip - rl > rb + 1.0:
+            right.append(("seg", (hw, rb), (hw, lip - rl), (-1.0, 0.0)))
+        right.append(("arc", (hw + rl, lip - rl), rl, None, False, (hw, lip - rl), (hw + rl, lip)))
+        right.append(("seg", (hw + rl, lip), (hw + gd - rg, lip), (0.0, 1.0)))
         right.append(("arc", (hw + gd - rg, lip + rg), rg, (1.0, -1.0), True, (hw + gd - rg, lip), (hw + gd, lip + rg)))
         right.append(("seg", (hw + gd, lip + rg), (hw + gd, lip + gh - rg), (-1.0, 0.0)))
         right.append(("arc", (hw + gd - rg, lip + gh - rg), rg, (1.0, 1.0), True, (hw + gd, lip + gh - rg),
@@ -78582,10 +78573,10 @@ class AerialSim:
         qx, qy = _ae_seg_closest(ax, ay, bx, by, b.x, b.y)
         dx, dy = b.x - qx, b.y - qy
         L = _ae_sqrt(dx * dx + dy * dy)
+        own = -self.arena.hw if c.team == 0 else self.arena.hw
         cr = c.r
         if not c.holding and b.vx * b.vx + b.vy * b.vy > 1.44e6:
             cr += c.assist["reach"]                      # (bots, more with rank: a little more reach on fast balls)
-            own = -self.arena.hw if c.team == 0 else self.arena.hw
             if c.assist["guard"] > 0 and abs(b.x - own) < 800 and b.vx * own > 0:
                 cr += c.assist["guard"]                  # and more again on a shot at its own goal: the saves
         if L >= R + cr or L < 1e-9:
@@ -79174,7 +79165,7 @@ AERIAL_BOT_ROSTER = [
     ("ember", "Flash", "Challenger 1", 350, 0.62, "Rocco's game + fast aerials, wave dashes, calm kickoffs.", {}),
     ("jinx", "Viper", "Challenger 2", 450, 0.71, "Flash's game + carries the ball and flicks it past you.", {}),
     ("halo", "Storm", "Challenger 3", 550, 0.80, "Viper's game + air dribbles, ground pinches, fake challenges.", {}),
-    ("vex", "Vortex", "Master 1", 650, 0.86, "Storm's game + ceiling pinches, musty flicks, double taps.", {}),
+    ("vex", "Vortex", "Master 1", 650, 0.91, "Storm's game + ceiling pinches, musty flicks, double taps.", {}),
     ("nova", "Phantom", "Master 2", 750, 0.98, "Vortex's game + flip resets, reads your boost.", {}),
     ("apex", "Oracle", "Master 3", 850, 1.14, "Everything Phantom does + reset chains. Sees it all coming.", {}),
     ("ruben", "Ruben", "Rubenite", 950, 1.35, "Everything, all at once. Beyond human.", {"machine": 1}),
@@ -80142,9 +80133,12 @@ class AerialBot:
                     inp.ix = 0
             # block: a ball coming at it, in jump range
             b = sim.ball
-            if b.vx * self.s < -800 and abs(b.x - me.x) < 500 and 150 < b.y < 600 and "jump" in p["mech"]:
-                if self.rng.random() < p["save"] * 0.5:
+            high = 600 <= b.y < 880 and "dj" in p["mech"]
+            if b.vx * self.s < -800 and abs(b.x - me.x) < 500 and (150 < b.y < 600 or high) and "jump" in p["mech"]:
+                if self.rng.random() < p["save"] * (0.5 + 0.5 * p["position"]):
                     self.jumping = 20
+                    if high:
+                        self.dj_at = sim.tick + 14           # a high one: double jump into its path
         else:
             return self._recover(m, me)
         if me.boost < 30 and me.ground:
@@ -81255,6 +81249,10 @@ class AerialView(QWidget):
             self.m.phase = self.m.LIVE
             self.m.sim.frozen = False
         self.bot = None
+        self.bot0 = None                       # (admins) bot against bot: a bot drives blue too
+        if self.mode == "watch" and cfg.get("bot0") in AERIAL_BOTS and self.rep_in is None:
+            self.bot0 = AerialBot(0, cfg["bot0"], self.seed + 99)
+            aerial_apply_assist(self.m, 0, cfg["bot0"])
         if self.bot_key and not self.free and self.rep_in is None:
             self.bot = AerialBot(1, self.bot_key, self.seed)
         if self.bot_key and not self.free:
@@ -81339,7 +81337,7 @@ class AerialView(QWidget):
     def _want_lock(self) -> bool:
         try:
             return (self.isVisible() and self.hasFocus() and self.window().isActiveWindow() and not self.menu_open
-                    and not self.over and not self.tab_down and self.mode != "replay")
+                    and not self.over and not self.tab_down and self.mode not in ("replay", "watch"))
         except RuntimeError:
             return False
 
@@ -81411,6 +81409,58 @@ class AerialView(QWidget):
 
     def _down(self, *keys) -> bool:
         return any(k in self.keys for k in keys)
+
+    def _intro(self, p: QPainter, w: float, h: float, t: float) -> None:
+        def ease(x: float) -> float:
+            x = max(0.0, min(1.0, x))
+            return 1.0 - (1.0 - x) ** 3
+        k_in = ease(t / 0.55)
+        k_out = 1.0 - ease((t - 2.25) / 0.5)
+        a = max(0.0, min(k_in, k_out))
+        if a <= 0.0:
+            return
+        p.save()
+        p.fillRect(QRectF(0, 0, w, h), alpha("#05070C", 0.45 * a))
+        pw, ph = min(S(360), w * 0.4), S(84)
+        cy = h * 0.30
+        sides = []
+        if self.bot0 is not None:
+            sides.append((self._me_name(), aerial_rank(AERIAL_BOTS[self.cfg["bot0"]]["mmr"]), AERIAL_TEAM[0]["glow"]))
+        else:
+            sides.append((self._me_name(), aerial_rank(self.store.ladder.mmr), AERIAL_TEAM[0]["glow"]))
+        sides.append((AERIAL_BOTS[self.bot_key]["name"], aerial_rank(AERIAL_BOTS[self.bot_key]["mmr"]),
+                      AERIAL_TEAM[1]["glow"]))
+        for i, (name, info, col) in enumerate(sides):
+            off = (1.0 - k_in) * (w * 0.6) * (-1 if i == 0 else 1)
+            x = (w / 2 - S(40) - pw if i == 0 else w / 2 + S(40)) + off
+            r = QRectF(x, cy - ph / 2, pw, ph)
+            g = QLinearGradient(r.topLeft(), r.topRight())
+            g.setColorAt(0 if i == 0 else 1, alpha(col, 0.55 * a))
+            g.setColorAt(1 if i == 0 else 0, alpha("#0B0F18", 0.85 * a))
+            p.setPen(QPen(alpha(col, 0.9 * a), S(1.5)))
+            p.setBrush(QBrush(g))
+            p.drawRoundedRect(r, S(14), S(14))
+            em = QRectF(r.left() + S(10) if i == 0 else r.right() - S(74), r.top() + S(10), S(64), S(64))
+            p.setOpacity(a)
+            aerial_draw_emblem(p, em, info["rank"], info["tier"], 0, time.monotonic(), glow=True)
+            p.setOpacity(1.0)
+            tx = QRectF(r.left() + S(84), r.top() + S(12), pw - S(98), S(34)) if i == 0 else \
+                QRectF(r.left() + S(14), r.top() + S(12), pw - S(98), S(34))
+            al = Qt.AlignmentFlag.AlignLeft if i == 0 else Qt.AlignmentFlag.AlignRight
+            p.setFont(font(19, QFont.Weight.Black))
+            p.setPen(alpha("#FFFFFF", a))
+            p.drawText(tx, int(al | Qt.AlignmentFlag.AlignVCenter), name)
+            p.setFont(font(11, QFont.Weight.Bold, 1.5))
+            p.setPen(alpha(info["colour"], a))
+            p.drawText(tx.translated(0, S(30)), int(al | Qt.AlignmentFlag.AlignVCenter),
+                       aerial_rank_label(info["index"]).upper())
+        p.setFont(font(34 * (0.7 + 0.3 * k_in), QFont.Weight.Black))
+        p.setPen(alpha("#FFFFFF", a))
+        p.drawText(QRectF(0, cy - S(40), w, S(80)), int(Qt.AlignmentFlag.AlignCenter), tr("VS"))
+        p.restore()
+
+    def _me_name(self) -> str:
+        return AERIAL_BOTS[self.cfg["bot0"]]["name"] if self.bot0 is not None else tr("You")
 
     def _input(self) -> AerialInput:
         """Mouse controls (the default): W/Z drive toward the crosshair, S brakes then reverses, Space jumps, Shift
@@ -81603,7 +81653,7 @@ class AerialView(QWidget):
                 self._end()
                 return
         else:
-            a = self._input()
+            a = self.bot0.think(m) if self.bot0 is not None else self._input()
             b = self.bot.think(m) if self.bot is not None else AerialInput()
             self.log0.append(a.pack())
             self.log1.append(b.pack())
@@ -81846,7 +81896,7 @@ class AerialView(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(alpha(AERIAL_TEAM[team]["main"], 0.28))
             p.drawRoundedRect(row, S(10), S(10))
-            name = tr("You") if team == 0 else ((AERIAL_BOTS[self.bot_key]["name"] + " · " + tr("BOT"))
+            name = self._me_name() if team == 0 else ((AERIAL_BOTS[self.bot_key]["name"] + " · " + tr("BOT"))
                                                 if self.bot_key else "")
             p.setFont(font(12, QFont.Weight.Black))
             p.setPen(QColor("#FFFFFF"))
@@ -81892,7 +81942,7 @@ class AerialView(QWidget):
             p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), txt)
             p.setFont(font(10, QFont.Weight.Bold))
             p.setPen(QColor(TEXT_DIM))
-            name0 = tr("You")
+            name0 = self._me_name()
             name1 = AERIAL_BOTS[self.bot_key]["name"] + " · " + tr("BOT") if self.bot_key else ""
             p.drawText(QRectF(r.left() - S(170), r.top(), S(160), r.height()),
                        int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), name0)
@@ -81911,6 +81961,11 @@ class AerialView(QWidget):
         # the air action light
         p.setBrush(QColor("#35E0A1") if (me.has_action and not me.ground) else alpha("#FFFFFF", 0.15))
         p.drawEllipse(QPointF(cx - rad - S(22), cy + rad - S(4)), S(6), S(6))
+        # the match intro: both players slide in with their rank emblems before the first kickoff
+        if m.phase == m.COUNT and self.bot_key and not getattr(self, "intro_done", False) and self.rep_in is None:
+            self._intro(p, w, h, m.phase_t)
+        elif m.phase == m.LIVE:
+            self.intro_done = True
         # countdown
         if m.phase == m.COUNT:
             c = m.countdown()
@@ -81930,7 +81985,7 @@ class AerialView(QWidget):
             lg = m.last_goal
             if lg is not None:
                 p.setFont(font(12, QFont.Weight.Bold))
-                who = tr("You") if lg[3] == 0 else (AERIAL_BOTS[self.bot_key]["name"] if lg[3] == 1 and self.bot_key else tr("Own goal"))
+                who = self._me_name() if lg[3] == 0 else (AERIAL_BOTS[self.bot_key]["name"] if lg[3] == 1 and self.bot_key else tr("Own goal"))
                 p.drawText(QRectF(S(16), top + S(36), S(400), S(22)), int(Qt.AlignmentFlag.AlignLeft),
                            "%s · %d km/h" % (who, int(lg[2] * 0.036)))
             p.setFont(font(11, QFont.Weight.DemiBold))
@@ -82036,7 +82091,7 @@ class AerialResults(QWidget):
         mvp = 0 if st[0].get("score", 0) >= st[1].get("score", 0) else 1
         for team in (0, 1):
             p.setPen(QColor(AERIAL_TEAM[team]["light"]))
-            name = tr("You") if team == 0 else (AERIAL_BOTS[self.bot_key]["name"] if self.bot_key else "")
+            name = self._me_name() if team == 0 else (AERIAL_BOTS[self.bot_key]["name"] if self.bot_key else "")
             if team == mvp and r.get("winner") == team:
                 name += "  ★ MVP"
             p.drawText(QRectF(S(160) + team * col_w, y, col_w, S(20)), int(Qt.AlignmentFlag.AlignCenter), name)
@@ -82137,7 +82192,8 @@ class AerialStage(QWidget):
         bar = QWidget()
         bar.setFixedHeight(S(44))
         bl = hbox(bar, 8, (S(14), 0, S(10), 0))
-        titles = {"free": tr("Free Play"), "practice": tr("Practice"), "ranked": tr("Ranked"), "replay": tr("Replay")}
+        titles = {"free": tr("Free Play"), "practice": tr("Practice"), "ranked": tr("Ranked"), "replay": tr("Replay"),
+                  "watch": tr("Bot against bot")}
         self.title = Label(AERIAL_NAME + "  ·  " + titles.get(cfg.get("mode"), ""), 13, TEXT, bold=True)
         bl.addWidget(self.title, 1)
         self.sound = Button(tr("Sound on") if sfx.enabled else tr("Sound off"), "ghost", 30)
@@ -82168,6 +82224,10 @@ class AerialStage(QWidget):
             return
         if not hasattr(getattr(ctx, "window", None), "_wide_watch"):
             return ctx.toast(tr("Rubenium League plays in the online menu"), "warn")
+        if cfg.get("mode") in ("practice", "watch") and not aerial_can_play(ctx, cfg.get("bot")):
+            return ctx.toast(tr("Beat the bots in order: you can play up to one rank above yours"), "warn")
+        if cfg.get("mode") == "watch" and not aerial_is_admin(ctx):
+            return
         try:
             st = AerialStage(ctx, cfg)
         except Exception:  # noqa: BLE001
@@ -82380,6 +82440,27 @@ class AerialOverlayCard(QWidget):
         p.drawRoundedRect(r, S(20), S(20))
 
 
+def aerial_is_admin(ctx) -> bool:
+    econ = getattr(ctx, "econ", None)
+    return bool(econ is not None and getattr(econ, "admin", False))
+
+
+def aerial_bot_index(key: str) -> int:
+    for i, r in enumerate(AERIAL_BOT_ROSTER):
+        if r[0] == key:
+            return i
+    return 0
+
+
+def aerial_can_play(ctx, key) -> bool:
+    """Practice: any bot up to one rank above yours (admins: every bot)."""
+    if key not in AERIAL_BOTS:
+        return False
+    if aerial_is_admin(ctx):
+        return True
+    return aerial_bot_index(key) <= aerial_store(ctx).ladder.r + 1
+
+
 def aerial_pick_ranked(store: AerialStore) -> str:
     """Ranked is always against the bot of my rank."""
     opts = store.ladder.opponents()
@@ -82549,13 +82630,20 @@ class AerialCarCard(QWidget):
 class AerialBotTile(QWidget):
     """A bot in Practice: its rank colour and emblem, its name, MMR and what kind of player it is."""
 
-    def __init__(self, key: str, on_click, width: int) -> None:
+    def __init__(self, key: str, on_click, width: int, state: str = "open") -> None:
         super().__init__()
         self.key, self.on_click = key, on_click
+        self.state = state                     # "open", "next" (your next challenge: it glows), "locked"
         self.b = AERIAL_BOTS[key]
         self.setFixedSize(width, S(58))
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor if state != "locked" else Qt.CursorShape.ForbiddenCursor)
         self._hover = Tween(self, on_change=self.update)
+        self._t0 = time.monotonic()
+        if state == "next":
+            self._timer = QTimer(self)
+            self._timer.setInterval(33)
+            self._timer.timeout.connect(self.update)
+            self._timer.start()
 
     def enterEvent(self, _e) -> None:
         self._hover.to(1.0, 140)
@@ -82565,7 +82653,7 @@ class AerialBotTile(QWidget):
 
     def mouseReleaseEvent(self, e) -> None:
         if e.button() == Qt.MouseButton.LeftButton:
-            sfx.play("pick")
+            sfx.play("off" if self.state == "locked" else "pick")
             self.on_click(self.key)
 
     def paintEvent(self, _e) -> None:
@@ -82574,7 +82662,35 @@ class AerialBotTile(QWidget):
         r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
         b = self.b
         info = aerial_rank(b["mmr"])
-        paint_surface(p, r, S(12), 0.04, self._hover.level, tint=QColor(info["colour"]), tint_a=0.10)
+        col = QColor(info["colour"])
+        if self.state == "next":
+            # the next challenge: a slow breathing glow in the rank's colour and a light running round the edge
+            t = time.monotonic() - self._t0
+            k = 0.5 + 0.5 * math.sin(t * 2.6)
+            for i in range(3):
+                p.setPen(QPen(alpha(col, (0.10 + 0.22 * k) / (i + 1)), S(2 + 3 * i)))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(r.adjusted(S(1), S(1), -S(1), -S(1)), S(12), S(12))
+        if self.state == "locked":
+            p.setOpacity(0.38)
+        paint_surface(p, r, S(12), 0.04, self._hover.level, tint=col, tint_a=0.18 if self.state == "next" else 0.10)
+        if self.state == "next":
+            t = time.monotonic() - self._t0
+            path = QPainterPath()
+            path.addRoundedRect(r.adjusted(S(1), S(1), -S(1), -S(1)), S(12), S(12))
+            pos = path.pointAtPercent((t * 0.22) % 1.0)
+            g = QRadialGradient(pos, S(26))
+            g.setColorAt(0, alpha("#FFFFFF", 0.55))
+            g.setColorAt(0.4, alpha(col, 0.35))
+            g.setColorAt(1, alpha(col, 0.0))
+            p.save()
+            p.setClipPath(path)
+            p.setPen(QPen(QBrush(g), S(2.5)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(path)
+            p.restore()
+            p.setPen(QPen(alpha(col, 0.9), S(1.4)))
+            p.drawPath(path)
         aerial_draw_emblem(p, QRectF(r.left() + S(6), r.top() + S(7), S(44), S(44)), info["rank"], info["tier"],
                            0, time.monotonic(), glow=False)
         p.setFont(font(12.5, QFont.Weight.Black))
@@ -82586,8 +82702,21 @@ class AerialBotTile(QWidget):
                    int(Qt.AlignmentFlag.AlignRight), aerial_rank_label(info["index"]))
         p.setFont(font(9.5))
         p.setPen(QColor(TEXT_DIM))
+        sub = tr(b["about"])
+        if self.state == "locked":
+            sub = tr("Locked: reach {r} first", r=aerial_rank_label(max(0, aerial_bot_index(self.key) - 1)))
+        elif self.state == "next":
+            p.setPen(QColor(col).lighter(130))
+            sub = tr("Your next challenge")
         p.drawText(QRectF(r.left() + S(58), r.top() + S(30), r.width() - S(64), S(20)), int(Qt.AlignmentFlag.AlignLeft),
-                   tr(b["about"]))
+                   QFontMetrics(p.font()).elidedText(sub, Qt.TextElideMode.ElideRight, int(r.width() - S(64))))
+        if self.state == "locked":
+            p.setOpacity(1.0)
+            lk = QRectF(r.right() - S(26), r.bottom() - S(24), S(16), S(16))
+            p.setPen(QPen(alpha("#FFFFFF", 0.7), S(1.6)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(lk.adjusted(S(2), S(6), -S(2), 0), S(2), S(2))
+            p.drawArc(lk.adjusted(S(4.5), 0, -S(4.5), -S(7)), 0, 180 * 16)
 
 
 class AerialRankCard(QWidget):
@@ -82826,13 +82955,6 @@ def build_aerial(page, lay) -> None:
         go.fade = 0.55
     go.clicked.connect(lambda: aerial_play_ranked(ctx))
     lay.addWidget(go)
-    econ = getattr(ctx, "econ", None)
-    if econ is not None and getattr(econ, "admin", False):
-        # the admins' switch (the same lock as Admin > Locks): ranked off for everyone while a bug is fixed
-        locked = "league_ranked" in ((getattr(econ, "locks", None) or {}).get("locked") or [])
-        ab = Button(tr("Admin: open ranked again") if locked else tr("Admin: close ranked"), "ghost", 36)
-        ab.clicked.connect(lambda _c=False, lk=not locked: aerial_admin_ranked(ctx, lk))
-        lay.addWidget(ab)
     pm = Button(tr("Private match"), "ghost", 40)
     pm.fade = 0.55
     pm.clicked.connect(lambda: ctx.toast(tr("Private matches against players arrive with the online update"), "warn"))
@@ -82855,16 +82977,24 @@ def build_aerial(page, lay) -> None:
     fp = Button(tr("Free Play and drills"), "ghost", 40, icon="play")
     fp.clicked.connect(lambda: AerialStage.start(ctx, {"mode": "free"}))
     lay.addWidget(fp)
-    lay.addWidget(Label(tr("Play any bot below: no MMR, just practice."), 10, TEXT_FAINT, wrap_w=W))
+    admin = aerial_is_admin(ctx)
+    lay.addWidget(Label(tr("Practise against any bot up to one rank above yours: no MMR. The glowing one is your next "
+                           "challenge."), 10, TEXT_FAINT, wrap_w=W))
     grid = QGridLayout()
     grid.setSpacing(S(8))
     tw = (W - S(8)) // 2
 
     def practice(key: str) -> None:
+        if not aerial_can_play(ctx, key):
+            return ctx.toast(tr("Beat the bots in order: you can play up to one rank above yours"), "warn")
         AerialStage.start(ctx, {"mode": "practice", "bot": key})
+    mine = st.ladder.r
     for i, r in enumerate(AERIAL_BOT_ROSTER):
-        grid.addWidget(AerialBotTile(r[0], practice, tw), i // 2, i % 2)
+        state = "next" if i == mine + 1 else ("locked" if i > mine + 1 and not admin else "open")
+        grid.addWidget(AerialBotTile(r[0], practice, tw, state), i // 2, i % 2)
     lay.addLayout(grid)
+    if admin:
+        _aerial_admin(page, lay, st, W)
     keys = aerial_keys()
     fwd = keys["up"]
     lay.addWidget(ControlsBar([([fwd], tr("Drive toward the crosshair")), (["S"], tr("Brake / reverse")),
@@ -82879,6 +83009,59 @@ def build_aerial(page, lay) -> None:
                            "Esc to free it. Keys only (switch it in the match menu): {l}/{r} drive and turn the car in "
                            "the air, {rl}/{rr} air roll left/right.", l=keys["left"], r=keys["right"],
                            rl=keys["roll_l"], rr=keys["roll_r"]), 10, TEXT_FAINT, wrap_w=W))
+
+
+def _aerial_admin(page, lay, st, W) -> None:
+    """Admins only: every bot unlocked, bot against bot, short test matches, move your own rank, close ranked."""
+    ctx = page.ctx
+    keys = [r[0] for r in AERIAL_BOT_ROSTER]
+    lay.addWidget(heading(tr("Admin tools")))
+    lay.addWidget(Label(tr("Only admins see this. Every bot is unlocked for you."), 10, TEXT_FAINT, wrap_w=W))
+    a = getattr(ctx, "aerial_admin_a", "apex")
+    b = getattr(ctx, "aerial_admin_b", "ruben")
+    row = hbox(spacing=8)
+    bw = (W - S(16)) // 3
+
+    def cycle(attr: str, cur: str) -> None:
+        setattr(ctx, attr, keys[(keys.index(cur) + 1) % len(keys)] if cur in keys else keys[0])
+        ctx.reload_page("games")
+    ba = Button(tr("Blue: {b}", b=AERIAL_BOTS[a]["name"]), "ghost", 38)
+    ba.setFixedWidth(bw)
+    ba.clicked.connect(lambda: cycle("aerial_admin_a", a))
+    bb = Button(tr("Orange: {b}", b=AERIAL_BOTS[b]["name"]), "ghost", 38)
+    bb.setFixedWidth(bw)
+    bb.clicked.connect(lambda: cycle("aerial_admin_b", b))
+    go = Button(tr("Watch"), "primary", 38, icon="play")
+    go.setFixedWidth(bw)
+    go.clicked.connect(lambda: AerialStage.start(ctx, {"mode": "watch", "bot0": a, "bot": b}))
+    for w in (ba, bb, go):
+        row.addWidget(w)
+    lay.addLayout(row)
+    row2 = hbox(spacing=8)
+    t30 = Button(tr("30 s test vs {b}", b=AERIAL_BOTS[b]["name"]), "ghost", 38)
+    t30.clicked.connect(lambda: AerialStage.start(ctx, {"mode": "practice", "bot": b, "match_s": 30.0}))
+    row2.addWidget(t30)
+
+    def move(d: int) -> None:
+        L = st.ladder
+        L.r = max(0, min(9, L.r + d))
+        L.v = 0
+        L.peak = max(L.peak, L.r)
+        st.save()
+        ctx.toast(tr("Your rank is now {r}", r=aerial_rank_label(L.r)))
+        ctx.reload_page("games")
+    dn = Button(tr("Rank -1"), "ghost", 38)
+    dn.clicked.connect(lambda: move(-1))
+    up = Button(tr("Rank +1"), "ghost", 38)
+    up.clicked.connect(lambda: move(1))
+    row2.addWidget(dn)
+    row2.addWidget(up)
+    lay.addLayout(row2)
+    econ = ctx.econ
+    locked = "league_ranked" in ((getattr(econ, "locks", None) or {}).get("locked") or [])
+    ab = Button(tr("Open ranked again for everyone") if locked else tr("Close ranked for everyone"), "ghost", 38)
+    ab.clicked.connect(lambda _c=False, lk=not locked: aerial_admin_ranked(ctx, lk))
+    lay.addWidget(ab)
 
 
 def _aerial_tracker(page, lay, st, W) -> None:
@@ -83133,6 +83316,10 @@ FR.update({'Drive with A and D (Q and D in French) or the arrows. Jump with Spac
 FR.update({'Drive toward the crosshair': 'Avancer vers le viseur', 'Brake / reverse': 'Freiner / reculer', 'Aim: turn round, point the car in the air': 'Viser : se retourner, orienter la voiture en l’air', 'Front / back flip': 'Flip avant / arrière', 'In the air: roll forward / back': 'En l’air : pivoter en avant / en arrière', 'Air roll left / right': 'Air roll à gauche / à droite', 'During a match the mouse is locked to the game and moves a crosshair. Hold Tab or press Esc to free it. Keys only (switch it in the match menu): {l}/{r} drive and turn the car in the air, {rl}/{rr} air roll left/right.': 'Pendant un match, la souris est bloquée dans le jeu et déplace un viseur. Garde Tab enfoncé ou appuie sur Échap pour la libérer. Clavier seul (à changer dans le menu du match) : {l}/{r} pour conduire et tourner la voiture en l’air, {rl}/{rr} pour l’air roll à gauche/à droite.', 'With the mouse: W (Z in French) drives toward the crosshair, S brakes and then reverses, Space jumps (press it again in the air for a double jump), Shift boosts. Move the crosshair behind the car to turn round. In the air the car points at the crosshair, W/S roll it forward and back, and W/S with Space is a front or back flip: a flip hits the ball harder. Left click rolls left, right click rolls right.': 'À la souris : Z (W en anglais) avance vers le viseur, S freine puis recule, Espace saute (appuie de nouveau en l’air pour un double saut), Maj boost. Place le viseur derrière la voiture pour te retourner. En l’air, la voiture pointe vers le viseur, Z/S la font pivoter en avant et en arrière, et Z/S avec Espace fait un flip avant ou arrière : un flip frappe la balle plus fort. Clic gauche pour l’air roll à gauche, clic droit à droite.', 'Keys only (in the match menu): A and D (Q and D in French) drive and turn the car in the air, Q/E (A/E in French) roll left/right. Boost refills while your wheels are on a surface, and much faster while you touch the ball.': 'Clavier seul (dans le menu du match) : Q et D (A et D en anglais) pour conduire et tourner la voiture en l’air, A/E (Q/E en anglais) pour l’air roll à gauche/à droite. Le boost se recharge quand tes roues touchent une surface, et bien plus vite quand tu touches la balle.'})
 FR.update({'Drives at the ball, boosts into kickoffs, jumps for it.': 'Fonce sur la balle, boost à fond aux engagements, saute pour la toucher.', "Milo's game + double jumps and flips into the ball.": 'Le jeu de Milo + doubles sauts et flips dans la balle.', "Tito's game + first aerials, wall clears, waits in goal.": 'Le jeu de Tito + premiers aériens, dégagements sur les murs, attend dans le but.', "Rocco's game + fast aerials, wave dashes, calm kickoffs.": 'Le jeu de Rocco + fast aerials, wave dashes, engagements calmes.', "Flash's game + carries the ball and flicks it past you.": 'Le jeu de Flash + porte la balle et la flick au-dessus de toi.', "Viper's game + air dribbles, ground pinches, fake challenges.": 'Le jeu de Viper + air dribbles, pinches au sol, fausses attaques.', "Storm's game + ceiling pinches, musty flicks, double taps.": 'Le jeu de Storm + pinches au plafond, musty flicks, double taps.', "Vortex's game + flip resets, reads your boost.": 'Le jeu de Vortex + flip resets, lit ton boost.', 'Everything Phantom does + reset chains. Sees it all coming.': 'Tout ce que fait Phantom + enchaînements de resets. Voit tout venir.', 'Everything, all at once. Beyond human.': 'Tout, en même temps. Au-delà de l’humain.', '+ flips': '+ flips', '+ aerials': '+ aériens', '+ fast aerials': '+ fast aerials', '+ flicks': '+ flicks', '+ air dribbles': '+ air dribbles', '+ pinches and mustys': '+ pinches et mustys', '+ flip resets': '+ flip resets', '+ reset chains': '+ enchaînements de resets'})
 FR.update({'Air roll left': 'Air roll à gauche', 'Air roll right': 'Air roll à droite'})
+FR.update({'Bot against bot': 'Bot contre bot', 'Beat the bots in order: you can play up to one rank above yours': 'Bats les bots dans l’ordre : tu peux jouer jusqu’à un rang au-dessus du tien', 'Locked: reach {r} first': 'Verrouillé : atteins d’abord {r}', 'Your next challenge': 'Ton prochain défi', 'Practise against any bot up to one rank above yours: no MMR. The glowing one is your next challenge.': 'Entraîne-toi contre n’importe quel bot jusqu’à un rang au-dessus du tien : pas de MMR. Celui qui brille est ton prochain défi.', 'Admin tools': 'Outils admin', 'Only admins see this. Every bot is unlocked for you.': 'Seuls les admins voient ceci. Tous les bots sont débloqués pour toi.', 'Blue: {b}': 'Bleu : {b}', 'Orange: {b}': 'Orange : {b}', 'Watch': 'Regarder', '30 s test vs {b}': 'Test de 30 s contre {b}', 'Your rank is now {r}': 'Ton rang est maintenant {r}', 'Rank -1': 'Rang -1', 'Rank +1': 'Rang +1', 'Open ranked again for everyone': 'Rouvrir le classé pour tout le monde', 'Close ranked for everyone': 'Fermer le classé pour tout le monde'})
+FR.update({'VS': 'VS'})
+FR.update({'Rubenium League: a new 1 v 1 car soccer game in Play, seen from the side, with flips, aerials, air dribbles and flip resets': 'Rubenium League : un nouveau jeu de foot en voiture en 1 contre 1 dans Jouer, vu de côté, avec flips, aériens, air dribbles et flip resets', 'Rubenium League ranked: 10 ranks from Rookie 1 to Rubenite, one bot to beat at each rank, 5 wins up and 5 losses down': 'Rubenium League en classé : 10 rangs de Débutant 1 à Rubenite, un bot à battre à chaque rang, 5 victoires pour monter et 5 défaites pour descendre', 'Rubenium League bots: Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle and Ruben, each one harder and with more moves': 'Les bots de Rubenium League : Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle et Ruben, chacun plus fort et avec plus de gestes', 'Rubenium League: a tracker with your MMR, your last 200 matches and replays of your last 10 you can watch or save': 'Rubenium League : un suivi avec ton MMR, tes 200 derniers matchs et les rediffusions des 10 derniers, à regarder ou enregistrer', 'Rubenium League: practise against any bot up to one rank above yours, Free Play with drills, mouse or keyboard controls': 'Rubenium League : entraîne-toi contre n’importe quel bot jusqu’à un rang au-dessus du tien, jeu libre avec exercices, contrôles souris ou clavier'})
+FR.update({'Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team': 'Hoops : plus d’horloge des tirs ni de passage en force, et une balle envoyée hors du terrain revient à l’autre équipe'})
 # END SECTION: aerial
 
 

@@ -206,9 +206,11 @@ def test_points_and_save():
     s = m.sim
     s.ball_held = False
     c = s.cars[0]
-    c.reset(-s.arena.hw + 200, c.r, 1.0)
+    y = s.arena.lip + T["ball_r"] + 60                  # the goal is up in the wall: the shot comes in the air
+    c.reset(-s.arena.hw + 230, y, 1.0)
+    c.ground = False
     b = s.ball
-    b.x, b.y, b.vx, b.vy = -s.arena.hw + 700, T["ball_r"] + 5, -2200.0, 0.0
+    b.x, b.y, b.vx, b.vy = -s.arena.hw + 700, y + 20, -2200.0, 0.0
     labels = []
     for _ in range(80):
         m.step([I(), I()])

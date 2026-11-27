@@ -1,7 +1,8 @@
-Rubenium 9.3.2
+Rubenium 9.5
 
-- Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone
-- Stats: one All time view, and every stat starts again from 0
-- Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies
-- Clearer game menus: shorter rules in plain words, and no more win counters
-- Hoops: smoother bots, shorter replays you can turn off, an OPEN badge when your team-mate is free, and a stronger Professional
+- Rubenium League: a new 1 v 1 car soccer game in Play, seen from the side, with flips, aerials, air dribbles and flip resets
+- Rubenium League ranked: 10 ranks from Rookie 1 to Rubenite, one bot to beat at each rank, 5 wins up and 5 losses down
+- Rubenium League bots: Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle and Ruben, each one harder and with more moves
+- Rubenium League: a tracker with your MMR, your last 200 matches and replays of your last 10 you can watch or save
+- Rubenium League: practise against any bot up to one rank above yours, Free Play with drills, mouse or keyboard controls
+- Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team

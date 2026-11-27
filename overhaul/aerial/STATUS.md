@@ -14,8 +14,9 @@ for Karting), and one self-test step.
   air roll, mouse air control (or keys), flip resets on the ball, landing on walls and the ceiling, turtle recovery,
   ball spin and bounces, Rocket League's extra hit impulse (stronger in a flip), car to car bumps.
   Own sine, cosine and arc tangent, so two PCs give the same result.
-- **Pitch**: Sideswipe proportions (cars 110-160 long, ball 212 wide, pitch 3000 wide and 1150 high), rounded
-  corners, goals raised off the floor with a smooth ramp in, rounded goal corners and crossbars. Rolling balls go in.
+- **Pitch**: Sideswipe proportions (cars 110-160 long, ball 212 wide, pitch 3000 wide and 1150 high): a flat floor
+  that curves up into the side walls, the goals in the walls 200 up (a rounded edge under the mouth, rounded crossbar
+  and back corners), big rounded top corners. A rolling ball does not go in: it has to be lifted.
 - **Match**: 3-2-1-GO with mirrored kickoffs (3 kickoff spots), 2:30 clock that only runs while the ball is live, the
   0:00 floor rule, golden-goal overtime, anti-stall kickoff after 8 s of a dead ball, goals counted once when the whole
   ball is in, goal explosion, goal replays (6 s, slow motion at the end, jump to skip).
@@ -28,7 +29,11 @@ for Karting), and one self-test step.
 - **Ranked against bots**: 10 ranks, 5 net wins up, 5 net losses down. Kept on this PC until ranked goes online (no
   coins depend on it). Admins can close it for everyone (lock `league_ranked`: Admin > Locks or the lobby button;
   needs `supabase/migrations/096_league_lock.sql` on the server).
-- **Lobby**: rank card, the 3 cars with their hitboxes, Play ranked, Free Play and drills, all 10 bots to practise.
+- **Lobby**: rank card, the 3 cars with their hitboxes, Play ranked, Free Play and drills. Practice against any bot up
+  to one rank above yours (the next one glows as "your next challenge", the rest are locked). A VS intro with both
+  rank emblems before the first kickoff.
+- **Admin tools** (admins only, in the lobby): every bot unlocked, bot against bot to watch, a 30 s test match, rank
+  -1/+1 for yourself, close/open ranked for everyone.
 - **Controls**: mouse (default): W/Z drive toward the crosshair, S brake/reverse, Space jump, Shift boost, crosshair on
   a ring round the car, W/S pitch and pick the flip in the air, left/right click air roll left/right. Keys only: A/D
   (Q/D) drive and turn, Q/E (A/E on AZERTY) air roll. Tab scoreboard; the mouse is locked to the game until Esc/Tab.
