@@ -1,3 +1,4 @@
+-- needs_live_snapshot  (rb_ach comes from 051_v62.sql, which does not apply to the CI database)
 -- 9.4 (094): ranks cost more and go up one a day at most, the Key Forge resets every 12 hours, hourly keys once an
 -- hour, daily rewards are cases, the free spin pays more, and rb_reset_94 starts everyone again (once, with a backup).
 begin;
