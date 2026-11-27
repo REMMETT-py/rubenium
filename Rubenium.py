@@ -12776,7 +12776,8 @@ NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritte
              "warns you), bots fake, 3 baskets in a row puts you On Fire, and ankle breakers",
              "Hoops and Karting: a points feed at the top (passes, shots, saves, overtakes and more), Tab shows the "
              "scoreboard, and a short How to play the first time",
-             "Hoops: an MVP card, quick chat on 1 to 4, a YOU marker, clearer passes, and replays of big plays and swishes",
+             "Hoops: an MVP card, a YOU marker, clearer passes, and replays of big plays and swishes",
+             "Professional bots have no human limits: in Hoops they react instantly, release every shot on the perfect mark and never bite on a fake; in Karting they launch the instant the lights go out and pass cleanly through traffic",
              "Away for 45 seconds in Hoops or Karting: you are disqualified and get no prize",
              "Karting: the bots are rebuilt. The old Professional is now Expert (1500), and Elite and Professional are "
              "faster than any player. Every bot shows on the time boards with its best time",
@@ -13794,6 +13795,7 @@ FR.update({  # 9.2
     'Solid basketball, but makes mistakes you can punish.': 'Du basket solide, mais des erreurs que tu peux punir.',
     'Quick and smart: reads passes, times steals, rarely misses an open shot.': 'Rapide et malin : lit les passes, vole au bon moment, rate rarement un tir ouvert.',
     'Very strong: fakes, lobs and curved passes, tight defence and deadly shooting.': 'Très fort : feintes, lobs et passes brossées, défense serrée et tir redoutable.',
+    'No human limits: instant reactions, every shot released on the perfect mark, never fooled by a fake.': 'Aucune limite humaine : réactions instantanées, chaque tir lâché pile au bon moment, jamais dupe d’une feinte.',
     'Opponents': 'Adversaires',
     'Match': 'Match',
     'A tie at the buzzer goes to overtime: the next basket wins.': 'Une égalité à la sirène mène à la prolongation : le prochain panier gagne.',
@@ -52045,7 +52047,7 @@ FR.update({'All time': 'Depuis le début', 'Change, all time': 'Évolution, depu
 FR.update({'See what every tier gets': 'Voir ce que chaque rang apporte', 'No limit': 'Sans limite', 'Free rewards': 'Récompenses gratuites', 'Mini game coins a day (each game)': 'Pièces des mini-jeux par jour (chaque jeu)', 'Karting prizes a day': 'Gains de Karting par jour', 'AFK coins a day': 'Pièces AFK par jour', 'Keys kept from time': 'Clés gardées avec le temps', 'Key Forge a day': 'Forge à clés par jour', 'Keys found in games a day': 'Clés trouvées en jouant par jour', 'Biggest duel bet': 'Plus grosse mise en duel', 'UP': 'PLUS', 'RANK UP': 'NOUVEAU RANG', 'WHAT YOU UNLOCKED': 'CE QUE TU DÉBLOQUES', 'Wealth tiers': 'Rangs de richesse', 'Every tier pays more and lifts your daily limits. A tier you reach is yours for good. Click a tier to see what it gets.': 'Chaque rang paie plus et relève tes limites par jour. Un rang atteint est à toi pour de bon. Clique sur un rang pour voir ce qu’il apporte.', "Let's go": 'C’est parti', 'Casino Legend is the top tier: no daily limits on mini games, Karting or AFK coins.': 'Légende du casino est le rang le plus haut : aucune limite par jour sur les mini-jeux, le Karting ou les pièces AFK.', 'Next: {name} at {n} wealth.': 'Prochain : {name} à {n} de richesse.', 'Rank up! You are now {name}': 'Nouveau rang ! Tu es maintenant {name}', 'Prizes today: {a} (no daily limit)': 'Gains du jour : {a} (sans limite par jour)', 'Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all': 'Des limites de gains plus hautes qui suivent ton rang de richesse : les mini-jeux, le Karting et les pièces AFK paient jusqu’à deux fois plus par jour pour Pauvre, jusqu’à 6 fois pour Businessman, et Légende du casino n’a plus aucune limite par jour', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms': 'Les rangs plus hauts gardent aussi plus de clés avec le temps, forgent plus de clés par jour, trouvent plus de clés en jouant et peuvent miser plus en duel et dans les salons', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets': 'Un écran de nouveau rang quand tu atteins un rang, avec tout ce qu’il débloque. Clique sur la barre de rang dans Accueil quand tu veux pour voir ce que chaque rang apporte'})   # 9.2.1: prize limits by tier, the rank-up screen
 FR.update({'A fresh start for everyone: coins, items, badges, mythics, cases, levels, trophies, stats and every leaderboard start again, and everyone gets the starter pack': 'Un nouveau départ pour tout le monde : pièces, objets, badges, mythiques, caisses, niveaux, trophées, stats et tous les classements repartent de zéro, et chacun reçoit le pack de départ', 'Tiers are harder: Average 50 000, Investor 250 000, Businessman 1 000 000, Casino Legend 5 000 000, and you go up one tier a day at most': 'Les rangs sont plus durs : Moyen 50 000, Investisseur 250 000, Businessman 1 000 000, Légende du casino 5 000 000, et tu montes d’un rang par jour au maximum', 'Key Forge: it refills every 12 hours, at midnight and noon, and the first press shows the price before you pay': 'Forge à clés : elle se recharge toutes les 12 heures, à minuit et à midi, et le premier clic montre le prix avant de payer', 'Hourly keys: 3 free keys every hour on Rewards': 'Clés horaires : 3 clés gratuites chaque heure dans Récompenses', 'Daily reward: a free case every day': 'Récompense du jour : une caisse gratuite chaque jour', 'Free spin: bigger prizes, up to 7 500 coins times your tier': 'Tour gratuit : de plus gros gains, jusqu’à 7 500 pièces fois ton rang', 'A free case every day. Missing a day starts again from day 1.': 'Une caisse gratuite chaque jour. Si tu rates un jour, tu repars du jour 1.', 'Your wealth = your coins + the shop value of your items. Average at 50 000, Investor at 250 000, Businessman at 1 000 000, Casino Legend at 5 000 000. You go up one tier a day at most. Free rewards are multiplied by your tier, and a tier you reach is yours for good.': 'Ta richesse = tes pièces + la valeur en boutique de tes objets. Moyen à 50 000, Investisseur à 250 000, Businessman à 1 000 000, Légende du casino à 5 000 000. Tu montes d’un rang par jour au maximum. Les récompenses gratuites sont multipliées par ton rang, et un rang atteint est à toi pour de bon.', '{name} tomorrow': '{name} demain', 'A free case every day': 'Une caisse gratuite chaque jour', 'Pay coins for a key. The price is 0.5% of your wealth (at least 250 coins). The forge refills at midnight and at noon, and higher tiers can forge more keys.': 'Paie des pièces pour une clé. Le prix est 0,5 % de ta richesse (au moins 250 pièces). La forge se recharge à minuit et à midi, et les rangs plus hauts forgent plus de clés.', 'refills in {t}': 'recharge dans {t}', '{n} of {cap} left': '{n} sur {cap} restantes', 'Refills in {t}': 'Recharge dans {t}', 'Pay {c}': 'Payer {c}', 'Hourly keys': 'Clés horaires', 'Next in {t}': 'Prochaines dans {t}', '{n} free keys every hour': '{n} clés gratuites chaque heure', 'Claim {n} keys': 'Prendre {n} clés'})   # 9.4: harder tiers, the 12 hour forge, hourly keys, daily cases
 FR.update({'Karting: tighter driving, the race plays inside the menu, half as loud engines, full grip kerbs, faster bots and a 10 second countdown': 'Karting : une conduite plus précise, la course se joue dans le menu, des moteurs deux fois moins forts, des vibreurs qui accrochent, des bots plus rapides et un compte à rebours de 10 secondes', 'Karting: the 10 fastest 3 lap times of each circuit, and you can race any of them as a ghost': 'Karting : les 10 meilleurs temps en 3 tours de chaque circuit, et tu peux affronter chacun en fantôme', 'Bots: Easy and Medium make real mistakes, Professional is much harder': 'Bots : Facile et Moyen font de vraies erreurs, Professionnel est bien plus dur', 'Leaderboards: a podium for the top 3 and cleaner rows': 'Classements : un podium pour le top 3 et des lignes plus claires', 'Wave Rush is a solo mini game in Mini games': 'Wave Rush devient un mini-jeu solo dans Mini-jeux', 'Fastest times': 'Meilleurs temps', 'The 10 fastest 3 lap races of each circuit. Press Race to drive against that run as a ghost.': 'Les 10 courses en 3 tours les plus rapides de chaque circuit. Appuie sur Course pour affronter cette course en fantôme.', 'No times yet. Finish a 3 lap race to be the first.': 'Pas encore de temps. Termine une course en 3 tours pour être le premier.', 'This run could not be loaded.': 'Impossible de charger cette course.', 'Your best: {t} (#{n})': 'Ton meilleur : {t} (n°{n})', 'Ghost: {name}': 'Fantôme : {name}', 'Top 10 time on {c}: #{n}': 'Top 10 sur {c} : n°{n}'})   # 9.4: karting time boards and ghosts
-FR.update({'Select everything you can sell on this tab': 'Sélectionner tout ce que tu peux vendre dans cet onglet', 'Sell all selected': 'Vendre la sélection', 'Sell {n} items for about {v} coins? The pawn shop makes the final offer.': 'Vendre {n} objets pour environ {v} pièces ? Le prêteur sur gages fait l’offre finale.', 'Select several': 'En sélectionner plusieurs', 'BASIC': 'BASIQUE', 'Free, always yours': 'Gratuite, toujours à toi', 'The banner floats up into nothing and drops back down.': 'La bannière s’envole dans le vide puis retombe.', 'Your race points: {n}': 'Tes points de course : {n}', 'Let go in the green': 'Lâche dans le vert', 'How to play Hoops': 'Comment jouer à Hoops', "1 Pass!  ·  2 Shoot!  ·  3 Help!  ·  4 What a save!  ·  Tab scoreboard  ·  Esc pause.  Don't stand still with the ball: the defenders rush you.": '1 Passe !  ·  2 Tire !  ·  3 À l’aide !  ·  4 Quel arrêt !  ·  Tab tableau des scores  ·  Échap pause.  Ne reste pas immobile avec le ballon : les défenseurs te foncent dessus.', 'How to play Karting': 'Comment jouer au Karting', 'Tab scoreboard  ·  Esc leave.  Big crashes wreck your kart. Not touching anything for 45 s gets you disqualified.': 'Tab tableau des scores  ·  Échap quitter.  Les gros chocs détruisent ton kart. Sans rien toucher pendant 45 s, tu es disqualifié.', "Got it, let's play": 'Compris, on joue', "Are you there? Move or you're disqualified in {n}": 'Tu es là ? Bouge ou tu es disqualifié dans {n}', 'Let go of Tab to play': 'Lâche Tab pour jouer', 'Disqualified': 'Disqualifié', '{n} items': '{n} objets', "You're using this one.": 'Tu utilises celle-ci.', 'DISQUALIFIED': 'DISQUALIFIÉ', 'No input for 45 seconds': 'Aucune action pendant 45 secondes', 'Watching {name}  ·  ← →: next kart': 'Tu regardes {name}  ·  ← → : kart suivant', 'DISQUALIFIED  ·  spectating': 'DISQUALIFIÉ  ·  spectateur', 'Pos': 'Pos', 'Last lap': 'Dernier tour', 'Hits': 'Chocs', 'DQ': 'DQ', 'No player times yet. Finish a 3 lap race to be the first.': 'Pas encore de temps de joueur. Termine une course en 3 tours pour être le premier.', 'Race this bot on this circuit': 'Affronter ce bot sur ce circuit', 'HE BIT!': 'IL A MORDU !', 'MINI TURBO!': 'MINI TURBO !', 'Game effects': 'Effets du jeu', 'Crowd / engines': 'Public / moteurs', 'Crowd and engines': 'Public et moteurs', 'Move! Pressure in {s}': 'Bouge ! Pression dans {s}', 'SCORE': 'SCORE', 'Disqualified for being away: no prize.': 'Disqualifié pour absence : pas de gain.', '{n} selected · about {v} coins': '{n} sélectionnés · environ {v} pièces', 'Click items to select them': 'Clique sur les objets pour les sélectionner', 'Go to the pawn shop': 'Aller chez le prêteur sur gages', "This one can't be sold": 'Celui-ci ne peut pas être vendu', 'Coins and a free case every day, more coins every week you keep it up. Missing a day starts again from day 1.': 'Des pièces et une caisse gratuite chaque jour, et plus de pièces chaque semaine où tu continues. Si tu rates un jour, tu repars du jour 1.', "Comeback top-up: you're back to {n} (once a day)": 'Coup de pouce : tu remontes à {n} (une fois par jour)', 'OVERTAKE': 'DÉPASSEMENT', 'Are you there? Disqualified in {n}': 'Tu es là ? Disqualifié dans {n}', 'Let go': 'Lâche', 'Run anywhere. The ring under your feet is you.': 'Cours où tu veux. L’anneau sous tes pieds, c’est toi.', 'Dribble': 'Dribbler', 'Hold Space while moving. Without it you can only pivot.': 'Maintiens Espace en bougeant. Sans ça, tu peux seulement pivoter.', 'Pass': 'Passer', 'Hold left click to charge, let go to pass. Right click: quick pass.': 'Maintiens le clic gauche pour charger, lâche pour passer. Clic droit : passe rapide.', 'Shoot': 'Tirer', 'Hold Shift to aim, hold left click, let go in the green.': 'Maintiens Maj pour viser, maintiens le clic gauche, lâche dans le vert.', 'Defend and steal': 'Défendre et intercepter', 'Shift to guard. Left click swipes when the ball is low.': 'Maj pour défendre. Le clic gauche tente d’intercepter quand le ballon est bas.', 'Fakes and moves': 'Feintes et gestes', 'Shift + right click: pump fake. Back + Space: spin move.': 'Maj + clic droit : feinte de tir. Arrière + Espace : spin move.', 'Throttle and steer. Stay on the tarmac: grass slows you down.': 'Accélère et tourne. Reste sur le bitume : l’herbe te ralentit.', 'Brake': 'Freiner', 'Brake before the corner, not in it. Hold it to reverse.': 'Freine avant le virage, pas dedans. Maintiens pour reculer.', 'Drift for a mini turbo': 'Drifte pour un mini turbo', 'Tap Space in a corner and keep steering. Let go for the turbo.': 'Appuie sur Espace dans un virage et continue de tourner. Lâche pour le turbo.', 'Hold Shift on the straights. It refills on its own.': 'Maintiens Maj dans les lignes droites. Il se recharge tout seul.', 'Slipstream': 'Aspiration', 'Stay right behind a kart: more top speed, then pass it.': 'Reste juste derrière un kart : plus de vitesse de pointe, puis double-le.', 'Stuck?': 'Coincé ?', 'Hold R for 2 seconds to get back on the track.': 'Maintiens R pendant 2 secondes pour revenir sur la piste.', 'Your team-mate': 'Ton coéquipier', 'Interface': 'Interface', 'Pass!': 'Passe !', 'Shoot!': 'Tire !', 'Help!': 'À l’aide !', 'What a save!': 'Quel arrêt !', 'points': 'points', 'Karting and Hoops': 'Karting et Hoops', 'All the way left turns it off. You can change these during a race or a match too.': 'Tout à gauche le coupe. Tu peux aussi les changer pendant une course ou un match.', 'Team-mate': 'Coéquipier', '+{p}% coins': '+{p} % de pièces', 'playing {g}': 'joue à {g}', 'last played {g}': 'a joué à {g}', 'SUPER MINI TURBO': 'SUPER MINI TURBO', 'MINI TURBO': 'MINI TURBO', 'PERFECT START': 'DÉPART PARFAIT', 'LAP': 'TOUR', 'CLEAN LAP': 'TOUR PROPRE', 'FINISHED': 'ARRIVÉE', 'FASTEST LAP': 'MEILLEUR TOUR', 'PRESSURE! Move the ball': 'PRESSION ! Fais bouger le ballon', 'ANKLES BROKEN!': 'CHEVILLES BRISÉES !', 'ON FIRE!': 'EN FEU !', '3 in a row: easier shots for 25 seconds': '3 d’affilée : tirs plus faciles pendant 25 secondes', 'The fire is out': 'Le feu est éteint', 'Hoops plays inside Rubenium now, smoother, and your bot team-mate gets open for passes and plays defence': 'Hoops se joue maintenant dans Rubenium, plus fluide, et ton coéquipier bot se démarque pour les passes et défend', 'Hoops: hold the ball too long and the bots rush you (6 seconds on Club down to 3 on Professional, a red edge warns you), bots fake, 3 baskets in a row puts you On Fire, and ankle breakers': 'Hoops : garde le ballon trop longtemps et les bots te foncent dessus (6 secondes en Club jusqu’à 3 en Professionnel, un bord rouge te prévient), les bots feintent, 3 paniers d’affilée te mettent En feu, et des crossovers qui brisent les chevilles', 'Hoops and Karting: a points feed at the top (passes, shots, saves, overtakes and more), Tab shows the scoreboard, and a short How to play the first time': 'Hoops et Karting : un fil de points en haut (passes, tirs, arrêts, dépassements et plus), Tab affiche le tableau des scores, et un court Comment jouer la première fois', 'Hoops: an MVP card, quick chat on 1 to 4, a YOU marker, clearer passes, and replays of big plays and swishes': 'Hoops : une carte MVP, un chat rapide sur 1 à 4, un repère TOI, des passes plus claires, et des ralentis des grosses actions et des paniers parfaits', 'Away for 45 seconds in Hoops or Karting: you are disqualified and get no prize': 'Absent 45 secondes en Hoops ou en Karting : tu es disqualifié et sans gain', 'Karting: the bots are rebuilt. The old Professional is now Expert (1500), and Elite and Professional are faster than any player. Every bot shows on the time boards with its best time': 'Karting : les bots sont refaits. L’ancien Professionnel est maintenant Expert (1500), et Élite et Professionnel sont plus rapides que n’importe quel joueur. Chaque bot apparaît dans les meilleurs temps avec son meilleur chrono', 'Karting: a live split against your best lap': 'Karting : un écart en direct avec ton meilleur tour', 'Volume sliders for the interface, game effects and crowd and engines, in Settings and in game. Game sounds are quieter': 'Des curseurs de volume pour l’interface, les effets du jeu et le public et les moteurs, dans Paramètres et en jeu. Les sons des jeux sont plus doux', 'Animations: a free Basic one, 6 new ones (Black Hole, Warp, Glitch, Origami, Pixel Dust, Ripple), Shattered Shard rebuilt as a Mythic, finishes colour the whole effect, and Titanium is for Mythics only': 'Animations : une Basique gratuite, 6 nouvelles (Trou noir, Distorsion, Glitch, Origami, Poussière de pixels, Ondulation), Éclat brisé refait en Mythique, les finitions colorent tout l’effet, et le Titane est réservé aux Mythiques', 'Inventory: select several items and sell them together, and the pawn shop shows each one': 'Inventaire : sélectionne plusieurs objets et vends-les ensemble, et le prêteur sur gages montre chacun d’eux', 'Daily reward: coins and a case every day, with more coins for every week of your streak': 'Récompense du jour : des pièces et une caisse chaque jour, avec plus de pièces pour chaque semaine de ta série', 'Comeback top-up: once a day, if you drop under your floor you are topped up to it (1 000 for Poor, up to 30 000 for Casino Legend)': 'Coup de pouce : une fois par jour, si tu passes sous ton plancher, tu y remontes (1 000 pour Pauvre, jusqu’à 30 000 pour Légende du casino)', 'Quests: a bot challenge every hour, day and week, and a case with every weekly quest': 'Quêtes : un défi contre les bots chaque heure, chaque jour et chaque semaine, et une caisse avec chaque quête de la semaine', 'Bets: up to 20% of your coins (from 1 000 to 250 000). Horse Racing bets over 10 000 work again': 'Mises : jusqu’à 20 % de tes pièces (de 1 000 à 250 000). Les mises de plus de 10 000 aux Courses de chevaux marchent à nouveau', 'Friends: see what your friends last played': 'Amis : vois à quoi tes amis ont joué en dernier'})   # 9.5
+FR.update({'Select everything you can sell on this tab': 'Sélectionner tout ce que tu peux vendre dans cet onglet', 'Sell all selected': 'Vendre la sélection', 'Sell {n} items for about {v} coins? The pawn shop makes the final offer.': 'Vendre {n} objets pour environ {v} pièces ? Le prêteur sur gages fait l’offre finale.', 'Select several': 'En sélectionner plusieurs', 'BASIC': 'BASIQUE', 'Free, always yours': 'Gratuite, toujours à toi', 'The banner floats up into nothing and drops back down.': 'La bannière s’envole dans le vide puis retombe.', 'Your race points: {n}': 'Tes points de course : {n}', 'Let go in the green': 'Lâche dans le vert', 'How to play Hoops': 'Comment jouer à Hoops', "1 Pass!  ·  2 Shoot!  ·  3 Help!  ·  4 What a save!  ·  Tab scoreboard  ·  Esc pause.  Don't stand still with the ball: the defenders rush you.": '1 Passe !  ·  2 Tire !  ·  3 À l’aide !  ·  4 Quel arrêt !  ·  Tab tableau des scores  ·  Échap pause.  Ne reste pas immobile avec le ballon : les défenseurs te foncent dessus.', 'How to play Karting': 'Comment jouer au Karting', 'Tab scoreboard  ·  Esc leave.  Big crashes wreck your kart. Not touching anything for 45 s gets you disqualified.': 'Tab tableau des scores  ·  Échap quitter.  Les gros chocs détruisent ton kart. Sans rien toucher pendant 45 s, tu es disqualifié.', "Got it, let's play": 'Compris, on joue', "Are you there? Move or you're disqualified in {n}": 'Tu es là ? Bouge ou tu es disqualifié dans {n}', 'Let go of Tab to play': 'Lâche Tab pour jouer', 'Disqualified': 'Disqualifié', '{n} items': '{n} objets', "You're using this one.": 'Tu utilises celle-ci.', 'DISQUALIFIED': 'DISQUALIFIÉ', 'No input for 45 seconds': 'Aucune action pendant 45 secondes', 'Watching {name}  ·  ← →: next kart': 'Tu regardes {name}  ·  ← → : kart suivant', 'DISQUALIFIED  ·  spectating': 'DISQUALIFIÉ  ·  spectateur', 'Pos': 'Pos', 'Last lap': 'Dernier tour', 'Hits': 'Chocs', 'DQ': 'DQ', 'No player times yet. Finish a 3 lap race to be the first.': 'Pas encore de temps de joueur. Termine une course en 3 tours pour être le premier.', 'Race this bot on this circuit': 'Affronter ce bot sur ce circuit', 'HE BIT!': 'IL A MORDU !', 'MINI TURBO!': 'MINI TURBO !', 'Game effects': 'Effets du jeu', 'Crowd / engines': 'Public / moteurs', 'Crowd and engines': 'Public et moteurs', 'Move! Pressure in {s}': 'Bouge ! Pression dans {s}', 'SCORE': 'SCORE', 'Disqualified for being away: no prize.': 'Disqualifié pour absence : pas de gain.', '{n} selected · about {v} coins': '{n} sélectionnés · environ {v} pièces', 'Click items to select them': 'Clique sur les objets pour les sélectionner', 'Go to the pawn shop': 'Aller chez le prêteur sur gages', "This one can't be sold": 'Celui-ci ne peut pas être vendu', 'Coins and a free case every day, more coins every week you keep it up. Missing a day starts again from day 1.': 'Des pièces et une caisse gratuite chaque jour, et plus de pièces chaque semaine où tu continues. Si tu rates un jour, tu repars du jour 1.', "Comeback top-up: you're back to {n} (once a day)": 'Coup de pouce : tu remontes à {n} (une fois par jour)', 'OVERTAKE': 'DÉPASSEMENT', 'Are you there? Disqualified in {n}': 'Tu es là ? Disqualifié dans {n}', 'Let go': 'Lâche', 'Run anywhere. The ring under your feet is you.': 'Cours où tu veux. L’anneau sous tes pieds, c’est toi.', 'Dribble': 'Dribbler', 'Hold Space while moving. Without it you can only pivot.': 'Maintiens Espace en bougeant. Sans ça, tu peux seulement pivoter.', 'Pass': 'Passer', 'Hold left click to charge, let go to pass. Right click: quick pass.': 'Maintiens le clic gauche pour charger, lâche pour passer. Clic droit : passe rapide.', 'Shoot': 'Tirer', 'Hold Shift to aim, hold left click, let go in the green.': 'Maintiens Maj pour viser, maintiens le clic gauche, lâche dans le vert.', 'Defend and steal': 'Défendre et intercepter', 'Shift to guard. Left click swipes when the ball is low.': 'Maj pour défendre. Le clic gauche tente d’intercepter quand le ballon est bas.', 'Fakes and moves': 'Feintes et gestes', 'Shift + right click: pump fake. Back + Space: spin move.': 'Maj + clic droit : feinte de tir. Arrière + Espace : spin move.', 'Throttle and steer. Stay on the tarmac: grass slows you down.': 'Accélère et tourne. Reste sur le bitume : l’herbe te ralentit.', 'Brake': 'Freiner', 'Brake before the corner, not in it. Hold it to reverse.': 'Freine avant le virage, pas dedans. Maintiens pour reculer.', 'Drift for a mini turbo': 'Drifte pour un mini turbo', 'Tap Space in a corner and keep steering. Let go for the turbo.': 'Appuie sur Espace dans un virage et continue de tourner. Lâche pour le turbo.', 'Hold Shift on the straights. It refills on its own.': 'Maintiens Maj dans les lignes droites. Il se recharge tout seul.', 'Slipstream': 'Aspiration', 'Stay right behind a kart: more top speed, then pass it.': 'Reste juste derrière un kart : plus de vitesse de pointe, puis double-le.', 'Stuck?': 'Coincé ?', 'Hold R for 2 seconds to get back on the track.': 'Maintiens R pendant 2 secondes pour revenir sur la piste.', 'Your team-mate': 'Ton coéquipier', 'Interface': 'Interface', 'Pass!': 'Passe !', 'Shoot!': 'Tire !', 'Help!': 'À l’aide !', 'What a save!': 'Quel arrêt !', 'points': 'points', 'Karting and Hoops': 'Karting et Hoops', 'All the way left turns it off. You can change these during a race or a match too.': 'Tout à gauche le coupe. Tu peux aussi les changer pendant une course ou un match.', 'Team-mate': 'Coéquipier', '+{p}% coins': '+{p} % de pièces', 'playing {g}': 'joue à {g}', 'last played {g}': 'a joué à {g}', 'SUPER MINI TURBO': 'SUPER MINI TURBO', 'MINI TURBO': 'MINI TURBO', 'PERFECT START': 'DÉPART PARFAIT', 'LAP': 'TOUR', 'CLEAN LAP': 'TOUR PROPRE', 'FINISHED': 'ARRIVÉE', 'FASTEST LAP': 'MEILLEUR TOUR', 'PRESSURE! Move the ball': 'PRESSION ! Fais bouger le ballon', 'ANKLES BROKEN!': 'CHEVILLES BRISÉES !', 'ON FIRE!': 'EN FEU !', '3 in a row: easier shots for 25 seconds': '3 d’affilée : tirs plus faciles pendant 25 secondes', 'The fire is out': 'Le feu est éteint', 'Hoops plays inside Rubenium now, smoother, and your bot team-mate gets open for passes and plays defence': 'Hoops se joue maintenant dans Rubenium, plus fluide, et ton coéquipier bot se démarque pour les passes et défend', 'Hoops: hold the ball too long and the bots rush you (6 seconds on Club down to 3 on Professional, a red edge warns you), bots fake, 3 baskets in a row puts you On Fire, and ankle breakers': 'Hoops : garde le ballon trop longtemps et les bots te foncent dessus (6 secondes en Club jusqu’à 3 en Professionnel, un bord rouge te prévient), les bots feintent, 3 paniers d’affilée te mettent En feu, et des crossovers qui brisent les chevilles', 'Hoops and Karting: a points feed at the top (passes, shots, saves, overtakes and more), Tab shows the scoreboard, and a short How to play the first time': 'Hoops et Karting : un fil de points en haut (passes, tirs, arrêts, dépassements et plus), Tab affiche le tableau des scores, et un court Comment jouer la première fois', 'Hoops: an MVP card, a YOU marker, clearer passes, and replays of big plays and swishes': 'Hoops : une carte MVP, un repère TOI, des passes plus claires, et des ralentis des grosses actions et des paniers parfaits', "Tab scoreboard  ·  Esc pause.  Don't stand still with the ball: the defenders rush you.": 'Tab tableau des scores  ·  Échap pause.  Ne reste pas immobile avec le ballon : les défenseurs te foncent dessus.', 'Away for 45 seconds in Hoops or Karting: you are disqualified and get no prize': 'Absent 45 secondes en Hoops ou en Karting : tu es disqualifié et sans gain', 'Karting: the bots are rebuilt. The old Professional is now Expert (1500), and Elite and Professional are faster than any player. Every bot shows on the time boards with its best time': 'Karting : les bots sont refaits. L’ancien Professionnel est maintenant Expert (1500), et Élite et Professionnel sont plus rapides que n’importe quel joueur. Chaque bot apparaît dans les meilleurs temps avec son meilleur chrono', 'Karting: a live split against your best lap': 'Karting : un écart en direct avec ton meilleur tour', 'Volume sliders for the interface, game effects and crowd and engines, in Settings and in game. Game sounds are quieter': 'Des curseurs de volume pour l’interface, les effets du jeu et le public et les moteurs, dans Paramètres et en jeu. Les sons des jeux sont plus doux', 'Animations: a free Basic one, 6 new ones (Black Hole, Warp, Glitch, Origami, Pixel Dust, Ripple), Shattered Shard rebuilt as a Mythic, finishes colour the whole effect, and Titanium is for Mythics only': 'Animations : une Basique gratuite, 6 nouvelles (Trou noir, Distorsion, Glitch, Origami, Poussière de pixels, Ondulation), Éclat brisé refait en Mythique, les finitions colorent tout l’effet, et le Titane est réservé aux Mythiques', 'Inventory: select several items and sell them together, and the pawn shop shows each one': 'Inventaire : sélectionne plusieurs objets et vends-les ensemble, et le prêteur sur gages montre chacun d’eux', 'Daily reward: coins and a case every day, with more coins for every week of your streak': 'Récompense du jour : des pièces et une caisse chaque jour, avec plus de pièces pour chaque semaine de ta série', 'Comeback top-up: once a day, if you drop under your floor you are topped up to it (1 000 for Poor, up to 30 000 for Casino Legend)': 'Coup de pouce : une fois par jour, si tu passes sous ton plancher, tu y remontes (1 000 pour Pauvre, jusqu’à 30 000 pour Légende du casino)', 'Quests: a bot challenge every hour, day and week, and a case with every weekly quest': 'Quêtes : un défi contre les bots chaque heure, chaque jour et chaque semaine, et une caisse avec chaque quête de la semaine', 'Bets: up to 20% of your coins (from 1 000 to 250 000). Horse Racing bets over 10 000 work again': 'Mises : jusqu’à 20 % de tes pièces (de 1 000 à 250 000). Les mises de plus de 10 000 aux Courses de chevaux marchent à nouveau', 'Friends: see what your friends last played': 'Amis : vois à quoi tes amis ont joué en dernier', 'Professional bots have no human limits: in Hoops they react instantly, release every shot on the perfect mark and never bite on a fake; in Karting they launch the instant the lights go out and pass cleanly through traffic': 'Les bots Professionnels n’ont plus aucune limite humaine : en Hoops ils réagissent instantanément, lâchent chaque tir pile au bon moment et ne mordent jamais à une feinte ; en Karting ils partent dès que les feux s’éteignent et dépassent proprement dans le trafic'})   # 9.5
 
 
 # ================================================================ 9.2.1: what each tier gets, and the rank-up screen
@@ -71347,7 +71349,10 @@ class KartBot:
             self.mistake -= dt
         elif p["mistakes"] and tr.corner[(i + 25) % tr.n] and not tr.corner[i] and self.rng.random() < p["mistakes"] * dt * 6:
             self.mistake = 0.35 + p["late"] * 2.0
-        want = self.target(i, p["corner"] * (1.18 if self.mistake > 0 else 1.0),
+        cf = p["corner"] * (1.18 if self.mistake > 0 else 1.0)
+        if self.elo >= 2000 and abs(self.avoid) > 10:
+            cf *= 1 - min(0.08, abs(self.avoid) * 0.0012)     # 9.5: off the ideal line to pass: a little less speed
+        want = self.target(i, cf,
                            (V_BOOST if k.boosting or k.turbo > 0 else V_MAX * min(1.0, 0.5 + 0.5 * pace)) * k.pw,
                            BOT_BRAKE * BRAKE * (1.0 + (0.6 if self.mistake > 0 else 0.0)) * (1 - p["late"]))
         if sp < want:
@@ -71391,6 +71396,9 @@ class KartBot:
                 elif self.rng.random() < (1 - p["boost"]) * dt * 0.05:
                     inp.boost = True                      # boosting at the wrong moment, like a beginner
         # other karts in the way: steer around them (well, at the top; late or not at all at the bottom)
+        if self.elo >= 2000:                      # 9.5: Elite and Professional plan every pass, no reaction time
+            self._plan_pass(others, i, sp, inp, dt)
+            return inp
         self.avoid *= 0.97
         if p["avoid"] > 0:
             c, s = math.cos(k.h), math.sin(k.h)
@@ -71412,11 +71420,66 @@ class KartBot:
                             inp.up = min(inp.up, 0.4)
         return inp
 
+    def _plan_pass(self, others, i, sp, inp, dt):
+        """9.5, the top two: every kart ahead on the circuit is seen in advance (by distance round the track, not by
+        where the bot is pointing). The bot picks the side with room, moves over before it gets there and keeps a
+        kart's width of daylight while alongside; with no room either side it lifts and waits behind."""
+        k, tr = self.k, self.tr
+        n = tr.n
+        mylat = (k.x - tr.cx[i]) * tr.nx[i] + (k.y - tr.cy[i]) * tr.ny[i]
+        lim = tr.hw - 10
+        want = None
+        block = None
+        for o in others:
+            if o is k or o.dead > 0 or o.ghost > 0 or o.done:
+                continue
+            oi = o.idx if o.idx >= 0 else tr.locate(o.x, o.y)[0]
+            gap = ((oi - i + n // 2) % n - n // 2) * tr.STEP
+            ov = o.vx * math.cos(k.h) + o.vy * math.sin(k.h)
+            closing = sp - ov
+            if gap < -34 or gap > 60 + max(0.0, closing) * 1.4:
+                continue
+            olat = (o.x - tr.cx[oi]) * tr.nx[oi] + (o.y - tr.cy[oi]) * tr.ny[oi]
+            if gap > 40 and closing < 5:
+                continue                              # pulling away or as fast: just follow (slipstream)
+            if abs(gap) < 44:                         # alongside: stay on my side of it, a kart's width away
+                side = 1.0 if mylat >= olat else -1.0
+                x = olat + side * 42
+                if -lim <= x <= lim:
+                    sides = [x]
+                elif abs(mylat - olat) >= 30:
+                    sides = [mylat]                   # squeezed to the edge: hold the line it has
+                else:
+                    block = (gap, ov)
+                    continue
+            else:
+                sides = [x for x in (olat + 42, olat - 42) if -lim <= x <= lim]
+            if not sides:
+                block = (gap, ov)
+                continue
+            line = tr.line_off[(oi + 4) % n]
+            best = min(sides, key=lambda x: abs(x - line) + abs(x - mylat) * 0.5)
+            if want is None or gap < want[0]:
+                want = (gap, best)
+        if want is not None:
+            j = (i + int((self.p["look0"] + sp * self.p["lookk"]) / tr.STEP)) % n
+            tgt = clamp(want[1] - tr.line_off[j], -90, 90)
+            self.avoid += clamp(tgt - self.avoid, -420 * dt, 420 * dt)
+        else:
+            self.avoid += clamp(-self.avoid, -160 * dt, 160 * dt)
+        if block is not None and want is None:
+            gap, ov = block
+            if 0 < gap < 70 and sp > ov - 5:
+                inp.up = 0.0
+                if gap < 45:
+                    inp.down = clamp((sp - ov) / 60, 0.2, 1.0)
+                inp.boost = False
+
     def start_reaction(self):
         """How long after the lights go out it presses the throttle (Professional: a perfect launch)."""
         p = self.p
         if p["start"] <= 0:
-            return 0.02
+            return 0.0                                # 9.5: the top levels go the instant the lights go out
         return p["start"] * (0.6 + 0.8 * self.rng.random())
 
 
@@ -73606,9 +73669,9 @@ def build_kart(page, lay) -> None:
 
 # 9.5: each bot level's best clean 3 lap race on each circuit (measured with the bot driving alone), shown on the
 # time boards beside the players' times
-KART_BOT_TIMES = {0: {100: 122.78, 500: 115.45, 1000: 107.84, 1500: 96.27, 2000: 87.76, 2500: 82.86},
-                  1: {100: 136.06, 500: 124.65, 1000: 114.65, 1500: 99.62, 2000: 90.37, 2500: 84.59},
-                  2: {100: 143.71, 500: 134.78, 1000: 127.18, 1500: 115.79, 2000: 106.94, 2500: 100.76}}
+KART_BOT_TIMES = {0: {100: 122.78, 500: 115.45, 1000: 107.84, 1500: 96.24, 2000: 87.73, 2500: 82.83},
+                  1: {100: 136.06, 500: 124.65, 1000: 114.65, 1500: 99.59, 2000: 90.34, 2500: 84.57},
+                  2: {100: 143.71, 500: 134.78, 1000: 127.18, 1500: 115.77, 2000: 106.92, 2500: 100.73}}
 
 
 def _kart_times_panel(page, hl, o) -> None:
@@ -74288,8 +74351,7 @@ GUIDES = {
         ("shoot", lambda: tr("Shoot"), lambda: tr("Hold Shift to aim, hold left click, let go in the green.")),
         ("steal", lambda: tr("Defend and steal"), lambda: tr("Shift to guard. Left click swipes when the ball is low.")),
         ("fake", lambda: tr("Fakes and moves"), lambda: tr("Shift + right click: pump fake. Back + Space: spin move.")),
-    ], lambda: tr("1 Pass!  ·  2 Shoot!  ·  3 Help!  ·  4 What a save!  ·  Tab scoreboard  ·  Esc pause.  "
-                  "Don't stand still with the ball: the defenders rush you.")),
+    ], lambda: tr("Tab scoreboard  ·  Esc pause.  Don't stand still with the ball: the defenders rush you.")),
     "kart": (lambda: tr("How to play Karting"), _guide_kart, [
         ("drive", lambda: tr("Drive"), lambda: tr("Throttle and steer. Stay on the tarmac: grass slows you down.")),
         ("brake", lambda: tr("Brake"), lambda: tr("Brake before the corner, not in it. Hold it to reverse.")),
@@ -75116,9 +75178,11 @@ HOOPS_BOT = {
     "National":     {"react": 0.19, "speed": 0.96, "sigma": 0.046, "shoot_min": 0.40, "risk": 0.25, "spin": 0.45,
                      "fake": 0.28, "bite": 0.35, "steal": 0.55, "steal_read": 0.78, "help": 0.70, "space": 0.85,
                      "cut": 0.45, "fancy": 0.45, "box": 0.75, "deny": 0.65, "gap": 1.3, "jump_read": 0.8},
-    "Professional": {"react": 0.10, "speed": 1.00, "sigma": 0.027, "shoot_min": 0.46, "risk": 0.08, "spin": 0.85,
-                     "fake": 0.45, "bite": 0.12, "steal": 0.88, "steal_read": 0.95, "help": 0.92, "space": 1.0,
-                     "cut": 0.80, "fancy": 0.80, "box": 0.95, "deny": 0.90, "gap": 1.15, "jump_read": 0.95},
+    # 9.5: Professional has no human limits: it sees everything at once (two steps), releases every shot on the
+    # perfect mark, never bites on a fake, never misjudges a pass and is a step quicker than anyone
+    "Professional": {"react": 0.017, "speed": 1.05, "sigma": 0.0, "shoot_min": 0.50, "risk": 0.0, "spin": 1.0,
+                     "fake": 0.5, "bite": 0.0, "steal": 1.0, "steal_read": 1.0, "help": 1.0, "space": 1.0,
+                     "cut": 1.0, "fancy": 1.0, "box": 1.0, "deny": 1.0, "gap": 1.0, "jump_read": 1.0},
 }
 
 
@@ -76512,7 +76576,12 @@ class HoopsBot:
         inp = self.inp
         # the shot in progress: release on the bot's timing
         if b.owner == p.i and p.act == "shoot":
-            if self.shot_at is not None and p.act_t >= self.shot_at:
+            if k["sigma"] <= 0:
+                # 9.5, Professional: let go on the step that lands nearest the perfect mark (the game's own meter)
+                mark = SHOT_C * (LAY_T if p.shot_lay else SHOT_T)
+                if p.act_t + HOOPS_DT * 1.5 >= mark:
+                    inp.lmb = False
+            elif self.shot_at is not None and p.act_t >= self.shot_at:
                 inp.lmb = False
             return inp.copy()
         if b.owner == p.i and p.act == "passwind":
@@ -76618,14 +76687,6 @@ class HoopsBot:
             risk, kind = best
         ev_shoot = pct * pts
         ev_pass = mate_pct * mate_pts * (1 - risk) * 0.92
-        if mate is not None and mate.human and p.act in ("hold", "dribble"):
-            # 9.5: the human asked: "Pass!" -> pass (unless it's sure to be picked off), "Shoot!" -> shoot
-            if g.called(p.team, "pass", 1.6) and risk < 0.75:
-                g.calls.pop(p.team, None)
-                return self._pass(kind, risk)
-            if g.called(p.team, "shoot", 1.6) and pct > 0.08:
-                g.calls.pop(p.team, None)
-                return self._shoot()
         clock = g.shot_clock
         # how open: the shot % (with the contest) and whether a defender is about to arrive
         closing = 0.0
@@ -76667,7 +76728,7 @@ class HoopsBot:
         d = hyp(hx - p.x, HOOP_Z - p.z)
         lay = d < 2.3 and p.act == "dribble"
         T = LAY_T if lay else SHOT_T
-        err = self.rng.gauss(0, k["sigma"])
+        err = self.rng.gauss(0, k["sigma"]) if k["sigma"] > 0 else 0.0
         self.shot_at = (SHOT_C + err) * T
         inp.shift = True
         inp.lmb = True
@@ -76782,8 +76843,7 @@ class HoopsBot:
         outlet = False
         if c is not None and c.team == p.team:
             near_def = min(hyp(q.x - c.x, q.z - c.z) for q in opps)
-            if (near_def < 1.5 and c.act in ("hold", "gather")) or (c.ctrl and g.hold_idle > 1.2) \
-                    or (c.ctrl and g.called(p.team, "help", 3.0)):
+            if (near_def < 1.5 and c.act in ("hold", "gather")) or (c.ctrl and g.hold_idle > 1.2):
                 outlet = True
                 for a in range(8):
                     ang = a * math.pi / 4
@@ -77860,16 +77920,6 @@ class HoopsView(QWidget):
         if key == Qt.Key.Key_Tab:                     # 9.5: hold Tab for the scoreboard
             self.board = True
             return
-        chat = {Qt.Key.Key_1: "pass", Qt.Key.Key_2: "shoot", Qt.Key.Key_3: "help", Qt.Key.Key_4: "save",
-                Qt.Key.Key_Ampersand: "pass", Qt.Key.Key_Eacute: "shoot", Qt.Key.Key_QuoteDbl: "help",
-                Qt.Key.Key_Apostrophe: "save"}.get(Qt.Key(key))          # 9.5: quick chat (AZERTY's top row too)
-        if chat and self.g.phase in ("play", "dead", "count", "score"):
-            if self.T - getattr(self, "_chat_t", -9.0) > 0.8:
-                self._chat_t = self.T
-                self._chat = chat
-                self.g.call(0, chat)
-                self.audio.play("catch", 0.3)
-            return
         if key in (Qt.Key.Key_Escape, Qt.Key.Key_P):
             if self.g.phase != "over":
                 self.paused = not self.paused
@@ -78730,22 +78780,6 @@ class HoopsView(QWidget):
             pl = g.players[i]
             top = cam.pt(d[0], d[1], d[2] + 2.25)
             s = cam.scale(d[1])
-            if i == me_i and self.T - getattr(self, "_chat_t", -9.0) < 1.6:
-                # 9.5: what I just said
-                txt = {"pass": tr("Pass!"), "shoot": tr("Shoot!"), "help": tr("Help!"), "save": tr("What a save!")}[self._chat]
-                p.setFont(font(12, QFont.Weight.Black))
-                tw = p.fontMetrics().horizontalAdvance(txt) + S(22)
-                br = QRectF(top.x() - tw / 2, top.y() - S(74), tw, S(26))
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(QColor("#FFFFFF"))
-                p.drawRoundedRect(br, S(13), S(13))
-                tri = QPainterPath()
-                tri.moveTo(top.x() - S(6), br.bottom() - 1)
-                tri.lineTo(top.x(), br.bottom() + S(7))
-                tri.lineTo(top.x() + S(6), br.bottom() - 1)
-                p.drawPath(tri)
-                p.setPen(QColor(HOOPS_TEAM[0]["dark"]))
-                p.drawText(br, int(Qt.AlignmentFlag.AlignCenter), txt)
             if i == me_i:
                 # 9.5: a YOU tag above the chevron, so you never lose yourself
                 p.setFont(font(9.5, QFont.Weight.Black, 1.5))
@@ -79293,7 +79327,7 @@ HOOPS_ABOUT = {
     "Club": "Easy-going: slow to react, takes bad shots and bites on every fake.",
     "Regional": "Solid basketball, but makes mistakes you can punish.",
     "National": "Quick and smart: reads passes, times steals, rarely misses an open shot.",
-    "Professional": "Very strong: fakes, lobs and curved passes, tight defence and deadly shooting.",
+    "Professional": "No human limits: instant reactions, every shot released on the perfect mark, never fooled by a fake.",
 }
 HOOPS_PAY = {"Club": (120, 25), "Regional": (220, 40), "National": (380, 60), "Professional": (650, 90)}  # win, loss (3 min)
 
