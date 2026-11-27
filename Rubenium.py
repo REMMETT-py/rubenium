@@ -1533,7 +1533,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "9.5"   # the version people see
-BUILD = "2026.11.27.32"      # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.27.41"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -2017,15 +2017,23 @@ class Sfx:
         return fade(buf, 30), g
 
     def _make(self, name: str) -> str:
-        path = DATA_DIR / "sounds" / f"{name}_{self.VER}.wav"
+        vol = int(getattr(self, "vol", 100))
+        path = DATA_DIR / "sounds" / (f"{name}_{self.VER}.wav" if vol >= 100 else f"{name}_{self.VER}_v{vol}.wav")
         if not path.is_file():
             buf, gain = self._render(name)
             peak = max(1e-6, max(abs(v) for v in buf))
-            self._write(path, buf, gain / peak)          # every sound peaks at its own loudness
+            self._write(path, buf, gain / peak * vol / 100)   # every sound peaks at its own loudness (9.5: x volume)
         return str(path)
 
+    def set_volume(self, v) -> None:
+        """9.5: the interface sounds' volume, 0-100 (in 10s; each level is its own little set of files)."""
+        v = int(round(clamp(float(v), 0, 100) / 10) * 10)
+        if v != getattr(self, "vol", 100):
+            self.vol = v
+            self._files = {}
+
     def play(self, name: str) -> None:
-        if not self.enabled or name not in self.SOUNDS or not win.IS_WIN:
+        if not self.enabled or name not in self.SOUNDS or not win.IS_WIN or getattr(self, "vol", 100) <= 0:
             return
         import time
         now = time.monotonic()
@@ -2129,6 +2137,10 @@ DEFAULTS: dict = {
     "recent_games": [],                  # 9.0: the casino games played last (Home's "Jump back in")
     "kart": {"track": 0, "laps": 3, "elo": 1000, "size": 1, "bot": True, "collide": True, "boost": True, "damage": True},
     "hoops": {"level": "Regional", "mins": 3, "replays": 1},
+    "vol_ui": 100,                       # 9.5: interface sounds, 0-100
+    "vol_fx": 40,                        # 9.5: Karting and Hoops: hits, whistles, turbos... (they were too loud)
+    "vol_amb": 60,                       # 9.5: Karting's engines and Hoops' crowd (the background)
+    "guides_seen": [],                   # 9.5: the "how to play" guides already shown once
     "casino_bet": 50,                    # 9.0: the last bet, kept between sessions
     "hilo_help": False,
     "my_stats": ["cases", "trades", "rounds", "casino"],     # 5.13: the bottom row of your stats card
@@ -3303,13 +3315,14 @@ class Econ(QObject):
         return self.looks.get(name) or {}
 
     def bet_cap(self, coins: int) -> int:
-        """6.3: the biggest casino bet (the server's rb_bet_cap): half of your coins (round tens), at least 1 000."""
+        """6.3: the biggest casino bet (the server's rb_bet_cap). 9.5: 20 % of your coins (round tens), 1 000 to 250 000
+        (the numbers come from the server)."""
         def c(k, d):
             try:
                 return float(self.cfg.get(k, d) or d)
             except (TypeError, ValueError, AttributeError):
                 return d
-        base, rich, pct = int(c("bet_max", 1000)), int(c("bet_max_rich", 2000000000)), c("bet_rich_pct", 50)
+        base, rich, pct = int(c("bet_max", 1000)), int(c("bet_max_rich", 250000)), c("bet_rich_pct", 20)
         return max(base, min(rich, int(coins * pct / 100) // 10 * 10))
 
     def streak_bonus(self) -> int:
@@ -12763,12 +12776,39 @@ NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritte
               "Rubenium League bots: Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle and Ruben, each one clearly harder than the one before",
               "Rubenium League: practise against any bot up to one rank above yours, private matches with your own rules, Free Play with infinite boost",
               "Rubenium League: replays saved from the old side-view game can no longer be played"]),
-    ("9.5", ["Rubenium League: a new 1 v 1 car soccer game in Play, seen from the side, with flips, aerials, air dribbles and flip resets",
+    ("9.5", ["Hoops controls: one button, one job. With the ball left click shoots, right click passes, F fakes; without it left click steals and right click switches player",
+             "Hoops: shots only once you are past the half-way line, a replay of every basket, and no more players or the ball jumping across the court",
+             "Beating bots pays much more: Hoops up to 2 500 a win on Professional, Karting up to 1 500 for beating the Professional bot",
+             "Karting and Hoops stats, records and time boards start again from zero",
+             "The Casino tile on Home opens the casino doors again, and the case drop list no longer lags",
+             "Rubenium League: a new 1 v 1 car soccer game in Play, seen from the side, with flips, aerials, air dribbles and flip resets",
              "Rubenium League ranked: 10 ranks from Rookie 1 to Rubenite, one bot to beat at each rank, 5 wins up and 5 losses down",
              "Rubenium League bots: Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle and Ruben, each one harder and with more moves",
              "Rubenium League: a tracker with your MMR, your last 200 matches and replays of your last 10 you can watch or save",
              "Rubenium League: practise against any bot up to one rank above yours, Free Play with drills, mouse or keyboard controls",
-             "Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team"]),
+             "Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team",
+             "Hoops plays inside Rubenium now, smoother, and your bot team-mate gets open for passes and plays defence",
+             "Hoops: hold the ball too long and the bots rush you (6 seconds on Club down to 3 on Professional, a red edge "
+             "warns you), bots fake, 3 baskets in a row puts you On Fire, and ankle breakers",
+             "Hoops and Karting: a points feed at the top (passes, shots, saves, overtakes and more), Tab shows the "
+             "scoreboard, and a short How to play the first time",
+             "Hoops: an MVP card, a YOU marker, clearer passes, and replays of big plays and swishes",
+             "Professional bots have no human limits: in Hoops they react instantly, release every shot on the perfect mark and never bite on a fake; in Karting they launch the instant the lights go out and pass cleanly through traffic",
+             "Away for 45 seconds in Hoops or Karting: you are disqualified and get no prize",
+             "Karting: the bots are rebuilt. The old Professional is now Expert (1500), and Elite and Professional are "
+             "faster than any player. Every bot shows on the time boards with its best time",
+             "Karting: a live split against your best lap",
+             "Volume sliders for the interface, game effects and crowd and engines, in Settings and in game. Game sounds "
+             "are quieter",
+             "Animations: a free Basic one, 6 new ones (Black Hole, Warp, Glitch, Origami, Pixel Dust, Ripple), Shattered "
+             "Shard rebuilt as a Mythic, finishes colour the whole effect, and Titanium is for Mythics only",
+             "Inventory: select several items and sell them together, and the pawn shop shows each one",
+             "Daily reward: coins and a case every day, with more coins for every week of your streak",
+             "Comeback top-up: once a day, if you drop under your floor you are topped up to it (1 000 for Poor, up to "
+             "30 000 for Casino Legend)",
+             "Quests: a bot challenge every hour, day and week, and a case with every weekly quest",
+             "Bets: up to 20% of your coins (from 1 000 to 250 000). Horse Racing bets over 10 000 work again",
+             "Friends: see what your friends last played"]),
     ("9.4", ["A fresh start for everyone: coins, items, badges, mythics, cases, levels, trophies, stats and every "
              "leaderboard start again, and everyone gets the starter pack",
              "Tiers are harder: Average 50 000, Investor 250 000, Businessman 1 000 000, Casino Legend 5 000 000, and you "
@@ -13736,7 +13776,7 @@ FR.update({  # 9.2
     'Over the line, the camera follows whoever is still racing: Tab (or the arrows) switches kart.': 'Une fois la ligne passée, la caméra suit ceux qui roulent encore : Tab (ou les flèches) change de kart.',
     'Right behind another kart you are in its slipstream: more top speed and faster boost refill.': 'Juste derrière un autre kart tu es dans son aspiration : plus de vitesse de pointe et un boost qui se recharge plus vite.',
     "Alone, pick 'No bot' to see the ideal line for your level: green full throttle, yellow lift, red brake, blue drift.": "Seul, choisis « Sans bot » pour voir la trajectoire idéale de ton niveau : vert à fond, jaune lever le pied, rouge freiner, bleu drift.",
-    "After every race each driver gets a score out of 100%: your average lap against the circuit's calibrated times. Professional bots score 99-100%, Elite about 80%, Expert 60-70%, Racer 50-60%, Amateur 35-50%, Rookie 20-35%.": 'Après chaque course chaque pilote reçoit un score sur 100 % : ton tour moyen comparé aux temps étalonnés du circuit. Les bots Professionnel font 99-100 %, Élite environ 80 %, Expert 60-70 %, Pilote 50-60 %, Amateur 35-50 %, Débutant 20-35 %.',
+    "After every race each driver gets a score out of 100%: your average lap against the circuit's calibrated times. Expert bots drive the perfect line (99%). Elite and Professional are faster than any player can be: they have a stronger engine and more grip. Racer scores about 80%, Amateur 65-70%, Rookie 55-60%.": 'Après chaque course chaque pilote reçoit un score sur 100 % : ton tour moyen comparé aux temps étalonnés du circuit. Les bots Expert suivent la trajectoire parfaite (99 %). Élite et Professionnel vont plus vite qu’aucun joueur ne le peut : moteur plus puissant et plus d’adhérence. Pilote fait environ 80 %, Amateur 65-70 %, Débutant 55-60 %.',
     "The server checks every time against the clock and the fastest possible lap.": 'Le serveur vérifie chaque temps avec l’horloge et le tour le plus rapide possible.',
     "The prize grows with your place, your score, each player and the bot you beat (more for a stronger bot), a win and a race without being wrecked, up to a daily limit. No bets.": 'Le gain augmente avec ta place, ton score, chaque joueur et le bot battus (plus pour un bot fort), une victoire et une course sans être détruit, jusqu’à une limite par jour. Sans mise.',
     # 9.2: privacy and terms
@@ -13771,6 +13811,7 @@ FR.update({  # 9.2
     'Solid basketball, but makes mistakes you can punish.': 'Du basket solide, mais des erreurs que tu peux punir.',
     'Quick and smart: reads passes, times steals, rarely misses an open shot.': 'Rapide et malin : lit les passes, vole au bon moment, rate rarement un tir ouvert.',
     'Very strong: fakes, lobs and curved passes, tight defence and deadly shooting.': 'Très fort : feintes, lobs et passes brossées, défense serrée et tir redoutable.',
+    'No human limits: instant reactions, every shot released on the perfect mark, never fooled by a fake.': 'Aucune limite humaine : réactions instantanées, chaque tir lâché pile au bon moment, jamais dupe d’une feinte.',
     'Opponents': 'Adversaires',
     'Match': 'Match',
     'A tie at the buzzer goes to overtime: the next basket wins.': 'Une égalité à la sirène mène à la prolongation : le prochain panier gagne.',
@@ -13888,7 +13929,7 @@ FR.update({  # 9.2
     'Pump fake a defender who flies at you, then drive past while they are in the air.': 'Feinte de tir face à un défenseur qui se jette sur toi, puis passe-le pendant qu’il est en l’air.',
     'No shot clock and no fouls. Inside the arc is 2 points, outside 3. Throw the ball out and the other team gets it.': 'Pas d’horloge des tirs ni de fautes. À l’intérieur de l’arc c’est 2 points, à l’extérieur 3. Si tu envoies la balle dehors, l’autre équipe la récupère.',
     'The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. Levels differ in how quickly they react, how well they time things and how good their decisions are. Professional is very strong.': 'Les bots jouent avec les mêmes règles que toi : même vitesse, même cercle de dribble et même jauge de tir. Les niveaux diffèrent par la vitesse de réaction, le timing et la qualité des décisions. Professionnel est très fort.',
-    'A win pays by the bots\' level (3 minutes: Club 120, Regional 220, National 380, Professional 650), a loss a little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows with your tier; Casino Legend has none.': 'Une victoire paie selon le niveau des bots (3 minutes : Club 120, Régional 220, National 380, Professionnel 650), une défaite un peu. Les matchs plus courts paient moins, les plus longs plus, et ton rang de richesse multiplie le tout. La limite par jour grandit avec ton rang ; Légende du casino n’en a pas.',
+    'A win pays by the bots\' level (3 minutes: Club 150, Regional 350, National 900, Professional 2 500), a loss a little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows with your tier; Casino Legend has none.': 'Une victoire paie selon le niveau des bots (3 minutes : Club 150, Régional 350, National 900, Professionnel 2 500), une défaite un peu. Les matchs plus courts paient moins, les plus longs plus, et ton rang de richesse multiplie le tout. La limite par jour grandit avec ton rang ; Légende du casino n’en a pas.',
     'Leaving a match counts as a loss and pays nothing.': 'Quitter un match compte comme une défaite et ne paie rien.',
     'Replay every basket': 'Replay à chaque panier',
     'Replay big plays': 'Replay des grandes actions',
@@ -17875,14 +17916,26 @@ _cw_register(_CW_ROWS_67)
 # --------------------------------------------------------------------------- #
 from PyQt6.QtGui import QPolygonF, QRadialGradient  # noqa: E402
 
-ANIMS = (("shatter", "Shatter"), ("nova", "Supernova"), ("rift", "Rift"), ("phoenix", "Phoenix"), ("eclipse", "Eclipse"))
-ANIM_RARITY = {"shatter": "special", "nova": "special", "rift": "epic", "phoenix": "epic", "eclipse": "exotic"}   # 9.1
+# 9.5: re-ranked (the cooler, the rarer), six new ones; listed from the top tier down
+ANIMS = (("blackhole", "Black Hole"), ("warp", "Warp"), ("shatter", "Shattered Shard"), ("eclipse", "Eclipse"),
+         ("glitch", "Glitch"), ("origami", "Origami"), ("phoenix", "Phoenix"), ("rift", "Rift"),
+         ("nova", "Supernova"), ("pixel", "Pixel Dust"), ("ripple", "Ripple"))
+ANIM_RARITY = {"blackhole": "exotic", "warp": "exotic", "shatter": "exotic", "eclipse": "exotic",
+               "glitch": "epic", "origami": "epic", "phoenix": "epic", "rift": "epic",
+               "nova": "special", "pixel": "special", "ripple": "special"}
 ANIM_IDS = tuple(a[0] for a in ANIMS)
 ANIM_FINS = (("", "Original"), ("titanium", "Titanium"), ("gold", "Gold"), ("prismatic", "Prismatic"))   # 9.1
+
+
+def anim_fins(design: str) -> tuple:
+    """9.5: Titanium is for Mythic animations only; Epic and Legendary come in Gold and Prismatic."""
+    return ANIM_FIN_IDS if ANIM_RARITY.get(design) == "exotic" else ("", "gold", "prismatic")
 ANIM_FIN_IDS = tuple(f[0] for f in ANIM_FINS)
 ANIM_SHORT = {"": "Base", "titanium": "Titanium", "gold": "Gold", "prismatic": "Prismatic"}
 ANIM_LOOK = {"nova": ("#FF8A2B", "#FFD27A"), "shatter": ("#4FD8FF", "#B4F0FF"), "rift": ("#9B5CFF", "#E0C8FF"),
-             "phoenix": ("#FF4A1C", "#FFB627"), "eclipse": ("#E0405A", "#FFE08A")}
+             "phoenix": ("#FF4A1C", "#FFB627"), "eclipse": ("#E0405A", "#FFE08A"),
+             "blackhole": ("#7A5CFF", "#FFB36B"), "warp": ("#3D8BFF", "#BFE3FF"), "glitch": ("#FF2E88", "#2EF2FF"),
+             "origami": ("#FF7A59", "#FFE6D6"), "pixel": ("#3DDC84", "#C9FFE0"), "ripple": ("#2EC4FF", "#C8F2FF")}
 
 
 def anim_id(design: str, fin: str = "") -> str:
@@ -18044,59 +18097,6 @@ def _shard_polys(m: QRectF):
             out.append(QPolygonF([tl, tr_, bl]))
             out.append(QPolygonF([tr_, br, bl]))
     return out
-
-
-def _anim_shatter(p, k, now, m, hole, d, fin, banner, ball) -> None:
-    c = m.center()
-    a, b, core = anim_cols("shatter", fin, now)
-    u = _e3(k / 0.5)
-    v = _e3((k - 0.42) / 0.5)
-    polys = _shard_polys(m)
-    rnd = random.Random(77)
-    if k < 0.06:                                               # the crack of impact
-        _a_glow(p, c, m.width() * 0.35 * (k / 0.06), core, 0.6 * (1 - k / 0.06), "")
-    for i, poly in enumerate(polys):
-        cen = poly.boundingRect().center()
-        ang = math.atan2(cen.y() - c.y(), cen.x() - c.x()) + rnd.uniform(-0.5, 0.5)
-        dist = rnd.uniform(0.12, 0.42) * m.width()
-        rot = rnd.uniform(-220, 220)
-        lift = rnd.uniform(0.0, S(30))
-        blown = QPointF(cen.x() + math.cos(ang) * dist * u, cen.y() + math.sin(ang) * dist * 0.55 * u - lift * u + u * u * S(18))
-        cur = _lerp(blown, hole, v ** 1.3)
-        sc = (1.0 - 0.15 * u) * (1.0 - 0.93 * v)
-        op = (1.0 - 0.3 * u) * max(0.0, 1.0 - max(0.0, v - 0.7) / 0.3)
-        if op <= 0.01 or sc <= 0.02:
-            continue
-        p.save()
-        p.translate(cur)
-        p.rotate(rot * u * (1 - v))
-        p.scale(sc, sc)
-        p.translate(-cen.x(), -cen.y())
-        path = QPainterPath()
-        path.addPolygon(poly)
-        path.closeSubpath()
-        p.setClipPath(path)
-        banner(m, op, True)
-        p.setClipping(False)
-        edge = b if fin != "blacktitan" else b
-        p.setPen(QPen(alpha(edge, 0.75 * op * (0.4 + 0.6 * u)), S(1.2) / max(0.2, sc)))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawPolygon(poly)
-        p.restore()
-    p.setPen(Qt.PenStyle.NoPen)
-    rnd = random.Random(12)
-    for i in range(46):                                        # dust and glints thrown off
-        ang = rnd.uniform(0, math.tau)
-        r = m.width() * rnd.uniform(0.1, 0.5) * u * (1 - v * 0.6)
-        pt = _lerp(QPointF(c.x() + math.cos(ang) * r, c.y() + math.sin(ang) * r * 0.55), hole, v * 0.9)
-        aa, bb, _ = anim_cols("shatter", fin, now, i)
-        _a_dot(p, pt, S(rnd.uniform(1.0, 2.6)), bb, bb, fin, (1 - v) * 0.9 * min(1, u * 3), i % 5 == 0)
-    if v > 0:
-        _a_glow(p, hole, d * (0.8 + 1.4 * v) * (1 - v * 0.2), a if fin != "blacktitan" else b, 0.5 * v * (1 - max(0.0, v - 0.8) * 4), fin)
-        _a_ring(p, hole, d * 2.2 * v, b, (1 - v) * 0.9, S(2.4) * (1 - v))
-    op = min(1.0, max(0.0, (k - 0.78) / 0.18))
-    if op > 0:
-        ball(hole, d * (0.5 + 0.5 * _e3((k - 0.78) / 0.22) + 0.08 * math.sin(min(1.0, (k - 0.78) / 0.22) * math.pi)), op)
 
 
 # ---- 3. Rift: lightning cracks the banner open, both halves are squeezed into the slit, and the ball steps out
@@ -18331,8 +18331,565 @@ def _anim_eclipse(p, k, now, m, hole, d, fin, banner, ball) -> None:
         ball(hole, d * (0.6 + 0.4 * e), op)
 
 
+# ---- 9.5: helpers for the new animations
+def _clip_poly(p: QPainter, poly) -> None:
+    """Clip to a shape INSIDE the clip already set (the previews clip to their rounded card)."""
+    path = QPainterPath()
+    path.addPolygon(poly)
+    path.closeSubpath()
+    p.setClipPath(path, Qt.ClipOperation.IntersectClip)
+
+
+def _shard_polys95(m: QRectF, n: int = 34):
+    """Glass pieces that suit the window's shape: about n triangles, never long slivers."""
+    ratio = m.width() / max(1.0, m.height())
+    cols = max(3, int(round(math.sqrt(n / 2 * ratio))))
+    rows = max(3, int(round(n / 2 / cols)))
+    cw, ch = m.width() / cols, m.height() / rows
+    rnd = random.Random(31)
+    pts = [[QPointF(m.left() + i * cw + (rnd.uniform(-0.32, 0.32) * cw if 0 < i < cols else 0),
+                    m.top() + j * ch + (rnd.uniform(-0.32, 0.32) * ch if 0 < j < rows else 0)) for i in range(cols + 1)]
+           for j in range(rows + 1)]
+    out = []
+    for j in range(rows):
+        for i in range(cols):
+            tl, tr_, bl, br = pts[j][i], pts[j][i + 1], pts[j + 1][i], pts[j + 1][i + 1]
+            if (i + j) % 2:
+                out += [QPolygonF([tl, tr_, br]), QPolygonF([tl, br, bl])]
+            else:
+                out += [QPolygonF([tl, tr_, bl]), QPolygonF([tr_, br, bl])]
+    return out
+
+
+def _tint(p: QPainter, shape, col: QColor, a: float) -> None:
+    """A coloured film over what was just drawn (the finish shows on the banner itself, not only around it)."""
+    if a <= 0.01:
+        return
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha(col, a))
+    if isinstance(shape, QRectF):
+        p.drawRect(shape)
+    else:
+        p.drawPolygon(shape)
+
+
+def _tint_fin(p: QPainter, shape, fin: str, col: QColor, a: float) -> None:
+    """The finish as a film: Gold and Titanium first wash the colour out of the picture, so the metal reads true
+    (gold straight over a blue banner went olive)."""
+    if fin in ("gold", "titanium") and a > 0.01:
+        _tint(p, shape, QColor("#C8C8C8" if fin == "titanium" else "#5A4A2A"), min(0.55, a * 1.3))
+        a = min(0.75, a * 1.4)
+    _tint(p, shape, col, a)
+
+
+def _fin_tint(fin: str) -> float:
+    return {"": 0.10, "titanium": 0.34, "gold": 0.36, "prismatic": 0.30}.get(fin, 0.2)
+
+
+# ---- 2. Shatter (9.5, Mythic): the window cracks from one point, bursts into tinted glass that stays on screen,
+# then every piece is swirled into the ball
+def _anim_shatter(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    c = m.center()
+    hit = QPointF(c.x() + m.width() * 0.08, c.y() - m.height() * 0.06)
+    a, b, core = anim_cols("shatter", fin, now)
+    crack = _e3(k / 0.1)
+    u = _e3((k - 0.08) / 0.4)                                # the burst
+    v = _e3((k - 0.46) / 0.4)                                # pulled into the ball
+    reach = min(m.width(), m.height()) * 0.34
+    if k < 0.12:                                             # 1. the window cracks
+        banner(m, 1.0)
+        _tint_fin(p, m, fin, a, _fin_tint(fin) * crack * 0.6)
+        rnd = random.Random(4)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for i in range(14):
+            ang = i * math.tau / 14 + rnd.uniform(-0.2, 0.2)
+            ln = reach * rnd.uniform(0.6, 1.4) * crack
+            col = anim_cols("shatter", fin, now, i)[1]
+            p.setPen(QPen(alpha(col, 0.9), S(1.6)))
+            path = _bolt(rnd, hit, QPointF(hit.x() + math.cos(ang) * ln, hit.y() + math.sin(ang) * ln), 5, S(6))
+            p.drawPath(path)
+        _a_glow(p, hit, S(40) + reach * 0.5 * crack, core, 0.8 * crack, "")
+        return
+    polys = _shard_polys95(m)
+    rnd = random.Random(77)
+    for i, poly in enumerate(polys):
+        cen = poly.boundingRect().center()
+        dx, dy = cen.x() - hit.x(), cen.y() - hit.y()
+        dist0 = math.hypot(dx, dy) + 1
+        ang = math.atan2(dy, dx) + rnd.uniform(-0.35, 0.35)
+        push = reach * rnd.uniform(0.25, 0.75) * (1.2 - min(1.0, dist0 / (reach * 2)) * 0.5)
+        rot = rnd.uniform(-260, 260)
+        blown = QPointF(cen.x() + math.cos(ang) * push * u, cen.y() + math.sin(ang) * push * u + u * u * S(10))
+        # into the ball along a spiral
+        sw = v ** 1.4
+        spin = (1 - sw) * rnd.uniform(1.2, 2.4)
+        rr = math.hypot(blown.x() - hole.x(), blown.y() - hole.y()) * (1 - sw)
+        a0 = math.atan2(blown.y() - hole.y(), blown.x() - hole.x()) + (1 - (1 - sw) ** 0.5) * spin * 2.2
+        cur = QPointF(hole.x() + math.cos(a0) * rr, hole.y() + math.sin(a0) * rr) if v > 0 else blown
+        sc = (1.0 - 0.12 * u) * (1.0 - 0.95 * sw)
+        op = max(0.0, 1.0 - max(0.0, v - 0.75) / 0.25)
+        if op <= 0.01 or sc <= 0.02:
+            continue
+        p.save()
+        p.translate(cur)
+        p.rotate(rot * u + rot * 2 * v)
+        p.scale(sc, sc)
+        p.translate(-cen.x(), -cen.y())
+        _clip_poly(p, poly)
+        banner(m, op, True)
+        aa, bb, _ = anim_cols("shatter", fin, now, i)
+        _tint_fin(p, poly, fin, aa, (_fin_tint(fin) + 0.12 * u) * op)
+        # a glint across the glass as it turns
+        g = 0.5 + 0.5 * math.sin(now * 3 + i)
+        _tint(p, poly, QColor("#FFFFFF"), 0.10 * g * u * op)
+        p.restore()
+        p.save()
+        p.translate(cur)
+        p.rotate(rot * u + rot * 2 * v)
+        p.scale(sc, sc)
+        p.translate(-cen.x(), -cen.y())
+        p.setPen(QPen(alpha(bb, 0.85 * op), S(1.4) / max(0.25, sc)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPolygon(poly)
+        p.restore()
+    rnd = random.Random(12)
+    for i in range(60):                                       # glass dust, then the trail into the ball
+        ang = rnd.uniform(0, math.tau)
+        r = reach * rnd.uniform(0.2, 1.2) * u
+        base = QPointF(hit.x() + math.cos(ang) * r, hit.y() + math.sin(ang) * r)
+        pt = _lerp(base, hole, v ** 1.2)
+        aa, bb, _ = anim_cols("shatter", fin, now, i)
+        _a_dot(p, pt, S(rnd.uniform(0.9, 2.4)), bb, bb, fin, (1 - v) * 0.9 * min(1.0, u * 3), i % 4 == 0)
+    if v > 0:
+        _a_glow(p, hole, d * (0.9 + 1.6 * v), a, 0.55 * v * (1 - max(0.0, v - 0.85) * 5), fin)
+        _a_ring(p, hole, d * (0.6 + 1.8 * v), b, (1 - v) * 0.9, S(2.2))
+    op = min(1.0, max(0.0, (k - 0.8) / 0.15))
+    if op > 0:
+        e = _e3((k - 0.8) / 0.2)
+        _a_ring(p, hole, d * (0.7 + 1.2 * e), core, 0.8 * (1 - e), S(2.5))
+        ball(hole, d * (0.55 + 0.45 * e + 0.08 * math.sin(e * math.pi)), op)
+
+
+# ---- 6. Black Hole (9.5, Mythic): a singularity opens in the middle, the window is torn into strips that spiral
+# into it, the hole collapses in a flash and the ball is fired up to its place
+def _anim_blackhole(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    c = m.center()
+    a, b, core = anim_cols("blackhole", fin, now)
+    size = min(m.width(), m.height())
+    grow = _e3(k / 0.22)
+    pull = _e3((k - 0.12) / 0.5)
+    collapse = _e3((k - 0.6) / 0.12)
+    rh = size * 0.13 * grow * (1 - collapse)                 # the event horizon
+    if collapse < 1:                                          # the accretion disk behind
+        for j in range(3):
+            p.save()
+            p.translate(c)
+            p.rotate(-18 + j * 6)
+            p.scale(1.0, 0.32)
+            col = anim_cols("blackhole", fin, now, j * 5)
+            r = rh * (2.3 + j * 0.55) + S(2)
+            g = QRadialGradient(QPointF(0, 0), r)
+            g.setColorAt(0.0, alpha(col[2], 0.0))
+            g.setColorAt(0.55, alpha(col[1], 0.0))
+            g.setColorAt(0.72, alpha(col[1], 0.55 * grow))
+            g.setColorAt(0.86, alpha(col[0], 0.35 * grow))
+            g.setColorAt(1.0, alpha(col[0], 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(g)
+            p.drawEllipse(QPointF(0, 0), r, r)
+            p.restore()
+    if pull < 0.995:                                          # the window, torn into strips that spiral in
+        n = 14
+        sh = m.height() / n
+        for i in range(n):
+            strip = QRectF(m.left(), m.top() + i * sh, m.width(), sh + 1)
+            dist = abs(strip.center().y() - c.y()) / (m.height() / 2)
+            lag = 0.25 * dist
+            t = _e3((pull - lag * 0.6) / (1 - lag * 0.6)) if pull > lag * 0.6 else 0.0
+            if t >= 0.995:
+                continue
+            p.save()
+            p.translate(c)
+            p.rotate(t * (260 + 140 * (1 - dist)) * (1 if i % 2 else 0.85))
+            sc = max(0.01, 1 - t)
+            p.scale(sc * (1 + t * 0.6), sc * (1 - t * 0.5))
+            p.translate(-c.x(), -c.y())
+            p.setClipRect(strip, Qt.ClipOperation.IntersectClip)
+            banner(m, 1.0 - 0.25 * t)
+            _tint_fin(p, strip, fin, a, (_fin_tint(fin) + 0.3 * t) * (1 - t))
+            p.restore()
+    rnd = random.Random(21)
+    for i in range(70):                                       # matter falling in
+        ph = (rnd.random() + now * rnd.uniform(0.25, 0.5)) % 1.0
+        ang = rnd.uniform(0, math.tau) + ph * 4.0
+        r = size * 0.55 * (1 - ph) * grow * (1 - collapse) + rh
+        pt = QPointF(c.x() + math.cos(ang) * r, c.y() + math.sin(ang) * r * 0.45)
+        aa, bb, _ = anim_cols("blackhole", fin, now, i)
+        _a_dot(p, pt, S(rnd.uniform(0.8, 2.0)), bb if i % 2 else aa, bb, fin, 0.8 * ph * grow * (1 - collapse), i % 9 == 0)
+    if rh > 0.5:                                              # the horizon: black, with a bright lensing ring
+        _a_ring(p, c, rh * 1.12, b, 0.9, S(2))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(2, 2, 6))
+        p.drawEllipse(c, rh, rh)
+    if k > 0.6:                                               # the flash, the shock ring, and the shot up
+        f = (k - 0.6) / 0.4
+        _a_glow(p, c, size * 0.5 * (0.2 + f), core, max(0.0, 1 - f * 3.2), "")
+        _a_ring(p, c, size * 0.6 * _e3(f * 1.4), a, max(0.0, 1 - f * 1.6), S(4) * (1 - f))
+        t = _e3((k - 0.66) / 0.3)
+        if t > 0:
+            pos = _lerp(c, hole, t)
+            for j in range(6):                                # a streak behind it
+                q = _lerp(c, pos, j / 6)
+                _a_dot(p, q, d * 0.12 * (j + 1) / 6, b, b, fin, 0.5 * (1 - t * 0.6) * (j + 1) / 6)
+            ball(pos, d * (0.45 + 0.55 * t), min(1.0, t * 3))
+
+
+# ---- 7. Warp (9.5, Mythic): hyperspace: the stars stream past, the window is stretched into a beam of light that
+# shoots up into the ball's place, which comes out of the jump with a flare
+def _anim_warp(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    c = m.center()
+    a, b, core = anim_cols("warp", fin, now)
+    size = max(m.width(), m.height())
+    speed = _e3(k / 0.45)
+    stretch = _e3((k - 0.22) / 0.36)
+    jump = _e3((k - 0.55) / 0.16)
+    rnd = random.Random(8)
+    for i in range(90):                                       # the star streaks
+        ang = rnd.uniform(0, math.tau)
+        ph = (rnd.random() + now * (0.15 + 1.4 * speed) * rnd.uniform(0.6, 1.2)) % 1.0
+        r0 = size * 0.55 * ph ** 1.6
+        ln = S(2) + size * 0.22 * speed * ph
+        p1 = QPointF(c.x() + math.cos(ang) * r0, c.y() + math.sin(ang) * r0)
+        p2 = QPointF(c.x() + math.cos(ang) * (r0 + ln), c.y() + math.sin(ang) * (r0 + ln))
+        col = anim_cols("warp", fin, now, i)[1] if i % 3 else core
+        p.setPen(QPen(alpha(col, (0.25 + 0.6 * speed) * min(1.0, ph * 3) * (1 - jump) ** 2), S(1.0 + speed)))
+        p.drawLine(p1, p2)
+    if stretch < 0.999:                                       # the window becomes a beam towards the hole
+        shake = S(2.5) * speed * (1 - stretch) * math.sin(now * 70)
+        w = m.width() * (1 - 0.94 * stretch)
+        h = m.height() * (1 + 0.6 * stretch) * (1 - 0.85 * stretch ** 3)
+        cx = c.x() + shake
+        cy = c.y() + (hole.y() + h / 2 - c.y()) * stretch ** 1.5
+        box = QRectF(cx - w / 2, cy - h / 2, w, h)
+        p.save()
+        p.translate(box.center())
+        p.scale(box.width() / max(1.0, m.width()), box.height() / max(1.0, m.height()))
+        p.translate(-c.x(), -c.y())
+        banner(m, 1.0 - 0.2 * stretch)
+        _tint_fin(p, m, fin, a, (_fin_tint(fin) + 0.4) * stretch)
+        p.restore()
+        g = QLinearGradient(QPointF(box.left(), 0), QPointF(box.right(), 0))
+        g.setColorAt(0, alpha(b, 0.0))
+        g.setColorAt(0.5, alpha(core, 0.85 * stretch))
+        g.setColorAt(1, alpha(b, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRect(box.adjusted(-w * 0.6, 0, w * 0.6, 0))
+    if k > 0.55:
+        f = (k - 0.55) / 0.45
+        _a_glow(p, hole, d * (1.0 + 5 * jump) * (1 - f * 0.5), core, max(0.0, 1 - f * 2.2), "")
+        _a_ring(p, hole, d * (0.8 + 4.5 * _e3(f * 1.2)), b, max(0.0, 1 - f * 1.4), S(3) * (1 - f))
+        if f < 0.6:                                           # the flare
+            fl = 1 - f / 0.6
+            p.setPen(QPen(alpha(core, 0.8 * fl), S(1.5)))
+            p.drawLine(QPointF(hole.x() - d * 4 * fl, hole.y()), QPointF(hole.x() + d * 4 * fl, hole.y()))
+            p.setPen(QPen(alpha(b, 0.6 * fl), S(1.2)))
+            p.drawLine(QPointF(hole.x(), hole.y() - d * 1.6 * fl), QPointF(hole.x(), hole.y() + d * 1.6 * fl))
+        op = min(1.0, max(0.0, (k - 0.66) / 0.14))
+        if op > 0:
+            e = _e3((k - 0.66) / 0.34)
+            ball(hole, d * (0.4 + 0.6 * e + 0.1 * math.sin(e * math.pi)), op)
+
+
+# ---- 8. Glitch (9.5, Legendary): the window corrupts: slices jump, the colours split, then it falls apart into
+# blocks that teleport up in steps and rebuild as the ball
+def _anim_glitch(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    a, b, core = anim_cols("glitch", fin, now)
+    step = int(now * 18)                                     # glitches move in jumps, not smoothly
+    rnd = random.Random(step)
+    bad = _e3(k / 0.4)
+    gone = _e3((k - 0.34) / 0.3)
+    if gone < 0.999:
+        n = 12
+        sh = m.height() / n
+        for i in range(n):
+            strip = QRectF(m.left() - m.width(), m.top() + i * sh, m.width() * 3, sh + 1)
+            off = (rnd.uniform(-1, 1) * m.width() * 0.12 * bad) if rnd.random() < 0.15 + 0.5 * bad else 0.0
+            keep = 1.0 if rnd.random() > gone else 0.0
+            if not keep:
+                continue
+            p.save()
+            p.setClipRect(strip, Qt.ClipOperation.IntersectClip)
+            p.translate(off, 0)
+            banner(m, 1.0 - 0.3 * bad)
+            p.restore()
+            if bad > 0.05 and off:                            # the split colour channels
+                band = QRectF(m.left() + off, m.top() + i * sh, m.width(), sh)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha(a, 0.35 * bad))
+                p.drawRect(band.translated(-S(6) * bad, 0))
+                p.setBrush(alpha(b, 0.30 * bad))
+                p.drawRect(band.translated(S(6) * bad, 0))
+        p.setPen(Qt.PenStyle.NoPen)                            # scanlines
+        p.setBrush(alpha("#000000", 0.18 * bad * (1 - gone)))
+        y = m.top()
+        while y < m.bottom():
+            p.drawRect(QRectF(m.left(), y, m.width(), S(1)))
+            y += S(4)
+    # the blocks: thrown out, then up to the hole in six jumps
+    if k > 0.3:
+        u = _e3((k - 0.3) / 0.2)
+        jumps = min(6, int(max(0.0, (k - 0.48) / 0.3) * 6.999))
+        r2 = random.Random(5)
+        for i in range(56):
+            x0 = m.left() + r2.random() * m.width()
+            y0 = m.top() + r2.random() * m.height()
+            out = QPointF(x0 + r2.uniform(-1, 1) * S(30) * u, y0 + r2.uniform(-1, 1) * S(30) * u)
+            t = jumps / 6
+            pos = _lerp(out, QPointF(hole.x() + r2.uniform(-1, 1) * d * (1 - t), hole.y() + r2.uniform(-1, 1) * d * (1 - t)), t)
+            sz = S(r2.uniform(4, 11)) * (1 - 0.6 * t)
+            col = anim_cols("glitch", fin, now, i)[r2.randint(0, 1)]
+            op = min(1.0, u * 2) * (1 - max(0.0, (k - 0.82) / 0.1))
+            if op <= 0:
+                continue
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.85 * op))
+            p.drawRect(QRectF(pos.x() - sz / 2, pos.y() - sz / 2, sz, sz))
+    if k > 0.78:                                              # the ball, flickering in with its colours split
+        e = _e3((k - 0.78) / 0.22)
+        flick = 1.0 if e > 0.7 else (1.0 if (step % 3) else 0.35)
+        if e < 0.9:
+            _a_glow(p, QPointF(hole.x() - S(4) * (1 - e), hole.y()), d * 0.8, a, 0.5 * (1 - e), "")
+            _a_glow(p, QPointF(hole.x() + S(4) * (1 - e), hole.y()), d * 0.8, b, 0.5 * (1 - e), "")
+        ball(hole, d * (0.7 + 0.3 * e), min(1.0, e * 2) * flick)
+
+
+# ---- 9. Origami (9.5, Legendary): the window folds in half, and in half again, creases into a paper plane that
+# loops up to the hole and opens into the ball
+def _anim_origami(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    a, b, core = anim_cols("origami", fin, now)
+    f1 = _e3(k / 0.2)                                        # bottom half folds up
+    f2 = _e3((k - 0.2) / 0.18)                               # right half folds over
+    shrink = _e3((k - 0.36) / 0.14)
+    fly = _e3((k - 0.48) / 0.4)
+    top = QRectF(m.left(), m.top(), m.width(), m.height() / 2)
+    if k < 0.38:
+        midy = m.center().y()
+        if f2 <= 0:
+            p.save()                                          # the top half, flat
+            p.setClipRect(top, Qt.ClipOperation.IntersectClip)
+            banner(m, 1.0)
+            p.restore()
+            fy = math.cos(f1 * math.pi)                       # the bottom half, turning over the crease
+            p.save()
+            p.translate(0, midy)
+            p.scale(1.0, fy if abs(fy) > 0.01 else 0.01)
+            p.translate(0, -midy)
+            if fy >= 0:
+                p.setClipRect(QRectF(m.left(), midy, m.width(), m.height() / 2), Qt.ClipOperation.IntersectClip)
+                banner(m, 1.0)
+                _tint(p, m, QColor("#000000"), 0.35 * f1)
+            else:                                             # its back: paper in the animation's colour
+                back = QRectF(m.left(), midy, m.width(), m.height() / 2)
+                g = QLinearGradient(back.topLeft(), back.bottomRight())
+                g.setColorAt(0, mix(a, QColor("#FFFFFF"), 0.35))
+                g.setColorAt(1, a)
+                p.setPen(QPen(alpha(b, 0.8), S(1)))
+                p.setBrush(g)
+                p.drawRect(back)
+            p.restore()
+        else:                                                 # second fold: the right half over the left
+            g = QLinearGradient(top.topLeft(), top.bottomRight())
+            g.setColorAt(0, mix(a, QColor("#FFFFFF"), 0.35))
+            g.setColorAt(1, a)
+            left = QRectF(top.left(), top.top(), top.width() / 2, top.height())
+            p.setPen(QPen(alpha(b, 0.8), S(1)))
+            p.setBrush(g)
+            p.drawRect(left)
+            fx = math.cos(f2 * math.pi)
+            midx = top.center().x()
+            right = QRectF(midx, top.top(), top.width() / 2, top.height())
+            p.save()
+            p.translate(midx, 0)
+            p.scale(fx if abs(fx) > 0.01 else 0.01, 1.0)
+            p.translate(-midx, 0)
+            p.setBrush(mix(a, QColor("#000000"), 0.2 * (1 - fx)) if fx < 0 else g)
+            p.drawRect(right)
+            p.restore()
+            p.setPen(QPen(alpha("#FFFFFF", 0.5), S(1), Qt.PenStyle.DashLine))
+            p.drawLine(QPointF(top.left(), top.bottom()), QPointF(top.right() if fx > 0 else midx, top.bottom()))
+    else:
+        # a paper plane, flying a loop up to the hole
+        start = QPointF(m.left() + m.width() * 0.25, m.top() + m.height() * 0.25)
+        loop_c = QPointF(m.center().x(), m.top() + m.height() * 0.36)
+        rad = min(m.width(), m.height()) * 0.2
+        if fly <= 0:                                          # the folded square creases into the plane
+            pos, ang = start, 0.0
+            sq = QRectF(m.left(), m.top(), m.width() / 2, m.height() / 2)
+            sz = S(26)
+            plane = [QPointF(start.x() + sz, start.y()), QPointF(start.x() - sz * 0.8, start.y() - sz * 0.55),
+                     QPointF(start.x() - sz * 0.45, start.y()), QPointF(start.x() - sz * 0.8, start.y() + sz * 0.55)]
+            corners = [sq.topRight(), sq.topLeft(), sq.center(), sq.bottomLeft()]
+            poly = QPolygonF([_lerp(c0, c1, shrink) for c0, c1 in zip(corners, plane)])
+            g = QLinearGradient(sq.topLeft(), sq.bottomRight())
+            g.setColorAt(0, mix(a, QColor("#FFFFFF"), 0.45))
+            g.setColorAt(1, a)
+            p.setPen(QPen(alpha(b, 0.9), S(1)))
+            p.setBrush(g)
+            p.drawPolygon(poly)
+            return
+        elif fly < 0.7:
+            t = fly / 0.7
+            th = math.pi + t * math.tau * 0.9
+            pos = QPointF(loop_c.x() + math.cos(th) * rad * (1 - t * 0.3), loop_c.y() + math.sin(th) * rad * 0.7)
+            pos = _lerp(start, pos, min(1.0, t * 4))
+            ang = math.degrees(th) + 90
+        else:
+            t = (fly - 0.7) / 0.3
+            prev = QPointF(loop_c.x() + math.cos(math.pi * 2.8) * rad * 0.7, loop_c.y() + math.sin(math.pi * 2.8) * rad * 0.7)
+            pos = _lerp(prev, hole, _e3(t))
+            ang = math.degrees(math.atan2(hole.y() - prev.y(), hole.x() - prev.x()))
+        rnd = random.Random(3)
+        for j in range(14):                                   # the dotted trail
+            q = (fly - j * 0.03)
+            if q <= 0:
+                break
+            _a_dot(p, QPointF(pos.x() - math.cos(math.radians(ang)) * j * S(7) + rnd.uniform(-1, 1),
+                              pos.y() - math.sin(math.radians(ang)) * j * S(7)), S(1.4), b, b, fin, 0.6 * (1 - j / 14))
+        sz = S(26) * (1 - 0.35 * fly) * (0.4 + 0.6 * shrink)
+        plane = QPolygonF([QPointF(sz, 0), QPointF(-sz * 0.8, -sz * 0.55), QPointF(-sz * 0.45, 0), QPointF(-sz * 0.8, sz * 0.55)])
+        op = 1.0 - max(0.0, (k - 0.86) / 0.08)
+        if op > 0:
+            p.save()
+            p.translate(pos)
+            p.rotate(ang)
+            g = QLinearGradient(QPointF(-sz, -sz), QPointF(sz, sz))
+            g.setColorAt(0, mix(a, QColor("#FFFFFF"), 0.45))
+            g.setColorAt(1, a)
+            p.setOpacity(op)
+            p.setPen(QPen(alpha(b, 0.9), S(1)))
+            p.setBrush(g)
+            p.drawPolygon(plane)
+            p.setPen(QPen(alpha("#000000", 0.25), S(1)))
+            p.drawLine(QPointF(-sz * 0.45, 0), QPointF(sz, 0))
+            p.setOpacity(1.0)
+            p.restore()
+    if k > 0.84:                                              # it opens into the ball
+        e = _e3((k - 0.84) / 0.16)
+        for i in range(8):
+            ang = i * math.tau / 8
+            _a_dot(p, QPointF(hole.x() + math.cos(ang) * d * (0.4 + 0.9 * e), hole.y() + math.sin(ang) * d * (0.4 + 0.9 * e)),
+                   S(2), a, b, fin, 1 - e, i % 2 == 0)
+        ball(hole, d * (0.5 + 0.5 * e + 0.1 * math.sin(e * math.pi)), min(1.0, e * 2.5))
+
+
+# ---- 10. Pixel Dust (9.5, Epic): the window comes apart into pixels from the bottom up; they drift up and pack
+# into the ball
+def _anim_pixel(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    a, b, core = anim_cols("pixel", fin, now)
+    eat = _e3(k / 0.55)                                       # how much of the window has turned into pixels
+    line = m.bottom() - m.height() * eat
+    if eat < 0.999:
+        p.save()
+        p.setClipRect(QRectF(m.left(), m.top(), m.width(), line - m.top()), Qt.ClipOperation.IntersectClip)
+        banner(m, 1.0)
+        p.restore()
+        p.setPen(Qt.PenStyle.NoPen)                            # the edge being eaten glows
+        g = QLinearGradient(QPointF(0, line - S(14)), QPointF(0, line))
+        g.setColorAt(0, alpha(b, 0.0))
+        g.setColorAt(1, alpha(b, 0.7))
+        p.setBrush(g)
+        p.drawRect(QRectF(m.left(), line - S(14), m.width(), S(14)))
+    cell = max(S(6), min(m.width(), m.height()) / 26)
+    rnd = random.Random(11)
+    n = 150
+    for i in range(n):
+        x0 = m.left() + rnd.random() * m.width()
+        y0 = m.bottom() - rnd.random() * m.height()
+        born = (m.bottom() - y0) / max(1.0, m.height()) * 0.55   # it leaves when the line passes it
+        t = (k - born) / max(0.05, 0.9 - born)
+        if t <= 0:
+            continue
+        t = min(1.0, t)
+        e = _e3(t)
+        wob = math.sin(now * 3 + i) * S(10) * (1 - e)
+        pos = QPointF(x0 + (hole.x() - x0) * e + wob, y0 + (hole.y() - y0) * (e ** 0.8))
+        sz = cell * (1 - 0.7 * e)
+        col = anim_cols("pixel", fin, now, i)[i % 2] if fin else (a if i % 3 else b)
+        op = min(1.0, t * 5) * (1 - max(0.0, (k - 0.86) / 0.1))
+        if op <= 0:
+            continue
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha(col, 0.9 * op))
+        p.drawRect(QRectF(pos.x() - sz / 2, pos.y() - sz / 2, sz, sz))
+    if k > 0.55:
+        e = _e3((k - 0.55) / 0.45)
+        _a_glow(p, hole, d * (0.6 + 0.9 * e), a, 0.45 * e * (1 - max(0.0, e - 0.8) * 5), fin)
+        op = min(1.0, max(0.0, (k - 0.78) / 0.14))
+        if op > 0:
+            ball(hole, d * (0.6 + 0.4 * _e3((k - 0.78) / 0.22)), op)
+
+
+# ---- 11. Ripple (9.5, Epic): the window ripples like water, pulls together into one drop, the drop falls UP into
+# the hole and the ball comes out of the splash
+def _anim_ripple(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    a, b, core = anim_cols("ripple", fin, now)
+    c = m.center()
+    wave = _e3(k / 0.3)
+    pinch = _e3((k - 0.18) / 0.32)
+    rise = _e3((k - 0.48) / 0.26)
+    if pinch < 0.999:
+        n = 22
+        sh = m.height() / n
+        for i in range(n):
+            strip = QRectF(m.left() - S(40), m.top() + i * sh, m.width() + S(80), sh + 1)
+            off = math.sin(now * 9 + i * 0.7) * S(14) * wave * (1 - pinch)
+            sx = 1 - pinch * (0.97 - 0.5 * math.sin(i / (n - 1) * math.pi) * (1 - pinch))
+            p.save()
+            p.setClipRect(strip, Qt.ClipOperation.IntersectClip)
+            p.translate(c.x() + off, 0)
+            p.scale(max(0.02, sx), 1.0)
+            p.translate(-c.x(), 0)
+            banner(m, 1.0 - 0.3 * pinch)
+            _tint_fin(p, m, fin, a, _fin_tint(fin) * wave)
+            p.restore()
+        for j in range(3):                                    # rings on the surface
+            q = (wave * 1.2 - j * 0.25)
+            if q > 0:
+                _a_ring(p, c, min(m.width(), m.height()) * 0.5 * q, b, 0.6 * (1 - min(1.0, q)), S(2))
+    if pinch > 0.6 and rise < 1.0:                            # the drop
+        drop_c = _lerp(c, hole, rise ** 1.6)
+        r = d * (1.6 - 0.9 * rise) * min(1.0, (pinch - 0.6) / 0.3)
+        tail = r * (1.2 + 2.5 * rise * (1 - rise) * 4)
+        path = QPainterPath()
+        path.moveTo(drop_c.x(), drop_c.y() + r + tail)          # the tail points away from where it goes
+        path.cubicTo(QPointF(drop_c.x() + r * 1.1, drop_c.y() + r), QPointF(drop_c.x() + r, drop_c.y() - r),
+                     QPointF(drop_c.x(), drop_c.y() - r))
+        path.cubicTo(QPointF(drop_c.x() - r, drop_c.y() - r), QPointF(drop_c.x() - r * 1.1, drop_c.y() + r),
+                     QPointF(drop_c.x(), drop_c.y() + r + tail))
+        g = QRadialGradient(QPointF(drop_c.x() - r * 0.3, drop_c.y() - r * 0.3), r * 1.6)
+        g.setColorAt(0, mix(core, b, 0.3))
+        g.setColorAt(0.5, b)
+        g.setColorAt(1, a)
+        p.setPen(QPen(alpha(core, 0.6), S(1)))
+        p.setBrush(g)
+        p.drawPath(path)
+    if k > 0.72:                                              # the splash
+        e = _e3((k - 0.72) / 0.28)
+        for j in range(2):
+            _a_ring(p, hole, d * (0.6 + (2.6 - j) * e), b if j else a, 0.8 * (1 - e), S(2.4 - j))
+        rnd = random.Random(2)
+        for i in range(16):
+            ang = rnd.uniform(-math.pi, 0)
+            r = d * (0.6 + 1.8 * e)
+            pt = QPointF(hole.x() + math.cos(ang) * r, hole.y() + math.sin(ang) * r * 0.7 + e * e * S(16))
+            _a_dot(p, pt, S(rnd.uniform(1.0, 2.2)), b, b, fin, 1 - e, i % 4 == 0)
+        ball(hole, d * (0.55 + 0.45 * e + 0.12 * math.sin(e * math.pi)), min(1.0, e * 3))
+
+
 _ANIM_PAINT = {"nova": _anim_nova, "shatter": _anim_shatter, "rift": _anim_rift, "phoenix": _anim_phoenix,
-               "eclipse": _anim_eclipse}
+               "eclipse": _anim_eclipse, "blackhole": _anim_blackhole, "warp": _anim_warp, "glitch": _anim_glitch,
+               "origami": _anim_origami, "pixel": _anim_pixel, "ripple": _anim_ripple}
 
 
 def paint_anim(p: QPainter, design: str, fin: str, k: float, now: float, m: QRectF, hole: QPointF, d: float, banner, ball) -> None:
@@ -18380,6 +18937,45 @@ def paint_anim_thumb(p: QPainter, item: str, box: QRectF, now: float) -> None:
                        QPointF(c.x() + math.cos(ang + 0.3) * r * 0.82, c.y() + math.sin(ang + 0.3) * r * 0.82))
     elif design == "rift":
         p.drawLine(QPointF(c.x(), c.y() - r * 0.85), QPointF(c.x(), c.y() + r * 0.85))
+    elif design == "blackhole":                                   # 9.5: a dark core in a tilted disk
+        p.save()
+        p.translate(c)
+        p.rotate(-18)
+        p.drawEllipse(QPointF(0, 0), r * 0.78, r * 0.26)
+        p.restore()
+        p.setBrush(QColor("#030306"))
+        p.drawEllipse(c, r * 0.24, r * 0.24)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+    elif design == "warp":
+        for i in range(10):
+            ang = i * math.tau / 10 + 0.2
+            r0 = r * (0.45 + 0.1 * ((now * 1.5 + i * 0.3) % 1.0))
+            p.drawLine(QPointF(c.x() + math.cos(ang) * r0, c.y() + math.sin(ang) * r0),
+                       QPointF(c.x() + math.cos(ang) * r0 * 1.7, c.y() + math.sin(ang) * r0 * 1.7))
+    elif design == "glitch":
+        step = int(now * 8)
+        rnd = random.Random(step)
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(4):
+            y = c.y() - r * 0.6 + i * r * 0.3
+            p.setBrush(alpha(a if i % 2 else b, 0.7))
+            p.drawRect(QRectF(c.x() - r * 0.7 + rnd.uniform(-1, 1) * r * 0.2, y, r * 1.4, r * 0.08))
+    elif design == "origami":
+        sz = r * 0.75
+        p.drawPolygon(QPolygonF([QPointF(c.x() + sz, c.y()), QPointF(c.x() - sz * 0.8, c.y() - sz * 0.55),
+                                 QPointF(c.x() - sz * 0.45, c.y()), QPointF(c.x() - sz * 0.8, c.y() + sz * 0.55)]))
+    elif design == "pixel":
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(8):
+            ang = i * math.tau / 8 + now * 0.6
+            q = QPointF(c.x() + math.cos(ang) * r * 0.62, c.y() + math.sin(ang) * r * 0.62)
+            p.setBrush(alpha(b if i % 2 else a, 0.85))
+            p.drawRect(QRectF(q.x() - r * 0.07, q.y() - r * 0.07, r * 0.14, r * 0.14))
+    elif design == "ripple":
+        for j in range(2):
+            q = (now * 0.6 + j * 0.5) % 1.0
+            p.setPen(QPen(alpha(b, 0.7 * (1 - q)), max(1.0, r * 0.04)))
+            p.drawEllipse(c, r * (0.45 + 0.45 * q), r * (0.45 + 0.45 * q))
     elif design == "eclipse":
         p.setBrush(QColor("#08060C"))
         p.drawEllipse(QPointF(c.x() + r * 0.12, c.y() - r * 0.06), r * 0.34, r * 0.34)
@@ -23566,7 +24162,24 @@ class SettingsPage(StylePart, Page):
             snd = Toggle(cfg["sounds"])
             snd.toggled_by_user.connect(sounds)
             lay.addWidget(row(tr("Interface sounds"), snd))
-            pass
+            # 9.5: volumes, from off (all the way left) to full
+            pct = lambda v: f"{int(v)}%"                        # noqa: E731
+
+            def set_ui(v: float) -> None:
+                cfg["vol_ui"] = int(v)
+                sfx.set_volume(v)
+
+            r_ui = SliderRow(tr("Interface"), 0, 100, cfg["vol_ui"], 10, 100, pct, label_w=120)
+            r_ui.changed.connect(set_ui)
+            r_ui.released.connect(lambda _v: sfx.play("on"))
+            lay.addWidget(r_ui)
+            lay.addWidget(heading(tr("Karting and Hoops")))
+            for key, label, dflt in (("vol_fx", tr("Game effects"), 40), ("vol_amb", tr("Crowd and engines"), 60)):
+                rr = SliderRow(label, 0, 100, cfg[key], 5, dflt, pct, label_w=120)
+                rr.changed.connect(lambda v, key=key: (cfg.__setitem__(key, int(v)), KartAudio.levels(cfg)))
+                lay.addWidget(rr)
+            lay.addWidget(Label(tr("All the way left turns it off. You can change these during a race or a match too."),
+                                10, TEXT_FAINT, wrap_w=self.W))
             settings_section(ctx, lay)
 
         elif sec == 3:                                  # ---------------------------------------------- Account
@@ -26304,11 +26917,7 @@ class CaseItemsGrid(QWidget):
         self.per = max(1, int(width // self.cell))
         n = len(self.items)
         self.setFixedSize(width, int(((n + self.per - 1) // self.per) * self.cell) if n else 0)
-        self.setMouseTracking(True)
-        self._t = QTimer(self)
-        self._t.setInterval(60)
-        self._t.timeout.connect(self.update)
-        self._t.start()
+        self.setMouseTracking(True)          # 9.5: no animation timer: a still picture of every drop (it lagged)
 
     def _rect(self, k: int) -> QRectF:
         return QRectF((k % self.per) * self.cell, (k // self.per) * self.cell, self.cell, self.cell)
@@ -26328,7 +26937,6 @@ class CaseItemsGrid(QWidget):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        now = time.monotonic()
         for k, (item, _ch) in enumerate(self.items):
             r = self._rect(k).adjusted(S(2), S(2), -S(2), -S(2))
             p.setPen(Qt.PenStyle.NoPen)
@@ -26338,7 +26946,7 @@ class CaseItemsGrid(QWidget):
             p.drawRoundedRect(r, S(6), S(6))
             p.setBrush(alpha(col, 0.8))
             p.drawRoundedRect(QRectF(r.left() + S(6), r.bottom() - S(3), r.width() - S(12), S(2)), S(1), S(1))
-            show_preview_item(p, item, r.adjusted(S(4), S(3), -S(4), -S(5)), now)
+            show_preview_item(p, item, r.adjusted(S(4), S(3), -S(4), -S(5)), 0.6, effects=False)
 
 
 class DropList(QWidget):
@@ -26901,7 +27509,7 @@ class CaseReel(QWidget):
         else:
             size = rect.width() * 0.5
             show_case_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
-                           now, effects=self.state != "spin", reveal=reveal)
+                           0.6, effects=False, reveal=reveal)      # 9.5: still pictures on the strip (no lag)
         if flash > 0:
             p.setBrush(QColor(255, 255, 255, int(150 * flash)))
             p.drawRoundedRect(rect, S(8), S(8))
@@ -28268,8 +28876,58 @@ def _inventory_items(page, lay, tab: int) -> None:
         lay.addWidget(notice("case", tr("Nothing here yet"),
                              tr("Open cases or visit the shop: everything you own shows up here."), page.W, go))
         return
+    # 9.5: select several items and sell them together
+    selecting = bool(getattr(ctx, "inv_select", False))
+    sel = [k for k in (getattr(ctx, "inv_sel", None) or []) if k in groups]
+    ctx.inv_sel = sel
+
+    def sellable(k: str) -> list:
+        return [c["id"] for c in groups[k] if not c.get("locked")] \
+            if ec.info(k).get("tradeable") and ec.quick_value(k) > 0 and k != "tag:og" else []
+    srow = hbox(spacing=8)
+    if selecting:
+        ids = [i for k in sel for i in sellable(k)]
+        about = sum(ec.quick_value(k) * len(sellable(k)) for k in sel)
+        key = tuple(sorted(ids))                        # the server's own quote (the local guess can be far off)
+        q = getattr(ctx, "inv_quote", None)
+        if isinstance(q, tuple) and q[0] == key:
+            about = q[1]
+        elif ids:
+            def got_q(ok: bool, d, key_=key) -> None:
+                if ok and isinstance(d, dict):
+                    ctx.inv_quote = (key_, int(d.get("total") or 0))
+                    if getattr(ctx, "inv_select", False):
+                        ctx.reload_page()
+            ec.quick_quote(ids, got_q)
+        srow.addWidget(Label(tr("{n} selected · about {v} coins", n=len(ids), v=coins_text(about)) if sel else
+                             tr("Click items to select them"), 11, TEXT if sel else TEXT_DIM, bold=bool(sel)), 1)
+        allb = Button(tr("All"), "ghost", 30)
+        allb.setToolTip(tr("Select everything you can sell on this tab"))
+        allb.clicked.connect(lambda: (setattr(ctx, "inv_sel", [k for k in order if sellable(k)]), ctx.reload_page()))
+        srow.addWidget(allb)
+        sell_all = Button(tr("Sell all selected"), "primary", 30, icon="coin")
+        sell_all.setEnabled(bool(ids))
+
+        def go_sell() -> None:
+            names = [item_name(k) for k in sel]
+            what = names[0] if len(names) == 1 else tr("{n} items", n=len(ids))
+            text = tr("Sell {n} items for about {v} coins? The pawn shop makes the final offer.", n=len(ids),
+                      v=coins_text(about))
+            ctx.window.confirm(text, lambda: (setattr(ctx, "inv_select", False), setattr(ctx, "inv_sel", []),
+                                              quick_sell(ctx, ids, what)), yes=tr("Go to the pawn shop"))
+        sell_all.clicked.connect(go_sell)
+        srow.addWidget(sell_all)
+        done_b = Button(tr("Done"), "ghost", 30)
+        done_b.clicked.connect(lambda: (setattr(ctx, "inv_select", False), setattr(ctx, "inv_sel", []), ctx.reload_page()))
+        srow.addWidget(done_b)
+    else:
+        srow.addStretch(1)
+        selb = Button(tr("Select several"), "ghost", 30, icon="check")
+        selb.clicked.connect(lambda: (setattr(ctx, "inv_select", True), setattr(ctx, "inv_pick", ""), ctx.reload_page()))
+        srow.addWidget(selb)
+    lay.addLayout(srow)
     pick = getattr(ctx, "inv_pick", "") or ""
-    if pick not in groups:
+    if pick not in groups or selecting:
         pick = ""
     if pick:
         _inventory_detail(page, lay, pick, groups[pick])
@@ -28278,13 +28936,22 @@ def _inventory_items(page, lay, tab: int) -> None:
     for k in order:
         free = [i for i in groups[k] if not i.get("locked")]
         on = k in wearing or ctx.shop_item_worn(k) or (k.split(":")[0] in LOOKS and look_worn(ctx, k))
+        mark = "lock" if not free else ("worn" if on else "")
+        if selecting:
+            mark = "offered" if k in sel else ("lock" if not sellable(k) else "")
         entries.append({"item": k, "text": coins_text(value_of(ctx, k)) if value_of(ctx, k) else tr("Free"),
-                        "tag": f"×{len(groups[k])}" if len(groups[k]) > 1 else "",
-                        "mark": "lock" if not free else ("worn" if on else "")})
+                        "tag": f"×{len(groups[k])}" if len(groups[k]) > 1 else "", "mark": mark,
+                        "dim": 0.45 if selecting and not sellable(k) else 1.0})
     grid = ItemGrid(ctx, entries, page.W, 5, 72, order.index(pick) if pick else -1)
 
     def choose(i: int) -> None:
         sfx.play("pick")
+        if selecting:
+            k = order[i]
+            if not sellable(k):
+                return ctx.toast(tr("This one can't be sold"), "warn")
+            ctx.inv_sel = [x for x in sel if x != k] if k in sel else sel + [k]
+            return ctx.reload_page()
         ctx.inv_pick = "" if order[i] == pick else order[i]
         ctx.reload_page()
     grid.picked.connect(choose)
@@ -28465,13 +29132,35 @@ def build_animations(page, lay, shop: bool) -> None:
     if not isinstance(state, dict):
         state = ctx.anim_fin = {}
     shown = 0
-    for design, name in ANIMS:
+    # 9.5: Basic at the top (free, yours from the start, no versions), then Epic, Legendary and Mythic
+    lay.addSpacing(S(6))
+    lay.addWidget(Label(tr("BASIC"), 10, RARITY_COLOURS["standard"], weight=QFont.Weight.Bold))
+    bhead = hbox(spacing=8)
+    bhead.addWidget(Label(tr("Basic"), 14, bold=True), 1)
+    bhead.addWidget(Label(tr("Free, always yours"), 11, TEXT_DIM, bold=True))
+    lay.addLayout(bhead)
+    lay.addWidget(Label(tr("The banner floats up into nothing and drops back down."), 10.5, TEXT_DIM, wrap_w=page.W))
+    if cursp is not None:
+        bb = Button(tr("Wear"), "primary", 32)
+        bb.clicked.connect(lambda: anim_set(ctx, ""))
+        lay.addWidget(bb)
+    else:
+        lay.addWidget(Label(tr("You're using this one."), 10.5, "#3DDC84", bold=True))
+    tier_shown = None
+    order = {"special": 0, "epic": 1, "exotic": 2}
+    for design, name in sorted(ANIMS, key=lambda x: order.get(ANIM_RARITY.get(x[0]), 0)):
+        fins = anim_fins(design)
         if shop:
-            avail = [f for f in ANIM_FIN_IDS if anim_id(design, f) in ec.catalog]
+            avail = [f for f in fins if anim_id(design, f) in ec.catalog and ec.info(anim_id(design, f)).get("price") is not None]
         else:
             avail = [f for f in ANIM_FIN_IDS if ec.owns(anim_id(design, f))]
         if not avail:
             continue
+        if ANIM_RARITY.get(design) != tier_shown:
+            tier_shown = ANIM_RARITY.get(design)
+            lay.addSpacing(S(12))
+            lay.addWidget(Label(tr(RARITY_NAMES.get(tier_shown, "")).upper(), 10,
+                                RARITY_COLOURS.get(tier_shown, TEXT_DIM), weight=QFont.Weight.Bold))
         shown += 1
         fin = state.get(design, avail[0])
         if fin not in avail:
@@ -33783,20 +34472,6 @@ class Game(QWidget):
         if bet <= 0 or bet > self.econ.coins:
             self.ctx.toast(tr("Not enough coins"), "warn")
             return False
-        if bet > BIG_BET and getattr(self.ctx, "big_bet_ok", 0) != bet and hasattr(self.ctx, "confirm"):
-            # 6.3: a big stake is asked once (again whenever the amount changes)
-            again = getattr(self, sys._getframe(1).f_code.co_name, None)
-            pct = bet * 100 / max(1, self.econ.coins)
-            text = tr("Bet {n} coins on this round? That is {p}% of your coins.", n=coins_text(bet), p=f"{pct:.0f}")
-            if pct >= 25:
-                text += "\n" + tr("Careful: you could lose a big part of your coins.")
-
-            def yes() -> None:
-                self.ctx.big_bet_ok = bet
-                if callable(again) and not self.busy and not self.waiting:
-                    again()
-            self.ctx.confirm(text, yes, tr("Bet it"), tr("Cancel"))
-            return False
         self.stake = bet
         self.busy = True
         self._srv_coins = None
@@ -37872,10 +38547,19 @@ class CasinoDoor(QWidget):
         e.accept()
 
     def mouseReleaseEvent(self, e) -> None:
-        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()) and not self._going:
-            self._going = True
-            sfx.play("off" if self.leave else "on")
-            self._open.to(1.0, 620)
+        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
+            self.open_now()
+
+    def open_now(self) -> None:
+        """9.5: the doors swing open (a click, or the Casino tile on Home, which comes here to play it)."""
+        try:
+            if self._going or not self.isVisible():
+                return
+        except RuntimeError:
+            return
+        self._going = True
+        sfx.play("off" if self.leave else "on")
+        self._open.to(1.0, 620)
 
     def _done(self) -> None:
         if self._going and self._open.level >= 0.999:
@@ -38161,6 +38845,9 @@ class QuestRow(QWidget):
         prize = q.get("prize") or {}                        # 5.13: keys and cases, not coins
         prize_text = (f"+{int(prize.get('keys') or 1)} " + tr("key" if int(prize.get("keys") or 1) == 1 else "keys")
                       + ("  +" + tr(CASE_NAMES.get(prize["case"], "Case")) if prize.get("case") else "")) if prize else coins_text(int(q["reward"]))
+        if str(q.get("quest", ""))[1:3] == "b_":            # 9.5: a bot challenge: the coins are the prize
+            prize_text = "+" + coins_text(int(q["reward"])) + ("  +" + tr(CASE_NAMES.get(prize["case"], "Case"))
+                                                               if prize.get("case") else "")
         reward_w = p.fontMetrics().horizontalAdvance(prize_text) + S(30)
         if done and not claimed:
             reward_w = max(reward_w, S(112))                 # the Claim button
@@ -38315,7 +39002,11 @@ class GamesPage(Page):
         games, each with its own icon)."""
         self._go_back_if_asked()
         lay.addWidget(titled(tr("Play"), "", 24))
-        lay.addWidget(CasinoDoor(lambda: self.open_sub("casino")))
+        door = CasinoDoor(lambda: self.open_sub("casino"))
+        lay.addWidget(door)
+        if getattr(self.ctx, "casino_door_auto", False):       # 9.5: from the Casino tile on Home: the doors open
+            self.ctx.casino_door_auto = False
+            QTimer.singleShot(420, door.open_now)
         if aerial_enabled(self.ctx):                                 # Rubenium League (admins can hide it)
             lay.addWidget(AerialBanner(ctx_ := self.ctx, lambda: open_games_part(ctx_, "aerial", back="games")))
         advent_card(self, lay)
@@ -38367,7 +39058,17 @@ class GamesPage(Page):
               "h_win": "Win {n} coins in the casino", "h_case": "Open a case", "d_rounds": "Play {n} casino rounds",
               "d_case": "Open {n} cases", "d_mini": "Play mini games {n} times", "d_spin": "Collect a free spin",
               "w_rounds": "Play {n} casino rounds", "w_cases": "Open {n} cases", "w_won": "Win {n} coins in the casino",
-              "w_mini": "Play mini games {n} times", "w_golf": "Win {n} Mini Golf matches", "w_scratch": "Scratch {n} cards"}
+              "w_mini": "Play mini games {n} times", "w_golf": "Win {n} Mini Golf matches", "w_scratch": "Scratch {n} cards",
+              # 9.5: the bot challenges (one an hour, a day and a week, taking turns between the games)
+              "hb_kart": "Bot challenge: beat a Karting bot of 500 Elo or more",
+              "hb_hoops": "Bot challenge: win at Hoops on Regional or harder",
+              "hb_arena": "Bot challenge: beat an Arena bot on Medium or harder",
+              "db_kart": "Bot challenge: beat a Karting bot of 1000 Elo or more",
+              "db_hoops": "Bot challenge: win at Hoops on National or harder",
+              "db_arena": "Bot challenge: beat {n} Arena bots on Hard or harder",
+              "wb_kart": "Bot challenge: beat a Karting bot of 1500 Elo or more",
+              "wb_hoops": "Bot challenge: win {n} Hoops games on Professional",
+              "wb_arena": "Bot challenge: beat {n} Arena bots on Professional"}
 
     def _show_mini(self, on: bool) -> None:
         if not on:
@@ -38643,7 +39344,8 @@ class GamesPage(Page):
             if ok:
                 sfx.play("on")
                 k = int(data.get("won_keys") or 0)
-                self.ctx.toast(tr("+{k} key(s)", k=k) + (("  ·  " + tr("{case} added to Your cases",
+                self.ctx.toast(("+" + coins_text(int(data.get("paid") or 0)) + "  ·  " if int(data.get("paid") or 0) >= 300 else "")
+                               + tr("+{k} key(s)", k=k) + (("  ·  " + tr("{case} added to Your cases",
                                case=tr(CASE_NAMES.get(data["case"], "Case")))) if data.get("case") else ""))
                 self.ctx.econ.refresh()
                 self.ctx.quests_data = None
@@ -40037,6 +40739,18 @@ class DayTile(QWidget):
         p.setFont(font(8.5, QFont.Weight.Bold))
         p.drawText(QRectF(r.left(), r.top() + S(3), r.width(), S(12)), int(Qt.AlignmentFlag.AlignCenter), tr("Day {n}", n=self.k + 1))
         rw = self.reward
+        if rw.get("case") and rw.get("coins"):              # 9.5: a case and coins every day
+            paint_case(p, QRectF(r.left() + S(7), r.top() + S(16), r.width() - S(14), S(22)), rw["case"])
+            n = int(rw["coins"])
+            p.setPen(QColor(GOLD_TEXT if today else TEXT))
+            p.setFont(font(8, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left(), r.bottom() - S(15), r.width(), S(12)), int(Qt.AlignmentFlag.AlignCenter),
+                       f"{n / 1000:.1f}k".replace(".0k", "k") if n >= 1000 else str(n))
+            if self.state == "done":
+                p.setPen(QPen(QColor("#3DDC84"), S(2)))
+                p.drawLine(QPointF(r.right() - S(12), r.top() + S(18)), QPointF(r.right() - S(8), r.top() + S(22)))
+                p.drawLine(QPointF(r.right() - S(8), r.top() + S(22)), QPointF(r.right() - S(2), r.top() + S(14)))
+            return
         if rw.get("case") and not rw.get("coins") and not rw.get("keys"):     # 9.4: just the case
             paint_case(p, QRectF(r.left() + S(5), r.top() + S(17), r.width() - S(10), S(30)), rw["case"])
             if self.state == "done":
@@ -40083,7 +40797,10 @@ class LoginWindow(FloatWindow):
         lay.addLayout(head)
         rewards = list(state.get("rewards") or [])
         every_case = bool(rewards) and all(rw.get("case") and not rw.get("coins") for rw in rewards)
-        lay.addWidget(Label(tr("A free case every day. Missing a day starts again from day 1.") if every_case else
+        both = bool(rewards) and all(rw.get("case") and rw.get("coins") for rw in rewards)
+        lay.addWidget(Label(tr("Coins and a free case every day, more coins every week you keep it up. Missing a day "
+                               "starts again from day 1.") if both else
+                            tr("A free case every day. Missing a day starts again from day 1.") if every_case else
                             tr("Day 7 gives a free case. Missing a day resets the streak."), 11, TEXT_DIM, wrap_w=S(294)))
         today = int(state.get("day") or 0)
         row = hbox(spacing=4)
@@ -40091,7 +40808,9 @@ class LoginWindow(FloatWindow):
             row.addWidget(DayTile(k, rw, "done" if k < today else ("today" if k == today else "later")))
         lay.addLayout(row)
         if streak:
-            lay.addWidget(Label(tr("Streak: {n} days in a row", n=streak), 11.5, GOLD_TEXT, bold=True))
+            bonus = int(state.get("bonus") or 0)
+            lay.addWidget(Label(tr("Streak: {n} days in a row", n=streak) + (
+                "  ·  " + tr("+{p}% coins", p=bonus) if bonus else ""), 11.5, GOLD_TEXT, bold=True))
         self.go = Button(tr("Claim"), "primary", 38)
         self.go.clicked.connect(self._claim)
         later = Button(tr("Later"), "ghost", 30)
@@ -40115,7 +40834,7 @@ class LoginWindow(FloatWindow):
             if rw.get("keys"):
                 parts.append(tr("+{n} key(s)", n=rw["keys"]))
             if rw.get("case"):
-                parts.append("+" + tr(CASE_NAMES.get(rw["case"], "Case")) if not rw.get("coins") else tr("+1 free case"))
+                parts.append("+" + tr(CASE_NAMES.get(rw["case"], "Case")))
             self.ctx.toast("  ".join(parts) + "  ·  " + tr("Day {n}", n=data.get("streak", 1)))
             self.ctx.econ.streak, self.ctx.econ.streak_day = int(data.get("streak") or 1), datetime.date.today().isoformat()
             self.ctx.econ.refresh()
@@ -40142,6 +40861,51 @@ def daily_nag(ctx) -> None:
         if ok and isinstance(state, dict) and not state.get("claimed"):
             ctx.notifier.push("ready", tr("DAILY REWARD"), tr("Your daily reward is waiting in online mode"), "daily")
     ctx.online.ask("rb_login_state", {}, got)
+
+
+def comeback_check(ctx) -> None:
+    """9.5: the comeback top-up: once a day, under your floor (it grows with your casino rank), the server tops you up
+    TO the floor (800 -> 1 000). Done quietly a moment after the balance drops, never in the middle of a round."""
+    if getattr(ctx, "_topup_wait", False):
+        return
+    ec = ctx.econ
+    if not ctx.online.logged_in() or not ec.ready or getattr(ec, "server_old", False):
+        return
+    today = datetime.date.today().isoformat()
+    st = getattr(ctx, "_topup", None)
+    if isinstance(st, dict) and st.get("day") == today and (st.get("used") or st.get("off") or
+                                                            int(ec.coins) >= int(st.get("floor") or 0)):
+        return
+    ctx._topup_wait = True
+
+    def later() -> None:
+        if ec.rounds_held():                       # a round is turning: look again when it ends
+            ctx._topup_wait = False
+            return
+        if isinstance(st, dict) and st.get("day") == today:
+            return take()
+
+        def got(ok: bool, d) -> None:
+            if not ok or not isinstance(d, dict):
+                ctx._topup = {"day": today, "off": True}             # an older server: nothing to do today
+                ctx._topup_wait = False
+                return
+            ctx._topup = {"day": today, "floor": int(d.get("floor") or 0), "used": bool(d.get("used"))}
+            if not d.get("used") and int(d.get("coins") or 0) < int(d.get("floor") or 0):
+                return take()
+            ctx._topup_wait = False
+        ctx.online.ask("rb_topup_state", {}, got)
+
+    def take() -> None:
+        def done(ok: bool, d) -> None:
+            ctx._topup_wait = False
+            ctx._topup = dict(ctx._topup or {}, used=True)
+            if ok and isinstance(d, dict):
+                sfx.play("coin")
+                ctx.toast(tr("Comeback top-up: you're back to {n} (once a day)", n=coins_text(int(d.get("floor") or 0))))
+                ec.refresh()
+        ctx.online.ask("rb_topup", {}, done)
+    QTimer.singleShot(2500, later)
 
 
 def check_login_reward(ctx, force: bool = False) -> None:
@@ -41510,6 +42274,20 @@ class Ticker(QTimer):
         self.timeout.connect(widget.update)
 
 
+def friend_game_name(game: str) -> str:
+    """9.5: a server game id as players know it (friends' activity)."""
+    if game.startswith("case:") or game == "daily":
+        return tr("Cases")
+    names = {"kart": "Karting", "hoops": "Hoops", "slots": "Slots", "plinko": "Plinko", "dice": "Dice", "mines": "Bombs",
+             "rocket": "Rocket", "blackjack": "Blackjack", "roulette": "Roulette", "hilo": "Hi-Lo", "tower": "Tower",
+             "c4": "Connect 4", "maze": "Mazelock", "tri": "Trifade", "reversi": "Reversi", "ships": "Battleships",
+             "horses": "Horse Racing", "golf_solo": "Mini Golf", "golf_party": "Mini Golf", "wave": "Wave Rush",
+             "scratch": "Scratch card", "spin": "Free spin", "gold_wheel": "Golden Wheel", "timing": "Timing",
+             "cups": "Cups", "colour": "Colour Pick", "sfx": "SFX Match", "memory": "Memory", "park": "Parking",
+             "sweeper": "Minesweeper", "blocks": "Blocks", "mini": "Beat Tap", "flip": "Coinflip", "jackpot": "Jackpot"}
+    return tr(names.get(game, game.replace("_", " ").capitalize()))
+
+
 class PlayerRow(QWidget):
     """One player: picture, name (and ADMIN), hours, their three badges, and a button."""
     opened = pyqtSignal(str)
@@ -41590,10 +42368,16 @@ class PlayerRow(QWidget):
             else:
                 seen = ago_text(info.get("seen")) if info.get("seen") else ""
                 sub += "  ·  " + (tr("seen {t}", t=seen) if seen else tr("Offline"))
+            doing = info.get("doing") if isinstance(info.get("doing"), dict) else None
             n = len([b for b in (info.get("badges") or []) if b])
-            if n:
+            if doing and doing.get("game"):               # 9.5: what they last played (friends only, last 24 h)
+                g = friend_game_name(str(doing["game"]))
+                recent = time.time() - float(doing.get("at") or 0) < 600
+                sub += "  ·  " + (tr("playing {g}", g=g) if recent and info.get("online") else tr("last played {g}", g=g))
+            elif n:
                 sub += "  ·  " + tr("{n} on show", n=n)
-        p.drawText(QRectF(x, r.top() + S(22), S(200), S(16)), int(Qt.AlignmentFlag.AlignVCenter), sub)
+        p.drawText(QRectF(x, r.top() + S(22), max(S(200), r.width() - S(150)), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                   p.fontMetrics().elidedText(sub, Qt.TextElideMode.ElideRight, int(max(S(200), r.width() - S(150)))))
         if state == "friend":                         # 4.3: a blue dot on the right: this one is a friend
             c = self._dot()
             p.setPen(Qt.PenStyle.NoPen)
@@ -43034,7 +43818,7 @@ def item_picker(page, lay, state: dict, multi: int = 1) -> None:
         ids = sorted((k for k, v in cat.items() if v.get("kind") == kind and v.get("tradeable", True)),
                      key=lambda k: (-int(cat[k].get("value") or 0), k))
         grid = ItemGrid(ctx, [{"item": k, "text": coins_text(int(cat[k].get("worth") or cat[k].get("value") or 0)),
-                               "mark": k in chosen} for k in ids], page.W, 6, 64,
+                               "mark": "offered" if k in chosen else ""} for k in ids], page.W, 6, 64,
                         ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1, moving=False)
         grid.picked.connect(lambda i: pick(ids[i]))
         return lay.addWidget(grid)
@@ -43055,7 +43839,7 @@ def item_picker(page, lay, state: dict, multi: int = 1) -> None:
                      key=lambda k: -int(cat[k].get("worth") or cat[k].get("value") or 0))
         lay.addWidget(Label(en_name(ids[0]).split(" · ")[0] if ids else base, 11, TEXT_DIM, bold=True))
         g2 = ItemGrid(ctx, [{"item": k, "text": coins_text(int(cat[k].get("worth") or cat[k].get("value") or 0)),
-                             "mark": k in chosen} for k in ids], page.W, 6, 64,
+                             "mark": "offered" if k in chosen else ""} for k in ids], page.W, 6, 64,
                       ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1, moving=False)
         g2.picked.connect(lambda i: pick(ids[i]))
         lay.addWidget(g2)
@@ -43526,10 +44310,17 @@ class AdminPage(Page):
                 lay.addWidget(cg)
                 pass
                 thing = CASE_NAMES.get(st.get("case") or "", "") if st.get("case") else ""
-            else:
-                item_picker(self, lay, st)
-                thing = en_name(st["item"]) if st.get("item") else ""
-            n = self._slide(lay, st, "count", "How many", 1, 100, 1)
+            else:                                         # 9.5: several items at once
+                item_picker(self, lay, st, multi=30)
+                picked = list(st.get("items") or [])
+                thing = (en_name(picked[0]) if len(picked) == 1 else f"{len(picked)} items") if picked else ""
+                if picked:
+                    clear = Button(f"Clear the {len(picked)} picked", "ghost", 28)
+                    clear.clicked.connect(lambda: (st.__setitem__("items", []), self.ctx.reload_page("admin")))
+                    lay.addWidget(Label(", ".join(en_name(x) for x in picked[:8]) + ("…" if len(picked) > 8 else ""),
+                                        10, TEXT_DIM, wrap_w=self.W))
+                    lay.addWidget(clear)
+            n = self._slide(lay, st, "count", "How many of each" if kind != "case" else "How many", 1, 100, 1)
             what = f"{n} × {thing}" if thing else ""
         to = list(st.get("to") or [])
         ready = bool(to and what)
@@ -43596,10 +44387,12 @@ class AdminPage(Page):
                     jobs.append(("rb_admin_xp", {"name": name, "delta": n, "reason": "admin"}, name))
             text = "Done"
         else:
-            what = ("case:" + st["case"]) if kind == "case" else st.get("item")
+            whats = ["case:" + st["case"]] if kind == "case" else (list(st.get("items") or []) or [st.get("item")])
             count = st.get("count") or 1
             for name in to:
-                jobs.append(("rb_admin_give", {"name": name, "what": what, "how_many": count}, name))
+                for what in whats:
+                    if what:
+                        jobs.append(("rb_admin_give", {"name": name, "what": what, "how_many": count}, name))
             text = "Given"
         self.do_many(jobs, text)
 
@@ -50961,6 +51754,8 @@ def open_games_part(ctx, sub: str = None, flag: str = "", back: str = "") -> Non
         setattr(ctx, f, False)
     if flag:
         setattr(ctx, flag, True)
+        if flag == "casino_door_auto":            # 9.5: only for the page this opens, never a later visit
+            QTimer.singleShot(3000, lambda: setattr(ctx, "casino_door_auto", False))
     ctx.games_sub = sub
     ctx.back_to = back or None
     if ctx.casino:
@@ -51293,6 +52088,7 @@ FR.update({'All time': 'Depuis le début', 'Change, all time': 'Évolution, depu
 FR.update({'See what every tier gets': 'Voir ce que chaque rang apporte', 'No limit': 'Sans limite', 'Free rewards': 'Récompenses gratuites', 'Mini game coins a day (each game)': 'Pièces des mini-jeux par jour (chaque jeu)', 'Karting prizes a day': 'Gains de Karting par jour', 'AFK coins a day': 'Pièces AFK par jour', 'Keys kept from time': 'Clés gardées avec le temps', 'Key Forge a day': 'Forge à clés par jour', 'Keys found in games a day': 'Clés trouvées en jouant par jour', 'Biggest duel bet': 'Plus grosse mise en duel', 'UP': 'PLUS', 'RANK UP': 'NOUVEAU RANG', 'WHAT YOU UNLOCKED': 'CE QUE TU DÉBLOQUES', 'Wealth tiers': 'Rangs de richesse', 'Every tier pays more and lifts your daily limits. A tier you reach is yours for good. Click a tier to see what it gets.': 'Chaque rang paie plus et relève tes limites par jour. Un rang atteint est à toi pour de bon. Clique sur un rang pour voir ce qu’il apporte.', "Let's go": 'C’est parti', 'Casino Legend is the top tier: no daily limits on mini games, Karting or AFK coins.': 'Légende du casino est le rang le plus haut : aucune limite par jour sur les mini-jeux, le Karting ou les pièces AFK.', 'Next: {name} at {n} wealth.': 'Prochain : {name} à {n} de richesse.', 'Rank up! You are now {name}': 'Nouveau rang ! Tu es maintenant {name}', 'Prizes today: {a} (no daily limit)': 'Gains du jour : {a} (sans limite par jour)', 'Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all': 'Des limites de gains plus hautes qui suivent ton rang de richesse : les mini-jeux, le Karting et les pièces AFK paient jusqu’à deux fois plus par jour pour Pauvre, jusqu’à 6 fois pour Businessman, et Légende du casino n’a plus aucune limite par jour', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms': 'Les rangs plus hauts gardent aussi plus de clés avec le temps, forgent plus de clés par jour, trouvent plus de clés en jouant et peuvent miser plus en duel et dans les salons', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets': 'Un écran de nouveau rang quand tu atteins un rang, avec tout ce qu’il débloque. Clique sur la barre de rang dans Accueil quand tu veux pour voir ce que chaque rang apporte'})   # 9.2.1: prize limits by tier, the rank-up screen
 FR.update({'A fresh start for everyone: coins, items, badges, mythics, cases, levels, trophies, stats and every leaderboard start again, and everyone gets the starter pack': 'Un nouveau départ pour tout le monde : pièces, objets, badges, mythiques, caisses, niveaux, trophées, stats et tous les classements repartent de zéro, et chacun reçoit le pack de départ', 'Tiers are harder: Average 50 000, Investor 250 000, Businessman 1 000 000, Casino Legend 5 000 000, and you go up one tier a day at most': 'Les rangs sont plus durs : Moyen 50 000, Investisseur 250 000, Businessman 1 000 000, Légende du casino 5 000 000, et tu montes d’un rang par jour au maximum', 'Key Forge: it refills every 12 hours, at midnight and noon, and the first press shows the price before you pay': 'Forge à clés : elle se recharge toutes les 12 heures, à minuit et à midi, et le premier clic montre le prix avant de payer', 'Hourly keys: 3 free keys every hour on Rewards': 'Clés horaires : 3 clés gratuites chaque heure dans Récompenses', 'Daily reward: a free case every day': 'Récompense du jour : une caisse gratuite chaque jour', 'Free spin: bigger prizes, up to 7 500 coins times your tier': 'Tour gratuit : de plus gros gains, jusqu’à 7 500 pièces fois ton rang', 'A free case every day. Missing a day starts again from day 1.': 'Une caisse gratuite chaque jour. Si tu rates un jour, tu repars du jour 1.', 'Your wealth = your coins + the shop value of your items. Average at 50 000, Investor at 250 000, Businessman at 1 000 000, Casino Legend at 5 000 000. You go up one tier a day at most. Free rewards are multiplied by your tier, and a tier you reach is yours for good.': 'Ta richesse = tes pièces + la valeur en boutique de tes objets. Moyen à 50 000, Investisseur à 250 000, Businessman à 1 000 000, Légende du casino à 5 000 000. Tu montes d’un rang par jour au maximum. Les récompenses gratuites sont multipliées par ton rang, et un rang atteint est à toi pour de bon.', '{name} tomorrow': '{name} demain', 'A free case every day': 'Une caisse gratuite chaque jour', 'Pay coins for a key. The price is 0.5% of your wealth (at least 250 coins). The forge refills at midnight and at noon, and higher tiers can forge more keys.': 'Paie des pièces pour une clé. Le prix est 0,5 % de ta richesse (au moins 250 pièces). La forge se recharge à minuit et à midi, et les rangs plus hauts forgent plus de clés.', 'refills in {t}': 'recharge dans {t}', '{n} of {cap} left': '{n} sur {cap} restantes', 'Refills in {t}': 'Recharge dans {t}', 'Pay {c}': 'Payer {c}', 'Hourly keys': 'Clés horaires', 'Next in {t}': 'Prochaines dans {t}', '{n} free keys every hour': '{n} clés gratuites chaque heure', 'Claim {n} keys': 'Prendre {n} clés'})   # 9.4: harder tiers, the 12 hour forge, hourly keys, daily cases
 FR.update({'Karting: tighter driving, the race plays inside the menu, half as loud engines, full grip kerbs, faster bots and a 10 second countdown': 'Karting : une conduite plus précise, la course se joue dans le menu, des moteurs deux fois moins forts, des vibreurs qui accrochent, des bots plus rapides et un compte à rebours de 10 secondes', 'Karting: the 10 fastest 3 lap times of each circuit, and you can race any of them as a ghost': 'Karting : les 10 meilleurs temps en 3 tours de chaque circuit, et tu peux affronter chacun en fantôme', 'Bots: Easy and Medium make real mistakes, Professional is much harder': 'Bots : Facile et Moyen font de vraies erreurs, Professionnel est bien plus dur', 'Leaderboards: a podium for the top 3 and cleaner rows': 'Classements : un podium pour le top 3 et des lignes plus claires', 'Wave Rush is a solo mini game in Mini games': 'Wave Rush devient un mini-jeu solo dans Mini-jeux', 'Fastest times': 'Meilleurs temps', 'The 10 fastest 3 lap races of each circuit. Press Race to drive against that run as a ghost.': 'Les 10 courses en 3 tours les plus rapides de chaque circuit. Appuie sur Course pour affronter cette course en fantôme.', 'No times yet. Finish a 3 lap race to be the first.': 'Pas encore de temps. Termine une course en 3 tours pour être le premier.', 'This run could not be loaded.': 'Impossible de charger cette course.', 'Your best: {t} (#{n})': 'Ton meilleur : {t} (n°{n})', 'Ghost: {name}': 'Fantôme : {name}', 'Top 10 time on {c}: #{n}': 'Top 10 sur {c} : n°{n}'})   # 9.4: karting time boards and ghosts
+FR.update({'Select everything you can sell on this tab': 'Sélectionner tout ce que tu peux vendre dans cet onglet', 'Sell all selected': 'Vendre la sélection', 'Sell {n} items for about {v} coins? The pawn shop makes the final offer.': 'Vendre {n} objets pour environ {v} pièces ? Le prêteur sur gages fait l’offre finale.', 'Select several': 'En sélectionner plusieurs', 'BASIC': 'BASIQUE', 'Free, always yours': 'Gratuite, toujours à toi', 'The banner floats up into nothing and drops back down.': 'La bannière s’envole dans le vide puis retombe.', 'Your race points: {n}': 'Tes points de course : {n}', 'Let go in the green': 'Lâche dans le vert', 'How to play Hoops': 'Comment jouer à Hoops', "1 Pass!  ·  2 Shoot!  ·  3 Help!  ·  4 What a save!  ·  Tab scoreboard  ·  Esc pause.  Don't stand still with the ball: the defenders rush you.": '1 Passe !  ·  2 Tire !  ·  3 À l’aide !  ·  4 Quel arrêt !  ·  Tab tableau des scores  ·  Échap pause.  Ne reste pas immobile avec le ballon : les défenseurs te foncent dessus.', 'How to play Karting': 'Comment jouer au Karting', 'Tab scoreboard  ·  Esc leave.  Big crashes wreck your kart. Not touching anything for 45 s gets you disqualified.': 'Tab tableau des scores  ·  Échap quitter.  Les gros chocs détruisent ton kart. Sans rien toucher pendant 45 s, tu es disqualifié.', "Got it, let's play": 'Compris, on joue', "Are you there? Move or you're disqualified in {n}": 'Tu es là ? Bouge ou tu es disqualifié dans {n}', 'Let go of Tab to play': 'Lâche Tab pour jouer', 'Disqualified': 'Disqualifié', '{n} items': '{n} objets', "You're using this one.": 'Tu utilises celle-ci.', 'DISQUALIFIED': 'DISQUALIFIÉ', 'No input for 45 seconds': 'Aucune action pendant 45 secondes', 'Watching {name}  ·  ← →: next kart': 'Tu regardes {name}  ·  ← → : kart suivant', 'DISQUALIFIED  ·  spectating': 'DISQUALIFIÉ  ·  spectateur', 'Pos': 'Pos', 'Last lap': 'Dernier tour', 'Hits': 'Chocs', 'DQ': 'DQ', 'No player times yet. Finish a 3 lap race to be the first.': 'Pas encore de temps de joueur. Termine une course en 3 tours pour être le premier.', 'Race this bot on this circuit': 'Affronter ce bot sur ce circuit', 'HE BIT!': 'IL A MORDU !', 'MINI TURBO!': 'MINI TURBO !', 'Game effects': 'Effets du jeu', 'Crowd / engines': 'Public / moteurs', 'Crowd and engines': 'Public et moteurs', 'Move! Pressure in {s}': 'Bouge ! Pression dans {s}', 'SCORE': 'SCORE', 'Disqualified for being away: no prize.': 'Disqualifié pour absence : pas de gain.', '{n} selected · about {v} coins': '{n} sélectionnés · environ {v} pièces', 'Click items to select them': 'Clique sur les objets pour les sélectionner', 'Go to the pawn shop': 'Aller chez le prêteur sur gages', "This one can't be sold": 'Celui-ci ne peut pas être vendu', 'Coins and a free case every day, more coins every week you keep it up. Missing a day starts again from day 1.': 'Des pièces et une caisse gratuite chaque jour, et plus de pièces chaque semaine où tu continues. Si tu rates un jour, tu repars du jour 1.', "Comeback top-up: you're back to {n} (once a day)": 'Coup de pouce : tu remontes à {n} (une fois par jour)', 'OVERTAKE': 'DÉPASSEMENT', 'Are you there? Disqualified in {n}': 'Tu es là ? Disqualifié dans {n}', 'Let go': 'Lâche', 'Run anywhere. The ring under your feet is you.': 'Cours où tu veux. L’anneau sous tes pieds, c’est toi.', 'Dribble': 'Dribbler', 'Hold Space while moving. Without it you can only pivot.': 'Maintiens Espace en bougeant. Sans ça, tu peux seulement pivoter.', 'Pass': 'Passer', 'Hold left click to charge, let go to pass. Right click: quick pass.': 'Maintiens le clic gauche pour charger, lâche pour passer. Clic droit : passe rapide.', 'Shoot': 'Tirer', 'Hold Shift to aim, hold left click, let go in the green.': 'Maintiens Maj pour viser, maintiens le clic gauche, lâche dans le vert.', 'Defend and steal': 'Défendre et intercepter', 'Shift to guard. Left click swipes when the ball is low.': 'Maj pour défendre. Le clic gauche tente d’intercepter quand le ballon est bas.', 'Fakes and moves': 'Feintes et gestes', 'Shift + right click: pump fake. Back + Space: spin move.': 'Maj + clic droit : feinte de tir. Arrière + Espace : spin move.', 'Throttle and steer. Stay on the tarmac: grass slows you down.': 'Accélère et tourne. Reste sur le bitume : l’herbe te ralentit.', 'Brake': 'Freiner', 'Brake before the corner, not in it. Hold it to reverse.': 'Freine avant le virage, pas dedans. Maintiens pour reculer.', 'Drift for a mini turbo': 'Drifte pour un mini turbo', 'Tap Space in a corner and keep steering. Let go for the turbo.': 'Appuie sur Espace dans un virage et continue de tourner. Lâche pour le turbo.', 'Hold Shift on the straights. It refills on its own.': 'Maintiens Maj dans les lignes droites. Il se recharge tout seul.', 'Slipstream': 'Aspiration', 'Stay right behind a kart: more top speed, then pass it.': 'Reste juste derrière un kart : plus de vitesse de pointe, puis double-le.', 'Stuck?': 'Coincé ?', 'Hold R for 2 seconds to get back on the track.': 'Maintiens R pendant 2 secondes pour revenir sur la piste.', 'Your team-mate': 'Ton coéquipier', 'Interface': 'Interface', 'Pass!': 'Passe !', 'Shoot!': 'Tire !', 'Help!': 'À l’aide !', 'What a save!': 'Quel arrêt !', 'points': 'points', 'Karting and Hoops': 'Karting et Hoops', 'All the way left turns it off. You can change these during a race or a match too.': 'Tout à gauche le coupe. Tu peux aussi les changer pendant une course ou un match.', 'Team-mate': 'Coéquipier', '+{p}% coins': '+{p} % de pièces', 'playing {g}': 'joue à {g}', 'last played {g}': 'a joué à {g}', 'SUPER MINI TURBO': 'SUPER MINI TURBO', 'MINI TURBO': 'MINI TURBO', 'PERFECT START': 'DÉPART PARFAIT', 'LAP': 'TOUR', 'CLEAN LAP': 'TOUR PROPRE', 'FINISHED': 'ARRIVÉE', 'FASTEST LAP': 'MEILLEUR TOUR', 'PRESSURE! Move the ball': 'PRESSION ! Fais bouger le ballon', 'ANKLES BROKEN!': 'CHEVILLES BRISÉES !', 'ON FIRE!': 'EN FEU !', '3 in a row: easier shots for 25 seconds': '3 d’affilée : tirs plus faciles pendant 25 secondes', 'The fire is out': 'Le feu est éteint', 'Hoops plays inside Rubenium now, smoother, and your bot team-mate gets open for passes and plays defence': 'Hoops se joue maintenant dans Rubenium, plus fluide, et ton coéquipier bot se démarque pour les passes et défend', 'Hoops: hold the ball too long and the bots rush you (6 seconds on Club down to 3 on Professional, a red edge warns you), bots fake, 3 baskets in a row puts you On Fire, and ankle breakers': 'Hoops : garde le ballon trop longtemps et les bots te foncent dessus (6 secondes en Club jusqu’à 3 en Professionnel, un bord rouge te prévient), les bots feintent, 3 paniers d’affilée te mettent En feu, et des crossovers qui brisent les chevilles', 'Hoops and Karting: a points feed at the top (passes, shots, saves, overtakes and more), Tab shows the scoreboard, and a short How to play the first time': 'Hoops et Karting : un fil de points en haut (passes, tirs, arrêts, dépassements et plus), Tab affiche le tableau des scores, et un court Comment jouer la première fois', 'Hoops: an MVP card, a YOU marker, clearer passes, and replays of big plays and swishes': 'Hoops : une carte MVP, un repère TOI, des passes plus claires, et des ralentis des grosses actions et des paniers parfaits', "Tab scoreboard  ·  Esc pause.  Don't stand still with the ball: the defenders rush you.": 'Tab tableau des scores  ·  Échap pause.  Ne reste pas immobile avec le ballon : les défenseurs te foncent dessus.', 'Away for 45 seconds in Hoops or Karting: you are disqualified and get no prize': 'Absent 45 secondes en Hoops ou en Karting : tu es disqualifié et sans gain', 'Karting: the bots are rebuilt. The old Professional is now Expert (1500), and Elite and Professional are faster than any player. Every bot shows on the time boards with its best time': 'Karting : les bots sont refaits. L’ancien Professionnel est maintenant Expert (1500), et Élite et Professionnel sont plus rapides que n’importe quel joueur. Chaque bot apparaît dans les meilleurs temps avec son meilleur chrono', 'Karting: a live split against your best lap': 'Karting : un écart en direct avec ton meilleur tour', 'Volume sliders for the interface, game effects and crowd and engines, in Settings and in game. Game sounds are quieter': 'Des curseurs de volume pour l’interface, les effets du jeu et le public et les moteurs, dans Paramètres et en jeu. Les sons des jeux sont plus doux', 'Animations: a free Basic one, 6 new ones (Black Hole, Warp, Glitch, Origami, Pixel Dust, Ripple), Shattered Shard rebuilt as a Mythic, finishes colour the whole effect, and Titanium is for Mythics only': 'Animations : une Basique gratuite, 6 nouvelles (Trou noir, Distorsion, Glitch, Origami, Poussière de pixels, Ondulation), Éclat brisé refait en Mythique, les finitions colorent tout l’effet, et le Titane est réservé aux Mythiques', 'Inventory: select several items and sell them together, and the pawn shop shows each one': 'Inventaire : sélectionne plusieurs objets et vends-les ensemble, et le prêteur sur gages montre chacun d’eux', 'Daily reward: coins and a case every day, with more coins for every week of your streak': 'Récompense du jour : des pièces et une caisse chaque jour, avec plus de pièces pour chaque semaine de ta série', 'Comeback top-up: once a day, if you drop under your floor you are topped up to it (1 000 for Poor, up to 30 000 for Casino Legend)': 'Coup de pouce : une fois par jour, si tu passes sous ton plancher, tu y remontes (1 000 pour Pauvre, jusqu’à 30 000 pour Légende du casino)', 'Quests: a bot challenge every hour, day and week, and a case with every weekly quest': 'Quêtes : un défi contre les bots chaque heure, chaque jour et chaque semaine, et une caisse avec chaque quête de la semaine', 'Bets: up to 20% of your coins (from 1 000 to 250 000). Horse Racing bets over 10 000 work again': 'Mises : jusqu’à 20 % de tes pièces (de 1 000 à 250 000). Les mises de plus de 10 000 aux Courses de chevaux marchent à nouveau', 'Friends: see what your friends last played': 'Amis : vois à quoi tes amis ont joué en dernier', 'Professional bots have no human limits: in Hoops they react instantly, release every shot on the perfect mark and never bite on a fake; in Karting they launch the instant the lights go out and pass cleanly through traffic': 'Les bots Professionnels n’ont plus aucune limite humaine : en Hoops ils réagissent instantanément, lâchent chaque tir pile au bon moment et ne mordent jamais à une feinte ; en Karting ils partent dès que les feux s’éteignent et dépassent proprement dans le trafic'})   # 9.5
 
 
 # ================================================================ 9.2.1: what each tier gets, and the rank-up screen
@@ -51746,7 +52542,7 @@ class HubPage(Page):
                                                   "Bots play when nobody else does.")))
         lay.addWidget(LiveSlot(self))
         lay.addWidget(tile_grid([
-            Tile(tr("Casino"), tr("Enter"), "dice", ("#F5C04A", "#5A1A0A"), lambda: open_games_part(ctx, "casino"), height=96),
+            Tile(tr("Casino"), tr("Enter"), "dice", ("#F5C04A", "#5A1A0A"), lambda: open_games_part(ctx, None, flag="casino_door_auto"), height=96),
             Tile(tr("Mini games"), tr("Free"), "spark", ("#35E0A1", "#0B4A5A"), lambda: ctx.window.nav("games"), height=96),
             Tile(tr("Duels"), tr("1 v 1"), "shield", ("#5AA8FF", "#0A2A5A"), lambda: open_arena(ctx, "c4", "duel"), height=96),
             Tile(tr("Leaderboards"), tr("Global"), "trophy", ("#FF6FA8", "#5A1A7A"), lambda: ctx.window.nav("leaders"),
@@ -54980,16 +55776,16 @@ HELP = {
         "With the ball: the circle on the floor (only you see it) is how far you can walk without dribbling. Hold Space "
         "with a direction to dribble: the circle follows the ball. Space + back spins you round fast, and a spin can't "
         "be stolen.",
-        "Passing: right click is a quick pass to your team-mate (the badge over their head). Hold left click to charge a "
-        "pass and aim it with the mouse; while charging, up throws a lob, down a bounce pass, left or right curves it. "
-        "The line is white when it's safe, orange when risky, red when a defender will cut it off. Right click while "
-        "charging is a pass fake.",
-        "Shooting: hold Shift to aim. The line shows your chance from there (lower further out and with a defender in "
-        "your face). Hold left click to rise and let go when the marker is in the green: green goes in almost every "
-        "time, yellow sometimes, red rarely. The green gets smaller with distance. Right click while aiming is a pump fake.",
-        "Defence: hold Shift to slide in a stance. Left click swipes at the ball: it only works on a dribble that's on "
-        "your side and low; into the body it's a reach-in and you're off balance. Space jumps to contest, block or get "
-        "a lob. Right click switches to your other player. Running into the dribbler never takes the ball."], [
+        "One button, one job. WITH THE BALL: left click shoots, right click passes, F fakes, Space dribbles.",
+        "Shooting: hold left click to rise and let go when the marker is in the green: green goes in almost every time, "
+        "yellow sometimes, red rarely. The green gets smaller with distance and with a defender in your face. You can "
+        "only shoot once you are past the half-way line.",
+        "Passing: hold right click to charge a pass to your team-mate (the badge over their head) and let go. While "
+        "charging, up throws a lob, down a bounce pass, left or right curves it. The line is white when it's safe, "
+        "orange when risky, red when a defender will cut it off.",
+        "Faking: press F. You pretend to shoot, the defender jumps, and you drive past while they are in the air.",
+        "WITHOUT THE BALL: left click steals (it works on a low dribble on your side), right click switches to your other "
+        "player, Space jumps to block, Shift slides in a defensive stance."], [
         "Passing beats pressing: a bot team-mate who is open will usually score. Lobs go over defenders, bounce passes "
         "under jumping ones.",
         "Pump fake a defender who flies at you, then drive past while they are in the air.",
@@ -54998,7 +55794,7 @@ HELP = {
         "The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. "
         "Levels differ in how quickly they react, how well they time things and how good their decisions are. "
         "Professional is very strong.",
-        "A win pays by the bots' level (3 minutes: Club 120, Regional 220, National 380, Professional 650), a loss a "
+        "A win pays by the bots' level (3 minutes: Club 150, Regional 350, National 900, Professional 2 500), a loss a "
         "little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows "
         "with your tier; Casino Legend has none.",
         "Leaving a match counts as a loss and pays nothing."]),
@@ -55020,7 +55816,7 @@ HELP = {
         "Right behind another kart you are in its slipstream: more top speed and faster boost refill.",
         "Alone, pick 'No bot' to see the ideal line for your level: green full throttle, yellow lift, red brake, blue drift."], [
         "After every race each driver gets a score out of 100%: your average lap against the circuit's calibrated times. "
-        "Professional bots score 99-100%, Elite about 80%, Expert 60-70%, Racer 50-60%, Amateur 35-50%, Rookie 20-35%.",
+        "Expert bots drive the perfect line (99%). Elite and Professional are faster than any player can be: they have a stronger engine and more grip. Racer scores about 80%, Amateur 65-70%, Rookie 55-60%.",
         "The server checks every time against the clock and the fastest possible lap.",
         "The prize grows with your place, your score, each player and the bot you beat (more for a stronger bot), a win and a "
         "race without being wrecked, up to a daily limit. No bets."]),
@@ -61689,6 +62485,12 @@ class PawnShop(QWidget):
         super().__init__(win)
         self.ctx, self.win = ctx, win
         self.ids, self.item, self.what = list(ids), item, what
+        # 9.5: several different items: one shows on the pad at a time, arrows by the pad go through them
+        by_id = {i["id"]: i["item"] for i in ctx.econ.items}
+        self.shown_items = list(dict.fromkeys(by_id[x] for x in self.ids if x in by_id)) or ([item] if item else [])
+        self.shown_n = {k: sum(1 for x in self.ids if by_id.get(x) == k) for k in self.shown_items}
+        self.view_i = 0
+        self._arrows = (QRectF(), QRectF())
         self.base, self.anger, self.ban_left, self.max_ratio = 0, 0.0, 0, 1.5
         self.shown_anger = 0.0                      # the bar moves to the new level smoothly
         self.ask_mode = False
@@ -62129,6 +62931,12 @@ class PawnShop(QWidget):
 
     def mousePressEvent(self, e) -> None:
         e.accept()                                     # nothing under the shop can be clicked
+        if len(self.shown_items) > 1 and not self.sold_at:          # 9.5: the arrows by the pad
+            for step, r in zip((-1, 1), self._arrows):
+                if r.contains(e.position()):
+                    self.view_i = (self.view_i + step) % len(self.shown_items)
+                    sfx.play("pick")
+                    self.update()
 
     def _crack(self) -> None:
         """The bar cracks, then the whole shop breaks into pieces that fall away."""
@@ -62445,6 +63253,8 @@ class PawnShop(QWidget):
         p.drawRoundedRect(pad, S(8), S(8))
         if self.item:
             pass
+            many = len(self.shown_items) > 1 and self.trade is None
+            on_pad = self.shown_items[self.view_i % len(self.shown_items)] if many else self.item
             k = pawn_ease_in((now - self.sold_at) / 0.8) if self.sold_at else 0.0
             box = QRectF(pad.center().x() - S(36), pad.top() - S(62), S(72), S(72))
             box.translate(pn.width() * 0.5 * k, -S(10) * math.sin(k * math.pi))
@@ -62453,7 +63263,28 @@ class PawnShop(QWidget):
             glow.setColorAt(0, alpha(PAWN_GOLD, 0.25))
             glow.setColorAt(1, alpha(PAWN_GOLD, 0.0))
             p.fillRect(box.adjusted(-S(30), -S(30), S(30), S(30)), glow)
-            show_item(p, self.item, box, now)
+            show_item(p, on_pad, box, now)
+            if many and k < 0.01:                     # 9.5: ‹ 2/5 › to look through everything on the counter
+                left = QRectF(pad.left() - S(30), box.center().y() - S(13), S(26), S(26))
+                right = QRectF(pad.right() + S(4), box.center().y() - S(13), S(26), S(26))
+                self._arrows = (left, right)
+                for r_, sign in ((left, -1), (right, 1)):
+                    p.setPen(QPen(alpha(PAWN_GOLD, 0.7), S(1.2)))
+                    p.setBrush(QColor(20, 12, 8, 200))
+                    p.drawEllipse(r_)
+                    c_ = r_.center()
+                    pen = QPen(QColor(PAWN_GOLD), S(2))
+                    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                    p.setPen(pen)
+                    p.drawPolyline([QPointF(c_.x() - sign * S(2.5), c_.y() - S(5)), QPointF(c_.x() + sign * S(3), c_.y()),
+                                    QPointF(c_.x() - sign * S(2.5), c_.y() + S(5))])
+                n_ = self.shown_n.get(on_pad, 1)
+                p.setPen(QColor("#E9D9B5"))
+                p.setFont(font(9.5, QFont.Weight.Bold))
+                p.drawText(QRectF(pad.left() - S(40), pad.bottom() + S(2), pad.width() + S(80), S(16)),
+                           int(Qt.AlignmentFlag.AlignCenter),
+                           f"{self.view_i % len(self.shown_items) + 1} / {len(self.shown_items)}"
+                           + (f"  ·  ×{n_}" if n_ > 1 else ""))
             p.setOpacity(1.0)
             if self.trade:                                   # 5.12: his item on a plate, on his side of the counter
                 plate = QRectF(pn.center().x() + pn.width() * 0.34 - S(56), cy - S(16), S(112), S(20))     # his side
@@ -67682,6 +68513,7 @@ class App(QObject):
         self.econ.changed.connect(self.sync_look)
         self.econ.changed.connect(self._flair_changed)
         self.econ.changed.connect(self._shop_items_check)
+        self.econ.changed.connect(lambda: comeback_check(self))      # 9.5: the comeback top-up
         self._screen_colour = None
         self._screen_timer = QTimer(self)
         self._screen_timer.timeout.connect(self._watch_screen)
@@ -67713,6 +68545,8 @@ class App(QObject):
         set_lang(self.cfg["lang"] or ("fr" if QLocale.system().language() == QLocale.Language.French else "en"))
         apply_look(self.cfg)
         sfx.enabled = bool(self.cfg["sounds"])
+        sfx.set_volume(self.cfg["vol_ui"])                  # 9.5: the volume sliders
+        KartAudio.levels(self.cfg)
         self.welcome = None
         self._preview = ""
         self._apps = None
@@ -69295,6 +70129,8 @@ class App(QObject):
         set_lang(self.cfg["lang"] or "en")
         apply_look(self.cfg)
         sfx.enabled = bool(self.cfg["sounds"])
+        sfx.set_volume(self.cfg["vol_ui"])                  # 9.5: the volume sliders
+        KartAudio.levels(self.cfg)
         self.media.set_preferred(self.cfg["source"])
         self.refresh_accent()
         self.rebuild_ui()
@@ -69302,6 +70138,11 @@ class App(QObject):
     # ------------------------------------------------------------------ actions
     def toast(self, text: str, kind: str = "ok") -> None:
         self.window.toast(text, kind)
+
+    def confirm(self, text: str, on_yes, yes: str = "", no: str = "", persistent: bool = False, on_no=None) -> None:
+        """9.5: a question in the window in front. Missing before: a Horse Racing bet over 10 000 (the gold amounts)
+        asked here and silently did nothing."""
+        self.window.confirm(text, on_yes, yes, no, persistent, on_no)
 
     def goto(self, key: str) -> None:
         self.window.goto(key)
@@ -70003,13 +70844,15 @@ class Kart:
                  "prog", "dead", "ghost", "turbo", "turbo_lvl", "drift_t", "drifting", "hb", "braking", "boosting",
                  "slip_t", "slip", "done", "finish_t", "lap_t0", "laps", "blowups", "hits", "wall_hits", "top",
                  "smoke", "throttle", "reverse", "wrong", "checks", "best_lap", "max_check", "drift_turbos", "boost_used",
-                 "boost_waste", "clean_t", "on_line", "line_n", "ev", "start_pen", "start_bonus", "stuck_t", "reset_t", "resets", "off")
+                 "boost_waste", "clean_t", "on_line", "line_n", "ev", "start_pen", "start_bonus", "stuck_t", "reset_t", "resets", "off", "pw", "gp")
 
     def __init__(self, seat, x, y, h):
         self.seat = seat
         self.x, self.y, self.h = x, y, h
         self.vx = self.vy = self.w = 0.0
         self.off = False                 # 9.3.2: on the grass / sand past the kerb
+        self.pw = 1.0                    # 9.5: engine and tyres (1 for every player; the two top bots get more)
+        self.gp = 1.0
         self.hp = KART_HP
         self.boost = 100.0
         self.boost_idle = 99.0
@@ -70131,6 +70974,7 @@ def kart_step(k, inp, track, dt, t, race_on, opts):
     vmax = V_BOOST if k.boosting else (V_TURBO if k.turbo > 0 else V_MAX)
     if k.slip:
         vmax *= 1.06
+    vmax *= k.pw
     if k.off:                                             # 9.3.2: grass or sand past the kerb: slow, less grip
         vmax = min(vmax, V_MAX * OFF_VMAX)
     # engine, brake, reverse
@@ -70139,7 +70983,7 @@ def kart_step(k, inp, track, dt, t, race_on, opts):
     k.reverse = False
     acc = 0.0
     if inp.up > 0 and vf > -20:
-        top = ACCEL + (BOOST_ACCEL if k.boosting else (220.0 if k.turbo > 0 else 0.0))
+        top = (ACCEL + (BOOST_ACCEL if k.boosting else (220.0 if k.turbo > 0 else 0.0))) * k.pw
         acc = inp.up * (top * max(0.0, 1 - vf / vmax) + (40 if vf < vmax else 0))
         if vf > vmax:
             acc = -min(260.0, (vf - vmax) * 2.2)       # coming down from a boost: smooth, not a wall
@@ -70159,7 +71003,7 @@ def kart_step(k, inp, track, dt, t, race_on, opts):
         acc -= OFF_DRAG * vf
     # handbrake: the rear lets go
     k.hb = bool(inp.hb)
-    grip = (GRIP_HB if k.hb else (GRIP_DRIFT if k.drifting else GRIP)) * (OFF_GRIP if k.off else 1.0)
+    grip = (GRIP_HB if k.hb else (GRIP_DRIFT if k.drifting else GRIP)) * (OFF_GRIP if k.off else 1.0) * k.gp
     if k.hb:
         acc -= 150.0 * (1 if vf > 0 else -1) if abs(vf) > 5 else 0.0
     vf += acc * dt
@@ -70327,17 +71171,19 @@ def bump(a, b, t, dmg_on=True):
             d = math.sqrt(d2)
             nx, ny = dx / d, dy / d
             over = 2 * KART_R - d
-            a.x -= nx * over * 0.5
-            a.y -= ny * over * 0.5
-            b.x += nx * over * 0.5
-            b.y += ny * over * 0.5
+            # 9.5: the two top bots are heavier (gp above 1): they barely move when you bump them
+            wa, wb = b.gp ** 3 / (a.gp ** 3 + b.gp ** 3), a.gp ** 3 / (a.gp ** 3 + b.gp ** 3)
+            a.x -= nx * over * wa
+            a.y -= ny * over * wa
+            b.x += nx * over * wb
+            b.y += ny * over * wb
             rv = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny     # closing speed
             if rv > 0:
-                j = rv * (1 + 0.35) * 0.5
-                a.vx -= j * nx
-                a.vy -= j * ny
-                b.vx += j * nx
-                b.vy += j * ny
+                j = rv * (1 + 0.35)
+                a.vx -= j * nx * wa
+                a.vy -= j * ny * wa
+                b.vx += j * nx * wb
+                b.vy += j * ny * wb
                 if not hit and rv > 30:
                     a.hits += 1
                     b.hits += 1
@@ -70365,11 +71211,12 @@ def bump_one(me, other, t, dmg_on=True):
             d = math.sqrt(d2)
             nx, ny = dx / d, dy / d
             over = 2 * KART_R - d
-            me.x -= nx * over * 0.5
-            me.y -= ny * over * 0.5
+            wm = other.gp ** 3 / (me.gp ** 3 + other.gp ** 3)      # 9.5: a heavy top bot pushes you more
+            me.x -= nx * over * wm
+            me.y -= ny * over * wm
             rv = (me.vx - other.vx) * nx + (me.vy - other.vy) * ny
             if rv > 0:
-                j = rv * (1 + 0.35) * 0.5
+                j = rv * (1 + 0.35) * wm
                 me.vx -= j * nx
                 me.vy -= j * ny
                 if not hit and rv > 30:
@@ -70404,16 +71251,20 @@ def slipstream(k, others, dt):
 
 # ------------------------------------------------------------------------------------------------ bots
 # Six levels on the slider from 100 to 2500. Every number below is a real driving skill, read by the bot each step.
+# 9.5: the whole ladder moved up two places: 9.4's Professional (the perfect line at the planned limit) is now Expert
+# (1500), the old Racer and Expert are the new bottom two. Elite and Professional drive a tuned line (they look further
+# ahead, steer harder and carry more speed through the corners) and get more engine (pw) and tyre grip (gp) than any
+# player's kart: Elite laps about 6 % quicker than the best players, Professional about 14 % (it can't be beaten).
 BOT_LEVELS = [(100, "Rookie"), (500, "Amateur"), (1000, "Racer"), (1500, "Expert"), (2000, "Elite"), (2500, "Professional")]
-#            elo    pace   wobble react  brake_late mistakes drift  boost  avoid  start
-# 9.3.2: every level boosts (the low ones badly), the good ones drift; corner = the share of the corner speed limit
-_BOT_TABLE = [(100, 0.505, 22.0, 0.34, 0.30, 0.030, 0.00, 0.45, 0.10, 0.90, 0.30),
-              (500, 0.585, 18.0, 0.24, 0.20, 0.020, 0.10, 0.60, 0.30, 0.55, 0.36),
-              (1000, 0.675, 13.0, 0.16, 0.12, 0.014, 0.35, 0.75, 0.55, 0.32, 0.43),
-              (1500, 0.74, 9.0, 0.11, 0.07, 0.008, 0.60, 0.85, 0.75, 0.20, 0.50),
-              (2000, 0.80, 5.0, 0.07, 0.03, 0.003, 0.85, 0.95, 0.90, 0.12, 0.60),
-              (2500, 1.0, 0.0, 0.0, 0.0, 0.0, 1.00, 1.00, 1.00, 0.0, 1.0)]
-_BOT_KEYS = ("elo", "pace", "wobble", "react", "late", "mistakes", "drift", "boost", "avoid", "start", "corner")
+#            elo    pace   wobble react  brake_late mistakes drift  boost  avoid  start  corner look0 lookk  gain  damp  pw    gp
+_BOT_TABLE = [(100, 0.675, 13.0, 0.16, 0.12, 0.014, 0.35, 0.75, 0.55, 0.32, 0.43, 28.0, 0.30, 3.2, 0.22, 1.00, 1.00),
+              (500, 0.74, 9.0, 0.11, 0.07, 0.008, 0.60, 0.85, 0.75, 0.20, 0.50, 28.0, 0.30, 3.2, 0.22, 1.00, 1.00),
+              (1000, 0.80, 5.0, 0.07, 0.03, 0.003, 0.85, 0.95, 0.90, 0.12, 0.60, 28.0, 0.30, 3.2, 0.22, 1.00, 1.00),
+              (1500, 1.0, 0.0, 0.0, 0.0, 0.0, 1.00, 1.00, 1.00, 0.0, 1.0, 28.0, 0.30, 3.2, 0.22, 1.00, 1.00),
+              (2000, 1.0, 0.0, 0.0, 0.02, 0.0, 0.00, 1.00, 1.00, 0.0, 1.218, 34.8, 0.384, 8.0, 0.288, 1.04, 1.15),
+              (2500, 1.0, 0.0, 0.0, 0.02, 0.0, 0.00, 1.00, 1.00, 0.0, 1.32, 34.8, 0.384, 8.0, 0.288, 1.10, 1.35)]
+_BOT_KEYS = ("elo", "pace", "wobble", "react", "late", "mistakes", "drift", "boost", "avoid", "start", "corner",
+             "look0", "lookk", "gain", "damp", "pw", "gp")
 
 
 def bot_level_name(elo):
@@ -70431,8 +71282,6 @@ def bot_params(elo):
     for a, b in zip(rows, rows[1:]):
         if elo <= b[0]:
             t = (elo - a[0]) / (b[0] - a[0])
-            if b[0] == 2500:            # 2000 to 2500 is a big jump: the last stretch is where the bot becomes perfect
-                t = t ** 2.2
             return {k: a[j] + (b[j] - a[j]) * t for j, k in enumerate(_BOT_KEYS)}
     return dict(zip(_BOT_KEYS, rows[-1]))
 
@@ -70446,6 +71295,7 @@ class KartBot:
     def __init__(self, kart, track, elo, seed=1):
         self.k, self.tr, self.elo = kart, track, int(elo)
         self.p = bot_params(elo)
+        kart.pw, kart.gp = self.p["pw"], self.p["gp"]
         self.rng = random.Random(seed * 7919 + int(elo))
         self.wob_phase = self.rng.random() * 6.28
         self.mistake = 0.0
@@ -70535,7 +71385,7 @@ class KartBot:
         i = k.idx if k.idx >= 0 else tr.locate(k.x, k.y)[0]
         sp = k.speed
         # where to aim: a point on the racing line ahead, a little wobble for the lower levels
-        look = 28 + sp * 0.30
+        look = p["look0"] + sp * p["lookk"]
         j = (i + int(look / tr.STEP)) % tr.n
         wob = p["wobble"] * math.sin(t * 0.9 + self.wob_phase) + p["wobble"] * 0.5 * math.sin(t * 2.3)
         off = tr.line_off[j] + wob + self.avoid
@@ -70543,15 +71393,18 @@ class KartBot:
         tx, ty = tr.cx[j] + off * tr.nx[j], tr.cy[j] + off * tr.ny[j]
         ang = math.atan2(ty - k.y, tx - k.x)
         err = wrap_pi(ang - k.h)
-        steer = clamp(err * 3.2 - k.w * 0.22, -1, 1)
+        steer = clamp(err * p["gain"] - k.w * p["damp"], -1, 1)
         # the speed it wants: whatever lets it brake in time for every corner ahead (corner speeds at its pace)
         pace = p["pace"]
         if self.mistake > 0:                         # a late brake: it carries too much speed into the corner
             self.mistake -= dt
         elif p["mistakes"] and tr.corner[(i + 25) % tr.n] and not tr.corner[i] and self.rng.random() < p["mistakes"] * dt * 6:
             self.mistake = 0.35 + p["late"] * 2.0
-        want = self.target(i, p["corner"] * (1.18 if self.mistake > 0 else 1.0),
-                           V_BOOST if k.boosting or k.turbo > 0 else V_MAX * min(1.0, 0.5 + 0.5 * pace),
+        cf = p["corner"] * (1.18 if self.mistake > 0 else 1.0)
+        if self.elo >= 2000 and abs(self.avoid) > 10:
+            cf *= 1 - min(0.08, abs(self.avoid) * 0.0012)     # 9.5: off the ideal line to pass: a little less speed
+        want = self.target(i, cf,
+                           (V_BOOST if k.boosting or k.turbo > 0 else V_MAX * min(1.0, 0.5 + 0.5 * pace)) * k.pw,
                            BOT_BRAKE * BRAKE * (1.0 + (0.6 if self.mistake > 0 else 0.0)) * (1 - p["late"]))
         if sp < want:
             inp.up = 1.0
@@ -70583,7 +71436,7 @@ class KartBot:
             inp.left = inp.right = 0.0          # out of the corner: straighten up, the turbo fires
         # boost: only where it can be held to the end without braking (Professional burns it all on the straights)
         if p["boost"] > 0 and k.boost > 1 and sp > 150:
-            clear = self.target(i, p["corner"], V_BOOST, BOT_BRAKE * BRAKE) >= V_BOOST - 1 if p["boost"] >= 0.5 else True
+            clear = self.target(i, p["corner"], V_BOOST * k.pw, BOT_BRAKE * BRAKE) >= V_BOOST * k.pw - 1 if p["boost"] >= 0.5 else True
             if p["boost"] >= 1.0:
                 inp.boost = clear and k.boost > (0 if k.boosting else 25)
             else:
@@ -70594,6 +71447,9 @@ class KartBot:
                 elif self.rng.random() < (1 - p["boost"]) * dt * 0.05:
                     inp.boost = True                      # boosting at the wrong moment, like a beginner
         # other karts in the way: steer around them (well, at the top; late or not at all at the bottom)
+        if self.elo >= 2000:                      # 9.5: Elite and Professional plan every pass, no reaction time
+            self._plan_pass(others, i, sp, inp, dt)
+            return inp
         self.avoid *= 0.97
         if p["avoid"] > 0:
             c, s = math.cos(k.h), math.sin(k.h)
@@ -70615,11 +71471,66 @@ class KartBot:
                             inp.up = min(inp.up, 0.4)
         return inp
 
+    def _plan_pass(self, others, i, sp, inp, dt):
+        """9.5, the top two: every kart ahead on the circuit is seen in advance (by distance round the track, not by
+        where the bot is pointing). The bot picks the side with room, moves over before it gets there and keeps a
+        kart's width of daylight while alongside; with no room either side it lifts and waits behind."""
+        k, tr = self.k, self.tr
+        n = tr.n
+        mylat = (k.x - tr.cx[i]) * tr.nx[i] + (k.y - tr.cy[i]) * tr.ny[i]
+        lim = tr.hw - 10
+        want = None
+        block = None
+        for o in others:
+            if o is k or o.dead > 0 or o.ghost > 0 or o.done:
+                continue
+            oi = o.idx if o.idx >= 0 else tr.locate(o.x, o.y)[0]
+            gap = ((oi - i + n // 2) % n - n // 2) * tr.STEP
+            ov = o.vx * math.cos(k.h) + o.vy * math.sin(k.h)
+            closing = sp - ov
+            if gap < -34 or gap > 60 + max(0.0, closing) * 1.4:
+                continue
+            olat = (o.x - tr.cx[oi]) * tr.nx[oi] + (o.y - tr.cy[oi]) * tr.ny[oi]
+            if gap > 40 and closing < 5:
+                continue                              # pulling away or as fast: just follow (slipstream)
+            if abs(gap) < 44:                         # alongside: stay on my side of it, a kart's width away
+                side = 1.0 if mylat >= olat else -1.0
+                x = olat + side * 42
+                if -lim <= x <= lim:
+                    sides = [x]
+                elif abs(mylat - olat) >= 30:
+                    sides = [mylat]                   # squeezed to the edge: hold the line it has
+                else:
+                    block = (gap, ov)
+                    continue
+            else:
+                sides = [x for x in (olat + 42, olat - 42) if -lim <= x <= lim]
+            if not sides:
+                block = (gap, ov)
+                continue
+            line = tr.line_off[(oi + 4) % n]
+            best = min(sides, key=lambda x: abs(x - line) + abs(x - mylat) * 0.5)
+            if want is None or gap < want[0]:
+                want = (gap, best)
+        if want is not None:
+            j = (i + int((self.p["look0"] + sp * self.p["lookk"]) / tr.STEP)) % n
+            tgt = clamp(want[1] - tr.line_off[j], -90, 90)
+            self.avoid += clamp(tgt - self.avoid, -420 * dt, 420 * dt)
+        else:
+            self.avoid += clamp(-self.avoid, -160 * dt, 160 * dt)
+        if block is not None and want is None:
+            gap, ov = block
+            if 0 < gap < 70 and sp > ov - 5:
+                inp.up = 0.0
+                if gap < 45:
+                    inp.down = clamp((sp - ov) / 60, 0.2, 1.0)
+                inp.boost = False
+
     def start_reaction(self):
         """How long after the lights go out it presses the throttle (Professional: a perfect launch)."""
         p = self.p
         if p["start"] <= 0:
-            return 0.02
+            return 0.0                                # 9.5: the top levels go the instant the lights go out
         return p["start"] * (0.6 + 0.8 * self.rng.random())
 
 
@@ -71338,6 +72249,8 @@ class KartView(QWidget):
     kart with a camera that looks ahead and pulls back with speed, and paints the HUD: place, laps, times, speed,
     boost, health, the minimap, the countdown and the race messages."""
     finished = pyqtSignal(dict)          # my result once I cross the line for the last time
+    dq_sig = pyqtSignal()                # 9.5: 45 s without touching anything: disqualified (the kart blows up)
+    AFK_WARN, AFK_KICK = 30.0, 45.0
     send = pyqtSignal(list)              # my kart (and the bot if this PC drives it), ~12 times a second
 
     def __init__(self, track_i: int, laps: int, seats: list, me: int, bot_seat: int = -1, bot_elo: int = 2500,
@@ -71388,6 +72301,15 @@ class KartView(QWidget):
         self.rec: list = []            # 9.4: my run, a few times a second (the time boards' ghosts)
         self._rec_n = 0
         self.ghost = None              # 9.4: a run from the time board, raced as a see-through kart (seat 9)
+        self.last_input = time.monotonic()  # 9.5: AFK
+        self.dq = False
+        self.board = False             # 9.5: Tab held: the standings
+        self.feed: list = []           # 9.5: [label, pts, t0]
+        self.pts = 0                   # 9.5: my race points
+        self.split_cur: dict = {}      # 9.5: this lap: track bucket -> seconds into the lap
+        self.split_best: dict = {}     # ... the best lap's
+        self.lap_clean = True
+        self._place_was = 0
         self.timer = QTimer(self)
         self.timer.setTimerType(Qt.TimerType.PreciseTimer)
         self.timer.setInterval(8)
@@ -71488,8 +72410,12 @@ class KartView(QWidget):
     def keyPressEvent(self, e) -> None:
         if e.isAutoRepeat():
             return
+        self.last_input = time.monotonic()
+        if e.key() == Qt.Key.Key_Tab:                 # 9.5: hold Tab for the standings
+            self.board = True
+            return
         self.keys.add(Qt.Key(e.key()))
-        if e.key() in (Qt.Key.Key_Tab, Qt.Key.Key_Right, Qt.Key.Key_Left) and self.kart.done:
+        if e.key() in (Qt.Key.Key_Right, Qt.Key.Key_Left) and (self.kart.done or self.dq):
             self.next_watch(-1 if e.key() == Qt.Key.Key_Left else 1)
 
     def watchable(self) -> list:
@@ -71508,7 +72434,7 @@ class KartView(QWidget):
     def _auto_watch(self) -> None:
         """Over the line: a moment later the camera goes to the leader still racing, and when the one you watch
         finishes it moves on by itself."""
-        if not self.kart.done or self.race.t - self.kart.finish_t < KART_FADE:
+        if not self.dq and (not self.kart.done or self.race.t - self.kart.finish_t < KART_FADE):
             return
         cur = self.race.karts.get(self.spectate)
         if self.spectate == self.me or cur is None or cur.dead > 1e8 or (cur.done and self.race.t - cur.finish_t > KART_FADE):
@@ -71519,6 +72445,8 @@ class KartView(QWidget):
     def keyReleaseEvent(self, e) -> None:
         if e.isAutoRepeat():
             return
+        if e.key() == Qt.Key.Key_Tab:
+            self.board = False
         self.keys.discard(Qt.Key(e.key()))
 
     def focusOutEvent(self, _e) -> None:
@@ -71548,6 +72476,7 @@ class KartView(QWidget):
             self._ghost_move()
             if steps >= 24:
                 self.race.t = target
+            self._afk(now)
             self._auto_watch()
             self.fx.step(frame_dt)
             self._effects(frame_dt)
@@ -71557,12 +72486,38 @@ class KartView(QWidget):
                 self.sent_at = now
                 self.send.emit(self.snapshot())
             self.audio.engine(self.kart, [k for s, k in self.race.karts.items() if s != self.me], self.race.t >= 0)
-            if self.kart.done and not self.result_sent:
+            if self.kart.done and not self.result_sent and not self.dq:
                 self.result_sent = True
                 self.finished.emit(self.result(self.kart))
             self.update()
         except RuntimeError:
             self.timer.stop()
+
+    def _afk(self, now: float) -> None:
+        """9.5: 45 s without touching anything once the race is on: disqualified. The kart blows up for good and the
+        camera follows the others to the end."""
+        k = self.kart
+        if self.keys or self.race.t < 0 or k.done or self.dq:
+            self.last_input = now if (self.keys or self.race.t < 0) else self.last_input
+            return
+        if now - self.last_input >= self.AFK_KICK:
+            self.dq = True
+            k.ev.append(("boom", k.x, k.y))
+            k.hp = 0
+            k.dead = 1e9
+            k.vx = k.vy = 0.0
+            self.say(tr("DISQUALIFIED"), "#FF4D4D", 6.0, True)
+            self.say(tr("No input for 45 seconds"), "#FFFFFF", 6.0)
+            seats = self.watchable()
+            if seats:
+                self.spectate = seats[0]
+            self.dq_sig.emit()
+
+    def award(self, label: str, pts: int) -> None:
+        """9.5: race points (Rocket League style), shown at the top."""
+        self.pts += pts
+        self.feed = [f for f in self.feed if time.monotonic() - f[2] < 2.6][-3:]
+        self.feed.append([label, pts, time.monotonic()])
 
     def result(self, k) -> dict:
         tot = k.finish_t
@@ -71595,6 +72550,8 @@ class KartView(QWidget):
                 kind = ev[0]
                 if kind == "wall":
                     vn, dmg, (x, y) = ev[1], ev[2], ev[3]
+                    if mine and vn > WALL_SAFE:
+                        self.lap_clean = False
                     if vn > 90:
                         self.fx.burst(x, y, int(4 + vn / 40), "spark", 200 + vn, 0.35, 3, (255, 210, 120))
                     if mine or near:
@@ -71608,6 +72565,8 @@ class KartView(QWidget):
                         self.audio.play("bump", min(1.0, rv / 300))
                         self.shake = max(self.shake, 4.0)
                 elif kind == "boom":
+                    if mine:
+                        self.lap_clean = False
                     self.fx.explode(ev[1], ev[2])
                     if mine or near:
                         self.audio.play("boom", 1.0 if mine else 0.6)
@@ -71620,6 +72579,7 @@ class KartView(QWidget):
                         self.say(tr("Back on track"), "#8FD3FF", 1.2)
                 elif kind == "turbo":
                     if mine:
+                        self.award(tr("SUPER MINI TURBO") if ev[1] >= 2 else tr("MINI TURBO"), 25 if ev[1] >= 2 else 15)
                         self.audio.play("turbo")
                         self.say(tr("Super mini turbo!") if ev[1] >= 2 else tr("Mini turbo!"),
                                  "#FF9A2E" if ev[1] >= 2 else "#4FC3FF", 1.0)
@@ -71627,11 +72587,22 @@ class KartView(QWidget):
                     if ev[1] > 0:
                         self.audio.play("turbo")
                         self.say(tr("PERFECT START!"), "#35E0A1", 1.6, True)
+                        self.award(tr("PERFECT START"), 30)
                     else:
                         self.audio.play("thud", 0.6)
                         self.say(tr("Too early! Wheelspin"), "#FF6B6B", 1.4)
                 elif kind == "lap" and mine:
                     left = self.race.laps - ev[1]
+                    # 9.5: the lap's points, and its splits for the live +/- (the best lap's are kept)
+                    self.award(tr("LAP"), 10)
+                    if self.lap_clean:
+                        self.award(tr("CLEAN LAP"), 30)
+                    if ev[2] <= k.best_lap + 1e-6:
+                        if len(k.laps) > 1:
+                            self.award(tr("FASTEST LAP"), 40)
+                        self.split_best = dict(self.split_cur)
+                    self.split_cur = {}
+                    self.lap_clean = True
                     if left == 1:
                         self.audio.play("final")
                         self.say(tr("FINAL LAP"), "#F5C04A", 2.0, True)
@@ -71639,10 +72610,21 @@ class KartView(QWidget):
                         self.audio.play("lap")
                         self.say(tr("Lap {a}/{b}", a=ev[1] + 1, b=self.race.laps) + "   " + kart_time(ev[2]), "#FFFFFF", 1.8)
                 elif kind == "finish" and mine:
+                    self.award(tr("FINISHED"), max(10, 70 - 15 * (self.place(self.me) - 1)))
                     self.audio.play("finish")
                     place = self.place(self.me)
                     self.say(tr("FINISHED  ·  {p}", p=kart_place(place)), "#F5C04A", 4.0, True)
             k.ev.clear()
+        # 9.5: overtakes and the splits (mine)
+        me = self.kart
+        if self.race.t > 0 and not me.done and not self.dq and me.dead <= 0:
+            pl = self.place(self.me)
+            if self._place_was and pl < self._place_was:
+                self.award(tr("OVERTAKE"), 20)
+            self._place_was = pl
+            b = int((me.prog - me.lap * self.tr.n) // 20)
+            if b >= 0 and b not in self.split_cur:
+                self.split_cur[b] = self.race.t - me.lap_t0
 
     def _effects(self, dt: float) -> None:
         """Smoke, flames and skid marks from every kart (yours and the others alike)."""
@@ -71787,9 +72769,9 @@ class KartView(QWidget):
         p.setBrush(QColor(8, 10, 14, 175))
         p.drawRoundedRect(box, S(14), S(14))
         p.setFont(font(40, QFont.Weight.Black))
-        p.setPen(QColor("#FFFFFF"))
+        p.setPen(QColor("#FF4D4D") if self.dq else QColor("#FFFFFF"))
         p.drawText(QRectF(box.left() + S(14), box.top() + S(4), S(120), S(54)), int(Qt.AlignmentFlag.AlignVCenter),
-                   kart_place(place))
+                   "DQ" if self.dq else kart_place(place))
         p.setFont(font(15, QFont.Weight.Bold))
         p.setPen(QColor(TEXT_DIM))
         p.drawText(QRectF(box.left() + S(100), box.top() + S(10), S(140), S(24)), int(Qt.AlignmentFlag.AlignRight),
@@ -71864,7 +72846,7 @@ class KartView(QWidget):
                        f"{max(0.0, 2.0 - mine.reset_t):.1f}")
         if mine.wrong and t > 0 and not mine.done:
             self._banner(p, w, h * 0.3, tr("WRONG WAY"), "#FF4D4D", 30)
-        if mine.dead > 0:
+        if 0 < mine.dead < 1e8:
             self._banner(p, w, h * 0.42, tr("Back in {n} s", n=f"{mine.dead:.1f}"), "#FFFFFF", 22)
         # the lights: five reds that come on one by one, then all go out on GO
         if t < 1.0:
@@ -71878,15 +72860,120 @@ class KartView(QWidget):
             self._banner(p, w, yy, text, col, 34 if big else 20)
             p.setOpacity(1.0)
             yy += S(54 if big else 36)
-        if self.kart.done and self.spectate != self.me and self.watchable():
+        if (self.kart.done or self.dq) and self.spectate != self.me and self.watchable():
             info = self.seats.get(self.spectate, {})
             who = (tr("BOT") + " · " + tr(bot_level_name(self.bot_elo))) if info.get("bot") else str(info.get("name", "?"))
-            self._banner(p, w, h - S(80), tr("Watching {name}  ·  Tab: next kart", name=who), "#B8BCC8", 13)
+            self._banner(p, w, h - S(80), tr("Watching {name}  ·  ← →: next kart", name=who), "#B8BCC8", 13)
+        if self.dq:
+            self._banner(p, w, h - S(124), tr("DISQUALIFIED  ·  spectating"), "#FF4D4D", 16)
+        # 9.5: the live split against my best lap, the points feed, the AFK warning, the Tab standings
+        if self.split_best and t > 0 and not mine.done and not self.dq:
+            b = int((mine.prog - mine.lap * self.tr.n) // 20)
+            ref = self.split_best.get(b)
+            if ref is not None and b in self.split_cur:
+                d = self.split_cur[b] - ref
+                col = QColor("#35E0A1") if d <= 0 else QColor("#FF6B6B")
+                p.setFont(font(13, QFont.Weight.Black))
+                sr = QRectF(box.right() + S(8), box.top() + S(32), S(86), S(26))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(8, 10, 14, 175))
+                p.drawRoundedRect(sr, S(8), S(8))
+                p.setPen(col)
+                p.drawText(sr, int(Qt.AlignmentFlag.AlignCenter), f"{d:+.2f}")
+        self._feed_paint(p, w)
+        if not self.dq and not mine.done and t > 0:
+            idle = time.monotonic() - self.last_input
+            if idle >= self.AFK_WARN:
+                self._banner(p, w, h * 0.55, tr("Are you there? Disqualified in {n}", n=max(0, int(math.ceil(self.AFK_KICK - idle)))),
+                             "#FF6B6B", 22)
+        if self.board:
+            self._board_paint(p, w, h)
         # 9.3.2: the first races: which key drives forward (not the one that turns right)
-        if getattr(self, "first_timer", False) and t < 3.0 and not mine.done and mine.speed < 150:
+        if getattr(self, "first_timer", False) and t < 3.0 and not mine.done and not self.dq and mine.speed < 150:
             ku = kart_keys()
             self._banner(p, w, h * 0.62, tr("Hold {up} to go forward  ·  {left} {right} to steer", up=ku["up"], left=ku["left"],
                                           right=ku["right"]), "#FFE27A", 22)
+
+    def _feed_paint(self, p: QPainter, w: float) -> None:
+        now = time.monotonic()
+        self.feed = [f for f in self.feed if now - f[2] < 2.6]
+        y = S(18)
+        for label, pts, t0 in reversed(self.feed):
+            age = now - t0
+            a = clamp(min(age / 0.12, (2.6 - age) / 0.35), 0, 1)
+            p.setFont(font(13, QFont.Weight.Black, 1.2))
+            tw = p.fontMetrics().horizontalAdvance(label)
+            pw_ = p.fontMetrics().horizontalAdvance(f"+{pts}")
+            bw = tw + pw_ + S(44)
+            r = QRectF(w / 2 - bw / 2, y - (1 - clamp(age / 0.18, 0, 1)) * S(16), bw, S(30))
+            p.setPen(QPen(QColor(255, 255, 255, int(70 * a)), 1))
+            p.setBrush(QColor(8, 10, 14, int(215 * a)))
+            p.drawRoundedRect(r, S(9), S(9))
+            p.setPen(Qt.PenStyle.NoPen)
+            c = kart_col(self.me, False)
+            c = QColor(c)
+            c.setAlphaF(a)
+            p.setBrush(c)
+            p.drawRoundedRect(QRectF(r.left(), r.top(), S(6), r.height()), S(3), S(3))
+            p.setPen(QColor(255, 255, 255, int(255 * a)))
+            p.drawText(QRectF(r.left() + S(16), r.top(), tw + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), label)
+            p.setPen(QColor(245, 192, 74, int(255 * a)))
+            p.drawText(QRectF(r.right() - pw_ - S(14), r.top(), pw_ + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), f"+{pts}")
+            y += S(36)
+
+    def _board_paint(self, p: QPainter, w: float, h: float) -> None:
+        """Hold Tab: everyone in race order, with laps, best lap, last lap and hits; your race points."""
+        p.fillRect(QRectF(0, 0, w, h), QColor(4, 6, 12, 200))
+        rows = [kk for kk in self.race.standings() if kk.dead < 1e8 or kk.seat == self.me]
+        cols = [(tr("Pos"), S(54)), (tr("Driver"), 0), (tr("Lap"), S(70)), (tr("Best lap"), S(110)), (tr("Last lap"), S(110)),
+                (tr("Hits"), S(60))]
+        bw = min(w - S(60), S(720))
+        name_w = bw - sum(c[1] for c in cols) - S(40)
+        x0, y = w / 2 - bw / 2, h * 0.22
+        p.setFont(font(20, QFont.Weight.Black, 1.5))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(x0, y - S(46), bw, S(34)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr(self.tr.name) + "  ·  " + tr("{n} laps", n=self.race.laps))
+        box = QRectF(x0, y, bw, S(36) + S(38) * len(rows) + S(40))
+        p.setPen(QPen(QColor(255, 255, 255, 40), 1))
+        p.setBrush(QColor(12, 14, 20, 240))
+        p.drawRoundedRect(box, S(14), S(14))
+        x = x0 + S(20)
+        p.setFont(font(9.5, QFont.Weight.Black, 1))
+        p.setPen(QColor(TEXT_DIM))
+        for t_, cw in cols:
+            cw = cw or name_w
+            p.drawText(QRectF(x, y + S(10), cw, S(18)), int(Qt.AlignmentFlag.AlignVCenter), t_.upper())
+            x += cw
+        yy = y + S(36)
+        for kk in rows:
+            info = self.seats.get(kk.seat, {})
+            bot = bool(info.get("bot"))
+            me = kk.seat == self.me
+            name = (tr("BOT") + " · " + tr(bot_level_name(self.bot_elo)) + f" ({self.bot_elo})") if bot else str(info.get("name", "?"))
+            if me:
+                name += "  (" + tr("you") + ")"
+            pos = tr("DQ") if (me and self.dq) else str(self.place(kk.seat))
+            vals = [pos, name, (tr("Done") if kk.done else f"{min(self.race.laps, kk.lap + 1)}/{self.race.laps}"),
+                    kart_time(kk.best_lap) if kk.best_lap else "-", kart_time(kk.laps[-1]) if kk.laps else "-", str(kk.hits)]
+            r = QRectF(x0 + S(8), yy, bw - S(16), S(34))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 255, 255, 22 if me else 8))
+            p.drawRoundedRect(r, S(8), S(8))
+            p.setBrush(kart_col(kk.seat, bot))
+            p.drawRoundedRect(QRectF(r.left(), r.top(), S(5), r.height()), S(2), S(2))
+            x = x0 + S(20)
+            for ci, ((t_, cw), v) in enumerate(zip(cols, vals)):
+                cw = cw or name_w
+                p.setFont(font(12.5, QFont.Weight.Black if ci <= 1 else QFont.Weight.DemiBold))
+                p.setPen(QColor("#FF6B6B") if v == tr("DQ") else QColor("#FFFFFF") if ci <= 1 else QColor(TEXT))
+                p.drawText(QRectF(x, yy, cw, S(34)), int(Qt.AlignmentFlag.AlignVCenter), v)
+                x += cw
+            yy += S(38)
+        p.setFont(font(12, QFont.Weight.Black))
+        p.setPen(QColor(GOLD))
+        p.drawText(QRectF(x0 + S(20), yy, bw - S(40), S(34)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("Your race points: {n}", n=self.pts))
 
     def _banner(self, p: QPainter, w: float, y: float, text: str, col: str, size: float) -> None:
         p.setFont(font(size, QFont.Weight.Black))
@@ -72063,8 +73150,19 @@ class KartAudio:
         self.samples = {}
         self.vol = 0.8
 
+    # 9.5: two levels from the settings (0-1): the effects on top and the background (engines / crowd)
+    fx_l, amb_l = 0.40, 0.60
+
+    @staticmethod
+    def levels(cfg) -> None:
+        try:
+            KartAudio.fx_l = clamp(float(cfg["vol_fx"]) / 100, 0.0, 1.0)
+            KartAudio.amb_l = clamp(float(cfg["vol_amb"]) / 100, 0.0, 1.0)
+        except Exception:  # noqa: BLE001
+            pass
+
     def start(self) -> None:
-        if self.run or not win.IS_WIN or not sfx.enabled:
+        if self.run or not win.IS_WIN or not sfx.enabled or (KartAudio.fx_l <= 0 and KartAudio.amb_l <= 0):
             return
         try:
             self._make()
@@ -72183,13 +73281,14 @@ class KartAudio:
             if boost or skid:
                 y += (rnd() * 2 - 1 - y) * (0.35 if boost else 0.6)
                 s += y * (0.10 * boost + 0.07 * skid * (0.6 + 0.4 * math.sin(ph0 * 0.21)))
-            out[i] = s * 0.5
+            out[i] = s * 0.5 * KartAudio.amb_l
         self.phase = [ph0 % 6.2831853, ph1 % 6.2831853, ph2 % 6.2831853]
         self._lp = y
         with self.lock:
             keep = []
             for v in self.voices:
                 smp, pos, g = v
+                g *= KartAudio.fx_l                         # 9.5: the effects slider
                 m = min(n, len(smp) - pos)
                 for i in range(m):
                     out[i] += smp[pos + i] * g
@@ -72286,8 +73385,8 @@ def kart_track(i: int):
 
 
 KART_TICKS = [100, 250, 500, 1000, 1500, 2000, 2500]
-KART_BANDS = {"Rookie": "20-35%", "Amateur": "35-50%", "Racer": "50-60%", "Expert": "60-70%", "Elite": "75-85%",
-              "Professional": "99-100%"}
+KART_BANDS = {"Rookie": "55-60%", "Amateur": "65-70%", "Racer": "80%", "Expert": "99%", "Elite": "100%+",   # 9.5
+              "Professional": "100%+"}
 
 
 class EloSlider(QWidget):
@@ -72569,7 +73668,13 @@ def build_kart(page, lay) -> None:
                                          "bot": o["bot"] or o["size"] > 1, "collide": o["collide"], "boost": o["boost"],
                                          "damage": o["damage"]}, done)
     go.clicked.connect(create)
-    hl.addWidget(go)
+    how = Button(tr("How to play"), "ghost", 44)            # 9.5: the animated guide (shown by itself the first time)
+    how.clicked.connect(lambda: open_guide(ctx, "kart", force=True))
+    prow = hbox(spacing=8)
+    prow.addWidget(how)
+    prow.addWidget(go, 1)
+    hl.addLayout(prow)
+    QTimer.singleShot(450, lambda: open_guide(ctx, "kart"))
     keys = kart_keys()
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Drive")),
                               (["Shift"], tr("Boost")), (["Space"], tr("Handbrake, drift")), (["R"], tr("Hold: respawn"))],
@@ -72613,6 +73718,13 @@ def build_kart(page, lay) -> None:
     _kart_times_panel(page, hl, o)
 
 
+# 9.5: each bot level's best clean 3 lap race on each circuit (measured with the bot driving alone), shown on the
+# time boards beside the players' times
+KART_BOT_TIMES = {0: {100: 122.78, 500: 115.45, 1000: 107.84, 1500: 96.24, 2000: 87.73, 2500: 82.83},
+                  1: {100: 136.06, 500: 124.65, 1000: 114.65, 1500: 99.59, 2000: 90.34, 2500: 84.57},
+                  2: {100: 143.71, 500: 134.78, 1000: 127.18, 1500: 115.77, 2000: 106.92, 2500: 100.73}}
+
+
 def _kart_times_panel(page, hl, o) -> None:
     ctx = page.ctx
     if getattr(ctx, "kart_times_missing", False):
@@ -72642,7 +73754,7 @@ def _kart_times_panel(page, hl, o) -> None:
         return
     top = list(d.get("top") or [])
     if not top:
-        hl.addWidget(Label(tr("No times yet. Finish a 3 lap race to be the first."), 11, TEXT_FAINT, wrap_w=page.W))
+        hl.addWidget(Label(tr("No player times yet. Finish a 3 lap race to be the first."), 11, TEXT_FAINT, wrap_w=page.W))
 
     def race(gid: str, btn) -> None:
         btn.setEnabled(False)
@@ -72674,14 +73786,46 @@ def _kart_times_panel(page, hl, o) -> None:
                                              "boost": o["boost"], "damage": o["damage"]}, made)
         ctx.online.ask("rb_kart_ghost", {"gid": gid}, got)
 
-    for t in top[:10]:
+    def race_bot(elo: int, btn) -> None:
+        btn.setEnabled(False)
+
+        def made(ok: bool, r) -> None:
+            if not ok:
+                btn.setEnabled(True)
+                return ctx.toast(tr(str(r)), "warn")
+            sfx.play("on")
+            KartLink.open(ctx, r)
+            ctx.reload_page("games")
+        ctx.econ.call("rb_kart_create", {"size": 1, "track": tab, "laps": 3, "bot_elo": elo, "bot": True,
+                                         "collide": o["collide"], "boost": o["boost"], "damage": o["damage"]}, made)
+
+    # the players' top 10 with the bots slotted in by time (a bot takes no place in the ranking)
+    rows = [(int(t.get("ms") or 0) / 1000, 0, t) for t in top[:10]]
+    rows += [(sec, 1, elo) for elo, sec in KART_BOT_TIMES.get(tab, {}).items()]
+    rows.sort(key=lambda x: (x[0], x[1]))
+    for sec, is_bot, t in rows:
         r = hbox(spacing=8)
+        if is_bot:
+            num = Label(tr("BOT"), 9.5, TEXT_FAINT, bold=True)
+            num.setFixedWidth(S(34))
+            r.addWidget(num)
+            r.addWidget(Label(tr(bot_level_name(t)), 12, TEXT_DIM), 1)
+            r.addWidget(Label(f"{t} Elo", 10, TEXT_FAINT).fit())
+            r.addSpacing(S(10))
+            r.addWidget(Label(kart_time(sec), 12, TEXT_DIM, bold=True).fit())
+            btn = Button(tr("Race"), "ghost", 30, icon="play")
+            btn.setFixedWidth(S(86))
+            btn.setToolTip(tr("Race this bot on this circuit"))
+            btn.clicked.connect(lambda _c=False, e=t, b=btn: race_bot(e, b))
+            r.addWidget(btn)
+            hl.addLayout(r)
+            continue
         rk = int(t.get("rank") or 0)
         num = Label(f"{rk}.", 12, MEDALS.get(rk, TEXT_DIM), bold=True)
-        num.setFixedWidth(S(28))
+        num.setFixedWidth(S(34))
         r.addWidget(num)
         r.addWidget(Label(str(t.get("name") or "?"), 12, TEXT, bold=bool(t.get("me"))), 1)
-        r.addWidget(Label(kart_time(int(t.get("ms") or 0) / 1000), 12, GOLD_TEXT, bold=True).fit())
+        r.addWidget(Label(kart_time(sec), 12, GOLD_TEXT, bold=True).fit())
         btn = Button(tr("Race"), "ghost", 30, icon="play")
         btn.setFixedWidth(S(86))
         btn.clicked.connect(lambda _c=False, gid=str(t.get("id")), b=btn: race(gid, b))
@@ -72992,6 +74136,436 @@ class KartWindow(QWidget):
         super().closeEvent(e)
 
 
+# ================================================================================================== 9.5: how to play
+def _gk(p: QPainter, x: float, y: float, text: str, lit: bool = False) -> float:
+    """A key cap at (x, y) (its top left); lit = pressed right now. Returns its width."""
+    p.setFont(font(9.5, QFont.Weight.Black))
+    w = max(S(22), p.fontMetrics().horizontalAdvance(text) + S(12))
+    r = QRectF(x, y + (S(2) if lit else 0), w, S(22))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(0, 0, 0, 120))
+    p.drawRoundedRect(r.translated(0, S(3) if not lit else S(1)), S(6), S(6))
+    p.setBrush(QColor("#F5C04A") if lit else QColor(240, 244, 255))
+    p.drawRoundedRect(r, S(6), S(6))
+    p.setPen(QColor("#1A1300") if lit else QColor("#0B0F18"))
+    p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), text)
+    return w
+
+
+def _gball(p, x, y, r, col="#E8721C"):
+    p.setPen(QPen(QColor(0, 0, 0, 120), 1))
+    p.setBrush(QColor(col))
+    p.drawEllipse(QPointF(x, y), r, r)
+
+
+def _gman(p, x, y, col, s=1.0, arms=0.0, label=""):
+    """A little player seen from the side: a body, a head, arms up by `arms` (0..1)."""
+    c = QColor(col)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(0, 0, 0, 70))
+    p.drawEllipse(QPointF(x, y + S(2)), S(11) * s, S(3) * s)
+    p.setBrush(c)
+    p.drawRoundedRect(QRectF(x - S(7) * s, y - S(30) * s, S(14) * s, S(22) * s), S(4) * s, S(4) * s)
+    p.drawRect(QRectF(x - S(5) * s, y - S(9) * s, S(4) * s, S(9) * s))
+    p.drawRect(QRectF(x + S(1) * s, y - S(9) * s, S(4) * s, S(9) * s))
+    p.setBrush(QColor("#C98A5A"))
+    p.drawEllipse(QPointF(x, y - S(36) * s), S(6) * s, S(6) * s)
+    p.setPen(QPen(QColor("#C98A5A"), S(3) * s, cap=Qt.PenCapStyle.RoundCap))
+    ay = lerp(-S(16), -S(44), arms) * s
+    p.drawLine(QPointF(x - S(7) * s, y - S(26) * s), QPointF(x - S(10) * s, y + ay * 0.6 - S(4) * s))
+    p.drawLine(QPointF(x + S(7) * s, y - S(26) * s), QPointF(x + S(10) * s, y + ay * 0.6 - S(4) * s))
+    if label:
+        p.setFont(font(8, QFont.Weight.Black))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(x - S(7) * s, y - S(28) * s, S(14) * s, S(16) * s), int(Qt.AlignmentFlag.AlignCenter), label)
+
+
+def _gkart(p, x, y, ang, col, smoke=0.0, flame=0.0, turbo=None):
+    p.save()
+    p.translate(x, y)
+    p.rotate(math.degrees(ang))
+    if smoke > 0:
+        for k in range(4):
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(220, 220, 230, int(70 * smoke)))
+            p.drawEllipse(QPointF(-S(16) - k * S(7), (k % 2 * 2 - 1) * S(6)), S(5) + k * S(2), S(5) + k * S(2))
+    if flame > 0:
+        g = QLinearGradient(QPointF(-S(14), 0), QPointF(-S(34), 0))
+        g.setColorAt(0, QColor(255, 220, 120, int(255 * flame)))
+        g.setColorAt(1, QColor(255, 80, 30, 0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(g))
+        p.drawEllipse(QRectF(-S(36), -S(5), S(24), S(10)))
+    if turbo:
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(turbo))
+        for sy in (-1, 1):
+            p.drawEllipse(QPointF(-S(13), sy * S(8)), S(4), S(4))
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(20, 20, 26))
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            p.drawRoundedRect(QRectF(sx * S(8) - S(4), sy * S(9) - S(2.5), S(8), S(5)), S(2), S(2))
+    p.setBrush(QColor(col))
+    p.drawRoundedRect(QRectF(-S(13), -S(7), S(26), S(14)), S(5), S(5))
+    p.setBrush(QColor(255, 255, 255, 200))
+    p.drawEllipse(QPointF(S(1), 0), S(3.5), S(3.5))
+    p.restore()
+
+
+def _guide_hoops(p, r, t, k):
+    """One animated tile of the Hoops guide. k: which one. t: seconds. Returns the keys lit (for the caption)."""
+    fl = r.bottom() - S(18)                       # the floor line
+    p.setPen(QPen(QColor(255, 255, 255, 30), 1))
+    p.drawLine(QPointF(r.left() + S(10), fl), QPointF(r.right() - S(10), fl))
+    keys = hoops_keys()
+    cx = r.center().x()
+    if k == "move":
+        ph = (t % 4.0) / 4.0
+        dirs = [(1, 0, keys["right"]), (0, -1, keys["up"]), (-1, 0, keys["left"]), (0, 1, keys["down"])]
+        i = int(ph * 4)
+        f = ph * 4 - i
+        pts = [(-1, 1), (1, 1), (1, -1), (-1, -1)]
+        a, b = pts[i], pts[(i + 1) % 4]
+        x = cx + lerp(a[0], b[0], f) * S(44)
+        y = fl - S(8) + lerp(a[1], b[1], f) * S(10)
+        _gman(p, x, y, HOOPS_TEAM[0]["main"], 0.9)
+        return [d[2] for d in dirs if d[2] == dirs[i][2]]
+    if k == "dribble":
+        ph = (t % 3.0) / 3.0
+        x = r.left() + S(30) + ph * (r.width() - S(60))
+        bounce = abs(math.sin(t * 7.5))
+        _gman(p, x, fl, HOOPS_TEAM[0]["main"], 0.9)
+        _gball(p, x + S(12), fl - S(4) - bounce * S(22), S(5))
+        return ["Space", keys["right"]]
+    if k == "pass":
+        ph = (t % 2.6) / 2.6
+        ax, bx = r.left() + S(36), r.right() - S(36)
+        _gman(p, ax, fl, HOOPS_TEAM[0]["main"], 0.9, arms=0.4 if ph < 0.45 else 0.0)
+        _gman(p, bx, fl, HOOPS_TEAM[0]["main"], 0.9, arms=0.5 if ph > 0.55 else 0.0)
+        if ph < 0.45:                               # charging
+            c = ph / 0.45
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 255, 255, 40))
+            p.drawRoundedRect(QRectF(ax - S(16), fl - S(58), S(32), S(5)), S(2), S(2))
+            p.setBrush(QColor("#3BE38A"))
+            p.drawRoundedRect(QRectF(ax - S(16), fl - S(58), S(32) * c, S(5)), S(2), S(2))
+            _gball(p, ax + S(10), fl - S(24), S(5))
+            return [tr("Hold right")]
+        f = min(1.0, (ph - 0.45) / 0.35)
+        x = lerp(ax + S(10), bx - S(10), f)
+        y = fl - S(24) - math.sin(f * math.pi) * S(26)
+        _gball(p, x, y, S(5))
+        return [tr("Release")]
+    if k == "shoot":
+        ph = (t % 3.2) / 3.2
+        hx = r.right() - S(30)
+        p.setPen(QPen(QColor(230, 230, 240), S(2)))
+        p.drawLine(QPointF(hx + S(8), fl), QPointF(hx + S(8), fl - S(70)))
+        p.setPen(QPen(QColor("#FF6B3D"), S(2.5)))
+        p.drawLine(QPointF(hx - S(12), fl - S(62)), QPointF(hx + S(6), fl - S(62)))
+        sx = r.left() + S(40)
+        meter = min(1.0, ph / 0.5)
+        jump = math.sin(min(1.0, ph / 0.5) * math.pi) * S(10) if ph < 0.5 else 0.0
+        _gman(p, sx, fl - jump, HOOPS_TEAM[0]["main"], 0.9, arms=1.0 if ph < 0.55 else 0.2)
+        # the meter, with its green
+        mr = QRectF(sx + S(18), fl - S(64), S(7), S(44))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(255, 255, 255, 35))
+        p.drawRoundedRect(mr, S(3), S(3))
+        p.setBrush(QColor(59, 227, 138, 170))
+        p.drawRect(QRectF(mr.left(), mr.bottom() - mr.height() * 0.86, mr.width(), mr.height() * 0.12))
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawRect(QRectF(mr.left() - S(2), mr.bottom() - mr.height() * min(meter, 0.8) - S(1), mr.width() + S(4), S(3)))
+        if ph < 0.5:
+            _gball(p, sx + S(6), fl - S(46) - jump, S(5))
+            return [tr("Hold left")]
+        f = min(1.0, (ph - 0.5) / 0.32)
+        x = lerp(sx + S(6), hx - S(3), f)
+        y = lerp(fl - S(46), fl - S(62), f) - math.sin(f * math.pi) * S(40)
+        _gball(p, x, y, S(5))
+        if f >= 1.0:
+            p.setFont(font(10, QFont.Weight.Black))
+            p.setPen(QColor("#3BE38A"))
+            p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("PERFECT"))
+        return [tr("Let go in the green")]
+    if k == "steal":
+        ph = (t % 2.4) / 2.4
+        ox = cx + S(26)
+        bounce = abs(math.sin(t * 7.5))
+        took = ph > 0.55
+        _gman(p, ox, fl, HOOPS_TEAM[1]["main"], 0.9)
+        if not took:
+            _gball(p, ox - S(14), fl - S(4) - bounce * S(20), S(5))
+        dx = cx - S(26) + (S(10) if 0.4 < ph < 0.6 else 0)
+        _gman(p, dx, fl, HOOPS_TEAM[0]["main"], 0.9, arms=0.5 if 0.4 < ph < 0.6 else 0.1)
+        if took:
+            _gball(p, dx + S(10), fl - S(24), S(5))
+            p.setFont(font(10, QFont.Weight.Black))
+            p.setPen(QColor(HOOPS_TEAM[0]["light"]))
+            p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("STEAL!"))
+        return [tr("Left click")] if 0.35 < ph < 0.6 else ["Shift"]
+    if k == "fake":
+        ph = (t % 2.6) / 2.6
+        up = 0.2 < ph < 0.45
+        _gman(p, cx - S(22), fl, HOOPS_TEAM[0]["main"], 0.9, arms=1.0 if up else 0.2)
+        _gball(p, cx - S(16), fl - (S(46) if up else S(24)), S(5))
+        jump = math.sin(clamp((ph - 0.3) / 0.35, 0, 1) * math.pi) * S(22)
+        _gman(p, cx + S(22), fl - jump, HOOPS_TEAM[1]["main"], 0.9, arms=1.0 if jump > 1 else 0.2)
+        if ph > 0.55:
+            p.setFont(font(10, QFont.Weight.Black))
+            p.setPen(QColor("#F5C04A"))
+            p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("HE BIT!"))
+        return ["F"] if up else []
+    return []
+
+
+def _guide_kart(p, r, t, k):
+    keys = kart_keys()
+    # a road: a gentle bend
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(60, 64, 72))
+    p.drawRoundedRect(r.adjusted(S(10), S(24), -S(10), -S(10)), S(10), S(10))
+    p.setPen(QPen(QColor(255, 255, 255, 60), S(2), Qt.PenStyle.DashLine))
+    mid = r.center().y() + S(7)
+    p.drawLine(QPointF(r.left() + S(16), mid), QPointF(r.right() - S(16), mid))
+    L, R = r.left() + S(30), r.right() - S(30)
+    if k == "drive":
+        ph = (t % 3.0) / 3.0
+        x = lerp(L, R, ph)
+        y = mid + math.sin(ph * math.pi * 2) * S(18)
+        ang = math.atan2(math.cos(ph * math.pi * 2) * S(18) * 2 * math.pi, R - L)
+        _gkart(p, x, y, ang, "#3DA5FF")
+        return [keys["up"], keys["right"] if math.cos(ph * math.pi * 2) > 0 else keys["left"]]
+    if k == "brake":
+        ph = (t % 2.6) / 2.6
+        f = 1 - (1 - min(1.0, ph / 0.7)) ** 2
+        x = lerp(L, R - S(30), f)
+        _gkart(p, x, mid, 0.0, "#3DA5FF", smoke=1.0 if 0.35 < ph < 0.7 else 0.0)
+        return [keys["down"]] if 0.35 < ph < 0.8 else [keys["up"]]
+    if k == "drift":
+        ph = (t % 3.2) / 3.2
+        a = ph * math.pi * 0.9
+        x = r.center().x() + math.cos(math.pi + a) * S(52)
+        y = mid + S(12) - math.sin(a) * S(26)
+        drifting = 0.15 < ph < 0.75
+        tur = None if not drifting else ("#4FC3FF" if ph < 0.45 else "#FF9F1C")
+        _gkart(p, x, y, -a + (0.5 if drifting else 0.0), "#3DA5FF", smoke=1.0 if drifting else 0.0,
+               flame=1.0 if ph > 0.78 else 0.0, turbo=tur)
+        if ph > 0.78:
+            p.setFont(font(10, QFont.Weight.Black))
+            p.setPen(QColor("#FF9F1C"))
+            p.drawText(QRectF(r.left(), r.top() + S(4), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("MINI TURBO!"))
+        return ["Space", keys["left"]] if drifting else ([tr("Let go")] if ph > 0.75 else [keys["up"]])
+    if k == "boost":
+        ph = (t % 2.8) / 2.8
+        x = lerp(L, R, ph)
+        on = 0.25 < ph < 0.8
+        _gkart(p, x, mid, 0.0, "#3DA5FF", flame=1.0 if on else 0.0)
+        bar = QRectF(r.left() + S(16), r.top() + S(6), S(70), S(6))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(255, 255, 255, 40))
+        p.drawRoundedRect(bar, S(3), S(3))
+        p.setBrush(QColor("#FF9F1C"))
+        p.drawRoundedRect(QRectF(bar.left(), bar.top(), bar.width() * (1 - clamp((ph - 0.25) / 0.6, 0, 1) * 0.8), bar.height()), S(3), S(3))
+        return ["Shift"] if on else [keys["up"]]
+    if k == "slip":
+        ph = (t % 3.0) / 3.0
+        x2 = lerp(L + S(50), R - S(10), ph)
+        x1 = x2 - S(48) + (S(30) * clamp((ph - 0.6) / 0.4, 0, 1))
+        y1 = mid + (S(16) * clamp((ph - 0.6) / 0.3, 0, 1))
+        _gkart(p, x2, mid, 0.0, "#FF3D6E")
+        for k_ in range(3):
+            p.setPen(QPen(QColor(255, 255, 255, 90), S(1.5)))
+            yy = mid - S(5) + k_ * S(5)
+            p.drawLine(QPointF(x2 - S(16), yy), QPointF(x2 - S(30) - (k_ % 2) * S(6), yy))
+        _gkart(p, x1, y1, 0.25 if ph > 0.6 else 0.0, "#3DA5FF")
+        return [keys["up"]] if ph < 0.6 else [keys["up"], keys["down"] if False else keys["right"]]
+    if k == "reset":
+        ph = (t % 3.0) / 3.0
+        _gkart(p, r.center().x(), mid, 0.4 if ph < 0.66 else 0.0, "#3DA5FF")
+        if ph < 0.66:
+            c = ph / 0.66
+            p.setPen(QPen(QColor("#F5C04A"), S(3)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawArc(QRectF(r.center().x() - S(22), mid - S(22), S(44), S(44)), 90 * 16, int(-360 * 16 * c))
+            return ["R"]
+        return []
+    return []
+
+
+GUIDES = {
+    "hoops": (lambda: tr("How to play Hoops"), _guide_hoops, [
+        ("move", lambda: tr("Move"), lambda: tr("Run anywhere. The ring under your feet is you.")),
+        ("dribble", lambda: tr("Dribble"), lambda: tr("Hold Space while moving. Without it you can only pivot.")),
+        ("pass", lambda: tr("Pass"), lambda: tr("Hold right click to charge, let go to pass.")),
+        ("shoot", lambda: tr("Shoot"), lambda: tr("Hold left click, let go in the green. Past half-way only.")),
+        ("steal", lambda: tr("Defend and steal"), lambda: tr("No ball: left click steals, Shift guards, Space blocks.")),
+        ("fake", lambda: tr("Fakes and moves"), lambda: tr("F: fake a shot, then drive past. Back + Space: spin move.")),
+    ], lambda: tr("Tab scoreboard  ·  Esc pause.  Don't stand still with the ball: the defenders rush you.")),
+    "kart": (lambda: tr("How to play Karting"), _guide_kart, [
+        ("drive", lambda: tr("Drive"), lambda: tr("Throttle and steer. Stay on the tarmac: grass slows you down.")),
+        ("brake", lambda: tr("Brake"), lambda: tr("Brake before the corner, not in it. Hold it to reverse.")),
+        ("drift", lambda: tr("Drift for a mini turbo"), lambda: tr("Tap Space in a corner and keep steering. Let go for the turbo.")),
+        ("boost", lambda: tr("Boost"), lambda: tr("Hold Shift on the straights. It refills on its own.")),
+        ("slip", lambda: tr("Slipstream"), lambda: tr("Stay right behind a kart: more top speed, then pass it.")),
+        ("reset", lambda: tr("Stuck?"), lambda: tr("Hold R for 2 seconds to get back on the track.")),
+    ], lambda: tr("Tab scoreboard  ·  Esc leave.  Big crashes wreck your kart. Not touching anything for 45 s gets you disqualified.")),
+}
+
+
+class GameGuide(QWidget):
+    """9.5: an animated 'how to play': six small looping scenes, each with the keys lighting up as they're used.
+    Opens over its parent (the online menu or the race); shown once by itself, then from the How to play button."""
+
+    def __init__(self, parent: QWidget, key: str, on_close=None) -> None:
+        super().__init__(parent)
+        self.key, self.on_close = key, on_close
+        self.title, self.draw, self.tiles, self.foot = GUIDES[key]
+        self.t = 0.0
+        self._t0 = time.monotonic()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._tick)
+        self.timer.start(33)
+        self._btn = QRectF()
+        self.setMouseTracking(True)
+        self.setGeometry(parent.rect())
+        self.show()
+        self.raise_()
+
+    def _tick(self) -> None:
+        self.t = time.monotonic() - self._t0
+        if self.parent() is not None and self.geometry() != self.parent().rect():
+            self.setGeometry(self.parent().rect())
+        self.update()
+
+    def mousePressEvent(self, e) -> None:
+        if self._btn.contains(e.position()):
+            sfx.play("on")
+            self.close_guide()
+
+    def keyPressEvent(self, e) -> None:
+        if e.key() in (Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
+            self.close_guide()
+
+    def close_guide(self) -> None:
+        self.timer.stop()
+        self.hide()
+        self.deleteLater()
+        if self.on_close:
+            self.on_close()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w, h = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(4, 6, 12, 215))
+        cols = 3 if w > S(760) else 2
+        tw = min(S(250), (w - S(60) - (cols - 1) * S(14)) / cols)
+        th = tw * 0.62 + S(58)
+        rows = math.ceil(len(self.tiles) / cols)
+        total_h = S(60) + rows * th + (rows - 1) * S(14) + S(110)
+        y0 = max(S(16), (h - total_h) / 2)
+        x0 = (w - (cols * tw + (cols - 1) * S(14))) / 2
+        p.setFont(font(22, QFont.Weight.Black, 1))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(0, y0, w, S(40)), int(Qt.AlignmentFlag.AlignCenter), self.title())
+        y = y0 + S(56)
+        for i, (k, name, desc) in enumerate(self.tiles):
+            cx = x0 + (i % cols) * (tw + S(14))
+            cy = y + (i // cols) * (th + S(14))
+            card = QRectF(cx, cy, tw, th)
+            p.setPen(QPen(QColor(255, 255, 255, 30), 1))
+            p.setBrush(QColor(16, 20, 30, 240))
+            p.drawRoundedRect(card, S(14), S(14))
+            scene = QRectF(cx + S(8), cy + S(8), tw - S(16), tw * 0.62)
+            p.save()
+            path = QPainterPath()
+            path.addRoundedRect(scene, S(10), S(10))
+            p.setClipPath(path)
+            p.fillRect(scene, QColor(26, 32, 46))
+            lit = self.draw(p, scene, self.t + i * 0.37, k) or []
+            p.restore()
+            # the keys of this move, lit while they're used
+            ky = scene.bottom() + S(6)
+            allk = []
+            for kk in lit:
+                if kk not in allk:
+                    allk.append(kk)
+            p.setFont(font(12, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            p.drawText(QRectF(scene.left(), ky, scene.width(), S(22)), int(Qt.AlignmentFlag.AlignVCenter), name())
+            p.setFont(font(12, QFont.Weight.Black))
+            nx = scene.left() + p.fontMetrics().horizontalAdvance(name()) + S(10)
+            for kk in allk:
+                nx += _gk(p, nx, ky, kk, True) + S(4)
+            p.setFont(font(9.5, QFont.Weight.DemiBold))
+            p.setPen(QColor(TEXT_DIM))
+            p.drawText(QRectF(scene.left(), ky + S(24), scene.width(), S(30)),
+                       int(Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap), desc())
+        yb = y + rows * th + (rows - 1) * S(14) + S(16)
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.setPen(QColor(255, 255, 255, 190))
+        p.drawText(QRectF(S(20), yb, w - S(40), S(36)), int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap), self.foot())
+        self._btn = QRectF(w / 2 - S(130), yb + S(46), S(260), S(44))
+        hover = self._btn.contains(self.mapFromGlobal(QCursor.pos()).toPointF())
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FFFFFF") if not hover else QColor("#F5C04A"))
+        p.drawRoundedRect(self._btn, S(12), S(12))
+        p.setFont(font(13, QFont.Weight.Black))
+        p.setPen(QColor("#0B0F18"))
+        p.drawText(self._btn, int(Qt.AlignmentFlag.AlignCenter), tr("Got it, let's play"))
+
+
+def open_guide(ctx, key: str, parent: QWidget = None, force: bool = False, then=None):
+    """Shows a game's guide over the online menu (or `parent`). Without force, only the first time."""
+    try:
+        seen = list(ctx.cfg["guides_seen"] or [])
+    except Exception:  # noqa: BLE001
+        seen = []
+    if not force and key in seen:
+        return None
+    if key not in seen:
+        seen.append(key)
+        try:
+            ctx.cfg["guides_seen"] = seen
+        except Exception:  # noqa: BLE001
+            pass
+    host = parent if parent is not None else ctx.window
+    g = GameGuide(host, key, then)
+    g.setFocus()
+    return g
+
+
+class GameVolume(QWidget):
+    """9.5: in the race / match top bar: two small sliders, effects and crowd/engines (left = off). They are the same
+    settings as Settings > Sounds."""
+
+    def __init__(self, ctx, on_change=None) -> None:
+        super().__init__()
+        self.ctx = ctx
+        lay = hbox(self, 6)
+        for key, icon_txt, tip in (("vol_fx", tr("Effects"), tr("Game effects")), ("vol_amb", tr("Crowd / engines"), tr("Crowd and engines"))):
+            lab = Label(icon_txt, 10, TEXT_DIM, bold=True)
+            lab.setFixedWidth(lab.text_width() + S(6))
+            sl = Slider(0, 100, float(ctx.cfg[key]), 5, None)
+            sl.setFixedWidth(S(84))
+            sl.setToolTip(tip)
+            sl.changed.connect(lambda v, key=key: self._set(key, v, on_change))
+            lay.addWidget(lab)
+            lay.addWidget(sl)
+            lay.addSpacing(S(6))
+
+    def _set(self, key, v, on_change) -> None:
+        try:
+            self.ctx.cfg[key] = int(v)
+        except Exception:  # noqa: BLE001
+            pass
+        KartAudio.levels(self.ctx.cfg)
+        if on_change:
+            on_change()
+
+
 class KartStage(QWidget):
     """9.2: the race. 9.3.2: inside the online menu, not a window of its own: the menu first grows sideways (as wide as
     the screen allows), then the race fades in over it; when you leave it fades out and the menu goes back to its
@@ -73009,8 +74583,7 @@ class KartStage(QWidget):
         bl = hbox(self.bar, 8, (S(14), 0, S(10), 0))
         self.title = Label("", 13, TEXT, bold=True)
         bl.addWidget(self.title, 1)
-        self.sound = Button(tr("Sound on") if sfx.enabled else tr("Sound off"), "ghost", 30)
-        self.sound.clicked.connect(self._sound)
+        self.sound = GameVolume(link.ctx, self.focus)          # 9.5: sliders instead of on / off
         bl.addWidget(self.sound)
         self.leave = Button(tr("Leave"), "ghost", 30)
         self.leave.clicked.connect(self.ask_leave)
@@ -73135,17 +74708,6 @@ class KartStage(QWidget):
         super().resizeEvent(e)
         if self.over is not None:
             self.over.setGeometry(self.body.rect())
-
-    def _sound(self) -> None:
-        sfx.enabled = not sfx.enabled
-        try:
-            self.link.ctx.cfg["sounds"] = sfx.enabled
-        except Exception:  # noqa: BLE001
-            pass
-        if not sfx.enabled:
-            KartAudio.get().stop()
-        self.sound.set_text(tr("Sound on") if sfx.enabled else tr("Sound off"))
-        self.focus()
 
     def ask_leave(self) -> None:
         if not self.link.racing():
@@ -73300,6 +74862,7 @@ class KartLink(QObject):
         self.view = view
         view.first_timer = kart_opts(self.ctx).get("races", 0) < 3
         view.finished.connect(self._finished)
+        view.dq_sig.connect(self._disqualified)
         gh = getattr(self.ctx, "kart_ghost_next", None)               # 9.4: racing a run from the time board
         self.ghost = None
         if isinstance(gh, dict) and int(gh.get("track", -1)) == int(st.get("track") or 0) and len(seats) == 1:
@@ -73411,10 +74974,16 @@ class KartLink(QObject):
             return
         self.sent_bot = True
         laps = kart_ms_laps(k.laps, k.finish_t)
+
+        def got(ok: bool, d) -> None:
+            if ok:
+                self.got_state(d)
+            if getattr(self, "dq_wait", False):        # 9.5: you were disqualified: now the bot has its time, you go out
+                self.dq_wait = False
+                self._send_dq()
         self.ctx.online.ask("rb_kart_finish", {"rid": self.rid, "ms": int(round(k.finish_t * 1000)), "laps": laps,
                                                "best": min(laps), "blowups": k.blowups, "hits": k.hits,
-                                               "turbos": k.drift_turbos, "prog": k.prog, "is_bot": True},
-                            lambda ok, d: self.got_state(d) if ok else None)
+                                               "turbos": k.drift_turbos, "prog": k.prog, "is_bot": True}, got)
 
     def _finished(self, res: dict) -> None:
         self.my_result = res
@@ -73437,6 +75006,29 @@ class KartLink(QObject):
         self.ctx.econ.call("rb_kart_finish", {"rid": self.rid, "ms": int(round(k.finish_t * 1000)), "laps": laps,
                                               "best": min(laps), "blowups": k.blowups, "hits": k.hits,
                                               "turbos": k.drift_turbos, "prog": k.prog, "is_bot": False}, done)
+
+    def _disqualified(self) -> None:
+        """9.5: AFK: out of the race with no time (the server counts it as not finished); the view keeps running so
+        this PC still drives the bot if it does, and you watch the end."""
+        if self.sent_finish:
+            return
+        self.sent_finish = True
+        v = self.view
+        # the bot this PC drives is still racing: it finishes first (or the room would end with it on no time)
+        if v.bot_seat >= 0 and v.bot_seat not in v.race.remote and not v.race.karts[v.bot_seat].done and not self.sent_bot:
+            self.dq_wait = True
+            return
+        self._send_dq()
+
+    def _send_dq(self) -> None:
+        k = self.view.kart
+
+        def done(ok: bool, d) -> None:
+            if ok:
+                self.got_state(d)
+        self.ctx.econ.call("rb_kart_finish", {"rid": self.rid, "ms": None, "laps": None, "best": None,
+                                              "blowups": k.blowups + 1, "hits": k.hits, "turbos": k.drift_turbos,
+                                              "prog": k.prog, "is_bot": False}, done)
 
     def _save_run(self) -> None:
         """9.4: a 3 lap race: the run goes to the time board (the server keeps it if the finish counted)."""
@@ -73628,18 +75220,26 @@ HOOPS_LEVELS = ["Club", "Regional", "National", "Professional"]
 # they time things, and how good their decisions are.
 HOOPS_BOT = {
     "Club":         {"react": 0.42, "speed": 0.86, "sigma": 0.10, "shoot_min": 0.24, "risk": 0.75, "spin": 0.00,
-                     "fake": 0.00, "bite": 0.85, "steal": 0.30, "steal_read": 0.25, "help": 0.15, "space": 0.35,
+                     "fake": 0.05, "bite": 0.85, "steal": 0.30, "steal_read": 0.25, "help": 0.15, "space": 0.35,
                      "cut": 0.00, "fancy": 0.00, "box": 0.2, "deny": 0.10, "gap": 1.75, "jump_read": 0.3},
     "Regional":     {"react": 0.30, "speed": 0.91, "sigma": 0.072, "shoot_min": 0.33, "risk": 0.45, "spin": 0.15,
-                     "fake": 0.06, "bite": 0.60, "steal": 0.40, "steal_read": 0.50, "help": 0.40, "space": 0.6,
+                     "fake": 0.14, "bite": 0.60, "steal": 0.40, "steal_read": 0.50, "help": 0.40, "space": 0.6,
                      "cut": 0.15, "fancy": 0.15, "box": 0.45, "deny": 0.35, "gap": 1.5, "jump_read": 0.55},
     "National":     {"react": 0.19, "speed": 0.96, "sigma": 0.046, "shoot_min": 0.40, "risk": 0.25, "spin": 0.45,
-                     "fake": 0.18, "bite": 0.35, "steal": 0.55, "steal_read": 0.78, "help": 0.70, "space": 0.85,
+                     "fake": 0.28, "bite": 0.35, "steal": 0.55, "steal_read": 0.78, "help": 0.70, "space": 0.85,
                      "cut": 0.45, "fancy": 0.45, "box": 0.75, "deny": 0.65, "gap": 1.3, "jump_read": 0.8},
-    "Professional": {"react": 0.10, "speed": 1.00, "sigma": 0.027, "shoot_min": 0.46, "risk": 0.08, "spin": 0.85,
-                     "fake": 0.38, "bite": 0.12, "steal": 0.88, "steal_read": 0.95, "help": 0.92, "space": 1.0,
-                     "cut": 0.80, "fancy": 0.80, "box": 0.95, "deny": 0.90, "gap": 1.15, "jump_read": 0.95},
+    # 9.5: Professional has no human limits: it sees everything at once (two steps), releases every shot on the
+    # perfect mark, never bites on a fake, never misjudges a pass and is a step quicker than anyone
+    "Professional": {"react": 0.017, "speed": 1.05, "sigma": 0.0, "shoot_min": 0.50, "risk": 0.0, "spin": 1.0,
+                     "fake": 0.5, "bite": 0.0, "steal": 1.0, "steal_read": 1.0, "help": 1.0, "space": 1.0,
+                     "cut": 1.0, "fancy": 1.0, "box": 1.0, "deny": 1.0, "gap": 1.0, "jump_read": 1.0},
 }
+
+
+# 9.5: stand still with the ball this long (seconds, by the bots' level) and both defenders rush you to take it; aiming
+# a shot gives one more second. A red edge builds up on screen as it gets close.
+HOOPS_PRESS = {"Club": 6.0, "Regional": 5.0, "National": 4.0, "Professional": 3.0}
+HOOPS_MATE_MIN = "National"           # 9.5: your team-mate reads the game at least this well (it gets open, it defends)
 
 
 def hyp(x, z):
@@ -73710,6 +75310,11 @@ def green_open(d):
     return lerp(_G_TABLE[k], _G_TABLE[k + 1], i - k)
 
 
+def hoops_mate_level(level):
+    """9.5: the human's bot team-mate: the opponents' level, but never below HOOPS_MATE_MIN."""
+    return HOOPS_LEVELS[max(HOOPS_LEVELS.index(level), HOOPS_LEVELS.index(HOOPS_MATE_MIN))]
+
+
 class HoopsInput:
     """One player's controls this step, from the keyboard and mouse or from a bot."""
     __slots__ = ("mx", "mz", "space", "shift", "lmb", "rmb", "aim")
@@ -73751,7 +75356,7 @@ class HoopsPlayer:
         self.catch_t = 0.0        # just caught (for the drawing)
         self.celebrate = 0.0
         self.st = {"pts": 0, "fg": 0, "fga": 0, "three": 0, "threea": 0, "ast": 0, "stl": 0, "blk": 0, "reb": 0,
-                   "to": 0, "perfect": 0}
+                   "to": 0, "perfect": 0, "sc": 0.0}
 
     @property
     def jumping(self):
@@ -73794,7 +75399,7 @@ class HoopsGame:
         for team in (0, 1):
             for k in range(team_size):
                 human = n in humans
-                lv = (mate_level or level) if team == 0 else level
+                lv = (mate_level or hoops_mate_level(level)) if team == 0 else level
                 self.players.append(HoopsPlayer(n, team, [7, 23, 11, 3][n % 4] if team == 0 else [10, 4, 32, 9][k % 4],
                                            human, lv))
                 n += 1
@@ -73821,6 +75426,13 @@ class HoopsGame:
         self.dead_for = 0.0
         self.dead_then = None
         self.buzzer = False
+        self.fire_n = [0, 0]       # 9.5: baskets in a row (the other team not scoring in between)
+        self.fire_t = [0.0, 0.0]   # ... 3 in a row: the team is on fire for 25 s (a wider green on every shot)
+        self.poss_id = 0           # 9.5: counts possessions (for the pass points)
+        self.calls = {}            # 9.5: team -> (quick chat kind, when)
+        self.hold_idle = 0.0       # 9.5: how long the human has stood still with the ball
+        self.press = False         # ... past their level's limit: the defenders rush the ball
+        self.press_lim = HOOPS_PRESS.get(level, 5.0)
         self.reset_positions()
 
     # ---------------------------------------------------------------------------------------------- helpers
@@ -73925,7 +75537,22 @@ class HoopsGame:
                 self._idle(p, dt, celebrate=True)
             return
         if ph == "dead":
+            walk = getattr(self, "walk", None) or {}
+            left = max(0.05, self.dead_for - self.phase_t)
             for p in self.players:
+                tgt = walk.get(p.i)
+                if tgt is not None:                           # 9.5: walking to the inbound spot (or out of the way)
+                    dx, dz = tgt[0] - p.x, tgt[1] - p.z
+                    d = hyp(dx, dz)
+                    if d > 0.01:
+                        v = min(d / dt, max(RUN, d / left))
+                        p.vx, p.vz = dx / d * v, dz / d * v
+                        p.x += p.vx * dt
+                        p.z += p.vz * dt
+                        p.fx, p.fz = norm(lerp(p.fx, dx / d, 0.15), lerp(p.fz, dz / d, 0.15))
+                        p.run_ph = (getattr(p, "run_ph", 0.0) + dt * v * 0.9) % 1.0
+                        continue
+                    p.vx = p.vz = 0.0
                 self._idle(p, dt)
             self._ball_step(dt) if self.ball.mode != "held" else self._hold_ball()
             if self.phase_t >= self.dead_for and self.dead_then:
@@ -73958,6 +75585,16 @@ class HoopsGame:
                 if p.i not in self.bots:
                     self.bots[p.i] = HoopsBot(self, p)
                 ins[p.i] = self.bots[p.i].think(HOOPS_DT)
+        self._press_step(ins, dt)
+        c_ = self.carrier()
+        if c_ is not None:
+            c_.st["sc"] = c_.st.get("sc", 0.0) + dt * (1.4 if c_.act in ("dribble", "spin") else 0.8)
+        for t_ in (0, 1):
+            if self.fire_t[t_] > 0:
+                self.fire_t[t_] = max(0.0, self.fire_t[t_] - dt)
+                if self.fire_t[t_] <= 0:
+                    self.fire_n[t_] = 0
+                    self.ev("fire_out", team=t_)
         for p in self.players:
             self._player_step(p, ins[p.i], dt)
             p.prev = ins[p.i]
@@ -73969,6 +75606,46 @@ class HoopsGame:
             if not (b.mode == "shot" or (b.mode == "loose" and b.from_shot and b.f is None and False)):
                 self.buzzer = True
                 self.end_regulation()
+
+    def call(self, team, kind):
+        """9.5: quick chat from the human to their bot team-mate: pass, shoot, help, save (just a cheer)."""
+        self.calls[team] = (kind, self.t)
+        self.ev("call", team=team, kind=kind)
+
+    def called(self, team, kind, within):
+        c = self.calls.get(team)
+        return c is not None and c[0] == kind and self.t - c[1] <= within
+
+    def award(self, i, label, pts, show=True):
+        """9.5: match points (Rocket League style): the feed at the top shows what you did and what it was worth;
+        some points (possession, dribbling) are given quietly."""
+        if i < 0 or self.phase not in ("play", "score", "dead"):
+            return
+        q = self.players[i]
+        q.st["sc"] = q.st.get("sc", 0.0) + pts
+        if show:
+            self.ev("award", p=i, label=label, pts=int(pts))
+
+    def _press_step(self, ins, dt):
+        """9.5: a human holding the ball without moving: after their level's time (one more while aiming a shot) the
+        defenders rush them, and a swipe can take a held ball."""
+        c = self.carrier()
+        if c is None or not c.ctrl or c.i != getattr(self, "_press_c", -1):
+            self._press_c = c.i if c is not None and c.ctrl else -1
+            self.hold_idle = 0.0
+            self.press = False
+            return
+        i = ins.get(c.i) or HoopsInput()
+        moving = hyp(i.mx, i.mz) > 0.2 and c.speed() > 0.6
+        if moving:
+            self.hold_idle = max(0.0, self.hold_idle - dt * 4)
+        else:
+            self.hold_idle += dt
+        self.press_lim = HOOPS_PRESS.get(self.level, 5.0) + (1.0 if (i.shift or c.act == "shoot") else 0.0)
+        was = self.press
+        self.press = self.hold_idle >= self.press_lim
+        if self.press and not was:
+            self.ev("press", p=c.i)
 
     def end_regulation(self):
         self.ev("buzzer")
@@ -74009,10 +75686,18 @@ class HoopsGame:
         self.dead_for = 1.4
         self.ev("whistle")
         self.ev("violation", kind=kind, team=to)
+        # 9.5: during the pause the inbounder runs to the spot and everyone near it steps away (no teleporting)
+        tm = self.team(to)
+        inb = min(tm, key=lambda q: hyp(q.x - sx, q.z - sz))
+        self.walk = {inb.i: (sx, sz)}
+        for q in self.players:
+            if q is not inb and hyp(q.x - sx, q.z - sz) < 1.7:
+                dx, dz = norm(q.x - sx, q.z - sz) if hyp(q.x - sx, q.z - sz) > 0.01 else (0.0, 1.0)
+                self.walk[q.i] = (clamp(sx + dx * 1.8, -HALF_L + 0.4, HALF_L - 0.4), clamp(sz + dz * 1.8, 0.4, COURT_W - 0.4))
 
         def give():
-            tm = self.team(to)
-            p = min(tm, key=lambda q: hyp(q.x - sx, q.z - sz))
+            self.walk = {}
+            p = inb
             p.x, p.z = sx, sz
             for q in self.players:                            # nobody stands on top of the inbound spot
                 if q is not p and hyp(q.x - sx, q.z - sz) < 1.6:
@@ -74026,6 +75711,8 @@ class HoopsGame:
         self.dead_then = give
 
     def _give(self, p):
+        self.hold_idle = 0.0
+        self.press = False
         b = self.ball
         b.owner, b.mode, b.f = p.i, "held", None
         b.from_shot = False
@@ -74069,6 +75756,14 @@ class HoopsGame:
 
     def scored(self, team, pts, shooter):
         self.score[team] += pts
+        self.fire_n[team] += 1
+        self.fire_n[1 - team] = 0
+        if self.fire_t[1 - team] > 0:
+            self.fire_t[1 - team] = 0.0
+            self.ev("fire_out", team=1 - team)
+        if self.fire_n[team] >= 3 and self.fire_t[team] <= 0:
+            self.fire_t[team] = 25.0
+            self.ev("fire", team=team)
         p = self.players[shooter]
         p.st["pts"] += pts
         p.st["fg"] += 1
@@ -74079,7 +75774,11 @@ class HoopsGame:
         if lp and lp[1] == team and lp[0] != shooter and self.t - lp[2] < 4.0:
             assist = lp[0]
             self.players[assist].st["ast"] += 1
-        self.last_score = {"team": team, "pts": pts, "by": shooter, "assist": assist, "t": self.t}
+        self.award(shooter, "THREE!" if pts == 3 else "SCORED", 75 if pts == 3 else 50)
+        if assist >= 0:
+            self.award(assist, "ASSIST", 30)
+        self.last_score = {"team": team, "pts": pts, "by": shooter, "assist": assist, "t": self.t,
+                           "how": getattr(self, "_last_how", "")}
         self.phase, self.phase_t = "score", 0.0
         self.ev("score", team=team, pts=pts, by=shooter, assist=assist)
         for q in self.team(team):
@@ -74200,6 +75899,8 @@ class HoopsGame:
         nx, nz = p.x + p.vx * dt, p.z + p.vz * dt
         # the zone: holding the ball, you can't leave it
         if has and p.act in ("hold", "passwind", "gather", "fake") or (has and p.act == "shoot" and p.h <= 0):
+            if hyp(p.x - p.zx, p.z - p.zz) > ZONE_R:     # 9.5: a stale zone (left from the dribble): start it here
+                p.zx, p.zz = p.x, p.z
             dx, dz = nx - p.zx, nz - p.zz
             d = hyp(dx, dz)
             if d > ZONE_R:
@@ -74288,6 +75989,11 @@ class HoopsGame:
                 lmb_down = True
         if a == "dribble":
             p.drib_at = self.t
+        if lmb_down and inp.shift and p.h <= 0 and p.x * (1 if hoop_of(p.team) > 0 else -1) < 0:
+            # 9.5: no shots from your own half: cross the half-way line first
+            if p.ctrl:
+                self.ev("own_half", p=p.i)
+            return 0.0
         if lmb_down and inp.shift and p.h <= 0:
             hx = hoop_of(p.team)
             d = hyp(hx - p.x, HOOP_Z - p.z)
@@ -74317,6 +76023,7 @@ class HoopsGame:
         if a == "dribble":
             if not inp.space or inp.shift:
                 p.act, p.act_t = "gather", 0.0
+                p.zx, p.zz = p.x, p.z                    # 9.5: the pick-up zone is where you are (no snap back)
                 return DRIB * 0.4
             # a spin: back + dribble turns you round fast
             if ml > 0.3 and p.spin_cd <= 0 and p.speed() > 1.5:
@@ -74330,6 +76037,23 @@ class HoopsGame:
             self._dribble_ball(p, dt)
             return DRIB
         return RUN * 0.5
+
+    def _ball_to(self, tx, tz, dt):
+        """9.5: the ball in someone's hands follows them, but never jumps: a quick turn or a spin sweeps it round
+        (at most 16 m/s relative to the carrier) instead of moving it a metre in one step."""
+        b = self.ball
+        c = self.carrier()
+        if c is not None:                                  # carried along with the player first
+            b.x += c.vx * dt
+            b.z += c.vz * dt
+        dx, dz = tx - b.x, tz - b.z
+        d = hyp(dx, dz)
+        mx = 16.0 * dt
+        if d <= mx or d > 3.0:                             # close enough, or a restart: straight there
+            b.x, b.z = tx, tz
+        else:
+            b.x += dx / d * mx
+            b.z += dz / d * mx
 
     def _dribble_ball(self, p, dt):
         b = self.ball
@@ -74352,8 +76076,7 @@ class HoopsGame:
         p.cross = max(0.0, p.cross - dt / (period * 0.5))
         hand = p.hand * (1 - p.cross) - p.hand * p.cross   # through the middle while crossing
         ahead = 0.30 + 0.06 * sp
-        b.x = p.x + p.fx * ahead + sx * 0.34 * hand
-        b.z = p.z + p.fz * ahead + sz * 0.34 * hand
+        self._ball_to(p.x + p.fx * ahead + sx * 0.34 * hand, p.z + p.fz * ahead + sz * 0.34 * hand, dt)
         b.h = 0.95 * abs(math.cos(math.pi * p.phase)) + HB_BALL_R
         b.spin += dt * 8
 
@@ -74374,12 +76097,18 @@ class HoopsGame:
         if d_ball > STEAL_REACH + 0.25:
             p.stun = OFF_BAL
             return
+        if self.press and c.act in ("hold", "passwind", "fake", "gather", "shoot") and d_ball <= STEAL_REACH + 0.1:
+            self.hold_idle = 0.0                         # 9.5: stood still too long: the rush takes it
+            self.press = False
+            return self._strip(p, c)
         if c.act in ("hold", "passwind", "fake", "gather") or (c.act == "shoot" and c.h > 0.3):
             p.stun = OFF_BAL * 0.8                       # tied up in the hands
             self.ev("tied", p=p.i)
             return
         if c.act == "spin":
-            p.stun = OFF_BAL
+            p.stun = 1.25                                # 9.5: swiping at a spin move: ankles broken, a long stumble
+            self.ev("ankles", p=p.i, by=c.i)
+            self.award(c.i, "ANKLE BREAKER", 25)
             return
         if c.act == "shoot":                             # a strip on the way up
             if d_ball < STEAL_REACH and self.rng.random() < 0.35:
@@ -74411,6 +76140,7 @@ class HoopsGame:
         p.st["stl"] += 1
         c.st["to"] += 1
         self.ev("steal", p=p.i, c=c.i)
+        self.award(p.i, "STEAL", 30)
 
     def _take(self, p):
         b = self.ball
@@ -74421,6 +76151,10 @@ class HoopsGame:
             p.st["reb"] += 1
         b.owner, b.mode, b.f = p.i, "held", None
         old = self.poss
+        if old != p.team or reb:
+            self.poss_id += 1
+        if reb:
+            self.award(p.i, "REBOUND", 15)
         self.poss = p.team
         if old != p.team or reb:
             self.shot_clock = SHOT_CLOCK
@@ -74554,6 +76288,8 @@ class HoopsGame:
                 k *= 1.25
             c = max(c, clamp(k, 0, 1))
         g *= 1 - 0.55 * c
+        if self.fire_t[p.team] > 0:                  # 9.5: on fire
+            g *= 1.35
         return g, d, c, make_chance(g)
 
     def _release(self, p):
@@ -74622,8 +76358,7 @@ class HoopsGame:
                 return
             if c.act not in ("dribble", "spin"):
                 up = c.arms_up > 0.5 and c.act in ("shoot", "fake")
-                b.x = c.x + c.fx * (0.18 if up else 0.33)
-                b.z = c.z + c.fz * (0.18 if up else 0.33)
+                self._ball_to(c.x + c.fx * (0.18 if up else 0.33), c.z + c.fz * (0.18 if up else 0.33), dt)
                 b.h = c.h + (lerp(1.2, 2.3, c.shot_m if c.act == "shoot" else 0.7) if up else 1.15)
             return
         if b.mode in ("pass", "shot"):
@@ -74678,6 +76413,7 @@ class HoopsGame:
                         q.st["stl"] += 1
                         by.st["to"] += 1
                         self.ev("intercept", p=q.i, by=by.i)
+                        self.award(q.i, "INTERCEPTION", 30)
                         self._take(q)
                     return
         # the receiver
@@ -74685,6 +76421,18 @@ class HoopsGame:
         d = hyp(b.x - m.x, b.z - m.z)
         if (d < 0.85 and b.h <= m.h + HAND_UP + 0.3 and s > 0.6) or (s >= 1.0 and d < 1.25):
             self._take(m)
+            if by is not None and by.team == m.team:
+                # 9.5: a completed pass is worth points, but not ping-pong: none for passing straight back within
+                # 3 s, and at most 2 per possession
+                pa = getattr(self, "_pass_aw", None)
+                if pa is None or pa[0] != self.poss_id:
+                    pa = [self.poss_id, 0, -1, -9.0]
+                ok = pa[1] < 2 and not (pa[2] == m.i and self.t - pa[3] < 3.0)
+                if ok:
+                    pa[1] += 1
+                    self.award(by.i, "PASS", 10)
+                pa[2], pa[3] = by.i, self.t
+                self._pass_aw = pa
             return
         if s >= 1.0:                                   # nobody there: it carries on, loose
             b.mode = "loose"
@@ -74717,6 +76465,8 @@ class HoopsGame:
                     b.last_team = q.team
                     q.st["blk"] += 1
                     self.ev("block", p=q.i, by=f["by"])
+                    epic = f.get("zone") == "green" or hyp(q.x - hoop_of(f["team"]), q.z - HOOP_Z) < 3.0
+                    self.award(q.i, "EPIC SAVE" if epic else "SAVE", 70 if epic else 40)
                     return
         if s < 1.0:
             return
@@ -74730,6 +76480,7 @@ class HoopsGame:
             b.last_team = 1 - f["team"]
             counts = f["before_buzzer"]
             self.ev("net", how=f["how"], team=f["team"], pts=f["pts"])
+            self._last_how = f["how"]
             if counts:
                 self.scored(f["team"], f["pts"], f["by"])
             elif self.phase == "play":
@@ -74747,6 +76498,7 @@ class HoopsGame:
             sp = self.rng.uniform(2.2, 4.4)
             b.vx, b.vz, b.vh = ox * sp, oz * sp, self.rng.uniform(1.8, 3.6)
             self.ev("rim", x=b.x, z=b.z)
+            self.award(f["by"], "SHOT ON NET", 15)
         else:
             self.ev("airball", p=f["by"])
         self.shot_clock = SHOT_CLOCK
@@ -74829,6 +76581,27 @@ class HoopsGame:
                 (b.x, b.z, b.h, b.spin, b.owner, b.mode))
 
 
+def hoops_lerp_snap(a, b, t):
+    """9.5: a drawing snapshot between two steps (t 0..1): positions, heights and facings blend; the rest is b's.
+    A jump of more than 2 m (a restart) is not blended."""
+    if t >= 0.999 or a is None:
+        return b
+    pa, ba = a
+    pb, bb = b
+    out = []
+    for qa, qb in zip(pa, pb):
+        if abs(qa[0] - qb[0]) + abs(qa[1] - qb[1]) > 2.0:
+            out.append(qb)
+            continue
+        out.append((qa[0] + (qb[0] - qa[0]) * t, qa[1] + (qb[1] - qa[1]) * t, qa[2] + (qb[2] - qa[2]) * t,
+                    qa[3] + (qb[3] - qa[3]) * t, qa[4] + (qb[4] - qa[4]) * t) + tuple(qb[5:]))
+    if abs(ba[0] - bb[0]) + abs(ba[1] - bb[1]) + abs(ba[2] - bb[2]) > 2.0:
+        ball = bb
+    else:
+        ball = (ba[0] + (bb[0] - ba[0]) * t, ba[1] + (bb[1] - ba[1]) * t, ba[2] + (bb[2] - ba[2]) * t) + tuple(bb[3:])
+    return out, ball
+
+
 def pass_shape(p, mx, mz, g):
     """The pass's kind from the keys held while charging: up (W/Z) lob, down (S) bounce, left/right a curve to that
     side of the pass line. Up and down are the screen's (the depth)."""
@@ -74887,10 +76660,23 @@ class HoopsBot:
         inp = self.inp
         # the shot in progress: release on the bot's timing
         if b.owner == p.i and p.act == "shoot":
-            if self.shot_at is not None and p.act_t >= self.shot_at:
+            if k["sigma"] <= 0:
+                # 9.5, Professional: let go on the step that lands nearest the perfect mark (the game's own meter)
+                mark = SHOT_C * (LAY_T if p.shot_lay else SHOT_T)
+                if p.act_t + HOOPS_DT * 1.5 >= mark:
+                    inp.lmb = False
+            elif self.shot_at is not None and p.act_t >= self.shot_at:
                 inp.lmb = False
             return inp.copy()
         if b.owner == p.i and p.act == "passwind":
+            if getattr(self, "fake_pass", False):           # 9.5: a pass fake: wind up, then the right button
+                if p.act_t >= 0.16:
+                    self.fake_pass = False
+                    out = inp.copy()
+                    out.rmb = True
+                    inp.lmb = False
+                    return out
+                return inp.copy()
             if p.act_t >= self.charge_to:
                 inp.lmb = False
             return inp.copy()
@@ -74919,7 +76705,13 @@ class HoopsBot:
             self._defence()
         else:
             self._loose()
-        return inp.copy()
+        out = inp.copy()
+        if out.lmb and p.prev.lmb and p.act not in ("shoot", "passwind"):
+            # 9.5: the button is still down from the last press: let go for one step so this press counts (a bot
+            # could otherwise hold it forever and stand frozen with the ball)
+            out.lmb = False
+            self.next = min(self.next, g.t + 0.02)
+        return out
 
     def _continue(self):
         inp = self.inp
@@ -74986,11 +76778,14 @@ class HoopsBot:
             s = g.past(near.i, lag)
             ux, uz = norm(p.x - s[0], p.z - s[1])
             closing = s[2] * ux + s[3] * uz
+        own_half = p.x * (1 if hx > 0 else -1) < 0                  # 9.5: no shots from your own half
         want_shot = pct >= k["shoot_min"] and (ev_shoot >= ev_pass * 0.95 or risk > 0.5)
         if pts == 3 and pct >= 0.3 and ev_shoot >= 1.02 + 0.12 * k["space"] and ev_shoot >= ev_pass * 0.9 and c < 0.25:
             want_shot = True                          # an open three
         if clock < 2.2 and pct > 0.05:
             want_shot = True
+        if own_half:
+            want_shot = False
         # pump fake when a defender is flying at you
         if want_shot and closing > 3.0 and near_d < 2.4 and rng.random() < k["fake"] * 2 and g.t - self.fake_used > 2.5:
             self.fake_used = g.t
@@ -75004,6 +76799,11 @@ class HoopsBot:
         if mate is not None and risk < 0.45 and (ev_pass > ev_shoot * 1.15 or (near_d < 1.2 and risk < 0.3)
                                                  or clock < 4 and mate_pct > pct):
             if mate_pct > 0.2 or near_d < 1.4:
+                if 0.15 < risk and p.act == "hold" and rng.random() < k["fake"] * 1.5 and g.t - self.fake_used > 2.5:
+                    self.fake_used = g.t                 # 9.5: sell the pass first, the defender jumps the lane
+                    self.fake_pass = True
+                    inp.lmb, inp.shift, inp.mx, inp.mz = True, False, 0.0, 0.0
+                    return
                 return self._pass(kind, risk)
         # drive: pick the best direction to the hoop, away from defenders
         self._drive(hx, seen, near_d, near)
@@ -75015,7 +76815,7 @@ class HoopsBot:
         d = hyp(hx - p.x, HOOP_Z - p.z)
         lay = d < 2.3 and p.act == "dribble"
         T = LAY_T if lay else SHOT_T
-        err = self.rng.gauss(0, k["sigma"])
+        err = self.rng.gauss(0, k["sigma"]) if k["sigma"] > 0 else 0.0
         self.shot_at = (SHOT_C + err) * T
         inp.shift = True
         inp.lmb = True
@@ -75116,20 +76916,41 @@ class HoopsBot:
         spots = [(hx - side * 6.9, HOOP_Z), (hx - side * 5.2, HOOP_Z - 4.6), (hx - side * 5.2, HOOP_Z + 4.6),
                  (hx - side * 1.0, HOOP_Z - 6.7), (hx - side * 1.0, HOOP_Z + 6.7), (hx - side * 2.2, HOOP_Z - 2.6),
                  (hx - side * 2.2, HOOP_Z + 2.6), (hx - side * 8.0, HOOP_Z - 3.5), (hx - side * 8.0, HOOP_Z + 3.5)]
-        # the carrier far back (transition): run ahead of the ball first
+        # the carrier far back (transition): 9.5: run ahead of the ball but stay in passing range (5-7 m ahead, off to
+        # one side), never camp under the far basket out of reach
         if c is not None and (c.x - hx) * -side > 9:
-            spots = [(hx - side * 4.5, HOOP_Z - 4.0), (hx - side * 4.5, HOOP_Z + 4.0), (hx - side * 2.0, HOOP_Z)]
+            ax = c.x + side * 6.0
+            ax = min(ax, hx - side * 2.0) if side > 0 else max(ax, hx - side * 2.0)
+            spots = [(ax, clamp(c.z + 3.6, 1.2, COURT_W - 1.2)), (ax, clamp(c.z - 3.6, 1.2, COURT_W - 1.2)),
+                     (c.x + side * 4.0, clamp(c.z + 4.6, 1.2, COURT_W - 1.2)), (c.x + side * 4.0, clamp(c.z - 4.6, 1.2, COURT_W - 1.2))]
         lag = k["react"]
         opps = g.opps(p)
+        # 9.5: the carrier is stuck (a defender on them, or a human standing still): come back to the ball for an
+        # easy outlet pass, away from the defenders
+        outlet = False
+        if c is not None and c.team == p.team:
+            near_def = min(hyp(q.x - c.x, q.z - c.z) for q in opps)
+            if (near_def < 1.5 and c.act in ("hold", "gather")) or (c.ctrl and g.hold_idle > 1.2):
+                outlet = True
+                for a in range(8):
+                    ang = a * math.pi / 4
+                    ox, oz = c.x + math.cos(ang) * 4.2, c.z + math.sin(ang) * 4.2
+                    if -HALF_L + 1 < ox < HALF_L - 1 and 1.0 < oz < COURT_W - 1.0:
+                        spots.append((ox, oz))
         best, bestv = None, -1e9
         for sx, sz in spots:
-            if c is not None and hyp(sx - c.x, sz - c.z) < 4.0:
+            if c is not None and hyp(sx - c.x, sz - c.z) < (3.0 if outlet else 4.0):
                 continue
             open_ = min(hyp(g.past(q.i, lag)[0] - sx, g.past(q.i, lag)[1] - sz) for q in opps)
             dist = hyp(sx - p.x, sz - p.z)
             pct = make_chance(green_open(hyp(hx - sx, HOOP_Z - sz)), max(k["sigma"], 0.02) * 1.1 + 0.012)
             pts = 3 if is_three(p.team, sx, sz) else 2
             v = min(open_, 4.0) * (0.4 + 0.6 * k["space"]) + pct * pts * 1.4 - dist * 0.12 + rng.uniform(0, 0.8 * (1 - k["space"]))
+            if c is not None:                                 # 9.5: a pass has to reach me: stay within ~8 m
+                dc = hyp(sx - c.x, sz - c.z)
+                v -= max(0.0, dc - 8.0) * 0.9
+                if outlet and 3.0 < dc < 5.0:
+                    v += 1.6
             if self.spot and hyp(sx - self.spot[0], sz - self.spot[1]) < 0.5:
                 v += 0.6                                      # don't dither
             if v > bestv:
@@ -75158,6 +76979,14 @@ class HoopsBot:
         my_hoop = hoop_of(1 - p.team)               # the hoop I defend (the one they attack)
         lag = k["react"]
         mate = g.mate(p)
+        if g.press and c is not None and c.team != p.team:
+            # 9.5: the human stood still with the ball too long: both defenders rush it and swipe
+            inp.shift = False
+            inp.mx, inp.mz = self._to(b.x, b.z, 0.05)
+            self.plan = {"to": lambda: (g.ball.x, g.ball.z), "slow": 0.05}
+            if p.steal_cd <= 0 and p.stun <= 0 and hyp(b.x - (p.x + p.fx * 0.45), b.z - (p.z + p.fz * 0.45)) < STEAL_REACH:
+                self.plan["lmb_once"] = True
+            return
         # who do I guard? the human's controlled player always guards whoever they like; a bot picks the attacker
         # that its team-mate isn't guarding (man to man, the nearer one)
         attackers = g.team(1 - p.team)
@@ -75166,9 +76995,13 @@ class HoopsBot:
             cost_keep = hyp(p.x - a0.x, p.z - a0.z) + hyp(mate.x - a1.x, mate.z - a1.z)
             cost_swap = hyp(p.x - a1.x, p.z - a1.z) + hyp(mate.x - a0.x, mate.z - a0.z)
             if mate.human and g.ctrl.get(mate.team) == mate.i:
-                # the human chooses: take the attacker nearest to them... the other one is mine
+                # the human chooses: take the attacker nearest to them... the other one is mine. 9.5: only when the
+                # human is really on them (within 3.5 m); otherwise I take the ball (the human is out of the play)
                 mh = min(attackers, key=lambda a: hyp(a.x - mate.x, a.z - mate.z))
-                man = a1 if mh is a0 else a0
+                if hyp(mh.x - mate.x, mh.z - mate.z) > 3.5 and c is not None and c.team != p.team:
+                    man = c
+                else:
+                    man = a1 if mh is a0 else a0
             else:
                 pref = a0 if cost_keep <= cost_swap else a1
                 if self.assign >= 0 and self.assign in (a0.i, a1.i):
@@ -76078,12 +77911,13 @@ class HoopsAudio(KartAudio):
             y1 += (rnd() * 2 - 1 - y1) * 0.05
             y2 += (rnd() * 2 - 1 - y2) * 0.18
             y3 += (rnd() * 2 - 1 - y3) * 0.5
-            out[i] = (y1 * 1.6 + y2 * 0.55 + y3 * 0.08) * a
+            out[i] = (y1 * 1.6 + y2 * 0.55 + y3 * 0.08) * a * KartAudio.amb_l
         self._c = [y1, y2, y3]
         with self.lock:
             keep = []
             for v in self.voices:
                 smp, pos, g = v
+                g *= KartAudio.fx_l                         # 9.5: the effects slider
                 m = min(n, len(smp) - pos)
                 for i in range(m):
                     out[i] += smp[pos + i] * g
@@ -76100,6 +77934,8 @@ class HoopsView(QWidget):
     """9.3: the match. Runs the game at 120 steps a second on a fixed clock, draws at the screen's rate, and handles
     the coin flip, the countdowns, the goal explosion and its replay, the pause menu and the final whistle."""
     finished = pyqtSignal(dict)
+    quit_req = pyqtSignal()                  # 9.5: Leave the match from the pause menu (the stage asks the link)
+    AFK_WARN, AFK_KICK = 30.0, 45.0          # 9.5: no input this long: a warning, then disqualified
 
     def __init__(self, level: str = "National", mins: float = 3.0, seed: int = 0, name: str = "", replays: int = 1) -> None:
         super().__init__()
@@ -76136,6 +77972,10 @@ class HoopsView(QWidget):
         self.result_sent = False
         self.over_t = 0.0
         self.toast_ctrl = 0.0
+        self.feed: list = []                 # 9.5: the points feed at the top: [label, pts, team, t0, mine]
+        self.last_input = 0.0                # 9.5: the view clock when you last pressed or moved anything
+        self.dq = False
+        self.board = False                   # 9.5: Tab held: the scoreboard
         self.squeak_cd = 0.0
         self.skins = [random.Random(self.seed + i).randrange(len(HOOPS_SKIN)) for i in range(4)]
         self._frame = time.monotonic()
@@ -76157,12 +77997,38 @@ class HoopsView(QWidget):
         left = 1.0 if (k & {Qt.Key.Key_A, Qt.Key.Key_Q, Qt.Key.Key_Left}) else 0.0
         right = 1.0 if (k & {Qt.Key.Key_D, Qt.Key.Key_Right}) else 0.0
         aim = self.cam.floor_at(self.mouse.x(), self.mouse.y())
-        return HoopsInput(right - left, up - down, Qt.Key.Key_Space in k, Qt.Key.Key_Shift in k, self.lmb, self.rmb, aim)
+        # 9.5: one button, one job. With the ball: left click shoots (hold, let go in the green), right click passes
+        # (hold to charge), F fakes. Without it: left click steals, right click switches player, Space jumps, Shift
+        # guards. The game underneath still speaks Shift + click, so this turns the buttons into that.
+        g = self.g
+        me = g.players[g.ctrl.get(0, 0)] if g.players else None
+        has = me is not None and g.ball.owner == me.i
+        shift, lmb, rmb = Qt.Key.Key_Shift in k, self.lmb, self.rmb
+        fake = getattr(self, "_fake_q", False)
+        self._fake_q = False
+        if has:
+            if me.act == "shoot":
+                shift, lmb, rmb = True, self.lmb, False
+            elif me.act == "passwind":
+                shift, lmb, rmb = False, self.rmb, False
+            elif fake:
+                shift, lmb, rmb = True, False, True
+            elif self.lmb:
+                shift, lmb, rmb = True, True, False
+            elif self.rmb:
+                shift, lmb, rmb = False, True, False
+            else:
+                shift, lmb, rmb = False, False, False
+        return HoopsInput(right - left, up - down, Qt.Key.Key_Space in k, shift, lmb, rmb, aim)
 
     def keyPressEvent(self, e) -> None:
         if e.isAutoRepeat():
             return
         key = e.key()
+        self.last_input = self.T
+        if key == Qt.Key.Key_Tab:                     # 9.5: hold Tab for the scoreboard
+            self.board = True
+            return
         if key in (Qt.Key.Key_Escape, Qt.Key.Key_P):
             if self.g.phase != "over":
                 self.paused = not self.paused
@@ -76171,15 +78037,20 @@ class HoopsView(QWidget):
         if self.replay is not None and key in (Qt.Key.Key_Space, Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self._end_replay()
             return
+        if key == Qt.Key.Key_F:                      # 9.5: the fake has its own key
+            self._fake_q = True
         self.keys.add(Qt.Key(key))
 
     def keyReleaseEvent(self, e) -> None:
         if e.isAutoRepeat():
             return
+        if e.key() == Qt.Key.Key_Tab:
+            self.board = False
         self.keys.discard(Qt.Key(e.key()))
 
     def mousePressEvent(self, e) -> None:
         self.setFocus()
+        self.last_input = self.T
         if self.paused:
             return self._pause_click(e.position())
         if self.replay is not None:
@@ -76197,6 +78068,8 @@ class HoopsView(QWidget):
             self.rmb = False
 
     def mouseMoveEvent(self, e) -> None:
+        if (e.position() - self.mouse).manhattanLength() > 6:
+            self.last_input = self.T
         self.mouse = e.position()
 
     def contextMenuEvent(self, e) -> None:
@@ -76220,10 +78093,7 @@ class HoopsView(QWidget):
                 elif name == "restart":
                     self.restart()
                 elif name == "quit":
-                    w = self.window()
-                    if w is not None:
-                        w._sure = True
-                        w.close()
+                    self.quit_req.emit()
                 return
 
     def restart(self) -> None:
@@ -76237,6 +78107,10 @@ class HoopsView(QWidget):
         self.paused = False
         self.result_sent = False
         self.last_count = 99
+        self._prev = None
+        self.feed = []
+        self.last_input = self.T
+        self.dq = False
 
     # -- the clock
     def _tick(self) -> None:
@@ -76255,6 +78129,7 @@ class HoopsView(QWidget):
                     n = 0
                     while self._acc >= HOOPS_DT and n < 12:
                         self._acc -= HOOPS_DT
+                        self._prev = g.snap()          # 9.5: drawn between the last two steps (smooth at any frame rate)
                         g.step(inp)
                         n += 1
                         if int(g.t * 120) % 2 == 0:
@@ -76268,6 +78143,7 @@ class HoopsView(QWidget):
             self._transition(dt)
             self._camera(dt)
             self._countdown()
+            self._afk()
             self._flow(dt)
             self.audio.set_crowd(0.16 + 0.06 * self._near_hoop(), self.hype)
             self.hype = max(0.0, self.hype - dt * 0.35)
@@ -76278,6 +78154,24 @@ class HoopsView(QWidget):
             self.update()
         except RuntimeError:
             self.timer.stop()
+
+    def _afk(self) -> None:
+        """9.5: 45 s without touching anything during the match: disqualified (a loss, no prize)."""
+        g = self.g
+        if self.dq or g.phase == "over":
+            return
+        if g.phase == "intro" or self.replay is not None or self.keys or self.lmb or self.rmb:
+            self.last_input = self.T
+            return
+        if self.T - self.last_input >= self.AFK_KICK:
+            self.dq = True
+            self.paused = False
+            g.phase, g.phase_t = "over", 0.0
+            g.result = {"win": 1, "score": list(g.score), "ot": g.overtime, "dq": True}
+            self.msgs = []
+            self._msg(tr("DISQUALIFIED"), "#FF5A5A", 60, True)
+            self._msg(tr("No input for 45 seconds"), "#FFFFFF", 60)
+            self.audio.play("buzzer", 0.9)
 
     def _near_hoop(self) -> float:
         b = self.g.ball
@@ -76299,13 +78193,8 @@ class HoopsView(QWidget):
                 self.finished.emit(self.result())
 
     def _want_replay(self) -> bool:
-        """Replays: 0 every basket, 1 the big plays (a three, a perfect release, the last 20 seconds, overtime), 2 none."""
-        if self.replays == 0:
-            return True
-        if self.replays == 2:
-            return False
-        ls = self.g.last_score or {}
-        return ls.get("pts") == 3 or self.last_perfect or self.g.overtime or self.g.clock < 20
+        """9.5: every basket gets its replay (there is no choice any more); Space skips it."""
+        return True
 
     def _start_wipe(self, then, col) -> None:
         self.wipe = 0.0
@@ -76402,6 +78291,10 @@ class HoopsView(QWidget):
                         pass
             elif kind == "swipe":
                 self.audio.play("swipe", 0.4)
+            elif kind == "own_half":                         # 9.5
+                if g.players[d["p"]].team == me_team:
+                    self._msg(tr("Cross the half-way line to shoot"), "#FFC94A", 1.2)
+                    self.audio.play("tick")
             elif kind == "steal":
                 p = g.players[d["p"]]
                 self.audio.play("steal", 0.8)
@@ -76492,6 +78385,26 @@ class HoopsView(QWidget):
                                       30, 4, "confetti")
             elif kind == "restart":
                 pass
+            elif kind == "award":                                 # 9.5: the points feed (your team)
+                pl = g.players[d["p"]]
+                if pl.team == me_team:
+                    self.feed = [f for f in self.feed if self.T - f[3] < 2.6][-3:]
+                    self.feed.append([tr(d["label"]), d["pts"], pl.team, self.T, pl.i == g.ctrl.get(0, -1)])
+            elif kind == "press":
+                self._msg(tr("PRESSURE! Move the ball"), "#FF5A5A", 1.4)
+                self.audio.play("whistle_short", 0.4)
+            elif kind == "ankles":
+                self._msg(tr("ANKLES BROKEN!"), "#F5C04A", 1.6)
+                self.hype = min(1.0, self.hype + 0.7)
+                self.audio.play("ooh", 0.7)
+            elif kind == "fire":
+                self._msg(tr("ON FIRE!"), "#FF7A1A", 2.2, True)
+                self._msg(tr("3 in a row: easier shots for 25 seconds"), "#FFFFFF", 2.2)
+                self.audio.play("roar", 0.7)
+                self.hype = 1.0
+            elif kind == "fire_out":
+                if d["team"] == me_team:
+                    self._msg(tr("The fire is out"), "#FFB04A", 1.2)
         # squeaks on hard cuts near the camera
         if self.squeak_cd <= 0 and g.phase == "play":
             for p in g.players:
@@ -76580,8 +78493,10 @@ class HoopsView(QWidget):
                 for k, v in p.st.items():
                     t[k] = t.get(k, 0) + v
             tot.append(t)
-        return {"level": self.level, "mins": self.mins, "score": list(g.score), "win": g.result["win"] == 0 if g.result else False,
-                "ot": g.overtime, "me": tot[0], "opp": tot[1], "seed": self.seed}
+        return {"level": self.level, "mins": self.mins, "score": list(g.score),
+                "win": (g.result["win"] == 0 if g.result else False) and not self.dq, "dq": self.dq,
+                "ot": g.overtime, "me": tot[0], "opp": tot[1], "seed": self.seed,
+                "players": [{"i": q.i, "team": q.team, "num": q.num, "human": q.human, "st": dict(q.st)} for q in g.players]}
 
     # ---------------------------------------------------------------------------------------------- drawing
     def paintEvent(self, _e) -> None:
@@ -76593,10 +78508,14 @@ class HoopsView(QWidget):
         cam.setup(self.width(), self.height())
         if self.replay is not None:
             r = self.replay
-            fr = r["frames"][min(int(r["pos"]), len(r["frames"]) - 1)][1]
-            players, ball = fr
+            i = min(int(r["pos"]), len(r["frames"]) - 1)
+            players, ball = hoops_lerp_snap(r["frames"][i][1], r["frames"][min(i + 1, len(r["frames"]) - 1)][1],
+                                            r["pos"] - int(r["pos"]))
         else:
             s = g.snap()
+            prev = getattr(self, "_prev", None)
+            if prev is not None and not self.paused and g.phase != "intro":
+                s = hoops_lerp_snap(prev, s, clamp(self._acc / HOOPS_DT, 0.0, 1.0))
             players, ball = s
         self._arena(p)
         self._floor(p)
@@ -76638,6 +78557,8 @@ class HoopsView(QWidget):
                     glow = None
                     if self.replay is None and g.ball.mode == "shot" and g.ball.f and g.ball.f.get("perfect"):
                         glow = QColor("#3BE38A")
+                    elif self.replay is None and g.fire_t[max(0, g.ball.last_team)] > 0 and g.ball.last_team >= 0:
+                        glow = QColor("#FF7A1A")                  # 9.5: on fire
                     hoops_draw_ball(p, cam, ball[0], ball[1], ball[2], ball[3], glow)
             elif kind == "ref":
                 self._ref(p)
@@ -76646,7 +78567,10 @@ class HoopsView(QWidget):
         if self.replay is None:
             self._aim(p)
         if self.replay is None:
+            self._pressure(p)
             self._hud(p)
+            self._feed(p)
+            self._afk_warn(p)
         else:
             self._replay_hud(p)
         self._messages(p)
@@ -76660,8 +78584,138 @@ class HoopsView(QWidget):
             p.fillRect(self.rect(), c)
         if self.wipe_then is not None or self.wipe > 0:
             self._wipe(p)
+        if self.board and not self.paused:
+            self._board(p)
         if self.paused:
             self._pause(p)
+
+    # -- 9.5: pressure, the points feed, the AFK warning, the Tab scoreboard
+    def _pressure(self, p: QPainter) -> None:
+        """A red edge that builds up while you stand still with the ball (full when the defenders rush you)."""
+        g = self.g
+        lim = max(0.5, g.press_lim)
+        k = clamp((g.hold_idle - lim * 0.35) / (lim * 0.65), 0.0, 1.0) if g.phase == "play" else 0.0
+        if g.press:
+            k = 1.0
+        self._press_k = lerp(getattr(self, "_press_k", 0.0), k, 0.2)
+        k = self._press_k
+        if k < 0.02:
+            return
+        w, h = self.width(), self.height()
+        pulse = 0.85 + 0.15 * math.sin(self.T * (6 + 8 * k))
+        grad = QRadialGradient(QPointF(w / 2, h / 2), max(w, h) * 0.72)
+        grad.setColorAt(0.55, QColor(255, 30, 40, 0))
+        grad.setColorAt(1.0, QColor(255, 30, 40, int(170 * k * pulse)))
+        p.fillRect(self.rect(), QBrush(grad))
+        if not g.press and k > 0.3:
+            left = max(0.0, lim - g.hold_idle)
+            p.setFont(font(12, QFont.Weight.Black, 1))
+            p.setPen(QColor(255, 120, 120, int(255 * k)))
+            p.drawText(QRectF(0, h - S(78), w, S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Move! Pressure in {s}", s=f"{left:.1f}"))
+
+    def _feed(self, p: QPainter) -> None:
+        """Rocket League style: what you just did and the points it was worth, under the scoreboard."""
+        self.feed = [f for f in self.feed if self.T - f[3] < 2.6]
+        y = S(86)
+        w = self.width()
+        for label, pts, team, t0, mine in reversed(self.feed):
+            age = self.T - t0
+            a = clamp(min(age / 0.12, (2.6 - age) / 0.35), 0, 1)
+            slide = (1 - clamp(age / 0.18, 0, 1)) * S(16)
+            txt = label
+            p.setFont(font(13, QFont.Weight.Black, 1.2))
+            tw = p.fontMetrics().horizontalAdvance(txt)
+            p.setFont(font(13, QFont.Weight.Black))
+            pw_ = p.fontMetrics().horizontalAdvance(f"+{pts}")
+            bw = tw + pw_ + S(44)
+            r = QRectF(w / 2 - bw / 2, y - slide, bw, S(30))
+            col = QColor(HOOPS_TEAM[team]["main"])
+            col.setAlphaF(0.92 * a)
+            p.setPen(QPen(QColor(255, 255, 255, int(70 * a)), 1))
+            p.setBrush(QColor(8, 10, 18, int(215 * a)))
+            p.drawRoundedRect(r, S(9), S(9))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col)
+            p.drawRoundedRect(QRectF(r.left(), r.top(), S(6), r.height()), S(3), S(3))
+            p.setFont(font(13, QFont.Weight.Black, 1.2))
+            p.setPen(QColor(255, 255, 255, int(255 * a)) if mine else QColor(200, 215, 255, int(230 * a)))
+            p.drawText(QRectF(r.left() + S(16), r.top(), tw + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), txt)
+            p.setFont(font(13, QFont.Weight.Black))
+            p.setPen(QColor(245, 192, 74, int(255 * a)))
+            p.drawText(QRectF(r.right() - pw_ - S(14), r.top(), pw_ + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), f"+{pts}")
+            y += S(36)
+
+    def _afk_warn(self, p: QPainter) -> None:
+        g = self.g
+        if self.dq or g.phase in ("over", "intro"):
+            return
+        idle = self.T - self.last_input
+        if idle < self.AFK_WARN:
+            return
+        left = max(0, int(math.ceil(self.AFK_KICK - idle)))
+        w, h = self.width(), self.height()
+        r = QRectF(w / 2 - S(230), h * 0.62, S(460), S(54))
+        p.setPen(QPen(QColor("#FF5A5A"), 2))
+        p.setBrush(QColor(20, 6, 8, 230))
+        p.drawRoundedRect(r, S(14), S(14))
+        p.setFont(font(15, QFont.Weight.Black))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), tr("Are you there? Move or you're disqualified in {n}", n=left))
+
+    def _board(self, p: QPainter) -> None:
+        """Hold Tab: every player's line, with the match points."""
+        g = self.g
+        w, h = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(4, 6, 12, 200))
+        cols = [(tr("Player"), 0), (tr("SCORE"), S(84)), (tr("PTS"), S(56)), (tr("AST"), S(56)), (tr("REB"), S(56)),
+                (tr("STL"), S(56)), (tr("BLK"), S(56)), (tr("FG"), S(64))]
+        bw = min(w - S(60), S(760))
+        name_w = bw - sum(c[1] for c in cols) - S(40)
+        x0 = w / 2 - bw / 2
+        y = h * 0.2
+        p.setFont(font(22, QFont.Weight.Black, 2))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(x0, y - S(48), bw, S(36)), int(Qt.AlignmentFlag.AlignCenter),
+                   f"{g.score[0]}  -  {g.score[1]}")
+        for team in (0, 1):
+            T = HOOPS_TEAM[team]
+            rows = sorted(g.team(team), key=lambda q: -q.st.get("sc", 0))
+            box = QRectF(x0, y, bw, S(34) + S(36) * len(rows))
+            c = QColor(T["main"])
+            c.setAlpha(70)
+            p.setPen(QPen(QColor(T["main"]), 1.5))
+            p.setBrush(QColor(10, 12, 20, 235))
+            p.drawRoundedRect(box, S(14), S(14))
+            p.setBrush(c)
+            p.drawRoundedRect(box, S(14), S(14))
+            x = x0 + S(20)
+            p.setFont(font(9.5, QFont.Weight.Black, 1))
+            p.setPen(QColor(T["light"]))
+            for ci, (t, cw) in enumerate(cols):
+                cw = cw or name_w
+                p.drawText(QRectF(x, y + S(8), cw, S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                           (tr("BLUE") if team == 0 else tr("RED")) if ci == 0 else t.upper())
+                x += cw
+            yy = y + S(34)
+            for q in rows:
+                me = q.team == 0 and g.ctrl.get(0, -1) == q.i
+                name = (tr("You") if me else (tr("Team-mate") if q.team == 0 else hoops_lv(q.level))) + f"  #{q.num}"
+                st = q.st
+                vals = [name, str(int(st.get("sc", 0))), str(st["pts"]), str(st["ast"]), str(st["reb"]), str(st["stl"]),
+                        str(st["blk"]), f"{st['fg']}/{st['fga']}"]
+                x = x0 + S(20)
+                for k_, ((t, cw), v) in enumerate(zip(cols, vals)):
+                    cw = cw or name_w
+                    p.setFont(font(12.5, QFont.Weight.Black if k_ <= 1 else QFont.Weight.DemiBold))
+                    p.setPen(QColor("#F5C04A") if k_ == 1 else QColor("#FFFFFF") if (k_ == 0 and me) else QColor(TEXT))
+                    p.drawText(QRectF(x, yy, cw, S(30)), int(Qt.AlignmentFlag.AlignVCenter), v)
+                    x += cw
+                yy += S(36)
+            y = box.bottom() + S(14)
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.setPen(QColor(255, 255, 255, 150))
+        p.drawText(QRectF(x0, y + S(4), bw, S(20)), int(Qt.AlignmentFlag.AlignCenter), tr("Let go of Tab to play"))
 
     def _arena(self, p: QPainter) -> None:
         w, h = self.width(), self.height()
@@ -76798,6 +78852,17 @@ class HoopsView(QWidget):
         p.setBrush(c)
         p.setPen(Qt.PenStyle.NoPen)
         self._ellipse(p, me.x, me.z, 0.5)
+        # 9.5: the passing lane to my team-mate while I have the ball: green safe, amber risky, red likely picked off
+        mate = g.mate(me)
+        if g.ball.owner == me_i and g.phase == "play" and mate is not None and me.act in ("hold", "dribble", "passwind"):
+            risk, _f = g.pass_risk(me, me.pass_kind if me.act == "passwind" else "chest", 0.55, None)
+            col = QColor("#3BE38A") if risk < 0.35 else QColor("#FFC94A") if risk < 0.6 else QColor("#FF5A5A")
+            col.setAlpha(190 if me.act == "passwind" else 130)
+            pen = QPen(col, S(3), Qt.PenStyle.DashLine, Qt.PenCapStyle.RoundCap)
+            pen.setDashOffset(-self.T * 8)
+            p.setPen(pen)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawLine(self.cam.pt(me.x, me.z, 0.02), self.cam.pt(mate.x, mate.z, 0.02))
         # the dribble zone (only I see mine): white; amber at the edge; it follows the bounce when dribbling
         if g.ball.owner == me_i and g.phase in ("play", "count"):
             d = hyp(me.x - me.zx, me.z - me.zz)
@@ -76825,6 +78890,15 @@ class HoopsView(QWidget):
             top = cam.pt(d[0], d[1], d[2] + 2.25)
             s = cam.scale(d[1])
             if i == me_i:
+                # 9.5: a YOU tag above the chevron, so you never lose yourself
+                p.setFont(font(9.5, QFont.Weight.Black, 1.5))
+                yt = top.y() - S(36) + math.sin(self.T * 4) * S(2)
+                yr = QRectF(top.x() - S(20), yt, S(40), S(17))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(HOOPS_TEAM[0]["main"]))
+                p.drawRoundedRect(yr, S(8), S(8))
+                p.setPen(QColor("#FFFFFF"))
+                p.drawText(yr, int(Qt.AlignmentFlag.AlignCenter), tr("YOU"))
                 # a chevron in my colour
                 a = S(7) + s * 0.05
                 yy = top.y() - S(6) + math.sin(self.T * 4) * S(2)
@@ -77356,9 +79430,9 @@ HOOPS_ABOUT = {
     "Club": "Easy-going: slow to react, takes bad shots and bites on every fake.",
     "Regional": "Solid basketball, but makes mistakes you can punish.",
     "National": "Quick and smart: reads passes, times steals, rarely misses an open shot.",
-    "Professional": "Very strong: fakes, lobs and curved passes, tight defence and deadly shooting.",
+    "Professional": "No human limits: instant reactions, every shot released on the perfect mark, never fooled by a fake.",
 }
-HOOPS_PAY = {"Club": (120, 25), "Regional": (220, 40), "National": (380, 60), "Professional": (650, 90)}  # win, loss (3 min)
+HOOPS_PAY = {"Club": (150, 30), "Regional": (350, 50), "National": (900, 80), "Professional": (2500, 120)}  # win, loss (3 min)
 
 
 def hoops_opts(ctx) -> dict:
@@ -77479,18 +79553,23 @@ def build_hoops(page, lay) -> None:
     mins.changed.connect(lambda i: (o.__setitem__("mins", [2, 3, 4, 5][i]), hoops_save_opts(ctx)))
     hl.addWidget(mins)
     hl.addWidget(Label(tr("A tie at the buzzer goes to overtime: the next basket wins."), 10, TEXT_FAINT, wrap_w=page.W))
-    reps = Segmented([tr("Replay every basket"), tr("Replay big plays"), tr("No replays")], o["replays"])
-    reps.changed.connect(lambda i: (o.__setitem__("replays", i), hoops_save_opts(ctx)))
-    hl.addWidget(reps)
+    # 9.5: replays are always on (the big plays and every swish); the choice is gone
     go = Button(tr("Play"), "primary", 44, icon="play")
-    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"], o["replays"]))
-    hl.addWidget(go)
+    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"], 0))
+    how = Button(tr("How to play"), "ghost", 44)            # 9.5: the animated guide (shown by itself the first time)
+    how.clicked.connect(lambda: open_guide(ctx, "hoops", force=True))
+    prow = hbox(spacing=8)
+    prow.addWidget(how)
+    prow.addWidget(go, 1)
+    hl.addLayout(prow)
+    QTimer.singleShot(450, lambda: open_guide(ctx, "hoops"))
     keys = hoops_keys()
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Move")),
-                              (["Space"], tr("Dribble (with a direction) / jump")),
-                              (["Shift"], tr("Aim at the hoop / defend")),
-                              ([tr("Left click")], tr("Shoot (in aim) / pass / steal")),
-                              ([tr("Right click")], tr("Quick pass / fake / switch player")),
+                              ([tr("Left click")], tr("Shoot (no ball: steal)")),
+                              ([tr("Right click")], tr("Pass (no ball: switch player)")),
+                              (["F"], tr("Fake a shot")),
+                              (["Space"], tr("Dribble (no ball: jump)")),
+                              (["Shift"], tr("Guard (no ball)")),
                               ([tr("Esc")], tr("Pause"))], page.W))
     if not data:
         pass                                          # the prizes line comes once the server answered
@@ -77509,7 +79588,7 @@ class HoopsResults(QWidget):
     def __init__(self, res: dict, paid, width: int) -> None:
         super().__init__()
         self.res, self.paid = res, paid
-        self.setFixedSize(min(width, S(720)), S(296))
+        self.setFixedSize(min(width, S(720)), S(336))
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -77520,6 +79599,8 @@ class HoopsResults(QWidget):
         p.setFont(font(28, QFont.Weight.Black))
         p.setPen(QColor("#3BE38A") if win else QColor("#FF6B78"))
         title = tr("You win!") if win else tr("You lose")
+        if r.get("dq"):
+            title = tr("Disqualified")
         if r.get("ot"):
             title += "  ·  " + tr("in overtime")
         p.drawText(QRectF(0, 0, w, S(40)), int(Qt.AlignmentFlag.AlignVCenter), title)
@@ -77589,18 +79670,39 @@ class HoopsResults(QWidget):
             if self.paid.get("capped"):
                 txt += "   ·   " + tr("daily limit reached")
         p.drawText(QRectF(0, y, w, S(26)), int(Qt.AlignmentFlag.AlignVCenter), txt)
+        # 9.5: the MVP: the most match points (the feed's points, plus the quiet ones)
+        pl = r.get("players") or []
+        if pl:
+            best = max(pl, key=lambda q: q["st"].get("sc", 0))
+            mine = best["team"] == 0 and best["human"]
+            who = tr("You") if mine else (tr("Your team-mate") if best["team"] == 0 else hoops_lv(r.get("level", "")))
+            card = QRectF(0, y + S(34), w, S(34))
+            T = HOOPS_TEAM[best["team"]]
+            c = QColor(T["main"])
+            c.setAlpha(70)
+            p.setPen(QPen(QColor("#F5C04A"), 1.5))
+            p.setBrush(c)
+            p.drawRoundedRect(card, S(10), S(10))
+            p.setFont(font(12, QFont.Weight.Black, 1.5))
+            p.setPen(QColor("#F5C04A"))
+            p.drawText(card.adjusted(S(14), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), "MVP")
+            p.setFont(font(12, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            st = best["st"]
+            p.drawText(card.adjusted(S(64), 0, -S(14), 0), int(Qt.AlignmentFlag.AlignVCenter),
+                       f"{who}  #{best['num']}   ·   {int(st.get('sc', 0))} " + tr("points") + f"   ·   {st['pts']} PTS  {st['ast']} AST  {st['stl']} STL  {st['blk']} BLK")
 
     def set_paid(self, paid) -> None:
         self.paid = paid
         self.update()
 
 
-class HoopsWindow(KartWindow):
-    """The match in its own big window (Karting's, with Hoops' title and sound)."""
+class HoopsStage(KartStage):
+    """9.5: the match inside the online menu, like Karting (9.3 opened its own window, which could fall behind
+    Rubenium): the menu grows sideways, then the court fades in over it; Leave or Esc asks while the match runs."""
 
     def __init__(self, link) -> None:
         super().__init__(link)
-        self.setWindowTitle("Rubenium Hoops")
         self.wait_label.set_text(tr("Warming up…"))
 
     def show_results(self, w: QWidget) -> None:
@@ -77610,28 +79712,18 @@ class HoopsWindow(KartWindow):
         self.over.setGeometry(self.body.rect())
         self.over.show()
 
-    def _sound(self) -> None:
-        super()._sound()
-        if not sfx.enabled:
-            HoopsAudio.get().stop()
-
-    def closeEvent(self, e) -> None:
-        if self.link.racing() and not getattr(self, "_sure", False):
-            e.ignore()
-
-            def go() -> None:
-                self._sure = True
-                self.close()
-            try:
-                self.link.ctx.window.confirm(tr("Leave the match? It counts as a loss and pays nothing."), go, yes=tr("Leave"))
-            except Exception:  # noqa: BLE001
-                go()
-            return
+    def close_stage(self) -> None:
         HoopsAudio.get().stop()
-        if self.view is not None:
-            self.view.timer.stop()
-        self.link.window_closed(self)
-        QWidget.closeEvent(self, e)
+        super().close_stage()
+
+    def ask_leave(self) -> None:
+        if not self.link.racing():
+            return self.link.close()
+        try:
+            self.host.confirm(tr("Leave the match? It counts as a loss and pays nothing."), self.link.leave, yes=tr("Leave"))
+            self.host.confirm_w.raise_()
+        except Exception:  # noqa: BLE001
+            self.link.leave()
 
 
 class HoopsOverlay(KartOverlay):
@@ -77670,8 +79762,7 @@ class HoopsLink(QObject):
     def start(cls, ctx, level: str, mins: int, replays: int = 1) -> None:
         if cls._cur is not None and cls._cur.win is not None:
             try:
-                cls._cur.win.raise_()
-                cls._cur.win.activateWindow()
+                cls._cur.win.focus()
                 return
             except RuntimeError:
                 cls._cur = None
@@ -77693,10 +79784,11 @@ class HoopsLink(QObject):
         self.done = False
         self.ctx.econ.call("rb_hoops_start", {"level": self.level, "mins": self.mins}, self._started)
         if self.win is None:
-            self.win = HoopsWindow(self)
-            self.win.show()
+            self.win = HoopsStage(self)
+            self.win.open()
         view = HoopsView(self.level, float(self.mins), 0, "", self.replays)
         view.finished.connect(self._finished)
+        view.quit_req.connect(self.win.ask_leave)
         if self.win.view is not None:
             self.win.view.timer.stop()
             self.win.view.setParent(None)
@@ -77716,6 +79808,9 @@ class HoopsLink(QObject):
         self.done = True
         self.results = HoopsResults(res, None, max(S(560), int(self.win.width() * 0.6)))
         self.win.show_results(self.results)
+        if res.get("dq"):                                 # 9.5: AFK: a loss, nothing sent, nothing paid
+            self.results.set_paid(tr("Disqualified for being away: no prize."))
+            return
         if not self.gid:
             self.results.set_paid(tr("No prize: the server didn't start this match."))
             return
@@ -77741,9 +79836,7 @@ class HoopsLink(QObject):
         return self.view is not None and not self.done and self.view.g.phase != "over"
 
     def leave(self) -> None:
-        if self.win is not None:
-            self.win._sure = True
-            self.win.close()
+        self.close()
 
     def again(self) -> None:
         sfx.play("on")
@@ -77751,8 +79844,10 @@ class HoopsLink(QObject):
 
     def close(self) -> None:
         if self.win is not None:
-            self.win._sure = True
-            self.win.close()
+            w = self.win
+            if w.view is not None:
+                w.view.timer.stop()
+            w.close_stage()
 
     def window_closed(self, _w) -> None:
         self.win = None
@@ -77769,6 +79864,9 @@ class HoopsLink(QObject):
 
 
 
+FR.update({'Hold right': 'Maintiens droit', 'Hold right click to charge, let go to pass.': 'Maintiens le clic droit pour charger, lâche pour passer.', 'Hold left click, let go in the green. Past half-way only.': 'Maintiens le clic gauche, lâche dans le vert. Seulement après la ligne médiane.', 'No ball: left click steals, Shift guards, Space blocks.': 'Sans ballon : clic gauche pour intercepter, Maj pour défendre, Espace pour contrer.', 'F: fake a shot, then drive past. Back + Space: spin move.': 'F : feinte de tir, puis passe ton défenseur. Arrière + Espace : spin move.', 'Shoot (no ball: steal)': 'Tirer (sans ballon : intercepter)', 'Pass (no ball: switch player)': 'Passer (sans ballon : changer de joueur)', 'Fake a shot': 'Feinte de tir', 'Dribble (no ball: jump)': 'Dribbler (sans ballon : sauter)', 'Guard (no ball)': 'Défendre (sans ballon)', 'One button, one job. WITH THE BALL: left click shoots, right click passes, F fakes, Space dribbles.': 'Un bouton, une action. AVEC LE BALLON : clic gauche pour tirer, clic droit pour passer, F pour feinter, Espace pour dribbler.', 'Shooting: hold left click to rise and let go when the marker is in the green: green goes in almost every time, yellow sometimes, red rarely. The green gets smaller with distance and with a defender in your face. You can only shoot once you are past the half-way line.': 'Tirer : maintiens le clic gauche pour t’élever et lâche quand le repère est dans le vert : le vert rentre presque à chaque fois, le jaune parfois, le rouge rarement. Le vert rétrécit avec la distance et avec un défenseur sur toi. Tu ne peux tirer qu’après la ligne médiane.', "Passing: hold right click to charge a pass to your team-mate (the badge over their head) and let go. While charging, up throws a lob, down a bounce pass, left or right curves it. The line is white when it's safe, orange when risky, red when a defender will cut it off.": 'Passer : maintiens le clic droit pour charger une passe vers ton coéquipier (le badge au-dessus de sa tête) et lâche. Pendant la charge, haut fait un lob, bas une passe à terre, gauche ou droite la brosse. La ligne est blanche quand c’est sûr, orange quand c’est risqué, rouge quand un défenseur va la couper.', 'Faking: press F. You pretend to shoot, the defender jumps, and you drive past while they are in the air.': 'Feinter : appuie sur F. Tu fais semblant de tirer, le défenseur saute, et tu le passes pendant qu’il est en l’air.', 'WITHOUT THE BALL: left click steals (it works on a low dribble on your side), right click switches to your other player, Space jumps to block, Shift slides in a defensive stance.': 'SANS LE BALLON : clic gauche pour intercepter (ça marche sur un dribble bas de ton côté), clic droit pour changer de joueur, Espace pour sauter et contrer, Maj pour glisser en position défensive.'})
+FR.update({'Hoops controls: one button, one job. With the ball left click shoots, right click passes, F fakes; without it left click steals and right click switches player': 'Contrôles de Hoops : un bouton, une action. Avec le ballon, clic gauche pour tirer, clic droit pour passer, F pour feinter ; sans le ballon, clic gauche pour intercepter et clic droit pour changer de joueur', 'Hoops: shots only once you are past the half-way line, a replay of every basket, and no more players or the ball jumping across the court': 'Hoops : on ne tire qu’après la ligne médiane, un ralenti de chaque panier, et plus de joueurs ni de ballon qui sautent d’un coup sur le terrain', 'Beating bots pays much more: Hoops up to 2 500 a win on Professional, Karting up to 1 500 for beating the Professional bot': 'Battre les bots paie bien plus : jusqu’à 2 500 par victoire en Hoops contre Professionnel, jusqu’à 1 500 en Karting en battant le bot Professionnel', 'Karting and Hoops stats, records and time boards start again from zero': 'Les stats, records et meilleurs temps du Karting et de Hoops repartent de zéro', 'The Casino tile on Home opens the casino doors again, and the case drop list no longer lags': 'La tuile Casino de l’Accueil ouvre à nouveau les portes du casino, et la liste des objets des caisses ne rame plus'})
+FR.update({'Cross the half-way line to shoot': 'Passe la ligne médiane pour tirer'})
 # SECTION: aerial (sim)
 # Rubenium League: 1 v 1 car soccer on a flat pitch seen from above. No jumps, no air: every touch, dribble, flick,
 # pinch, fake and save happens on the ground. This block has no Qt: the rules, the physics and the match, at a fixed
