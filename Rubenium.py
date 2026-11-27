@@ -74466,7 +74466,6 @@ class GameGuide(QWidget):
             lit = self.draw(p, scene, self.t + i * 0.37, k) or []
             p.restore()
             # the keys of this move, lit while they're used
-            kx = scene.left()
             ky = scene.bottom() + S(6)
             allk = []
             for kk in lit:
