@@ -13725,7 +13725,7 @@ FR.update({  # 9.2
     'Over the line, the camera follows whoever is still racing: Tab (or the arrows) switches kart.': 'Une fois la ligne passée, la caméra suit ceux qui roulent encore : Tab (ou les flèches) change de kart.',
     'Right behind another kart you are in its slipstream: more top speed and faster boost refill.': 'Juste derrière un autre kart tu es dans son aspiration : plus de vitesse de pointe et un boost qui se recharge plus vite.',
     "Alone, pick 'No bot' to see the ideal line for your level: green full throttle, yellow lift, red brake, blue drift.": "Seul, choisis « Sans bot » pour voir la trajectoire idéale de ton niveau : vert à fond, jaune lever le pied, rouge freiner, bleu drift.",
-    "After every race each driver gets a score out of 100%: your average lap against the circuit's calibrated times. Professional bots score 99-100%, Elite about 80%, Expert 60-70%, Racer 50-60%, Amateur 35-50%, Rookie 20-35%.": 'Après chaque course chaque pilote reçoit un score sur 100 % : ton tour moyen comparé aux temps étalonnés du circuit. Les bots Professionnel font 99-100 %, Élite environ 80 %, Expert 60-70 %, Pilote 50-60 %, Amateur 35-50 %, Débutant 20-35 %.',
+    "After every race each driver gets a score out of 100%: your average lap against the circuit's calibrated times. Expert bots drive the perfect line (99%). Elite and Professional are faster than any player can be: they have a stronger engine and more grip. Racer scores about 80%, Amateur 65-70%, Rookie 55-60%.": 'Après chaque course chaque pilote reçoit un score sur 100 % : ton tour moyen comparé aux temps étalonnés du circuit. Les bots Expert suivent la trajectoire parfaite (99 %). Élite et Professionnel vont plus vite qu’aucun joueur ne le peut : moteur plus puissant et plus d’adhérence. Pilote fait environ 80 %, Amateur 65-70 %, Débutant 55-60 %.',
     "The server checks every time against the clock and the fastest possible lap.": 'Le serveur vérifie chaque temps avec l’horloge et le tour le plus rapide possible.',
     "The prize grows with your place, your score, each player and the bot you beat (more for a stronger bot), a win and a race without being wrecked, up to a daily limit. No bets.": 'Le gain augmente avec ta place, ton score, chaque joueur et le bot battus (plus pour un bot fort), une victoire et une course sans être détruit, jusqu’à une limite par jour. Sans mise.',
     # 9.2: privacy and terms
@@ -54994,7 +54994,7 @@ HELP = {
         "Right behind another kart you are in its slipstream: more top speed and faster boost refill.",
         "Alone, pick 'No bot' to see the ideal line for your level: green full throttle, yellow lift, red brake, blue drift."], [
         "After every race each driver gets a score out of 100%: your average lap against the circuit's calibrated times. "
-        "Professional bots score 99-100%, Elite about 80%, Expert 60-70%, Racer 50-60%, Amateur 35-50%, Rookie 20-35%.",
+        "Expert bots drive the perfect line (99%). Elite and Professional are faster than any player can be: they have a stronger engine and more grip. Racer scores about 80%, Amateur 65-70%, Rookie 55-60%.",
         "The server checks every time against the clock and the fastest possible lap.",
         "The prize grows with your place, your score, each player and the bot you beat (more for a stronger bot), a win and a "
         "race without being wrecked, up to a daily limit. No bets."]),
@@ -69967,13 +69967,15 @@ class Kart:
                  "prog", "dead", "ghost", "turbo", "turbo_lvl", "drift_t", "drifting", "hb", "braking", "boosting",
                  "slip_t", "slip", "done", "finish_t", "lap_t0", "laps", "blowups", "hits", "wall_hits", "top",
                  "smoke", "throttle", "reverse", "wrong", "checks", "best_lap", "max_check", "drift_turbos", "boost_used",
-                 "boost_waste", "clean_t", "on_line", "line_n", "ev", "start_pen", "start_bonus", "stuck_t", "reset_t", "resets", "off")
+                 "boost_waste", "clean_t", "on_line", "line_n", "ev", "start_pen", "start_bonus", "stuck_t", "reset_t", "resets", "off", "pw", "gp")
 
     def __init__(self, seat, x, y, h):
         self.seat = seat
         self.x, self.y, self.h = x, y, h
         self.vx = self.vy = self.w = 0.0
         self.off = False                 # 9.3.2: on the grass / sand past the kerb
+        self.pw = 1.0                    # 9.5: engine and tyres (1 for every player; the two top bots get more)
+        self.gp = 1.0
         self.hp = KART_HP
         self.boost = 100.0
         self.boost_idle = 99.0
@@ -70095,6 +70097,7 @@ def kart_step(k, inp, track, dt, t, race_on, opts):
     vmax = V_BOOST if k.boosting else (V_TURBO if k.turbo > 0 else V_MAX)
     if k.slip:
         vmax *= 1.06
+    vmax *= k.pw
     if k.off:                                             # 9.3.2: grass or sand past the kerb: slow, less grip
         vmax = min(vmax, V_MAX * OFF_VMAX)
     # engine, brake, reverse
@@ -70103,7 +70106,7 @@ def kart_step(k, inp, track, dt, t, race_on, opts):
     k.reverse = False
     acc = 0.0
     if inp.up > 0 and vf > -20:
-        top = ACCEL + (BOOST_ACCEL if k.boosting else (220.0 if k.turbo > 0 else 0.0))
+        top = (ACCEL + (BOOST_ACCEL if k.boosting else (220.0 if k.turbo > 0 else 0.0))) * k.pw
         acc = inp.up * (top * max(0.0, 1 - vf / vmax) + (40 if vf < vmax else 0))
         if vf > vmax:
             acc = -min(260.0, (vf - vmax) * 2.2)       # coming down from a boost: smooth, not a wall
@@ -70123,7 +70126,7 @@ def kart_step(k, inp, track, dt, t, race_on, opts):
         acc -= OFF_DRAG * vf
     # handbrake: the rear lets go
     k.hb = bool(inp.hb)
-    grip = (GRIP_HB if k.hb else (GRIP_DRIFT if k.drifting else GRIP)) * (OFF_GRIP if k.off else 1.0)
+    grip = (GRIP_HB if k.hb else (GRIP_DRIFT if k.drifting else GRIP)) * (OFF_GRIP if k.off else 1.0) * k.gp
     if k.hb:
         acc -= 150.0 * (1 if vf > 0 else -1) if abs(vf) > 5 else 0.0
     vf += acc * dt
@@ -70291,17 +70294,19 @@ def bump(a, b, t, dmg_on=True):
             d = math.sqrt(d2)
             nx, ny = dx / d, dy / d
             over = 2 * KART_R - d
-            a.x -= nx * over * 0.5
-            a.y -= ny * over * 0.5
-            b.x += nx * over * 0.5
-            b.y += ny * over * 0.5
+            # 9.5: the two top bots are heavier (gp above 1): they barely move when you bump them
+            wa, wb = b.gp ** 3 / (a.gp ** 3 + b.gp ** 3), a.gp ** 3 / (a.gp ** 3 + b.gp ** 3)
+            a.x -= nx * over * wa
+            a.y -= ny * over * wa
+            b.x += nx * over * wb
+            b.y += ny * over * wb
             rv = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny     # closing speed
             if rv > 0:
-                j = rv * (1 + 0.35) * 0.5
-                a.vx -= j * nx
-                a.vy -= j * ny
-                b.vx += j * nx
-                b.vy += j * ny
+                j = rv * (1 + 0.35)
+                a.vx -= j * nx * wa
+                a.vy -= j * ny * wa
+                b.vx += j * nx * wb
+                b.vy += j * ny * wb
                 if not hit and rv > 30:
                     a.hits += 1
                     b.hits += 1
@@ -70329,11 +70334,12 @@ def bump_one(me, other, t, dmg_on=True):
             d = math.sqrt(d2)
             nx, ny = dx / d, dy / d
             over = 2 * KART_R - d
-            me.x -= nx * over * 0.5
-            me.y -= ny * over * 0.5
+            wm = other.gp ** 3 / (me.gp ** 3 + other.gp ** 3)      # 9.5: a heavy top bot pushes you more
+            me.x -= nx * over * wm
+            me.y -= ny * over * wm
             rv = (me.vx - other.vx) * nx + (me.vy - other.vy) * ny
             if rv > 0:
-                j = rv * (1 + 0.35) * 0.5
+                j = rv * (1 + 0.35) * wm
                 me.vx -= j * nx
                 me.vy -= j * ny
                 if not hit and rv > 30:
@@ -70368,16 +70374,20 @@ def slipstream(k, others, dt):
 
 # ------------------------------------------------------------------------------------------------ bots
 # Six levels on the slider from 100 to 2500. Every number below is a real driving skill, read by the bot each step.
+# 9.5: the whole ladder moved up two places: 9.4's Professional (the perfect line at the planned limit) is now Expert
+# (1500), the old Racer and Expert are the new bottom two. Elite and Professional drive a tuned line (they look further
+# ahead, steer harder and carry more speed through the corners) and get more engine (pw) and tyre grip (gp) than any
+# player's kart: Elite laps about 6 % quicker than the best players, Professional about 14 % (it can't be beaten).
 BOT_LEVELS = [(100, "Rookie"), (500, "Amateur"), (1000, "Racer"), (1500, "Expert"), (2000, "Elite"), (2500, "Professional")]
-#            elo    pace   wobble react  brake_late mistakes drift  boost  avoid  start
-# 9.3.2: every level boosts (the low ones badly), the good ones drift; corner = the share of the corner speed limit
-_BOT_TABLE = [(100, 0.505, 22.0, 0.34, 0.30, 0.030, 0.00, 0.45, 0.10, 0.90, 0.30),
-              (500, 0.585, 18.0, 0.24, 0.20, 0.020, 0.10, 0.60, 0.30, 0.55, 0.36),
-              (1000, 0.675, 13.0, 0.16, 0.12, 0.014, 0.35, 0.75, 0.55, 0.32, 0.43),
-              (1500, 0.74, 9.0, 0.11, 0.07, 0.008, 0.60, 0.85, 0.75, 0.20, 0.50),
-              (2000, 0.80, 5.0, 0.07, 0.03, 0.003, 0.85, 0.95, 0.90, 0.12, 0.60),
-              (2500, 1.0, 0.0, 0.0, 0.0, 0.0, 1.00, 1.00, 1.00, 0.0, 1.0)]
-_BOT_KEYS = ("elo", "pace", "wobble", "react", "late", "mistakes", "drift", "boost", "avoid", "start", "corner")
+#            elo    pace   wobble react  brake_late mistakes drift  boost  avoid  start  corner look0 lookk  gain  damp  pw    gp
+_BOT_TABLE = [(100, 0.675, 13.0, 0.16, 0.12, 0.014, 0.35, 0.75, 0.55, 0.32, 0.43, 28.0, 0.30, 3.2, 0.22, 1.00, 1.00),
+              (500, 0.74, 9.0, 0.11, 0.07, 0.008, 0.60, 0.85, 0.75, 0.20, 0.50, 28.0, 0.30, 3.2, 0.22, 1.00, 1.00),
+              (1000, 0.80, 5.0, 0.07, 0.03, 0.003, 0.85, 0.95, 0.90, 0.12, 0.60, 28.0, 0.30, 3.2, 0.22, 1.00, 1.00),
+              (1500, 1.0, 0.0, 0.0, 0.0, 0.0, 1.00, 1.00, 1.00, 0.0, 1.0, 28.0, 0.30, 3.2, 0.22, 1.00, 1.00),
+              (2000, 1.0, 0.0, 0.0, 0.02, 0.0, 0.00, 1.00, 1.00, 0.0, 1.218, 34.8, 0.384, 8.0, 0.288, 1.04, 1.15),
+              (2500, 1.0, 0.0, 0.0, 0.02, 0.0, 0.00, 1.00, 1.00, 0.0, 1.32, 34.8, 0.384, 8.0, 0.288, 1.10, 1.35)]
+_BOT_KEYS = ("elo", "pace", "wobble", "react", "late", "mistakes", "drift", "boost", "avoid", "start", "corner",
+             "look0", "lookk", "gain", "damp", "pw", "gp")
 
 
 def bot_level_name(elo):
@@ -70395,8 +70405,6 @@ def bot_params(elo):
     for a, b in zip(rows, rows[1:]):
         if elo <= b[0]:
             t = (elo - a[0]) / (b[0] - a[0])
-            if b[0] == 2500:            # 2000 to 2500 is a big jump: the last stretch is where the bot becomes perfect
-                t = t ** 2.2
             return {k: a[j] + (b[j] - a[j]) * t for j, k in enumerate(_BOT_KEYS)}
     return dict(zip(_BOT_KEYS, rows[-1]))
 
@@ -70410,6 +70418,7 @@ class KartBot:
     def __init__(self, kart, track, elo, seed=1):
         self.k, self.tr, self.elo = kart, track, int(elo)
         self.p = bot_params(elo)
+        kart.pw, kart.gp = self.p["pw"], self.p["gp"]
         self.rng = random.Random(seed * 7919 + int(elo))
         self.wob_phase = self.rng.random() * 6.28
         self.mistake = 0.0
@@ -70499,7 +70508,7 @@ class KartBot:
         i = k.idx if k.idx >= 0 else tr.locate(k.x, k.y)[0]
         sp = k.speed
         # where to aim: a point on the racing line ahead, a little wobble for the lower levels
-        look = 28 + sp * 0.30
+        look = p["look0"] + sp * p["lookk"]
         j = (i + int(look / tr.STEP)) % tr.n
         wob = p["wobble"] * math.sin(t * 0.9 + self.wob_phase) + p["wobble"] * 0.5 * math.sin(t * 2.3)
         off = tr.line_off[j] + wob + self.avoid
@@ -70507,7 +70516,7 @@ class KartBot:
         tx, ty = tr.cx[j] + off * tr.nx[j], tr.cy[j] + off * tr.ny[j]
         ang = math.atan2(ty - k.y, tx - k.x)
         err = wrap_pi(ang - k.h)
-        steer = clamp(err * 3.2 - k.w * 0.22, -1, 1)
+        steer = clamp(err * p["gain"] - k.w * p["damp"], -1, 1)
         # the speed it wants: whatever lets it brake in time for every corner ahead (corner speeds at its pace)
         pace = p["pace"]
         if self.mistake > 0:                         # a late brake: it carries too much speed into the corner
@@ -70515,7 +70524,7 @@ class KartBot:
         elif p["mistakes"] and tr.corner[(i + 25) % tr.n] and not tr.corner[i] and self.rng.random() < p["mistakes"] * dt * 6:
             self.mistake = 0.35 + p["late"] * 2.0
         want = self.target(i, p["corner"] * (1.18 if self.mistake > 0 else 1.0),
-                           V_BOOST if k.boosting or k.turbo > 0 else V_MAX * min(1.0, 0.5 + 0.5 * pace),
+                           (V_BOOST if k.boosting or k.turbo > 0 else V_MAX * min(1.0, 0.5 + 0.5 * pace)) * k.pw,
                            BOT_BRAKE * BRAKE * (1.0 + (0.6 if self.mistake > 0 else 0.0)) * (1 - p["late"]))
         if sp < want:
             inp.up = 1.0
@@ -70547,7 +70556,7 @@ class KartBot:
             inp.left = inp.right = 0.0          # out of the corner: straighten up, the turbo fires
         # boost: only where it can be held to the end without braking (Professional burns it all on the straights)
         if p["boost"] > 0 and k.boost > 1 and sp > 150:
-            clear = self.target(i, p["corner"], V_BOOST, BOT_BRAKE * BRAKE) >= V_BOOST - 1 if p["boost"] >= 0.5 else True
+            clear = self.target(i, p["corner"], V_BOOST * k.pw, BOT_BRAKE * BRAKE) >= V_BOOST * k.pw - 1 if p["boost"] >= 0.5 else True
             if p["boost"] >= 1.0:
                 inp.boost = clear and k.boost > (0 if k.boosting else 25)
             else:
@@ -72250,8 +72259,8 @@ def kart_track(i: int):
 
 
 KART_TICKS = [100, 250, 500, 1000, 1500, 2000, 2500]
-KART_BANDS = {"Rookie": "20-35%", "Amateur": "35-50%", "Racer": "50-60%", "Expert": "60-70%", "Elite": "75-85%",
-              "Professional": "99-100%"}
+KART_BANDS = {"Rookie": "55-60%", "Amateur": "65-70%", "Racer": "80%", "Expert": "99%", "Elite": "100%+",   # 9.5
+              "Professional": "100%+"}
 
 
 class EloSlider(QWidget):
