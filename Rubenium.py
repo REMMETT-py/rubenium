@@ -73601,16 +73601,16 @@ HOOPS_LEVELS = ["Club", "Regional", "National", "Professional"]
 # they time things, and how good their decisions are.
 HOOPS_BOT = {
     "Club":         {"react": 0.42, "speed": 0.86, "sigma": 0.10, "shoot_min": 0.24, "risk": 0.75, "spin": 0.00,
-                     "fake": 0.00, "bite": 0.85, "steal": 0.30, "steal_read": 0.25, "help": 0.15, "space": 0.35,
+                     "fake": 0.05, "bite": 0.85, "steal": 0.30, "steal_read": 0.25, "help": 0.15, "space": 0.35,
                      "cut": 0.00, "fancy": 0.00, "box": 0.2, "deny": 0.10, "gap": 1.75, "jump_read": 0.3},
     "Regional":     {"react": 0.30, "speed": 0.91, "sigma": 0.072, "shoot_min": 0.33, "risk": 0.45, "spin": 0.15,
-                     "fake": 0.06, "bite": 0.60, "steal": 0.40, "steal_read": 0.50, "help": 0.40, "space": 0.6,
+                     "fake": 0.14, "bite": 0.60, "steal": 0.40, "steal_read": 0.50, "help": 0.40, "space": 0.6,
                      "cut": 0.15, "fancy": 0.15, "box": 0.45, "deny": 0.35, "gap": 1.5, "jump_read": 0.55},
     "National":     {"react": 0.19, "speed": 0.96, "sigma": 0.046, "shoot_min": 0.40, "risk": 0.25, "spin": 0.45,
-                     "fake": 0.18, "bite": 0.35, "steal": 0.55, "steal_read": 0.78, "help": 0.70, "space": 0.85,
+                     "fake": 0.28, "bite": 0.35, "steal": 0.55, "steal_read": 0.78, "help": 0.70, "space": 0.85,
                      "cut": 0.45, "fancy": 0.45, "box": 0.75, "deny": 0.65, "gap": 1.3, "jump_read": 0.8},
     "Professional": {"react": 0.10, "speed": 1.00, "sigma": 0.027, "shoot_min": 0.46, "risk": 0.08, "spin": 0.85,
-                     "fake": 0.38, "bite": 0.12, "steal": 0.88, "steal_read": 0.95, "help": 0.92, "space": 1.0,
+                     "fake": 0.45, "bite": 0.12, "steal": 0.88, "steal_read": 0.95, "help": 0.92, "space": 1.0,
                      "cut": 0.80, "fancy": 0.80, "box": 0.95, "deny": 0.90, "gap": 1.15, "jump_read": 0.95},
 }
 
@@ -73735,7 +73735,7 @@ class HoopsPlayer:
         self.catch_t = 0.0        # just caught (for the drawing)
         self.celebrate = 0.0
         self.st = {"pts": 0, "fg": 0, "fga": 0, "three": 0, "threea": 0, "ast": 0, "stl": 0, "blk": 0, "reb": 0,
-                   "to": 0, "perfect": 0}
+                   "to": 0, "perfect": 0, "sc": 0.0}
 
     @property
     def jumping(self):
@@ -73805,6 +73805,9 @@ class HoopsGame:
         self.dead_for = 0.0
         self.dead_then = None
         self.buzzer = False
+        self.fire_n = [0, 0]       # 9.5: baskets in a row (the other team not scoring in between)
+        self.fire_t = [0.0, 0.0]   # ... 3 in a row: the team is on fire for 25 s (a wider green on every shot)
+        self.poss_id = 0           # 9.5: counts possessions (for the pass points)
         self.hold_idle = 0.0       # 9.5: how long the human has stood still with the ball
         self.press = False         # ... past their level's limit: the defenders rush the ball
         self.press_lim = HOOPS_PRESS.get(level, 5.0)
@@ -73946,6 +73949,15 @@ class HoopsGame:
                     self.bots[p.i] = HoopsBot(self, p)
                 ins[p.i] = self.bots[p.i].think(HOOPS_DT)
         self._press_step(ins, dt)
+        c_ = self.carrier()
+        if c_ is not None:
+            c_.st["sc"] = c_.st.get("sc", 0.0) + dt * (1.4 if c_.act in ("dribble", "spin") else 0.8)
+        for t_ in (0, 1):
+            if self.fire_t[t_] > 0:
+                self.fire_t[t_] = max(0.0, self.fire_t[t_] - dt)
+                if self.fire_t[t_] <= 0:
+                    self.fire_n[t_] = 0
+                    self.ev("fire_out", team=t_)
         for p in self.players:
             self._player_step(p, ins[p.i], dt)
             p.prev = ins[p.i]
@@ -73959,6 +73971,16 @@ class HoopsGame:
             if not (b.mode == "shot" or (b.mode == "loose" and b.from_shot and b.f is None and False)):
                 self.buzzer = True
                 self.end_regulation()
+
+    def award(self, i, label, pts, show=True):
+        """9.5: match points (Rocket League style): the feed at the top shows what you did and what it was worth;
+        some points (possession, dribbling) are given quietly."""
+        if i < 0 or self.phase not in ("play", "score", "dead"):
+            return
+        q = self.players[i]
+        q.st["sc"] = q.st.get("sc", 0.0) + pts
+        if show:
+            self.ev("award", p=i, label=label, pts=int(pts))
 
     def _press_step(self, ins, dt):
         """9.5: a human holding the ball without moving: after their level's time (one more while aiming a shot) the
@@ -74082,6 +74104,14 @@ class HoopsGame:
 
     def scored(self, team, pts, shooter):
         self.score[team] += pts
+        self.fire_n[team] += 1
+        self.fire_n[1 - team] = 0
+        if self.fire_t[1 - team] > 0:
+            self.fire_t[1 - team] = 0.0
+            self.ev("fire_out", team=1 - team)
+        if self.fire_n[team] >= 3 and self.fire_t[team] <= 0:
+            self.fire_t[team] = 25.0
+            self.ev("fire", team=team)
         p = self.players[shooter]
         p.st["pts"] += pts
         p.st["fg"] += 1
@@ -74092,7 +74122,11 @@ class HoopsGame:
         if lp and lp[1] == team and lp[0] != shooter and self.t - lp[2] < 4.0:
             assist = lp[0]
             self.players[assist].st["ast"] += 1
-        self.last_score = {"team": team, "pts": pts, "by": shooter, "assist": assist, "t": self.t}
+        self.award(shooter, "THREE!" if pts == 3 else "SCORED", 75 if pts == 3 else 50)
+        if assist >= 0:
+            self.award(assist, "ASSIST", 30)
+        self.last_score = {"team": team, "pts": pts, "by": shooter, "assist": assist, "t": self.t,
+                           "how": getattr(self, "_last_how", "")}
         self.phase, self.phase_t = "score", 0.0
         self.ev("score", team=team, pts=pts, by=shooter, assist=assist)
         for q in self.team(team):
@@ -74396,7 +74430,9 @@ class HoopsGame:
             self.ev("tied", p=p.i)
             return
         if c.act == "spin":
-            p.stun = OFF_BAL
+            p.stun = 1.25                                # 9.5: swiping at a spin move: ankles broken, a long stumble
+            self.ev("ankles", p=p.i, by=c.i)
+            self.award(c.i, "ANKLE BREAKER", 25)
             return
         if c.act == "shoot":                             # a strip on the way up
             if d_ball < STEAL_REACH and self.rng.random() < 0.35:
@@ -74428,6 +74464,7 @@ class HoopsGame:
         p.st["stl"] += 1
         c.st["to"] += 1
         self.ev("steal", p=p.i, c=c.i)
+        self.award(p.i, "STEAL", 30)
 
     def _take(self, p):
         b = self.ball
@@ -74438,6 +74475,10 @@ class HoopsGame:
             p.st["reb"] += 1
         b.owner, b.mode, b.f = p.i, "held", None
         old = self.poss
+        if old != p.team or reb:
+            self.poss_id += 1
+        if reb:
+            self.award(p.i, "REBOUND", 15)
         self.poss = p.team
         if old != p.team or reb:
             self.shot_clock = SHOT_CLOCK
@@ -74571,6 +74612,8 @@ class HoopsGame:
                 k *= 1.25
             c = max(c, clamp(k, 0, 1))
         g *= 1 - 0.55 * c
+        if self.fire_t[p.team] > 0:                  # 9.5: on fire
+            g *= 1.35
         return g, d, c, make_chance(g)
 
     def _release(self, p):
@@ -74695,6 +74738,7 @@ class HoopsGame:
                         q.st["stl"] += 1
                         by.st["to"] += 1
                         self.ev("intercept", p=q.i, by=by.i)
+                        self.award(q.i, "INTERCEPTION", 30)
                         self._take(q)
                     return
         # the receiver
@@ -74702,6 +74746,18 @@ class HoopsGame:
         d = hyp(b.x - m.x, b.z - m.z)
         if (d < 0.85 and b.h <= m.h + HAND_UP + 0.3 and s > 0.6) or (s >= 1.0 and d < 1.25):
             self._take(m)
+            if by is not None and by.team == m.team:
+                # 9.5: a completed pass is worth points, but not ping-pong: none for passing straight back within
+                # 3 s, and at most 2 per possession
+                pa = getattr(self, "_pass_aw", None)
+                if pa is None or pa[0] != self.poss_id:
+                    pa = [self.poss_id, 0, -1, -9.0]
+                ok = pa[1] < 2 and not (pa[2] == m.i and self.t - pa[3] < 3.0)
+                if ok:
+                    pa[1] += 1
+                    self.award(by.i, "PASS", 10)
+                pa[2], pa[3] = by.i, self.t
+                self._pass_aw = pa
             return
         if s >= 1.0:                                   # nobody there: it carries on, loose
             b.mode = "loose"
@@ -74734,6 +74790,8 @@ class HoopsGame:
                     b.last_team = q.team
                     q.st["blk"] += 1
                     self.ev("block", p=q.i, by=f["by"])
+                    epic = f.get("zone") == "green" or hyp(q.x - hoop_of(f["team"]), q.z - HOOP_Z) < 3.0
+                    self.award(q.i, "EPIC SAVE" if epic else "SAVE", 70 if epic else 40)
                     return
         if s < 1.0:
             return
@@ -74747,6 +74805,7 @@ class HoopsGame:
             b.last_team = 1 - f["team"]
             counts = f["before_buzzer"]
             self.ev("net", how=f["how"], team=f["team"], pts=f["pts"])
+            self._last_how = f["how"]
             if counts:
                 self.scored(f["team"], f["pts"], f["by"])
             elif self.phase == "play":
@@ -74764,6 +74823,7 @@ class HoopsGame:
             sp = self.rng.uniform(2.2, 4.4)
             b.vx, b.vz, b.vh = ox * sp, oz * sp, self.rng.uniform(1.8, 3.6)
             self.ev("rim", x=b.x, z=b.z)
+            self.award(f["by"], "SHOT ON NET", 15)
         else:
             self.ev("airball", p=f["by"])
         self.shot_clock = SHOT_CLOCK
@@ -74939,6 +74999,14 @@ class HoopsBot:
                 inp.lmb = False
             return inp.copy()
         if b.owner == p.i and p.act == "passwind":
+            if getattr(self, "fake_pass", False):           # 9.5: a pass fake: wind up, then the right button
+                if p.act_t >= 0.16:
+                    self.fake_pass = False
+                    out = inp.copy()
+                    out.rmb = True
+                    inp.lmb = False
+                    return out
+                return inp.copy()
             if p.act_t >= self.charge_to:
                 inp.lmb = False
             return inp.copy()
@@ -75058,6 +75126,11 @@ class HoopsBot:
         if mate is not None and risk < 0.45 and (ev_pass > ev_shoot * 1.15 or (near_d < 1.2 and risk < 0.3)
                                                  or clock < 4 and mate_pct > pct):
             if mate_pct > 0.2 or near_d < 1.4:
+                if 0.15 < risk and p.act == "hold" and rng.random() < k["fake"] * 1.5 and g.t - self.fake_used > 2.5:
+                    self.fake_used = g.t                 # 9.5: sell the pass first, the defender jumps the lane
+                    self.fake_pass = True
+                    inp.lmb, inp.shift, inp.mx, inp.mz = True, False, 0.0, 0.0
+                    return
                 return self._pass(kind, risk)
         # drive: pick the best direction to the hoop, away from defenders
         self._drive(hx, seen, near_d, near)
@@ -76187,6 +76260,8 @@ class HoopsView(QWidget):
     """9.3: the match. Runs the game at 120 steps a second on a fixed clock, draws at the screen's rate, and handles
     the coin flip, the countdowns, the goal explosion and its replay, the pause menu and the final whistle."""
     finished = pyqtSignal(dict)
+    quit_req = pyqtSignal()                  # 9.5: Leave the match from the pause menu (the stage asks the link)
+    AFK_WARN, AFK_KICK = 30.0, 45.0          # 9.5: no input this long: a warning, then disqualified
 
     def __init__(self, level: str = "National", mins: float = 3.0, seed: int = 0, name: str = "", replays: int = 1) -> None:
         super().__init__()
@@ -76223,6 +76298,10 @@ class HoopsView(QWidget):
         self.result_sent = False
         self.over_t = 0.0
         self.toast_ctrl = 0.0
+        self.feed: list = []                 # 9.5: the points feed at the top: [label, pts, team, t0, mine]
+        self.last_input = 0.0                # 9.5: the view clock when you last pressed or moved anything
+        self.dq = False
+        self.board = False                   # 9.5: Tab held: the scoreboard
         self.squeak_cd = 0.0
         self.skins = [random.Random(self.seed + i).randrange(len(HOOPS_SKIN)) for i in range(4)]
         self._frame = time.monotonic()
@@ -76250,6 +76329,10 @@ class HoopsView(QWidget):
         if e.isAutoRepeat():
             return
         key = e.key()
+        self.last_input = self.T
+        if key == Qt.Key.Key_Tab:                     # 9.5: hold Tab for the scoreboard
+            self.board = True
+            return
         if key in (Qt.Key.Key_Escape, Qt.Key.Key_P):
             if self.g.phase != "over":
                 self.paused = not self.paused
@@ -76263,10 +76346,13 @@ class HoopsView(QWidget):
     def keyReleaseEvent(self, e) -> None:
         if e.isAutoRepeat():
             return
+        if e.key() == Qt.Key.Key_Tab:
+            self.board = False
         self.keys.discard(Qt.Key(e.key()))
 
     def mousePressEvent(self, e) -> None:
         self.setFocus()
+        self.last_input = self.T
         if self.paused:
             return self._pause_click(e.position())
         if self.replay is not None:
@@ -76284,6 +76370,8 @@ class HoopsView(QWidget):
             self.rmb = False
 
     def mouseMoveEvent(self, e) -> None:
+        if (e.position() - self.mouse).manhattanLength() > 6:
+            self.last_input = self.T
         self.mouse = e.position()
 
     def contextMenuEvent(self, e) -> None:
@@ -76307,10 +76395,7 @@ class HoopsView(QWidget):
                 elif name == "restart":
                     self.restart()
                 elif name == "quit":
-                    w = self.window()
-                    if w is not None:
-                        w._sure = True
-                        w.close()
+                    self.quit_req.emit()
                 return
 
     def restart(self) -> None:
@@ -76324,6 +76409,10 @@ class HoopsView(QWidget):
         self.paused = False
         self.result_sent = False
         self.last_count = 99
+        self._prev = None
+        self.feed = []
+        self.last_input = self.T
+        self.dq = False
 
     # -- the clock
     def _tick(self) -> None:
@@ -76356,6 +76445,7 @@ class HoopsView(QWidget):
             self._transition(dt)
             self._camera(dt)
             self._countdown()
+            self._afk()
             self._flow(dt)
             self.audio.set_crowd(0.16 + 0.06 * self._near_hoop(), self.hype)
             self.hype = max(0.0, self.hype - dt * 0.35)
@@ -76366,6 +76456,24 @@ class HoopsView(QWidget):
             self.update()
         except RuntimeError:
             self.timer.stop()
+
+    def _afk(self) -> None:
+        """9.5: 45 s without touching anything during the match: disqualified (a loss, no prize)."""
+        g = self.g
+        if self.dq or g.phase == "over":
+            return
+        if g.phase == "intro" or self.replay is not None or self.keys or self.lmb or self.rmb:
+            self.last_input = self.T
+            return
+        if self.T - self.last_input >= self.AFK_KICK:
+            self.dq = True
+            self.paused = False
+            g.phase, g.phase_t = "over", 0.0
+            g.result = {"win": 1, "score": list(g.score), "ot": g.overtime, "dq": True}
+            self.msgs = []
+            self._msg(tr("DISQUALIFIED"), "#FF5A5A", 60, True)
+            self._msg(tr("No input for 45 seconds"), "#FFFFFF", 60)
+            self.audio.play("buzzer", 0.9)
 
     def _near_hoop(self) -> float:
         b = self.g.ball
@@ -76393,7 +76501,8 @@ class HoopsView(QWidget):
         if self.replays == 2:
             return False
         ls = self.g.last_score or {}
-        return ls.get("pts") == 3 or self.last_perfect or self.g.overtime or self.g.clock < 20
+        return (ls.get("pts") == 3 or self.last_perfect or self.g.overtime or self.g.clock < 20
+                or ls.get("how") == "swish")                 # 9.5: every swish too
 
     def _start_wipe(self, then, col) -> None:
         self.wipe = 0.0
@@ -76580,6 +76689,26 @@ class HoopsView(QWidget):
                                       30, 4, "confetti")
             elif kind == "restart":
                 pass
+            elif kind == "award":                                 # 9.5: the points feed (your team)
+                pl = g.players[d["p"]]
+                if pl.team == me_team:
+                    self.feed = [f for f in self.feed if self.T - f[3] < 2.6][-3:]
+                    self.feed.append([tr(d["label"]), d["pts"], pl.team, self.T, pl.i == g.ctrl.get(0, -1)])
+            elif kind == "press":
+                self._msg(tr("PRESSURE! Move the ball"), "#FF5A5A", 1.4)
+                self.audio.play("whistle_short", 0.4)
+            elif kind == "ankles":
+                self._msg(tr("ANKLES BROKEN!"), "#F5C04A", 1.6)
+                self.hype = min(1.0, self.hype + 0.7)
+                self.audio.play("ooh", 0.7)
+            elif kind == "fire":
+                self._msg(tr("ON FIRE!"), "#FF7A1A", 2.2, True)
+                self._msg(tr("3 in a row: easier shots for 25 seconds"), "#FFFFFF", 2.2)
+                self.audio.play("roar", 0.7)
+                self.hype = 1.0
+            elif kind == "fire_out":
+                if d["team"] == me_team:
+                    self._msg(tr("The fire is out"), "#FFB04A", 1.2)
         # squeaks on hard cuts near the camera
         if self.squeak_cd <= 0 and g.phase == "play":
             for p in g.players:
@@ -76668,8 +76797,10 @@ class HoopsView(QWidget):
                 for k, v in p.st.items():
                     t[k] = t.get(k, 0) + v
             tot.append(t)
-        return {"level": self.level, "mins": self.mins, "score": list(g.score), "win": g.result["win"] == 0 if g.result else False,
-                "ot": g.overtime, "me": tot[0], "opp": tot[1], "seed": self.seed}
+        return {"level": self.level, "mins": self.mins, "score": list(g.score),
+                "win": (g.result["win"] == 0 if g.result else False) and not self.dq, "dq": self.dq,
+                "ot": g.overtime, "me": tot[0], "opp": tot[1], "seed": self.seed,
+                "players": [{"i": q.i, "team": q.team, "num": q.num, "human": q.human, "st": dict(q.st)} for q in g.players]}
 
     # ---------------------------------------------------------------------------------------------- drawing
     def paintEvent(self, _e) -> None:
@@ -76730,6 +76861,8 @@ class HoopsView(QWidget):
                     glow = None
                     if self.replay is None and g.ball.mode == "shot" and g.ball.f and g.ball.f.get("perfect"):
                         glow = QColor("#3BE38A")
+                    elif self.replay is None and g.fire_t[max(0, g.ball.last_team)] > 0 and g.ball.last_team >= 0:
+                        glow = QColor("#FF7A1A")                  # 9.5: on fire
                     hoops_draw_ball(p, cam, ball[0], ball[1], ball[2], ball[3], glow)
             elif kind == "ref":
                 self._ref(p)
@@ -76738,7 +76871,10 @@ class HoopsView(QWidget):
         if self.replay is None:
             self._aim(p)
         if self.replay is None:
+            self._pressure(p)
             self._hud(p)
+            self._feed(p)
+            self._afk_warn(p)
         else:
             self._replay_hud(p)
         self._messages(p)
@@ -76752,8 +76888,138 @@ class HoopsView(QWidget):
             p.fillRect(self.rect(), c)
         if self.wipe_then is not None or self.wipe > 0:
             self._wipe(p)
+        if self.board and not self.paused:
+            self._board(p)
         if self.paused:
             self._pause(p)
+
+    # -- 9.5: pressure, the points feed, the AFK warning, the Tab scoreboard
+    def _pressure(self, p: QPainter) -> None:
+        """A red edge that builds up while you stand still with the ball (full when the defenders rush you)."""
+        g = self.g
+        lim = max(0.5, g.press_lim)
+        k = clamp((g.hold_idle - lim * 0.35) / (lim * 0.65), 0.0, 1.0) if g.phase == "play" else 0.0
+        if g.press:
+            k = 1.0
+        self._press_k = lerp(getattr(self, "_press_k", 0.0), k, 0.2)
+        k = self._press_k
+        if k < 0.02:
+            return
+        w, h = self.width(), self.height()
+        pulse = 0.85 + 0.15 * math.sin(self.T * (6 + 8 * k))
+        grad = QRadialGradient(QPointF(w / 2, h / 2), max(w, h) * 0.72)
+        grad.setColorAt(0.55, QColor(255, 30, 40, 0))
+        grad.setColorAt(1.0, QColor(255, 30, 40, int(170 * k * pulse)))
+        p.fillRect(self.rect(), QBrush(grad))
+        if not g.press and k > 0.3:
+            left = max(0.0, lim - g.hold_idle)
+            p.setFont(font(12, QFont.Weight.Black, 1))
+            p.setPen(QColor(255, 120, 120, int(255 * k)))
+            p.drawText(QRectF(0, h - S(78), w, S(22)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr("Move! Pressure in {s}", s=f"{left:.1f}"))
+
+    def _feed(self, p: QPainter) -> None:
+        """Rocket League style: what you just did and the points it was worth, under the scoreboard."""
+        self.feed = [f for f in self.feed if self.T - f[3] < 2.6]
+        y = S(86)
+        w = self.width()
+        for label, pts, team, t0, mine in reversed(self.feed):
+            age = self.T - t0
+            a = clamp(min(age / 0.12, (2.6 - age) / 0.35), 0, 1)
+            slide = (1 - clamp(age / 0.18, 0, 1)) * S(16)
+            txt = label
+            p.setFont(font(13, QFont.Weight.Black, 1.2))
+            tw = p.fontMetrics().horizontalAdvance(txt)
+            p.setFont(font(13, QFont.Weight.Black))
+            pw_ = p.fontMetrics().horizontalAdvance(f"+{pts}")
+            bw = tw + pw_ + S(44)
+            r = QRectF(w / 2 - bw / 2, y - slide, bw, S(30))
+            col = QColor(HOOPS_TEAM[team]["main"])
+            col.setAlphaF(0.92 * a)
+            p.setPen(QPen(QColor(255, 255, 255, int(70 * a)), 1))
+            p.setBrush(QColor(8, 10, 18, int(215 * a)))
+            p.drawRoundedRect(r, S(9), S(9))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(col)
+            p.drawRoundedRect(QRectF(r.left(), r.top(), S(6), r.height()), S(3), S(3))
+            p.setFont(font(13, QFont.Weight.Black, 1.2))
+            p.setPen(QColor(255, 255, 255, int(255 * a)) if mine else QColor(200, 215, 255, int(230 * a)))
+            p.drawText(QRectF(r.left() + S(16), r.top(), tw + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), txt)
+            p.setFont(font(13, QFont.Weight.Black))
+            p.setPen(QColor(245, 192, 74, int(255 * a)))
+            p.drawText(QRectF(r.right() - pw_ - S(14), r.top(), pw_ + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), f"+{pts}")
+            y += S(36)
+
+    def _afk_warn(self, p: QPainter) -> None:
+        g = self.g
+        if self.dq or g.phase in ("over", "intro"):
+            return
+        idle = self.T - self.last_input
+        if idle < self.AFK_WARN:
+            return
+        left = max(0, int(math.ceil(self.AFK_KICK - idle)))
+        w, h = self.width(), self.height()
+        r = QRectF(w / 2 - S(230), h * 0.62, S(460), S(54))
+        p.setPen(QPen(QColor("#FF5A5A"), 2))
+        p.setBrush(QColor(20, 6, 8, 230))
+        p.drawRoundedRect(r, S(14), S(14))
+        p.setFont(font(15, QFont.Weight.Black))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), tr("Are you there? Move or you're disqualified in {n}", n=left))
+
+    def _board(self, p: QPainter) -> None:
+        """Hold Tab: every player's line, with the match points."""
+        g = self.g
+        w, h = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(4, 6, 12, 200))
+        cols = [(tr("Player"), 0), (tr("SCORE"), S(84)), (tr("PTS"), S(56)), (tr("AST"), S(56)), (tr("REB"), S(56)),
+                (tr("STL"), S(56)), (tr("BLK"), S(56)), (tr("FG"), S(64))]
+        bw = min(w - S(60), S(760))
+        name_w = bw - sum(c[1] for c in cols) - S(40)
+        x0 = w / 2 - bw / 2
+        y = h * 0.2
+        p.setFont(font(22, QFont.Weight.Black, 2))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(x0, y - S(48), bw, S(36)), int(Qt.AlignmentFlag.AlignCenter),
+                   f"{g.score[0]}  -  {g.score[1]}")
+        for team in (0, 1):
+            T = HOOPS_TEAM[team]
+            rows = sorted(g.team(team), key=lambda q: -q.st.get("sc", 0))
+            box = QRectF(x0, y, bw, S(34) + S(36) * len(rows))
+            c = QColor(T["main"])
+            c.setAlpha(70)
+            p.setPen(QPen(QColor(T["main"]), 1.5))
+            p.setBrush(QColor(10, 12, 20, 235))
+            p.drawRoundedRect(box, S(14), S(14))
+            p.setBrush(c)
+            p.drawRoundedRect(box, S(14), S(14))
+            x = x0 + S(20)
+            p.setFont(font(9.5, QFont.Weight.Black, 1))
+            p.setPen(QColor(T["light"]))
+            for ci, (t, cw) in enumerate(cols):
+                cw = cw or name_w
+                p.drawText(QRectF(x, y + S(8), cw, S(18)), int(Qt.AlignmentFlag.AlignVCenter),
+                           (tr("BLUE") if team == 0 else tr("RED")) if ci == 0 else t.upper())
+                x += cw
+            yy = y + S(34)
+            for q in rows:
+                me = q.team == 0 and g.ctrl.get(0, -1) == q.i
+                name = (tr("You") if me else (tr("Team-mate") if q.team == 0 else hoops_lv(q.level))) + f"  #{q.num}"
+                st = q.st
+                vals = [name, str(int(st.get("sc", 0))), str(st["pts"]), str(st["ast"]), str(st["reb"]), str(st["stl"]),
+                        str(st["blk"]), f"{st['fg']}/{st['fga']}"]
+                x = x0 + S(20)
+                for k_, ((t, cw), v) in enumerate(zip(cols, vals)):
+                    cw = cw or name_w
+                    p.setFont(font(12.5, QFont.Weight.Black if k_ <= 1 else QFont.Weight.DemiBold))
+                    p.setPen(QColor("#F5C04A") if k_ == 1 else QColor("#FFFFFF") if (k_ == 0 and me) else QColor(TEXT))
+                    p.drawText(QRectF(x, yy, cw, S(30)), int(Qt.AlignmentFlag.AlignVCenter), v)
+                    x += cw
+                yy += S(36)
+            y = box.bottom() + S(14)
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.setPen(QColor(255, 255, 255, 150))
+        p.drawText(QRectF(x0, y + S(4), bw, S(20)), int(Qt.AlignmentFlag.AlignCenter), tr("Let go of Tab to play"))
 
     def _arena(self, p: QPainter) -> None:
         w, h = self.width(), self.height()
@@ -77577,11 +77843,9 @@ def build_hoops(page, lay) -> None:
     mins.changed.connect(lambda i: (o.__setitem__("mins", [2, 3, 4, 5][i]), hoops_save_opts(ctx)))
     hl.addWidget(mins)
     hl.addWidget(Label(tr("A tie at the buzzer goes to overtime: the next basket wins."), 10, TEXT_FAINT, wrap_w=page.W))
-    reps = Segmented([tr("Replay every basket"), tr("Replay big plays"), tr("No replays")], o["replays"])
-    reps.changed.connect(lambda i: (o.__setitem__("replays", i), hoops_save_opts(ctx)))
-    hl.addWidget(reps)
+    # 9.5: replays are always on (the big plays and every swish); the choice is gone
     go = Button(tr("Play"), "primary", 44, icon="play")
-    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"], o["replays"]))
+    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"], 1))
     hl.addWidget(go)
     keys = hoops_keys()
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Move")),
@@ -77618,6 +77882,8 @@ class HoopsResults(QWidget):
         p.setFont(font(28, QFont.Weight.Black))
         p.setPen(QColor("#3BE38A") if win else QColor("#FF6B78"))
         title = tr("You win!") if win else tr("You lose")
+        if r.get("dq"):
+            title = tr("Disqualified")
         if r.get("ot"):
             title += "  ·  " + tr("in overtime")
         p.drawText(QRectF(0, 0, w, S(40)), int(Qt.AlignmentFlag.AlignVCenter), title)
@@ -77789,6 +78055,7 @@ class HoopsLink(QObject):
             self.win.open()
         view = HoopsView(self.level, float(self.mins), 0, "", self.replays)
         view.finished.connect(self._finished)
+        view.quit_req.connect(self.win.ask_leave)
         if self.win.view is not None:
             self.win.view.timer.stop()
             self.win.view.setParent(None)
@@ -77808,6 +78075,9 @@ class HoopsLink(QObject):
         self.done = True
         self.results = HoopsResults(res, None, max(S(560), int(self.win.width() * 0.6)))
         self.win.show_results(self.results)
+        if res.get("dq"):                                 # 9.5: AFK: a loss, nothing sent, nothing paid
+            self.results.set_paid(tr("Disqualified for being away: no prize."))
+            return
         if not self.gid:
             self.results.set_paid(tr("No prize: the server didn't start this match."))
             return
