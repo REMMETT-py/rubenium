@@ -14,6 +14,8 @@
 -- Animations: re-ranked (Shattered Shard is Mythic now), six new ones (Black Hole and Warp Mythic, Glitch and
 -- Origami Legendary, Pixel Dust and Ripple Epic). Titanium is for Mythic animations only; the old Black/White Titan
 -- versions are gone (nobody owns any since the 9.4 reset). The free Basic animation needs no item.
+--
+-- Friends: the friends list says what each friend last played (in the last 24 hours), friends only.
 begin;
 
 create or replace function public.rb_kart_finish(rid uuid, ms integer, laps integer[], best integer, blowups integer,
@@ -282,5 +284,31 @@ select 'anim:' || b.base || f.suf, 'anim', b.base || f.suf, '', b.rarity, b.pric
  where f.suf <> '-titanium' or b.rarity = 'exotic'
 on conflict (id) do update set rarity = excluded.rarity, price = excluded.price, value = excluded.value,
        worth = excluded.worth, weight = excluded.weight, limited = false;
+
+-- ================================================================ friends: what they last played
+create or replace function public.rb_friend_doing(who uuid) returns jsonb
+language sql stable security definer set search_path to '' as $$
+    select jsonb_build_object('game', x.game, 'at', extract(epoch from x.at))
+      from (select r.game, r.at from public.rb_rounds r where r.owner = who and r.at > now() - interval '1 day'
+             union all
+            select 'kart', s.at from public.rb_kart_seats s where s.owner = who and s.at > now() - interval '1 day'
+             union all
+            select 'hoops', g.started_at from public.rb_hoops_games g where g.owner = who and g.started_at > now() - interval '1 day'
+            order by 2 desc limit 1) x $$;
+revoke all on function public.rb_friend_doing(uuid) from public, anon, authenticated;
+
+create or replace function public.rb_friends_list() returns json
+language sql stable security definer set search_path to '' as $$
+    select coalesce(json_agg(json_build_object(
+               'username', p.username, 'minutes', p.minutes, 'admin', p.admin, 'avatar_v', p.avatar_v,
+               'state', case when f.ok then 'friend' when f.a = auth.uid() then 'asked' else 'asks' end,
+               'online', f.ok and public.rb_online(p),
+               'seen', case when f.ok then p.last_beat end,
+               'badges', case when f.ok then json_build_array(p.equip ->> 'badge1', p.equip ->> 'badge2', p.equip ->> 'badge3') end,
+               'doing', case when f.ok then public.rb_friend_doing(p.id) end)
+               order by f.ok desc, public.rb_online(p) desc, lower(p.username)), '[]'::json)
+      from public.rb_friends f
+      join public.profiles p on p.id = case when f.a = auth.uid() then f.b else f.a end
+     where f.a = auth.uid() or f.b = auth.uid() $$;
 
 commit;

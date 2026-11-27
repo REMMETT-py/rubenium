@@ -42214,6 +42214,20 @@ class Ticker(QTimer):
         self.timeout.connect(widget.update)
 
 
+def friend_game_name(game: str) -> str:
+    """9.5: a server game id as players know it (friends' activity)."""
+    if game.startswith("case:") or game == "daily":
+        return tr("Cases")
+    names = {"kart": "Karting", "hoops": "Hoops", "slots": "Slots", "plinko": "Plinko", "dice": "Dice", "mines": "Bombs",
+             "rocket": "Rocket", "blackjack": "Blackjack", "roulette": "Roulette", "hilo": "Hi-Lo", "tower": "Tower",
+             "c4": "Connect 4", "maze": "Mazelock", "tri": "Trifade", "reversi": "Reversi", "ships": "Battleships",
+             "horses": "Horse Racing", "golf_solo": "Mini Golf", "golf_party": "Mini Golf", "wave": "Wave Rush",
+             "scratch": "Scratch card", "spin": "Free spin", "gold_wheel": "Golden Wheel", "timing": "Timing",
+             "cups": "Cups", "colour": "Colour Pick", "sfx": "SFX Match", "memory": "Memory", "park": "Parking",
+             "sweeper": "Minesweeper", "blocks": "Blocks", "mini": "Beat Tap", "flip": "Coinflip", "jackpot": "Jackpot"}
+    return tr(names.get(game, game.replace("_", " ").capitalize()))
+
+
 class PlayerRow(QWidget):
     """One player: picture, name (and ADMIN), hours, their three badges, and a button."""
     opened = pyqtSignal(str)
@@ -42294,10 +42308,16 @@ class PlayerRow(QWidget):
             else:
                 seen = ago_text(info.get("seen")) if info.get("seen") else ""
                 sub += "  ·  " + (tr("seen {t}", t=seen) if seen else tr("Offline"))
+            doing = info.get("doing") if isinstance(info.get("doing"), dict) else None
             n = len([b for b in (info.get("badges") or []) if b])
-            if n:
+            if doing and doing.get("game"):               # 9.5: what they last played (friends only, last 24 h)
+                g = friend_game_name(str(doing["game"]))
+                recent = time.time() - float(doing.get("at") or 0) < 600
+                sub += "  ·  " + (tr("playing {g}", g=g) if recent and info.get("online") else tr("last played {g}", g=g))
+            elif n:
                 sub += "  ·  " + tr("{n} on show", n=n)
-        p.drawText(QRectF(x, r.top() + S(22), S(200), S(16)), int(Qt.AlignmentFlag.AlignVCenter), sub)
+        p.drawText(QRectF(x, r.top() + S(22), max(S(200), r.width() - S(150)), S(16)), int(Qt.AlignmentFlag.AlignVCenter),
+                   p.fontMetrics().elidedText(sub, Qt.TextElideMode.ElideRight, int(max(S(200), r.width() - S(150)))))
         if state == "friend":                         # 4.3: a blue dot on the right: this one is a friend
             c = self._dot()
             p.setPen(Qt.PenStyle.NoPen)

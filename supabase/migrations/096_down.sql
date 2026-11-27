@@ -212,4 +212,22 @@ select 'anim:' || b.base || f.suf, 'anim', b.base || f.suf, '', b.rarity, b.pric
 on conflict (id) do update set rarity = excluded.rarity, price = excluded.price, value = excluded.value,
        worth = excluded.worth, weight = excluded.weight;
 
+CREATE OR REPLACE FUNCTION public.rb_friends_list()
+ RETURNS json
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+    select coalesce(json_agg(json_build_object(
+               'username', p.username, 'minutes', p.minutes, 'admin', p.admin, 'avatar_v', p.avatar_v,
+               'state', case when f.ok then 'friend' when f.a = auth.uid() then 'asked' else 'asks' end,
+               'online', f.ok and public.rb_online(p),
+               'seen', case when f.ok then p.last_beat end,
+               'badges', case when f.ok then json_build_array(p.equip ->> 'badge1', p.equip ->> 'badge2', p.equip ->> 'badge3') end)
+               order by f.ok desc, public.rb_online(p) desc, lower(p.username)), '[]'::json)
+      from public.rb_friends f
+      join public.profiles p on p.id = case when f.a = auth.uid() then f.b else f.a end
+     where f.a = auth.uid() or f.b = auth.uid() $function$;
+drop function if exists public.rb_friend_doing(uuid);
+
 commit;

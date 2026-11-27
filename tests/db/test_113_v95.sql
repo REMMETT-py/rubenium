@@ -58,5 +58,16 @@ begin
     insert into public.rb_hoops_games (owner, level, mins, state, done_at, won) values
         (pb, 'Professional', 3, 'done', now(), true), (pb, 'Club', 3, 'done', now(), true);
     assert public.rb_bot_hoops_wins(pb, array['National', 'Professional'], now() - interval '1 hour') = 1, 'hoops wins by level';
+    -- friends see what a friend last played; others see nothing
+    assert public.rb_friend_doing(pb) ->> 'game' = 'hoops', 'last played: ' || coalesce(public.rb_friend_doing(pb)::text, 'null');
+    insert into public.rb_friends (a, b, ok) values (pa, pb, true);
+    perform t.act(pa);
+    j := public.rb_friends_list();
+    assert j -> 0 -> 'doing' ->> 'game' = 'hoops', 'a friend sees it: ' || j::text;
+    reset role;
+    perform t.act(pb);
+    err := t.try('select public.rb_friend_doing(''' || pa || ''')');
+    assert err like '%permission denied%', 'not callable directly: ' || err;
+    reset role;
 end $$;
 rollback;
