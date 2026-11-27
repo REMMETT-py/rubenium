@@ -71344,6 +71344,8 @@ class KartView(QWidget):
     kart with a camera that looks ahead and pulls back with speed, and paints the HUD: place, laps, times, speed,
     boost, health, the minimap, the countdown and the race messages."""
     finished = pyqtSignal(dict)          # my result once I cross the line for the last time
+    dq_sig = pyqtSignal()                # 9.5: 45 s without touching anything: disqualified (the kart blows up)
+    AFK_WARN, AFK_KICK = 30.0, 45.0
     send = pyqtSignal(list)              # my kart (and the bot if this PC drives it), ~12 times a second
 
     def __init__(self, track_i: int, laps: int, seats: list, me: int, bot_seat: int = -1, bot_elo: int = 2500,
@@ -71394,6 +71396,15 @@ class KartView(QWidget):
         self.rec: list = []            # 9.4: my run, a few times a second (the time boards' ghosts)
         self._rec_n = 0
         self.ghost = None              # 9.4: a run from the time board, raced as a see-through kart (seat 9)
+        self.last_input = time.monotonic()  # 9.5: AFK
+        self.dq = False
+        self.board = False             # 9.5: Tab held: the standings
+        self.feed: list = []           # 9.5: [label, pts, t0]
+        self.pts = 0                   # 9.5: my race points
+        self.split_cur: dict = {}      # 9.5: this lap: track bucket -> seconds into the lap
+        self.split_best: dict = {}     # ... the best lap's
+        self.lap_clean = True
+        self._place_was = 0
         self.timer = QTimer(self)
         self.timer.setTimerType(Qt.TimerType.PreciseTimer)
         self.timer.setInterval(8)
@@ -71494,8 +71505,12 @@ class KartView(QWidget):
     def keyPressEvent(self, e) -> None:
         if e.isAutoRepeat():
             return
+        self.last_input = time.monotonic()
+        if e.key() == Qt.Key.Key_Tab:                 # 9.5: hold Tab for the standings
+            self.board = True
+            return
         self.keys.add(Qt.Key(e.key()))
-        if e.key() in (Qt.Key.Key_Tab, Qt.Key.Key_Right, Qt.Key.Key_Left) and self.kart.done:
+        if e.key() in (Qt.Key.Key_Right, Qt.Key.Key_Left) and (self.kart.done or self.dq):
             self.next_watch(-1 if e.key() == Qt.Key.Key_Left else 1)
 
     def watchable(self) -> list:
@@ -71514,7 +71529,7 @@ class KartView(QWidget):
     def _auto_watch(self) -> None:
         """Over the line: a moment later the camera goes to the leader still racing, and when the one you watch
         finishes it moves on by itself."""
-        if not self.kart.done or self.race.t - self.kart.finish_t < KART_FADE:
+        if not self.dq and (not self.kart.done or self.race.t - self.kart.finish_t < KART_FADE):
             return
         cur = self.race.karts.get(self.spectate)
         if self.spectate == self.me or cur is None or cur.dead > 1e8 or (cur.done and self.race.t - cur.finish_t > KART_FADE):
@@ -71525,6 +71540,8 @@ class KartView(QWidget):
     def keyReleaseEvent(self, e) -> None:
         if e.isAutoRepeat():
             return
+        if e.key() == Qt.Key.Key_Tab:
+            self.board = False
         self.keys.discard(Qt.Key(e.key()))
 
     def focusOutEvent(self, _e) -> None:
@@ -71554,6 +71571,7 @@ class KartView(QWidget):
             self._ghost_move()
             if steps >= 24:
                 self.race.t = target
+            self._afk(now)
             self._auto_watch()
             self.fx.step(frame_dt)
             self._effects(frame_dt)
@@ -71563,12 +71581,38 @@ class KartView(QWidget):
                 self.sent_at = now
                 self.send.emit(self.snapshot())
             self.audio.engine(self.kart, [k for s, k in self.race.karts.items() if s != self.me], self.race.t >= 0)
-            if self.kart.done and not self.result_sent:
+            if self.kart.done and not self.result_sent and not self.dq:
                 self.result_sent = True
                 self.finished.emit(self.result(self.kart))
             self.update()
         except RuntimeError:
             self.timer.stop()
+
+    def _afk(self, now: float) -> None:
+        """9.5: 45 s without touching anything once the race is on: disqualified. The kart blows up for good and the
+        camera follows the others to the end."""
+        k = self.kart
+        if self.keys or self.race.t < 0 or k.done or self.dq:
+            self.last_input = now if (self.keys or self.race.t < 0) else self.last_input
+            return
+        if now - self.last_input >= self.AFK_KICK:
+            self.dq = True
+            k.ev.append(("boom", k.x, k.y))
+            k.hp = 0
+            k.dead = 1e9
+            k.vx = k.vy = 0.0
+            self.say(tr("DISQUALIFIED"), "#FF4D4D", 6.0, True)
+            self.say(tr("No input for 45 seconds"), "#FFFFFF", 6.0)
+            seats = self.watchable()
+            if seats:
+                self.spectate = seats[0]
+            self.dq_sig.emit()
+
+    def award(self, label: str, pts: int) -> None:
+        """9.5: race points (Rocket League style), shown at the top."""
+        self.pts += pts
+        self.feed = [f for f in self.feed if time.monotonic() - f[2] < 2.6][-3:]
+        self.feed.append([label, pts, time.monotonic()])
 
     def result(self, k) -> dict:
         tot = k.finish_t
@@ -71601,6 +71645,8 @@ class KartView(QWidget):
                 kind = ev[0]
                 if kind == "wall":
                     vn, dmg, (x, y) = ev[1], ev[2], ev[3]
+                    if mine and vn > WALL_SAFE:
+                        self.lap_clean = False
                     if vn > 90:
                         self.fx.burst(x, y, int(4 + vn / 40), "spark", 200 + vn, 0.35, 3, (255, 210, 120))
                     if mine or near:
@@ -71614,6 +71660,8 @@ class KartView(QWidget):
                         self.audio.play("bump", min(1.0, rv / 300))
                         self.shake = max(self.shake, 4.0)
                 elif kind == "boom":
+                    if mine:
+                        self.lap_clean = False
                     self.fx.explode(ev[1], ev[2])
                     if mine or near:
                         self.audio.play("boom", 1.0 if mine else 0.6)
@@ -71626,6 +71674,7 @@ class KartView(QWidget):
                         self.say(tr("Back on track"), "#8FD3FF", 1.2)
                 elif kind == "turbo":
                     if mine:
+                        self.award(tr("SUPER MINI TURBO") if ev[1] >= 2 else tr("MINI TURBO"), 25 if ev[1] >= 2 else 15)
                         self.audio.play("turbo")
                         self.say(tr("Super mini turbo!") if ev[1] >= 2 else tr("Mini turbo!"),
                                  "#FF9A2E" if ev[1] >= 2 else "#4FC3FF", 1.0)
@@ -71633,11 +71682,22 @@ class KartView(QWidget):
                     if ev[1] > 0:
                         self.audio.play("turbo")
                         self.say(tr("PERFECT START!"), "#35E0A1", 1.6, True)
+                        self.award(tr("PERFECT START"), 30)
                     else:
                         self.audio.play("thud", 0.6)
                         self.say(tr("Too early! Wheelspin"), "#FF6B6B", 1.4)
                 elif kind == "lap" and mine:
                     left = self.race.laps - ev[1]
+                    # 9.5: the lap's points, and its splits for the live +/- (the best lap's are kept)
+                    self.award(tr("LAP"), 10)
+                    if self.lap_clean:
+                        self.award(tr("CLEAN LAP"), 30)
+                    if ev[2] <= k.best_lap + 1e-6:
+                        if len(k.laps) > 1:
+                            self.award(tr("FASTEST LAP"), 40)
+                        self.split_best = dict(self.split_cur)
+                    self.split_cur = {}
+                    self.lap_clean = True
                     if left == 1:
                         self.audio.play("final")
                         self.say(tr("FINAL LAP"), "#F5C04A", 2.0, True)
@@ -71645,10 +71705,21 @@ class KartView(QWidget):
                         self.audio.play("lap")
                         self.say(tr("Lap {a}/{b}", a=ev[1] + 1, b=self.race.laps) + "   " + kart_time(ev[2]), "#FFFFFF", 1.8)
                 elif kind == "finish" and mine:
+                    self.award(tr("FINISHED"), max(10, 70 - 15 * (self.place(self.me) - 1)))
                     self.audio.play("finish")
                     place = self.place(self.me)
                     self.say(tr("FINISHED  ·  {p}", p=kart_place(place)), "#F5C04A", 4.0, True)
             k.ev.clear()
+        # 9.5: overtakes and the splits (mine)
+        me = self.kart
+        if self.race.t > 0 and not me.done and not self.dq and me.dead <= 0:
+            pl = self.place(self.me)
+            if self._place_was and pl < self._place_was:
+                self.award(tr("OVERTAKE"), 20)
+            self._place_was = pl
+            b = int((me.prog - me.lap * self.tr.n) // 20)
+            if b >= 0 and b not in self.split_cur:
+                self.split_cur[b] = self.race.t - me.lap_t0
 
     def _effects(self, dt: float) -> None:
         """Smoke, flames and skid marks from every kart (yours and the others alike)."""
@@ -71793,9 +71864,9 @@ class KartView(QWidget):
         p.setBrush(QColor(8, 10, 14, 175))
         p.drawRoundedRect(box, S(14), S(14))
         p.setFont(font(40, QFont.Weight.Black))
-        p.setPen(QColor("#FFFFFF"))
+        p.setPen(QColor("#FF4D4D") if self.dq else QColor("#FFFFFF"))
         p.drawText(QRectF(box.left() + S(14), box.top() + S(4), S(120), S(54)), int(Qt.AlignmentFlag.AlignVCenter),
-                   kart_place(place))
+                   "DQ" if self.dq else kart_place(place))
         p.setFont(font(15, QFont.Weight.Bold))
         p.setPen(QColor(TEXT_DIM))
         p.drawText(QRectF(box.left() + S(100), box.top() + S(10), S(140), S(24)), int(Qt.AlignmentFlag.AlignRight),
@@ -71870,7 +71941,7 @@ class KartView(QWidget):
                        f"{max(0.0, 2.0 - mine.reset_t):.1f}")
         if mine.wrong and t > 0 and not mine.done:
             self._banner(p, w, h * 0.3, tr("WRONG WAY"), "#FF4D4D", 30)
-        if mine.dead > 0:
+        if 0 < mine.dead < 1e8:
             self._banner(p, w, h * 0.42, tr("Back in {n} s", n=f"{mine.dead:.1f}"), "#FFFFFF", 22)
         # the lights: five reds that come on one by one, then all go out on GO
         if t < 1.0:
@@ -71884,15 +71955,120 @@ class KartView(QWidget):
             self._banner(p, w, yy, text, col, 34 if big else 20)
             p.setOpacity(1.0)
             yy += S(54 if big else 36)
-        if self.kart.done and self.spectate != self.me and self.watchable():
+        if (self.kart.done or self.dq) and self.spectate != self.me and self.watchable():
             info = self.seats.get(self.spectate, {})
             who = (tr("BOT") + " · " + tr(bot_level_name(self.bot_elo))) if info.get("bot") else str(info.get("name", "?"))
-            self._banner(p, w, h - S(80), tr("Watching {name}  ·  Tab: next kart", name=who), "#B8BCC8", 13)
+            self._banner(p, w, h - S(80), tr("Watching {name}  ·  ← →: next kart", name=who), "#B8BCC8", 13)
+        if self.dq:
+            self._banner(p, w, h - S(124), tr("DISQUALIFIED  ·  spectating"), "#FF4D4D", 16)
+        # 9.5: the live split against my best lap, the points feed, the AFK warning, the Tab standings
+        if self.split_best and t > 0 and not mine.done and not self.dq:
+            b = int((mine.prog - mine.lap * self.tr.n) // 20)
+            ref = self.split_best.get(b)
+            if ref is not None and b in self.split_cur:
+                d = self.split_cur[b] - ref
+                col = QColor("#35E0A1") if d <= 0 else QColor("#FF6B6B")
+                p.setFont(font(13, QFont.Weight.Black))
+                sr = QRectF(box.right() + S(8), box.top() + S(32), S(86), S(26))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(8, 10, 14, 175))
+                p.drawRoundedRect(sr, S(8), S(8))
+                p.setPen(col)
+                p.drawText(sr, int(Qt.AlignmentFlag.AlignCenter), f"{d:+.2f}")
+        self._feed_paint(p, w)
+        if not self.dq and not mine.done and t > 0:
+            idle = time.monotonic() - self.last_input
+            if idle >= self.AFK_WARN:
+                self._banner(p, w, h * 0.55, tr("Are you there? Disqualified in {n}", n=max(0, int(math.ceil(self.AFK_KICK - idle)))),
+                             "#FF6B6B", 22)
+        if self.board:
+            self._board_paint(p, w, h)
         # 9.3.2: the first races: which key drives forward (not the one that turns right)
-        if getattr(self, "first_timer", False) and t < 3.0 and not mine.done and mine.speed < 150:
+        if getattr(self, "first_timer", False) and t < 3.0 and not mine.done and not self.dq and mine.speed < 150:
             ku = kart_keys()
             self._banner(p, w, h * 0.62, tr("Hold {up} to go forward  ·  {left} {right} to steer", up=ku["up"], left=ku["left"],
                                           right=ku["right"]), "#FFE27A", 22)
+
+    def _feed_paint(self, p: QPainter, w: float) -> None:
+        now = time.monotonic()
+        self.feed = [f for f in self.feed if now - f[2] < 2.6]
+        y = S(18)
+        for label, pts, t0 in reversed(self.feed):
+            age = now - t0
+            a = clamp(min(age / 0.12, (2.6 - age) / 0.35), 0, 1)
+            p.setFont(font(13, QFont.Weight.Black, 1.2))
+            tw = p.fontMetrics().horizontalAdvance(label)
+            pw_ = p.fontMetrics().horizontalAdvance(f"+{pts}")
+            bw = tw + pw_ + S(44)
+            r = QRectF(w / 2 - bw / 2, y - (1 - clamp(age / 0.18, 0, 1)) * S(16), bw, S(30))
+            p.setPen(QPen(QColor(255, 255, 255, int(70 * a)), 1))
+            p.setBrush(QColor(8, 10, 14, int(215 * a)))
+            p.drawRoundedRect(r, S(9), S(9))
+            p.setPen(Qt.PenStyle.NoPen)
+            c = kart_col(self.me, False)
+            c = QColor(c)
+            c.setAlphaF(a)
+            p.setBrush(c)
+            p.drawRoundedRect(QRectF(r.left(), r.top(), S(6), r.height()), S(3), S(3))
+            p.setPen(QColor(255, 255, 255, int(255 * a)))
+            p.drawText(QRectF(r.left() + S(16), r.top(), tw + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), label)
+            p.setPen(QColor(245, 192, 74, int(255 * a)))
+            p.drawText(QRectF(r.right() - pw_ - S(14), r.top(), pw_ + S(4), r.height()), int(Qt.AlignmentFlag.AlignVCenter), f"+{pts}")
+            y += S(36)
+
+    def _board_paint(self, p: QPainter, w: float, h: float) -> None:
+        """Hold Tab: everyone in race order, with laps, best lap, last lap and hits; your race points."""
+        p.fillRect(QRectF(0, 0, w, h), QColor(4, 6, 12, 200))
+        rows = [kk for kk in self.race.standings() if kk.dead < 1e8 or kk.seat == self.me]
+        cols = [(tr("Pos"), S(54)), (tr("Driver"), 0), (tr("Lap"), S(70)), (tr("Best lap"), S(110)), (tr("Last lap"), S(110)),
+                (tr("Hits"), S(60))]
+        bw = min(w - S(60), S(720))
+        name_w = bw - sum(c[1] for c in cols) - S(40)
+        x0, y = w / 2 - bw / 2, h * 0.22
+        p.setFont(font(20, QFont.Weight.Black, 1.5))
+        p.setPen(QColor("#FFFFFF"))
+        p.drawText(QRectF(x0, y - S(46), bw, S(34)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr(self.tr.name) + "  ·  " + tr("{n} laps", n=self.race.laps))
+        box = QRectF(x0, y, bw, S(36) + S(38) * len(rows) + S(40))
+        p.setPen(QPen(QColor(255, 255, 255, 40), 1))
+        p.setBrush(QColor(12, 14, 20, 240))
+        p.drawRoundedRect(box, S(14), S(14))
+        x = x0 + S(20)
+        p.setFont(font(9.5, QFont.Weight.Black, 1))
+        p.setPen(QColor(TEXT_DIM))
+        for t_, cw in cols:
+            cw = cw or name_w
+            p.drawText(QRectF(x, y + S(10), cw, S(18)), int(Qt.AlignmentFlag.AlignVCenter), t_.upper())
+            x += cw
+        yy = y + S(36)
+        for kk in rows:
+            info = self.seats.get(kk.seat, {})
+            bot = bool(info.get("bot"))
+            me = kk.seat == self.me
+            name = (tr("BOT") + " · " + tr(bot_level_name(self.bot_elo)) + f" ({self.bot_elo})") if bot else str(info.get("name", "?"))
+            if me:
+                name += "  (" + tr("you") + ")"
+            pos = tr("DQ") if (me and self.dq) else str(self.place(kk.seat))
+            vals = [pos, name, (tr("Done") if kk.done else f"{min(self.race.laps, kk.lap + 1)}/{self.race.laps}"),
+                    kart_time(kk.best_lap) if kk.best_lap else "-", kart_time(kk.laps[-1]) if kk.laps else "-", str(kk.hits)]
+            r = QRectF(x0 + S(8), yy, bw - S(16), S(34))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 255, 255, 22 if me else 8))
+            p.drawRoundedRect(r, S(8), S(8))
+            p.setBrush(kart_col(kk.seat, bot))
+            p.drawRoundedRect(QRectF(r.left(), r.top(), S(5), r.height()), S(2), S(2))
+            x = x0 + S(20)
+            for ci, ((t_, cw), v) in enumerate(zip(cols, vals)):
+                cw = cw or name_w
+                p.setFont(font(12.5, QFont.Weight.Black if ci <= 1 else QFont.Weight.DemiBold))
+                p.setPen(QColor("#FF6B6B") if v == tr("DQ") else QColor("#FFFFFF") if ci <= 1 else QColor(TEXT))
+                p.drawText(QRectF(x, yy, cw, S(34)), int(Qt.AlignmentFlag.AlignVCenter), v)
+                x += cw
+            yy += S(38)
+        p.setFont(font(12, QFont.Weight.Black))
+        p.setPen(QColor(GOLD))
+        p.drawText(QRectF(x0 + S(20), yy, bw - S(40), S(34)), int(Qt.AlignmentFlag.AlignVCenter),
+                   tr("Your race points: {n}", n=self.pts))
 
     def _banner(self, p: QPainter, w: float, y: float, text: str, col: str, size: float) -> None:
         p.setFont(font(size, QFont.Weight.Black))
@@ -73744,6 +73920,7 @@ class KartLink(QObject):
         self.view = view
         view.first_timer = kart_opts(self.ctx).get("races", 0) < 3
         view.finished.connect(self._finished)
+        view.dq_sig.connect(self._disqualified)
         gh = getattr(self.ctx, "kart_ghost_next", None)               # 9.4: racing a run from the time board
         self.ghost = None
         if isinstance(gh, dict) and int(gh.get("track", -1)) == int(st.get("track") or 0) and len(seats) == 1:
@@ -73855,10 +74032,16 @@ class KartLink(QObject):
             return
         self.sent_bot = True
         laps = kart_ms_laps(k.laps, k.finish_t)
+
+        def got(ok: bool, d) -> None:
+            if ok:
+                self.got_state(d)
+            if getattr(self, "dq_wait", False):        # 9.5: you were disqualified: now the bot has its time, you go out
+                self.dq_wait = False
+                self._send_dq()
         self.ctx.online.ask("rb_kart_finish", {"rid": self.rid, "ms": int(round(k.finish_t * 1000)), "laps": laps,
                                                "best": min(laps), "blowups": k.blowups, "hits": k.hits,
-                                               "turbos": k.drift_turbos, "prog": k.prog, "is_bot": True},
-                            lambda ok, d: self.got_state(d) if ok else None)
+                                               "turbos": k.drift_turbos, "prog": k.prog, "is_bot": True}, got)
 
     def _finished(self, res: dict) -> None:
         self.my_result = res
@@ -73881,6 +74064,29 @@ class KartLink(QObject):
         self.ctx.econ.call("rb_kart_finish", {"rid": self.rid, "ms": int(round(k.finish_t * 1000)), "laps": laps,
                                               "best": min(laps), "blowups": k.blowups, "hits": k.hits,
                                               "turbos": k.drift_turbos, "prog": k.prog, "is_bot": False}, done)
+
+    def _disqualified(self) -> None:
+        """9.5: AFK: out of the race with no time (the server counts it as not finished); the view keeps running so
+        this PC still drives the bot if it does, and you watch the end."""
+        if self.sent_finish:
+            return
+        self.sent_finish = True
+        v = self.view
+        # the bot this PC drives is still racing: it finishes first (or the room would end with it on no time)
+        if v.bot_seat >= 0 and v.bot_seat not in v.race.remote and not v.race.karts[v.bot_seat].done and not self.sent_bot:
+            self.dq_wait = True
+            return
+        self._send_dq()
+
+    def _send_dq(self) -> None:
+        k = self.view.kart
+
+        def done(ok: bool, d) -> None:
+            if ok:
+                self.got_state(d)
+        self.ctx.econ.call("rb_kart_finish", {"rid": self.rid, "ms": None, "laps": None, "best": None,
+                                              "blowups": k.blowups + 1, "hits": k.hits, "turbos": k.drift_turbos,
+                                              "prog": k.prog, "is_bot": False}, done)
 
     def _save_run(self) -> None:
         """9.4: a 3 lap race: the run goes to the time board (the server keeps it if the finish counted)."""
