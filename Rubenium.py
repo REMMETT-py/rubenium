@@ -17869,14 +17869,26 @@ _cw_register(_CW_ROWS_67)
 # --------------------------------------------------------------------------- #
 from PyQt6.QtGui import QPolygonF, QRadialGradient  # noqa: E402
 
-ANIMS = (("shatter", "Shatter"), ("nova", "Supernova"), ("rift", "Rift"), ("phoenix", "Phoenix"), ("eclipse", "Eclipse"))
-ANIM_RARITY = {"shatter": "special", "nova": "special", "rift": "epic", "phoenix": "epic", "eclipse": "exotic"}   # 9.1
+# 9.5: re-ranked (the cooler, the rarer), six new ones; listed from the top tier down
+ANIMS = (("blackhole", "Black Hole"), ("warp", "Warp"), ("shatter", "Shattered Shard"), ("eclipse", "Eclipse"),
+         ("glitch", "Glitch"), ("origami", "Origami"), ("phoenix", "Phoenix"), ("rift", "Rift"),
+         ("nova", "Supernova"), ("pixel", "Pixel Dust"), ("ripple", "Ripple"))
+ANIM_RARITY = {"blackhole": "exotic", "warp": "exotic", "shatter": "exotic", "eclipse": "exotic",
+               "glitch": "epic", "origami": "epic", "phoenix": "epic", "rift": "epic",
+               "nova": "special", "pixel": "special", "ripple": "special"}
 ANIM_IDS = tuple(a[0] for a in ANIMS)
 ANIM_FINS = (("", "Original"), ("titanium", "Titanium"), ("gold", "Gold"), ("prismatic", "Prismatic"))   # 9.1
+
+
+def anim_fins(design: str) -> tuple:
+    """9.5: Titanium is for Mythic animations only; Epic and Legendary come in Gold and Prismatic."""
+    return ANIM_FIN_IDS if ANIM_RARITY.get(design) == "exotic" else ("", "gold", "prismatic")
 ANIM_FIN_IDS = tuple(f[0] for f in ANIM_FINS)
 ANIM_SHORT = {"": "Base", "titanium": "Titanium", "gold": "Gold", "prismatic": "Prismatic"}
 ANIM_LOOK = {"nova": ("#FF8A2B", "#FFD27A"), "shatter": ("#4FD8FF", "#B4F0FF"), "rift": ("#9B5CFF", "#E0C8FF"),
-             "phoenix": ("#FF4A1C", "#FFB627"), "eclipse": ("#E0405A", "#FFE08A")}
+             "phoenix": ("#FF4A1C", "#FFB627"), "eclipse": ("#E0405A", "#FFE08A"),
+             "blackhole": ("#7A5CFF", "#FFB36B"), "warp": ("#3D8BFF", "#BFE3FF"), "glitch": ("#FF2E88", "#2EF2FF"),
+             "origami": ("#FF7A59", "#FFE6D6"), "pixel": ("#3DDC84", "#C9FFE0"), "ripple": ("#2EC4FF", "#C8F2FF")}
 
 
 def anim_id(design: str, fin: str = "") -> str:
@@ -18038,59 +18050,6 @@ def _shard_polys(m: QRectF):
             out.append(QPolygonF([tl, tr_, bl]))
             out.append(QPolygonF([tr_, br, bl]))
     return out
-
-
-def _anim_shatter(p, k, now, m, hole, d, fin, banner, ball) -> None:
-    c = m.center()
-    a, b, core = anim_cols("shatter", fin, now)
-    u = _e3(k / 0.5)
-    v = _e3((k - 0.42) / 0.5)
-    polys = _shard_polys(m)
-    rnd = random.Random(77)
-    if k < 0.06:                                               # the crack of impact
-        _a_glow(p, c, m.width() * 0.35 * (k / 0.06), core, 0.6 * (1 - k / 0.06), "")
-    for i, poly in enumerate(polys):
-        cen = poly.boundingRect().center()
-        ang = math.atan2(cen.y() - c.y(), cen.x() - c.x()) + rnd.uniform(-0.5, 0.5)
-        dist = rnd.uniform(0.12, 0.42) * m.width()
-        rot = rnd.uniform(-220, 220)
-        lift = rnd.uniform(0.0, S(30))
-        blown = QPointF(cen.x() + math.cos(ang) * dist * u, cen.y() + math.sin(ang) * dist * 0.55 * u - lift * u + u * u * S(18))
-        cur = _lerp(blown, hole, v ** 1.3)
-        sc = (1.0 - 0.15 * u) * (1.0 - 0.93 * v)
-        op = (1.0 - 0.3 * u) * max(0.0, 1.0 - max(0.0, v - 0.7) / 0.3)
-        if op <= 0.01 or sc <= 0.02:
-            continue
-        p.save()
-        p.translate(cur)
-        p.rotate(rot * u * (1 - v))
-        p.scale(sc, sc)
-        p.translate(-cen.x(), -cen.y())
-        path = QPainterPath()
-        path.addPolygon(poly)
-        path.closeSubpath()
-        p.setClipPath(path)
-        banner(m, op, True)
-        p.setClipping(False)
-        edge = b if fin != "blacktitan" else b
-        p.setPen(QPen(alpha(edge, 0.75 * op * (0.4 + 0.6 * u)), S(1.2) / max(0.2, sc)))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawPolygon(poly)
-        p.restore()
-    p.setPen(Qt.PenStyle.NoPen)
-    rnd = random.Random(12)
-    for i in range(46):                                        # dust and glints thrown off
-        ang = rnd.uniform(0, math.tau)
-        r = m.width() * rnd.uniform(0.1, 0.5) * u * (1 - v * 0.6)
-        pt = _lerp(QPointF(c.x() + math.cos(ang) * r, c.y() + math.sin(ang) * r * 0.55), hole, v * 0.9)
-        aa, bb, _ = anim_cols("shatter", fin, now, i)
-        _a_dot(p, pt, S(rnd.uniform(1.0, 2.6)), bb, bb, fin, (1 - v) * 0.9 * min(1, u * 3), i % 5 == 0)
-    if v > 0:
-        _a_glow(p, hole, d * (0.8 + 1.4 * v) * (1 - v * 0.2), a if fin != "blacktitan" else b, 0.5 * v * (1 - max(0.0, v - 0.8) * 4), fin)
-        _a_ring(p, hole, d * 2.2 * v, b, (1 - v) * 0.9, S(2.4) * (1 - v))
-    op = min(1.0, max(0.0, (k - 0.78) / 0.18))
-    if op > 0:
-        ball(hole, d * (0.5 + 0.5 * _e3((k - 0.78) / 0.22) + 0.08 * math.sin(min(1.0, (k - 0.78) / 0.22) * math.pi)), op)
 
 
 # ---- 3. Rift: lightning cracks the banner open, both halves are squeezed into the slit, and the ball steps out
@@ -18325,8 +18284,565 @@ def _anim_eclipse(p, k, now, m, hole, d, fin, banner, ball) -> None:
         ball(hole, d * (0.6 + 0.4 * e), op)
 
 
+# ---- 9.5: helpers for the new animations
+def _clip_poly(p: QPainter, poly) -> None:
+    """Clip to a shape INSIDE the clip already set (the previews clip to their rounded card)."""
+    path = QPainterPath()
+    path.addPolygon(poly)
+    path.closeSubpath()
+    p.setClipPath(path, Qt.ClipOperation.IntersectClip)
+
+
+def _shard_polys95(m: QRectF, n: int = 34):
+    """Glass pieces that suit the window's shape: about n triangles, never long slivers."""
+    ratio = m.width() / max(1.0, m.height())
+    cols = max(3, int(round(math.sqrt(n / 2 * ratio))))
+    rows = max(3, int(round(n / 2 / cols)))
+    cw, ch = m.width() / cols, m.height() / rows
+    rnd = random.Random(31)
+    pts = [[QPointF(m.left() + i * cw + (rnd.uniform(-0.32, 0.32) * cw if 0 < i < cols else 0),
+                    m.top() + j * ch + (rnd.uniform(-0.32, 0.32) * ch if 0 < j < rows else 0)) for i in range(cols + 1)]
+           for j in range(rows + 1)]
+    out = []
+    for j in range(rows):
+        for i in range(cols):
+            tl, tr_, bl, br = pts[j][i], pts[j][i + 1], pts[j + 1][i], pts[j + 1][i + 1]
+            if (i + j) % 2:
+                out += [QPolygonF([tl, tr_, br]), QPolygonF([tl, br, bl])]
+            else:
+                out += [QPolygonF([tl, tr_, bl]), QPolygonF([tr_, br, bl])]
+    return out
+
+
+def _tint(p: QPainter, shape, col: QColor, a: float) -> None:
+    """A coloured film over what was just drawn (the finish shows on the banner itself, not only around it)."""
+    if a <= 0.01:
+        return
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(alpha(col, a))
+    if isinstance(shape, QRectF):
+        p.drawRect(shape)
+    else:
+        p.drawPolygon(shape)
+
+
+def _tint_fin(p: QPainter, shape, fin: str, col: QColor, a: float) -> None:
+    """The finish as a film: Gold and Titanium first wash the colour out of the picture, so the metal reads true
+    (gold straight over a blue banner went olive)."""
+    if fin in ("gold", "titanium") and a > 0.01:
+        _tint(p, shape, QColor("#C8C8C8" if fin == "titanium" else "#5A4A2A"), min(0.55, a * 1.3))
+        a = min(0.75, a * 1.4)
+    _tint(p, shape, col, a)
+
+
+def _fin_tint(fin: str) -> float:
+    return {"": 0.10, "titanium": 0.34, "gold": 0.36, "prismatic": 0.30}.get(fin, 0.2)
+
+
+# ---- 2. Shatter (9.5, Mythic): the window cracks from one point, bursts into tinted glass that stays on screen,
+# then every piece is swirled into the ball
+def _anim_shatter(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    c = m.center()
+    hit = QPointF(c.x() + m.width() * 0.08, c.y() - m.height() * 0.06)
+    a, b, core = anim_cols("shatter", fin, now)
+    crack = _e3(k / 0.1)
+    u = _e3((k - 0.08) / 0.4)                                # the burst
+    v = _e3((k - 0.46) / 0.4)                                # pulled into the ball
+    reach = min(m.width(), m.height()) * 0.34
+    if k < 0.12:                                             # 1. the window cracks
+        banner(m, 1.0)
+        _tint_fin(p, m, fin, a, _fin_tint(fin) * crack * 0.6)
+        rnd = random.Random(4)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for i in range(14):
+            ang = i * math.tau / 14 + rnd.uniform(-0.2, 0.2)
+            ln = reach * rnd.uniform(0.6, 1.4) * crack
+            col = anim_cols("shatter", fin, now, i)[1]
+            p.setPen(QPen(alpha(col, 0.9), S(1.6)))
+            path = _bolt(rnd, hit, QPointF(hit.x() + math.cos(ang) * ln, hit.y() + math.sin(ang) * ln), 5, S(6))
+            p.drawPath(path)
+        _a_glow(p, hit, S(40) + reach * 0.5 * crack, core, 0.8 * crack, "")
+        return
+    polys = _shard_polys95(m)
+    rnd = random.Random(77)
+    for i, poly in enumerate(polys):
+        cen = poly.boundingRect().center()
+        dx, dy = cen.x() - hit.x(), cen.y() - hit.y()
+        dist0 = math.hypot(dx, dy) + 1
+        ang = math.atan2(dy, dx) + rnd.uniform(-0.35, 0.35)
+        push = reach * rnd.uniform(0.25, 0.75) * (1.2 - min(1.0, dist0 / (reach * 2)) * 0.5)
+        rot = rnd.uniform(-260, 260)
+        blown = QPointF(cen.x() + math.cos(ang) * push * u, cen.y() + math.sin(ang) * push * u + u * u * S(10))
+        # into the ball along a spiral
+        sw = v ** 1.4
+        spin = (1 - sw) * rnd.uniform(1.2, 2.4)
+        rr = math.hypot(blown.x() - hole.x(), blown.y() - hole.y()) * (1 - sw)
+        a0 = math.atan2(blown.y() - hole.y(), blown.x() - hole.x()) + (1 - (1 - sw) ** 0.5) * spin * 2.2
+        cur = QPointF(hole.x() + math.cos(a0) * rr, hole.y() + math.sin(a0) * rr) if v > 0 else blown
+        sc = (1.0 - 0.12 * u) * (1.0 - 0.95 * sw)
+        op = max(0.0, 1.0 - max(0.0, v - 0.75) / 0.25)
+        if op <= 0.01 or sc <= 0.02:
+            continue
+        p.save()
+        p.translate(cur)
+        p.rotate(rot * u + rot * 2 * v)
+        p.scale(sc, sc)
+        p.translate(-cen.x(), -cen.y())
+        _clip_poly(p, poly)
+        banner(m, op, True)
+        aa, bb, _ = anim_cols("shatter", fin, now, i)
+        _tint_fin(p, poly, fin, aa, (_fin_tint(fin) + 0.12 * u) * op)
+        # a glint across the glass as it turns
+        g = 0.5 + 0.5 * math.sin(now * 3 + i)
+        _tint(p, poly, QColor("#FFFFFF"), 0.10 * g * u * op)
+        p.restore()
+        p.save()
+        p.translate(cur)
+        p.rotate(rot * u + rot * 2 * v)
+        p.scale(sc, sc)
+        p.translate(-cen.x(), -cen.y())
+        p.setPen(QPen(alpha(bb, 0.85 * op), S(1.4) / max(0.25, sc)))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPolygon(poly)
+        p.restore()
+    rnd = random.Random(12)
+    for i in range(60):                                       # glass dust, then the trail into the ball
+        ang = rnd.uniform(0, math.tau)
+        r = reach * rnd.uniform(0.2, 1.2) * u
+        base = QPointF(hit.x() + math.cos(ang) * r, hit.y() + math.sin(ang) * r)
+        pt = _lerp(base, hole, v ** 1.2)
+        aa, bb, _ = anim_cols("shatter", fin, now, i)
+        _a_dot(p, pt, S(rnd.uniform(0.9, 2.4)), bb, bb, fin, (1 - v) * 0.9 * min(1.0, u * 3), i % 4 == 0)
+    if v > 0:
+        _a_glow(p, hole, d * (0.9 + 1.6 * v), a, 0.55 * v * (1 - max(0.0, v - 0.85) * 5), fin)
+        _a_ring(p, hole, d * (0.6 + 1.8 * v), b, (1 - v) * 0.9, S(2.2))
+    op = min(1.0, max(0.0, (k - 0.8) / 0.15))
+    if op > 0:
+        e = _e3((k - 0.8) / 0.2)
+        _a_ring(p, hole, d * (0.7 + 1.2 * e), core, 0.8 * (1 - e), S(2.5))
+        ball(hole, d * (0.55 + 0.45 * e + 0.08 * math.sin(e * math.pi)), op)
+
+
+# ---- 6. Black Hole (9.5, Mythic): a singularity opens in the middle, the window is torn into strips that spiral
+# into it, the hole collapses in a flash and the ball is fired up to its place
+def _anim_blackhole(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    c = m.center()
+    a, b, core = anim_cols("blackhole", fin, now)
+    size = min(m.width(), m.height())
+    grow = _e3(k / 0.22)
+    pull = _e3((k - 0.12) / 0.5)
+    collapse = _e3((k - 0.6) / 0.12)
+    rh = size * 0.13 * grow * (1 - collapse)                 # the event horizon
+    if collapse < 1:                                          # the accretion disk behind
+        for j in range(3):
+            p.save()
+            p.translate(c)
+            p.rotate(-18 + j * 6)
+            p.scale(1.0, 0.32)
+            col = anim_cols("blackhole", fin, now, j * 5)
+            r = rh * (2.3 + j * 0.55) + S(2)
+            g = QRadialGradient(QPointF(0, 0), r)
+            g.setColorAt(0.0, alpha(col[2], 0.0))
+            g.setColorAt(0.55, alpha(col[1], 0.0))
+            g.setColorAt(0.72, alpha(col[1], 0.55 * grow))
+            g.setColorAt(0.86, alpha(col[0], 0.35 * grow))
+            g.setColorAt(1.0, alpha(col[0], 0.0))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(g)
+            p.drawEllipse(QPointF(0, 0), r, r)
+            p.restore()
+    if pull < 0.995:                                          # the window, torn into strips that spiral in
+        n = 14
+        sh = m.height() / n
+        for i in range(n):
+            strip = QRectF(m.left(), m.top() + i * sh, m.width(), sh + 1)
+            dist = abs(strip.center().y() - c.y()) / (m.height() / 2)
+            lag = 0.25 * dist
+            t = _e3((pull - lag * 0.6) / (1 - lag * 0.6)) if pull > lag * 0.6 else 0.0
+            if t >= 0.995:
+                continue
+            p.save()
+            p.translate(c)
+            p.rotate(t * (260 + 140 * (1 - dist)) * (1 if i % 2 else 0.85))
+            sc = max(0.01, 1 - t)
+            p.scale(sc * (1 + t * 0.6), sc * (1 - t * 0.5))
+            p.translate(-c.x(), -c.y())
+            p.setClipRect(strip, Qt.ClipOperation.IntersectClip)
+            banner(m, 1.0 - 0.25 * t)
+            _tint_fin(p, strip, fin, a, (_fin_tint(fin) + 0.3 * t) * (1 - t))
+            p.restore()
+    rnd = random.Random(21)
+    for i in range(70):                                       # matter falling in
+        ph = (rnd.random() + now * rnd.uniform(0.25, 0.5)) % 1.0
+        ang = rnd.uniform(0, math.tau) + ph * 4.0
+        r = size * 0.55 * (1 - ph) * grow * (1 - collapse) + rh
+        pt = QPointF(c.x() + math.cos(ang) * r, c.y() + math.sin(ang) * r * 0.45)
+        aa, bb, _ = anim_cols("blackhole", fin, now, i)
+        _a_dot(p, pt, S(rnd.uniform(0.8, 2.0)), bb if i % 2 else aa, bb, fin, 0.8 * ph * grow * (1 - collapse), i % 9 == 0)
+    if rh > 0.5:                                              # the horizon: black, with a bright lensing ring
+        _a_ring(p, c, rh * 1.12, b, 0.9, S(2))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(2, 2, 6))
+        p.drawEllipse(c, rh, rh)
+    if k > 0.6:                                               # the flash, the shock ring, and the shot up
+        f = (k - 0.6) / 0.4
+        _a_glow(p, c, size * 0.5 * (0.2 + f), core, max(0.0, 1 - f * 3.2), "")
+        _a_ring(p, c, size * 0.6 * _e3(f * 1.4), a, max(0.0, 1 - f * 1.6), S(4) * (1 - f))
+        t = _e3((k - 0.66) / 0.3)
+        if t > 0:
+            pos = _lerp(c, hole, t)
+            for j in range(6):                                # a streak behind it
+                q = _lerp(c, pos, j / 6)
+                _a_dot(p, q, d * 0.12 * (j + 1) / 6, b, b, fin, 0.5 * (1 - t * 0.6) * (j + 1) / 6)
+            ball(pos, d * (0.45 + 0.55 * t), min(1.0, t * 3))
+
+
+# ---- 7. Warp (9.5, Mythic): hyperspace: the stars stream past, the window is stretched into a beam of light that
+# shoots up into the ball's place, which comes out of the jump with a flare
+def _anim_warp(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    c = m.center()
+    a, b, core = anim_cols("warp", fin, now)
+    size = max(m.width(), m.height())
+    speed = _e3(k / 0.45)
+    stretch = _e3((k - 0.22) / 0.36)
+    jump = _e3((k - 0.55) / 0.16)
+    rnd = random.Random(8)
+    for i in range(90):                                       # the star streaks
+        ang = rnd.uniform(0, math.tau)
+        ph = (rnd.random() + now * (0.15 + 1.4 * speed) * rnd.uniform(0.6, 1.2)) % 1.0
+        r0 = size * 0.55 * ph ** 1.6
+        ln = S(2) + size * 0.22 * speed * ph
+        p1 = QPointF(c.x() + math.cos(ang) * r0, c.y() + math.sin(ang) * r0)
+        p2 = QPointF(c.x() + math.cos(ang) * (r0 + ln), c.y() + math.sin(ang) * (r0 + ln))
+        col = anim_cols("warp", fin, now, i)[1] if i % 3 else core
+        p.setPen(QPen(alpha(col, (0.25 + 0.6 * speed) * min(1.0, ph * 3) * (1 - jump) ** 2), S(1.0 + speed)))
+        p.drawLine(p1, p2)
+    if stretch < 0.999:                                       # the window becomes a beam towards the hole
+        shake = S(2.5) * speed * (1 - stretch) * math.sin(now * 70)
+        w = m.width() * (1 - 0.94 * stretch)
+        h = m.height() * (1 + 0.6 * stretch) * (1 - 0.85 * stretch ** 3)
+        cx = c.x() + shake
+        cy = c.y() + (hole.y() + h / 2 - c.y()) * stretch ** 1.5
+        box = QRectF(cx - w / 2, cy - h / 2, w, h)
+        p.save()
+        p.translate(box.center())
+        p.scale(box.width() / max(1.0, m.width()), box.height() / max(1.0, m.height()))
+        p.translate(-c.x(), -c.y())
+        banner(m, 1.0 - 0.2 * stretch)
+        _tint_fin(p, m, fin, a, (_fin_tint(fin) + 0.4) * stretch)
+        p.restore()
+        g = QLinearGradient(QPointF(box.left(), 0), QPointF(box.right(), 0))
+        g.setColorAt(0, alpha(b, 0.0))
+        g.setColorAt(0.5, alpha(core, 0.85 * stretch))
+        g.setColorAt(1, alpha(b, 0.0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(g)
+        p.drawRect(box.adjusted(-w * 0.6, 0, w * 0.6, 0))
+    if k > 0.55:
+        f = (k - 0.55) / 0.45
+        _a_glow(p, hole, d * (1.0 + 5 * jump) * (1 - f * 0.5), core, max(0.0, 1 - f * 2.2), "")
+        _a_ring(p, hole, d * (0.8 + 4.5 * _e3(f * 1.2)), b, max(0.0, 1 - f * 1.4), S(3) * (1 - f))
+        if f < 0.6:                                           # the flare
+            fl = 1 - f / 0.6
+            p.setPen(QPen(alpha(core, 0.8 * fl), S(1.5)))
+            p.drawLine(QPointF(hole.x() - d * 4 * fl, hole.y()), QPointF(hole.x() + d * 4 * fl, hole.y()))
+            p.setPen(QPen(alpha(b, 0.6 * fl), S(1.2)))
+            p.drawLine(QPointF(hole.x(), hole.y() - d * 1.6 * fl), QPointF(hole.x(), hole.y() + d * 1.6 * fl))
+        op = min(1.0, max(0.0, (k - 0.66) / 0.14))
+        if op > 0:
+            e = _e3((k - 0.66) / 0.34)
+            ball(hole, d * (0.4 + 0.6 * e + 0.1 * math.sin(e * math.pi)), op)
+
+
+# ---- 8. Glitch (9.5, Legendary): the window corrupts: slices jump, the colours split, then it falls apart into
+# blocks that teleport up in steps and rebuild as the ball
+def _anim_glitch(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    a, b, core = anim_cols("glitch", fin, now)
+    step = int(now * 18)                                     # glitches move in jumps, not smoothly
+    rnd = random.Random(step)
+    bad = _e3(k / 0.4)
+    gone = _e3((k - 0.34) / 0.3)
+    if gone < 0.999:
+        n = 12
+        sh = m.height() / n
+        for i in range(n):
+            strip = QRectF(m.left() - m.width(), m.top() + i * sh, m.width() * 3, sh + 1)
+            off = (rnd.uniform(-1, 1) * m.width() * 0.12 * bad) if rnd.random() < 0.15 + 0.5 * bad else 0.0
+            keep = 1.0 if rnd.random() > gone else 0.0
+            if not keep:
+                continue
+            p.save()
+            p.setClipRect(strip, Qt.ClipOperation.IntersectClip)
+            p.translate(off, 0)
+            banner(m, 1.0 - 0.3 * bad)
+            p.restore()
+            if bad > 0.05 and off:                            # the split colour channels
+                band = QRectF(m.left() + off, m.top() + i * sh, m.width(), sh)
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(alpha(a, 0.35 * bad))
+                p.drawRect(band.translated(-S(6) * bad, 0))
+                p.setBrush(alpha(b, 0.30 * bad))
+                p.drawRect(band.translated(S(6) * bad, 0))
+        p.setPen(Qt.PenStyle.NoPen)                            # scanlines
+        p.setBrush(alpha("#000000", 0.18 * bad * (1 - gone)))
+        y = m.top()
+        while y < m.bottom():
+            p.drawRect(QRectF(m.left(), y, m.width(), S(1)))
+            y += S(4)
+    # the blocks: thrown out, then up to the hole in six jumps
+    if k > 0.3:
+        u = _e3((k - 0.3) / 0.2)
+        jumps = min(6, int(max(0.0, (k - 0.48) / 0.3) * 6.999))
+        r2 = random.Random(5)
+        for i in range(56):
+            x0 = m.left() + r2.random() * m.width()
+            y0 = m.top() + r2.random() * m.height()
+            out = QPointF(x0 + r2.uniform(-1, 1) * S(30) * u, y0 + r2.uniform(-1, 1) * S(30) * u)
+            t = jumps / 6
+            pos = _lerp(out, QPointF(hole.x() + r2.uniform(-1, 1) * d * (1 - t), hole.y() + r2.uniform(-1, 1) * d * (1 - t)), t)
+            sz = S(r2.uniform(4, 11)) * (1 - 0.6 * t)
+            col = anim_cols("glitch", fin, now, i)[r2.randint(0, 1)]
+            op = min(1.0, u * 2) * (1 - max(0.0, (k - 0.82) / 0.1))
+            if op <= 0:
+                continue
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(col, 0.85 * op))
+            p.drawRect(QRectF(pos.x() - sz / 2, pos.y() - sz / 2, sz, sz))
+    if k > 0.78:                                              # the ball, flickering in with its colours split
+        e = _e3((k - 0.78) / 0.22)
+        flick = 1.0 if e > 0.7 else (1.0 if (step % 3) else 0.35)
+        if e < 0.9:
+            _a_glow(p, QPointF(hole.x() - S(4) * (1 - e), hole.y()), d * 0.8, a, 0.5 * (1 - e), "")
+            _a_glow(p, QPointF(hole.x() + S(4) * (1 - e), hole.y()), d * 0.8, b, 0.5 * (1 - e), "")
+        ball(hole, d * (0.7 + 0.3 * e), min(1.0, e * 2) * flick)
+
+
+# ---- 9. Origami (9.5, Legendary): the window folds in half, and in half again, creases into a paper plane that
+# loops up to the hole and opens into the ball
+def _anim_origami(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    a, b, core = anim_cols("origami", fin, now)
+    f1 = _e3(k / 0.2)                                        # bottom half folds up
+    f2 = _e3((k - 0.2) / 0.18)                               # right half folds over
+    shrink = _e3((k - 0.36) / 0.14)
+    fly = _e3((k - 0.48) / 0.4)
+    top = QRectF(m.left(), m.top(), m.width(), m.height() / 2)
+    if k < 0.38:
+        midy = m.center().y()
+        if f2 <= 0:
+            p.save()                                          # the top half, flat
+            p.setClipRect(top, Qt.ClipOperation.IntersectClip)
+            banner(m, 1.0)
+            p.restore()
+            fy = math.cos(f1 * math.pi)                       # the bottom half, turning over the crease
+            p.save()
+            p.translate(0, midy)
+            p.scale(1.0, fy if abs(fy) > 0.01 else 0.01)
+            p.translate(0, -midy)
+            if fy >= 0:
+                p.setClipRect(QRectF(m.left(), midy, m.width(), m.height() / 2), Qt.ClipOperation.IntersectClip)
+                banner(m, 1.0)
+                _tint(p, m, QColor("#000000"), 0.35 * f1)
+            else:                                             # its back: paper in the animation's colour
+                back = QRectF(m.left(), midy, m.width(), m.height() / 2)
+                g = QLinearGradient(back.topLeft(), back.bottomRight())
+                g.setColorAt(0, mix(a, QColor("#FFFFFF"), 0.35))
+                g.setColorAt(1, a)
+                p.setPen(QPen(alpha(b, 0.8), S(1)))
+                p.setBrush(g)
+                p.drawRect(back)
+            p.restore()
+        else:                                                 # second fold: the right half over the left
+            g = QLinearGradient(top.topLeft(), top.bottomRight())
+            g.setColorAt(0, mix(a, QColor("#FFFFFF"), 0.35))
+            g.setColorAt(1, a)
+            left = QRectF(top.left(), top.top(), top.width() / 2, top.height())
+            p.setPen(QPen(alpha(b, 0.8), S(1)))
+            p.setBrush(g)
+            p.drawRect(left)
+            fx = math.cos(f2 * math.pi)
+            midx = top.center().x()
+            right = QRectF(midx, top.top(), top.width() / 2, top.height())
+            p.save()
+            p.translate(midx, 0)
+            p.scale(fx if abs(fx) > 0.01 else 0.01, 1.0)
+            p.translate(-midx, 0)
+            p.setBrush(mix(a, QColor("#000000"), 0.2 * (1 - fx)) if fx < 0 else g)
+            p.drawRect(right)
+            p.restore()
+            p.setPen(QPen(alpha("#FFFFFF", 0.5), S(1), Qt.PenStyle.DashLine))
+            p.drawLine(QPointF(top.left(), top.bottom()), QPointF(top.right() if fx > 0 else midx, top.bottom()))
+    else:
+        # a paper plane, flying a loop up to the hole
+        start = QPointF(m.left() + m.width() * 0.25, m.top() + m.height() * 0.25)
+        loop_c = QPointF(m.center().x(), m.top() + m.height() * 0.36)
+        rad = min(m.width(), m.height()) * 0.2
+        if fly <= 0:                                          # the folded square creases into the plane
+            pos, ang = start, 0.0
+            sq = QRectF(m.left(), m.top(), m.width() / 2, m.height() / 2)
+            sz = S(26)
+            plane = [QPointF(start.x() + sz, start.y()), QPointF(start.x() - sz * 0.8, start.y() - sz * 0.55),
+                     QPointF(start.x() - sz * 0.45, start.y()), QPointF(start.x() - sz * 0.8, start.y() + sz * 0.55)]
+            corners = [sq.topRight(), sq.topLeft(), sq.center(), sq.bottomLeft()]
+            poly = QPolygonF([_lerp(c0, c1, shrink) for c0, c1 in zip(corners, plane)])
+            g = QLinearGradient(sq.topLeft(), sq.bottomRight())
+            g.setColorAt(0, mix(a, QColor("#FFFFFF"), 0.45))
+            g.setColorAt(1, a)
+            p.setPen(QPen(alpha(b, 0.9), S(1)))
+            p.setBrush(g)
+            p.drawPolygon(poly)
+            return
+        elif fly < 0.7:
+            t = fly / 0.7
+            th = math.pi + t * math.tau * 0.9
+            pos = QPointF(loop_c.x() + math.cos(th) * rad * (1 - t * 0.3), loop_c.y() + math.sin(th) * rad * 0.7)
+            pos = _lerp(start, pos, min(1.0, t * 4))
+            ang = math.degrees(th) + 90
+        else:
+            t = (fly - 0.7) / 0.3
+            prev = QPointF(loop_c.x() + math.cos(math.pi * 2.8) * rad * 0.7, loop_c.y() + math.sin(math.pi * 2.8) * rad * 0.7)
+            pos = _lerp(prev, hole, _e3(t))
+            ang = math.degrees(math.atan2(hole.y() - prev.y(), hole.x() - prev.x()))
+        rnd = random.Random(3)
+        for j in range(14):                                   # the dotted trail
+            q = (fly - j * 0.03)
+            if q <= 0:
+                break
+            _a_dot(p, QPointF(pos.x() - math.cos(math.radians(ang)) * j * S(7) + rnd.uniform(-1, 1),
+                              pos.y() - math.sin(math.radians(ang)) * j * S(7)), S(1.4), b, b, fin, 0.6 * (1 - j / 14))
+        sz = S(26) * (1 - 0.35 * fly) * (0.4 + 0.6 * shrink)
+        plane = QPolygonF([QPointF(sz, 0), QPointF(-sz * 0.8, -sz * 0.55), QPointF(-sz * 0.45, 0), QPointF(-sz * 0.8, sz * 0.55)])
+        op = 1.0 - max(0.0, (k - 0.86) / 0.08)
+        if op > 0:
+            p.save()
+            p.translate(pos)
+            p.rotate(ang)
+            g = QLinearGradient(QPointF(-sz, -sz), QPointF(sz, sz))
+            g.setColorAt(0, mix(a, QColor("#FFFFFF"), 0.45))
+            g.setColorAt(1, a)
+            p.setOpacity(op)
+            p.setPen(QPen(alpha(b, 0.9), S(1)))
+            p.setBrush(g)
+            p.drawPolygon(plane)
+            p.setPen(QPen(alpha("#000000", 0.25), S(1)))
+            p.drawLine(QPointF(-sz * 0.45, 0), QPointF(sz, 0))
+            p.setOpacity(1.0)
+            p.restore()
+    if k > 0.84:                                              # it opens into the ball
+        e = _e3((k - 0.84) / 0.16)
+        for i in range(8):
+            ang = i * math.tau / 8
+            _a_dot(p, QPointF(hole.x() + math.cos(ang) * d * (0.4 + 0.9 * e), hole.y() + math.sin(ang) * d * (0.4 + 0.9 * e)),
+                   S(2), a, b, fin, 1 - e, i % 2 == 0)
+        ball(hole, d * (0.5 + 0.5 * e + 0.1 * math.sin(e * math.pi)), min(1.0, e * 2.5))
+
+
+# ---- 10. Pixel Dust (9.5, Epic): the window comes apart into pixels from the bottom up; they drift up and pack
+# into the ball
+def _anim_pixel(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    a, b, core = anim_cols("pixel", fin, now)
+    eat = _e3(k / 0.55)                                       # how much of the window has turned into pixels
+    line = m.bottom() - m.height() * eat
+    if eat < 0.999:
+        p.save()
+        p.setClipRect(QRectF(m.left(), m.top(), m.width(), line - m.top()), Qt.ClipOperation.IntersectClip)
+        banner(m, 1.0)
+        p.restore()
+        p.setPen(Qt.PenStyle.NoPen)                            # the edge being eaten glows
+        g = QLinearGradient(QPointF(0, line - S(14)), QPointF(0, line))
+        g.setColorAt(0, alpha(b, 0.0))
+        g.setColorAt(1, alpha(b, 0.7))
+        p.setBrush(g)
+        p.drawRect(QRectF(m.left(), line - S(14), m.width(), S(14)))
+    cell = max(S(6), min(m.width(), m.height()) / 26)
+    rnd = random.Random(11)
+    n = 150
+    for i in range(n):
+        x0 = m.left() + rnd.random() * m.width()
+        y0 = m.bottom() - rnd.random() * m.height()
+        born = (m.bottom() - y0) / max(1.0, m.height()) * 0.55   # it leaves when the line passes it
+        t = (k - born) / max(0.05, 0.9 - born)
+        if t <= 0:
+            continue
+        t = min(1.0, t)
+        e = _e3(t)
+        wob = math.sin(now * 3 + i) * S(10) * (1 - e)
+        pos = QPointF(x0 + (hole.x() - x0) * e + wob, y0 + (hole.y() - y0) * (e ** 0.8))
+        sz = cell * (1 - 0.7 * e)
+        col = anim_cols("pixel", fin, now, i)[i % 2] if fin else (a if i % 3 else b)
+        op = min(1.0, t * 5) * (1 - max(0.0, (k - 0.86) / 0.1))
+        if op <= 0:
+            continue
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha(col, 0.9 * op))
+        p.drawRect(QRectF(pos.x() - sz / 2, pos.y() - sz / 2, sz, sz))
+    if k > 0.55:
+        e = _e3((k - 0.55) / 0.45)
+        _a_glow(p, hole, d * (0.6 + 0.9 * e), a, 0.45 * e * (1 - max(0.0, e - 0.8) * 5), fin)
+        op = min(1.0, max(0.0, (k - 0.78) / 0.14))
+        if op > 0:
+            ball(hole, d * (0.6 + 0.4 * _e3((k - 0.78) / 0.22)), op)
+
+
+# ---- 11. Ripple (9.5, Epic): the window ripples like water, pulls together into one drop, the drop falls UP into
+# the hole and the ball comes out of the splash
+def _anim_ripple(p, k, now, m, hole, d, fin, banner, ball) -> None:
+    a, b, core = anim_cols("ripple", fin, now)
+    c = m.center()
+    wave = _e3(k / 0.3)
+    pinch = _e3((k - 0.18) / 0.32)
+    rise = _e3((k - 0.48) / 0.26)
+    if pinch < 0.999:
+        n = 22
+        sh = m.height() / n
+        for i in range(n):
+            strip = QRectF(m.left() - S(40), m.top() + i * sh, m.width() + S(80), sh + 1)
+            off = math.sin(now * 9 + i * 0.7) * S(14) * wave * (1 - pinch)
+            sx = 1 - pinch * (0.97 - 0.5 * math.sin(i / (n - 1) * math.pi) * (1 - pinch))
+            p.save()
+            p.setClipRect(strip, Qt.ClipOperation.IntersectClip)
+            p.translate(c.x() + off, 0)
+            p.scale(max(0.02, sx), 1.0)
+            p.translate(-c.x(), 0)
+            banner(m, 1.0 - 0.3 * pinch)
+            _tint_fin(p, m, fin, a, _fin_tint(fin) * wave)
+            p.restore()
+        for j in range(3):                                    # rings on the surface
+            q = (wave * 1.2 - j * 0.25)
+            if q > 0:
+                _a_ring(p, c, min(m.width(), m.height()) * 0.5 * q, b, 0.6 * (1 - min(1.0, q)), S(2))
+    if pinch > 0.6 and rise < 1.0:                            # the drop
+        drop_c = _lerp(c, hole, rise ** 1.6)
+        r = d * (1.6 - 0.9 * rise) * min(1.0, (pinch - 0.6) / 0.3)
+        tail = r * (1.2 + 2.5 * rise * (1 - rise) * 4)
+        path = QPainterPath()
+        path.moveTo(drop_c.x(), drop_c.y() + r + tail)          # the tail points away from where it goes
+        path.cubicTo(QPointF(drop_c.x() + r * 1.1, drop_c.y() + r), QPointF(drop_c.x() + r, drop_c.y() - r),
+                     QPointF(drop_c.x(), drop_c.y() - r))
+        path.cubicTo(QPointF(drop_c.x() - r, drop_c.y() - r), QPointF(drop_c.x() - r * 1.1, drop_c.y() + r),
+                     QPointF(drop_c.x(), drop_c.y() + r + tail))
+        g = QRadialGradient(QPointF(drop_c.x() - r * 0.3, drop_c.y() - r * 0.3), r * 1.6)
+        g.setColorAt(0, mix(core, b, 0.3))
+        g.setColorAt(0.5, b)
+        g.setColorAt(1, a)
+        p.setPen(QPen(alpha(core, 0.6), S(1)))
+        p.setBrush(g)
+        p.drawPath(path)
+    if k > 0.72:                                              # the splash
+        e = _e3((k - 0.72) / 0.28)
+        for j in range(2):
+            _a_ring(p, hole, d * (0.6 + (2.6 - j) * e), b if j else a, 0.8 * (1 - e), S(2.4 - j))
+        rnd = random.Random(2)
+        for i in range(16):
+            ang = rnd.uniform(-math.pi, 0)
+            r = d * (0.6 + 1.8 * e)
+            pt = QPointF(hole.x() + math.cos(ang) * r, hole.y() + math.sin(ang) * r * 0.7 + e * e * S(16))
+            _a_dot(p, pt, S(rnd.uniform(1.0, 2.2)), b, b, fin, 1 - e, i % 4 == 0)
+        ball(hole, d * (0.55 + 0.45 * e + 0.12 * math.sin(e * math.pi)), min(1.0, e * 3))
+
+
 _ANIM_PAINT = {"nova": _anim_nova, "shatter": _anim_shatter, "rift": _anim_rift, "phoenix": _anim_phoenix,
-               "eclipse": _anim_eclipse}
+               "eclipse": _anim_eclipse, "blackhole": _anim_blackhole, "warp": _anim_warp, "glitch": _anim_glitch,
+               "origami": _anim_origami, "pixel": _anim_pixel, "ripple": _anim_ripple}
 
 
 def paint_anim(p: QPainter, design: str, fin: str, k: float, now: float, m: QRectF, hole: QPointF, d: float, banner, ball) -> None:
@@ -18374,6 +18890,45 @@ def paint_anim_thumb(p: QPainter, item: str, box: QRectF, now: float) -> None:
                        QPointF(c.x() + math.cos(ang + 0.3) * r * 0.82, c.y() + math.sin(ang + 0.3) * r * 0.82))
     elif design == "rift":
         p.drawLine(QPointF(c.x(), c.y() - r * 0.85), QPointF(c.x(), c.y() + r * 0.85))
+    elif design == "blackhole":                                   # 9.5: a dark core in a tilted disk
+        p.save()
+        p.translate(c)
+        p.rotate(-18)
+        p.drawEllipse(QPointF(0, 0), r * 0.78, r * 0.26)
+        p.restore()
+        p.setBrush(QColor("#030306"))
+        p.drawEllipse(c, r * 0.24, r * 0.24)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+    elif design == "warp":
+        for i in range(10):
+            ang = i * math.tau / 10 + 0.2
+            r0 = r * (0.45 + 0.1 * ((now * 1.5 + i * 0.3) % 1.0))
+            p.drawLine(QPointF(c.x() + math.cos(ang) * r0, c.y() + math.sin(ang) * r0),
+                       QPointF(c.x() + math.cos(ang) * r0 * 1.7, c.y() + math.sin(ang) * r0 * 1.7))
+    elif design == "glitch":
+        step = int(now * 8)
+        rnd = random.Random(step)
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(4):
+            y = c.y() - r * 0.6 + i * r * 0.3
+            p.setBrush(alpha(a if i % 2 else b, 0.7))
+            p.drawRect(QRectF(c.x() - r * 0.7 + rnd.uniform(-1, 1) * r * 0.2, y, r * 1.4, r * 0.08))
+    elif design == "origami":
+        sz = r * 0.75
+        p.drawPolygon(QPolygonF([QPointF(c.x() + sz, c.y()), QPointF(c.x() - sz * 0.8, c.y() - sz * 0.55),
+                                 QPointF(c.x() - sz * 0.45, c.y()), QPointF(c.x() - sz * 0.8, c.y() + sz * 0.55)]))
+    elif design == "pixel":
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(8):
+            ang = i * math.tau / 8 + now * 0.6
+            q = QPointF(c.x() + math.cos(ang) * r * 0.62, c.y() + math.sin(ang) * r * 0.62)
+            p.setBrush(alpha(b if i % 2 else a, 0.85))
+            p.drawRect(QRectF(q.x() - r * 0.07, q.y() - r * 0.07, r * 0.14, r * 0.14))
+    elif design == "ripple":
+        for j in range(2):
+            q = (now * 0.6 + j * 0.5) % 1.0
+            p.setPen(QPen(alpha(b, 0.7 * (1 - q)), max(1.0, r * 0.04)))
+            p.drawEllipse(c, r * (0.45 + 0.45 * q), r * (0.45 + 0.45 * q))
     elif design == "eclipse":
         p.setBrush(QColor("#08060C"))
         p.drawEllipse(QPointF(c.x() + r * 0.12, c.y() - r * 0.06), r * 0.34, r * 0.34)
@@ -28476,13 +29031,35 @@ def build_animations(page, lay, shop: bool) -> None:
     if not isinstance(state, dict):
         state = ctx.anim_fin = {}
     shown = 0
-    for design, name in ANIMS:
+    # 9.5: Basic at the top (free, yours from the start, no versions), then Epic, Legendary and Mythic
+    lay.addSpacing(S(6))
+    lay.addWidget(Label(tr("BASIC"), 10, RARITY_COLOURS["standard"], weight=QFont.Weight.Bold))
+    bhead = hbox(spacing=8)
+    bhead.addWidget(Label(tr("Basic"), 14, bold=True), 1)
+    bhead.addWidget(Label(tr("Free, always yours"), 11, TEXT_DIM, bold=True))
+    lay.addLayout(bhead)
+    lay.addWidget(Label(tr("The banner floats up into nothing and drops back down."), 10.5, TEXT_DIM, wrap_w=page.W))
+    if cursp is not None:
+        bb = Button(tr("Wear"), "primary", 32)
+        bb.clicked.connect(lambda: anim_set(ctx, ""))
+        lay.addWidget(bb)
+    else:
+        lay.addWidget(Label(tr("You're using this one."), 10.5, "#3DDC84", bold=True))
+    tier_shown = None
+    order = {"special": 0, "epic": 1, "exotic": 2}
+    for design, name in sorted(ANIMS, key=lambda x: order.get(ANIM_RARITY.get(x[0]), 0)):
+        fins = anim_fins(design)
         if shop:
-            avail = [f for f in ANIM_FIN_IDS if anim_id(design, f) in ec.catalog]
+            avail = [f for f in fins if anim_id(design, f) in ec.catalog and ec.info(anim_id(design, f)).get("price") is not None]
         else:
             avail = [f for f in ANIM_FIN_IDS if ec.owns(anim_id(design, f))]
         if not avail:
             continue
+        if ANIM_RARITY.get(design) != tier_shown:
+            tier_shown = ANIM_RARITY.get(design)
+            lay.addSpacing(S(12))
+            lay.addWidget(Label(tr(RARITY_NAMES.get(tier_shown, "")).upper(), 10,
+                                RARITY_COLOURS.get(tier_shown, TEXT_DIM), weight=QFont.Weight.Bold))
         shown += 1
         fin = state.get(design, avail[0])
         if fin not in avail:

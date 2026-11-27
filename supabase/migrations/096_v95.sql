@@ -10,6 +10,10 @@
 --  * Daily login: coins AND a case every day; the coins grow by 10 % for each full week of streak (up to +100 %).
 --  * Quests: one bot challenge an hour (300-800), a day (2 000-5 000) and a week (15 000-30 000 + a case), rotating
 --    between Karting, Hoops and the Arena; every weekly quest gives a case, a different one each week.
+--
+-- Animations: re-ranked (Shattered Shard is Mythic now), six new ones (Black Hole and Warp Mythic, Glitch and
+-- Origami Legendary, Pixel Dust and Ripple Epic). Titanium is for Mythic animations only; the old Black/White Titan
+-- versions are gone (nobody owns any since the 9.4 reset). The free Basic animation needs no item.
 begin;
 
 create or replace function public.rb_kart_finish(rid uuid, ms integer, laps integer[], best integer, blowups integer,
@@ -260,5 +264,23 @@ revoke all on function public.rb_bot_kart_wins(uuid, integer, timestamptz), publ
     public.rb_bot_arena_wins(uuid, text[], timestamptz), public.rb_login_streak_x(integer),
     public.rb_quest_prize_q(text, text, integer) from public, anon, authenticated;
 
+
+-- ================================================================ animations
+delete from public.rb_catalog c
+ where c.kind = 'anim'
+   and (c.base like '%-blacktitan' or c.base like '%-whitetitan'
+        or (c.base like '%-titanium' and split_part(c.base, '-', 1) not in ('shatter', 'eclipse', 'blackhole', 'warp')))
+   and not exists (select 1 from public.rb_items it where it.item = c.id);
+insert into public.rb_catalog (id, kind, base, variant, rarity, price, value, tradeable, cls, worth, weight, limited)
+select 'anim:' || b.base || f.suf, 'anim', b.base || f.suf, '', b.rarity, b.price * f.x, b.price * f.x / 20, true, 0,
+       b.price * f.x, case when f.x = 1 then 1 else 0.1 end, false
+  from (values ('nova', 'special', 25000), ('pixel', 'special', 25000), ('ripple', 'special', 25000),
+               ('rift', 'epic', 60000), ('phoenix', 'epic', 60000), ('glitch', 'epic', 60000), ('origami', 'epic', 60000),
+               ('shatter', 'exotic', 150000), ('eclipse', 'exotic', 150000), ('blackhole', 'exotic', 150000),
+               ('warp', 'exotic', 150000)) as b(base, rarity, price),
+       (values ('', 1), ('-titanium', 2), ('-gold', 4), ('-prismatic', 8)) as f(suf, x)
+ where f.suf <> '-titanium' or b.rarity = 'exotic'
+on conflict (id) do update set rarity = excluded.rarity, price = excluded.price, value = excluded.value,
+       worth = excluded.worth, weight = excluded.weight, limited = false;
 
 commit;

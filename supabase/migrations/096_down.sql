@@ -199,4 +199,17 @@ drop function if exists public.rb_bot_kart_wins(uuid, integer, timestamptz);
 drop function if exists public.rb_bot_hoops_wins(uuid, text[], timestamptz);
 drop function if exists public.rb_bot_arena_wins(uuid, text[], timestamptz);
 
+-- animations back to 9.4 (the new ones are removed when nobody owns them)
+delete from public.rb_catalog c where c.kind = 'anim'
+   and split_part(c.base, '-', 1) in ('blackhole', 'warp', 'glitch', 'origami', 'pixel', 'ripple')
+   and not exists (select 1 from public.rb_items it where it.item = c.id);
+insert into public.rb_catalog (id, kind, base, variant, rarity, price, value, tradeable, cls, worth, weight, limited)
+select 'anim:' || b.base || f.suf, 'anim', b.base || f.suf, '', b.rarity, b.price * f.x, b.price * f.x / 20, true, 0,
+       b.price * f.x, case when f.x = 1 then 1 else 0.1 end, false
+  from (values ('shatter', 'special', 25000), ('nova', 'special', 25000), ('rift', 'epic', 60000),
+               ('phoenix', 'epic', 60000), ('eclipse', 'exotic', 150000)) as b(base, rarity, price),
+       (values ('', 1), ('-titanium', 2), ('-gold', 4), ('-prismatic', 8)) as f(suf, x)
+on conflict (id) do update set rarity = excluded.rarity, price = excluded.price, value = excluded.value,
+       worth = excluded.worth, weight = excluded.weight;
+
 commit;
