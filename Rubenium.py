@@ -73429,6 +73429,7 @@ class GameVolume(QWidget):
         lay = hbox(self, 6)
         for key, icon_txt, tip in (("vol_fx", tr("Effects"), tr("Game effects")), ("vol_amb", tr("Crowd / engines"), tr("Crowd and engines"))):
             lab = Label(icon_txt, 10, TEXT_DIM, bold=True)
+            lab.setFixedWidth(lab.text_width() + S(6))
             sl = Slider(0, 100, float(ctx.cfg[key]), 5, None)
             sl.setFixedWidth(S(84))
             sl.setToolTip(tip)
@@ -74278,6 +74279,7 @@ class HoopsGame:
         self.fire_n = [0, 0]       # 9.5: baskets in a row (the other team not scoring in between)
         self.fire_t = [0.0, 0.0]   # ... 3 in a row: the team is on fire for 25 s (a wider green on every shot)
         self.poss_id = 0           # 9.5: counts possessions (for the pass points)
+        self.calls = {}            # 9.5: team -> (quick chat kind, when)
         self.hold_idle = 0.0       # 9.5: how long the human has stood still with the ball
         self.press = False         # ... past their level's limit: the defenders rush the ball
         self.press_lim = HOOPS_PRESS.get(level, 5.0)
@@ -74441,6 +74443,15 @@ class HoopsGame:
             if not (b.mode == "shot" or (b.mode == "loose" and b.from_shot and b.f is None and False)):
                 self.buzzer = True
                 self.end_regulation()
+
+    def call(self, team, kind):
+        """9.5: quick chat from the human to their bot team-mate: pass, shoot, help, save (just a cheer)."""
+        self.calls[team] = (kind, self.t)
+        self.ev("call", team=team, kind=kind)
+
+    def called(self, team, kind, within):
+        c = self.calls.get(team)
+        return c is not None and c[0] == kind and self.t - c[1] <= within
 
     def award(self, i, label, pts, show=True):
         """9.5: match points (Rocket League style): the feed at the top shows what you did and what it was worth;
@@ -75571,6 +75582,14 @@ class HoopsBot:
             risk, kind = best
         ev_shoot = pct * pts
         ev_pass = mate_pct * mate_pts * (1 - risk) * 0.92
+        if mate is not None and mate.human and p.act in ("hold", "dribble"):
+            # 9.5: the human asked: "Pass!" -> pass (unless it's sure to be picked off), "Shoot!" -> shoot
+            if g.called(p.team, "pass", 1.6) and risk < 0.75:
+                g.calls.pop(p.team, None)
+                return self._pass(kind, risk)
+            if g.called(p.team, "shoot", 1.6) and pct > 0.08:
+                g.calls.pop(p.team, None)
+                return self._shoot()
         clock = g.shot_clock
         # how open: the shot % (with the contest) and whether a defender is about to arrive
         closing = 0.0
@@ -75727,7 +75746,8 @@ class HoopsBot:
         outlet = False
         if c is not None and c.team == p.team:
             near_def = min(hyp(q.x - c.x, q.z - c.z) for q in opps)
-            if (near_def < 1.5 and c.act in ("hold", "gather")) or (c.ctrl and g.hold_idle > 1.2):
+            if (near_def < 1.5 and c.act in ("hold", "gather")) or (c.ctrl and g.hold_idle > 1.2) \
+                    or (c.ctrl and g.called(p.team, "help", 3.0)):
                 outlet = True
                 for a in range(8):
                     ang = a * math.pi / 4
@@ -76804,6 +76824,16 @@ class HoopsView(QWidget):
         if key == Qt.Key.Key_Tab:                     # 9.5: hold Tab for the scoreboard
             self.board = True
             return
+        chat = {Qt.Key.Key_1: "pass", Qt.Key.Key_2: "shoot", Qt.Key.Key_3: "help", Qt.Key.Key_4: "save",
+                Qt.Key.Key_Ampersand: "pass", Qt.Key.Key_Eacute: "shoot", Qt.Key.Key_QuoteDbl: "help",
+                Qt.Key.Key_Apostrophe: "save"}.get(Qt.Key(key))          # 9.5: quick chat (AZERTY's top row too)
+        if chat and self.g.phase in ("play", "dead", "count", "score"):
+            if self.T - getattr(self, "_chat_t", -9.0) > 0.8:
+                self._chat_t = self.T
+                self._chat = chat
+                self.g.call(0, chat)
+                self.audio.play("catch", 0.3)
+            return
         if key in (Qt.Key.Key_Escape, Qt.Key.Key_P):
             if self.g.phase != "over":
                 self.paused = not self.paused
@@ -77627,6 +77657,17 @@ class HoopsView(QWidget):
         p.setBrush(c)
         p.setPen(Qt.PenStyle.NoPen)
         self._ellipse(p, me.x, me.z, 0.5)
+        # 9.5: the passing lane to my team-mate while I have the ball: green safe, amber risky, red likely picked off
+        mate = g.mate(me)
+        if g.ball.owner == me_i and g.phase == "play" and mate is not None and me.act in ("hold", "dribble", "passwind"):
+            risk, _f = g.pass_risk(me, me.pass_kind if me.act == "passwind" else "chest", 0.55, None)
+            col = QColor("#3BE38A") if risk < 0.35 else QColor("#FFC94A") if risk < 0.6 else QColor("#FF5A5A")
+            col.setAlpha(190 if me.act == "passwind" else 130)
+            pen = QPen(col, S(3), Qt.PenStyle.DashLine, Qt.PenCapStyle.RoundCap)
+            pen.setDashOffset(-self.T * 8)
+            p.setPen(pen)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawLine(self.cam.pt(me.x, me.z, 0.02), self.cam.pt(mate.x, mate.z, 0.02))
         # the dribble zone (only I see mine): white; amber at the edge; it follows the bounce when dribbling
         if g.ball.owner == me_i and g.phase in ("play", "count"):
             d = hyp(me.x - me.zx, me.z - me.zz)
@@ -77653,7 +77694,32 @@ class HoopsView(QWidget):
             pl = g.players[i]
             top = cam.pt(d[0], d[1], d[2] + 2.25)
             s = cam.scale(d[1])
+            if i == me_i and self.T - getattr(self, "_chat_t", -9.0) < 1.6:
+                # 9.5: what I just said
+                txt = {"pass": tr("Pass!"), "shoot": tr("Shoot!"), "help": tr("Help!"), "save": tr("What a save!")}[self._chat]
+                p.setFont(font(12, QFont.Weight.Black))
+                tw = p.fontMetrics().horizontalAdvance(txt) + S(22)
+                br = QRectF(top.x() - tw / 2, top.y() - S(74), tw, S(26))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor("#FFFFFF"))
+                p.drawRoundedRect(br, S(13), S(13))
+                tri = QPainterPath()
+                tri.moveTo(top.x() - S(6), br.bottom() - 1)
+                tri.lineTo(top.x(), br.bottom() + S(7))
+                tri.lineTo(top.x() + S(6), br.bottom() - 1)
+                p.drawPath(tri)
+                p.setPen(QColor(HOOPS_TEAM[0]["dark"]))
+                p.drawText(br, int(Qt.AlignmentFlag.AlignCenter), txt)
             if i == me_i:
+                # 9.5: a YOU tag above the chevron, so you never lose yourself
+                p.setFont(font(9.5, QFont.Weight.Black, 1.5))
+                yt = top.y() - S(36) + math.sin(self.T * 4) * S(2)
+                yr = QRectF(top.x() - S(20), yt, S(40), S(17))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(HOOPS_TEAM[0]["main"]))
+                p.drawRoundedRect(yr, S(8), S(8))
+                p.setPen(QColor("#FFFFFF"))
+                p.drawText(yr, int(Qt.AlignmentFlag.AlignCenter), tr("YOU"))
                 # a chevron in my colour
                 a = S(7) + s * 0.05
                 yy = top.y() - S(6) + math.sin(self.T * 4) * S(2)
@@ -78348,7 +78414,7 @@ class HoopsResults(QWidget):
     def __init__(self, res: dict, paid, width: int) -> None:
         super().__init__()
         self.res, self.paid = res, paid
-        self.setFixedSize(min(width, S(720)), S(296))
+        self.setFixedSize(min(width, S(720)), S(336))
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
@@ -78430,6 +78496,27 @@ class HoopsResults(QWidget):
             if self.paid.get("capped"):
                 txt += "   ·   " + tr("daily limit reached")
         p.drawText(QRectF(0, y, w, S(26)), int(Qt.AlignmentFlag.AlignVCenter), txt)
+        # 9.5: the MVP: the most match points (the feed's points, plus the quiet ones)
+        pl = r.get("players") or []
+        if pl:
+            best = max(pl, key=lambda q: q["st"].get("sc", 0))
+            mine = best["team"] == 0 and best["human"]
+            who = tr("You") if mine else (tr("Your team-mate") if best["team"] == 0 else hoops_lv(r.get("level", "")))
+            card = QRectF(0, y + S(34), w, S(34))
+            T = HOOPS_TEAM[best["team"]]
+            c = QColor(T["main"])
+            c.setAlpha(70)
+            p.setPen(QPen(QColor("#F5C04A"), 1.5))
+            p.setBrush(c)
+            p.drawRoundedRect(card, S(10), S(10))
+            p.setFont(font(12, QFont.Weight.Black, 1.5))
+            p.setPen(QColor("#F5C04A"))
+            p.drawText(card.adjusted(S(14), 0, 0, 0), int(Qt.AlignmentFlag.AlignVCenter), "MVP")
+            p.setFont(font(12, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            st = best["st"]
+            p.drawText(card.adjusted(S(64), 0, -S(14), 0), int(Qt.AlignmentFlag.AlignVCenter),
+                       f"{who}  #{best['num']}   ·   {int(st.get('sc', 0))} " + tr("points") + f"   ·   {st['pts']} PTS  {st['ast']} AST  {st['stl']} STL  {st['blk']} BLK")
 
     def set_paid(self, paid) -> None:
         self.paid = paid
