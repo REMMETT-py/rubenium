@@ -48,7 +48,7 @@ begin
 
     -- the daily reward is a case
     reset role;
-    assert (select bool_and(x ? 'case' and not x ? 'coins') from jsonb_array_elements(public.rb_login_rewards()) x),
+    assert (select bool_and(x ? 'case') from jsonb_array_elements(public.rb_login_rewards()) x),     -- 9.5: and coins
         'a case every day: ' || public.rb_login_rewards()::text;
     k0 := coalesce((select s.n from public.rb_case_stock s where s.owner = b and s.case_id = 'starter'), 0);
     perform t.act(b);

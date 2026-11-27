@@ -3315,13 +3315,14 @@ class Econ(QObject):
         return self.looks.get(name) or {}
 
     def bet_cap(self, coins: int) -> int:
-        """6.3: the biggest casino bet (the server's rb_bet_cap): half of your coins (round tens), at least 1 000."""
+        """6.3: the biggest casino bet (the server's rb_bet_cap). 9.5: 20 % of your coins (round tens), 1 000 to 250 000
+        (the numbers come from the server)."""
         def c(k, d):
             try:
                 return float(self.cfg.get(k, d) or d)
             except (TypeError, ValueError, AttributeError):
                 return d
-        base, rich, pct = int(c("bet_max", 1000)), int(c("bet_max_rich", 2000000000)), c("bet_rich_pct", 50)
+        base, rich, pct = int(c("bet_max", 1000)), int(c("bet_max_rich", 250000)), c("bet_rich_pct", 20)
         return max(base, min(rich, int(coins * pct / 100) // 10 * 10))
 
     def streak_bonus(self) -> int:
@@ -33793,20 +33794,6 @@ class Game(QWidget):
         if bet <= 0 or bet > self.econ.coins:
             self.ctx.toast(tr("Not enough coins"), "warn")
             return False
-        if bet > BIG_BET and getattr(self.ctx, "big_bet_ok", 0) != bet and hasattr(self.ctx, "confirm"):
-            # 6.3: a big stake is asked once (again whenever the amount changes)
-            again = getattr(self, sys._getframe(1).f_code.co_name, None)
-            pct = bet * 100 / max(1, self.econ.coins)
-            text = tr("Bet {n} coins on this round? That is {p}% of your coins.", n=coins_text(bet), p=f"{pct:.0f}")
-            if pct >= 25:
-                text += "\n" + tr("Careful: you could lose a big part of your coins.")
-
-            def yes() -> None:
-                self.ctx.big_bet_ok = bet
-                if callable(again) and not self.busy and not self.waiting:
-                    again()
-            self.ctx.confirm(text, yes, tr("Bet it"), tr("Cancel"))
-            return False
         self.stake = bet
         self.busy = True
         self._srv_coins = None
@@ -38171,6 +38158,9 @@ class QuestRow(QWidget):
         prize = q.get("prize") or {}                        # 5.13: keys and cases, not coins
         prize_text = (f"+{int(prize.get('keys') or 1)} " + tr("key" if int(prize.get("keys") or 1) == 1 else "keys")
                       + ("  +" + tr(CASE_NAMES.get(prize["case"], "Case")) if prize.get("case") else "")) if prize else coins_text(int(q["reward"]))
+        if str(q.get("quest", ""))[1:3] == "b_":            # 9.5: a bot challenge: the coins are the prize
+            prize_text = "+" + coins_text(int(q["reward"])) + ("  +" + tr(CASE_NAMES.get(prize["case"], "Case"))
+                                                               if prize.get("case") else "")
         reward_w = p.fontMetrics().horizontalAdvance(prize_text) + S(30)
         if done and not claimed:
             reward_w = max(reward_w, S(112))                 # the Claim button
@@ -38372,7 +38362,17 @@ class GamesPage(Page):
               "h_win": "Win {n} coins in the casino", "h_case": "Open a case", "d_rounds": "Play {n} casino rounds",
               "d_case": "Open {n} cases", "d_mini": "Play mini games {n} times", "d_spin": "Collect a free spin",
               "w_rounds": "Play {n} casino rounds", "w_cases": "Open {n} cases", "w_won": "Win {n} coins in the casino",
-              "w_mini": "Play mini games {n} times", "w_golf": "Win {n} Mini Golf matches", "w_scratch": "Scratch {n} cards"}
+              "w_mini": "Play mini games {n} times", "w_golf": "Win {n} Mini Golf matches", "w_scratch": "Scratch {n} cards",
+              # 9.5: the bot challenges (one an hour, a day and a week, taking turns between the games)
+              "hb_kart": "Bot challenge: beat a Karting bot of 500 Elo or more",
+              "hb_hoops": "Bot challenge: win at Hoops on Regional or harder",
+              "hb_arena": "Bot challenge: beat an Arena bot on Medium or harder",
+              "db_kart": "Bot challenge: beat a Karting bot of 1000 Elo or more",
+              "db_hoops": "Bot challenge: win at Hoops on National or harder",
+              "db_arena": "Bot challenge: beat {n} Arena bots on Hard or harder",
+              "wb_kart": "Bot challenge: beat a Karting bot of 1500 Elo or more",
+              "wb_hoops": "Bot challenge: win {n} Hoops games on Professional",
+              "wb_arena": "Bot challenge: beat {n} Arena bots on Professional"}
 
     def _show_mini(self, on: bool) -> None:
         if not on:
@@ -38648,7 +38648,8 @@ class GamesPage(Page):
             if ok:
                 sfx.play("on")
                 k = int(data.get("won_keys") or 0)
-                self.ctx.toast(tr("+{k} key(s)", k=k) + (("  ·  " + tr("{case} added to Your cases",
+                self.ctx.toast(("+" + coins_text(int(data.get("paid") or 0)) + "  ·  " if int(data.get("paid") or 0) >= 300 else "")
+                               + tr("+{k} key(s)", k=k) + (("  ·  " + tr("{case} added to Your cases",
                                case=tr(CASE_NAMES.get(data["case"], "Case")))) if data.get("case") else ""))
                 self.ctx.econ.refresh()
                 self.ctx.quests_data = None
@@ -40042,6 +40043,18 @@ class DayTile(QWidget):
         p.setFont(font(8.5, QFont.Weight.Bold))
         p.drawText(QRectF(r.left(), r.top() + S(3), r.width(), S(12)), int(Qt.AlignmentFlag.AlignCenter), tr("Day {n}", n=self.k + 1))
         rw = self.reward
+        if rw.get("case") and rw.get("coins"):              # 9.5: a case and coins every day
+            paint_case(p, QRectF(r.left() + S(7), r.top() + S(16), r.width() - S(14), S(22)), rw["case"])
+            n = int(rw["coins"])
+            p.setPen(QColor(GOLD_TEXT if today else TEXT))
+            p.setFont(font(8, QFont.Weight.Bold))
+            p.drawText(QRectF(r.left(), r.bottom() - S(15), r.width(), S(12)), int(Qt.AlignmentFlag.AlignCenter),
+                       f"{n / 1000:.1f}k".replace(".0k", "k") if n >= 1000 else str(n))
+            if self.state == "done":
+                p.setPen(QPen(QColor("#3DDC84"), S(2)))
+                p.drawLine(QPointF(r.right() - S(12), r.top() + S(18)), QPointF(r.right() - S(8), r.top() + S(22)))
+                p.drawLine(QPointF(r.right() - S(8), r.top() + S(22)), QPointF(r.right() - S(2), r.top() + S(14)))
+            return
         if rw.get("case") and not rw.get("coins") and not rw.get("keys"):     # 9.4: just the case
             paint_case(p, QRectF(r.left() + S(5), r.top() + S(17), r.width() - S(10), S(30)), rw["case"])
             if self.state == "done":
@@ -40088,7 +40101,10 @@ class LoginWindow(FloatWindow):
         lay.addLayout(head)
         rewards = list(state.get("rewards") or [])
         every_case = bool(rewards) and all(rw.get("case") and not rw.get("coins") for rw in rewards)
-        lay.addWidget(Label(tr("A free case every day. Missing a day starts again from day 1.") if every_case else
+        both = bool(rewards) and all(rw.get("case") and rw.get("coins") for rw in rewards)
+        lay.addWidget(Label(tr("Coins and a free case every day, more coins every week you keep it up. Missing a day "
+                               "starts again from day 1.") if both else
+                            tr("A free case every day. Missing a day starts again from day 1.") if every_case else
                             tr("Day 7 gives a free case. Missing a day resets the streak."), 11, TEXT_DIM, wrap_w=S(294)))
         today = int(state.get("day") or 0)
         row = hbox(spacing=4)
@@ -40096,7 +40112,9 @@ class LoginWindow(FloatWindow):
             row.addWidget(DayTile(k, rw, "done" if k < today else ("today" if k == today else "later")))
         lay.addLayout(row)
         if streak:
-            lay.addWidget(Label(tr("Streak: {n} days in a row", n=streak), 11.5, GOLD_TEXT, bold=True))
+            bonus = int(state.get("bonus") or 0)
+            lay.addWidget(Label(tr("Streak: {n} days in a row", n=streak) + (
+                "  ·  " + tr("+{p}% coins", p=bonus) if bonus else ""), 11.5, GOLD_TEXT, bold=True))
         self.go = Button(tr("Claim"), "primary", 38)
         self.go.clicked.connect(self._claim)
         later = Button(tr("Later"), "ghost", 30)
@@ -40120,7 +40138,7 @@ class LoginWindow(FloatWindow):
             if rw.get("keys"):
                 parts.append(tr("+{n} key(s)", n=rw["keys"]))
             if rw.get("case"):
-                parts.append("+" + tr(CASE_NAMES.get(rw["case"], "Case")) if not rw.get("coins") else tr("+1 free case"))
+                parts.append("+" + tr(CASE_NAMES.get(rw["case"], "Case")))
             self.ctx.toast("  ".join(parts) + "  ·  " + tr("Day {n}", n=data.get("streak", 1)))
             self.ctx.econ.streak, self.ctx.econ.streak_day = int(data.get("streak") or 1), datetime.date.today().isoformat()
             self.ctx.econ.refresh()
@@ -40147,6 +40165,51 @@ def daily_nag(ctx) -> None:
         if ok and isinstance(state, dict) and not state.get("claimed"):
             ctx.notifier.push("ready", tr("DAILY REWARD"), tr("Your daily reward is waiting in online mode"), "daily")
     ctx.online.ask("rb_login_state", {}, got)
+
+
+def comeback_check(ctx) -> None:
+    """9.5: the comeback top-up: once a day, under your floor (it grows with your casino rank), the server tops you up
+    TO the floor (800 -> 1 000). Done quietly a moment after the balance drops, never in the middle of a round."""
+    if getattr(ctx, "_topup_wait", False):
+        return
+    ec = ctx.econ
+    if not ctx.online.logged_in() or not ec.ready or getattr(ec, "server_old", False):
+        return
+    today = datetime.date.today().isoformat()
+    st = getattr(ctx, "_topup", None)
+    if isinstance(st, dict) and st.get("day") == today and (st.get("used") or st.get("off") or
+                                                            int(ec.coins) >= int(st.get("floor") or 0)):
+        return
+    ctx._topup_wait = True
+
+    def later() -> None:
+        if ec.rounds_held():                       # a round is turning: look again when it ends
+            ctx._topup_wait = False
+            return
+        if isinstance(st, dict) and st.get("day") == today:
+            return take()
+
+        def got(ok: bool, d) -> None:
+            if not ok or not isinstance(d, dict):
+                ctx._topup = {"day": today, "off": True}             # an older server: nothing to do today
+                ctx._topup_wait = False
+                return
+            ctx._topup = {"day": today, "floor": int(d.get("floor") or 0), "used": bool(d.get("used"))}
+            if not d.get("used") and int(d.get("coins") or 0) < int(d.get("floor") or 0):
+                return take()
+            ctx._topup_wait = False
+        ctx.online.ask("rb_topup_state", {}, got)
+
+    def take() -> None:
+        def done(ok: bool, d) -> None:
+            ctx._topup_wait = False
+            ctx._topup = dict(ctx._topup or {}, used=True)
+            if ok and isinstance(d, dict):
+                sfx.play("coin")
+                ctx.toast(tr("Comeback top-up: you're back to {n} (once a day)", n=coins_text(int(d.get("floor") or 0))))
+                ec.refresh()
+        ctx.online.ask("rb_topup", {}, done)
+    QTimer.singleShot(2500, later)
 
 
 def check_login_reward(ctx, force: bool = False) -> None:
@@ -67677,6 +67740,7 @@ class App(QObject):
         self.econ.changed.connect(self.sync_look)
         self.econ.changed.connect(self._flair_changed)
         self.econ.changed.connect(self._shop_items_check)
+        self.econ.changed.connect(lambda: comeback_check(self))      # 9.5: the comeback top-up
         self._screen_colour = None
         self._screen_timer = QTimer(self)
         self._screen_timer.timeout.connect(self._watch_screen)
@@ -69299,6 +69363,11 @@ class App(QObject):
     # ------------------------------------------------------------------ actions
     def toast(self, text: str, kind: str = "ok") -> None:
         self.window.toast(text, kind)
+
+    def confirm(self, text: str, on_yes, yes: str = "", no: str = "", persistent: bool = False, on_no=None) -> None:
+        """9.5: a question in the window in front. Missing before: a Horse Racing bet over 10 000 (the gold amounts)
+        asked here and silently did nothing."""
+        self.window.confirm(text, on_yes, yes, no, persistent, on_no)
 
     def goto(self, key: str) -> None:
         self.window.goto(key)
