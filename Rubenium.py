@@ -77586,12 +77586,12 @@ class HoopsResults(QWidget):
         self.update()
 
 
-class HoopsWindow(KartWindow):
-    """The match in its own big window (Karting's, with Hoops' title and sound)."""
+class HoopsStage(KartStage):
+    """9.5: the match inside the online menu, like Karting (9.3 opened its own window, which could fall behind
+    Rubenium): the menu grows sideways, then the court fades in over it; Leave or Esc asks while the match runs."""
 
     def __init__(self, link) -> None:
         super().__init__(link)
-        self.setWindowTitle("Rubenium Hoops")
         self.wait_label.set_text(tr("Warming up…"))
 
     def show_results(self, w: QWidget) -> None:
@@ -77601,28 +77601,23 @@ class HoopsWindow(KartWindow):
         self.over.setGeometry(self.body.rect())
         self.over.show()
 
+    def close_stage(self) -> None:
+        HoopsAudio.get().stop()
+        super().close_stage()
+
     def _sound(self) -> None:
         super()._sound()
         if not sfx.enabled:
             HoopsAudio.get().stop()
 
-    def closeEvent(self, e) -> None:
-        if self.link.racing() and not getattr(self, "_sure", False):
-            e.ignore()
-
-            def go() -> None:
-                self._sure = True
-                self.close()
-            try:
-                self.link.ctx.window.confirm(tr("Leave the match? It counts as a loss and pays nothing."), go, yes=tr("Leave"))
-            except Exception:  # noqa: BLE001
-                go()
-            return
-        HoopsAudio.get().stop()
-        if self.view is not None:
-            self.view.timer.stop()
-        self.link.window_closed(self)
-        QWidget.closeEvent(self, e)
+    def ask_leave(self) -> None:
+        if not self.link.racing():
+            return self.link.close()
+        try:
+            self.host.confirm(tr("Leave the match? It counts as a loss and pays nothing."), self.link.leave, yes=tr("Leave"))
+            self.host.confirm_w.raise_()
+        except Exception:  # noqa: BLE001
+            self.link.leave()
 
 
 class HoopsOverlay(KartOverlay):
@@ -77661,8 +77656,7 @@ class HoopsLink(QObject):
     def start(cls, ctx, level: str, mins: int, replays: int = 1) -> None:
         if cls._cur is not None and cls._cur.win is not None:
             try:
-                cls._cur.win.raise_()
-                cls._cur.win.activateWindow()
+                cls._cur.win.focus()
                 return
             except RuntimeError:
                 cls._cur = None
@@ -77684,8 +77678,8 @@ class HoopsLink(QObject):
         self.done = False
         self.ctx.econ.call("rb_hoops_start", {"level": self.level, "mins": self.mins}, self._started)
         if self.win is None:
-            self.win = HoopsWindow(self)
-            self.win.show()
+            self.win = HoopsStage(self)
+            self.win.open()
         view = HoopsView(self.level, float(self.mins), 0, "", self.replays)
         view.finished.connect(self._finished)
         if self.win.view is not None:
@@ -77732,9 +77726,7 @@ class HoopsLink(QObject):
         return self.view is not None and not self.done and self.view.g.phase != "over"
 
     def leave(self) -> None:
-        if self.win is not None:
-            self.win._sure = True
-            self.win.close()
+        self.close()
 
     def again(self) -> None:
         sfx.play("on")
@@ -77742,8 +77734,10 @@ class HoopsLink(QObject):
 
     def close(self) -> None:
         if self.win is not None:
-            self.win._sure = True
-            self.win.close()
+            w = self.win
+            if w.view is not None:
+                w.view.timer.stop()
+            w.close_stage()
 
     def window_closed(self, _w) -> None:
         self.win = None
