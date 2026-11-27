@@ -28834,8 +28834,58 @@ def _inventory_items(page, lay, tab: int) -> None:
         lay.addWidget(notice("case", tr("Nothing here yet"),
                              tr("Open cases or visit the shop: everything you own shows up here."), page.W, go))
         return
+    # 9.5: select several items and sell them together
+    selecting = bool(getattr(ctx, "inv_select", False))
+    sel = [k for k in (getattr(ctx, "inv_sel", None) or []) if k in groups]
+    ctx.inv_sel = sel
+
+    def sellable(k: str) -> list:
+        return [c["id"] for c in groups[k] if not c.get("locked")] \
+            if ec.info(k).get("tradeable") and ec.quick_value(k) > 0 and k != "tag:og" else []
+    srow = hbox(spacing=8)
+    if selecting:
+        ids = [i for k in sel for i in sellable(k)]
+        about = sum(ec.quick_value(k) * len(sellable(k)) for k in sel)
+        key = tuple(sorted(ids))                        # the server's own quote (the local guess can be far off)
+        q = getattr(ctx, "inv_quote", None)
+        if isinstance(q, tuple) and q[0] == key:
+            about = q[1]
+        elif ids:
+            def got_q(ok: bool, d, key_=key) -> None:
+                if ok and isinstance(d, dict):
+                    ctx.inv_quote = (key_, int(d.get("total") or 0))
+                    if getattr(ctx, "inv_select", False):
+                        ctx.reload_page()
+            ec.quick_quote(ids, got_q)
+        srow.addWidget(Label(tr("{n} selected · about {v} coins", n=len(ids), v=coins_text(about)) if sel else
+                             tr("Click items to select them"), 11, TEXT if sel else TEXT_DIM, bold=bool(sel)), 1)
+        allb = Button(tr("All"), "ghost", 30)
+        allb.setToolTip(tr("Select everything you can sell on this tab"))
+        allb.clicked.connect(lambda: (setattr(ctx, "inv_sel", [k for k in order if sellable(k)]), ctx.reload_page()))
+        srow.addWidget(allb)
+        sell_all = Button(tr("Sell all selected"), "primary", 30, icon="coin")
+        sell_all.setEnabled(bool(ids))
+
+        def go_sell() -> None:
+            names = [item_name(k) for k in sel]
+            what = names[0] if len(names) == 1 else tr("{n} items", n=len(ids))
+            text = tr("Sell {n} items for about {v} coins? The pawn shop makes the final offer.", n=len(ids),
+                      v=coins_text(about))
+            ctx.window.confirm(text, lambda: (setattr(ctx, "inv_select", False), setattr(ctx, "inv_sel", []),
+                                              quick_sell(ctx, ids, what)), yes=tr("Go to the pawn shop"))
+        sell_all.clicked.connect(go_sell)
+        srow.addWidget(sell_all)
+        done_b = Button(tr("Done"), "ghost", 30)
+        done_b.clicked.connect(lambda: (setattr(ctx, "inv_select", False), setattr(ctx, "inv_sel", []), ctx.reload_page()))
+        srow.addWidget(done_b)
+    else:
+        srow.addStretch(1)
+        selb = Button(tr("Select several"), "ghost", 30, icon="check")
+        selb.clicked.connect(lambda: (setattr(ctx, "inv_select", True), setattr(ctx, "inv_pick", ""), ctx.reload_page()))
+        srow.addWidget(selb)
+    lay.addLayout(srow)
     pick = getattr(ctx, "inv_pick", "") or ""
-    if pick not in groups:
+    if pick not in groups or selecting:
         pick = ""
     if pick:
         _inventory_detail(page, lay, pick, groups[pick])
@@ -28844,13 +28894,22 @@ def _inventory_items(page, lay, tab: int) -> None:
     for k in order:
         free = [i for i in groups[k] if not i.get("locked")]
         on = k in wearing or ctx.shop_item_worn(k) or (k.split(":")[0] in LOOKS and look_worn(ctx, k))
+        mark = "lock" if not free else ("worn" if on else "")
+        if selecting:
+            mark = "offered" if k in sel else ("lock" if not sellable(k) else "")
         entries.append({"item": k, "text": coins_text(value_of(ctx, k)) if value_of(ctx, k) else tr("Free"),
-                        "tag": f"×{len(groups[k])}" if len(groups[k]) > 1 else "",
-                        "mark": "lock" if not free else ("worn" if on else "")})
+                        "tag": f"×{len(groups[k])}" if len(groups[k]) > 1 else "", "mark": mark,
+                        "dim": 0.45 if selecting and not sellable(k) else 1.0})
     grid = ItemGrid(ctx, entries, page.W, 5, 72, order.index(pick) if pick else -1)
 
     def choose(i: int) -> None:
         sfx.play("pick")
+        if selecting:
+            k = order[i]
+            if not sellable(k):
+                return ctx.toast(tr("This one can't be sold"), "warn")
+            ctx.inv_sel = [x for x in sel if x != k] if k in sel else sel + [k]
+            return ctx.reload_page()
         ctx.inv_pick = "" if order[i] == pick else order[i]
         ctx.reload_page()
     grid.picked.connect(choose)
@@ -43679,7 +43738,7 @@ def item_picker(page, lay, state: dict, multi: int = 1) -> None:
         ids = sorted((k for k, v in cat.items() if v.get("kind") == kind and v.get("tradeable", True)),
                      key=lambda k: (-int(cat[k].get("value") or 0), k))
         grid = ItemGrid(ctx, [{"item": k, "text": coins_text(int(cat[k].get("worth") or cat[k].get("value") or 0)),
-                               "mark": k in chosen} for k in ids], page.W, 6, 64,
+                               "mark": "offered" if k in chosen else ""} for k in ids], page.W, 6, 64,
                         ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1, moving=False)
         grid.picked.connect(lambda i: pick(ids[i]))
         return lay.addWidget(grid)
@@ -43700,7 +43759,7 @@ def item_picker(page, lay, state: dict, multi: int = 1) -> None:
                      key=lambda k: -int(cat[k].get("worth") or cat[k].get("value") or 0))
         lay.addWidget(Label(en_name(ids[0]).split(" · ")[0] if ids else base, 11, TEXT_DIM, bold=True))
         g2 = ItemGrid(ctx, [{"item": k, "text": coins_text(int(cat[k].get("worth") or cat[k].get("value") or 0)),
-                             "mark": k in chosen} for k in ids], page.W, 6, 64,
+                             "mark": "offered" if k in chosen else ""} for k in ids], page.W, 6, 64,
                       ids.index(next(iter(chosen))) if multi == 1 and next(iter(chosen)) in ids else -1, moving=False)
         g2.picked.connect(lambda i: pick(ids[i]))
         lay.addWidget(g2)
@@ -44171,10 +44230,17 @@ class AdminPage(Page):
                 lay.addWidget(cg)
                 pass
                 thing = CASE_NAMES.get(st.get("case") or "", "") if st.get("case") else ""
-            else:
-                item_picker(self, lay, st)
-                thing = en_name(st["item"]) if st.get("item") else ""
-            n = self._slide(lay, st, "count", "How many", 1, 100, 1)
+            else:                                         # 9.5: several items at once
+                item_picker(self, lay, st, multi=30)
+                picked = list(st.get("items") or [])
+                thing = (en_name(picked[0]) if len(picked) == 1 else f"{len(picked)} items") if picked else ""
+                if picked:
+                    clear = Button(f"Clear the {len(picked)} picked", "ghost", 28)
+                    clear.clicked.connect(lambda: (st.__setitem__("items", []), self.ctx.reload_page("admin")))
+                    lay.addWidget(Label(", ".join(en_name(x) for x in picked[:8]) + ("…" if len(picked) > 8 else ""),
+                                        10, TEXT_DIM, wrap_w=self.W))
+                    lay.addWidget(clear)
+            n = self._slide(lay, st, "count", "How many of each" if kind != "case" else "How many", 1, 100, 1)
             what = f"{n} × {thing}" if thing else ""
         to = list(st.get("to") or [])
         ready = bool(to and what)
@@ -44241,10 +44307,12 @@ class AdminPage(Page):
                     jobs.append(("rb_admin_xp", {"name": name, "delta": n, "reason": "admin"}, name))
             text = "Done"
         else:
-            what = ("case:" + st["case"]) if kind == "case" else st.get("item")
+            whats = ["case:" + st["case"]] if kind == "case" else (list(st.get("items") or []) or [st.get("item")])
             count = st.get("count") or 1
             for name in to:
-                jobs.append(("rb_admin_give", {"name": name, "what": what, "how_many": count}, name))
+                for what in whats:
+                    if what:
+                        jobs.append(("rb_admin_give", {"name": name, "what": what, "how_many": count}, name))
             text = "Given"
         self.do_many(jobs, text)
 
@@ -62324,6 +62392,12 @@ class PawnShop(QWidget):
         super().__init__(win)
         self.ctx, self.win = ctx, win
         self.ids, self.item, self.what = list(ids), item, what
+        # 9.5: several different items: one shows on the pad at a time, arrows by the pad go through them
+        by_id = {i["id"]: i["item"] for i in ctx.econ.items}
+        self.shown_items = list(dict.fromkeys(by_id[x] for x in self.ids if x in by_id)) or ([item] if item else [])
+        self.shown_n = {k: sum(1 for x in self.ids if by_id.get(x) == k) for k in self.shown_items}
+        self.view_i = 0
+        self._arrows = (QRectF(), QRectF())
         self.base, self.anger, self.ban_left, self.max_ratio = 0, 0.0, 0, 1.5
         self.shown_anger = 0.0                      # the bar moves to the new level smoothly
         self.ask_mode = False
@@ -62764,6 +62838,12 @@ class PawnShop(QWidget):
 
     def mousePressEvent(self, e) -> None:
         e.accept()                                     # nothing under the shop can be clicked
+        if len(self.shown_items) > 1 and not self.sold_at:          # 9.5: the arrows by the pad
+            for step, r in zip((-1, 1), self._arrows):
+                if r.contains(e.position()):
+                    self.view_i = (self.view_i + step) % len(self.shown_items)
+                    sfx.play("pick")
+                    self.update()
 
     def _crack(self) -> None:
         """The bar cracks, then the whole shop breaks into pieces that fall away."""
@@ -63080,6 +63160,8 @@ class PawnShop(QWidget):
         p.drawRoundedRect(pad, S(8), S(8))
         if self.item:
             pass
+            many = len(self.shown_items) > 1 and self.trade is None
+            on_pad = self.shown_items[self.view_i % len(self.shown_items)] if many else self.item
             k = pawn_ease_in((now - self.sold_at) / 0.8) if self.sold_at else 0.0
             box = QRectF(pad.center().x() - S(36), pad.top() - S(62), S(72), S(72))
             box.translate(pn.width() * 0.5 * k, -S(10) * math.sin(k * math.pi))
@@ -63088,7 +63170,28 @@ class PawnShop(QWidget):
             glow.setColorAt(0, alpha(PAWN_GOLD, 0.25))
             glow.setColorAt(1, alpha(PAWN_GOLD, 0.0))
             p.fillRect(box.adjusted(-S(30), -S(30), S(30), S(30)), glow)
-            show_item(p, self.item, box, now)
+            show_item(p, on_pad, box, now)
+            if many and k < 0.01:                     # 9.5: ‹ 2/5 › to look through everything on the counter
+                left = QRectF(pad.left() - S(30), box.center().y() - S(13), S(26), S(26))
+                right = QRectF(pad.right() + S(4), box.center().y() - S(13), S(26), S(26))
+                self._arrows = (left, right)
+                for r_, sign in ((left, -1), (right, 1)):
+                    p.setPen(QPen(alpha(PAWN_GOLD, 0.7), S(1.2)))
+                    p.setBrush(QColor(20, 12, 8, 200))
+                    p.drawEllipse(r_)
+                    c_ = r_.center()
+                    pen = QPen(QColor(PAWN_GOLD), S(2))
+                    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                    p.setPen(pen)
+                    p.drawPolyline([QPointF(c_.x() - sign * S(2.5), c_.y() - S(5)), QPointF(c_.x() + sign * S(3), c_.y()),
+                                    QPointF(c_.x() - sign * S(2.5), c_.y() + S(5))])
+                n_ = self.shown_n.get(on_pad, 1)
+                p.setPen(QColor("#E9D9B5"))
+                p.setFont(font(9.5, QFont.Weight.Bold))
+                p.drawText(QRectF(pad.left() - S(40), pad.bottom() + S(2), pad.width() + S(80), S(16)),
+                           int(Qt.AlignmentFlag.AlignCenter),
+                           f"{self.view_i % len(self.shown_items) + 1} / {len(self.shown_items)}"
+                           + (f"  ·  ×{n_}" if n_ > 1 else ""))
             p.setOpacity(1.0)
             if self.trade:                                   # 5.12: his item on a plate, on his side of the counter
                 plate = QRectF(pn.center().x() + pn.width() * 0.34 - S(56), cy - S(16), S(112), S(20))     # his side
