@@ -50,3 +50,11 @@ for Karting), and one self-test step.
 - The `database` CI job fails on `tests/db/test_111_v94.sql` on main too (4 old migrations do not apply in the test
   database, so `rb_ach` is missing). Nothing in this branch touches the database.
 - What only a real Windows PC can show: feel at 144/240 Hz, mouse aim on a real desktop, sound levels.
+
+## Calibration notes (27 Nov)
+
+Tried after the last push and rolled back, because they did not give a cleaner order: a wider spread of reaction and
+error by level, pressure that grows with rank, and kickoff style tied to rank. What the 8-match neighbour runs show:
+the kickoff decides a lot on this pitch (Ruben wins with hard flip kickoffs, 8 of 8 against Apex), and the levels in
+between are too close together, so neighbours land around 50 %. Next: a round robin with Elo fitting (100+ matches a
+pair, `aerial_bot_match`), then move each bot's `lv` until the fitted ladder matches the roster's MMR.
