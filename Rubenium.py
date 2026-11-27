@@ -75513,6 +75513,7 @@ class HoopsGame:
         self.hold_idle = 0.0       # 9.5: how long the human has stood still with the ball
         self.press = False         # ... past their level's limit: the defenders rush the ball
         self.press_lim = HOOPS_PRESS.get(level, 5.0)
+        self.locked = {}           # 9.6: online with a friend: player index -> the input it always takes (no switching)
         self.reset_positions()
 
     # ---------------------------------------------------------------------------------------------- helpers
@@ -75650,6 +75651,9 @@ class HoopsGame:
             self.clock = max(0.0, self.clock - dt)
         if self.ball.mode in ("held",) or (self.ball.mode == "pass" and self.ball.f.get("kind") != "toss"):
             self.shot_clock = max(0.0, self.shot_clock - dt)
+            c_sc = self.carrier()
+            if self.shot_clock <= 0 and c_sc is not None and c_sc.act not in ("shoot", "dunk"):
+                return self.violation("shot_clock")      # 10.0: the shot clock is real (nobody can hold the ball forever)
         self.hist.append((self.t, [(p.x, p.z, p.vx, p.vz) for p in self.players]))
         if len(self.hist) > 150:
             del self.hist[:30]
@@ -75657,8 +75661,11 @@ class HoopsGame:
         src = inputs or self.inputs
         for p in self.players:
             # the player a human controls (on a team with a human) takes that human's input; everyone else is a bot
-            p.ctrl = p.team in self.human_teams and self.ctrl.get(p.team, -1) == p.i
-            ins[p.i] = src.get(p.i, src.get(-p.team - 1, HoopsInput())) if p.ctrl else None
+            p.ctrl = (p.team in self.human_teams and self.ctrl.get(p.team, -1) == p.i) or p.i in self.locked
+            if p.i in self.locked:
+                ins[p.i] = src.get(self.locked[p.i], HoopsInput())
+            else:
+                ins[p.i] = src.get(p.i, src.get(-p.team - 1, HoopsInput())) if p.ctrl else None
         # a human's team-mate who is not controlled is driven by a bot brain too
         for p in self.players:
             if ins[p.i] is None:
@@ -75717,7 +75724,10 @@ class HoopsGame:
             self.press = False
             return
         i = ins.get(c.i) or HoopsInput()
-        moving = hyp(i.mx, i.mz) > 0.2 and c.speed() > 0.6
+        px, pz = getattr(self, "_press_xy", (c.x, c.z))
+        self._press_xy = (c.x, c.z)
+        moved = hyp(c.x - px, c.z - pz) / max(dt, 1e-6)        # 10.0: real movement (running into a wall is standing still)
+        moving = hyp(i.mx, i.mz) > 0.2 and min(c.speed(), moved) > 0.6
         if moving:
             self.hold_idle = max(0.0, self.hold_idle - dt * 4)
         else:
@@ -75807,6 +75817,8 @@ class HoopsGame:
         self._control_carrier()
 
     def _control_carrier(self):
+        if self.locked:                                    # 9.6: two humans on one team: each keeps their player
+            return
         c = self.carrier()
         if c is not None:
             for team in self.human_teams:
@@ -75823,7 +75835,7 @@ class HoopsGame:
 
     def switch_control(self, team):
         """Right click without the ball: the other team-mate."""
-        if team not in self.ctrl:
+        if team not in self.ctrl or self.locked:
             return
         c = self.carrier()
         if c is not None and c.team == team:
@@ -76792,6 +76804,122 @@ class HoopsGame:
                         a.vz += nz * rv * 0.5
                         c.vx -= nx * rv * 0.5
                         c.vz -= nz * rv * 0.5
+
+    # ---------------------------------------------------------------------------------------------- 9.6: online
+    def net_state(self):
+        """Everything another PC needs to show this match (it doesn't run the game, the host does): small numbers."""
+        def r3(v):
+            return round(float(v), 3)
+        b = self.ball
+        f = b.f or {}
+        pl = []
+        for p in self.players:
+            dk = None
+            if p.dk is not None:
+                dk = {k: (r3(v) if isinstance(v, float) else v) for k, v in p.dk.items()}
+            pl.append([r3(p.x), r3(p.z), r3(p.h), r3(p.fx), r3(p.fz), p.act, r3(p.act_t), r3(p.run_ph % 1000), r3(p.arms_up),
+                       r3(p.vx), r3(p.vz), p.hand, r3(p.phase), r3(p.celebrate), r3(p.shot_m), p.shot_lay, r3(p.pass_c),
+                       p.pass_kind, r3(p.stun), r3(p.catch_t), r3(p.hang), dk, {k: (r3(v) if isinstance(v, float) else v)
+                                                                                    for k, v in p.st.items()}, r3(p.vh),
+                       p.num, p.human])
+        fs = {k: (r3(v) if isinstance(v, float) else v) for k, v in f.items()
+              if k in ("kind", "g", "m", "lay", "t", "by", "T", "to", "team")}
+        ls = self.last_score
+        return {"t": r3(self.t), "ph": self.phase, "pt": r3(self.phase_t), "cl": r3(self.clock), "sc": r3(self.shot_clock),
+                "s": list(self.score), "ot": self.overtime, "cn": r3(self.count_len), "po": self.poss,
+                "fi": [r3(x) for x in self.fire_t], "fn": list(self.fire_n), "ft": self.flip_team,
+                "ct": {str(k): v for k, v in self.ctrl.items()}, "pr": self.press, "hi": r3(self.hold_idle),
+                "pl": r3(self.press_lim), "ls": dict(ls) if ls else None, "res": self.result,
+                "lh": getattr(self, "_last_how", ""), "P": pl,
+                "B": [r3(b.x), r3(b.z), r3(b.h), r3(b.spin % 1000), b.owner, b.mode, r3(b.vx), r3(b.vz), r3(b.vh), fs or None]}
+
+    @staticmethod
+    def net_map(perm):
+        """Player index on the host -> on this PC. perm[i] is where the host's player i is shown here."""
+        return lambda i: perm[i] if isinstance(i, int) and 0 <= i < len(perm) else i
+
+    def apply_net(self, d, mirror=False, perm=None, me=None):
+        """Show the host's match: copy its state in. mirror: a player on the red team sees themselves as blue,
+        playing left to right like everyone does. perm: the host's player i is shown as perm[i] here (your player
+        is always number 0 on your screen). me: the player this PC controls (shown as the one you play)."""
+        n = len(self.players)
+        perm = perm or list(range(n))
+        m = HoopsGame.net_map(perm)
+        sx = -1.0 if mirror else 1.0
+
+        def tm(t):
+            return (1 - t) if (mirror and t in (0, 1)) else t
+        self.t, self.phase, self.phase_t = d["t"], d["ph"], d["pt"]
+        self.clock, self.shot_clock, self.overtime, self.count_len = d["cl"], d["sc"], d["ot"], d["cn"]
+        sc = d["s"]
+        self.score = [sc[1], sc[0]] if mirror else list(sc)
+        self.poss = tm(d["po"])
+        fi, fn = d["fi"], d["fn"]
+        self.fire_t = [fi[1], fi[0]] if mirror else list(fi)
+        self.fire_n = [fn[1], fn[0]] if mirror else list(fn)
+        self.flip_team = tm(d["ft"])
+        self.ctrl = {tm(int(k)): m(v) for k, v in (d.get("ct") or {}).items()}
+        if me is not None:
+            self.ctrl[0] = me
+        self.press, self.hold_idle, self.press_lim = d["pr"], d["hi"], d["pl"]
+        ls = d.get("ls")
+        if ls:
+            ls = dict(ls)
+            ls["team"] = tm(ls.get("team"))
+            ls["by"] = m(ls.get("by"))
+            ls["assist"] = m(ls.get("assist", -1))
+        self.last_score = ls
+        res = d.get("res")
+        if res:
+            res = dict(res)
+            res["win"] = tm(res.get("win"))
+            if mirror and res.get("score"):
+                res["score"] = [res["score"][1], res["score"][0]]
+        self.result = res
+        self._last_how = d.get("lh", "")
+        for i, row in enumerate(d["P"]):
+            p = self.players[m(i)]
+            (x, z, h, fx, fz, p.act, p.act_t, p.run_ph, p.arms_up, vx, vz, hand, p.phase, p.celebrate, p.shot_m,
+             p.shot_lay, p.pass_c, p.pass_kind, p.stun, p.catch_t, p.hang, dk, st, p.vh, p.num, p.human) = row
+            p.ctrl = p.i == self.ctrl.get(p.team, -1) and p.team in self.human_teams
+            p.x, p.z, p.h, p.fx, p.fz, p.vx, p.vz = x * sx, z, h, fx * sx, fz, vx * sx, vz
+            p.hand = hand
+            if dk is not None and mirror:
+                dk = dict(dk)
+                for k in ("sx", "ux", "x0"):
+                    if k in dk:
+                        dk[k] = -dk[k]
+            p.dk = dk
+            p.st = dict(st)
+        bx, bz, bh, bspin, bown, bmode, bvx, bvz, bvh, fs = d["B"]
+        b = self.ball
+        b.x, b.z, b.h, b.spin, b.owner, b.mode = bx * sx, bz, bh, bspin, m(bown), bmode
+        b.vx, b.vz, b.vh = bvx * sx, bvz, bvh
+        if fs:
+            fs = dict(fs)
+            for k in ("by", "to"):
+                if k in fs:
+                    fs[k] = m(fs[k])
+            if "team" in fs:
+                fs["team"] = tm(fs["team"])
+        b.f = fs
+        self.human_teams = {p.team for p in self.players if p.human}
+
+    @staticmethod
+    def net_event(kind, data, perm, mirror):
+        """An event from the host, for this PC's sounds and effects (mapped like the state)."""
+        m = HoopsGame.net_map(perm)
+        out = {}
+        for k, v in data.items():
+            if k in ("p", "by", "to", "assist") and isinstance(v, int):
+                out[k] = m(v)
+            elif mirror and k in ("team", "win") and v in (0, 1):
+                out[k] = 1 - v
+            elif mirror and k == "x" and isinstance(v, (int, float)):
+                out[k] = -v
+            else:
+                out[k] = v
+        return kind, out
 
     # ---------------------------------------------------------------------------------------------- snapshots
     def snap(self):
@@ -78224,6 +78352,117 @@ class HoopsView(QWidget):
         self.timer.start()
         self.audio.set_crowd(0.18, 0.0)
         self.g.ev("flip", team=self.g.flip_team)
+        # 9.6: online duels (set_online): the host runs the match, the guest shows it and sends its controls
+        self.role = ""
+        self.mode = ""
+        self.names: dict = {}                # player index -> the other player's name
+        self.perm = None
+        self.mirror = False
+        self.net_state = None
+        self.net_events: list = []
+        self.net_new = False
+        self.net_at = 0.0
+        self.net_iv = 0.07
+        self.ev_log: list = []
+        self.ev_seq = 0
+        self.ev_seen = 0
+        self.replayed_for = None
+        self.remote_inp = HoopsInput()
+        self.remote_gone = False
+        self._st_l = self._st_r = False
+
+    # -- 9.6: online duels
+    def set_online(self, role: str, mode: str, other: str) -> None:
+        """role: host or guest. mode: vs (each with a bot team-mate, against each other) or coop (together against
+        two bots). Everyone sees themselves as blue, playing left to right."""
+        self.role, self.mode = role, mode
+        humans = (0, 2) if mode == "vs" else (0, 1)
+        self.g = HoopsGame(level=self.level, mins=self.mins, seed=self.seed, humans=humans,
+                           mate_level=self.level if mode == "vs" else None)
+        if mode == "vs":
+            self.g.ctrl[1] = 2
+        else:
+            self.g.locked = {1: "g"}
+        if role == "guest":
+            self.perm = [2, 3, 0, 1] if mode == "vs" else [1, 0, 2, 3]
+            self.mirror = mode == "vs"
+        self.names = {2 if mode == "vs" else 1: other}
+        self.g.events.clear()
+        if role == "host":
+            self.g.ev("flip", team=self.g.flip_team)
+
+    def net_payload(self) -> dict:
+        if self.role == "host":
+            return {"s": self.g.net_state(), "e": self.ev_log[-48:]}
+        lmb, rmb = self.lmb, self.rmb
+        self.lmb, self.rmb = lmb or self._st_l, rmb or self._st_r      # a quick click between two sends still counts
+        try:
+            i = self._inp()
+        finally:
+            self.lmb, self.rmb = lmb, rmb
+        self._st_l, self._st_r = lmb, rmb
+        sx = -1.0 if self.mirror else 1.0
+        aim = i.aim
+        return {"i": [round(i.mx * sx, 3), round(i.mz, 3), i.space, i.shift, i.lmb, i.rmb,
+                      round(aim[0] * sx, 3) if aim else None, round(aim[1], 3) if aim else None, i.key, i.kid]}
+
+    def net_in(self, d: dict) -> None:
+        if self.role == "host":
+            v = d.get("i")
+            if isinstance(v, list) and len(v) >= 10:
+                aim = (float(v[6]), float(v[7])) if v[6] is not None and v[7] is not None else None
+                self.remote_inp = HoopsInput(float(v[0]), float(v[1]), bool(v[2]), bool(v[3]), bool(v[4]), bool(v[5]),
+                                             aim, str(v[8] or ""), int(v[9] or 0))
+            return
+        st = d.get("s")
+        if isinstance(st, dict) and st.get("t") != (self.net_state or {}).get("t"):
+            now = time.monotonic()
+            if self.net_at:
+                self.net_iv = clamp(self.net_iv * 0.8 + (now - self.net_at) * 0.2, 0.03, 0.3)
+            self.net_state = st
+            self.net_events = d.get("e") or []
+            self.net_new = True
+            self.net_at = now
+
+    def drop_remote(self, name: str) -> None:
+        """9.6: the other player left: a bot plays for them (host), or the match stops (guest)."""
+        if self.remote_gone:
+            return
+        self.remote_gone = True
+        g = self.g
+        if self.role == "host":
+            for i in self.names:
+                g.players[i].human = False
+            g.locked = {}
+            g.human_teams = {p.team for p in g.players if p.human}
+            self._msg(tr("{name} left: a bot plays for them", name=name), "#FFB04A", 3.0)
+        else:
+            self._msg(tr("The host left the match"), "#FF5A5A", 60, True)
+
+    def _guest_step(self) -> None:
+        """9.6: the guest's PC: show the host's latest state (drawn between the last two, like the steps)."""
+        g = self.g
+        if self.net_new and self.net_state is not None:
+            self.net_new = False
+            self._prev = g.snap() if g.phase != "intro" else None
+            g.apply_net(self.net_state, self.mirror, self.perm, me=0)
+            n = len(g.players)
+            for e in self.net_events:
+                try:
+                    seq, kind, data = int(e[0]), e[1], e[2]
+                except (TypeError, ValueError, IndexError):
+                    continue
+                if seq > self.ev_seen:
+                    self.ev_seen = seq
+                    g.events.append(HoopsGame.net_event(kind, data or {}, self.perm or list(range(n)), self.mirror))
+            if self.replay is None:
+                self.rec.append((g.t, g.snap(), g.phase))
+                if len(self.rec) > 60 * 10:
+                    del self.rec[:60]
+                self._events()
+            else:
+                g.events.clear()
+        self._acc = clamp((time.monotonic() - self.net_at) / max(0.03, self.net_iv), 0.0, 1.0) * HOOPS_DT
 
     # -- input
     def _inp(self, consume: bool = True) -> "HoopsInput":
@@ -78266,6 +78505,10 @@ class HoopsView(QWidget):
         self.last_input = self.T
         if key == Qt.Key.Key_Tab:                     # 9.5: hold Tab for the scoreboard
             self.board = True
+            return
+        if key in (Qt.Key.Key_Escape, Qt.Key.Key_P) and self.role:
+            if key == Qt.Key.Key_Escape:              # 9.6: online the match never pauses: Esc asks to leave
+                self.quit_req.emit()
             return
         if key in (Qt.Key.Key_Escape, Qt.Key.Key_P):
             if self.g.phase != "over":
@@ -78363,11 +78606,19 @@ class HoopsView(QWidget):
             self.T += dt
             g = self.g
             if not self.paused:
-                if self.replay is not None:
+                if self.role == "guest":                # 9.6: the host runs the match; this PC shows it
+                    if self.replay is not None:
+                        self._replay_step(dt)
+                        if self.g.phase != "score" and self.wipe_then is None:
+                            self._end_replay()
+                    self._guest_step()
+                elif self.replay is not None:
                     self._replay_step(dt)
                 elif self.wipe_then is None or self.wipe < 0.5:
                     self._acc += dt
                     inp = {-1: self._inp()} if (self.isActiveWindow() or self.hasFocus()) else {-1: HoopsInput()}
+                    if self.role == "host" and not self.remote_gone:
+                        inp["g" if self.mode == "coop" else -2] = self.remote_inp
                     n = 0
                     while self._acc >= HOOPS_DT and n < 12:
                         self._acc -= HOOPS_DT
@@ -78400,7 +78651,7 @@ class HoopsView(QWidget):
     def _afk(self) -> None:
         """9.5: 45 s without touching anything during the match: disqualified (a loss, no prize)."""
         g = self.g
-        if self.dq or g.phase == "over":
+        if self.dq or g.phase == "over" or self.role:      # 9.6: online, the other player isn't kept waiting by a DQ
             return
         if g.phase == "intro" or self.replay is not None or self.keys or self.lmb or self.rmb:
             self.last_input = self.T
@@ -78422,7 +78673,9 @@ class HoopsView(QWidget):
     def _flow(self, dt) -> None:
         g = self.g
         # the score: the explosion for 1.7 s, then a wipe into the replay
-        if g.phase == "score" and self.replay is None and self.wipe_then is None and g.phase_t > 1.3:
+        if g.phase == "score" and self.replay is None and self.wipe_then is None and g.phase_t > 1.3 \
+                and g.last_score and self.replayed_for != g.last_score.get("t"):
+            self.replayed_for = g.last_score.get("t")
             col = HOOPS_TEAM[g.last_score["team"]]["main"]
             if self._want_replay():
                 self._start_wipe(lambda: self._start_replay(), col)
@@ -78500,7 +78753,8 @@ class HoopsView(QWidget):
         self.replay = None
         self.fx.clear()
         self.rec = []
-        self.g.after_score()
+        if self.role != "guest":                  # 9.6: the guest's match goes on when the host's does
+            self.g.after_score()
         self.last_count = 99
 
     # -- events into sound, effects and messages
@@ -78514,6 +78768,12 @@ class HoopsView(QWidget):
     def _events(self) -> None:
         g = self.g
         me_team = 0
+        if self.role == "host":                   # 9.6: the guest hears and sees the same things
+            for kind, d in g.events:
+                self.ev_seq += 1
+                self.ev_log.append([self.ev_seq, kind, d])
+            if len(self.ev_log) > 120:
+                del self.ev_log[:40]
         for kind, d in g.events:
             if kind == "bounce":
                 self.audio.play("bounce", 0.55 * self._vol(d.get("x", 0)) * clamp(0.5 + d.get("v", 3) / 8, 0.5, 1.1))
@@ -78986,7 +79246,8 @@ class HoopsView(QWidget):
             yy = y + S(34)
             for q in rows:
                 me = q.team == 0 and g.ctrl.get(0, -1) == q.i
-                name = (tr("You") if me else (tr("Team-mate") if q.team == 0 else hoops_lv(q.level))) + f"  #{q.num}"
+                name = (tr("You") if me else self.names.get(q.i) or (tr("Team-mate") if q.team == 0 else hoops_lv(q.level))) \
+                    + f"  #{q.num}"
                 st = q.st
                 vals = [name, str(int(st.get("sc", 0))), str(st["pts"]), str(st["ast"]), str(st["reb"]), str(st["stl"]),
                         str(st["blk"]), f"{st['fg']}/{st['fga']}"]
@@ -79206,7 +79467,7 @@ class HoopsView(QWidget):
                     risk, _f = g.pass_risk(g.players[me_i], "chest", 0.55, None)
                     _gw, dd, _c, pct = g.shot_window(pl)
                     is_open = risk < 0.35 and (pct >= 0.42 or dd < 2.5)
-                txt = (tr("OPEN") + " ➜ " if is_open else "➜ " if carrying else "") + str(pl.num)
+                txt = (tr("OPEN") + " ➜ " if is_open else "➜ " if carrying else "") + (self.names.get(i) or str(pl.num))
                 p.setFont(font(10, QFont.Weight.Black))
                 tw = p.fontMetrics().horizontalAdvance(txt) + S(18)
                 r = QRectF(top.x() - tw / 2, top.y() - S(26), tw, S(20))
@@ -79216,13 +79477,15 @@ class HoopsView(QWidget):
                 p.setPen(QColor("#062814") if is_open else QColor(HOOPS_TEAM[0]["dark"]) if carrying else QColor(HOOPS_TEAM[0]["light"]))
                 p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), txt)
             else:
-                r = QRectF(top.x() - S(16), top.y() - S(22), S(32), S(16))
+                label = self.names.get(i) or str(pl.num)              # 9.6: the other player's name, online
+                p.setFont(font(9, QFont.Weight.Black))
+                tw = max(S(32), p.fontMetrics().horizontalAdvance(label) + S(14))
+                r = QRectF(top.x() - tw / 2, top.y() - S(22), tw, S(16))
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(QColor(10, 14, 24, 150))
                 p.drawRoundedRect(r, S(8), S(8))
-                p.setFont(font(9, QFont.Weight.Black))
                 p.setPen(QColor(HOOPS_TEAM[1]["light"]))
-                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), str(pl.num))
+                p.drawText(r, int(Qt.AlignmentFlag.AlignCenter), label)
             # off balance: little stars
             if pl.stun > 0 and g.phase == "play":
                 for k in range(3):
@@ -79535,6 +79798,8 @@ class HoopsView(QWidget):
             p.setFont(font(10, QFont.Weight.Black, 1.5))
             p.setPen(QColor(255, 255, 255, 200))
             nm = (tr("BLUE") + "  ·  " + tr("YOU")) if team == 0 else (tr("RED") + "  ·  " + hoops_lv(self.level).upper())
+            if team == 1 and self.mode == "vs" and self.names:       # 9.6: online, the other player's name
+                nm = tr("RED") + "  ·  " + str(next(iter(self.names.values()))).upper()
             p.drawText(QRectF(side.left() + S(14), side.top() + S(8), side.width() - S(28), S(14)),
                        int(Qt.AlignmentFlag.AlignLeft if team == 0 else Qt.AlignmentFlag.AlignRight), nm)
             p.setFont(font(28, QFont.Weight.Black))
@@ -79563,6 +79828,16 @@ class HoopsView(QWidget):
             p.setPen(QColor("#F5C04A"))
             p.drawText(QRectF(r.center().x() - S(60), r.top() + S(36), S(120), S(16)), int(Qt.AlignmentFlag.AlignCenter),
                        tr("NEXT BASKET WINS"))
+        # 10.0: the shot clock, under the scoreboard, while a team has the ball
+        if g.phase == "play" and g.ball.mode in ("held", "pass") and self.replay is None:
+            sc = max(0.0, g.shot_clock)
+            sr = QRectF(r.center().x() - S(26), r.bottom() + S(5), S(52), S(24))
+            p.setPen(QPen(QColor(255, 255, 255, 30), 1))
+            p.setBrush(QColor(8, 10, 18, 225))
+            p.drawRoundedRect(sr, S(8), S(8))
+            p.setFont(font(12.5, QFont.Weight.Black))
+            p.setPen(QColor("#FF5A5A") if sc < 5 else QColor("#F5C04A"))
+            p.drawText(sr, int(Qt.AlignmentFlag.AlignCenter), f"{sc:.1f}" if sc < 5 else str(int(math.ceil(sc))))
         # the controls hint, small, bottom left; it changes with what you can do
         if self.replay is None and g.phase in ("play", "count"):
             keys = hoops_keys()
@@ -79870,6 +80145,122 @@ class HoopsLevelCard(QWidget):
                    int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight), tr("Win: {c}", c=coins_text(win)))
 
 
+def build_hoops_online(page, hl, o) -> None:
+    """9.6: online duels. Make a room (the level and length picked above) or join one. 1 v 1: you and a bot against
+    another player and a bot. 2 v 2 together: you and another player against two bots. The list keeps itself up to
+    date (filled in place, never by laying out the page again)."""
+    ctx = page.ctx
+    hl.addWidget(heading(tr("Online duels")))
+    modes = [("vs", tr("1 v 1: each with a bot")), ("coop", tr("2 v 2 together: against 2 bots"))]
+    cur = getattr(ctx, "hoops_duel_mode", "vs")
+    seg = Segmented([n for _k, n in modes], [k for k, _n in modes].index(cur) if cur in ("vs", "coop") else 0)
+    seg.changed.connect(lambda i: setattr(ctx, "hoops_duel_mode", modes[i][0]))
+    hl.addWidget(seg)
+    hl.addWidget(Label(tr("Your room uses the bots' level and the match length picked above. Each player wins the usual "
+                          "Hoops prize for that level."), 10, TEXT_FAINT, wrap_w=page.W))
+    box = QWidget()
+    bl = vbox(box, 6)
+    hl.addWidget(box)
+    st = {"busy": False, "last": None}
+
+    def ask(fn, args, then=None) -> None:
+        if st["busy"]:
+            return
+        st["busy"] = True
+
+        def got(ok: bool, d) -> None:
+            st["busy"] = False
+            if not ok:
+                try:
+                    ctx.toast(tr(str(d)), "warn")
+                except RuntimeError:
+                    pass
+                return refresh()
+            if then:
+                then(d)
+            refresh()
+        ctx.econ.call(fn, args, got)
+
+    def create() -> None:
+        sfx.play("pick")
+        ask("rb_hoops_room_create", {"mode": getattr(ctx, "hoops_duel_mode", "vs"), "level": o["level"],
+                                     "mins": int(o["mins"])})
+
+    def join(rid) -> None:
+        sfx.play("pick")
+        ask("rb_hoops_room_join", {"rid": rid}, lambda d: HoopsDuelLink.start_room(ctx, d) if isinstance(d, dict) else None)
+
+    def mode_name(m) -> str:
+        return tr("1 v 1") if m == "vs" else tr("2 v 2 together")
+
+    def fill(d) -> None:
+        try:
+            box.isVisible()
+        except RuntimeError:
+            return
+        if d == st["last"]:
+            return
+        st["last"] = d
+        while bl.count():
+            it = bl.takeAt(0)
+            w = it.widget()
+            if w is not None:
+                w.setParent(None)
+            elif it.layout() is not None:
+                lay_ = it.layout()
+                while lay_.count():
+                    w2 = lay_.takeAt(0).widget()
+                    if w2 is not None:
+                        w2.setParent(None)
+        mine = (d or {}).get("mine")
+        if isinstance(mine, dict) and mine.get("state") == "live":
+            HoopsDuelLink.start_room(ctx, mine)
+        if isinstance(mine, dict) and mine.get("state") == "open":
+            row = hbox(spacing=8)
+            row.addWidget(Label(tr("Your room ({mode}, {level}, {n} min): waiting for a player…", mode=mode_name(mine.get("mode")),
+                                   level=hoops_lv(mine.get("level", "")), n=mine.get("mins")), 10.5, TEXT, wrap_w=page.W - S(130)), 1)
+            cancel = Button(tr("Cancel"), "ghost", 34)
+            cancel.clicked.connect(lambda: ask("rb_hoops_room_leave", {"rid": mine["id"]}))
+            row.addWidget(cancel)
+            bl.addLayout(row)
+        else:
+            mk = Button(tr("Make a room"), "primary", 38, icon="play")
+            mk.clicked.connect(create)
+            bl.addWidget(mk)
+        rooms = (d or {}).get("rooms") or []
+        if not rooms:
+            bl.addWidget(Label(tr("No open rooms right now. Make one and a player can join it."), 10, TEXT_FAINT, wrap_w=page.W))
+        for r in rooms[:8]:
+            row = hbox(spacing=8)
+            who = str(r.get("host") or "?") + ("  ★" if r.get("friend") else "")
+            row.addWidget(Label(who + "  ·  " + mode_name(r.get("mode")) + "  ·  " + hoops_lv(r.get("level", ""))
+                                + "  ·  " + tr("{n} min", n=r.get("mins")), 10.5, TEXT, wrap_w=page.W - S(110)), 1)
+            jb = Button(tr("Join"), "primary", 32)
+            jb.clicked.connect(lambda _=False, rid=r.get("id"): join(rid))
+            row.addWidget(jb)
+            bl.addLayout(row)
+
+    def refresh() -> None:
+        try:
+            box.isVisible()
+        except RuntimeError:
+            return
+        if getattr(ctx, "games_sub", None) != "hoops":
+            return
+
+        def got(ok: bool, d) -> None:
+            if ok and isinstance(d, dict):
+                ctx.hoops_rooms = d
+                fill(d)
+        ctx.online.ask("rb_hoops_rooms", {}, got)
+    fill(getattr(ctx, "hoops_rooms", None) or {})
+    t = QTimer(box)
+    t.setInterval(2500)
+    t.timeout.connect(refresh)
+    t.start()
+    refresh()
+
+
 def build_hoops(page, lay) -> None:
     """9.3: Hoops in Play > Multiplayer: 2 v 2 basketball, you and a bot team-mate against two bots. Pick the level
     and the length; the match opens in its own big window."""
@@ -79926,6 +80317,7 @@ def build_hoops(page, lay) -> None:
     prow.addWidget(how)
     prow.addWidget(go, 1)
     hl.addLayout(prow)
+    build_hoops_online(page, hl, o)
     QTimer.singleShot(450, lambda: open_guide(ctx, "hoops"))
     keys = hoops_keys()
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Move")),
@@ -80111,6 +80503,8 @@ class HoopsOverlay(KartOverlay):
         again.clicked.connect(link.again)
         btns.addWidget(back, 1)
         btns.addWidget(again, 1)
+        if getattr(link, "rid", None):               # 9.6: an online duel: find the next one on the Hoops page
+            again.hide()
         cl.addLayout(btns)
         self.card = card
         row.addWidget(card)
@@ -80225,6 +80619,149 @@ class HoopsLink(QObject):
                 self.ctx.reload_page("games")
         except Exception:  # noqa: BLE001
             pass
+
+
+class HoopsDuelLink(HoopsLink):
+    """9.6: an online duel. The host's PC runs the match and sends it ~15 times a second; the guest's PC sends its
+    controls and shows the host's match. Each player's prize is the usual Hoops prize for the bots' level."""
+    PING = 66                                   # ms between two sends
+    GONE = 8.0                                  # seconds without news: the other player has left
+
+    @classmethod
+    def start_room(cls, ctx, room: dict) -> None:
+        cur = HoopsLink._cur
+        if cur is not None and cur.win is not None:
+            if isinstance(cur, HoopsDuelLink) and cur.rid == room.get("id"):
+                try:
+                    cur.win.focus()
+                except RuntimeError:
+                    pass
+                return
+            return
+        HoopsLink._cur = HoopsDuelLink(ctx, room)
+
+    def __init__(self, ctx, room: dict) -> None:
+        self.room = dict(room)
+        self.rid = room["id"]
+        self.role = "host" if room.get("me_host") else "guest"
+        self.mode = room.get("mode") or "vs"
+        self.other = (room.get("guest") if self.role == "host" else room.get("host")) or tr("Player")
+        self.in_flight = False
+        self.flight_at = 0.0
+        self.opened_at = time.monotonic()
+        self.heard_at = 0.0
+        self.gone = False
+        self.ended = False
+        self.stop_at = None
+        QObject.__init__(self)
+        self.ping = QTimer(self)
+        self.ping.setInterval(self.PING)
+        self.ping.timeout.connect(self._ping)
+        self.ctx, self.level, self.mins, self.replays = ctx, room["level"], int(room["mins"]), 1
+        self.gid = None
+        self.win = None
+        self.view = None
+        self.results = None
+        self.done = False
+        sfx.play("on")
+        self._open()
+
+    def _open(self) -> None:
+        self.gid = None
+        self.done = False
+        self.ctx.econ.call("rb_hoops_start", {"level": self.level, "mins": self.mins}, self._started)
+        if self.win is None:
+            self.win = HoopsStage(self)
+            self.win.open()
+        view = HoopsView(self.level, float(self.mins), int(self.room.get("seed") or 1), "", 1)
+        view.set_online(self.role, self.mode, str(self.other))
+        view.finished.connect(self._finished)
+        view.quit_req.connect(self.win.ask_leave)
+        self.win.set_view(view)
+        self.view = view
+        how = tr("1 v 1") if self.mode == "vs" else tr("2 v 2 together")
+        self.win.title.set_text(tr("Hoops online") + "  ·  " + how + "  ·  " + str(self.other) + "  ·  "
+                                + hoops_lv(self.level))
+        self.ping.start()
+
+    def _ping(self) -> None:
+        now = time.monotonic()
+        if self.stop_at is not None and now > self.stop_at:
+            self.ping.stop()
+            return
+        v = self.view
+        if v is None:
+            return
+        if self.in_flight and now - self.flight_at < 3.0:
+            return
+        try:
+            data = v.net_payload()
+        except RuntimeError:
+            return
+        self.in_flight, self.flight_at = True, now
+
+        def got(ok: bool, d) -> None:
+            self.in_flight = False
+            if self.view is None:
+                return
+            if not ok:
+                if "gone" in str(d).lower():
+                    self._other_gone()
+                return
+            if not isinstance(d, dict):
+                return
+            other, age = d.get("other"), d.get("age")
+            fresh = isinstance(other, dict) and age is not None and float(age) < self.GONE
+            if fresh and not other.get("left"):
+                self.heard_at = time.monotonic()
+                self.view.net_in(other)
+            elif (isinstance(other, dict) and other.get("left")) or \
+                    time.monotonic() - max(self.heard_at, self.opened_at + 12.0) > self.GONE:
+                self._other_gone()
+            if self.role == "guest" and d.get("state") in ("done", "cancelled") and d.get("why") == "host_left":
+                self._other_gone()
+        self.ctx.online.ask("rb_hoops_ping", {"rid": self.rid, "data": data}, got)
+
+    def _other_gone(self) -> None:
+        if self.gone or self.done:
+            return
+        self.gone = True
+        v = self.view
+        if v is None:
+            return
+        v.drop_remote(str(self.other))
+        if self.role == "guest":                     # no host: no match
+            self.done = True
+            self.ping.stop()
+            res = v.result()
+            self.results = HoopsResults(res, None, max(S(560), int(self.win.width() * 0.6)))
+            self.win.show_results(self.results)
+            self.results.set_paid(tr("The host left the match: no result, no prize."))
+
+    def _finished(self, res: dict) -> None:
+        if self.role == "host" and not self.ended:
+            self.ended = True
+            self.ctx.online.ask("rb_hoops_room_end", {"rid": self.rid}, lambda _o, _d: None)
+        self.stop_at = time.monotonic() + 4.0           # the guest still hears the final whistle
+        if self.gone and self.role == "guest":
+            return
+        HoopsLink._finished(self, res)
+
+    def again(self) -> None:                             # back to the Hoops page to find another game
+        self.close()
+
+    def leave(self) -> None:
+        self.ping.stop()
+        if not self.done:
+            self.ctx.online.ask("rb_hoops_room_leave", {"rid": self.rid}, lambda _o, _d: None)
+        self.close()
+
+    def window_closed(self, w) -> None:
+        self.ping.stop()
+        if not self.done and not self.gone:
+            self.ctx.online.ask("rb_hoops_room_leave", {"rid": self.rid}, lambda _o, _d: None)
+        self.ctx.hoops_rooms = None
+        HoopsLink.window_closed(self, w)
 
 
 
@@ -85846,3 +86383,4 @@ if __name__ == "__main__":
 FR.update({'The free spin wheel lands on every prize again (it was stuck on 100 coins)': 'La roue gratuite peut de nouveau tomber sur tous les lots (elle restait bloquée sur 100 pièces)', 'The scratch card always shows your prize (it could stay blank after scratching)': 'La carte à gratter affiche toujours ton lot (elle pouvait rester vide après avoir gratté)', 'Rocket and roulette results are random again (the rocket crashed at once and the roulette always landed on gold)': 'Les résultats de la fusée et de la roulette sont de nouveau aléatoires (la fusée explosait tout de suite et la roulette tombait toujours sur l’or)'})
 FR.update({'Dunking: close to the hoop with the ball, an E shows over your head: press E to take off. Three keys then show (E, R, C or X), each with a ring closing on it: press each key as its ring closes. All three: a monster dunk that even goes in over a defender. Two: a dunk. Fewer: you blow it off the rim. A defender in the air at the rim blocks anything but a monster dunk.': 'Smasher : près du panier avec le ballon, un E s’affiche au-dessus de ta tête : appuie sur E pour décoller. Trois touches s’affichent ensuite (E, R, C ou X), chacune avec un cercle qui se referme : appuie sur chaque touche quand son cercle se referme. Les trois : un monster dunk qui rentre même par-dessus un défenseur. Deux : un dunk. Moins : tu le rates sur le cercle. Un défenseur en l’air au cercle contre tout sauf un monster dunk.', 'Dunk': 'Dunk', 'Near the hoop press E, then each key as its ring closes.': 'Près du panier appuie sur E, puis sur chaque touche quand son cercle se referme.', 'Dunk (near the hoop)': 'Dunk (près du panier)', 'DUNK': 'DUNK', 'Press each key as its ring closes': 'Appuie sur chaque touche quand son cercle se referme', 'POSTERIZED!': 'POSTERISÉ !', 'Blown dunk!': 'Dunk raté !', 'REJECTED!': 'CONTRÉ !', 'MONSTER DUNK!': 'MONSTER DUNK !', 'SLAM DUNK!': 'SLAM DUNK !', 'MONSTER DUNK': 'MONSTER DUNK', 'REJECTED': 'CONTRÉ', 'POSTERIZED': 'POSTERISÉ'})
 FR.update({'shoot': 'tirer', 'Let go of right': 'Lâche le clic droit', 'Let go of left': 'Lâche le clic gauche', 'in the green': 'dans le vert', 'each key as its ring closes': 'chaque touche quand son cercle se referme'})
+FR.update({'{name} left: a bot plays for them': '{name} est parti : un bot joue à sa place', 'The host left the match': 'L’hôte a quitté le match', 'Online duels': 'Duels en ligne', '1 v 1: each with a bot': '1 contre 1 : chacun avec un bot', '2 v 2 together: against 2 bots': '2 contre 2 ensemble : contre 2 bots', "Your room uses the bots' level and the match length picked above. Each player wins the usual Hoops prize for that level.": 'Ta salle utilise le niveau des bots et la durée choisis plus haut. Chaque joueur gagne le lot habituel de Hoops pour ce niveau.', '2 v 2 together': '2 contre 2 ensemble', 'Your room ({mode}, {level}, {n} min): waiting for a player…': 'Ta salle ({mode}, {level}, {n} min) : en attente d’un joueur…', 'Make a room': 'Créer une salle', 'No open rooms right now. Make one and a player can join it.': 'Aucune salle ouverte pour l’instant. Crées-en une et un joueur pourra la rejoindre.', 'Hoops online': 'Hoops en ligne', 'The host left the match: no result, no prize.': 'L’hôte a quitté le match : pas de résultat, pas de lot.', '1 v 1': '1 contre 1'})
