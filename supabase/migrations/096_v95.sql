@@ -443,7 +443,4 @@ begin
     end if;
 end $$;
 
--- Rubenium League is removed: its admin switch for ranked goes too (it was added by 096_league_lock.sql)
-delete from public.rb_features where name = 'league_ranked';
-
 commit;
