@@ -1,5 +1,9 @@
-Rubenium 9.5.1
+Rubenium 10.0
 
+- NEW: Hoops online. Play a friend or anyone online: 1 v 1 with a bot team-mate each, or the two of you together against two bots. Make a room or join one in Hoops
+- Hoops: the DUNK. Near the hoop press E, then E, R, C and X as each ring closes. Three in time is a MONSTER DUNK nobody can block, and bots dunk and block too
+- Hoops: running into a wall with the ball no longer stops the bots from rushing you
 - The free spin wheel lands on every prize again (it was stuck on 100 coins)
 - The scratch card always shows your prize (it could stay blank after scratching)
 - Rocket and roulette results are random again (the rocket crashed at once and the roulette always landed on gold)
+- A fresh start for everyone: coins, items, cases, levels and records start again from zero, with the starter pack

@@ -1,66 +1,29 @@
 # Rubenium League: status
 
-Rubenium League (working code name "aerial") is a 1 v 1 side-view car soccer game inside Rubenium: online menu, Play,
-the Rubenium League banner. It is switched on for everyone (the `--aerial` flag is no longer needed).
+Rubenium League (working code name "aerial") is a 1 v 1 top-down car soccer game inside Rubenium: online menu, Play,
+the Rubenium League banner. 10.0 rebuilt it as a flat 2D game (see BRIEF.md). Admins can hide it from players with the
+`league` lock (needs `supabase/migrations/098_league_hide.sql` on the server). It ships hidden for players in
+10.0, as the owner decided, until the top bots are tuned.
 
-All the code is in `Rubenium.py`, in the blocks that start with `# SECTION: aerial`. Nothing else in the app
-changes, apart from a few small hooks: the banner in Play, the page, the menu widening while a match is on (as it does
-for Karting), and one self-test step.
+All the code is in `Rubenium.py`, in the blocks that start with `# SECTION: aerial`.
 
 ## What works
-
-- **Physics** (no Qt, 120 steps a second, deterministic): driving, braking and turning round, boost (refills on the
-  ground, much faster while touching the ball), jump with hold, double jump, flips in both directions with flip cancel,
-  air roll, mouse air control (or keys), flip resets on the ball, landing on walls and the ceiling, turtle recovery,
-  ball spin and bounces, Rocket League's extra hit impulse (stronger in a flip), car to car bumps.
-  Own sine, cosine and arc tangent, so two PCs give the same result.
-- **Pitch**: Sideswipe proportions (cars 110-160 long, ball 212 wide, pitch 3000 wide and 1150 high): a flat floor
-  that curves up into the side walls, the goals in the walls 200 up (a rounded edge under the mouth, rounded crossbar
-  and back corners), big rounded top corners. A rolling ball does not go in: it has to be lifted.
-- **Match**: 3-2-1-GO with mirrored kickoffs (3 kickoff spots), 2:30 clock that only runs while the ball is live, the
-  0:00 floor rule, golden-goal overtime, anti-stall kickoff after 8 s of a dead ball, goals counted once when the whole
-  ball is in, goal explosion, goal replays (6 s, slow motion at the end, jump to skip).
-- **Points as in Rocket League** (no shot points): goal 100, save 50, epic save 75, clear 20, first touch 10, aerial
-  hit 10, aerial goal +25, long goal +20, overtime goal +50, double tap +30, flip reset goal +50, hat trick, savior.
-- **10 bots, one per rank** (Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle, Ruben). Each knows
-  everything the ones below know plus its own moves, and gets more hidden help (see BRIEF.md). Top bots re-think
-  every step, read a possession play coming and wait for it in goal, fake challenges, play off your boost, mix one
-  move into another, clear a ball caught in front of their own goal, fly home in the air, and never stay stuck.
-- **Ranked against bots**: 10 ranks, 5 net wins up, 5 net losses down. Kept on this PC until ranked goes online (no
-  coins depend on it). Admins can close it for everyone (lock `league_ranked`: Admin > Locks or the lobby button;
-  needs `supabase/migrations/096_league_lock.sql` on the server).
-- **Lobby**: rank card, the 3 cars with their hitboxes, Play ranked, Free Play and drills. Practice against any bot up
-  to one rank above yours (the next one glows as "your next challenge", the rest are locked). A VS intro with both
-  rank emblems before the first kickoff.
-- **Admin tools** (admins only, in the lobby): every bot unlocked, bot against bot to watch, a 30 s test match, rank
-  -1/+1 for yourself, close/open ranked for everyone.
-- **Controls**: mouse (default): W/Z drive toward the crosshair, S brake/reverse, Space jump, Shift boost, crosshair on
-  a ring round the car, W/S pitch and pick the flip in the air, left/right click air roll left/right. Keys only: A/D
-  (Q/D) drive and turn, Q/E (A/E on AZERTY) air roll. Tab scoreboard; the mouse is locked to the game until Esc/Tab.
-- **Tracker**: totals, MMR chart, the last 200 matches, the last 10 replays (watch in the app, or save the
-  `.rlreplay` file; a replay is the seed plus every input, a few kB).
-- **Ladder page**: the climb from Rookie 1 to Rubenite with each rank's bot and an animated progress bar.
+- Flat pitch with rounded corners, goals with nets, team tints in blue and orange, 6 big boost orbs and 32 small pads
+  with respawn rings.
+- Karting physics: throttle, brake and reverse, speed-dependent steering, strong grip, powerslide that keeps momentum
+  (never adds speed), boost thrust with a higher top speed while it burns.
+- Car to ball contacts with the extra hit, drift flicks, wall pinches; car to car bumps; the kickoff settle.
+- Match rules, points, saves, shots, clears, overtime, anti-stall kickoff, goal explosion, goal replays.
+- Ranked, Private match, practice, Free Play; tracker with MMR, history, shots, pinches and flicks; saved replays
+  (format v2; side-view v1 replays are refused with a message).
 - English and French, help page, self-test (`--selftest --aerial`), tests in `overhaul/aerial/test_aerial.py`.
 
-## Measured
-
-- Physics step: about 0.03 ms (one car), bot thinking about 0.1-0.4 ms a step. A whole 2-minute bot match simulates
-  in about 3-8 s on one core.
-- Jump about 260 high, double jump about 500. Ladder maths: winning every match against equal opponents takes about
-  70 matches to Challenger and about 420 to Rubenite.
-- Self-test: `SELFTEST aerial: ... replay MATCH`, `SELFTEST OK (0 problems)`.
+## Measured (27 Nov, 60 s bot matches, 40 a pair, each bot against the one below)
+Tito-Milo 27, Rocco-Tito 23, Flash-Rocco 31, Viper-Flash 27, Storm-Viper 25, Vortex-Storm 15, Phantom-Vortex 27,
+Oracle-Phantom 17, Ruben-Oracle 20 wins of 40.
 
 ## Open
-
-- **Bot calibration (27 Nov, 60 s matches).** Each bot against the one below, 16 matches a pair: Tito-Milo 50 %,
-  Rocco-Tito 63-88 %, Flash-Rocco 63 %, Viper-Flash 81 %, Storm-Viper 69 %, Vortex-Storm 63 %, Phantom-Vortex 69 %,
-  Oracle-Phantom 63 %, Ruben-Oracle 94 %. Against one fixed human-like opponent (8 matches each, goals for-against):
-  Milo 42-41, Tito 41-38, Rocco 45-37, Flash 48-25, Viper 57-27, Storm 68-22, Vortex 84-17, Phantom 81-11,
-  Oracle 103-11, Ruben 108-7. Milo and Tito are still too close to each other.
-- Goals between two equal top bots came down from about 13 to about 8 a minute (own goals from possession plays near
-  their own goal, defenders floating back in the air, hits bent toward goal); many of the rest are kickoff goals.
+- The top four bots (Vortex to Ruben) are not yet clearly apart: both sides score almost at will, so results there are
+  close to a coin flip. Reactions, aim, shot power, the allowed boost and speed help and the play lists each move it by
+  only a few wins in 40. Their defence needs reworking.
 - Ranked and private matches against players need the online phase (server functions and netcode).
-- Key rebinding and engine sound are not built yet. Private match is a button that says it comes with the online update.
-- The `database` CI job fails on `tests/db/test_111_v94.sql` on main too (4 old migrations do not apply in the test
-  database, so `rb_ach` is missing). Nothing in this branch touches the database apart from the new lock row.
-- What only a real Windows PC can show: feel at 144/240 Hz, mouse aim on a real desktop, sound levels.
