@@ -1,5 +1,5 @@
 -- 9.2 (086): Karting rooms: solo with the line, rooms with one bot, the grid, live positions, checked finishes, the
--- score, places, the prize and the leaderboard.
+-- score, places, the prize and the leaderboard. 093: the new calibration, the 12.5 s start, a finished player is free.
 -- needs_live_snapshot
 begin;
 do $$
@@ -7,10 +7,10 @@ declare pa uuid := t.player('KartA', 1000, 0); pb uuid := t.player('KartB', 1000
         pd uuid := t.player('KartD', 1000, 0); r jsonb; rid uuid; sid uuid; err text; c0 bigint; sc numeric;
 begin
     -- the score: Professional's pace is 99.6, Elite's 80, slower than Rookie still above 0
-    assert public.rb_kart_score(0, 3, 109782) between 99 and 100, 'pro band: ' || public.rb_kart_score(0, 3, 109782);
-    assert public.rb_kart_score(0, 3, 123042) between 79 and 81, 'elite band: ' || public.rb_kart_score(0, 3, 123042);
+    assert public.rb_kart_score(0, 3, 96216) between 99 and 100, 'pro band: ' || public.rb_kart_score(0, 3, 96216);
+    assert public.rb_kart_score(0, 3, 108696) between 79 and 81, 'elite band: ' || public.rb_kart_score(0, 3, 108696);
     assert public.rb_kart_score(1, 3, 300000) between 0 and 28, 'slow: ' || public.rb_kart_score(1, 3, 300000);
-    assert public.rb_kart_score(2, 3, 100000) = 100, 'capped at 100';
+    assert public.rb_kart_score(2, 3, 90000) = 100, 'capped at 100';
     -- solo, no bot: straight to the lights
     perform t.act(pd);
     r := public.rb_kart_create(1, 1, 3, 1500, false, true, true, true);
@@ -50,7 +50,7 @@ begin
     assert r ->> 'state' = 'live', 'full: live';
     assert (r ->> 'bot_slot')::int = 3, 'the bot takes the best slot';
     assert (select count(distinct slot) from public.rb_kart_seats where room = rid and slot between 0 and 2) = 3, 'players on the other 3';
-    assert (r ->> 'go_in')::numeric between 6 and 7.5, 'lights in 7 s';
+    assert (r ->> 'go_in')::numeric between 11.5 and 13, 'lights in 12.5 s';
     -- live positions: A drives the bot; B can't
     update public.rb_kart_rooms set go_at = now() - interval '130 seconds' where id = rid;
     perform t.act(pa);
@@ -68,8 +68,12 @@ begin
     -- finishes: A beats the bot, B doesn't, C leaves
     perform t.act(pa);
     c0 := t.coins(pa);
-    r := public.rb_kart_finish(rid, 109500, array[37500, 36000, 36000], 36000, 0, 2, 3, 0, false);
-    r := public.rb_kart_finish(rid, 110000, array[37400, 36300, 36300], 36300, 0, 0, 0, 0, true);
+    r := public.rb_kart_finish(rid, 95900, array[32600, 31650, 31650], 31650, 0, 2, 3, 0, false);
+    r := public.rb_kart_finish(rid, 96300, array[32700, 31800, 31800], 31800, 0, 0, 0, 0, true);
+    reset role;
+    assert not public.rb_kart_busy(pa) and public.rb_kart_busy(pb), 'over the line: free for the next race (B still racing)';
+    perform t.act(pa);
+    assert jsonb_typeof(public.rb_kart_lobbies() -> 'mine') = 'null', 'the lobby no longer shows the race A finished';
     reset role;
     perform t.act(pb);
     r := public.rb_kart_finish(rid, 125000, array[42000, 42000, 41000], 41000, 1, 1, 0, 0, false);

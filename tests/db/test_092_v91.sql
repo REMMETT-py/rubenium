@@ -5,12 +5,14 @@ begin;
 do $$
 declare a uuid := t.player('Alice', 0, 0); b uuid := t.player('Bob', 0, 0); r jsonb; err text; f jsonb;
 begin
-    -- tiers
+    -- tiers (9.4 raised the lines and allows one rank a day; this checks the 9.1 rules with the 9.1 lines)
+    update public.rb_config c set value = v.value from (values ('tier_at_1', 25000), ('tier_at_2', 100000),
+        ('tier_at_3', 250000), ('tier_at_4', 1000000)) v(key, value) where c.key = v.key;
     perform t.act(a);
     r := public.rb_my_tier();
     reset role;
     assert r ->> 'name' = 'Poor' and (r ->> 'next')::numeric = 25000, 'starts Poor: ' || r::text;
-    update public.profiles set coins = 120000 where id = a;
+    update public.profiles set coins = 120000, tier_floor = 1 where id = a;
     perform t.act(a);
     r := public.rb_my_tier();
     reset role;

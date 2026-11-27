@@ -7,7 +7,8 @@ begin
     assert public.rb_cfg('start_coins') = 2500 and public.rb_cfg('start_keys') = 5, 'start coins and keys';
     assert (select n from public.rb_case_stock where owner = pa and case_id = 'starter') = 3, 'three Starter Cases';
     assert (select n from public.rb_case_stock where owner = pa and case_id = 'standard') = 5, 'five Standard Cases';
-    assert public.rb_cfg('tier_at_1') = 25000 and public.rb_cfg('tier_at_4') = 1000000, 'lower tiers';
+    assert public.rb_cfg('tier_at_1') = 50000 and public.rb_cfg('tier_at_4') = 5000000, '9.4 tiers';
+    update public.rb_config set value = 25000 where key = 'tier_at_1';        -- checks the 9.1.1 wealth rule
     insert into public.rb_items (owner, item, origin, got_at) values (pa, it, 'test', '2026-11-20');
     assert public.rb_wealth(pa) = 0, 'an item from before 9.1 does not count';
     insert into public.rb_items (owner, item, origin) values (pa, it, 'test');
