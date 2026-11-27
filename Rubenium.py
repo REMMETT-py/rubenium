@@ -1532,8 +1532,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "9.5"   # the version people see
-BUILD = "2026.11.27.41"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "9.5.1"   # the version people see
+BUILD = "2026.11.27.42"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12771,6 +12771,9 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("9.5.1", ["The free spin wheel lands on every prize again (it was stuck on 100 coins)",
+               "The scratch card always shows your prize (it could stay blank after scratching)",
+               "Rocket and roulette results are random again (the rocket crashed at once and the roulette always landed on gold)"]),
     ("9.5", ["Hoops controls: one button, one job. With the ball left click shoots, right click passes, F fakes; without it left click steals and right click switches player",
              "Hoops: shots only once you are past the half-way line, a replay of every basket, and no more players or the ball jumping across the court",
              "Beating bots pays much more: Hoops up to 2 500 a win on Professional, Karting up to 1 500 for beating the Professional bot",
@@ -31441,6 +31444,14 @@ class ScratchCard(QWidget):
         self._t = QTimer(self)
         self._t.setInterval(16)
         self._t.timeout.connect(self.update)
+        # 9.5.1: the card being asked for (or its prize) belongs to the app, not to this widget: if the page was laid
+        # out again while the server answered, the new card carries on with the same prize instead of showing nothing
+        self.ctx.scratch_card = self
+        got = getattr(self.ctx, "scratch_got", None)
+        if isinstance(got, dict) and got:
+            self.prize, self.asked = dict(got), True
+        elif time.monotonic() < float(getattr(self.ctx, "scratch_asking", 0) or 0):
+            self.asked = True
 
     def _card(self) -> QRectF:
         return QRectF(self.rect()).adjusted(S(4), S(4), -S(4), -S(4))
@@ -31481,34 +31492,63 @@ class ScratchCard(QWidget):
             return
         if not self.asked:
             self.asked = True
-            ask_id = self._ask_id = getattr(self, "_ask_id", 0) + 1
-            claim_lock(self.ctx, 8)
+            ctx = self.ctx
+            ask_id = ctx.scratch_ask_id = int(getattr(ctx, "scratch_ask_id", 0) or 0) + 1
+            ctx.scratch_asking = time.monotonic() + 20
+            claim_lock(ctx, 8)
+
+            def card():
+                """9.5.1: the card on screen now (the page may have been laid out again since the ask)."""
+                c = getattr(ctx, "scratch_card", None)
+                try:
+                    if c is not None:
+                        c.isVisible()
+                    return c
+                except RuntimeError:
+                    return None
 
             def got(ok: bool, data) -> None:
-                try:
-                    self.isVisible()
-                except RuntimeError:
+                if ask_id != getattr(ctx, "scratch_ask_id", 0):
                     return
-                if ask_id != self._ask_id:
-                    return
+                ctx.scratch_asking = 0
+                claim_lock(ctx, 0)                               # 9.1: never stuck: leaving early still shows the prize
+                c = card()
                 if not ok or not isinstance(data, dict):
-                    self.asked = False
-                    claim_lock(self.ctx, 0)
-                    return self.ctx.toast(tr(str(data)) if "countdown" not in str(data) else tr("Not ready yet"), "warn")
-                self.prize = data
-                self.ctx.econ.scratch_in = int(data.get("next") or 43200)
-                claim_lock(self.ctx, 0)                          # 9.1: never stuck: leaving early still shows the prize
-                self.update()
+                    msg = str(data)
+                    if c is not None and not c.prize:
+                        c.asked = False
+                    if any(w in msg for w in ("wait", "Wait", "soon", "countdown", "ready")):
+                        # 9.5.1: the server says this card was already scratched: show when the next one comes,
+                        # not a blank card that never fills in
+                        ctx.econ.scratch_in = max(1, int(getattr(ctx.econ, "scratch_in", 0) or 0))
+                        ctx.econ.refresh()
+                        if c is not None and not c.prize:
+                            c.reset()
+                        return ctx.toast(tr("Not ready yet"), "warn")
+                    if c is not None and not c.prize:
+                        c.reset()
+                    return ctx.toast(tr(msg), "warn")
+                ctx.scratch_got = dict(data)
+                ctx.econ.scratch_in = int(data.get("next") or 43200)
+                if c is not None:
+                    c.prize = dict(data)
+                    c.asked = True
+                    if c.cleared >= c.COLS * c.ROWS * 0.62:
+                        c._finish()
+                    c.update()
 
             def lost() -> None:                                  # 9.1: no answer: the card can be scratched again
-                try:
-                    if ask_id == self._ask_id and not self.prize:
-                        self.asked = False
-                        claim_lock(self.ctx, 0)
-                except RuntimeError:
-                    pass
-            QTimer.singleShot(12000, lost)
-            self.ctx.econ.call("rb_scratch", {}, got, hold=True)
+                if ask_id != getattr(ctx, "scratch_ask_id", 0) or getattr(ctx, "scratch_got", None):
+                    return
+                ctx.scratch_asking = 0
+                claim_lock(ctx, 0)
+                c = card()
+                if c is not None and not c.prize:
+                    c.asked = False
+                    c.reset()
+                ctx.econ.refresh()                               # the server may have answered after all
+            QTimer.singleShot(15000, lost)
+            ctx.econ.call("rb_scratch", {}, got, hold=True)
         self.last = e.position()
         self._scratch(e.position())
 
@@ -31548,6 +31588,8 @@ class ScratchCard(QWidget):
         self.update()
 
     def hideEvent(self, _e) -> None:
+        if getattr(self.ctx, "scratch_card", None) is not self:  # 9.5.1: a newer card (the page laid out again) has it
+            return
         if self.prize and not self.done:                         # 9.1: left before the end: the prize is shown anyway
             self._finish()
 
@@ -31555,6 +31597,7 @@ class ScratchCard(QWidget):
         if self.done:
             return
         self.done = True
+        self.ctx.scratch_got = None                              # 9.5.1: shown: the next card starts fresh
         self.done_at = time.monotonic()
         claim_lock(self.ctx, 1.2)
         self._t.start()
@@ -85472,3 +85515,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+FR.update({'The free spin wheel lands on every prize again (it was stuck on 100 coins)': 'La roue gratuite peut de nouveau tomber sur tous les lots (elle restait bloquée sur 100 pièces)', 'The scratch card always shows your prize (it could stay blank after scratching)': 'La carte à gratter affiche toujours ton lot (elle pouvait rester vide après avoir gratté)', 'Rocket and roulette results are random again (the rocket crashed at once and the roulette always landed on gold)': 'Les résultats de la fusée et de la roulette sont de nouveau aléatoires (la fusée explosait tout de suite et la roulette tombait toujours sur l’or)'})

@@ -1,29 +1,5 @@
-Rubenium 9.5
+Rubenium 9.5.1
 
-- Hoops controls: one button, one job. With the ball left click shoots, right click passes, F fakes; without it left click steals and right click switches player
-- Hoops: shots only once you are past the half-way line, a replay of every basket, and no more players or the ball jumping across the court
-- Beating bots pays much more: Hoops up to 2 500 a win on Professional, Karting up to 1 500 for beating the Professional bot
-- Karting and Hoops stats, records and time boards start again from zero
-- The Casino tile on Home opens the casino doors again, and the case drop list no longer lags
-- Rubenium League: a new 1 v 1 car soccer game in Play, seen from the side, with flips, aerials, air dribbles and flip resets
-- Rubenium League ranked: 10 ranks from Rookie 1 to Rubenite, one bot to beat at each rank, 5 wins up and 5 losses down
-- Rubenium League bots: Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle and Ruben, each one harder and with more moves
-- Rubenium League: a tracker with your MMR, your last 200 matches and replays of your last 10 you can watch or save
-- Rubenium League: practise against any bot up to one rank above yours, Free Play with drills, mouse or keyboard controls
-- Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team
-- Hoops plays inside Rubenium now, smoother, and your bot team-mate gets open for passes and plays defence
-- Hoops: hold the ball too long and the bots rush you (6 seconds on Club down to 3 on Professional, a red edge warns you), bots fake, 3 baskets in a row puts you On Fire, and ankle breakers
-- Hoops and Karting: a points feed at the top (passes, shots, saves, overtakes and more), Tab shows the scoreboard, and a short How to play the first time
-- Hoops: an MVP card, a YOU marker, clearer passes, and replays of big plays and swishes
-- Professional bots have no human limits: in Hoops they react instantly, release every shot on the perfect mark and never bite on a fake; in Karting they launch the instant the lights go out and pass cleanly through traffic
-- Away for 45 seconds in Hoops or Karting: you are disqualified and get no prize
-- Karting: the bots are rebuilt. The old Professional is now Expert (1500), and Elite and Professional are faster than any player. Every bot shows on the time boards with its best time
-- Karting: a live split against your best lap
-- Volume sliders for the interface, game effects and crowd and engines, in Settings and in game. Game sounds are quieter
-- Animations: a free Basic one, 6 new ones (Black Hole, Warp, Glitch, Origami, Pixel Dust, Ripple), Shattered Shard rebuilt as a Mythic, finishes colour the whole effect, and Titanium is for Mythics only
-- Inventory: select several items and sell them together, and the pawn shop shows each one
-- Daily reward: coins and a case every day, with more coins for every week of your streak
-- Comeback top-up: once a day, if you drop under your floor you are topped up to it (1 000 for Poor, up to 30 000 for Casino Legend)
-- Quests: a bot challenge every hour, day and week, and a case with every weekly quest
-- Bets: up to 20% of your coins (from 1 000 to 250 000). Horse Racing bets over 10 000 work again
-- Friends: see what your friends last played
+- The free spin wheel lands on every prize again (it was stuck on 100 coins)
+- The scratch card always shows your prize (it could stay blank after scratching)
+- Rocket and roulette results are random again (the rocket crashed at once and the roulette always landed on gold)
