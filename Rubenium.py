@@ -48419,7 +48419,7 @@ HORSE_MANES = ["#2A160A", "#0C0A09", "#F4F1EC", "#6E2A10", "#FFF1CC"]
 HORSE_NAMES = ["Red Rocket", "Blue Thunder", "Green Clover", "Golden Sun", "Purple Storm"]
 RACE_ROLL, RACE_RUN, RACE_LEAD = 3.0, 240.0, 7.0     # the rolling start, the race clock, lock -> gun (s)
 RACE_LEN = 4.0                                       # 7.0: the track is 4 times longer (the camera follows the leaders)
-RACE_SPEED = 2.0                                     # the horses run at a normal pace: the race proper is RACE_RUN / 2
+RACE_SPEED = 5.0                                     # 9.5: the horses run 2.5 times faster (same track): RACE_RUN / 5
 RACE_FINISH = RACE_RUN / RACE_SPEED                  # when the winner crosses the line (s after the rolling start)
 RACE_GAP = 0.022                                     # the line-up: one horse behind the other (track = 1.0 long)
 RACE_VIEW = 0.30                                     # how much of the track the camera shows
@@ -80592,8 +80592,10 @@ class AerialSim:
         nx, ny = dx / L, dy / L
         pen = R + cr - L
         mb, mc = t["ball_mass"], t["car_mass"]
+        kick = False
         if self.ball_held and not self.frozen:
             self.ball_held = False                       # the first touch after GO lets it go
+            kick = True
         kb = mc / (mb + mc)
         b.x += nx * pen * kb
         b.y += ny * pen * kb
@@ -80652,6 +80654,11 @@ class AerialSim:
                 b.vx += hx / hL * k
                 b.vy += hy / hL * k
             c.hit_cd = 6
+            if kick:
+                # a kickoff touch pops the ball up and loses most of its pace (as in Sideswipe): a 50/50 is never a
+                # straight shot into an empty goal
+                b.vx *= 0.45
+                b.vy = (b.vy if b.vy > 0 else -b.vy) * 0.5 + 420.0
             if c.assist["steer"] > 0:
                 self._steer(c)
             sp = _ae_sqrt(b.vx * b.vx + b.vy * b.vy)
@@ -81229,8 +81236,8 @@ AERIAL_BOT_TAGS = {"pip": "the basics", "dusty": "+ flips", "sprocket": "+ aeria
 
 # Mechanics: the level where a bot starts trying each one. How often it comes off rises from there.
 AERIAL_MECH_AT = {"jump": 0.0, "dj": 0.25, "flip_hit": 0.30, "aerial": 0.40, "wave": 0.50, "fast_aerial": 0.50,
-                  "half_flip": 0.50, "flick": 0.60, "air_dribble": 0.70, "double_tap": 0.70, "ceiling": 0.80,
-                  "flip_reset": 0.88}
+                  "half_flip": 0.50, "flick": 0.68, "air_dribble": 0.76, "double_tap": 0.80, "ceiling": 0.86,
+                  "flip_reset": 0.93}
 
 
 def aerial_bot_profile(key: str, lv_override: float = None) -> dict:
@@ -81545,6 +81552,15 @@ class AerialBot:
             self.plan = None
             if danger and not goal_side and abs(bx - own_x) > 350:
                 mode = "back"
+        if mode in (self.SHADOW, self.ATTACK) and not goal_side and me.ground is not None:
+            # caught up the pitch with the ball behind it and the other car closer to it: rotate home at once (a
+            # good player never watches the counter from the wrong side)
+            o, bb = sim.cars[1 - self.team], sim.ball
+            do = _ae_sqrt((o.x - bb.x) ** 2 + (o.y - bb.y) ** 2)
+            dm = _ae_sqrt((me.x - bb.x) ** 2 + (me.y - bb.y) ** 2)
+            if do + 250 < dm and abs(bx - own_x) > 400 and self.rng.random() < p["position"]:
+                mode = "back"
+                self.plan = None
         if self.plan is None and mode in (self.ATTACK, self.SAVE):
             mode = self.SHADOW
         if mode == self.SHADOW and not me.ground and me.air_t > 0.3:
@@ -81628,6 +81644,8 @@ class AerialBot:
                 if tr is None or tr > tm + 0.03:
                     continue
                 toward = Dx * self.s
+                if toward < -0.15 and (x - own) * self.s < 1600:
+                    continue                               # never knocks it back toward its own goal
                 v = 0.6 + 0.9 * toward
                 if not clear:
                     v += 0.5 * max(0.0, 1.0 - abs(gx - x) / 4000.0)
@@ -81862,7 +81880,7 @@ class AerialBot:
         aheadb = (b.x - me.x) * d
         closing = v - b.vx * d
         gap = aheadb - sim.t["ball_r"] - me.hl - me.r
-        if self.mode == "back" and closing > 100 and 0 < gap < 40 + closing * 0.34 and b.y < 330:
+        if self.mode == "back" and closing > 100 and 0 < gap < 40 + closing * 0.34 and b.y < 330 and abs(b.vx) < 500:
             hit = "ball"
         if hit is None:
             return False
@@ -81927,6 +81945,11 @@ class AerialBot:
         tick = sim.tick
         T = (pl["t"] - tick) * AERIAL_DT
         b = sim.ball
+        own0 = self._goal_x(True)
+        if me.ground and (me.x - b.x) * self.s > 30 and (b.x - own0) * self.s < 1500 and self.mode != self.SAVE and \
+                not pl.get("wrong_ok") and self.rng.random() < p["position"]:
+            self.plan, self.mode = None, "back"           # got on the wrong side of it near home: go round, never into it
+            return self._race_back(m, me)
         if T < -0.25 or (not me.ground and me.ball_touch and not pl.get("carry")):
             if pl.get("flip") and me.ball_touch and me.has_action and not me.ground and not pl.get("flipped"):
                 pl["flipped"] = True
