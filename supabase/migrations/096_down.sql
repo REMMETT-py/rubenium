@@ -230,4 +230,118 @@ AS $function$
      where f.a = auth.uid() or f.b = auth.uid() $function$;
 drop function if exists public.rb_friend_doing(uuid);
 
+-- the 9.4 pay for beating bots
+CREATE OR REPLACE FUNCTION public.rb_kart_settle(rid uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare r public.rb_kart_rooms%rowtype; s record; n_h integer; k integer; pr integer; xp_ integer; cap bigint;
+        beat_h integer; beat_bot boolean; bot_t double precision;
+begin
+    select * into r from public.rb_kart_rooms where id = rid for update;
+    if not found or r.state <> 'live' then return; end if;
+    -- how far round the unfinished karts got (from their last live position)
+    update public.rb_kart_seats ks set prog = coalesce(ks.prog, (select (l.snap ->> 11)::real from public.rb_kart_live l where l.room = rid and l.seat = ks.seat))
+     where ks.room = rid and ks.finish_ms is null;
+    if r.bot and r.bot_ms is null then
+        r.bot_prog := (select (l.snap ->> 11)::real from public.rb_kart_live l where l.room = rid and l.seat = 3);
+        update public.rb_kart_rooms set bot_prog = r.bot_prog where id = rid;
+    end if;
+    -- places: finished karts by time (the bot too), then the rest by how far round they got
+    bot_t := case when r.bot and r.bot_ms is not null then r.bot_ms else null end;
+    k := 0;
+    for s in with all_ as (
+                select ks.owner, ks.finish_ms::float8 ms, coalesce(ks.prog, 0) prog, ks.gone from public.rb_kart_seats ks where ks.room = rid
+                union all
+                select null::uuid, bot_t, coalesce(r.bot_prog, 0), false where r.bot)
+             select * from all_ order by (ms is null), ms, gone, prog desc loop
+        k := k + 1;
+        if s.owner is null then
+            update public.rb_kart_rooms set bot_place = k where id = rid;
+        else
+            update public.rb_kart_seats set place = k where room = rid and owner = s.owner;
+        end if;
+    end loop;
+    select count(*) into n_h from public.rb_kart_seats where room = rid;
+    select bot_place into r.bot_place from public.rb_kart_rooms where id = rid;
+    for s in select * from public.rb_kart_seats where room = rid order by seat loop
+        if s.finish_ms is null or s.gone then continue; end if;
+        -- the prize: finishing, the score, each player and the bot beaten (the bot by its level), first place, a clean race
+        beat_h := (select count(*) from public.rb_kart_seats o where o.room = rid and o.owner <> s.owner and o.place > s.place);
+        beat_bot := r.bot and r.bot_place is not null and r.bot_place > s.place;
+        pr := 20 + floor(coalesce(s.score, 0) * 0.8)::int + 40 * beat_h
+              + case when beat_bot then floor(10 + 190 * power(r.bot_elo / 2500.0, 2))::int else 0 end
+              + case when s.place = 1 and n_h + (case when r.bot then 1 else 0 end) > 1 then 40 else 0 end
+              + case when coalesce(s.blowups, 0) = 0 then 20 else 0 end;
+        pr := floor(pr * least(1.0, r.laps / 3.0))::int;                       -- shorter races pay less
+        cap := public.rb_kart_cap(s.owner);                                     -- 9.2.1: by tier, null = no cap
+        if cap is not null then
+            pr := greatest(0, least(pr::bigint, cap - public.rb_kart_paid_today(s.owner)))::int;
+        end if;
+        xp_ := 20 + 10 * beat_h + case when beat_bot then 10 else 0 end;
+        if pr > 0 then perform public.rb_pay(s.owner, pr, 0, 'kart', rid::text); end if;
+        perform public.rb_xp_add(s.owner, xp_, 'kart', rid::text);
+        update public.rb_kart_seats set paid = pr, xp = xp_ where room = rid and owner = s.owner;
+    end loop;
+    update public.rb_kart_rooms set state = 'done', done_at = now(), why = coalesce(why, 'finished') where id = rid;
+    delete from public.rb_kart_live where room = rid;
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.rb_hoops_finish(gid uuid, me_pts integer, opp_pts integer, ot boolean, stats jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare me uuid := auth.uid(); g public.rb_hoops_games%rowtype; won_ boolean; base integer; pr integer; cap integer;
+        today integer; xp_ integer; capped boolean := false; maxp integer; fg integer; fga integer; th integer; tha integer;
+        pts integer;
+begin
+    if me is null then raise exception 'rb_not_logged_in'; end if;
+    select * into g from public.rb_hoops_games where id = gid and owner = me for update;
+    if not found then raise exception 'rb_bad_request'; end if;
+    if g.state <> 'open' then raise exception 'rb_already_done'; end if;
+    -- the match can't be over before its clock ran out, and must be sent within 2 hours
+    if now() < g.started_at + make_interval(secs => g.mins * 60) or now() > g.started_at + interval '2 hours' then
+        update public.rb_hoops_games set state = 'left', done_at = now() where id = gid;
+        return jsonb_build_object('paid', 0, 'xp', 0, 'why', 'time');
+    end if;
+    -- a possible score: at most 15 points a minute for a team (+ overtime's one basket), never a tie
+    maxp := g.mins * 15 + 3;
+    if me_pts not between 0 and maxp or opp_pts not between 0 and maxp or me_pts = opp_pts then
+        raise exception 'rb_bad_request';
+    end if;
+    -- your own points must add up: 2 a basket, 3 a three, and no more than your team scored
+    fg := coalesce((stats ->> 'fg')::int, 0); fga := coalesce((stats ->> 'fga')::int, 0);
+    th := coalesce((stats ->> 'three')::int, 0); tha := coalesce((stats ->> 'threea')::int, 0);
+    pts := coalesce((stats ->> 'pts')::int, 0);
+    if fg > fga or th > tha or th > fg or tha > fga or pts <> 2 * fg + th or pts > me_pts then
+        raise exception 'rb_bad_request';
+    end if;
+    won_ := me_pts > opp_pts;
+    base := case g.level when 'Club' then case when won_ then 120 else 25 end
+                         when 'Regional' then case when won_ then 220 else 40 end
+                         when 'National' then case when won_ then 380 else 60 end
+                         else case when won_ then 650 else 90 end end;
+    base := round(base * (0.55 + 0.15 * g.mins))::int;                    -- 2 min 85%, 3 min 100%, 5 min 130%
+    pr := public.rb_scaled(base, public.rb_tier_mult(me));
+    cap := public.rb_hoops_cap(me);
+    if cap is not null then
+        today := public.rb_hoops_paid_today(me);
+        if pr > cap - today then
+            capped := true;
+            pr := greatest(0, cap - today);
+        end if;
+    end if;
+    xp_ := 15 + case when won_ then 15 else 0 end + 5 * (array_position(array['Club', 'Regional', 'National', 'Professional'], g.level) - 1);
+    if pr > 0 then perform public.rb_pay(me, pr, 0, 'hoops', gid::text); end if;
+    perform public.rb_xp_add(me, xp_, 'hoops', gid::text);
+    update public.rb_hoops_games set state = 'done', done_at = now(), score_me = me_pts, score_opp = opp_pts, ot = rb_hoops_finish.ot,
+           won = won_, paid = pr, xp = xp_, stats = rb_hoops_finish.stats where id = gid;
+    return jsonb_build_object('paid', pr, 'xp', xp_, 'won', won_, 'capped', capped, 'today', public.rb_hoops_paid_today(me),
+                              'cap', cap);
+end $function$;
+
 commit;

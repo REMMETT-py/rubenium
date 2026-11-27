@@ -1533,7 +1533,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "9.5"   # the version people see
-BUILD = "2026.11.27.40"      # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.27.41"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12771,7 +12771,12 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
-    ("9.5", ["Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team",
+    ("9.5", ["Hoops controls: one button, one job. With the ball left click shoots, right click passes, F fakes; without it left click steals and right click switches player",
+             "Hoops: shots only once you are past the half-way line, a replay of every basket, and no more players or the ball jumping across the court",
+             "Beating bots pays much more: Hoops up to 2 500 a win on Professional, Karting up to 1 500 for beating the Professional bot",
+             "Karting and Hoops stats, records and time boards start again from zero",
+             "The Casino tile on Home opens the casino doors again, and the case drop list no longer lags",
+             "Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team",
              "Hoops plays inside Rubenium now, smoother, and your bot team-mate gets open for passes and plays defence",
              "Hoops: hold the ball too long and the bots rush you (6 seconds on Club down to 3 on Professional, a red edge "
              "warns you), bots fake, 3 baskets in a row puts you On Fire, and ankle breakers",
@@ -13914,7 +13919,7 @@ FR.update({  # 9.2
     'Pump fake a defender who flies at you, then drive past while they are in the air.': 'Feinte de tir face à un défenseur qui se jette sur toi, puis passe-le pendant qu’il est en l’air.',
     'No shot clock and no fouls. Inside the arc is 2 points, outside 3. Throw the ball out and the other team gets it.': 'Pas d’horloge des tirs ni de fautes. À l’intérieur de l’arc c’est 2 points, à l’extérieur 3. Si tu envoies la balle dehors, l’autre équipe la récupère.',
     'The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. Levels differ in how quickly they react, how well they time things and how good their decisions are. Professional is very strong.': 'Les bots jouent avec les mêmes règles que toi : même vitesse, même cercle de dribble et même jauge de tir. Les niveaux diffèrent par la vitesse de réaction, le timing et la qualité des décisions. Professionnel est très fort.',
-    'A win pays by the bots\' level (3 minutes: Club 120, Regional 220, National 380, Professional 650), a loss a little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows with your tier; Casino Legend has none.': 'Une victoire paie selon le niveau des bots (3 minutes : Club 120, Régional 220, National 380, Professionnel 650), une défaite un peu. Les matchs plus courts paient moins, les plus longs plus, et ton rang de richesse multiplie le tout. La limite par jour grandit avec ton rang ; Légende du casino n’en a pas.',
+    'A win pays by the bots\' level (3 minutes: Club 150, Regional 350, National 900, Professional 2 500), a loss a little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows with your tier; Casino Legend has none.': 'Une victoire paie selon le niveau des bots (3 minutes : Club 150, Régional 350, National 900, Professionnel 2 500), une défaite un peu. Les matchs plus courts paient moins, les plus longs plus, et ton rang de richesse multiplie le tout. La limite par jour grandit avec ton rang ; Légende du casino n’en a pas.',
     'Leaving a match counts as a loss and pays nothing.': 'Quitter un match compte comme une défaite et ne paie rien.',
     'Replay every basket': 'Replay à chaque panier',
     'Replay big plays': 'Replay des grandes actions',
@@ -26894,11 +26899,7 @@ class CaseItemsGrid(QWidget):
         self.per = max(1, int(width // self.cell))
         n = len(self.items)
         self.setFixedSize(width, int(((n + self.per - 1) // self.per) * self.cell) if n else 0)
-        self.setMouseTracking(True)
-        self._t = QTimer(self)
-        self._t.setInterval(60)
-        self._t.timeout.connect(self.update)
-        self._t.start()
+        self.setMouseTracking(True)          # 9.5: no animation timer: a still picture of every drop (it lagged)
 
     def _rect(self, k: int) -> QRectF:
         return QRectF((k % self.per) * self.cell, (k // self.per) * self.cell, self.cell, self.cell)
@@ -26918,7 +26919,6 @@ class CaseItemsGrid(QWidget):
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        now = time.monotonic()
         for k, (item, _ch) in enumerate(self.items):
             r = self._rect(k).adjusted(S(2), S(2), -S(2), -S(2))
             p.setPen(Qt.PenStyle.NoPen)
@@ -26928,7 +26928,7 @@ class CaseItemsGrid(QWidget):
             p.drawRoundedRect(r, S(6), S(6))
             p.setBrush(alpha(col, 0.8))
             p.drawRoundedRect(QRectF(r.left() + S(6), r.bottom() - S(3), r.width() - S(12), S(2)), S(1), S(1))
-            show_preview_item(p, item, r.adjusted(S(4), S(3), -S(4), -S(5)), now)
+            show_preview_item(p, item, r.adjusted(S(4), S(3), -S(4), -S(5)), 0.6, effects=False)
 
 
 class DropList(QWidget):
@@ -27491,7 +27491,7 @@ class CaseReel(QWidget):
         else:
             size = rect.width() * 0.5
             show_case_item(p, what, QRectF(rect.center().x() - size / 2, rect.center().y() - size / 2 - S(4), size, size),
-                           now, effects=self.state != "spin", reveal=reveal)
+                           0.6, effects=False, reveal=reveal)      # 9.5: still pictures on the strip (no lag)
         if flash > 0:
             p.setBrush(QColor(255, 255, 255, int(150 * flash)))
             p.drawRoundedRect(rect, S(8), S(8))
@@ -38529,10 +38529,19 @@ class CasinoDoor(QWidget):
         e.accept()
 
     def mouseReleaseEvent(self, e) -> None:
-        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()) and not self._going:
-            self._going = True
-            sfx.play("off" if self.leave else "on")
-            self._open.to(1.0, 620)
+        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
+            self.open_now()
+
+    def open_now(self) -> None:
+        """9.5: the doors swing open (a click, or the Casino tile on Home, which comes here to play it)."""
+        try:
+            if self._going or not self.isVisible():
+                return
+        except RuntimeError:
+            return
+        self._going = True
+        sfx.play("off" if self.leave else "on")
+        self._open.to(1.0, 620)
 
     def _done(self) -> None:
         if self._going and self._open.level >= 0.999:
@@ -38972,7 +38981,11 @@ class GamesPage(Page):
         games, each with its own icon)."""
         self._go_back_if_asked()
         lay.addWidget(titled(tr("Play"), "", 24))
-        lay.addWidget(CasinoDoor(lambda: self.open_sub("casino")))
+        door = CasinoDoor(lambda: self.open_sub("casino"))
+        lay.addWidget(door)
+        if getattr(self.ctx, "casino_door_auto", False):       # 9.5: from the Casino tile on Home: the doors open
+            self.ctx.casino_door_auto = False
+            QTimer.singleShot(420, door.open_now)
         advent_card(self, lay)
         lay.addWidget(help_row(tr("Mini games"), tr("All free, no bet. They pay by how well you do, with no daily limit: "
                                                      "your first 8 rounds of each game every day pay double.")))
@@ -51716,6 +51729,8 @@ def open_games_part(ctx, sub: str = None, flag: str = "", back: str = "") -> Non
         setattr(ctx, f, False)
     if flag:
         setattr(ctx, flag, True)
+        if flag == "casino_door_auto":            # 9.5: only for the page this opens, never a later visit
+            QTimer.singleShot(3000, lambda: setattr(ctx, "casino_door_auto", False))
     ctx.games_sub = sub
     ctx.back_to = back or None
     if ctx.casino:
@@ -52502,7 +52517,7 @@ class HubPage(Page):
                                                   "Bots play when nobody else does.")))
         lay.addWidget(LiveSlot(self))
         lay.addWidget(tile_grid([
-            Tile(tr("Casino"), tr("Enter"), "dice", ("#F5C04A", "#5A1A0A"), lambda: open_games_part(ctx, "casino"), height=96),
+            Tile(tr("Casino"), tr("Enter"), "dice", ("#F5C04A", "#5A1A0A"), lambda: open_games_part(ctx, None, flag="casino_door_auto"), height=96),
             Tile(tr("Mini games"), tr("Free"), "spark", ("#35E0A1", "#0B4A5A"), lambda: ctx.window.nav("games"), height=96),
             Tile(tr("Duels"), tr("1 v 1"), "shield", ("#5AA8FF", "#0A2A5A"), lambda: open_arena(ctx, "c4", "duel"), height=96),
             Tile(tr("Leaderboards"), tr("Global"), "trophy", ("#FF6FA8", "#5A1A7A"), lambda: ctx.window.nav("leaders"),
@@ -55736,16 +55751,16 @@ HELP = {
         "With the ball: the circle on the floor (only you see it) is how far you can walk without dribbling. Hold Space "
         "with a direction to dribble: the circle follows the ball. Space + back spins you round fast, and a spin can't "
         "be stolen.",
-        "Passing: right click is a quick pass to your team-mate (the badge over their head). Hold left click to charge a "
-        "pass and aim it with the mouse; while charging, up throws a lob, down a bounce pass, left or right curves it. "
-        "The line is white when it's safe, orange when risky, red when a defender will cut it off. Right click while "
-        "charging is a pass fake.",
-        "Shooting: hold Shift to aim. The line shows your chance from there (lower further out and with a defender in "
-        "your face). Hold left click to rise and let go when the marker is in the green: green goes in almost every "
-        "time, yellow sometimes, red rarely. The green gets smaller with distance. Right click while aiming is a pump fake.",
-        "Defence: hold Shift to slide in a stance. Left click swipes at the ball: it only works on a dribble that's on "
-        "your side and low; into the body it's a reach-in and you're off balance. Space jumps to contest, block or get "
-        "a lob. Right click switches to your other player. Running into the dribbler never takes the ball."], [
+        "One button, one job. WITH THE BALL: left click shoots, right click passes, F fakes, Space dribbles.",
+        "Shooting: hold left click to rise and let go when the marker is in the green: green goes in almost every time, "
+        "yellow sometimes, red rarely. The green gets smaller with distance and with a defender in your face. You can "
+        "only shoot once you are past the half-way line.",
+        "Passing: hold right click to charge a pass to your team-mate (the badge over their head) and let go. While "
+        "charging, up throws a lob, down a bounce pass, left or right curves it. The line is white when it's safe, "
+        "orange when risky, red when a defender will cut it off.",
+        "Faking: press F. You pretend to shoot, the defender jumps, and you drive past while they are in the air.",
+        "WITHOUT THE BALL: left click steals (it works on a low dribble on your side), right click switches to your other "
+        "player, Space jumps to block, Shift slides in a defensive stance."], [
         "Passing beats pressing: a bot team-mate who is open will usually score. Lobs go over defenders, bounce passes "
         "under jumping ones.",
         "Pump fake a defender who flies at you, then drive past while they are in the air.",
@@ -55754,7 +55769,7 @@ HELP = {
         "The bots play by the same rules as you: the same speed, the same dribble circle and the same shot meter. "
         "Levels differ in how quickly they react, how well they time things and how good their decisions are. "
         "Professional is very strong.",
-        "A win pays by the bots' level (3 minutes: Club 120, Regional 220, National 380, Professional 650), a loss a "
+        "A win pays by the bots' level (3 minutes: Club 150, Regional 350, National 900, Professional 2 500), a loss a "
         "little. Shorter matches pay less, longer ones more, and your wealth tier multiplies it. The daily limit grows "
         "with your tier; Casino Legend has none.",
         "Leaving a match counts as a loss and pays nothing."]),
@@ -74205,7 +74220,7 @@ def _guide_hoops(p, r, t, k):
             p.setBrush(QColor("#3BE38A"))
             p.drawRoundedRect(QRectF(ax - S(16), fl - S(58), S(32) * c, S(5)), S(2), S(2))
             _gball(p, ax + S(10), fl - S(24), S(5))
-            return [tr("Hold left")]
+            return [tr("Hold right")]
         f = min(1.0, (ph - 0.45) / 0.35)
         x = lerp(ax + S(10), bx - S(10), f)
         y = fl - S(24) - math.sin(f * math.pi) * S(26)
@@ -74233,7 +74248,7 @@ def _guide_hoops(p, r, t, k):
         p.drawRect(QRectF(mr.left() - S(2), mr.bottom() - mr.height() * min(meter, 0.8) - S(1), mr.width() + S(4), S(3)))
         if ph < 0.5:
             _gball(p, sx + S(6), fl - S(46) - jump, S(5))
-            return ["Shift", tr("Hold left")]
+            return [tr("Hold left")]
         f = min(1.0, (ph - 0.5) / 0.32)
         x = lerp(sx + S(6), hx - S(3), f)
         y = lerp(fl - S(46), fl - S(62), f) - math.sin(f * math.pi) * S(40)
@@ -74258,7 +74273,7 @@ def _guide_hoops(p, r, t, k):
             p.setFont(font(10, QFont.Weight.Black))
             p.setPen(QColor(HOOPS_TEAM[0]["light"]))
             p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("STEAL!"))
-        return ["Shift", tr("Left click")] if 0.35 < ph < 0.6 else ["Shift"]
+        return [tr("Left click")] if 0.35 < ph < 0.6 else ["Shift"]
     if k == "fake":
         ph = (t % 2.6) / 2.6
         up = 0.2 < ph < 0.45
@@ -74270,7 +74285,7 @@ def _guide_hoops(p, r, t, k):
             p.setFont(font(10, QFont.Weight.Black))
             p.setPen(QColor("#F5C04A"))
             p.drawText(QRectF(r.left(), r.top() + S(6), r.width(), S(16)), int(Qt.AlignmentFlag.AlignCenter), tr("HE BIT!"))
-        return ["Shift", tr("Right click")] if up else ["Shift"]
+        return ["F"] if up else []
     return []
 
 
@@ -74352,10 +74367,10 @@ GUIDES = {
     "hoops": (lambda: tr("How to play Hoops"), _guide_hoops, [
         ("move", lambda: tr("Move"), lambda: tr("Run anywhere. The ring under your feet is you.")),
         ("dribble", lambda: tr("Dribble"), lambda: tr("Hold Space while moving. Without it you can only pivot.")),
-        ("pass", lambda: tr("Pass"), lambda: tr("Hold left click to charge, let go to pass. Right click: quick pass.")),
-        ("shoot", lambda: tr("Shoot"), lambda: tr("Hold Shift to aim, hold left click, let go in the green.")),
-        ("steal", lambda: tr("Defend and steal"), lambda: tr("Shift to guard. Left click swipes when the ball is low.")),
-        ("fake", lambda: tr("Fakes and moves"), lambda: tr("Shift + right click: pump fake. Back + Space: spin move.")),
+        ("pass", lambda: tr("Pass"), lambda: tr("Hold right click to charge, let go to pass.")),
+        ("shoot", lambda: tr("Shoot"), lambda: tr("Hold left click, let go in the green. Past half-way only.")),
+        ("steal", lambda: tr("Defend and steal"), lambda: tr("No ball: left click steals, Shift guards, Space blocks.")),
+        ("fake", lambda: tr("Fakes and moves"), lambda: tr("F: fake a shot, then drive past. Back + Space: spin move.")),
     ], lambda: tr("Tab scoreboard  ·  Esc pause.  Don't stand still with the ball: the defenders rush you.")),
     "kart": (lambda: tr("How to play Karting"), _guide_kart, [
         ("drive", lambda: tr("Drive"), lambda: tr("Throttle and steer. Stay on the tarmac: grass slows you down.")),
@@ -75491,7 +75506,22 @@ class HoopsGame:
                 self._idle(p, dt, celebrate=True)
             return
         if ph == "dead":
+            walk = getattr(self, "walk", None) or {}
+            left = max(0.05, self.dead_for - self.phase_t)
             for p in self.players:
+                tgt = walk.get(p.i)
+                if tgt is not None:                           # 9.5: walking to the inbound spot (or out of the way)
+                    dx, dz = tgt[0] - p.x, tgt[1] - p.z
+                    d = hyp(dx, dz)
+                    if d > 0.01:
+                        v = min(d / dt, max(RUN, d / left))
+                        p.vx, p.vz = dx / d * v, dz / d * v
+                        p.x += p.vx * dt
+                        p.z += p.vz * dt
+                        p.fx, p.fz = norm(lerp(p.fx, dx / d, 0.15), lerp(p.fz, dz / d, 0.15))
+                        p.run_ph = (getattr(p, "run_ph", 0.0) + dt * v * 0.9) % 1.0
+                        continue
+                    p.vx = p.vz = 0.0
                 self._idle(p, dt)
             self._ball_step(dt) if self.ball.mode != "held" else self._hold_ball()
             if self.phase_t >= self.dead_for and self.dead_then:
@@ -75625,10 +75655,18 @@ class HoopsGame:
         self.dead_for = 1.4
         self.ev("whistle")
         self.ev("violation", kind=kind, team=to)
+        # 9.5: during the pause the inbounder runs to the spot and everyone near it steps away (no teleporting)
+        tm = self.team(to)
+        inb = min(tm, key=lambda q: hyp(q.x - sx, q.z - sz))
+        self.walk = {inb.i: (sx, sz)}
+        for q in self.players:
+            if q is not inb and hyp(q.x - sx, q.z - sz) < 1.7:
+                dx, dz = norm(q.x - sx, q.z - sz) if hyp(q.x - sx, q.z - sz) > 0.01 else (0.0, 1.0)
+                self.walk[q.i] = (clamp(sx + dx * 1.8, -HALF_L + 0.4, HALF_L - 0.4), clamp(sz + dz * 1.8, 0.4, COURT_W - 0.4))
 
         def give():
-            tm = self.team(to)
-            p = min(tm, key=lambda q: hyp(q.x - sx, q.z - sz))
+            self.walk = {}
+            p = inb
             p.x, p.z = sx, sz
             for q in self.players:                            # nobody stands on top of the inbound spot
                 if q is not p and hyp(q.x - sx, q.z - sz) < 1.6:
@@ -75830,6 +75868,8 @@ class HoopsGame:
         nx, nz = p.x + p.vx * dt, p.z + p.vz * dt
         # the zone: holding the ball, you can't leave it
         if has and p.act in ("hold", "passwind", "gather", "fake") or (has and p.act == "shoot" and p.h <= 0):
+            if hyp(p.x - p.zx, p.z - p.zz) > ZONE_R:     # 9.5: a stale zone (left from the dribble): start it here
+                p.zx, p.zz = p.x, p.z
             dx, dz = nx - p.zx, nz - p.zz
             d = hyp(dx, dz)
             if d > ZONE_R:
@@ -75918,6 +75958,11 @@ class HoopsGame:
                 lmb_down = True
         if a == "dribble":
             p.drib_at = self.t
+        if lmb_down and inp.shift and p.h <= 0 and p.x * (1 if hoop_of(p.team) > 0 else -1) < 0:
+            # 9.5: no shots from your own half: cross the half-way line first
+            if p.ctrl:
+                self.ev("own_half", p=p.i)
+            return 0.0
         if lmb_down and inp.shift and p.h <= 0:
             hx = hoop_of(p.team)
             d = hyp(hx - p.x, HOOP_Z - p.z)
@@ -75947,6 +75992,7 @@ class HoopsGame:
         if a == "dribble":
             if not inp.space or inp.shift:
                 p.act, p.act_t = "gather", 0.0
+                p.zx, p.zz = p.x, p.z                    # 9.5: the pick-up zone is where you are (no snap back)
                 return DRIB * 0.4
             # a spin: back + dribble turns you round fast
             if ml > 0.3 and p.spin_cd <= 0 and p.speed() > 1.5:
@@ -75960,6 +76006,23 @@ class HoopsGame:
             self._dribble_ball(p, dt)
             return DRIB
         return RUN * 0.5
+
+    def _ball_to(self, tx, tz, dt):
+        """9.5: the ball in someone's hands follows them, but never jumps: a quick turn or a spin sweeps it round
+        (at most 16 m/s relative to the carrier) instead of moving it a metre in one step."""
+        b = self.ball
+        c = self.carrier()
+        if c is not None:                                  # carried along with the player first
+            b.x += c.vx * dt
+            b.z += c.vz * dt
+        dx, dz = tx - b.x, tz - b.z
+        d = hyp(dx, dz)
+        mx = 16.0 * dt
+        if d <= mx or d > 3.0:                             # close enough, or a restart: straight there
+            b.x, b.z = tx, tz
+        else:
+            b.x += dx / d * mx
+            b.z += dz / d * mx
 
     def _dribble_ball(self, p, dt):
         b = self.ball
@@ -75982,8 +76045,7 @@ class HoopsGame:
         p.cross = max(0.0, p.cross - dt / (period * 0.5))
         hand = p.hand * (1 - p.cross) - p.hand * p.cross   # through the middle while crossing
         ahead = 0.30 + 0.06 * sp
-        b.x = p.x + p.fx * ahead + sx * 0.34 * hand
-        b.z = p.z + p.fz * ahead + sz * 0.34 * hand
+        self._ball_to(p.x + p.fx * ahead + sx * 0.34 * hand, p.z + p.fz * ahead + sz * 0.34 * hand, dt)
         b.h = 0.95 * abs(math.cos(math.pi * p.phase)) + HB_BALL_R
         b.spin += dt * 8
 
@@ -76265,8 +76327,7 @@ class HoopsGame:
                 return
             if c.act not in ("dribble", "spin"):
                 up = c.arms_up > 0.5 and c.act in ("shoot", "fake")
-                b.x = c.x + c.fx * (0.18 if up else 0.33)
-                b.z = c.z + c.fz * (0.18 if up else 0.33)
+                self._ball_to(c.x + c.fx * (0.18 if up else 0.33), c.z + c.fz * (0.18 if up else 0.33), dt)
                 b.h = c.h + (lerp(1.2, 2.3, c.shot_m if c.act == "shoot" else 0.7) if up else 1.15)
             return
         if b.mode in ("pass", "shot"):
@@ -76686,11 +76747,14 @@ class HoopsBot:
             s = g.past(near.i, lag)
             ux, uz = norm(p.x - s[0], p.z - s[1])
             closing = s[2] * ux + s[3] * uz
+        own_half = p.x * (1 if hx > 0 else -1) < 0                  # 9.5: no shots from your own half
         want_shot = pct >= k["shoot_min"] and (ev_shoot >= ev_pass * 0.95 or risk > 0.5)
         if pts == 3 and pct >= 0.3 and ev_shoot >= 1.02 + 0.12 * k["space"] and ev_shoot >= ev_pass * 0.9 and c < 0.25:
             want_shot = True                          # an open three
         if clock < 2.2 and pct > 0.05:
             want_shot = True
+        if own_half:
+            want_shot = False
         # pump fake when a defender is flying at you
         if want_shot and closing > 3.0 and near_d < 2.4 and rng.random() < k["fake"] * 2 and g.t - self.fake_used > 2.5:
             self.fake_used = g.t
@@ -77902,7 +77966,29 @@ class HoopsView(QWidget):
         left = 1.0 if (k & {Qt.Key.Key_A, Qt.Key.Key_Q, Qt.Key.Key_Left}) else 0.0
         right = 1.0 if (k & {Qt.Key.Key_D, Qt.Key.Key_Right}) else 0.0
         aim = self.cam.floor_at(self.mouse.x(), self.mouse.y())
-        return HoopsInput(right - left, up - down, Qt.Key.Key_Space in k, Qt.Key.Key_Shift in k, self.lmb, self.rmb, aim)
+        # 9.5: one button, one job. With the ball: left click shoots (hold, let go in the green), right click passes
+        # (hold to charge), F fakes. Without it: left click steals, right click switches player, Space jumps, Shift
+        # guards. The game underneath still speaks Shift + click, so this turns the buttons into that.
+        g = self.g
+        me = g.players[g.ctrl.get(0, 0)] if g.players else None
+        has = me is not None and g.ball.owner == me.i
+        shift, lmb, rmb = Qt.Key.Key_Shift in k, self.lmb, self.rmb
+        fake = getattr(self, "_fake_q", False)
+        self._fake_q = False
+        if has:
+            if me.act == "shoot":
+                shift, lmb, rmb = True, self.lmb, False
+            elif me.act == "passwind":
+                shift, lmb, rmb = False, self.rmb, False
+            elif fake:
+                shift, lmb, rmb = True, False, True
+            elif self.lmb:
+                shift, lmb, rmb = True, True, False
+            elif self.rmb:
+                shift, lmb, rmb = False, True, False
+            else:
+                shift, lmb, rmb = False, False, False
+        return HoopsInput(right - left, up - down, Qt.Key.Key_Space in k, shift, lmb, rmb, aim)
 
     def keyPressEvent(self, e) -> None:
         if e.isAutoRepeat():
@@ -77920,6 +78006,8 @@ class HoopsView(QWidget):
         if self.replay is not None and key in (Qt.Key.Key_Space, Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self._end_replay()
             return
+        if key == Qt.Key.Key_F:                      # 9.5: the fake has its own key
+            self._fake_q = True
         self.keys.add(Qt.Key(key))
 
     def keyReleaseEvent(self, e) -> None:
@@ -78074,14 +78162,8 @@ class HoopsView(QWidget):
                 self.finished.emit(self.result())
 
     def _want_replay(self) -> bool:
-        """Replays: 0 every basket, 1 the big plays (a three, a perfect release, the last 20 seconds, overtime), 2 none."""
-        if self.replays == 0:
-            return True
-        if self.replays == 2:
-            return False
-        ls = self.g.last_score or {}
-        return (ls.get("pts") == 3 or self.last_perfect or self.g.overtime or self.g.clock < 20
-                or ls.get("how") == "swish")                 # 9.5: every swish too
+        """9.5: every basket gets its replay (there is no choice any more); Space skips it."""
+        return True
 
     def _start_wipe(self, then, col) -> None:
         self.wipe = 0.0
@@ -78178,6 +78260,10 @@ class HoopsView(QWidget):
                         pass
             elif kind == "swipe":
                 self.audio.play("swipe", 0.4)
+            elif kind == "own_half":                         # 9.5
+                if g.players[d["p"]].team == me_team:
+                    self._msg(tr("Cross the half-way line to shoot"), "#FFC94A", 1.2)
+                    self.audio.play("tick")
             elif kind == "steal":
                 p = g.players[d["p"]]
                 self.audio.play("steal", 0.8)
@@ -79315,7 +79401,7 @@ HOOPS_ABOUT = {
     "National": "Quick and smart: reads passes, times steals, rarely misses an open shot.",
     "Professional": "No human limits: instant reactions, every shot released on the perfect mark, never fooled by a fake.",
 }
-HOOPS_PAY = {"Club": (120, 25), "Regional": (220, 40), "National": (380, 60), "Professional": (650, 90)}  # win, loss (3 min)
+HOOPS_PAY = {"Club": (150, 30), "Regional": (350, 50), "National": (900, 80), "Professional": (2500, 120)}  # win, loss (3 min)
 
 
 def hoops_opts(ctx) -> dict:
@@ -79438,7 +79524,7 @@ def build_hoops(page, lay) -> None:
     hl.addWidget(Label(tr("A tie at the buzzer goes to overtime: the next basket wins."), 10, TEXT_FAINT, wrap_w=page.W))
     # 9.5: replays are always on (the big plays and every swish); the choice is gone
     go = Button(tr("Play"), "primary", 44, icon="play")
-    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"], 1))
+    go.clicked.connect(lambda: HoopsLink.start(ctx, o["level"], o["mins"], 0))
     how = Button(tr("How to play"), "ghost", 44)            # 9.5: the animated guide (shown by itself the first time)
     how.clicked.connect(lambda: open_guide(ctx, "hoops", force=True))
     prow = hbox(spacing=8)
@@ -79448,10 +79534,11 @@ def build_hoops(page, lay) -> None:
     QTimer.singleShot(450, lambda: open_guide(ctx, "hoops"))
     keys = hoops_keys()
     hl.addWidget(ControlsBar([([keys["up"], keys["left"], keys["down"], keys["right"]], tr("Move")),
-                              (["Space"], tr("Dribble (with a direction) / jump")),
-                              (["Shift"], tr("Aim at the hoop / defend")),
-                              ([tr("Left click")], tr("Shoot (in aim) / pass / steal")),
-                              ([tr("Right click")], tr("Quick pass / fake / switch player")),
+                              ([tr("Left click")], tr("Shoot (no ball: steal)")),
+                              ([tr("Right click")], tr("Pass (no ball: switch player)")),
+                              (["F"], tr("Fake a shot")),
+                              (["Space"], tr("Dribble (no ball: jump)")),
+                              (["Shift"], tr("Guard (no ball)")),
                               ([tr("Esc")], tr("Pause"))], page.W))
     if not data:
         pass                                          # the prizes line comes once the server answered
@@ -79746,6 +79833,9 @@ class HoopsLink(QObject):
 
 
 
+FR.update({'Hold right': 'Maintiens droit', 'Hold right click to charge, let go to pass.': 'Maintiens le clic droit pour charger, lâche pour passer.', 'Hold left click, let go in the green. Past half-way only.': 'Maintiens le clic gauche, lâche dans le vert. Seulement après la ligne médiane.', 'No ball: left click steals, Shift guards, Space blocks.': 'Sans ballon : clic gauche pour intercepter, Maj pour défendre, Espace pour contrer.', 'F: fake a shot, then drive past. Back + Space: spin move.': 'F : feinte de tir, puis passe ton défenseur. Arrière + Espace : spin move.', 'Shoot (no ball: steal)': 'Tirer (sans ballon : intercepter)', 'Pass (no ball: switch player)': 'Passer (sans ballon : changer de joueur)', 'Fake a shot': 'Feinte de tir', 'Dribble (no ball: jump)': 'Dribbler (sans ballon : sauter)', 'Guard (no ball)': 'Défendre (sans ballon)', 'One button, one job. WITH THE BALL: left click shoots, right click passes, F fakes, Space dribbles.': 'Un bouton, une action. AVEC LE BALLON : clic gauche pour tirer, clic droit pour passer, F pour feinter, Espace pour dribbler.', 'Shooting: hold left click to rise and let go when the marker is in the green: green goes in almost every time, yellow sometimes, red rarely. The green gets smaller with distance and with a defender in your face. You can only shoot once you are past the half-way line.': 'Tirer : maintiens le clic gauche pour t’élever et lâche quand le repère est dans le vert : le vert rentre presque à chaque fois, le jaune parfois, le rouge rarement. Le vert rétrécit avec la distance et avec un défenseur sur toi. Tu ne peux tirer qu’après la ligne médiane.', "Passing: hold right click to charge a pass to your team-mate (the badge over their head) and let go. While charging, up throws a lob, down a bounce pass, left or right curves it. The line is white when it's safe, orange when risky, red when a defender will cut it off.": 'Passer : maintiens le clic droit pour charger une passe vers ton coéquipier (le badge au-dessus de sa tête) et lâche. Pendant la charge, haut fait un lob, bas une passe à terre, gauche ou droite la brosse. La ligne est blanche quand c’est sûr, orange quand c’est risqué, rouge quand un défenseur va la couper.', 'Faking: press F. You pretend to shoot, the defender jumps, and you drive past while they are in the air.': 'Feinter : appuie sur F. Tu fais semblant de tirer, le défenseur saute, et tu le passes pendant qu’il est en l’air.', 'WITHOUT THE BALL: left click steals (it works on a low dribble on your side), right click switches to your other player, Space jumps to block, Shift slides in a defensive stance.': 'SANS LE BALLON : clic gauche pour intercepter (ça marche sur un dribble bas de ton côté), clic droit pour changer de joueur, Espace pour sauter et contrer, Maj pour glisser en position défensive.'})
+FR.update({'Hoops controls: one button, one job. With the ball left click shoots, right click passes, F fakes; without it left click steals and right click switches player': 'Contrôles de Hoops : un bouton, une action. Avec le ballon, clic gauche pour tirer, clic droit pour passer, F pour feinter ; sans le ballon, clic gauche pour intercepter et clic droit pour changer de joueur', 'Hoops: shots only once you are past the half-way line, a replay of every basket, and no more players or the ball jumping across the court': 'Hoops : on ne tire qu’après la ligne médiane, un ralenti de chaque panier, et plus de joueurs ni de ballon qui sautent d’un coup sur le terrain', 'Beating bots pays much more: Hoops up to 2 500 a win on Professional, Karting up to 1 500 for beating the Professional bot': 'Battre les bots paie bien plus : jusqu’à 2 500 par victoire en Hoops contre Professionnel, jusqu’à 1 500 en Karting en battant le bot Professionnel', 'Karting and Hoops stats, records and time boards start again from zero': 'Les stats, records et meilleurs temps du Karting et de Hoops repartent de zéro', 'The Casino tile on Home opens the casino doors again, and the case drop list no longer lags': 'La tuile Casino de l’Accueil ouvre à nouveau les portes du casino, et la liste des objets des caisses ne rame plus'})
+FR.update({'Cross the half-way line to shoot': 'Passe la ligne médiane pour tirer'})
 FR.update({'Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team': 'Hoops : plus d’horloge des tirs ni de passage en force, et une balle envoyée hors du terrain revient à l’autre équipe'})
 
 
