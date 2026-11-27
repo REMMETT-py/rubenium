@@ -313,4 +313,7 @@ language sql stable security definer set search_path to '' as $$
       join public.profiles p on p.id = case when f.a = auth.uid() then f.b else f.a end
      where f.a = auth.uid() or f.b = auth.uid() $$;
 
+-- Rubenium League is removed: its admin switch for ranked goes too (it was added by 096_league_lock.sql)
+delete from public.rb_features where name = 'league_ranked';
+
 commit;

@@ -231,8 +231,3 @@ AS $function$
 drop function if exists public.rb_friend_doing(uuid);
 
 commit;
-
--- ---------------------------------------------------------------- undo of 096_league_lock.sql
-begin;
-delete from public.rb_features where name = 'league_ranked';
-commit;
