@@ -306,7 +306,7 @@ def test_flip_reset_chain_with_grip():
     s.kickoff(0)
     s.frozen, s.ball_held = False, False
     c, b = s.cars[0], s.ball
-    c.assist = {"boost": 0.5, "grip": 0.9, "shot": 5200.0, "catch": 0.0, "reach": 0.0, "steer": 0.0, "power": 0.0, "guard": 0.0, "speed": 1.0}
+    c.assist = {"boost": 0.5, "grip": 0.9, "shot": 5200.0, "catch": 0.0, "reach": 0.0, "steer": 0.0, "power": 0.0, "guard": 0.0, "speed": 1.0, "shot_t": 1.0}
     c.reset(-600.0, c.r, 1.0)
     b.x, b.y = -600.0, T["ball_r"]
     for _ in range(120):
