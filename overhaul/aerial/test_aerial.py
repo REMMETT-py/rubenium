@@ -117,11 +117,11 @@ def test_flip_hits_harder_than_a_bump():
         for _ in range(400):
             gap, j = b.x - c.x, False
             if flip:
-                if st == 0 and gap < 330:
+                if st == 0 and gap < 450:
                     j, st = True, 1
                 elif st == 1:
                     st = 2
-                elif st == 2 and gap < 230:
+                elif st == 2 and gap < 330:
                     j, st = True, 3
             s.step([I(ix=1, jump=j), I()])
             if any(e[0] == "touch" for e in s.ev):
@@ -223,7 +223,9 @@ def test_determinism_snapshot_and_replay():
     r1, r2 = run(9), run(9)
     assert r1["score"] == r2["score"] and r1["ticks"] == r2["ticks"] and r1["stats"] == r2["stats"]
     m = A["AerialMatch"]((1, 2), seed=11, match_s=20.0)
-    a, b = A["AerialBot"](0, "vex", 1), A["AerialBot"](1, "torque", 2)
+    a, b = A["AerialBot"](0, "ruben", 1), A["AerialBot"](1, "nova", 2)
+    A["aerial_apply_assist"](m, 0, "ruben")
+    A["aerial_apply_assist"](m, 1, "nova")
     log0, log1 = [], []
     for k in range(1500):
         x, y = a.think(m), b.think(m)
@@ -240,6 +242,8 @@ def test_determinism_snapshot_and_replay():
     assert m.state_hash() == end
     rep = A["aerial_unpack_replay"](A["aerial_pack_replay"]({"seed": 11, "kinds": [1, 2], "in0": log0, "in1": log1}))
     m2 = A["AerialMatch"]((1, 2), seed=11, match_s=20.0)
+    A["aerial_apply_assist"](m2, 0, "ruben")
+    A["aerial_apply_assist"](m2, 1, "nova")
     for x, y in zip(rep["in0"], rep["in1"]):
         m2.step([I.unpack(x), I.unpack(y)])
     assert m2.state_hash() == end
@@ -258,52 +262,65 @@ def test_input_packing():
 # ------------------------------------------------------------------------------------------------ the ladder
 def test_ranks():
     r = A["aerial_rank"]
-    assert r(0)["label"] == "Rookie 1 · Div I"
-    assert r(539)["label"] == "Rookie 3 · Div III"
-    assert r(540)["label"] == "Challenger 1 · Div I"
-    assert r(1259)["name"] == "Challenger" and r(1260)["name"] == "Elite"
-    assert r(3240)["name"] == "Rubenite" and r(99999)["label"] == "Rubenite 3 · Div III"
-    assert len({r(x)["index"] for x in range(0, 4600, 5)}) == 45
+    assert r(0)["label"] == "Rookie 1" and r(50)["v"] == 0 and r(0)["v"] == -5
+    assert r(350)["label"] == "Challenger 1" and r(650)["label"] == "Master 1" and r(950)["label"] == "Rubenite"
+    assert len({r(x)["index"] for x in range(0, 1001, 10)}) == 10
+    for i, row in enumerate(A["AERIAL_BOT_ROSTER"]):            # one bot per rank, in order
+        assert r(row[3])["index"] == i, row
 
 
-def test_mmr_change():
-    f = A["aerial_mmr_change"]
-    assert f(500, 500, True, 1.0) == 8 and f(500, 500, False, 1.0) == -8
-    assert f(500, 500, False, 1.25) == -10
-    assert f(0, 4600, True, 1.0) == 16 and f(4600, 0, True, 1.0) == 1 and f(4600, 0, False, 1.0) == -16
+def test_five_up_five_down():
+    L = A["AerialLadder"]()
+    for _ in range(4):
+        L.result(None, True)
+    assert L.r == 0 and L.v == 4
+    out = L.result(None, True)
+    assert out["promoted"] and L.r == 1 and L.v == 0
+    for _ in range(4):
+        L.result(None, False)
+    assert L.r == 1 and L.v == -4
+    out = L.result(None, False)
+    assert out["demoted"] and L.r == 0 and L.v == 0
+    for _ in range(20):                                          # nothing below Rookie 1
+        L.result(None, False)
+    assert L.r == 0
+    L = A["AerialLadder"]({"r": 9, "v": 0})
+    for _ in range(10):
+        L.result(None, True)
+    assert L.r == 9 and L.v == 5
+    assert A["AerialLadder"]({"r": 4, "v": 2}).opponents() == [A["AERIAL_BOT_ROSTER"][4][0]]
 
 
-def test_series_and_shield():
-    L = A["AerialLadder"]({"mmr": 535.0})
-    out = L.result(590, True)
-    assert L.mmr == 539.0 and L.series and L.series["bot"] == "ember" and L.series["need"] == 3
-    L.result(590, True)
-    out = L.result(590, True)
-    assert out["promoted"] and L.mmr == 540.0 and L.shield == 3
-    for _ in range(3):
-        L.result(2000, False)
-    assert L.mmr == 540.0                       # shielded
-    L.result(2000, False)
-    assert L.mmr < 540.0
-    L2 = A["AerialLadder"]({"mmr": 1255.0})
-    L2.result(1320, True)
-    assert L2.series and L2.series["bot"] == "halo"
-    L2.result(1320, False)
-    L2.result(1320, False)
-    assert L2.series is None and L2.mmr == 1260 - 80
-
-
-def test_long_grind():
-    """Winning every ranked match against opponents at your MMR: about 70 matches to Challenger, 420 to Rubenite."""
+def test_climb_needs_wins():
+    """Winning every ranked match: 5 wins a rank, 45 from Rookie 1 to Rubenite."""
     L = A["AerialLadder"]()
     n = 0
-    seen = {}
-    while L.mmr < 3240 and n < 2000:
-        L.result(L.mmr, True)
+    while L.r < 9:
+        L.result(None, True)
         n += 1
-        r = A["aerial_rank"](L.mmr)["rank"]
-        seen.setdefault(r, n)
-    assert 60 <= seen[1] <= 85 and 380 <= seen[4] <= 480, seen
+    assert n == 45
+
+
+def test_flip_reset_chain_with_grip():
+    s = A["AerialSim"]()
+    s.kickoff(0)
+    s.frozen, s.ball_held = False, False
+    c, b = s.cars[0], s.ball
+    c.assist = {"boost": 0.5, "grip": 0.9, "shot": 5200.0, "catch": 0.0, "reach": 0.0, "steer": 0.0, "power": 0.0, "guard": 0.0, "speed": 1.0}
+    c.reset(-600.0, c.r, 1.0)
+    b.x, b.y = -600.0, T["ball_r"]
+    for _ in range(120):
+        s.step([I(), I()])
+    assert c.holding
+    for i in range(40):
+        s.step([I(ix=1, jump=i < 20, boost=True, aim=A["aerial_aim_index"](1, 1)), I()])
+    s.step([I(roll=True, boost=True, aim=A["aerial_aim_index"](1, 1)), I()])
+    assert c.grip_side < 0 and c.holding
+    resets = 0
+    for i in range(200):
+        s.step([I(jump=(i % 24) < 3 and c.has_action, boost=True, aim=A["aerial_aim_index"](1, 1.2)), I()])
+        resets += sum(1 for e in s.ev if e[0] == "reset")
+    assert resets >= 3, resets
 
 
 # ------------------------------------------------------------------------------------------------ bots

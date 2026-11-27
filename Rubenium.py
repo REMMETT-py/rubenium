@@ -44755,7 +44755,8 @@ class AdminPage(Page):
                 "cases": ("Cases", "Buying and opening"), "shop": ("Shop", "Buying in the shop and Bon Plan"),
                 "chat": ("Chat", "Messages and reactions"), "giveaways": ("Giveaways", "Joining"),
                 "quests": ("Quests", "Claiming rewards"), "coupons": ("XP coupons", "Using coupons"),
-                "gifts": ("Gifts", "Sending items to friends")}
+                "gifts": ("Gifts", "Sending items to friends"),
+                "league_ranked": ("Rubenium League ranked", "Ranked matches; practice and Free Play stay open")}
 
     def _locks(self, lay) -> None:
         d = self.fetch("rb_admin_features", {})
@@ -77878,9 +77879,9 @@ class AerialRng:
 # published Sideswipe values.
 AERIAL_TUNE = {
     "gravity": 650.0,
-    "arena_hw": 1700.0, "arena_h": 1200.0, "goal_h": 420.0, "goal_d": 320.0, "ramp_r": 200.0,
+    "arena_hw": 1500.0, "arena_h": 1150.0, "goal_h": 470.0, "goal_d": 330.0, "ramp_r": 380.0,
     "corner_r": 320.0, "goal_corner_r": 70.0, "crossbar_r": 30.0,
-    "ball_r": 92.0, "ball_max": 6000.0, "ball_drag": 0.03, "ball_bounce": 0.6, "ball_friction": 0.28,
+    "ball_r": 106.0, "ball_max": 6000.0, "ball_drag": 0.03, "ball_bounce": 0.6, "ball_friction": 0.28,
     "ball_spin_max": 6.0, "ball_roll_drag": 0.08,
     "ball_mass": 30.0, "car_mass": 180.0,
     "car_max": 2300.0, "drive_max": 1410.0, "drive_acc0": 1600.0, "drive_acc1": 160.0, "brake": 3500.0,
@@ -77892,15 +77893,15 @@ AERIAL_TUNE = {
     "hit_e_fast": 0.6, "hit_e_slow": 0.06, "hit_e_v0": 90.0, "hit_e_v1": 450.0, "hit_mu": 0.55,
     "flip_hit_mult": 1.3, "reset_dot": 0.78,
     "explode_imp": 1500.0, "explode_r": 1300.0,
-    "match_s": 120.0, "count_s": 3.0, "goal_s": 2.2, "replay_s": 6.0, "stall_s": 8.0, "stall_v": 40.0,
+    "match_s": 150.0, "count_s": 3.0, "goal_s": 2.2, "replay_s": 6.0, "stall_s": 8.0, "stall_v": 40.0,
 }
 
 # The three cars. Same speed, boost, jump and mass; only the hitbox differs (a capsule: half length of the flat roof
 # and the radius of the rounded ends).
 AERIAL_CARS = [
-    {"key": "comet", "name": "Comet", "hl": 41.0, "r": 18.5, "line": "Medium and round. Good at everything."},
-    {"key": "blade", "name": "Blade", "hl": 50.0, "r": 15.0, "line": "Long and low. Easier dribbles and flicks."},
-    {"key": "titan", "name": "Titan", "hl": 34.0, "r": 23.0, "line": "Short and tall. Wins more 50/50s."},
+    {"key": "comet", "name": "Comet", "hl": 66.0, "r": 29.0, "line": "Medium and round. Good at everything."},
+    {"key": "blade", "name": "Blade", "hl": 80.0, "r": 23.5, "line": "Long and low. Easier dribbles and flicks."},
+    {"key": "titan", "name": "Titan", "hl": 55.0, "r": 36.0, "line": "Short and tall. Wins more 50/50s."},
 ]
 
 
@@ -78084,6 +78085,9 @@ class AerialCar:
         c = AERIAL_CARS[self.kind]
         self.hl, self.r = c["hl"], c["r"]
         self.reset(0.0, 0.0, 1.0)
+        self.assist = {"boost": 1.0, "grip": 0.0, "shot": 0.0, "catch": 0.0, "reach": 0.0,
+                       "steer": 0.0, "power": 0.0, "guard": 0.0,
+                       "speed": 1.0}   # bot help (Ruben, top ranks): set per match
         self.stats = {"score": 0, "goals": 0, "saves": 0, "epic": 0, "clears": 0, "touches": 0, "aerials": 0,
                       "resets": 0, "boost": 0.0, "fastest": 0.0, "dribble": 0.0}
 
@@ -78116,6 +78120,10 @@ class AerialCar:
         self.turn_t = 0.0               # (drawing) time since the car turned round on the ground
         self.roll_t = 9.0               # (drawing) time since an air roll
         self.wheel_ball = False
+        self.holding = False            # (assisted) the ball is held on the car
+        self.grip_cd = 0
+        self.grip_side = 1.0            # +1 the ball is held on the roof, -1 on the wheels (flip resets)
+        self.catch_try = False
 
     def up(self) -> tuple:
         return -self.fy * self.roll, self.fx * self.roll
@@ -78126,13 +78134,16 @@ class AerialCar:
                 self.flip_t, self.flip_s, int(self.flip_cancel), self.flip_age, self.ground_lock, self.air_t,
                 self.no_boost_t, int(self.boosting), int(self.ball_touch), int(self.ball_prev), self.hit_cd,
                 self.stuck_t, int(self.prev_jump), int(self.prev_roll), self.turn_t, self.roll_t, int(self.wheel_ball),
-                (self.body_n or (0.0, 0.0))[0], (self.body_n or (0.0, 0.0))[1], int(self.body_n is not None))
+                (self.body_n or (0.0, 0.0))[0], (self.body_n or (0.0, 0.0))[1], int(self.body_n is not None),
+                int(self.holding), self.grip_cd, self.grip_side, int(self.catch_try))
 
     def restore(self, s: tuple) -> None:
         (self.x, self.y, self.vx, self.vy, self.fx, self.fy, self.roll, self.w, g, self.gnx, self.gny, self.boost,
          j, self.jump_t, jh, ha, self.flip_t, self.flip_s, fc, self.flip_age, self.ground_lock, self.air_t,
-         self.no_boost_t, b, bt, bp, self.hit_cd, self.stuck_t, pj, pr, self.turn_t, self.roll_t, wb, bnx, bny, bn) = s
+         self.no_boost_t, b, bt, bp, self.hit_cd, self.stuck_t, pj, pr, self.turn_t, self.roll_t, wb, bnx, bny, bn, hd, self.grip_cd, self.grip_side, ct) = s
+        self.catch_try = bool(ct)
         self.body_n = (bnx, bny) if bn else None
+        self.holding = bool(hd)
         self.ground, self.jumped, self.jump_held, self.has_action = bool(g), bool(j), bool(jh), bool(ha)
         self.flip_cancel, self.boosting, self.ball_touch, self.ball_prev = bool(fc), bool(b), bool(bt), bool(bp)
         self.prev_jump, self.prev_roll, self.wheel_ball = bool(pj), bool(pr), bool(wb)
@@ -78315,6 +78326,8 @@ class AerialSim:
                 self._car_arena(c, h)
         for c in cars:
             self._after(c)
+            if c.assist["grip"] > 0:
+                self._grip(c)
         sp = _ae_sqrt(b.vx * b.vx + b.vy * b.vy)
         if sp > t["ball_max"]:
             b.vx, b.vy = b.vx / sp * t["ball_max"], b.vy / sp * t["ball_max"]
@@ -78363,6 +78376,8 @@ class AerialSim:
                     if c.vy < 0:
                         c.vy *= t["flip_fall_keep"]
                     c.flip_t, c.flip_s, c.flip_cancel, c.flip_age = t["flip_t"], s, False, 0.0
+                    if c.holding and c.assist["shot"] > 0 and inp.aim >= 0:
+                        self._assist_shot(c, inp.aim)
                     c.w = -c.roll * s * _AE_TAU / t["flip_t"]
                     self.ev.append(("flip", c.team, s))
                 else:
@@ -78372,6 +78387,8 @@ class AerialSim:
             if roll_edge:
                 c.roll = -c.roll
                 c.roll_t = 0.0
+                if c.holding:
+                    c.grip_side = -c.grip_side
             if not inp.jump:
                 c.jump_held = False
         if c.ground and roll_edge:
@@ -78400,9 +78417,10 @@ class AerialSim:
         t = self.t
         c.vy -= t["gravity"] * h
         if c.boosting:
-            c.vx += c.fx * t["boost_acc"] * h
-            c.vy += c.fy * t["boost_acc"] * h
-            use = t["boost_use"] * h
+            ba = t["boost_acc"] * c.assist["speed"]
+            c.vx += c.fx * ba * h
+            c.vy += c.fy * ba * h
+            use = t["boost_use"] * h * c.assist["boost"]
             c.boost = max(0.0, c.boost - use)
             c.stats["boost"] += use
             c.no_boost_t = 0.0
@@ -78467,8 +78485,9 @@ class AerialSim:
                 lim = t["air_w_acc"] * h
                 c.w += lim if dw > lim else (-lim if dw < -lim else dw)
         sp = _ae_sqrt(c.vx * c.vx + c.vy * c.vy)
-        if sp > t["car_max"]:
-            c.vx, c.vy = c.vx / sp * t["car_max"], c.vy / sp * t["car_max"]
+        cm = t["car_max"] * c.assist["speed"]
+        if sp > cm:
+            c.vx, c.vy = c.vx / sp * cm, c.vy / sp * cm
 
     # -- contacts
     def _car_arena(self, c: AerialCar, h: float) -> None:
@@ -78540,16 +78559,24 @@ class AerialSim:
 
     def _car_ball(self, c: AerialCar) -> None:
         t, b = self.t, self.ball
+        if c.grip_cd > 40:
+            return                                       # the ball just left on an assisted shot: let it clear
         R = t["ball_r"]
         ax, ay = c.x - c.fx * c.hl, c.y - c.fy * c.hl
         bx, by = c.x + c.fx * c.hl, c.y + c.fy * c.hl
         qx, qy = _ae_seg_closest(ax, ay, bx, by, b.x, b.y)
         dx, dy = b.x - qx, b.y - qy
         L = _ae_sqrt(dx * dx + dy * dy)
-        if L >= R + c.r or L < 1e-9:
+        cr = c.r
+        if not c.holding and b.vx * b.vx + b.vy * b.vy > 1.44e6:
+            cr += c.assist["reach"]                      # (bots, more with rank: a little more reach on fast balls)
+            own = -self.arena.hw if c.team == 0 else self.arena.hw
+            if c.assist["guard"] > 0 and abs(b.x - own) < 800 and b.vx * own > 0:
+                cr += c.assist["guard"]                  # and more again on a shot at its own goal: the saves
+        if L >= R + cr or L < 1e-9:
             return
         nx, ny = dx / L, dy / L
-        pen = R + c.r - L
+        pen = R + cr - L
         mb, mc = t["ball_mass"], t["car_mass"]
         if self.ball_held and not self.frozen:
             self.ball_held = False                       # the first touch after GO lets it go
@@ -78611,6 +78638,8 @@ class AerialSim:
                 b.vx += hx / hL * k
                 b.vy += hy / hL * k
             c.hit_cd = 6
+            if c.assist["steer"] > 0:
+                self._steer(c)
             sp = _ae_sqrt(b.vx * b.vx + b.vy * b.vy)
             self.last_touch = c.team
             c.stats["touches"] += 1
@@ -78644,6 +78673,82 @@ class AerialSim:
             if -vn > 400:
                 self.ev.append(("bump", -vn))
 
+    def _steer(self, c: AerialCar) -> None:
+        """(bots, more with rank) a hit goes more where it should: turned toward the other goal and a little harder.
+        A clear from in front of its own goal goes up the pitch instead of in."""
+        b, t = self.ball, self.t
+        sp = _ae_sqrt(b.vx * b.vx + b.vy * b.vy)
+        if sp < 1.0:
+            return
+        gx = self.arena.hw + 200.0 if c.team == 0 else -self.arena.hw - 200.0
+        gy = self.arena.lip + t["goal_h"] * 0.45
+        dx, dy = gx - b.x, gy - b.y
+        L = _ae_sqrt(dx * dx + dy * dy) or 1.0
+        k = c.assist["steer"]
+        vx = b.vx / sp * (1.0 - k) + dx / L * k
+        vy = b.vy / sp * (1.0 - k) + dy / L * k
+        n = _ae_sqrt(vx * vx + vy * vy) or 1.0
+        sp *= 1.0 + c.assist["power"]
+        mx = t["ball_max"]
+        sp = mx if sp > mx else sp
+        b.vx, b.vy = vx / n * sp, vy / n * sp
+
+    def _assist_shot(self, c: AerialCar, aim: int) -> None:
+        """(Ruben) the flick or pinch off a held ball: the ball leaves at full shot speed where the bot aimed."""
+        b = self.ball
+        dx, dy = aerial_aim_dir(aim)
+        sp = c.assist["shot"]
+        b.vx, b.vy = dx * sp, dy * sp
+        b.w = -dx * 4.0
+        c.holding = False
+        c.grip_side = 1.0
+        c.grip_cd = 60
+        self.last_touch = c.team
+        c.stats["touches"] += 1
+        self.ev.append(("touch", c.team, sp, not c.ground))
+
+    def _grip(self, c: AerialCar) -> None:
+        """(Ruben, top ranks) the ball stays on the roof: inside a small pocket above the car it is pulled onto the
+        roof and moves with the car. It works on the ground and in the air."""
+        b = self.ball
+        if c.grip_cd > 0:
+            c.grip_cd -= 1
+            c.holding = False
+            return
+        g = c.assist["grip"]
+        if g <= 0 or self.ball_held or self.frozen:
+            c.holding = False
+            return
+        ux, uy = c.up()
+        R = self.t["ball_r"]
+        side = c.grip_side
+        off = c.r + R + (4.0 if side > 0 else -3.0)      # on the wheels it touches, so each touch can reset
+        px, py = c.x + ux * side * off, c.y + uy * side * off
+        dx, dy = b.x - px, b.y - py
+        d = _ae_sqrt(dx * dx + dy * dy)
+        rvx, rvy = b.vx - c.vx, b.vy - c.vy
+        ca = c.assist.get("catch", 0.0)
+        caught = False
+        if ca > 0 and c.holding and d < 260.0:
+            caught = True
+        elif ca > 0 and c.ball_touch and not c.ball_prev:
+            # a new touch: caught this time? (a fixed function of the step, so replays match)
+            h = ((self.tick * 2654435761) ^ (c.team * 40503 + 12345)) & 0xFFFF
+            caught = h < ca * 65536.0
+            c.catch_try = caught
+        elif ca > 0 and c.ball_touch:
+            caught = c.catch_try
+        if not caught and (d > 50.0 + 120.0 * g or (rvx * rvx + rvy * rvy) > (900.0 * g + 200.0) ** 2):
+            if c.holding or c.grip_side < 0:
+                c.grip_side = 1.0
+            c.holding = False
+            return
+        k = 0.25 + 0.6 * g
+        b.vx += (c.vx - dx * 9.0 - b.vx) * k
+        b.vy += (c.vy - dy * 9.0 - b.vy) * k
+        b.w *= 0.8
+        c.holding = True
+
     def _after(self, c: AerialCar) -> None:
         t = self.t
         if c.ground_lock > 0:
@@ -78668,7 +78773,7 @@ class AerialSim:
         t = self.t
         b = self.ball
         b.x, b.y, b.vx, b.vy, b.w, b.a = 0.0, t["ball_r"], 0.0, 0.0, 0.0, 0.0
-        dist = (1000.0, 860.0, 1140.0)[variant % 3]
+        dist = (900.0, 780.0, 1020.0)[variant % 3]
         for c in self.cars:
             s = -1.0 if c.team == 0 else 1.0
             c.reset(s * dist, c.r, -s)
@@ -79038,37 +79143,64 @@ def aerial_jump_time(height: float, dj: bool) -> float:
     return None
 
 
-# The roster: name, rank, MMR, what kind of player it is, and its limits. "lv" (0..1) sets everything that is not
-# written out; traits change it. Ruben is the only Rubenite bot.
+# The roster: one bot for each of the 10 ranks, each clearly harder than the one below. "lv" (0..1, Ruben past it)
+# sets reading, reactions, decisions and how consistent its touches are; the kit below adds the mechanics it has
+# learnt and the hidden help it gets. Columns: key, name, rank, rating shown, level, what kind of player it is, traits.
 AERIAL_BOT_ROSTER = [
-    ("pip", "Pip", "Rookie", 40, 0.00, "Drives at the ball. Rarely jumps.", {"jump_will": 0.25, "aggro": 0.9}),
-    ("dusty", "Dusty", "Rookie", 130, 0.05, "Jumps late, every time.", {"late": 0.10}),
-    ("wobble", "Wobble", "Rookie", 220, 0.10, "Always overshoots.", {"overshoot": 0.45}),
-    ("bolt", "Bolt", "Rookie", 310, 0.15, "Fast, and wastes all its boost.", {"waste": 0.7}),
-    ("nudge", "Nudge", "Rookie", 400, 0.20, "Stays back and pokes the ball.", {"aggro": -0.6, "poke": 1}),
-    ("sprocket", "Sprocket", "Rookie", 480, 0.25, "Trying its first aerials.", {"aerial_early": 0.12}),
-    ("ember", "Ember", "Challenger", 590, 0.31, "The gatekeeper. Solid on the ground.", {"ground": 0.12}),
-    ("rattle", "Rattle", "Challenger", 730, 0.37, "Flips into everything.", {"flippy": 1}),
-    ("skid", "Skid", "Challenger", 870, 0.43, "A defender who clears off the walls.", {"aggro": -0.45, "save": 0.1}),
-    ("vapor", "Vapor", "Challenger", 1010, 0.48, "Quick aerials, sloppy finishes.", {"aerial_early": 0.15, "aim": 1.7}),
-    ("jinx", "Jinx", "Challenger", 1150, 0.53, "Fakes kickoffs and waits for your mistake.", {"fake_kick": 0.4}),
-    ("halo", "Halo", "Elite", 1320, 0.58, "The gatekeeper. Clean aerials.", {"aim": 0.7}),
-    ("torque", "Torque", "Elite", 1500, 0.63, "Power hits and wall play.", {"flippy": 1, "power": 1}),
-    ("mirage", "Mirage", "Elite", 1680, 0.67, "Patient. Fakes, then punishes.", {"aggro": -0.5, "fake": 0.35}),
-    ("cinder", "Cinder", "Elite", 1860, 0.71, "Starting to air dribble.", {"dribbler": 1}),
-    ("quartz", "Quartz", "Elite", 2040, 0.75, "Reads the back wall. Some double taps.", {"backboard": 0.35}),
-    ("vex", "Vex", "Champion", 2240, 0.80, "The gatekeeper. Consistent air dribbles.", {"dribbler": 1, "aim": 0.8}),
-    ("zenith", "Zenith", "Champion", 2460, 0.84, "Lives on the ceiling and the high ball.", {"high": 1}),
-    ("nova", "Nova", "Champion", 2680, 0.88, "Flip resets.", {"resetter": 1}),
-    ("tempest", "Tempest", "Champion", 2900, 0.92, "Relentless pressure.", {"aggro": 0.5, "pressure": 1}),
-    ("apex", "Apex", "Champion", 3120, 0.96, "The last gate. Has everything.", {"dribbler": 1, "resetter": 1, "backboard": 0.3}),
-    ("ruben", "Ruben", "Rubenite", 4600, 1.30, "Ruben. Beyond human.", {"machine": 1}),
+    ("pip", "Pip", "Rookie 1", 50, 0.20, "Drives at the ball and boosts into every kickoff.", {}),
+    ("dusty", "Dusty", "Rookie 2", 150, 0.34, "Learning to jump, double jump and flip into the ball.", {}),
+    ("sprocket", "Sprocket", "Rookie 3", 250, 0.47, "First aerials and wall clears. Starting to defend.", {}),
+    ("ember", "Ember", "Challenger 1", 350, 0.58, "Fast aerials, wave dashes and calm kickoffs.", {}),
+    ("jinx", "Jinx", "Challenger 2", 450, 0.68, "Carries the ball and flicks it past you.", {}),
+    ("halo", "Halo", "Challenger 3", 550, 0.77, "Air dribbles and ground pinches.", {}),
+    ("vex", "Vex", "Master 1", 650, 0.86, "Ceiling pinches and musty flicks.", {}),
+    ("nova", "Nova", "Master 2", 750, 0.94, "Flip resets.", {}),
+    ("apex", "Apex", "Master 3", 850, 1.03, "Chains flip resets. Almost flawless.", {}),
+    ("ruben", "Ruben", "Rubenite", 950, 1.35, "Ruben. Beyond human.", {"machine": 1}),
 ]
 
+# What each bot has learnt beyond the basics, and the hidden help it gets: boost (less boost used for the same
+# push), grip (the ball stays on the car in dribbles and resets), shot (speed of a flick or pinch off a held ball),
+# catch (the chance a touch catches the ball on the car; Ruben always), reach (a little more reach on fast balls),
+# keep (how often it reads a possession play and waits in goal for it), plays (possession plays it knows),
+# play_rate (how often it goes for one when the ball is its own), resets (how many flip resets it chains), touch (how cleanly its plays come off).
+AERIAL_BOT_KIT = {
+    "pip": {"boost": 1.00, "grip": 0.0, "shot": 0.0, "catch": 0.00, "reach": 0.0, "keep": 0.00, "steer": 0.00, "power": 0.00,
+            "plays": [], "play_rate": 0.0, "resets": 0},
+    "dusty": {"boost": 0.95, "grip": 0.0, "shot": 0.0, "catch": 0.02, "reach": 4.0, "keep": 0.00, "steer": 0.08, "power": 0.03,
+              "plays": [], "play_rate": 0.0, "resets": 0},
+    "sprocket": {"boost": 0.90, "grip": 0.0, "shot": 0.0, "catch": 0.04, "reach": 8.0, "keep": 0.20, "steer": 0.16, "power": 0.06,
+                 "plays": [], "play_rate": 0.0, "resets": 0},
+    "ember": {"boost": 0.85, "grip": 0.0, "shot": 0.0, "catch": 0.07, "reach": 12.0, "keep": 0.30, "steer": 0.24, "power": 0.09,
+              "plays": [], "play_rate": 0.0, "resets": 0},
+    "jinx": {"boost": 0.80, "grip": 0.4, "shot": 2700.0, "catch": 0.10, "reach": 16.0, "keep": 0.40, "steer": 0.32, "power": 0.12,
+             "plays": ["flick"], "play_rate": 0.45,
+             "resets": 0, "touch": 0.6},
+    "halo": {"boost": 0.74, "grip": 0.55, "shot": 3000.0, "catch": 0.14, "reach": 20.0, "keep": 0.50, "steer": 0.40, "power": 0.15,
+             "plays": ["flick", "air_dribble", "ground_pinch"],
+             "play_rate": 0.6, "resets": 0, "touch": 0.7},
+    "vex": {"boost": 0.68, "grip": 0.7, "shot": 3300.0, "catch": 0.19, "reach": 24.0, "keep": 0.65, "steer": 0.48, "power": 0.18,
+            "plays": ["flick", "air_dribble", "ground_pinch", "ceiling_pinch", "musty"], "play_rate": 0.7, "resets": 0,
+            "touch": 0.8},
+    "nova": {"boost": 0.62, "grip": 0.82, "shot": 3600.0, "catch": 0.25, "reach": 28.0, "keep": 0.80, "steer": 0.56, "power": 0.21,
+             "plays": ["flick", "air_dribble", "ceiling_pinch", "musty", "resets"], "play_rate": 0.8, "resets": 2,
+             "touch": 0.88},
+    "apex": {"boost": 0.56, "grip": 0.92, "shot": 3900.0, "catch": 0.32, "reach": 32.0, "keep": 0.90, "steer": 0.64, "power": 0.24,
+             "plays": ["flick", "air_dribble", "ground_pinch", "ceiling_pinch", "musty", "resets"], "play_rate": 0.9,
+             "resets": 4, "touch": 0.94},
+    "ruben": {"boost": 0.45, "grip": 1.0, "shot": 5600.0, "catch": 1.00, "reach": 40.0, "keep": 1.00, "steer": 0.85, "power": 0.35,
+              "plays": ["flick", "air_dribble", "ground_pinch", "ceiling_pinch", "musty", "resets"], "play_rate": 1.0,
+              "resets": 6, "touch": 1.0},
+}
+
+AERIAL_BOT_TAGS = {"pip": "the basics", "dusty": "jumps and flips", "sprocket": "first aerials",
+                   "ember": "fast aerials", "jinx": "flicks", "halo": "air dribbles", "vex": "pinches and mustys",
+                   "nova": "flip resets", "apex": "reset chains", "ruben": "beyond human"}
+
 # Mechanics: the level where a bot starts trying each one. How often it comes off rises from there.
-AERIAL_MECH_AT = {"jump": 0.0, "dj": 0.10, "flip_hit": 0.18, "aerial": 0.28, "wave": 0.36, "fast_aerial": 0.44,
-                  "half_flip": 0.46, "flick": 0.52, "air_dribble": 0.66, "double_tap": 0.70, "ceiling": 0.76,
-                  "flip_reset": 0.82}
+AERIAL_MECH_AT = {"jump": 0.0, "dj": 0.25, "flip_hit": 0.30, "aerial": 0.40, "wave": 0.50, "fast_aerial": 0.50,
+                  "half_flip": 0.50, "flick": 0.60, "air_dribble": 0.70, "double_tap": 0.70, "ceiling": 0.80,
+                  "flip_reset": 0.88}
 
 
 def aerial_bot_profile(key: str, lv_override: float = None) -> dict:
@@ -79077,29 +79209,44 @@ def aerial_bot_profile(key: str, lv_override: float = None) -> dict:
     k, name, rank, mmr, lv, about, tr = row
     if lv_override is not None:
         lv = lv_override
-    L = max(0.0, min(1.0, lv))
-    q = 1.0 - L
+    # One scale for everything: 0 (a first-day player) to 1 (the best human), and past 1 Ruben. Every limit moves
+    # smoothly with it, so each bot is a real step above the one below.
+    L = max(0.0, min(1.3, lv))
+    H = min(1.0, L)                       # the human part of the scale
+    q = 1.0 - H
+    X = max(0.0, (L - 1.0) / 0.3)         # past human: 0 .. 1 (Ruben)
+    e = 1.0 - X                           # small human errors fade out past 1
     machine = bool(tr.get("machine"))
     p = {
         "key": k, "name": name, "rank": rank, "mmr": mmr, "lv": lv, "about": about,
-        "react": 1 if machine else int(round((0.46 - 0.37 * L) * AERIAL_HZ)),   # steps it sees late
-        "comp": 1.0 if machine else 0.15 + 0.80 * L,           # how well it makes up for that delay
-        "replan": 3 if machine else max(4, int(round(18 - 13 * L))),
-        "horizon": 4.0 if machine else 1.2 + 2.4 * L,
-        "read": 0.0 if machine else 0.30 * q ** 1.4 + 0.015,    # misreads the ball's speed by this share
-        "aim": 0.0 if machine else (0.42 * q ** 1.3 + 0.025) * tr.get("aim", 1.0),   # radians
-        "timing": 0.0 if machine else 0.16 * q ** 1.3 + 0.008,  # seconds
-        "late": (0.0 if machine else 0.05 * q) + tr.get("late", 0.0),
-        "whiff": 0.0 if machine else 0.22 * q ** 2,
-        "blunder": 0.0 if machine else 0.5 * q ** 1.6,          # a plain bad decision now and then
-        "jump_will": tr.get("jump_will", 0.35 + 0.65 * min(1.0, L * 3)),
-        "aggro": tr.get("aggro", 0.0) + (0.6 * q if not machine else 0.0),   # high: chases the ball
-        "position": 1.0 if machine else 0.15 + 0.8 * L,
-        "waste": tr.get("waste", 0.0 if machine else 0.35 * q),
-        "overshoot": tr.get("overshoot", 0.0 if machine else 0.15 * q),
-        "recover": 1.0 if machine else 0.25 + 0.75 * L,
-        "save": min(1.0, (1.0 if machine else 0.25 + 0.7 * L) + tr.get("save", 0.0)),
+        "react": max(1, int(round((0.38 * q ** 1.2 + 0.07 * e) * AERIAL_HZ))),   # steps it sees late
+        "comp": 0.15 + 0.80 * H + 0.05 * X,              # how well it makes up for that delay
+        "replan": max(3, int(round(4 + 20 * q - X))),
+        "horizon": 1.0 + 3.0 * H,
+        "read": 0.50 * q ** 1.5 + 0.012 * e,             # misreads the ball's speed by this share
+        "aim": (0.60 * q ** 1.4 + 0.02 * e) * tr.get("aim", 1.0),   # radians
+        "timing": 0.25 * q ** 1.4 + 0.008 * e,           # seconds
+        "late": 0.06 * q + tr.get("late", 0.0),
+        "whiff": 0.45 * q ** 1.7,
+        "blunder": 0.8 * q ** 1.2,                       # a plain bad decision now and then
+        "jump_will": tr.get("jump_will", min(1.0, 0.3 + 0.7 * min(1.0, H * 2.5) + X)),
+        "aggro": 0.5 * tr.get("aggro", 0.0) + 0.6 * q,   # high: chases every ball (rookies)
+        "position": 0.15 + 0.85 * H,
+        "side_sense": min(1.0, 0.15 + 0.85 * H ** 0.7 + X),   # gets behind the ball before hitting it
+        "touch_err": 230.0 * q ** 1.3 + 25.0 * e,          # how far off its contact point is (units)
+        "daze": 0.8 * q ** 2.5,                                  # share of time lost in the play is about 0.6 x this
+        "checks": int(round(9 * H ** 1.3 + 2 * X)),      # touches it thinks through before committing
+        "air_acc": 0.78 + 0.12 * H + 0.02 * X,           # how well it judges what an aerial can reach
+        "boost_ctrl": 0.97 - 0.12 * H - 0.03 * X,        # how well it points before it boosts in the air
+        "use_boost": min(1.0, 0.3 + 0.7 * H ** 0.8),     # beginners forget to boost
+        "kick_hard": 0.75 * q ** 1.5,                    # beginners boost into kickoffs (it rebounds into their goal)
+        "kick_read": 0.0,
+        "waste": tr.get("waste", 0.35 * q),
+        "overshoot": tr.get("overshoot", 0.15 * q),
+        "recover": min(1.0, 0.25 + 0.75 * H + X),
+        "save": min(1.0, 0.25 + 0.7 * H + 0.05 * X + tr.get("save", 0.0)),
         "machine": machine,
+        "kit": dict(AERIAL_BOT_KIT.get(k, AERIAL_BOT_KIT["pip"])),
         "traits": dict(tr),
         "mech": {},
     }
@@ -79113,16 +79260,24 @@ def aerial_bot_profile(key: str, lv_override: float = None) -> dict:
             at -= 0.05
         if m == "double_tap" and tr.get("backboard"):
             at -= 0.06
-        if machine:
-            p["mech"][m] = 1.0
-        elif L >= at:
-            p["mech"][m] = max(0.25, min(0.96, 0.35 + (L - at) * 2.2))
+        if L >= at:
+            p["mech"][m] = max(0.25, min(0.96 + 0.04 * X, 0.35 + (L - at) * 2.2))
     if tr.get("ground") and "jump" in p["mech"]:
         p["timing"] *= 0.7
     return p
 
 
 AERIAL_BOTS = {r[0]: aerial_bot_profile(r[0]) for r in AERIAL_BOT_ROSTER}
+
+def aerial_apply_assist(m, team: int, key: str) -> None:
+    """The hidden help (as the owner decided): less boost used for the same push, the ball sticking to the car in
+    dribbles and resets, and full-speed flicks and pinches. It lives in the sim, so replays play back the same."""
+    k = AERIAL_BOT_KIT.get(key or "")
+    if k:
+        m.sim.cars[team].assist = {"boost": k["boost"], "grip": k["grip"], "shot": k["shot"], "catch": k["catch"],
+                                   "reach": k.get("reach", 0.0), "steer": k.get("steer", 0.0),
+                                   "power": k.get("power", 0.0), "guard": k.get("guard", 0.0),
+                                   "speed": k.get("speed", 1.0)}
 
 
 _AE_LIP = AerialArena().lip
@@ -79160,6 +79315,10 @@ class AerialBot:
         self.opp_overcommit = 0.5
         self.aim_noise = 0.0
         self.whiffing = False
+        self.boost_ok = True
+        self.side_care = True
+        self.touch_off = 0.0
+        self.daze_until = 0
         self.prev = AerialInput()
         self.roll_wait = 0
         self.recover_t = 0
@@ -79238,7 +79397,7 @@ class AerialBot:
         if car.ground:
             vy += 292.0 + (292.0 if self.p["mech"].get("fast_aerial") else 120.0)
         tm = 0.15
-        acc = 992.0 * (0.92 if self.p["machine"] else 0.8)
+        acc = 992.0 * self.p["air_acc"]
         while tm <= tmax:
             dx = px - (x + vx * tm)
             dy = py - (y + vy * tm - 0.5 * g * tm * tm)
@@ -79356,10 +79515,19 @@ class AerialBot:
             mode = self.RECOVER
         if me.ground and me.ball_touch and sim.ball.y > me.y + 60 and "flick" in p["mech"]:
             mode = self.DRIBBLE
+        if p["kit"]["plays"] and self._can_show(m, me):
+            mode = "show"
+        elif mode in (self.SHADOW, "back", self.ATTACK) and self._keeper(m, me, mode):
+            mode = "keep"
         self.mode = mode
         # a few mistakes, decided once a plan
         self.whiffing = self.rng.random() < p["whiff"] * (1.6 if mode == self.SAVE else 1.0)
         self.aim_noise = self.rng.gauss(p["aim"])
+        self.touch_off = self.rng.gauss(p["touch_err"])
+        self.boost_ok = self.rng.random() < p["use_boost"]
+        self.side_care = self.rng.random() < p["side_sense"]
+        if self.rng.random() < p["daze"] * p["replan"] / AERIAL_HZ and sim.tick >= self.daze_until:
+            self.daze_until = sim.tick + int(self.rng.uniform(0.35, 0.9) * AERIAL_HZ)
         if p["waste"] > 0 and self.rng.random() < p["waste"] * 0.25:
             self.waste_until = sim.tick + int(self.rng.uniform(0.3, 1.2) * AERIAL_HZ)
 
@@ -79404,7 +79572,7 @@ class AerialBot:
                 reach = R + me.r * 0.6 + (me.hl * 0.6 if kind == "a" else me.hl * 0.25)
                 cx, cy = x - Dx * reach, y - Dy * reach
                 if kind == "g":
-                    if y - R > AERIAL_DJ_PEAK + me.r or not mine_side:
+                    if y - R > AERIAL_DJ_PEAK + me.r or (not mine_side and self.side_care):
                         continue                           # too high, or it cannot get round the ball
                     tr, how = self._reach(me, cx, cy, tm + 0.5, False)
                     if how not in ("g", "j", "d"):
@@ -79448,9 +79616,7 @@ class AerialBot:
         thresh = -0.35 - 0.4 * p["aggro"]
         out = [c for c in out if c["value"] > thresh]
         # think it through: where would the ball go after this touch? (better bots check more touches, more often)
-        checks = 0 if p["position"] < 0.2 else (2 if p["position"] < 0.5 else (4 if p["position"] < 0.85 else 7))
-        if p["machine"]:
-            checks = 10
+        checks = p["checks"]
         if checks and out:
             out.sort(key=lambda c: -c["value"])
             for c in out[:checks]:
@@ -79534,28 +79700,58 @@ class AerialBot:
         tick = sim.tick
         # jump state machine
         jump = False
+        dj_now = False
         if self.jumping > 0:
             jump = True
             self.jumping -= 1
         elif self.release_jump:
             self.release_jump = False
         if self.dj_at is not None and tick >= self.dj_at and not me.ground:
-            self.dj_at = None
-            if not self.prev.jump:
-                jump = True
-                inp.ix, inp.iy = 0, 0
+            if self.prev.jump:                          # still holding the first jump: let go for one step
                 self.jumping = 0
+                self.dj_at = tick + 1
+                out = AerialInput()
+                self.prev = out
+                return out
+            self.dj_at = None
+            jump = True
+            dj_now = True
+            self.jumping = 0
         if self.flip_at is not None and tick >= self.flip_at and not me.ground:
+            if self.prev.jump:
+                self.jumping = 0
+                self.flip_at = tick + 1
+                out = AerialInput()
+                out.aim = self.prev.aim
+                self.prev = out
+                return out
             self.flip_at = None
-            if not self.prev.jump and me.has_action:
+            if me.has_action:
                 inp.ix = int(self.flip_dir)
                 inp.iy = 0
                 inp.jump = True
                 self.prev = inp
                 return inp
         mode = self.mode
-        if mode == "back":
+        if me.ground and me.gny < 0.6 and self.jumping == 0 and self.flip_at is None:
+            # on a wall, the ceiling or the back of a goal: jump off it (pointing home) rather than drive about on it
+            if self.prev.jump:
+                out = AerialInput()
+            else:
+                self.jumping = 8
+                out = AerialInput(jump=True)
+            self.prev = out
+            return out
+        if mode == "show":
+            out = self._show(m, me)
+            self.prev = out
+            return out
+        if tick < self.daze_until and me.ground:
+            out = AerialInput(ix=int(self.s) if (tick // 30) % 3 == 0 else 0)   # unsure: creeps, stops, creeps
+        elif mode == "back":
             out = self._race_back(m, me)
+        elif mode == "keep":
+            out = self._keep(m, me)
         elif mode == self.DRIBBLE:
             out = self._dribble(m, me)
         elif self.plan is not None and mode in (self.ATTACK, self.SAVE, self.CHALLENGE):
@@ -79565,6 +79761,8 @@ class AerialBot:
         else:
             out = self._shadow(m, me, ball, opp)
         out.jump = out.jump or jump or self._hop(m, me, out)
+        if dj_now:
+            out.ix = out.iy = 0                       # a double jump, not a flip
         if me.stuck_t > 0.1 and not self.prev.jump and self.rng.random() < 0.2 + 0.8 * p["recover"]:
             out.jump = True                                  # on the roof: jump to turn back over
         if tick < self.waste_until and me.boost > 0 and me.ground:
@@ -79595,7 +79793,7 @@ class AerialBot:
             hit = "ball"
         if hit is None:
             return False
-        if not self.p["machine"] and self.rng.random() > 0.15 + 0.85 * self.p["position"]:
+        if self.rng.random() > 0.15 + 0.85 * self.p["position"]:
             return False
         self.jumping = 26 if hit == "ball" else 10
         if hit == "ball":
@@ -79643,7 +79841,7 @@ class AerialBot:
         inp.ix = int(s)
         if v > need * 1.15 + 80 and not arrive_fast:
             inp.ix = 0 if v < need * 1.6 else -int(s)
-        if need > 1350 and me.boost > 0 and me.fx * s > 0.5 and v < 2250:
+        if need > 1350 and me.boost > 0 and me.fx * s > 0.5 and v < 2250 and self.boost_ok:
             inp.boost = True
 
     def _aim_at(self, dx: float, dy: float) -> int:
@@ -79665,7 +79863,7 @@ class AerialBot:
             self.plan = None
             self.next_plan = tick + 2
             return self._recover(m, me) if not me.ground else inp
-        cx = pl["cx"] + self.aim_noise * 60.0
+        cx = pl["cx"] + self.aim_noise * 60.0 + self.touch_off
         how = pl["how"]
         if how in ("g", "j", "d") and me.ground:
             # drive so the car is at cx at the right time; jump when the climb time is left
@@ -79677,7 +79875,7 @@ class AerialBot:
                 if self.whiffing:
                     late += 0.18 * (1 if self.rng.random() < 0.5 else -1)
                 if T <= tj + late and abs(cx - me.x) < 260 + abs(me.vx) * tj:
-                    if self.rng.random() < p["jump_will"] or p["machine"]:
+                    if self.rng.random() < p["jump_will"]:
                         pl["jumped"] = True
                         self.jumping = int(min(0.2, tj) * AERIAL_HZ) + 2
                         if how == "d":
@@ -79765,11 +79963,8 @@ class AerialBot:
         inp.aim = self._aim_at(ax, ay)
         dot = (me.fx * ax + me.fy * ay) / A
         need = A > 340.0
-        if p["machine"]:
-            inp.boost = me.boost > 0 and ((dot > 0.85 and need) or (dot > 0.97 and A > 200))
-        else:
-            sloppy = 0.0 if self.attempt.get("aerial", True) else 0.25
-            inp.boost = me.boost > 0 and dot > 0.82 + sloppy and A > 300.0
+        sloppy = 0.0 if self.attempt.get("aerial", True) else 0.2
+        inp.boost = me.boost > 0 and ((dot > p["boost_ctrl"] + sloppy and need) or (dot > 0.97 and A > 200))
         # last moment: flip into the ball
         dxb, dyb = b.x - me.x, b.y - me.y
         dist = _ae_sqrt(dxb * dxb + dyb * dyb)
@@ -79797,7 +79992,7 @@ class AerialBot:
                 self.roll_wait = 20
         if self.roll_wait > 0:
             self.roll_wait -= 1
-        if self.rng.random() < self.p["recover"] or self.p["machine"]:
+        if self.rng.random() < self.p["recover"]:
             inp.aim = self._aim_at(tx, ty)
         # wave dash: a flip just before landing, toward where it wants to go
         if "wave" in self.p["mech"] and me.has_action and fall and me.y < me.r + 45 and uy > 0.8 and me.air_t > 0.35:
@@ -79856,6 +80051,201 @@ class AerialBot:
             inp.boost = False
         return inp
 
+    def _keeper(self, m, me, mode) -> bool:
+        """Top bots read a possession play coming at them (the other car carrying or flicking it in their half) and
+        wait for it in goal instead of diving in, then save it from there. Decided once per threat."""
+        keep = self.p["kit"].get("keep", 0.0)
+        if keep <= 0:
+            return False
+        sim = m.sim
+        b, o = sim.ball, sim.cars[1 - self.team]
+        carrying = o.holding or (abs(b.x - o.x) < 190 and b.y > o.y + 40 and _ae_sqrt(b.vx * b.vx + b.vy * b.vy) < 1600)
+        coming = (o.x - b.x) * self.s > -60 and b.x * self.s < 900 and abs(b.x - o.x) < 520
+        threat = carrying or (coming and b.vx * self.s < 200 and b.y > 150)
+        if not threat:
+            self.keep_seen = False
+            return False
+        if mode == self.ATTACK and not (o.holding or not o.ground):
+            return False                                  # a loose ball it can win: go and win it
+        if not getattr(self, "keep_seen", False):
+            self.keep_seen = True
+            self.keep_take = self.rng.random() < keep
+        return self.keep_take
+
+    def _keep(self, m, me) -> AerialInput:
+        """In goal, facing out, a step off the line; the save itself comes from the normal plan once the shot goes."""
+        if not me.ground:
+            return self._recover(m, me)
+        inp = AerialInput()
+        own = self._goal_x(True)
+        target = own + self.s * 170
+        self._drive_to(me, target, 0.4, inp, arrive_fast=True)
+        b = m.sim.ball
+        if abs(me.x - target) < 90:
+            if (b.x - me.x) * me.fx < 0 and abs(me.vx) < 80:
+                inp.ix = 1 if b.x > me.x else -1          # turn to face the play
+            else:
+                inp.ix = 0
+            inp.boost = False
+        return inp
+
+    def _can_show(self, m, me) -> bool:
+        """Is the ball mine to play with? Near me, low, on my side of it, the other car clearly further away. Then it
+        goes for a possession play as often as its play rate says (decided once per chance, never flickering)."""
+        sim = m.sim
+        b, o = sim.ball, sim.cars[1 - self.team]
+        if me.holding or (self.mode == "show" and getattr(self, "show_lost", 0) < 30):
+            return True
+        d = abs(b.x - me.x)
+        do = _ae_sqrt((b.x - o.x) ** 2 + (b.y - o.y) ** 2)
+        mine = me.ground and me.gny > 0.9 and b.y < 330 and d < 700 and (me.x - b.x) * self.s < 60 and \
+            do > d + 250 and abs(b.vx) < 1500 and abs(b.x - self._goal_x(True)) > 700
+        if not mine:
+            self.chance_seen = False
+            return False
+        if not getattr(self, "chance_seen", False):          # a new chance: does it go for it this time?
+            self.chance_seen = True
+            self.chance_take = self.rng.random() < self.p["kit"]["play_rate"]
+        return self.chance_take
+
+    def _pick_play(self, m, me) -> str:
+        """Choose the play from what it knows and what it sees: a flick when the other car is close, a ground pinch
+        on a clear run, a musty under a car in the air, a ceiling pinch over a car on the ground, and flip resets when
+        it has time and room."""
+        kit = self.p["kit"]
+        plays = kit["plays"]
+        o = m.sim.cars[1 - self.team]
+        to_goal = (self._goal_x(False) - me.x) * self.s
+        gap = (o.x - me.x) * self.s
+        want = []
+        if "flick" in plays and 0 < gap < 900:
+            want += ["flick"] * 3
+        if "ground_pinch" in plays and (gap < 0 or gap > 1400) and to_goal < 2600:
+            want += ["ground_pinch"] * 2
+        if "musty" in plays and (o.y > 300 or not o.ground):
+            want += ["musty"] * 2
+        if "ceiling_pinch" in plays and o.ground:
+            want += ["ceiling_pinch"] * 2
+        if "resets" in plays and to_goal > 1600:
+            want += ["resets"] * (2 + kit["resets"])
+        if "air_dribble" in plays:
+            want += ["air_dribble"] * 2
+        if not want:
+            want = [plays[0]]
+        return self.rng.pick(want)
+
+    def _show(self, m, me) -> AerialInput:
+        """A possession play: pick the ball up onto the car, carry it, then the move it chose. Every finish is a
+        flip through the held ball, so it leaves at the bot's shot speed toward where it aimed."""
+        sim, p = m.sim, self.p
+        kit = p["kit"]
+        b, o = sim.ball, sim.cars[1 - self.team]
+        inp = AerialInput()
+        gx = self._goal_x(False)
+        to_goal = (gx - me.x) * self.s
+        tick = sim.tick
+        if not me.holding:
+            self.show_lost = getattr(self, "show_lost", 0) + 1
+            if self.show_lost > 30 or (not me.ground and self.show_lost > 6):
+                self.mode, self.plan, self.next_plan = self.SHADOW, None, tick
+                self.show_play = None
+                return self._recover(m, me) if not me.ground else inp
+            dx = b.x - me.x                              # get under it
+            inp.ix = 1 if dx > 8 else (-1 if dx < -8 else 0)
+            return inp
+        self.show_lost = 0
+        play = getattr(self, "show_play", None)
+        if play is None:
+            play = self.show_play = self._pick_play(m, me)
+            self.show_resets = 0
+            self.show_clean = self.rng.random() < kit.get("touch", 0.5)   # does this one come off cleanly
+            self.show_t0 = tick
+            # never the same twice: where it carries the ball to and when it lets go vary from play to play
+            self.show_ox = (self.rng.random() - 0.5) * 520
+            self.show_oy = (self.rng.random() - 0.5) * 240
+        if me.ground:
+            gap = (o.x - me.x) * self.s
+            if play == "flick":
+                go = 0 < gap < 520 or to_goal < 1500
+            elif play == "ground_pinch":
+                go = to_goal < 1300 or 0 < gap < 420
+            else:
+                go = to_goal < (2600 if play == "resets" else 1900) or 0 < gap < 520
+            if go:
+                self.jumping = 4 if play in ("flick", "ground_pinch") else 18
+                inp.jump = True
+                if play not in ("flick", "ground_pinch"):
+                    inp.aim = self._aim_at(self.s, 1.2)
+                    inp.boost = True
+                self.show_air_t = tick
+                return inp
+            inp.ix = int(self.s)
+            inp.boost = abs(me.vx) < (1900 if play == "ground_pinch" else 1300)
+            return inp
+        air_t = (tick - getattr(self, "show_air_t", tick)) * AERIAL_DT
+        if play in ("flick", "ground_pinch"):
+            if air_t > 0.12 and me.has_action:           # flip through the ball off a small hop
+                return self._finish(m, me, low=(play == "ground_pinch"))
+            return inp
+        if play == "resets":
+            # turn the wheels to the ball (air roll), then use the jump and touch again: each touch is a reset
+            if me.grip_side > 0:
+                inp.roll = not self.prev.roll
+            elif self.show_resets < kit["resets"] and air_t < 3.5:
+                if me.has_action and not self.prev.jump and (tick - getattr(self, "last_reset_t", 0)) > 18:
+                    inp.jump = True                      # a double jump off the reset: the ball comes back on
+                    self.show_resets += 1
+                    self.last_reset_t = tick
+            elif me.grip_side < 0 and not self.prev.roll:
+                inp.roll = True                          # wheels away again for the finish
+        ceil = AERIAL_TUNE["arena_h"]
+        ox, oy = getattr(self, "show_ox", 0.0), getattr(self, "show_oy", 0.0)
+        if play == "ceiling_pinch":
+            tx, ty, release = gx - self.s * (650 + ox * 0.5), ceil - 260, to_goal < 1050 + ox * 0.5
+        elif play == "musty":
+            tx, ty, release = gx - self.s * (760 + ox * 0.5), _AE_LIP + 330 + oy * 0.4, to_goal < 900 + ox * 0.5
+        else:
+            tx, ty, release = gx - self.s * (700 + ox), _AE_LIP + 560 + oy, to_goal < 1000 + ox
+            if play == "resets" and self.show_resets < kit["resets"] and air_t < 3.5:
+                release = False
+        if air_t > 2.8 + (0.8 if play == "resets" else 0.0) and me.grip_side > 0:
+            release = True                               # never dawdle with it: shoot
+        if release and me.has_action and me.grip_side > 0:
+            return self._finish(m, me, low=False)
+        dx, dy = tx - me.x, ty - me.y
+        L = _ae_sqrt(dx * dx + dy * dy) or 1.0
+        g = AERIAL_TUNE["gravity"]
+        ax, ay = (dx / L * 1700.0 - me.vx) * 1.2, (dy / L * 1700.0 - me.vy) * 1.2 + g
+        inp.aim = self._aim_at(ax, ay)
+        A = _ae_sqrt(ax * ax + ay * ay) or 1.0
+        inp.boost = (me.fx * ax + me.fy * ay) / A > 0.8 and me.boost > 0
+        return inp
+
+    def _finish(self, m, me, low: bool) -> AerialInput:
+        """The shot: flip through the held ball, aimed deep into the goal away from the keeper and under the bar."""
+        sim = m.sim
+        b, o = sim.ball, sim.cars[1 - self.team]
+        inp = AerialInput()
+        gx = self._goal_x(False)
+        gh, R = AERIAL_TUNE["goal_h"], AERIAL_TUNE["ball_r"]
+        lo_y, hi_y = _AE_LIP + R + 30, _AE_LIP + gh - R - 30        # where the ball's centre fits through the mouth
+        keeper_low = o.y < _AE_LIP + 200 and o.ground
+        want = hi_y - 10 if keeper_low and not low else lo_y + 10
+        tx = gx + self.s * 200
+        k = (gx - b.x) / ((tx - b.x) or 1.0)                        # how far along the line the goal line is
+        cross = max(lo_y, min(hi_y, want))
+        gy = b.y + (cross - b.y) / max(k, 0.05)
+        err = 0.0 if self.show_clean else self.rng.gauss(0.12)   # an unclean one can miss
+        a = aerial_atan2(gy - b.y, tx - b.x) + err
+        inp.aim = int((a / _AE_TAU) * AERIAL_AIM_STEPS + AERIAL_AIM_STEPS * 2 + 0.5) % AERIAL_AIM_STEPS
+        if self.prev.jump:
+            self.jumping = 0
+            return AerialInput(aim=inp.aim)
+        inp.jump = True
+        inp.ix = 1 if me.fx >= 0 else -1                # forward, through the ball
+        self.show_play = None
+        return inp
+
     def _dribble(self, m, me) -> AerialInput:
         """The ball is on the roof: carry it toward goal, then flick it (jump and flip)."""
         sim, p = m.sim, self.p
@@ -79888,14 +80278,12 @@ class AerialBot:
             fake = p["traits"].get("fake_kick", 0.0) + p["traits"].get("fake", 0.0) * 0.3
             # A boosted kickoff sends the ball to their back wall and it comes straight back at your own goal, so
             # good players arrive under control; low ranks just drive in.
-            if p["machine"]:
+            if self.rng.random() < p["kick_hard"]:
                 style = "hard"
-            elif p["lv"] >= 0.5 and r < 0.75 + 0.25 * p["lv"]:
+            elif self.rng.random() < p["kick_read"]:
                 style = "read"                         # watch the other car: contest a hard kickoff, else stay calm
             elif r < fake:
                 style = "fake"
-            elif r < fake + 0.10 + 0.6 * max(0.0, p["lv"] - 0.5) / 0.5:
-                style = "hard"                         # the top ranks win kickoffs with a flip
             elif r < fake + 0.22 and p["lv"] > 0.3:
                 style = "late"
             else:
@@ -79911,7 +80299,7 @@ class AerialBot:
         if style == "read":
             o = sim.cars[1 - self.team]
             coming = (ball[0] - o.x) * o.vx > 0 and abs(o.vx) > 950
-            if coming or (p["machine"] and abs(o.x - ball[0]) < abs(d) - 150):
+            if coming or (p["lv"] > 0.85 and abs(o.x - ball[0]) < abs(d) - 150):
                 style = self.kick = "hard"
             elif abs(d) < 900:
                 style = "slow"
@@ -79947,6 +80335,8 @@ def aerial_bot_match(key_a: str, key_b: str, seed: int = 1, kinds=(0, 0), match_
     m = AerialMatch(kinds, seed=seed, match_s=match_s, replays=False, vs_bot=True)
     a = AerialBot(0, key_a, seed, prof_a)
     b = AerialBot(1, key_b, seed + 1, prof_b)
+    aerial_apply_assist(m, 0, key_a)
+    aerial_apply_assist(m, 1, key_b)
     lim = max_ticks or int((m.length + 300) * AERIAL_HZ)
     n = 0
     while m.phase != m.OVER and n < lim:
@@ -79968,117 +80358,90 @@ import time as _ae_time
 import zlib as _ae_zlib
 
 AERIAL_NAME = "Rubenium League"
-AERIAL_RANKS = [("Rookie", 0, 60, 1.00, "#7BE0A0"), ("Challenger", 540, 80, 1.05, "#4FC3FF"),
-                ("Elite", 1260, 100, 1.10, "#9B7BFF"), ("Champion", 2160, 120, 1.18, "#F5C04A"),
-                ("Rubenite", 3240, 150, 1.25, "#FF2E63")]
-AERIAL_GATE = {1: ("ember", 3), 2: ("halo", 3), 3: ("vex", 5), 4: ("apex", 5)}     # into rank i: gatekeeper, best of
-AERIAL_K = 16.0
+# Four families, ten ranks: Rookie 1-3, Challenger 1-3, Master 1-3, Rubenite. Family: name, colour, emblem shape.
+AERIAL_FAMILIES = [("Rookie", "#7BE0A0", 0), ("Challenger", "#4FC3FF", 1), ("Master", "#F5C04A", 3),
+                   ("Rubenite", "#FF2E63", 4)]
+AERIAL_RANKS = [(0, 1), (0, 2), (0, 3), (1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3), (3, 0)]   # (family, tier)
+AERIAL_STEP = 5         # 5 more wins than losses against your rank's bot: up a rank; 5 more losses: down a rank
 AERIAL_ROMAN = ("I", "II", "III")
 
 
+def aerial_rank_name(i: int) -> str:
+    fam, tier = AERIAL_RANKS[i]
+    return AERIAL_FAMILIES[fam][0] + (" %d" % tier if tier else "")
+
+
 def aerial_rank(mmr: float) -> dict:
-    """Rank, tier (1-3) and division (I-III) for an MMR, and how far through the division it is."""
-    mmr = max(0.0, float(mmr))
-    ri = 0
-    for i, r in enumerate(AERIAL_RANKS):
-        if mmr >= r[1]:
-            ri = i
-    name, floor, step, mult, col = AERIAL_RANKS[ri]
-    k = int((mmr - floor) // step)
-    if k > 8:
-        k = 8
-    tier, div = k // 3 + 1, k % 3 + 1
-    lo = floor + k * step
-    frac = 1.0 if (ri == 4 and k == 8) else min(1.0, (mmr - lo) / step)
-    return {"rank": ri, "name": name, "tier": tier, "div": div, "colour": col, "step": step, "mult": mult,
-            "floor": floor, "lo": lo, "hi": lo + step, "frac": frac, "mmr": int(round(mmr)), "index": ri * 9 + k,
-            "label": "%s %d · Div %s" % (name, tier, AERIAL_ROMAN[div - 1])}
+    """A rating (0-1000: 100 a rank, 10 a win) to its rank: family, tier, colour, and the -5..+5 progress in it."""
+    mmr = max(0.0, min(1000.0, float(mmr)))
+    i = min(9, int(mmr // 100))
+    v = int(round((mmr - i * 100 - 50) / 10.0))
+    v = max(-5, min(5, v))
+    fam, tier = AERIAL_RANKS[i]
+    name, col, _shape = AERIAL_FAMILIES[fam]
+    return {"rank": fam, "name": name, "tier": tier, "index": i, "colour": col, "v": v, "frac": (v + 5) / 10.0,
+            "mmr": int(round(mmr)), "label": aerial_rank_name(i), "div": 0}
 
 
-def aerial_round(x: float) -> int:
-    return int(x + 0.5) if x >= 0 else -int(-x + 0.5)
-
-
-def aerial_mmr_change(me: float, opp: float, won: bool, mult: float) -> int:
-    e = 1.0 / (1.0 + 10.0 ** ((opp - me) / 400.0))
-    if won:
-        return max(1, aerial_round(AERIAL_K * (1.0 - e)))
-    return min(-1, aerial_round(-AERIAL_K * e * mult))
+def aerial_rating(i: int, v: int) -> int:
+    return i * 100 + 50 + 10 * v
 
 
 class AerialLadder:
-    """One player's place on the ladder: MMR, the series in progress, the shield after a promotion."""
+    """One player's place: the rank (0-9) and the progress in it (-5..+5). A win is +1, a loss -1; at +5 you go up a
+    rank, at -5 down one, starting the new rank at 0. Your ranked opponent is always your rank's bot."""
 
     def __init__(self, d: dict = None) -> None:
         d = d or {}
-        self.mmr = float(d.get("mmr", 0.0))
-        self.peak = float(d.get("peak", self.mmr))
-        self.series = d.get("series")               # {"to": rank, "need": wins, "w": 0, "l": 0, "bot": key}
-        self.shield = int(d.get("shield", 0))
-        self.shield_floor = float(d.get("shield_floor", 0.0))
-        self.reached = list(d.get("reached", [0]))
+        self.r = int(d.get("r", 0)) if "r" in d else 0
+        self.v = int(d.get("v", 0)) if "r" in d else 0
+        self.r = max(0, min(9, self.r))
+        self.v = max(-5, min(5, self.v))
+        self.peak = int(d.get("peak_r", self.r))
+        self.reached = list(d.get("reached_r", [0]))
+
+    @property
+    def mmr(self) -> float:
+        return float(aerial_rating(self.r, self.v))
+
+    @property
+    def series(self):
+        return None
 
     def to_dict(self) -> dict:
-        return {"mmr": self.mmr, "peak": self.peak, "series": self.series, "shield": self.shield,
-                "shield_floor": self.shield_floor, "reached": self.reached}
+        return {"r": self.r, "v": self.v, "peak_r": self.peak, "reached_r": self.reached}
 
     def opponents(self) -> list:
-        """The bots ranked can pick (the 3 of my rank closest to my MMR; Rubenite: Ruben, Apex and Tempest)."""
-        if self.series:
-            return [self.series["bot"]]
-        r = aerial_rank(self.mmr)
-        if r["rank"] == 4:
-            return ["ruben", "apex", "tempest"]
-        name = r["name"]
-        mine = [(abs(row[3] - self.mmr), row[0]) for row in AERIAL_BOT_ROSTER if row[2] == name]
-        mine.sort()
-        return [k for _d, k in mine[:3]]
+        return [AERIAL_BOT_ROSTER[self.r][0]]
 
-    def result(self, opp_mmr: float, won: bool) -> dict:
-        """Apply one ranked result. Returns what changed (for the results screen)."""
-        before = aerial_rank(self.mmr)
-        out = {"before": self.mmr, "rank_before": before["label"], "delta": 0, "series": None, "promoted": False,
-               "demoted": False, "first": False}
-        if self.series:
-            s = self.series
-            s["w" if won else "l"] += 1
-            out["series"] = dict(s)
-            need = s["need"] // 2 + 1
-            if s["w"] >= need:
-                floor = AERIAL_RANKS[s["to"]][1]
-                self.mmr = float(floor)
-                self.series = None
-                self.shield, self.shield_floor = 3, float(floor)
+    def result(self, _opp=None, won: bool = False) -> dict:
+        before = (self.r, self.v)
+        out = {"before": self.mmr, "rank_before": aerial_rank_name(self.r), "promoted": False, "demoted": False,
+               "first": False, "series": None}
+        self.v += 1 if won else -1
+        if self.v >= AERIAL_STEP:
+            if self.r < 9:
+                self.r += 1
+                self.v = 0
                 out["promoted"] = True
-                if s["to"] not in self.reached:
-                    self.reached.append(s["to"])
+                if self.r not in self.reached:
+                    self.reached.append(self.r)
                     out["first"] = True
-            elif s["l"] >= need:
-                floor = AERIAL_RANKS[s["to"]][1]
-                step = AERIAL_RANKS[s["to"] - 1][2]
-                self.mmr = float(floor - step)
-                self.series = None
-            out["delta"] = int(round(self.mmr - out["before"]))
-        else:
-            d = aerial_mmr_change(self.mmr, opp_mmr, won, before["mult"])
-            new = max(0.0, self.mmr + d)
-            nxt = before["rank"] + 1
-            if nxt < len(AERIAL_RANKS) and new >= AERIAL_RANKS[nxt][1]:
-                new = AERIAL_RANKS[nxt][1] - 1.0
-                bot, best = AERIAL_GATE[nxt]
-                self.series = {"to": nxt, "need": best, "w": 0, "l": 0, "bot": bot}
-                out["series"] = dict(self.series)
-            if self.shield > 0:
-                self.shield -= 1
-                if new < self.shield_floor:
-                    new = self.shield_floor
-            elif before["rank"] > 0 and new < AERIAL_RANKS[before["rank"]][1]:
+            else:
+                self.v = AERIAL_STEP
+        elif self.v <= -AERIAL_STEP:
+            if self.r > 0:
+                self.r -= 1
+                self.v = 0
                 out["demoted"] = True
-            self.mmr = new
-            out["delta"] = int(round(new - out["before"]))
-        self.peak = max(self.peak, self.mmr)
+            else:
+                self.v = -AERIAL_STEP + 1          # nothing below Rookie 1
+        self.peak = max(self.peak, self.r)
         out["after"] = self.mmr
-        out["rank_after"] = aerial_rank(self.mmr)["label"]
+        out["delta"] = int(round(self.mmr - out["before"]))
+        out["rank_after"] = aerial_rank_name(self.r)
+        out["v"] = self.v
+        out["moved"] = (self.r, self.v) != before
         return out
 
 
@@ -80136,6 +80499,20 @@ class AerialStore:
             if h.get("replay") and h["replay"] not in keep:
                 h["replay"] = ""
         self.save()
+
+    def settle_open(self) -> dict:
+        """A ranked match that was never finished (the app closed or crashed during it) counts as a loss."""
+        o = self.data.pop("open_ranked", None)
+        if not o:
+            return None
+        row = AERIAL_BOTS.get(o.get("bot") or "")
+        out = self.ladder.result(row["mmr"] if row else self.ladder.mmr, False)
+        hist = self.data.setdefault("history", [])
+        hist.insert(0, {"t": int(o.get("t", 0)), "mode": "ranked", "bot": o.get("bot"), "score": [0, 0], "won": False,
+                        "forfeit": True, "mmr": int(self.ladder.mmr), "delta": out.get("delta", 0), "replay": ""})
+        del hist[200:]
+        self.save()
+        return out
 
     def replay_path(self, name: str) -> str:
         return _ae_os.path.join(self.rep_dir, name)
@@ -80489,7 +80866,9 @@ def aerial_draw_emblem(p: QPainter, r: QRectF, rank: int, tier: int = 1, div: in
     """The five rank emblems: one family whose shape grows with rank. Rookie a bolt on a hex plate, Challenger twin
     chevrons, Elite a cut crystal with short wings, Champion a crowned flame with wings, Rubenite a faceted ruby with
     the Rubenium R and a slow shine. Tier: pips under it; division: bars on the plate."""
-    col = QColor(AERIAL_RANKS[rank][4])
+    col = QColor(AERIAL_FAMILIES[rank][1])
+    fam = rank
+    rank = AERIAL_FAMILIES[fam][2]                     # the shape: 0 hex, 1 chevrons, 3 crown, 4 ruby
     dark = col.darker(260)
     light = col.lighter(150)
     p.save()
@@ -80500,7 +80879,7 @@ def aerial_draw_emblem(p: QPainter, r: QRectF, rank: int, tier: int = 1, div: in
     p.scale(s / 50.0, s / 50.0)                      # draw in a 100 x 100 box
     if glow:
         g = QRadialGradient(QPointF(0, 0), 52)
-        g.setColorAt(0, alpha(col, 0.35 + 0.1 * rank))
+        g.setColorAt(0, alpha(col, 0.35 + 0.1 * fam))
         g.setColorAt(1, alpha(col, 0.0))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(g)
@@ -80637,14 +81016,13 @@ def aerial_draw_emblem(p: QPainter, r: QRectF, rank: int, tier: int = 1, div: in
         p.setFont(font(26, QFont.Weight.Black))
         p.setPen(QColor("#FFFFFF"))
         p.drawText(QRectF(-20, -22, 40, 40), int(Qt.AlignmentFlag.AlignCenter), "R")
-    # division: three bars on the plate's foot
-    for i in range(3):
+    # division bars (not used by the 10-rank ladder) and tier pips (none on Rubenite)
+    for i in range(3 if div else 0):
         on = i < div
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor("#FFFFFF") if on else alpha("#000000", 0.35))
         p.drawRoundedRect(QRectF(-13 + i * 9.5, 24, 7, 4), 1.5, 1.5)
-    # tier: pips under the emblem
-    for i in range(3):
+    for i in range(3 if tier else 0):
         on = i < tier
         p.setPen(QPen(dark, 1.0))
         p.setBrush(light if on else alpha("#000000", 0.4))
@@ -80722,6 +81100,8 @@ class AerialView(QWidget):
         self.bot = None
         if self.bot_key and not self.free and self.rep_in is None:
             self.bot = AerialBot(1, self.bot_key, self.seed)
+        if self.bot_key and not self.free:
+            aerial_apply_assist(self.m, 1, self.bot_key)   # replays too, so they play back the same
         self.keys: set = set()
         self.mouse = None                      # last cursor position in the view
         self.lmb = self.rmb = False
@@ -80742,6 +81122,13 @@ class AerialView(QWidget):
         self.slow = False
         self.hitbox = False
         self.mech_label = None
+        self.free_wait = 0
+        self.reset_chain = [0, 0]
+        self.locked = False                    # the mouse is locked to the game (hidden; a crosshair instead)
+        self.vaim = None                       # the crosshair, in view coordinates
+        self.aimv = (S(150) * 0.8, -S(150) * 0.6)  # mouse aim: the crosshair's offset from the car (view pixels)
+        self.tab_down = False                  # Tab held: the scoreboard (and the mouse is free)
+        self.hide_ball = False
         self.step_acc = 0.0
         self._last = time.monotonic()
         self._fps = 60.0
@@ -80755,6 +81142,9 @@ class AerialView(QWidget):
         self.timer.start()
         if self.free:
             self._free_reset()
+        if self.mode == "ranked":
+            self.store.data["open_ranked"] = {"bot": self.bot_key, "t": int(time.time())}
+            self.store.save()
 
     # ---------------------------------------------------------------------------------------- input
     def keyPressEvent(self, e) -> None:
@@ -80763,6 +81153,9 @@ class AerialView(QWidget):
         k = e.key()
         if k == Qt.Key.Key_Escape:
             return self.toggle_menu()
+        if k == Qt.Key.Key_Tab:
+            self.tab_down = True
+            return
         self.keys.add(k)
         if self.free and not self.menu_open:
             if k == Qt.Key.Key_R:
@@ -80781,9 +81174,56 @@ class AerialView(QWidget):
     def keyReleaseEvent(self, e) -> None:
         if not e.isAutoRepeat():
             self.keys.discard(e.key())
+            if e.key() == Qt.Key.Key_Tab:
+                self.tab_down = False
+
+    # -- the mouse lock: while playing, the real cursor is hidden and kept in the middle of the view; its movement
+    # moves a crosshair, so the mouse can never leave the game or click anything else. Esc or Tab frees it.
+    def _want_lock(self) -> bool:
+        try:
+            return (self.isVisible() and self.hasFocus() and self.window().isActiveWindow() and not self.menu_open
+                    and not self.over and not self.tab_down and self.mode != "replay")
+        except RuntimeError:
+            return False
+
+    def _lock(self, on: bool) -> None:
+        if on == self.locked:
+            return
+        self.locked = on
+        try:
+            if on:
+                if self.vaim is None:
+                    self.vaim = QPointF(self.width() * 0.6, self.height() * 0.4)
+                self.grabMouse()
+                self.setCursor(Qt.CursorShape.BlankCursor)
+                QCursor.setPos(self.mapToGlobal(self.rect().center()))
+            else:
+                self.releaseMouse()
+                self.unsetCursor()
+                if self.vaim is not None:
+                    QCursor.setPos(self.mapToGlobal(self.vaim.toPoint()))
+        except RuntimeError:
+            pass
 
     def mouseMoveEvent(self, e) -> None:
-        self.mouse = e.position()
+        if not self.locked:
+            self.mouse = e.position()
+            return
+        c = self.mapToGlobal(self.rect().center())
+        g = e.globalPosition()
+        dx, dy = g.x() - c.x(), g.y() - c.y()
+        if dx or dy:
+            # the aim is a direction from the car: the crosshair rides on a ring round it, so the aim holds steady
+            # while the car flies about and the mouse never runs into the edge of the view
+            ax, ay = self.aimv
+            ax, ay = ax + dx, ay + dy
+            ring = S(150)
+            n = math.hypot(ax, ay)
+            if n > ring:
+                ax, ay = ax / n * ring, ay / n * ring
+            self.aimv = (ax, ay)
+            QCursor.setPos(c)
+        self.mouse = self.vaim
 
     def mousePressEvent(self, e) -> None:
         self.setFocus()
@@ -80803,6 +81243,11 @@ class AerialView(QWidget):
     def focusOutEvent(self, _e) -> None:
         self.keys.clear()                      # never a stuck key after alt-tab
         self.lmb = self.rmb = False
+        self.tab_down = False
+        self._lock(False)
+
+    def hideEvent(self, _e) -> None:
+        self._lock(False)
 
     def focusNextPrevChild(self, _n) -> bool:
         return False
@@ -80820,15 +81265,13 @@ class AerialView(QWidget):
         down = self._down(K.Key_S, K.Key_Down)
         ix = (1 if right else 0) - (1 if left else 0)
         iy = (1 if up else 0) - (1 if down else 0)
-        jump = self._down(K.Key_Space) or self.rmb
-        boost = self._down(K.Key_Shift) or self.lmb
-        roll = self._down(K.Key_E)
+        jump = self._down(K.Key_Space)
+        boost = self._down(K.Key_Shift)
+        roll = self._down(K.Key_E) or self.lmb or self.rmb      # either mouse button: air roll
         aim, rot = -1, 0
-        car = self.m.sim.cars[0]
-        if self.aim_mouse and self.mouse is not None and self.cam is not None:
-            wx, wy = self.cam.unmap(self.mouse.x(), self.mouse.y())
-            dx, dy = wx - car.x, wy - car.y
-            if dx * dx + dy * dy > 25.0:
+        if self.aim_mouse and self.locked:
+            dx, dy = self.aimv[0], -self.aimv[1]           # (the view's y runs down, the world's up)
+            if dx * dx + dy * dy > S(12) ** 2:
                 aim = aerial_aim_index(dx, dy)
         elif not self.aim_mouse:
             rot = ix
@@ -80951,9 +81394,20 @@ class AerialView(QWidget):
                 if n >= 12:
                     self.step_acc = 0.0
             self._effects(dt)
+            self._lock(self._want_lock())
             self.update()
         except RuntimeError:
             self.timer.stop()
+        except Exception:  # noqa: BLE001
+            self.timer.stop()                      # never an error every frame: stop, log once, leave
+            log.exception("Rubenium League: the match stopped")
+            self.store.data.pop("open_ranked", None)   # our fault, not the player's: no loss
+            self.store.save()
+            try:
+                self.ctx.toast(tr("Rubenium League hit a problem and stopped"), "error")
+            except Exception:  # noqa: BLE001
+                pass
+            self.leave.emit()
 
     def _step(self) -> None:
         m = self.m
@@ -80977,10 +81431,16 @@ class AerialView(QWidget):
                 self._burst(m.sim.ball.x, m.sim.ball.y, 0)
                 self.banner = (tr("GOAL!"), "#FFFFFF", time.monotonic() + 1.2)
                 sfx.play("coin")
-                QTimer.singleShot(900, self._free_reset)
-                m.sim.ball.x = 0.0
-                m.sim.ball.y = 5000.0
+                self.free_wait = int(0.9 * AERIAL_HZ)
+                b = m.sim.ball
+                b.x, b.y, b.vx, b.vy, b.w = 0.0, AERIAL_TUNE["ball_r"], 0.0, 0.0, 0.0
                 m.sim.ball_held = True
+                self.hide_ball = True
+            if self.free_wait > 0:
+                self.free_wait -= 1
+                if self.free_wait == 0:
+                    self.hide_ball = False
+                    self._free_reset()
             self._react(m.sim.ev)
             return
         m.step([a, b])
@@ -81001,8 +81461,14 @@ class AerialView(QWidget):
                 self._sparks(m.sim.ball.x, m.sim.ball.y, min(1.0, sp / 4000.0))
                 if sp > 3000:
                     self.shake = max(self.shake, 4.0)
-            elif k == "reset" and e[1] == 0:
-                self.mech_label = (tr("Flip reset"), now + 1.5)
+            elif k == "reset":
+                self.reset_chain[e[1]] += 1
+                n = self.reset_chain[e[1]]
+                self.mech_label = (tr("Flip reset") if n == 1 else tr("Flip reset x{n}", n=n), now + 1.5,
+                                   AERIAL_TEAM[e[1]]["light"])
+                sfx.play("pick")
+            elif k == "land":
+                self.reset_chain[e[1]] = 0
             elif k == "goal":
                 team = e[1]
                 self._burst(m.sim.ball.x, m.sim.ball.y, team)
@@ -81156,7 +81622,7 @@ class AerialView(QWidget):
                 self.painter.car(p, cam, c, c.kind, c.team, c.boosting, now, ring=(i == 0 and m.phase == m.COUNT))
                 if self.hitbox:
                     self._hitbox(p, cam, c)
-            if not (m.phase == m.GOAL and sim.ball_held):
+            if not (m.phase == m.GOAL and sim.ball_held) and not self.hide_ball:
                 self.painter.ball(p, cam, sim.ball, AERIAL_TUNE["ball_r"])
             for f in self.fx:
                 q = aerial_cam_point(cam, f[0], f[1])
@@ -81172,6 +81638,39 @@ class AerialView(QWidget):
         finally:
             if live_snap is not None:
                 m.restore(live_snap)
+
+    def _scoreboard(self, p, w, h) -> None:
+        """Tab: both players' points and stats, as in Rocket League."""
+        m = self.m
+        cols = [("score", tr("Score")), ("goals", tr("Goals")), ("saves", tr("Saves")), ("epic", tr("Epic saves")),
+                ("touches", tr("Touches")), ("aerials", tr("Aerial hits")), ("resets", tr("Flip resets"))]
+        bw, rh = min(w - S(60), S(760)), S(40)
+        r = QRectF(w / 2 - bw / 2, h / 2 - S(80), bw, S(44) + 2 * rh + S(16))
+        p.setPen(QPen(alpha("#FFFFFF", 0.12), 1))
+        p.setBrush(QColor(10, 12, 18, 235))
+        p.drawRoundedRect(r, S(16), S(16))
+        name_w = S(190)
+        cw = (bw - name_w - S(20)) / len(cols)
+        p.setFont(font(9.5, QFont.Weight.Black, 1))
+        p.setPen(QColor(TEXT_DIM))
+        for i, (_k, label) in enumerate(cols):
+            p.drawText(QRectF(r.left() + name_w + i * cw, r.top() + S(12), cw, S(20)), int(Qt.AlignmentFlag.AlignCenter),
+                       label.upper())
+        for team in (0, 1):
+            y = r.top() + S(44) + team * rh
+            row = QRectF(r.left() + S(8), y, bw - S(16), rh - S(4))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(alpha(AERIAL_TEAM[team]["main"], 0.28))
+            p.drawRoundedRect(row, S(10), S(10))
+            name = tr("You") if team == 0 else ((AERIAL_BOTS[self.bot_key]["name"] + " · " + tr("BOT"))
+                                                if self.bot_key else "")
+            p.setFont(font(12, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            p.drawText(QRectF(r.left() + S(22), y, name_w, rh - S(4)), int(Qt.AlignmentFlag.AlignVCenter), name)
+            st = m.sim.cars[team].stats
+            for i, (k, _l) in enumerate(cols):
+                p.drawText(QRectF(r.left() + name_w + i * cw, y, cw, rh - S(4)), int(Qt.AlignmentFlag.AlignCenter),
+                           str(int(st.get(k, 0))))
 
     def _hitbox(self, p, cam, c) -> None:
         p.setPen(QPen(alpha("#00FF88", 0.9), 1.5))
@@ -81271,7 +81770,7 @@ class AerialView(QWidget):
             y0[team] += S(24)
         if self.mech_label and self.mech_label[1] > now:
             p.setFont(font(16, QFont.Weight.Black))
-            p.setPen(QColor("#35E0A1"))
+            p.setPen(QColor(self.mech_label[2] if len(self.mech_label) > 2 else "#35E0A1"))
             p.drawText(QRectF(0, h - S(110), w, S(30)), int(Qt.AlignmentFlag.AlignCenter), self.mech_label[0])
         if self.free:
             p.setFont(font(10.5, QFont.Weight.DemiBold))
@@ -81279,6 +81778,20 @@ class AerialView(QWidget):
             tips = tr("R reset · T ball on car · B infinite boost: {b} · G slow motion: {s} · H hitbox · 1-5 drills",
                       b=tr("on") if self.inf_boost else tr("off"), s=tr("on") if self.slow else tr("off"))
             p.drawText(QRectF(S(16), S(12), w - S(32), S(22)), int(Qt.AlignmentFlag.AlignLeft), tips)
+        if self.locked and self.aim_mouse and self.cam is not None:
+            car = self.m.sim.cars[0]
+            q = aerial_cam_point(self.cam, car.x, car.y)
+            v = QPointF(q.x() + self.aimv[0], q.y() + self.aimv[1])
+            self.vaim = v
+            k = 0.4 if car.ground else 1.0                 # it steers the car in the air; on the ground it waits
+            p.setPen(QPen(alpha("#FFFFFF", 0.16 * k), S(1.2)))
+            p.drawLine(QPointF(q.x(), q.y()), v)
+            p.setPen(QPen(alpha("#FFFFFF", 0.85 * k), S(1.6)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(v, S(9), S(9))
+            p.drawPoint(v)
+        if self.tab_down and not self.free:
+            self._scoreboard(p, w, h)
         if self.menu_open:
             p.fillRect(QRectF(0, 0, w, h), alpha("#000000", 0.55))
             p.setFont(font(26, QFont.Weight.Black))
@@ -81377,17 +81890,54 @@ class AerialResults(QWidget):
                                    time.monotonic())
             p.setFont(font(14, QFont.Weight.Black))
             p.setPen(QColor(info["colour"]))
-            p.drawText(QRectF(S(66), y + S(4), w, S(22)), int(Qt.AlignmentFlag.AlignLeft), info["label"])
+            p.drawText(QRectF(S(66), y + S(2), w, S(22)), int(Qt.AlignmentFlag.AlignLeft),
+                       aerial_rank_label(info["index"]) + "   ·   %d MMR (%+d)" % (info["mmr"], d))
             p.setFont(font(12, QFont.Weight.Bold))
-            p.setPen(QColor("#3BE38A") if d > 0 else (QColor("#FF6B78") if d < 0 else QColor(TEXT_DIM)))
-            txt = "MMR %d  (%+d)" % (info["mmr"], d)
-            s = lo.get("series")
-            if s and not lo.get("promoted"):
-                txt += "  ·  " + tr("Rank-up series vs {b}: {w}-{l} (best of {n})", b=AERIAL_BOTS[s["bot"]]["name"],
-                                    w=s["w"], l=s["l"], n=s["need"])
             if lo.get("promoted"):
-                txt += "  ·  " + tr("Promoted!")
-            p.drawText(QRectF(S(66), y + S(28), w, S(22)), int(Qt.AlignmentFlag.AlignLeft), txt)
+                p.setPen(QColor("#3BE38A"))
+                txt = tr("Promoted to {r}!", r=aerial_rank_label(info["index"]))
+            elif lo.get("demoted"):
+                p.setPen(QColor("#FF6B78"))
+                txt = tr("Down to {r}", r=aerial_rank_label(info["index"]))
+            else:
+                p.setPen(QColor(TEXT_DIM))
+                txt = aerial_progress_text(info)
+            p.drawText(QRectF(S(66), y + S(26), w, S(20)), int(Qt.AlignmentFlag.AlignLeft), txt)
+            aerial_draw_progress(p, QRectF(S(66), y + S(50), min(S(300), w - S(70)), S(10)), info["v"], info["colour"])
+
+
+def aerial_rank_label(i: int) -> str:
+    fam, tier = AERIAL_RANKS[i]
+    return tr(AERIAL_FAMILIES[fam][0]) + (" %d" % tier if tier else "")
+
+
+def aerial_progress_text(info: dict) -> str:
+    i, v = info["index"], info["v"]
+    if i == 9:
+        return tr("The top. {n} more losses than wins and you drop.", n=AERIAL_STEP + v)
+    up = tr("{n} wins to {r}", n=AERIAL_STEP - v, r=aerial_rank_label(i + 1))
+    if i == 0:
+        return up
+    return up + "  ·  " + tr("{n} losses to drop", n=AERIAL_STEP + v)
+
+
+def aerial_draw_progress(p: QPainter, r: QRectF, v: int, colour: str) -> None:
+    """The rank bar: five cells down (red) and five up (the rank's colour) from the middle; filled up to where you
+    are."""
+    n = 2 * AERIAL_STEP
+    gap = S(3)
+    cw = (r.width() - gap * (n - 1)) / n
+    for k in range(n):
+        x = r.left() + k * (cw + gap)
+        pos = k - AERIAL_STEP                      # -5 .. 4: the cell for step pos..pos+1
+        on = (v > 0 and 0 <= pos < v) or (v < 0 and v <= pos < 0)
+        c = QColor(colour) if pos >= 0 else QColor("#FF6B78")
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(c if on else alpha(c, 0.16))
+        p.drawRoundedRect(QRectF(x, r.top(), cw, r.height()), r.height() / 2, r.height() / 2)
+    p.setPen(QPen(alpha("#FFFFFF", 0.7), S(2)))
+    mx = r.left() + AERIAL_STEP * (cw + gap) - gap / 2
+    p.drawLine(QPointF(mx, r.top() - S(3)), QPointF(mx, r.bottom() + S(3)))
 
 
 class AerialStage(QWidget):
@@ -81551,6 +82101,7 @@ class AerialStage(QWidget):
         """Save the match (history, replay, ranked MMR) and show the results over the pitch."""
         v = self.view
         store = aerial_store(self.ctx)
+        store.data.pop("open_ranked", None)
         lo = None
         if v.mode in ("ranked", "practice") and res.get("stats"):
             won = res.get("winner") == 0
@@ -81582,7 +82133,7 @@ class AerialStage(QWidget):
         btns.addWidget(back, 1)
         btns.addWidget(again, 1)
         cl.addLayout(btns)
-        self.over = KartOverlayCard(self.body, card)
+        self.over = AerialOverlayCard(self.body, card)
         self.over.setGeometry(self.body.rect())
         self.over.show()
 
@@ -81590,6 +82141,10 @@ class AerialStage(QWidget):
         ctx, cfg = self.ctx, dict(self.cfg)
         cfg.pop("seed", None)
         if cfg.get("mode") == "ranked":
+            if aerial_ranked_closed(ctx):
+                self.close_stage()
+                return ctx.toast(tr("Ranked is closed for now while we fix something. Practice and Free Play stay "
+                                    "open."), "warn")
             st = aerial_store(ctx)
             cfg["bot"] = aerial_pick_ranked(st)
         self.close_stage()
@@ -81616,7 +82171,7 @@ class AerialStage(QWidget):
         p.drawLine(QPointF(0, S(44) - 0.5), QPointF(self.width(), S(44) - 0.5))
 
 
-class KartOverlayCard(QWidget):
+class AerialOverlayCard(QWidget):
     """A card in the middle of a dimmed match (the match keeps drawing behind it)."""
 
     def __init__(self, parent, card: QWidget) -> None:
@@ -81642,7 +82197,7 @@ class KartOverlayCard(QWidget):
 
 
 def aerial_pick_ranked(store: AerialStore) -> str:
-    """The server's job once ranked is online: one of the bots of my rank closest to my MMR, never my choice."""
+    """Ranked is always against the bot of my rank."""
     opts = store.ladder.opponents()
     return opts[random.randrange(len(opts))]
 
@@ -81736,14 +82291,14 @@ class AerialBanner(QWidget):
         p.setFont(font(11.5, QFont.Weight.DemiBold))
         p.setPen(alpha("#FFFFFF", 0.75))
         p.drawText(QRectF(r.left() + S(20), r.top() + S(54), r.width() - S(200), S(20)), int(Qt.AlignmentFlag.AlignLeft),
-                   tr("1 v 1 car soccer · ranked ladder · 22 bots"))
+                   tr("1 v 1 car soccer · 10 ranks · 10 bots to beat"))
         info = aerial_rank(aerial_store(self.ctx).ladder.mmr)
         aerial_draw_emblem(p, QRectF(r.left() + S(18), r.bottom() - S(52), S(40), S(40)), info["rank"], info["tier"],
-                           info["div"], t, glow=False)
+                           0, t, glow=False)
         p.setFont(font(12, QFont.Weight.Black))
         p.setPen(QColor(info["colour"]))
         p.drawText(QRectF(r.left() + S(64), r.bottom() - S(46), S(260), S(20)), int(Qt.AlignmentFlag.AlignLeft),
-                   tr(info["name"]) + " %d · Div %s" % (info["tier"], AERIAL_ROMAN[info["div"] - 1]))
+                   aerial_rank_label(info["index"]) + "   ·   %d MMR" % info["mmr"])
         p.setFont(font(12, QFont.Weight.Black))
         p.setPen(QColor("#FFFFFF"))
         p.drawText(QRectF(r.right() - S(140), r.bottom() - S(44), S(120), S(24)),
@@ -81834,17 +82389,17 @@ class AerialBotTile(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
         b = self.b
-        info = aerial_rank(min(b["mmr"], 4440) if b["key"] != "ruben" else 4440)
+        info = aerial_rank(b["mmr"])
         paint_surface(p, r, S(12), 0.04, self._hover.level, tint=QColor(info["colour"]), tint_a=0.10)
         aerial_draw_emblem(p, QRectF(r.left() + S(6), r.top() + S(7), S(44), S(44)), info["rank"], info["tier"],
-                           info["div"], time.monotonic(), glow=False)
+                           0, time.monotonic(), glow=False)
         p.setFont(font(12.5, QFont.Weight.Black))
         p.setPen(QColor("#FFFFFF"))
         p.drawText(QRectF(r.left() + S(58), r.top() + S(8), r.width(), S(20)), int(Qt.AlignmentFlag.AlignLeft), b["name"])
         p.setFont(font(10, QFont.Weight.Bold))
         p.setPen(QColor(info["colour"]))
         p.drawText(QRectF(r.left() + S(58), r.top() + S(8), r.width() - S(66), S(20)),
-                   int(Qt.AlignmentFlag.AlignRight), ("%d MMR" % b["mmr"]) if b["key"] != "ruben" else "???")
+                   int(Qt.AlignmentFlag.AlignRight), aerial_rank_label(info["index"]))
         p.setFont(font(9.5))
         p.setPen(QColor(TEXT_DIM))
         p.drawText(QRectF(r.left() + S(58), r.top() + S(30), r.width() - S(64), S(20)), int(Qt.AlignmentFlag.AlignLeft),
@@ -81852,19 +82407,20 @@ class AerialBotTile(QWidget):
 
 
 class AerialRankCard(QWidget):
-    """My rank: the emblem, the name, MMR, the bar to the next division, the series in progress, the shield."""
+    """My rank, as in Rocket League: the emblem, the rank in big letters, the MMR in its own box on the side, and the
+    bar of 5 wins up and 5 losses down."""
 
     def __init__(self, ladder: AerialLadder, width: int) -> None:
         super().__init__()
         self.L = ladder
         self.info = aerial_rank(ladder.mmr)
-        self.setFixedSize(width, S(112))
+        self.setFixedSize(width, S(118))
         self._t = QTimer(self)
         self._t.setInterval(60)
         self._t.timeout.connect(self.update)
 
     def showEvent(self, _e) -> None:
-        if self.info["rank"] == 4:
+        if self.info["rank"] == 3:
             self._t.start()
 
     def hideEvent(self, _e) -> None:
@@ -81877,38 +82433,33 @@ class AerialRankCard(QWidget):
         i = self.info
         col = QColor(i["colour"])
         paint_surface(p, r, S(16), 0.05, tint=col, tint_a=0.16)
-        aerial_draw_emblem(p, QRectF(r.left() + S(10), r.top() + S(8), S(96), S(96)), i["rank"], i["tier"], i["div"],
+        aerial_draw_emblem(p, QRectF(r.left() + S(10), r.top() + S(10), S(96), S(96)), i["rank"], i["tier"], 0,
                            time.monotonic())
         x = r.left() + S(118)
+        box = QRectF(r.right() - S(104), r.top() + S(14), S(90), S(48))
+        p.setPen(QPen(alpha(col, 0.6), 1.2))
+        p.setBrush(alpha("#000000", 0.35))
+        p.drawRoundedRect(box, S(12), S(12))
         p.setFont(font(19, QFont.Weight.Black))
-        p.setPen(col)
-        p.drawText(QRectF(x, r.top() + S(14), r.width(), S(28)), int(Qt.AlignmentFlag.AlignLeft),
-                   tr(i["name"]) + " %d" % i["tier"])
-        p.setFont(font(12, QFont.Weight.Bold))
         p.setPen(QColor("#FFFFFF"))
-        p.drawText(QRectF(x, r.top() + S(42), r.width(), S(20)), int(Qt.AlignmentFlag.AlignLeft),
-                   tr("Division {d}", d=AERIAL_ROMAN[i["div"] - 1]) + "   ·   %d MMR" % i["mmr"])
-        bw = r.right() - x - S(16)
-        bar = QRectF(x, r.top() + S(70), bw, S(10))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(alpha("#FFFFFF", 0.08))
-        p.drawRoundedRect(bar, S(5), S(5))
-        p.setBrush(col)
-        p.drawRoundedRect(QRectF(bar.left(), bar.top(), max(S(10), bar.width() * i["frac"]), bar.height()), S(5), S(5))
+        p.drawText(box.adjusted(0, S(2), 0, -S(14)), int(Qt.AlignmentFlag.AlignCenter), str(i["mmr"]))
+        p.setFont(font(8.5, QFont.Weight.Black, 2))
+        p.setPen(col)
+        p.drawText(box.adjusted(0, S(28), 0, 0), int(Qt.AlignmentFlag.AlignCenter), "MMR")
+        p.setFont(font(22, QFont.Weight.Black, 1.5))
+        p.setPen(col)
+        p.drawText(QRectF(x, r.top() + S(12), box.left() - x - S(8), S(32)), int(Qt.AlignmentFlag.AlignLeft),
+                   aerial_rank_label(i["index"]).upper())
+        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        p.setPen(QColor("#FFFFFF"))
+        bot = AERIAL_BOTS[AERIAL_BOT_ROSTER[i["index"]][0]]["name"]
+        p.drawText(QRectF(x, r.top() + S(46), box.left() - x, S(18)), int(Qt.AlignmentFlag.AlignLeft),
+                   tr("Your ranked opponent: {b}", b=bot))
+        aerial_draw_progress(p, QRectF(x, r.top() + S(72), r.right() - x - S(16), S(12)), i["v"], i["colour"])
         p.setFont(font(10, QFont.Weight.DemiBold))
         p.setPen(QColor(TEXT_DIM))
-        s = self.L.series
-        if s:
-            txt = tr("Rank-up series vs {b} · best of {n} · {w} won, {l} lost", b=AERIAL_BOTS[s["bot"]]["name"],
-                     n=s["need"], w=s["w"], l=s["l"])
-            p.setPen(QColor("#F5C04A"))
-        elif self.L.shield > 0:
-            txt = tr("Shield: you cannot drop out of this rank for {n} more matches", n=self.L.shield)
-        elif i["rank"] == 4 and i["tier"] == 3 and i["div"] == 3:
-            txt = tr("The top of the ladder")
-        else:
-            txt = tr("{n} MMR to the next division", n=int(math.ceil(i["hi"] - self.L.mmr)))
-        p.drawText(QRectF(x, r.top() + S(84), bw, S(20)), int(Qt.AlignmentFlag.AlignLeft), txt)
+        p.drawText(QRectF(x, r.top() + S(90), r.right() - x - S(16), S(18)), int(Qt.AlignmentFlag.AlignLeft),
+                   aerial_progress_text(i))
 
 
 class AerialMMRChart(QWidget):
@@ -82026,11 +82577,49 @@ class AerialHistoryRow(QWidget):
                                                            tr("goals"), row.get("saves", 0), tr("saves"), extra))
 
 
+def aerial_ranked_closed(ctx) -> bool:
+    """An admin closed ranked (Admin > Locks, "league_ranked"), or Rubenium is in lockdown. Practice stays open."""
+    econ = getattr(ctx, "econ", None)
+    try:
+        return bool(econ is not None and econ.is_locked("league_ranked"))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def aerial_play_ranked(ctx) -> None:
+    if aerial_ranked_closed(ctx):
+        return ctx.toast(tr("Ranked is closed for now while we fix something. Practice and Free Play stay open."),
+                         "warn")
+    AerialStage.start(ctx, {"mode": "ranked", "bot": aerial_pick_ranked(aerial_store(ctx))})
+
+
+def aerial_admin_ranked(ctx, lock: bool) -> None:
+    def go() -> None:
+        def back(ok: bool, data) -> None:
+            if not ok:
+                return ctx.toast(tr("Failed: {e}", e=str(data)), "warn")
+            ctx.toast(tr("Ranked closed for everyone") if lock else tr("Ranked open again"))
+            try:
+                ctx.econ.poll_live()
+            except Exception:  # noqa: BLE001
+                pass
+            QTimer.singleShot(600, lambda: ctx.reload_page("games"))
+        ctx.econ.call("rb_admin_feature", {"name": "league_ranked", "lock": lock,
+                                           "note": "Rubenium League ranked" if lock else ""}, back)
+    ctx.window.confirm(tr("Close Rubenium League ranked for everyone?") if lock else
+                       tr("Open Rubenium League ranked again for everyone?"), go,
+                       yes=tr("Close ranked") if lock else tr("Open ranked"))
+
+
 def build_aerial(page, lay) -> None:
     """Rubenium League in Play: three tabs (Play, Tracker, Ladder)."""
     ctx = page.ctx
     st = aerial_store(ctx)
     W = page.W
+    if getattr(ctx, "aerial_stage", None) is None and st.data.get("open_ranked"):
+        lo = st.settle_open()
+        if lo:
+            ctx.toast(tr("Your last ranked match was not finished: it counts as a loss ({d} MMR)", d=lo["delta"]), "warn")
     top = hbox(spacing=8)
     back = IconButton("back", 32, tip=tr("Back"))
     back.clicked.connect(lambda: page.open_sub(None))
@@ -82047,18 +82636,25 @@ def build_aerial(page, lay) -> None:
     if tab == 2:
         return _aerial_ladder(page, lay, st, W)
     lay.addWidget(AerialRankCard(st.ladder, W))
-    go = Button(tr("Play ranked"), "primary", 50, icon="play")
-    s = st.ladder.series
-    go.clicked.connect(lambda: AerialStage.start(ctx, {"mode": "ranked", "bot": aerial_pick_ranked(st)}))
+    closed = aerial_ranked_closed(ctx)
+    go = Button(tr("Ranked is closed for now") if closed else tr("Play ranked"), "primary", 50, icon="play")
+    if closed:
+        go.fade = 0.55
+    go.clicked.connect(lambda: aerial_play_ranked(ctx))
     lay.addWidget(go)
+    econ = getattr(ctx, "econ", None)
+    if econ is not None and getattr(econ, "admin", False):
+        # the admins' switch (the same lock as Admin > Locks): ranked off for everyone while a bug is fixed
+        locked = "league_ranked" in ((getattr(econ, "locks", None) or {}).get("locked") or [])
+        ab = Button(tr("Admin: open ranked again") if locked else tr("Admin: close ranked"), "ghost", 36)
+        ab.clicked.connect(lambda _c=False, lk=not locked: aerial_admin_ranked(ctx, lk))
+        lay.addWidget(ab)
     pm = Button(tr("Private match"), "ghost", 40)
     pm.fade = 0.55
     pm.clicked.connect(lambda: ctx.toast(tr("Private matches against players arrive with the online update"), "warn"))
     lay.addWidget(pm)
-    lay.addWidget(Label(tr("Rank-up series: best of {n} against {b}. Win it to go up.", n=s["need"],
-                           b=AERIAL_BOTS[s["bot"]]["name"]) if s else
-                        tr("Against a bot of your rank. Ranked against players and private matches come with the "
-                           "online update."), 10, TEXT_FAINT, wrap_w=W))
+    lay.addWidget(Label(tr("Ranked is against the bot of your rank. Ranked against players and private matches come "
+                           "with the online update."), 10, TEXT_FAINT, wrap_w=W))
     lay.addWidget(heading(tr("Your car")))
     row = hbox(spacing=8)
     cw = (W - S(16)) // 3
@@ -82087,11 +82683,13 @@ def build_aerial(page, lay) -> None:
     lay.addLayout(grid)
     keys = aerial_keys()
     lay.addWidget(ControlsBar([([keys["left"], keys["right"]], tr("Drive")),
-                               ([tr("Right click"), "Space"], tr("Jump / double jump")),
+                               (["Space"], tr("Jump / double jump")),
                                ([keys["left"] + "/" + keys["right"], "Space"], tr("Flip (direction + jump)")),
-                               ([tr("Left click"), "Shift"], tr("Boost")),
+                               (["Shift"], tr("Boost")),
                                ([tr("Mouse")], tr("Point the car in the air")),
-                               (["E"], tr("Air roll")), ([tr("Esc")], tr("Menu"))], W))
+                               ([tr("Left click"), tr("Right click"), "E"], tr("Air roll")), (["Tab"], tr("Scoreboard")), ([tr("Esc")], tr("Menu"))], W))
+    lay.addWidget(Label(tr("During a match the mouse is locked to the game and moves a crosshair. Hold Tab or press "
+                           "Esc to free it."), 10, TEXT_FAINT, wrap_w=W))
 
 
 def _aerial_tracker(page, lay, st, W) -> None:
@@ -82100,13 +82698,13 @@ def _aerial_tracker(page, lay, st, W) -> None:
     n = len(hist)
     wins = sum(1 for h in hist if h.get("won"))
     tot = lambda k: sum(int(h.get(k, 0) or 0) for h in hist)          # noqa: E731
-    peak = aerial_rank(st.ladder.peak)
+    peak = st.ladder.peak
     grid = QGridLayout()
     grid.setSpacing(S(8))
     items = [(tr("Matches"), str(n)), (tr("Wins"), "%d (%d%%)" % (wins, round(100 * wins / n) if n else 0)),
              (tr("Goals"), str(tot("goals"))), (tr("Saves"), str(tot("saves"))), (tr("Epic saves"), str(tot("epic"))),
              (tr("Aerial hits"), str(tot("aerials"))), (tr("Flip resets"), str(tot("resets"))),
-             (tr("Peak"), tr(peak["name"]) + " %d" % peak["tier"])]
+             (tr("Peak"), aerial_rank_label(peak))]
     cw = (W - S(24)) // 4
     for i, (k, v) in enumerate(items):
         grid.addWidget(_AeStat(k, v, cw), i // 4, i % 4)
@@ -82148,70 +82746,177 @@ class _AeStat(QWidget):
 
 
 def _aerial_ladder(page, lay, st, W) -> None:
-    lay.addWidget(Label(tr("Five ranks, each with tiers 1 to 3 and divisions I to III. Wins against stronger opponents "
-                           "give more; losses cost a little more at every rank. Reaching a new rank takes a best-of "
-                           "series against its gatekeeper."), 10.5, TEXT_DIM, wrap_w=W))
-    for i, (name, floor, step, mult, col) in enumerate(AERIAL_RANKS):
-        bots = [r[1] for r in AERIAL_BOT_ROSTER if r[2] == name]
-        lay.addWidget(_AeLadderRow(i, floor, step, bots, W, aerial_rank(st.ladder.mmr)["rank"] == i))
+    lay.addWidget(Label(tr("The climb, from Rookie 1 at the bottom to Rubenite at the top. Each rank has its own bot: "
+                           "beat it 5 more times than it beats you to go up, lose 5 more than you win and you drop."),
+                        10.5, TEXT_DIM, wrap_w=W))
+    lay.addWidget(AerialClimb(st.ladder, W))
 
 
-class _AeLadderRow(QWidget):
-    def __init__(self, i: int, floor: int, step: int, bots: list, w: int, mine: bool) -> None:
+class AerialClimb(QWidget):
+    """The whole ladder as one tower: 10 ranks, Rookie 1 at the bottom and Rubenite at the top, each family a band in
+    its colour with its emblem, each rank's bot beside it, and me on the bar. When it opens, the bar fills from the
+    bottom up to me and a light runs up it."""
+    STEP = 92
+
+    def __init__(self, ladder: AerialLadder, width: int) -> None:
         super().__init__()
-        self.i, self.floor, self.step, self.bots, self.mine = i, floor, step, bots, mine
-        self.setFixedSize(w, S(84))
+        self.L = ladder
+        self.me = aerial_rank(ladder.mmr)
+        self.top_pad, self.bot_pad = S(60), S(16)
+        self.setFixedSize(width, self.top_pad + self.bot_pad + S(self.STEP) * 10)
+        self.t0 = None
+        self._t = QTimer(self)
+        self._t.setInterval(16)
+        self._t.timeout.connect(self._tick)
+
+    def showEvent(self, _e) -> None:
+        self.t0 = time.monotonic()
+        self._t.start()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def _tick(self) -> None:
+        if getattr(ui, "motion", 1.0) <= 0.01 and self.t0 is not None and time.monotonic() - self.t0 > 0.1:
+            self._t.stop()
+        self.update()
+
+    def y_of(self, steps: float) -> float:
+        return self.height() - self.bot_pad - steps * S(self.STEP)
 
     def paintEvent(self, _e) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
-        col = QColor(AERIAL_RANKS[self.i][4])
-        paint_surface(p, r, S(14), 0.04, edge=col if self.mine else None, tint=col, tint_a=0.12)
-        aerial_draw_emblem(p, QRectF(r.left() + S(8), r.top() + S(6), S(72), S(72)), self.i, 3, 3, time.monotonic())
-        p.setFont(font(15, QFont.Weight.Black))
-        p.setPen(col)
-        p.drawText(QRectF(r.left() + S(90), r.top() + S(10), r.width(), S(22)), int(Qt.AlignmentFlag.AlignLeft),
-                   tr(AERIAL_RANKS[self.i][0]) + ("   ·   " + tr("you are here") if self.mine else ""))
-        p.setFont(font(10.5, QFont.Weight.DemiBold))
+        w = self.width()
+        now = time.monotonic()
+        age = now - (self.t0 or now)
+        motion = getattr(ui, "motion", 1.0) > 0.01
+        track_x, track_w = S(150), S(16)
+        bands = [(0, 0, 3), (1, 3, 6), (2, 6, 9), (3, 9, 10)]       # family, first rank, last rank + 1
+        for fam, s0, s1 in bands:
+            name, col, _sh = AERIAL_FAMILIES[fam]
+            y0, y1 = self.y_of(s1), self.y_of(s0)
+            band = QRectF(S(4), y0 + S(2), w - S(8), y1 - y0 - S(4))
+            c = QColor(col)
+            g = QLinearGradient(band.topLeft(), band.topRight())
+            g.setColorAt(0, alpha(c, 0.18))
+            g.setColorAt(0.5, alpha(c, 0.06))
+            g.setColorAt(1, alpha(c, 0.02))
+            p.setPen(QPen(alpha(c, 0.4 if fam == self.me["rank"] else 0.15), 1))
+            p.setBrush(QBrush(g))
+            p.drawRoundedRect(band, S(16), S(16))
+            em = S(70 if fam < 3 else 64)
+            cy = (y0 + y1) / 2
+            aerial_draw_emblem(p, QRectF(S(16), cy - em / 2 - S(10), em, em), fam, 3 if fam < 3 else 0, 0, now)
+            p.setFont(font(12.5, QFont.Weight.Black, 1.5))
+            p.setPen(c)
+            p.drawText(QRectF(S(4), cy + em / 2 - S(6), S(140), S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                       tr(name).upper())
+        for i in range(10):                                          # each rank: a line, its name, its bot
+            fam, tier = AERIAL_RANKS[i]
+            col = QColor(AERIAL_FAMILIES[fam][1])
+            yb, ym = self.y_of(i), self.y_of(i + 0.5)
+            p.setPen(QPen(alpha("#FFFFFF", 0.16), 1))
+            p.drawLine(QPointF(track_x - S(8), yb), QPointF(w - S(14), yb))
+            p.setFont(font(11, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF") if i == self.me["index"] else alpha("#FFFFFF", 0.75))
+            p.drawText(QRectF(track_x + track_w + S(14), ym - S(11), S(150), S(22)),
+                       int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), aerial_rank_label(i))
+            key, bname = AERIAL_BOT_ROSTER[i][0], AERIAL_BOT_ROSTER[i][1]
+            chip = QRectF(w - S(206), ym - S(14), S(190), S(28))
+            p.setPen(QPen(alpha(col, 0.7), 1))
+            p.setBrush(alpha(col, 0.14))
+            p.drawRoundedRect(chip, S(14), S(14))
+            p.setFont(font(10, QFont.Weight.Black))
+            p.setPen(QColor("#FFFFFF"))
+            p.drawText(chip.adjusted(S(12), 0, -S(10), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+                       bname)
+            p.setFont(font(8.5, QFont.Weight.DemiBold))
+            p.setPen(QColor(TEXT_DIM))
+            tag = tr(AERIAL_BOT_TAGS.get(key, ""))
+            p.drawText(chip.adjusted(S(12), 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                       tag)
+        tr_r = QRectF(track_x, self.y_of(10), track_w, self.y_of(0) - self.y_of(10))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha("#000000", 0.45))
+        p.drawRoundedRect(tr_r, track_w / 2, track_w / 2)
+        target = self.me["index"] + self.me["frac"]
+        k = min(1.0, age / 1.6) if motion else 1.0
+        k = 1 - (1 - k) ** 3
+        ytop = self.y_of(target * k)
+        fr = QRectF(track_x + S(2), ytop, track_w - S(4), self.y_of(0) - ytop)
+        g = QLinearGradient(QPointF(0, self.y_of(0)), QPointF(0, self.y_of(10)))
+        for fam, s0, _s1 in bands:
+            g.setColorAt(min(1.0, s0 / 10.0 + 0.001), QColor(AERIAL_FAMILIES[fam][1]))
+        g.setColorAt(1.0, QColor(AERIAL_FAMILIES[3][1]))
+        rad = (track_w - S(4)) / 2
+        if fr.height() > 0:
+            p.setBrush(QBrush(g))
+            p.drawRoundedRect(fr, rad, rad)
+            if motion:
+                ly = self.y_of(0) - ((age * S(300)) % max(1.0, fr.height() + S(80))) + S(40)
+                lg = QLinearGradient(QPointF(0, ly - S(40)), QPointF(0, ly + S(40)))
+                lg.setColorAt(0, alpha("#FFFFFF", 0.0))
+                lg.setColorAt(0.5, alpha("#FFFFFF", 0.55))
+                lg.setColorAt(1, alpha("#FFFFFF", 0.0))
+                p.save()
+                clip = QPainterPath()
+                clip.addRoundedRect(fr, rad, rad)
+                p.setClipPath(clip)
+                p.fillRect(QRectF(fr.left(), ly - S(40), fr.width(), S(80)), QBrush(lg))
+                p.restore()
+        i = self.me
+        mc = QColor(i["colour"])
+        pulse = 0.5 + 0.5 * math.sin(age * 3.0) if motion else 1.0
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(alpha(mc, 0.25 + 0.2 * pulse))
+        p.drawEllipse(QPointF(track_x + track_w / 2, ytop), S(15), S(15))
+        p.setBrush(QColor("#FFFFFF"))
+        p.drawEllipse(QPointF(track_x + track_w / 2, ytop), S(6), S(6))
+        pill = QRectF(track_x + track_w + S(120), ytop - S(15), S(150), S(30))
+        p.setPen(QPen(mc, 1.5))
+        p.setBrush(QColor(14, 16, 22, 235))
+        p.drawRoundedRect(pill, S(15), S(15))
+        p.setFont(font(10.5, QFont.Weight.Black))
         p.setPen(QColor("#FFFFFF"))
-        gate = AERIAL_GATE.get(self.i)
-        txt = tr("From {m} MMR · {s} per division", m=self.floor, s=self.step)
-        if gate:
-            txt += "  ·  " + tr("gate: {b}, best of {n}", b=AERIAL_BOTS[gate[0]]["name"], n=gate[1])
-        p.drawText(QRectF(r.left() + S(90), r.top() + S(34), r.width() - S(96), S(18)), int(Qt.AlignmentFlag.AlignLeft), txt)
-        p.setFont(font(10))
+        p.drawText(pill.adjusted(S(12), 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+                   tr("YOU"))
+        p.setPen(mc)
+        p.drawText(pill.adjusted(S(12), 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight),
+                   "%d MMR" % i["mmr"])
+        p.setFont(font(11, QFont.Weight.Black, 3))
+        p.setPen(QColor("#FF2E63"))
+        p.drawText(QRectF(0, S(8), w, S(20)), int(Qt.AlignmentFlag.AlignCenter), tr("THE SUMMIT"))
+        p.setFont(font(9, QFont.Weight.DemiBold))
         p.setPen(QColor(TEXT_DIM))
-        p.drawText(QRectF(r.left() + S(90), r.top() + S(54), r.width() - S(96), S(18)), int(Qt.AlignmentFlag.AlignLeft),
-                   tr("Bots: {b}", b=", ".join(self.bots)))
+        p.drawText(QRectF(0, S(28), w, S(18)), int(Qt.AlignmentFlag.AlignCenter),
+                   tr("Rubenite. Only Ruben waits here."))
 
 
 # SECTION: aerial (help)
 HELP["aerial"] = ("Rubenium League", [
-    "1 v 1 car soccer seen from the side. Put the ball in the other goal. 2 minutes; the clock only runs while the ball "
-    "is in play. At 0:00 play goes on until the ball touches the floor. A tie goes to overtime: the next goal wins.",
-    "Drive with A and D (Q and D in French) or the arrows. Jump with Space or the right mouse button, and press it "
-    "again in the air for a double jump. Hold a direction while you press it to flip: a flip hits the ball harder.",
-    "Boost with Shift or the left mouse button. It refills while your wheels are on a surface, and much faster while "
-    "you touch the ball. In the air the car points at your mouse; E is air roll.",
+    "1 v 1 car soccer seen from the side. Put the ball in the other goal. 2:30 a match; the clock only runs while the "
+    "ball is in play. At 0:00 play goes on until the ball touches the floor. A tie goes to overtime: the next goal wins.",
+    "Drive with A and D (Q and D in French) or the arrows. Jump with Space, and press it again in the air for a double "
+    "jump. Hold a direction while you press it to flip: a flip hits the ball harder.",
+    "Boost with Shift. It refills while your wheels are on a surface, and much faster while you touch the ball. In the "
+    "air the car points at the crosshair you move with the mouse; either mouse button (or E) is air roll.",
     "Touching the ball with all your wheels in the air gives your jump back: a flip reset."], [
     "Watch the ball bounce off the back wall: a hard shot comes back at your goal.",
-    "Land on your wheels: you get your jump back and your boost refills.",
+    "Do not boost flat out into a kickoff: the ball flies off their wall and back into yours.",
     "Free Play has drills (keys 1 to 5): kickoff, aerial save, air dribble, flip reset, double tap."], [
     "Points as in Rocket League: goal 100, save 50, epic save 75, clear 20, first touch 10, aerial hit 10, and "
     "bonuses for aerial goals, long goals, overtime goals, double taps and flip reset goals.",
-    "Ranked: Rookie, Challenger, Elite, Champion and Rubenite, each with tiers 1 to 3 and divisions I to III. A win "
-    "against a stronger opponent gives more; a loss costs a little more at every rank. A new rank needs a best-of "
-    "series against its gatekeeper; after a promotion you are shielded for 3 matches.",
-    "Bots play by the same physics as you, with the same speed, boost and hit power. They differ in how quickly they "
-    "react, how well they read the ball, how precisely they aim and which mechanics they know. Ruben is the only "
-    "Rubenite bot."])
-
+    "Ranked: 10 ranks, Rookie 1 to 3, Challenger 1 to 3, Master 1 to 3 and Rubenite. Each rank has its own bot. Win 5 "
+    "more matches than you lose against it and you go up; lose 5 more than you win and you go down.",
+    "Every bot is a step up from the one below and learns more moves: flicks, air dribbles, ground and ceiling "
+    "pinches, musty flicks, then flip resets. The higher ranks get a little hidden help, as in many games. Ruben is "
+    "the only Rubenite bot."])
 
 def aerial_selftest(ctx) -> None:
     """--selftest --aerial: a practice match steps and draws off screen, a bot match plays to the end, a replay
     file is written and played back to the same result."""
-    v = AerialView(ctx, {"mode": "practice", "bot": "halo", "seed": 7, "match_s": 20.0})
+    v = AerialView(ctx, {"mode": "practice", "bot": "ruben", "seed": 7, "match_s": 20.0})
     v.timer.stop()
     v.resize(S(1200), S(640))
     for _ in range(900):
@@ -82220,9 +82925,9 @@ def aerial_selftest(ctx) -> None:
     hist = v.m.state_hash()
     v.deleteLater()
     res = aerial_bot_match("vex", "ember", seed=3, match_s=20.0)
-    rep = {"seed": 7, "kinds": [0, 0], "in0": v.log0, "in1": v.log1, "match_s": 20.0}
-    back = aerial_unpack_replay(aerial_pack_replay(rep))
-    m = AerialMatch((0, 0), seed=7, match_s=20.0)
+    back = aerial_unpack_replay(aerial_pack_replay(v.replay_dict()))     # exactly what the tracker saves
+    m = AerialMatch(tuple(back["kinds"]), seed=back["seed"], match_s=back["match_s"])
+    aerial_apply_assist(m, 1, back.get("bot"))
     for a, b in zip(back["in0"], back["in1"]):
         m.step([AerialInput.unpack(a), AerialInput.unpack(b)])
     same = m.state_hash() == hist
@@ -82232,7 +82937,8 @@ def aerial_selftest(ctx) -> None:
         raise RuntimeError("Rubenium League self-test failed")
 
 
-FR.update({'Private match': 'Match privé', 'Private matches against players arrive with the online update': 'Les matchs privés contre des joueurs arrivent avec la mise à jour en ligne', 'Rubenium League plays in the online menu': 'Rubenium League se joue dans le menu en ligne', 'Leave the match first': 'Quitte d’abord le match', 'Restart': 'Recommencer', 'Air control: keys': 'Contrôle en l’air : clavier', 'Air control: mouse': 'Contrôle en l’air : souris', 'Forfeit and leave': 'Abandonner et quitter', 'GOAL!': 'BUT !', 'OWN GOAL': 'CONTRE SON CAMP', 'Flip reset': 'Flip reset', '0:00 · the next floor touch ends it': '0:00 · le prochain rebond au sol termine le match', 'Own goal': 'Contre son camp', 'Jump to skip the replay': 'Saute pour passer le ralenti', 'R reset · T ball on car · B infinite boost: {b} · G slow motion: {s} · H hitbox · 1-5 drills': 'R réinitialiser · T balle sur la voiture · B boost infini : {b} · G ralenti : {s} · H hitbox · 1-5 exercices', 'off': 'non', 'on': 'oui', 'The match goes on': 'Le match continue', 'Defeat': 'Défaite', 'Forfeit': 'Abandon', 'Victory': 'Victoire', 'overtime': 'prolongation', 'Epic saves': 'Arrêts épiques', 'Saves': 'Arrêts', 'Aerial hits': 'Touches aériennes', 'Clears': 'Dégagements', 'Touches': 'Touches', 'Flip resets': 'Flip resets', 'Rank-up series vs {b}: {w}-{l} (best of {n})': 'Série de promotion contre {b} : {w}-{l} (au meilleur des {n})', 'Promoted!': 'Promu !', 'Free Play': 'Jeu libre', 'Practice': 'Entraînement', 'Ranked': 'Classé', 'Replay': 'Rediffusion', 'Rubenium League could not start': 'Rubenium League n’a pas pu démarrer', 'Leave this ranked match? It counts as a loss.': 'Quitter ce match classé ? Il compte comme une défaite.', '1 v 1 car soccer · ranked ladder · 22 bots': 'Foot en voiture en 1 contre 1 · classement · 22 bots', 'PLAY': 'JOUER', 'Division {d}': 'Division {d}', 'Rank-up series vs {b} · best of {n} · {w} won, {l} lost': 'Série de promotion contre {b} · au meilleur des {n} · {w} gagnés, {l} perdus', 'Shield: you cannot drop out of this rank for {n} more matches': 'Bouclier : tu ne peux pas descendre de ce rang pendant encore {n} matchs', 'The top of the ladder': 'Le sommet du classement', '{n} MMR to the next division': '{n} MMR jusqu’à la division suivante', 'Play ranked to see your MMR over time': 'Joue en classé pour voir ton MMR au fil du temps', 'That replay is gone': 'Cette rediffusion n’existe plus', 'This replay was made by another version: it may play differently': 'Cette rediffusion vient d’une autre version : elle peut se jouer autrement', 'Save replay': 'Enregistrer la rediffusion', 'Replay saved': 'Rediffusion enregistrée', 'Could not save the replay': 'Impossible d’enregistrer la rediffusion', 'vs {b}': 'contre {b}', 'pts': 'pts', 'goals': 'buts', 'saves': 'arrêts', 'Ladder': 'Rangs', 'Tracker': 'Suivi', 'Play ranked': 'Jouer en classé', 'Rank-up series: best of {n} against {b}. Win it to go up.': 'Série de promotion : au meilleur des {n} contre {b}. Gagne-la pour monter.', 'Against a bot of your rank. Ranked against players and private matches come with the online update.': 'Contre un bot de ton rang. Le classé contre des joueurs et les matchs privés arrivent avec la mise à jour en ligne.', 'Your car': 'Ta voiture', 'Practice and training': 'Entraînement', 'Free Play and drills': 'Jeu libre et exercices', 'Play any bot below: no MMR, just practice.': 'Affronte n’importe quel bot ci-dessous : pas de MMR, juste de l’entraînement.', 'Jump / double jump': 'Sauter / double saut', 'Flip (direction + jump)': 'Flip (direction + saut)', 'Mouse': 'Souris', 'Point the car in the air': 'Oriente la voiture en l’air', 'Air roll': 'Air roll', 'Menu': 'Menu', 'Matches': 'Matchs', 'Wins': 'Victoires', 'Peak': 'Meilleur rang', 'MMR': 'MMR', 'Match history': 'Historique des matchs', 'Your last 200 matches. The last 10 keep their replay: watch it here or save the file to keep or share it.': 'Tes 200 derniers matchs. Les 10 derniers gardent leur rediffusion : regarde-la ici ou enregistre le fichier pour le garder ou le partager.', 'Open the replays folder': 'Ouvrir le dossier des rediffusions', 'Five ranks, each with tiers 1 to 3 and divisions I to III. Wins against stronger opponents give more; losses cost a little more at every rank. Reaching a new rank takes a best-of series against its gatekeeper.': 'Cinq rangs, chacun avec les niveaux 1 à 3 et les divisions I à III. Battre plus fort que soi rapporte plus ; une défaite coûte un peu plus à chaque rang. Pour atteindre un nouveau rang, il faut gagner une série contre son gardien.', 'you are here': 'tu es ici', 'From {m} MMR · {s} per division': 'Dès {m} MMR · {s} par division', 'gate: {b}, best of {n}': 'gardien : {b}, au meilleur des {n}', 'Bots: {b}': 'Bots : {b}', 'Challenger': 'Challenger', 'Rubenite': 'Rubenite', 'Kickoff': 'Engagement', 'Aerial save': 'Arrêt aérien', 'Air dribble': 'Air dribble', 'Double tap': 'Double tap', 'Goal': 'But', 'Epic Save': 'Arrêt épique', 'First Touch': 'Première touche', 'Aerial Hit': 'Touche aérienne', 'Hat Trick': 'Triplé', 'Savior': 'Sauveur', 'Aerial Goal': 'But aérien', 'Long Goal': 'But de loin', 'Overtime Goal': 'But en prolongation', 'Flip Reset Goal': 'But en flip reset', 'Double Tap': 'Double tap', 'Medium and round. Good at everything.': 'Moyenne et arrondie. Bonne partout.', 'Long and low. Easier dribbles and flicks.': 'Longue et basse. Dribbles et flicks plus faciles.', 'Short and tall. Wins more 50/50s.': 'Courte et haute. Gagne plus de 50/50.', 'Drives at the ball. Rarely jumps.': 'Fonce sur la balle. Saute rarement.', 'Jumps late, every time.': 'Saute en retard, à chaque fois.', 'Always overshoots.': 'Va toujours trop loin.', 'Fast, and wastes all its boost.': 'Rapide, et gaspille tout son boost.', 'Stays back and pokes the ball.': 'Reste en retrait et pousse la balle.', 'Trying its first aerials.': 'Tente ses premiers aériens.', 'The gatekeeper. Solid on the ground.': 'Le gardien. Solide au sol.', 'Flips into everything.': 'Flippe dans tout.', 'A defender who clears off the walls.': 'Un défenseur qui dégage sur les murs.', 'Quick aerials, sloppy finishes.': 'Aériens rapides, finitions approximatives.', 'Fakes kickoffs and waits for your mistake.': 'Feinte les engagements et attend ton erreur.', 'The gatekeeper. Clean aerials.': 'Le gardien. Aériens propres.', 'Power hits and wall play.': 'Frappes puissantes et jeu sur les murs.', 'Patient. Fakes, then punishes.': 'Patient. Feinte, puis punit.', 'Starting to air dribble.': 'Commence à faire des air dribbles.', 'Reads the back wall. Some double taps.': 'Lit le mur du fond. Quelques double taps.', 'The gatekeeper. Consistent air dribbles.': 'Le gardien. Air dribbles réguliers.', 'Lives on the ceiling and the high ball.': 'Vit au plafond et sur les balles hautes.', 'Flip resets.': 'Flip resets.', 'Relentless pressure.': 'Pression sans relâche.', 'The last gate. Has everything.': 'Le dernier gardien. Il a tout.', 'Ruben. Beyond human.': 'Ruben. Au-delà de l’humain.', '1 v 1 car soccer seen from the side. Put the ball in the other goal. 2 minutes; the clock only runs while the ball is in play. At 0:00 play goes on until the ball touches the floor. A tie goes to overtime: the next goal wins.': 'Foot en voiture en 1 contre 1, vu de côté. Mets la balle dans l’autre but. 2 minutes ; le chrono ne tourne que quand la balle est en jeu. À 0:00, le jeu continue jusqu’à ce que la balle touche le sol. En cas d’égalité, prolongation : le prochain but gagne.', 'Drive with A and D (Q and D in French) or the arrows. Jump with Space or the right mouse button, and press it again in the air for a double jump. Hold a direction while you press it to flip: a flip hits the ball harder.': 'Conduis avec Q et D (A et D en anglais) ou les flèches. Saute avec Espace ou le clic droit, et appuie de nouveau en l’air pour un double saut. Garde une direction en appuyant pour faire un flip : un flip frappe la balle plus fort.', 'Boost with Shift or the left mouse button. It refills while your wheels are on a surface, and much faster while you touch the ball. In the air the car points at your mouse; E is air roll.': 'Boost avec Maj ou le clic gauche. Il se recharge quand tes roues touchent une surface, et bien plus vite quand tu touches la balle. En l’air, la voiture pointe vers ta souris ; E fait un air roll.', 'Touching the ball with all your wheels in the air gives your jump back: a flip reset.': 'Toucher la balle avec toutes tes roues en l’air te rend ton saut : un flip reset.', 'Watch the ball bounce off the back wall: a hard shot comes back at your goal.': 'Attention au rebond sur le mur du fond : un tir puissant revient vers ton but.', 'Land on your wheels: you get your jump back and your boost refills.': 'Atterris sur tes roues : tu récupères ton saut et ton boost se recharge.', 'Free Play has drills (keys 1 to 5): kickoff, aerial save, air dribble, flip reset, double tap.': 'Le jeu libre a des exercices (touches 1 à 5) : engagement, arrêt aérien, air dribble, flip reset, double tap.', 'Points as in Rocket League: goal 100, save 50, epic save 75, clear 20, first touch 10, aerial hit 10, and bonuses for aerial goals, long goals, overtime goals, double taps and flip reset goals.': 'Les points comme dans Rocket League : but 100, arrêt 50, arrêt épique 75, dégagement 20, première touche 10, touche aérienne 10, et des bonus pour les buts aériens, de loin, en prolongation, en double tap et en flip reset.', 'Ranked: Rookie, Challenger, Elite, Champion and Rubenite, each with tiers 1 to 3 and divisions I to III. A win against a stronger opponent gives more; a loss costs a little more at every rank. A new rank needs a best-of series against its gatekeeper; after a promotion you are shielded for 3 matches.': 'Classé : Rookie, Challenger, Élite, Champion et Rubenite, chacun avec les niveaux 1 à 3 et les divisions I à III. Battre plus fort que soi rapporte plus ; une défaite coûte un peu plus à chaque rang. Un nouveau rang demande une série contre son gardien ; après une promotion, tu es protégé pendant 3 matchs.', 'Bots play by the same physics as you, with the same speed, boost and hit power. They differ in how quickly they react, how well they read the ball, how precisely they aim and which mechanics they know. Ruben is the only Rubenite bot.': 'Les bots suivent la même physique que toi, avec la même vitesse, le même boost et la même puissance. Ils diffèrent par leurs réflexes, leur lecture de la balle, leur précision et les techniques qu’ils connaissent. Ruben est le seul bot Rubenite.'})
+FR.update({'The climb, from Rookie at the bottom to Rubenite at the top. About 4 wins against your own level take you up a division; a new rank needs a series against its gatekeeper.': 'La montée, de Rookie en bas à Rubenite en haut. Environ 4 victoires contre ton niveau te font monter d’une division ; un nouveau rang demande une série contre son gardien.', 'YOU': 'TOI', 'THE SUMMIT': 'LE SOMMET', 'Rubenite 3 · Division III and beyond. Only Ruben waits here.': 'Rubenite 3 · Division III et au-delà. Seul Ruben attend ici.', 'Rubenium League hit a problem and stopped': 'Rubenium League a rencontré un problème et s’est arrêté', 'Your last ranked match was not finished: it counts as a loss ({d} MMR)': 'Ton dernier match classé n’a pas été terminé : il compte comme une défaite ({d} MMR)', 'Private match': 'Match privé', 'Private matches against players arrive with the online update': 'Les matchs privés contre des joueurs arrivent avec la mise à jour en ligne', 'Rubenium League plays in the online menu': 'Rubenium League se joue dans le menu en ligne', 'Leave the match first': 'Quitte d’abord le match', 'Restart': 'Recommencer', 'Air control: keys': 'Contrôle en l’air : clavier', 'Air control: mouse': 'Contrôle en l’air : souris', 'Forfeit and leave': 'Abandonner et quitter', 'GOAL!': 'BUT !', 'OWN GOAL': 'CONTRE SON CAMP', 'Flip reset': 'Flip reset', '0:00 · the next floor touch ends it': '0:00 · le prochain rebond au sol termine le match', 'Own goal': 'Contre son camp', 'Jump to skip the replay': 'Saute pour passer le ralenti', 'R reset · T ball on car · B infinite boost: {b} · G slow motion: {s} · H hitbox · 1-5 drills': 'R réinitialiser · T balle sur la voiture · B boost infini : {b} · G ralenti : {s} · H hitbox · 1-5 exercices', 'off': 'non', 'on': 'oui', 'The match goes on': 'Le match continue', 'Defeat': 'Défaite', 'Forfeit': 'Abandon', 'Victory': 'Victoire', 'overtime': 'prolongation', 'Epic saves': 'Arrêts épiques', 'Saves': 'Arrêts', 'Aerial hits': 'Touches aériennes', 'Clears': 'Dégagements', 'Touches': 'Touches', 'Flip resets': 'Flip resets', 'Rank-up series vs {b}: {w}-{l} (best of {n})': 'Série de promotion contre {b} : {w}-{l} (au meilleur des {n})', 'Promoted!': 'Promu !', 'Free Play': 'Jeu libre', 'Practice': 'Entraînement', 'Ranked': 'Classé', 'Replay': 'Rediffusion', 'Rubenium League could not start': 'Rubenium League n’a pas pu démarrer', 'Leave this ranked match? It counts as a loss.': 'Quitter ce match classé ? Il compte comme une défaite.', '1 v 1 car soccer · ranked ladder · 22 bots': 'Foot en voiture en 1 contre 1 · classement · 22 bots', 'PLAY': 'JOUER', 'Division {d}': 'Division {d}', 'Rank-up series vs {b} · best of {n} · {w} won, {l} lost': 'Série de promotion contre {b} · au meilleur des {n} · {w} gagnés, {l} perdus', 'Shield: you cannot drop out of this rank for {n} more matches': 'Bouclier : tu ne peux pas descendre de ce rang pendant encore {n} matchs', 'The top of the ladder': 'Le sommet du classement', '{n} MMR to the next division': '{n} MMR jusqu’à la division suivante', 'Play ranked to see your MMR over time': 'Joue en classé pour voir ton MMR au fil du temps', 'That replay is gone': 'Cette rediffusion n’existe plus', 'This replay was made by another version: it may play differently': 'Cette rediffusion vient d’une autre version : elle peut se jouer autrement', 'Save replay': 'Enregistrer la rediffusion', 'Replay saved': 'Rediffusion enregistrée', 'Could not save the replay': 'Impossible d’enregistrer la rediffusion', 'vs {b}': 'contre {b}', 'pts': 'pts', 'goals': 'buts', 'saves': 'arrêts', 'Ladder': 'Rangs', 'Tracker': 'Suivi', 'Play ranked': 'Jouer en classé', 'Rank-up series: best of {n} against {b}. Win it to go up.': 'Série de promotion : au meilleur des {n} contre {b}. Gagne-la pour monter.', 'Against a bot of your rank. Ranked against players and private matches come with the online update.': 'Contre un bot de ton rang. Le classé contre des joueurs et les matchs privés arrivent avec la mise à jour en ligne.', 'Your car': 'Ta voiture', 'Practice and training': 'Entraînement', 'Free Play and drills': 'Jeu libre et exercices', 'Play any bot below: no MMR, just practice.': 'Affronte n’importe quel bot ci-dessous : pas de MMR, juste de l’entraînement.', 'Jump / double jump': 'Sauter / double saut', 'Flip (direction + jump)': 'Flip (direction + saut)', 'Mouse': 'Souris', 'Point the car in the air': 'Oriente la voiture en l’air', 'Air roll': 'Air roll', 'Menu': 'Menu', 'Matches': 'Matchs', 'Wins': 'Victoires', 'Peak': 'Meilleur rang', 'MMR': 'MMR', 'Match history': 'Historique des matchs', 'Your last 200 matches. The last 10 keep their replay: watch it here or save the file to keep or share it.': 'Tes 200 derniers matchs. Les 10 derniers gardent leur rediffusion : regarde-la ici ou enregistre le fichier pour le garder ou le partager.', 'Open the replays folder': 'Ouvrir le dossier des rediffusions', 'Five ranks, each with tiers 1 to 3 and divisions I to III. Wins against stronger opponents give more; losses cost a little more at every rank. Reaching a new rank takes a best-of series against its gatekeeper.': 'Cinq rangs, chacun avec les niveaux 1 à 3 et les divisions I à III. Battre plus fort que soi rapporte plus ; une défaite coûte un peu plus à chaque rang. Pour atteindre un nouveau rang, il faut gagner une série contre son gardien.', 'you are here': 'tu es ici', 'From {m} MMR · {s} per division': 'Dès {m} MMR · {s} par division', 'gate: {b}, best of {n}': 'gardien : {b}, au meilleur des {n}', 'Bots: {b}': 'Bots : {b}', 'Challenger': 'Challenger', 'Rubenite': 'Rubenite', 'Kickoff': 'Engagement', 'Aerial save': 'Arrêt aérien', 'Air dribble': 'Air dribble', 'Double tap': 'Double tap', 'Goal': 'But', 'Epic Save': 'Arrêt épique', 'First Touch': 'Première touche', 'Aerial Hit': 'Touche aérienne', 'Hat Trick': 'Triplé', 'Savior': 'Sauveur', 'Aerial Goal': 'But aérien', 'Long Goal': 'But de loin', 'Overtime Goal': 'But en prolongation', 'Flip Reset Goal': 'But en flip reset', 'Double Tap': 'Double tap', 'Medium and round. Good at everything.': 'Moyenne et arrondie. Bonne partout.', 'Long and low. Easier dribbles and flicks.': 'Longue et basse. Dribbles et flicks plus faciles.', 'Short and tall. Wins more 50/50s.': 'Courte et haute. Gagne plus de 50/50.', 'Drives at the ball. Rarely jumps.': 'Fonce sur la balle. Saute rarement.', 'Jumps late, every time.': 'Saute en retard, à chaque fois.', 'Always overshoots.': 'Va toujours trop loin.', 'Fast, and wastes all its boost.': 'Rapide, et gaspille tout son boost.', 'Stays back and pokes the ball.': 'Reste en retrait et pousse la balle.', 'Trying its first aerials.': 'Tente ses premiers aériens.', 'The gatekeeper. Solid on the ground.': 'Le gardien. Solide au sol.', 'Flips into everything.': 'Flippe dans tout.', 'A defender who clears off the walls.': 'Un défenseur qui dégage sur les murs.', 'Quick aerials, sloppy finishes.': 'Aériens rapides, finitions approximatives.', 'Fakes kickoffs and waits for your mistake.': 'Feinte les engagements et attend ton erreur.', 'The gatekeeper. Clean aerials.': 'Le gardien. Aériens propres.', 'Power hits and wall play.': 'Frappes puissantes et jeu sur les murs.', 'Patient. Fakes, then punishes.': 'Patient. Feinte, puis punit.', 'Starting to air dribble.': 'Commence à faire des air dribbles.', 'Reads the back wall. Some double taps.': 'Lit le mur du fond. Quelques double taps.', 'The gatekeeper. Consistent air dribbles.': 'Le gardien. Air dribbles réguliers.', 'Lives on the ceiling and the high ball.': 'Vit au plafond et sur les balles hautes.', 'Flip resets.': 'Flip resets.', 'Relentless pressure.': 'Pression sans relâche.', 'The last gate. Has everything.': 'Le dernier gardien. Il a tout.', 'Ruben. Beyond human.': 'Ruben. Au-delà de l’humain.', '1 v 1 car soccer seen from the side. Put the ball in the other goal. 2 minutes; the clock only runs while the ball is in play. At 0:00 play goes on until the ball touches the floor. A tie goes to overtime: the next goal wins.': 'Foot en voiture en 1 contre 1, vu de côté. Mets la balle dans l’autre but. 2 minutes ; le chrono ne tourne que quand la balle est en jeu. À 0:00, le jeu continue jusqu’à ce que la balle touche le sol. En cas d’égalité, prolongation : le prochain but gagne.', 'Drive with A and D (Q and D in French) or the arrows. Jump with Space or the right mouse button, and press it again in the air for a double jump. Hold a direction while you press it to flip: a flip hits the ball harder.': 'Conduis avec Q et D (A et D en anglais) ou les flèches. Saute avec Espace ou le clic droit, et appuie de nouveau en l’air pour un double saut. Garde une direction en appuyant pour faire un flip : un flip frappe la balle plus fort.', 'Boost with Shift or the left mouse button. It refills while your wheels are on a surface, and much faster while you touch the ball. In the air the car points at your mouse; E is air roll.': 'Boost avec Maj ou le clic gauche. Il se recharge quand tes roues touchent une surface, et bien plus vite quand tu touches la balle. En l’air, la voiture pointe vers ta souris ; E fait un air roll.', 'Touching the ball with all your wheels in the air gives your jump back: a flip reset.': 'Toucher la balle avec toutes tes roues en l’air te rend ton saut : un flip reset.', 'Watch the ball bounce off the back wall: a hard shot comes back at your goal.': 'Attention au rebond sur le mur du fond : un tir puissant revient vers ton but.', 'Land on your wheels: you get your jump back and your boost refills.': 'Atterris sur tes roues : tu récupères ton saut et ton boost se recharge.', 'Free Play has drills (keys 1 to 5): kickoff, aerial save, air dribble, flip reset, double tap.': 'Le jeu libre a des exercices (touches 1 à 5) : engagement, arrêt aérien, air dribble, flip reset, double tap.', 'Points as in Rocket League: goal 100, save 50, epic save 75, clear 20, first touch 10, aerial hit 10, and bonuses for aerial goals, long goals, overtime goals, double taps and flip reset goals.': 'Les points comme dans Rocket League : but 100, arrêt 50, arrêt épique 75, dégagement 20, première touche 10, touche aérienne 10, et des bonus pour les buts aériens, de loin, en prolongation, en double tap et en flip reset.', 'Ranked: Rookie, Challenger, Elite, Champion and Rubenite, each with tiers 1 to 3 and divisions I to III. A win against a stronger opponent gives more; a loss costs a little more at every rank. A new rank needs a best-of series against its gatekeeper; after a promotion you are shielded for 3 matches.': 'Classé : Rookie, Challenger, Élite, Champion et Rubenite, chacun avec les niveaux 1 à 3 et les divisions I à III. Battre plus fort que soi rapporte plus ; une défaite coûte un peu plus à chaque rang. Un nouveau rang demande une série contre son gardien ; après une promotion, tu es protégé pendant 3 matchs.', 'Bots play by the same physics as you, with the same speed, boost and hit power. They differ in how quickly they react, how well they read the ball, how precisely they aim and which mechanics they know. Ruben is the only Rubenite bot.': 'Les bots suivent la même physique que toi, avec la même vitesse, le même boost et la même puissance. Ils diffèrent par leurs réflexes, leur lecture de la balle, leur précision et les techniques qu’ils connaissent. Ruben est le seul bot Rubenite.', '1 v 1 car soccer seen from the side. Put the ball in the other goal. 2:30 a match; the clock only runs while the ball is in play. At 0:00 play goes on until the ball touches the floor. A tie goes to overtime: the next goal wins.': 'Foot en voiture en 1 contre 1, vu de côté. Mets la balle dans l’autre but. 2:30 par match ; le chrono ne tourne que quand la balle est en jeu. À 0:00, le jeu continue jusqu’à ce que la balle touche le sol. En cas d’égalité, prolongation : le prochain but gagne.', 'Do not boost flat out into a kickoff: the ball flies off their wall and back into yours.': 'Ne fonce pas à fond avec le boost sur l’engagement : la balle rebondit sur leur mur et revient dans le tien.', 'Ranked: 10 ranks, Rookie 1 to 3, Challenger 1 to 3, Master 1 to 3 and Rubenite. Each rank has its own bot. Win 5 more matches than you lose against it and you go up; lose 5 more than you win and you go down.': 'Classé : 10 rangs, Débutant 1 à 3, Challenger 1 à 3, Master 1 à 3 et Rubenite. Chaque rang a son bot. Gagne 5 matchs de plus que tu n’en perds contre lui et tu montes ; perds-en 5 de plus que tu n’en gagnes et tu descends.', 'Every bot is a step up from the one below and learns more moves: flicks, air dribbles, ground and ceiling pinches, musty flicks, then flip resets. The higher ranks get a little hidden help, as in many games. Ruben is the only Rubenite bot.': 'Chaque bot est un cran au-dessus du précédent et apprend de nouveaux gestes : flicks, air dribbles, pinches au sol et au plafond, musty flicks, puis flip resets. Les rangs les plus hauts reçoivent un peu d’aide cachée, comme dans beaucoup de jeux. Ruben est le seul bot Rubenite.', 'Promoted to {r}!': 'Promu en {r} !', 'Down to {r}': 'Descendu en {r}', 'The top. {n} more losses than wins and you drop.': 'Le sommet. {n} défaites de plus que de victoires et tu descends.', '{n} wins to {r}': '{n} victoires jusqu’à {r}', '{n} losses to drop': '{n} défaites avant de descendre', '1 v 1 car soccer · 10 ranks · 10 bots to beat': 'Foot en voiture en 1 contre 1 · 10 rangs · 10 bots à battre', 'Your ranked opponent: {b}': 'Ton adversaire classé : {b}', 'Ranked is against the bot of your rank. Ranked against players and private matches come with the online update.': 'Le classé se joue contre le bot de ton rang. Le classé contre des joueurs et les matchs privés arrivent avec la mise à jour en ligne.', 'The climb, from Rookie 1 at the bottom to Rubenite at the top. Each rank has its own bot: beat it 5 more times than it beats you to go up, lose 5 more than you win and you drop.': 'La montée, de Débutant 1 en bas à Rubenite en haut. Chaque rang a son bot : bats-le 5 fois de plus qu’il ne te bat pour monter, perds 5 fois de plus que tu ne gagnes et tu descends.', 'beyond human': 'au-delà de l’humain', 'Rubenite. Only Ruben waits here.': 'Rubenite. Seul Ruben attend ici.', 'Master': 'Master', 'Rookie': 'Débutant', 'Drives at the ball and boosts into every kickoff.': 'Fonce sur la balle et boost à fond à chaque engagement.', 'Learning to jump, double jump and flip into the ball.': 'Apprend à sauter, à faire un double saut et à flipper dans la balle.', 'First aerials and wall clears. Starting to defend.': 'Premiers aériens et dégagements sur les murs. Commence à défendre.', 'Fast aerials, wave dashes and calm kickoffs.': 'Fast aerials, wave dashes et engagements calmes.', 'Carries the ball and flicks it past you.': 'Porte la balle et la flick au-dessus de toi.', 'Air dribbles and ground pinches.': 'Air dribbles et pinches au sol.', 'Ceiling pinches and musty flicks.': 'Pinches au plafond et musty flicks.', 'Chains flip resets. Almost flawless.': 'Enchaîne les flip resets. Presque parfait.', 'Flip reset x{n}': 'Flip reset x{n}', 'the basics': 'les bases', 'jumps and flips': 'sauts et flips', 'first aerials': 'premiers aériens', 'fast aerials': 'fast aerials', 'flicks': 'flicks', 'air dribbles': 'air dribbles', 'pinches and mustys': 'pinches et mustys', 'flip resets': 'flip resets', 'reset chains': 'enchaînements de resets', 'Scoreboard': 'Tableau des scores', 'During a match the mouse is locked to the game and moves a crosshair. Hold Tab or press Esc to free it.': 'Pendant un match, la souris est bloquée dans le jeu et déplace un viseur. Garde Tab enfoncé ou appuie sur Échap pour la libérer.'})
+FR.update({'Drive with A and D (Q and D in French) or the arrows. Jump with Space, and press it again in the air for a double jump. Hold a direction while you press it to flip: a flip hits the ball harder.': 'Conduis avec Q et D (A et D en anglais) ou les flèches. Saute avec Espace, et appuie de nouveau en l’air pour un double saut. Garde une direction en appuyant pour faire un flip : un flip frappe la balle plus fort.', 'Boost with Shift. It refills while your wheels are on a surface, and much faster while you touch the ball. In the air the car points at the crosshair you move with the mouse; either mouse button (or E) is air roll.': 'Boost avec Maj. Il se recharge quand tes roues touchent une surface, et bien plus vite quand tu touches la balle. En l’air, la voiture pointe vers le viseur que tu déplaces avec la souris ; les deux clics de la souris (ou E) font un air roll.', 'Ranked is closed for now': 'Le classé est fermé pour le moment', 'Ranked is closed for now while we fix something. Practice and Free Play stay open.': 'Le classé est fermé le temps de corriger un problème. L’entraînement et le jeu libre restent ouverts.', 'Admin: open ranked again': 'Admin : rouvrir le classé', 'Admin: close ranked': 'Admin : fermer le classé', 'Failed: {e}': 'Échec : {e}', 'Ranked closed for everyone': 'Classé fermé pour tout le monde', 'Ranked open again': 'Classé rouvert', 'Close Rubenium League ranked for everyone?': 'Fermer le classé de Rubenium League pour tout le monde ?', 'Open Rubenium League ranked again for everyone?': 'Rouvrir le classé de Rubenium League pour tout le monde ?', 'Close ranked': 'Fermer le classé', 'Open ranked': 'Rouvrir le classé', 'Left click': 'Clic gauche', 'Right click': 'Clic droit'})
 # END SECTION: aerial
 
 
