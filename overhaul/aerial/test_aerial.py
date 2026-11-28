@@ -331,6 +331,40 @@ def test_boost_and_speed_help_only_from_phantom():
     assert kit[keys[7]]["speed"] < kit[keys[8]]["speed"] < kit[keys[9]]["speed"]
 
 
+def test_defence_grows_with_rank():
+    kit = A["AERIAL_BOT_KIT"]
+    g = [kit[row[0]]["guard"] for row in A["AERIAL_BOT_ROSTER"]]
+    assert g == sorted(g) and len(set(g)) == len(g) and g[-1] == 1.0, g
+
+
+def test_keeper_saves_a_long_shot():
+    """A bot standing in its goal stops a hard shot from far up the pitch."""
+    saved = 0
+    for seed in range(1, 9):
+        m = A["AerialMatch"]((1, 0), seed=seed, match_s=60.0, replays=False)
+        for _ in range(int(T["count_s"] * 120) + 2):
+            m.step([I(), I()])
+        s = m.sim
+        s.kick_wait, s.kick_cap_t, s.last_touch = False, 0.0, 1
+        bot = A["AerialBot"](0, "ruben", seed)
+        A["aerial_apply_assist"](m, 0, "ruben")
+        bot.mode = "shadow"
+        s.cars[0].reset(-T["hl"] + 200, 0.0, 1.5708, 50.0)
+        s.cars[1].reset(2000.0, 1200.0, 3.14, 0.0)
+        b = s.ball
+        b.x, b.y = 1000.0, (seed - 4.5) * 160.0
+        gy = (seed % 3 - 1) * 250.0
+        dx, dy = -T["hl"] - 200 - b.x, gy - b.y
+        d = math.hypot(dx, dy)
+        b.vx, b.vy = dx / d * 3800.0, dy / d * 3800.0
+        for _ in range(300):
+            m.step([bot.think(m), I()])
+            if m.phase != m.LIVE or b.vx > 300:
+                break
+        saved += m.score[1] == 0
+    assert saved >= 7, saved
+
+
 def test_bot_drives_another_car():
     for k in range(3):
         for row in A["AERIAL_BOT_ROSTER"]:

@@ -42,7 +42,8 @@ Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle, Ruben (internal
 history keeps working). Each is the same `AerialBot`; its level sets reaction, re-planning, how far and how well it
 reads the ball, aim and line error, randomness in choices and blunders. It weighs its options each time it thinks
 (save, carry, shoot at a post or the middle, bank off a wall, pinch, clear, shadow, fake, pads, boost denial) and
-holds a plan for a moment instead of flickering. The kit (`AERIAL_BOT_KIT`) adds plays by rank and a touch-precision
+holds a plan for a moment instead of flickering. Its defence (`guard` in the kit, 0 for Milo up to 1 for Ruben) sets
+how deep and disciplined it shadows, when it keeps the goal line side on, and how well it saves. The kit (`AERIAL_BOT_KIT`) adds plays by rank and a touch-precision
 help that grows with rank (where its touch goes, and the power of a touch it means as a shot). As the owner decided:
 fair boost and speed up to Master 1; Phantom 1.15x boost and 1.03x speed, Oracle 1.3x and 1.06x, Ruben 1.5x and 1.10x.
 All of it lives in the sim through the inputs, so replays play back the same.

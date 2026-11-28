@@ -1,4 +1,4 @@
-Rubenium 10.0.1
+Rubenium 10.0
 
 - Updates arrive again: the app was told it was up to date and never saw 9.5 or 10.0
 - Hoops: hold the ball still too long and a defender can knock it out of your hands
@@ -6,3 +6,16 @@ Rubenium 10.0.1
 - Hoops: Professional (NBA) bots make every clean shot: only a block stops them
 - Home: a small music player under the live game, with play, skip and volume
 - Leaving Karting or Hoops brings Rubenium straight back to the front
+- Rubenium League bots defend properly now: they keep the goal line, shadow deeper and save long shots, so every bot is clearly stronger than the one below
+- NEW: Hoops online. Play a friend or anyone online: 1 v 1 with a bot team-mate each, or the two of you together against two bots. Make a room or join one in Hoops
+- Hoops: the DUNK. Near the hoop press E, then E, R, C and X as each ring closes. Three in time is a MONSTER DUNK nobody can block, and bots dunk and block too
+- Hoops: running into a wall with the ball no longer stops the bots from rushing you
+- The free spin wheel lands on every prize again (it was stuck on 100 coins)
+- The scratch card always shows your prize (it could stay blank after scratching)
+- Rocket and roulette results are random again (the rocket crashed at once and the roulette always landed on gold)
+- A fresh start for everyone: coins, items, cases, levels and records start again from zero, with the starter pack
+- Rubenium League rebuilt: 1 v 1 car soccer on a flat pitch seen from above, with boost orbs and pads, powerslides, drift flicks and pinches
+- Rubenium League: Comet, Blade and Titan each drive their own way, and the bot always drives a different car from yours
+- Rubenium League bots: Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle and Ruben, each one clearly harder than the one before
+- Rubenium League: practise against any bot up to one rank above yours, private matches with your own rules, Free Play with infinite boost
+- Rubenium League: replays saved from the old side-view game can no longer be played

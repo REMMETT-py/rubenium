@@ -18,12 +18,17 @@ All the code is in `Rubenium.py`, in the blocks that start with `# SECTION: aeri
   (format v2; side-view v1 replays are refused with a message).
 - English and French, help page, self-test (`--selftest --aerial`), tests in `overhaul/aerial/test_aerial.py`.
 
-## Measured (27 Nov, 60 s bot matches, 40 a pair, each bot against the one below)
-Tito-Milo 27, Rocco-Tito 23, Flash-Rocco 31, Viper-Flash 27, Storm-Viper 25, Vortex-Storm 15, Phantom-Vortex 27,
-Oracle-Phantom 17, Ruben-Oracle 20 wins of 40.
+## Measured (28 Nov, full 2:30 bot matches, 40 a pair, each bot against the one below)
+Tito-Milo 27, Rocco-Tito 28, Flash-Rocco 34, Viper-Flash 31, Storm-Viper 28, Vortex-Storm 25, Phantom-Vortex 30,
+Oracle-Phantom 24, Ruben-Oracle 23 wins of 40. Ruben against lower bots (20 each): Phantom 16, Vortex 18, Storm 15,
+Milo 20 (265-35 in goals).
+
+What made the top bots apart: their defence (kit `guard`). Defenders used to shadow close to the ball and lose long
+shots from far up the pitch; now they shadow deeper on the ball's line, keep the goal line side on when the other car
+can shoot (78 of 80 long shots stopped in a drill, was 61), aim their saves out wide, and stop challenging balls they
+reach second. A bot with it beats the same bot without it about 60 % of the time.
 
 ## Open
-- The top four bots (Vortex to Ruben) are not yet clearly apart: both sides score almost at will, so results there are
-  close to a coin flip. Reactions, aim, shot power, the allowed boost and speed help and the play lists each move it by
-  only a few wins in 40. Their defence needs reworking.
+- The top steps (Vortex over Storm, Oracle over Phantom, Ruben over Oracle) are clear but smaller (58-63 %) than the
+  lower ones. More would need more than the boost and speed help the owner allowed.
 - Ranked and private matches against players need the online phase (server functions and netcode).
