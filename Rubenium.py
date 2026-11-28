@@ -1533,7 +1533,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
 VERSION_NAME = "10.0"   # the version people see
-BUILD = "2026.11.28.2"      # release tag (a date). It only ever goes up: this is what the updater compares
+BUILD = "2026.11.28.3"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12769,482 +12769,1118 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 # What's new (shown in the New tab; English text is the key, French is in lang_fr)
 # --------------------------------------------------------------------------- #
-NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
-    # one entry per release, and nothing about features that are gone
-    ("10.0", ["Updates arrive again: the app was told it was up to date and never saw 9.5 or 10.0",
-               "Hoops: hold the ball still too long and a defender can knock it out of your hands",
-               "Hoops: changed your mind? Right click calls a shot off, left click calls a pass off, and a charged pass goes by itself after a moment",
-               "Hoops: Professional (NBA) bots make every clean shot: only a block stops them",
-               "Home: a small music player under the live game, with play, skip and volume",
-               "Leaving Karting or Hoops brings Rubenium straight back to the front",
-              "Rubenium League bots defend properly now: they keep the goal line, shadow deeper and save long shots, so every bot is clearly stronger than the one below",
-              "NEW: Hoops online. Play a friend or anyone online: 1 v 1 with a bot team-mate each, or the two of you together against two bots. Make a room or join one in Hoops",
-              "Hoops: the DUNK. Near the hoop press E, then E, R, C and X as each ring closes. Three in time is a MONSTER DUNK nobody can block, and bots dunk and block too",
-              "Hoops: running into a wall with the ball no longer stops the bots from rushing you",
-              "The free spin wheel lands on every prize again (it was stuck on 100 coins)",
-              "The scratch card always shows your prize (it could stay blank after scratching)",
-              "Rocket and roulette results are random again (the rocket crashed at once and the roulette always landed on gold)",
-              "A fresh start for everyone: coins, items, cases, levels and records start again from zero, with the starter pack",
-              "Rubenium League rebuilt: 1 v 1 car soccer on a flat pitch seen from above, with boost orbs and pads, powerslides, drift flicks and pinches",
-              "Rubenium League: Comet, Blade and Titan each drive their own way, and the bot always drives a different car from yours",
-              "Rubenium League bots: Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle and Ruben, each one clearly harder than the one before",
-              "Rubenium League: practise against any bot up to one rank above yours, private matches with your own rules, Free Play with infinite boost",
-              "Rubenium League: replays saved from the old side-view game can no longer be played"]),
-    ("9.5", ["Hoops controls: one button, one job. With the ball left click shoots, right click passes, F fakes; without it left click steals and right click switches player",
-             "Hoops: shots only once you are past the half-way line, a replay of every basket, and no more players or the ball jumping across the court",
-             "Beating bots pays much more: Hoops up to 2 500 a win on Professional, Karting up to 1 500 for beating the Professional bot",
-             "Karting and Hoops stats, records and time boards start again from zero",
-             "The Casino tile on Home opens the casino doors again, and the case drop list no longer lags",
-             "Rubenium League: a new 1 v 1 car soccer game in Play, seen from the side, with flips, aerials, air dribbles and flip resets",
-             "Rubenium League ranked: 10 ranks from Rookie 1 to Rubenite, one bot to beat at each rank, 5 wins up and 5 losses down",
-             "Rubenium League bots: Milo, Tito, Rocco, Flash, Viper, Storm, Vortex, Phantom, Oracle and Ruben, each one harder and with more moves",
-             "Rubenium League: a tracker with your MMR, your last 200 matches and replays of your last 10 you can watch or save",
-             "Rubenium League: practise against any bot up to one rank above yours, Free Play with drills, mouse or keyboard controls",
-             "Hoops: no shot clock and no charges, and a ball thrown out of the court goes to the other team",
-             "Hoops plays inside Rubenium now, smoother, and your bot team-mate gets open for passes and plays defence",
-             "Hoops: hold the ball too long and the bots rush you (6 seconds on Club down to 3 on Professional, a red edge "
-             "warns you), bots fake, 3 baskets in a row puts you On Fire, and ankle breakers",
-             "Hoops and Karting: a points feed at the top (passes, shots, saves, overtakes and more), Tab shows the "
-             "scoreboard, and a short How to play the first time",
-             "Hoops: an MVP card, a YOU marker, clearer passes, and replays of big plays and swishes",
-             "Professional bots have no human limits: in Hoops they react instantly, release every shot on the perfect mark and never bite on a fake; in Karting they launch the instant the lights go out and pass cleanly through traffic",
-             "Away for 45 seconds in Hoops or Karting: you are disqualified and get no prize",
-             "Karting: the bots are rebuilt. The old Professional is now Expert (1500), and Elite and Professional are "
-             "faster than any player. Every bot shows on the time boards with its best time",
-             "Karting: a live split against your best lap",
-             "Volume sliders for the interface, game effects and crowd and engines, in Settings and in game. Game sounds "
-             "are quieter",
-             "Animations: a free Basic one, 6 new ones (Black Hole, Warp, Glitch, Origami, Pixel Dust, Ripple), Shattered "
-             "Shard rebuilt as a Mythic, finishes colour the whole effect, and Titanium is for Mythics only",
-             "Inventory: select several items and sell them together, and the pawn shop shows each one",
-             "Daily reward: coins and a case every day, with more coins for every week of your streak",
-             "Comeback top-up: once a day, if you drop under your floor you are topped up to it (1 000 for Poor, up to "
-             "30 000 for Casino Legend)",
-             "Quests: a bot challenge every hour, day and week, and a case with every weekly quest",
-             "Bets: up to 20% of your coins (from 1 000 to 250 000). Horse Racing bets over 10 000 work again",
-             "Friends: see what your friends last played"]),
-    ("9.4", ["A fresh start for everyone: coins, items, badges, mythics, cases, levels, trophies, stats and every "
-             "leaderboard start again, and everyone gets the starter pack",
-             "Tiers are harder: Average 50 000, Investor 250 000, Businessman 1 000 000, Casino Legend 5 000 000, and you "
-             "go up one tier a day at most",
-             "Key Forge: it refills every 12 hours, at midnight and noon, and the first press shows the price before you pay",
-             "Hourly keys: 3 free keys every hour on Rewards",
-             "Daily reward: a free case every day",
-             "Free spin: bigger prizes, up to 7 500 coins times your tier",
-             "Karting: tighter driving, the race plays inside the menu, half as loud engines, full grip kerbs, faster "
-             "bots and a 10 second countdown",
-             "Karting: the 10 fastest 3 lap times of each circuit, and you can race any of them as a ghost",
-             "Bots: Easy and Medium make real mistakes, Professional is much harder",
-             "Leaderboards: a podium for the top 3 and cleaner rows",
-             "Wave Rush is a solo mini game in Mini games"]),
-    ("9.3.2", ["Home: your profile, badges and showcase now sit under the four buttons, and Jump back in is gone",
-               "Stats: one All time view, and every stat starts again from 0",
-               "Duels feel faster: your move shows at once, a clear turn banner and quicker bot replies",
-               "Clearer game menus: shorter rules in plain words, and no more win counters",
-               "Hoops: smoother bots, shorter replays you can turn off, an OPEN badge when your team-mate is free, and a "
-               "stronger Professional"]),
-    ("9.3.1", ['Bigger prize limits that grow with your wealth tier: mini games, Karting and AFK coins pay up to twice as much a day for Poor, up to 6 times for Businessman, and Casino Legend has no daily limit at all', 'Higher tiers also keep more keys from time, forge more keys a day, find more keys while playing and can bet more in duels and rooms', 'A rank-up screen when you reach a new tier, showing everything it unlocks. Click the tier bar on Home any time to see what every tier gets']),
-    ("9.3", ["NEW: Hoops, 2 v 2 basketball. You and a bot team-mate against two bots: Club, Regional, National or Professional. Dribble with Space, pass round the defence (lobs, bounce and curved passes), time your shots on the meter, steal, block and intercept. Ties go to overtime, every basket gets a replay, and wins pay more at a higher tier"]),
-    ("9.2", ["NEW: Karting, a racing game for 1 to 3 players and always one bot, on 3 circuits. Boost, drift for mini turbos, slipstream, bump the others, and big crashes wreck your kart. Pick the bot from 100 to 2500 (Professional is a perfect driver), and after each race everyone gets a score out of 100%", "Mini Golf rooms: pick the bots' level, from Easy to Professional. Bots play every hole with the real ball physics, and Professional finds a hole in one wherever there is one", 'Mini games pay double: Timing, Cups, Colour Pick, SFX Match, Connect 4, Beat Tap, Parking, Memory, Block Blast, Minesweeper and every bot game', 'The top bot is called Professional in every game, and it plays the strongest moves it can find', 'NEW: Trifade, endless noughts and crosses. You only keep 3 marks: your 4th takes your oldest away, so the game goes on until someone wins. Against bots from Easy to Professional (it always starts and plays the best move every time), or against players', 'NEW: Mazelock, a duel board game. Race your pawn to the other side and place walls to block the way. Against bots from Easy to Professional (it always starts and plays the strongest moves it can find), or against players', 'Play is clearer: Mini games, then Duels (Connect 4, Battleships, Mazelock, Trifade, each against a bot or a player), then Multiplayer (Mini Golf and Wave Rush, up to 4 players)', 'Wave Rush rooms for 2 to 4 players: everyone races live in their own colour, and after a crash you watch the others (switch with the arrows or by clicking a name). The longest run wins the pot', 'Wave Rush: the practice ghost has its own clear card, and it never shows in races against players', 'Trophies have their own page in the side menu', 'A new Home: your tier, the free rewards waiting for you, the game that is live now and the games you played last', 'Jackpot and Horse Racing take turns every 20 minutes on a fixed clock. The next one stays locked with a countdown, and bots keep both going', 'Stats: look up any player by typing a few letters of their name, and a new Records page. Player numbers moved out of Friends into Stats', 'Fresh season: everyone restarts with 2 500 coins and 5 keys, and every leaderboard, streak and quest starts again. Items stay, except for OG players, who start completely fresh with the starter pack. Leaderboards are Global only', 'Fixes: starting a mini game no longer says you already have one going, the scratch card takes you back when it is done and its chances sit under the card, readable text on light buttons', 'LEAVE CASINO door, animation previews that play when you hover them, one online menu size, the daily reward sits lower', 'Coinflip: fewer huge bot flips, and bots take longer to match a big flip (up to 2 min, you are told). Reversi is gone, and so are the Titanium White and Black fonts']),
-    ("9.1.1", ['A starter pack for everyone: 2 500 coins, 5 keys, 3 Starter Cases and 5 Standard Cases', 'Lower tiers: Average 25 000, Investor 100 000, Businessman 250 000, Casino Legend 1 000 000. Everyone starts at Poor', 'Your wealth is exact now: your coins + the shop value of the items you got since 9.1. The tier bar shows it, and hovering it shows the coins and items parts']),
-    ("9.1", ['A fresh start for everyone: coins and keys go back to 0. Your level, your Common and Rare basic items and the OG tag stay', 'Five wealth tiers, from Poor to Casino Legend: a tier you reach is yours for good, and it multiplies every free reward', 'Leaderboards have their own tab in the side menu, with every game: casino, mini games, Horse Racing and every duel', 'A new Stats tab: your wealth, casino results by game, mini game coins and where your free coins came from, all in graphs', 'Play is now an ENTER CASINO door (casino games, Jackpot, Horse Racing, Coinflip behind it) and the mini games', 'Mini games are free and pay by how well you play, judged on the server. No daily limit: your first 8 rounds of each game every day pay double', "NEW: Reversi and Battleships against bots from Easy to Insane. The bots play on the server, so they can't be tricked", 'NEW: Duels. Connect 4, Reversi and Battleships 1 v 1 against other players, free or for the same bet (the winner takes the pot, less 5%), next to Mini Golf and Wave Rush', 'Separate cases for each kind of item, and the Crown Vault (20 000) that holds them all. The Key Forge gives more keys at higher tiers', '5 animations, each with versions you unlock by owning the original', 'Badge layouts that fit how many badges you show: a row, spread out, stacked or a pyramid', "The online doors are Rubenium doors now, buttons take the colours of the song's cover, and the menu widens while you play a game", 'Lyrics stay in time with the song, and the lyrics picked match the version you are playing', 'Horse Racing shows wins properly, scratch cards never get stuck, and Rewards says how often each one comes back', 'The tutorial shows the app as it is now', 'Rubenium installs in one place (AppData\\Local\\Rubenium\\App), and Settings > UPDATE can uninstall it: hold the red button. Your online account is never touched', 'One account per PC']),
-    ("9.0.1", ["The online side menu works again (it could not be clicked)", "Leaving a free game takes you back to Rewards, not an old games list"]),
-    ("9.0", ['A whole new look: a side menu, a top bar with your coins and level, and big clear tiles everywhere', 'Home shows what is ready for you, the games you played last and what is live', 'Rewards: the free spin, scratch card, daily reward and quests in one place', 'Wealth tiers: free rewards grow with what you own, from Rookie to Diamond', 'The Key Forge: turn coins into keys, a few a day', 'A fresh start: everyone begins again with the same coins and keys. Cosmetics, levels and friends stay', 'New prices, odds and taxes across the whole game', 'The player market is gone. Quick sell stays', 'No more automatic game locks', 'Less text: tap a golden ? when you want the details', 'Bet faster with ½, 2× and Max, and your bet is remembered']),
-    ("8.0", ['Mini Golf online is fair for everyone: the server now plays out every shot with the same physics as the game, so no one can fake a hole in one', 'Solo Mini Golf online needs Rubenium 8.0', 'Safer accounts: password help is limited per PC and per name, so nobody can use it up for other players', 'A cleaner look everywhere: every button, tab, card and text field now shares one set of corners, surfaces and spacing', 'Reduce motion: a new switch in Settings > Style makes interface animations shorter and calmer', 'Empty pages now say what goes there and how to fill them (inventory, market, offers, chat, trades, Mini Golf matches, jackpot)', 'Game tabs show their full names, and every row of buttons is even', 'Lighter: Rubenium uses much less processor while it rests', 'Clearer numbers: "100 h played · member since 25 Nov 2026", long coinflip waits as 3:43:17']),
-    ("7.0", ['Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.']),
-    ("6.9.1", ["Horse Racing: the horses run at a normal pace again (the race is still 3 times longer, the speed is just doubled on screen). The Animations tab is locked for now."]),
-    ("6.9", ['NEW: 4 Mythic ANIMATIONS (Supernova, Shatter, Rift, Phoenix), each in Prismatic, Gold, Black Titan and White Titan: buy the originals in the Shop (Animations) or win any of them from the Profile Case. Click anywhere or press Esc to skip one, or switch back to the simple animation any time. The default animation is now simple: the banner floats up into nothing and drops back down. Lines now sit with the Balls in the Shop, and the Coin history moved to the Profile tab of your Inventory (whose old Coins button is now Animations)']),
-    ("6.8", ['Horse Racing: the race is now 3 times longer (about a minute) with many more lead changes, and 5 new maps (Beach, Canyon, Night City, Volcano, Moon) join Desert, Forest and Snow']),
-    ("6.7", ['NEW: 10 more animated banners (Ripples, Pinwheel, Ticker, Light Leaks, Nixie, Static, Vinyl, Pendulum, Hologram, Mandala) and 10 more moving app themes (Monsoon, Sahara, Bamboo, Neon Rain, Lanterns, Quartz, Lava Lamp, Wormhole, Polar Lights, Liquid Chrome), each in up to 6 more colours. In the shop and the cases']),
-    ("6.6", ["NEW: a Play History graph at the top of every player's Stats (yours and your friends'): net coins over time, the result of every round, win rate, each day and each game, all detailed when you hover", 'Horse Racing history: a Podium list shows the 1st, 2nd and 3rd of every race (gold, silver, bronze) and the hover card names every place']),
-    ("6.5", ['NEW: 10 more banners, frames and app themes (Lagoon, Peach, Waveform, Radar, Rose Gold…) and every banner, frame and theme now comes in up to 6 more colours: over 900 new looks. Pick the colour inside each design in the shop, they are in the cases too', 'Horse Racing now pays the first three: 1st gets 100% of their bet back and 70% of the winnings, 2nd 25% back and 20%, 3rd 5% back and 10%', 'Horse Racing: a Race History under the menu with the winners, a market-style chart of the pots, a candle for every race and each horse\'s wins. Hover anywhere to see the details', 'Horse Racing and the Jackpot can no longer be opened until they are open (the history stays visible)']),
-    ("6.4", ['NEW: 12 profile banners, 12 profile frames and 12 app colour themes, none seasonal: Meadow, Glitch, Kaleidoscope, Liquid Gold, Wings, Plasma, Abyss, Rose Gold and more', 'NEW: a sixth Nature badge, the Leaf, in the Nature Case (and all its colours). The shop and the Banner, Frame and App Colour Cases have the new looks too', 'Wave Rush duels: the other player now moves smoothly instead of lagging and running into walls (you see them a moment behind, exactly as they really flew)', 'Wave Rush duels: when you crash you keep watching the other player until they crash too, then the result comes up', 'Wave Rush duels: a Rematch button after the duel. When both players press it, a new duel starts with the same bet']),
-    ("6.3", ["NEW: Horse Racing. 5 horses, pick one and bet: your chance is your share of the money. The winner gets their bet back plus 80% of everyone else's", 'Jackpot and Horse Racing take turns, 15 minutes apart. If nobody joins, the bots play it anyway', 'Bets up to half of your coins. Bets over 10 000 are asked first and shown in gold (red when it is a big part of your coins)', 'Connect 4 Professional pays ×999. Cup Game: Easy ×1.2, Medium ×2, Hard ×3, Expert ×5', "A coloured app font now colours the app's text too", 'Mini Golf bots fixed: no more going through walls or sliding across the course, and they play in turn (you wait for their ball)', 'Mini Golf and Wave Rush moved to Earn coins; Coinflip sits under the advent calendar', 'Old cases removed (anyone who had one got its price back in coins). The Winter and Gift cases are now as good as the Top Tier Case']),
-    ("6.2.8", ['The pawn shop allows 10 exchanges an hour, not 5']),
-    ("6.2.7", ['Pawn shop: sell several copies of an item at once, a big 5-per-hour exchange counter, and Refuse always works']),
-    ("6.2.6", ["The pawn shop takes 5 offers or refusals an hour, so you can't spam refuse"]),
-    ("6.2.5", ["Quick sell's pawn shop ban is 5 minutes instead of 30"]),
-    ("6.2.4", ['SFX Match has a volume bar, so you can turn the sound up or down']),
-    ("6.2.3", ['The Jackpot stays open until a player joins, and its countdown only starts when the first player joins']),
-    ("6.2.2", ['SFX Match is much easier to match: looser scoring, longer listening, more listens and unlimited previews', 'Colour Pick answer times: Easy 30 s, Medium 20 s, Hard 10 s', 'Colour Pick and SFX Match pay by accuracy only, the same on every level (up to ×1.5)', 'Trophies remade: tap one to open its card, which says how to get it, and has a button to show it on your profile']),
-    ("6.2.1", ['Trophies: tap one you have unlocked to see how you got it, on your profile too', 'Connect 4 payouts: Easy ×1.2, Medium ×2, Hard ×5, Professional ×250', 'Cup Game tightened: a top bet of 2 000 and a daily profit limit', 'Fair play: the games now watch for results nobody can get by playing normally, and pause that game for the player while it is checked']),
-    ("6.2", ['NEW games: Colour Pick (recreate a colour from memory) and SFX Match (recreate a sound). Easy, Medium and Hard, rewards by accuracy, with their own leaderboards', 'A big 30 second countdown on every move in Connect 4 and the Cup Game: when it runs out you lose the round', 'Cup Game is much harder: more swaps, and faster', 'Cases: Mythics are listed in every case as a hidden "?" until you unlock them, and Prismatic chances show above Gold', 'Much rarer odds: Mythic 1 / 100 000 in the Top Tier Case and 1 / 250 000 to 1 / 500 000 in the others. Shiny, Titanium and Gold are far rarer too, Painted is the common finish', 'Updates no longer pop Rubenium open: after an automatic update it slides to the top right as the ball and waits. Open it to see what is new']),
-    ("6.1", ['Top Tier and Royal Cases: 20 000 each, only Epic and Legendary badges, never Basic. Top Tier has the best Shiny and Titanium odds, Royal the best Gold and Mythic odds',
-             'Badge values fixed: a rarer badge is now always worth more than a more common one with the same finish, and every case is priced from them',
-             'Case odds: rarities read as 1 / x, finishes (Basic, Painted, Shiny...) as a percentage',
-             'Connect 4: Easy ×1.2, Medium ×2.5, Hard ×10 (it moves first), Professional ×200: it moves first and plays perfectly. Easier bots play faster',
-             'Cup Game: a win no longer fails with an error (lost wins were paid back)',
-             'Jackpot: the winner picks 75% of the other items',
-             'The Quests button glows when a quest is ready to claim',
-             'OG Prismatic Case: the rewards stay hidden until the case bursts open, then flip over one by one',
-             'Collection: Medieval and Nature badges at the top, Trophies on their own tab. Leaderboards: a board for every casino game',
-             'Settings: keep Online open when you click outside it (off by default). Game mode: hovering the menu no longer unfolds it']),
-    ("6.0", ['Final version, fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay',
-             'OGs: the Prismatic Case is back and remade. Break its 3 seals, then hold it down until it bursts open (5 000 coins, 25 keys, 750 XP)',
-             'No more limits: casino games, mini games and XP have no daily or hourly limit any more',
-             'All new sounds: case reel clicks, cards, chips, coins, keys, cups, discs and putts, and new tunes for rare drops and big wins',
-             'Cases: new themed badge cases (Ocean, Spooky, Arcade, Treasure) and fewer coin cases. Every case says clearly whether it gives badges or coins, and shows every item you can get',
-             'Case prices go back down every day at midnight',
-             'Deals in three shelves: 2 this hour, 4 today, 2 this week',
-             "Pawn shop: he offers about a third of your item's worth (up to 80% if you're lucky), asking for more never gets you something worth more, his anger cools down 30 min after it last rose, and the exchange button works",
-             'Roulette: no more betting red and black (or low and high) at once',
-             'Mini Golf: the power bar sits under the course, bots are plain AI balls and you can see where they aim',
-             'Outdated app: pressing ONLINE shows a black hole, drops you back and updates',
-             "Fixed: quests like 'win 3 Mini Golf games' complete again, right-click cheats, the cups sit higher, and the ball no longer needs a click on another screen first",
-             'Settings: About is now UPDATE, with a Repair button that reinstalls the newest Rubenium if updating ever fails (your account, items and settings are never touched)',
-             'The free spin pays a lot more: 120 to 2 500 coins',
-             'Wave Rush runs smoother: a hidden performance mode during every run, and frames matched to your screen',
-             "Jackpot notices say 'about 2 minutes' instead of a frozen clock, and the free spin and scratch card no longer show casino keys",
-             'Updating can never silently do nothing again: a stuck download frees itself, and if the automatic update fails twice the download page opens by itself',
-             'Cases remade: every badge case (themed ones too) always gives a badge and is priced fairly, in two groups, best case first. No more coin cases, the Top Tier Case is the best, Mythics stay a surprise in the previews, and tiny chances read "1 in 250 000" instead of 0.000%']),
-    ("5.14", ['Wave Rush remade: the difficulty jumps at 250 m (Medium), 500 m (Hard), 750 m (Insane) and 1 000 m (Extreme), with new tunnels and double spikes on long ramps. The unfair gates (a spike above and below at once) are gone',
-              'The practice bot plays like a real player now (long holds, no straight lines)',
-              'Smoother Wave Rush: no more stutter in long duels and no lost time after a hitch']),
-    ("5.13", ['NEW: Trophies. 99 of them: every game has 3 Bronze, 3 Silver, 2 Gold and 1 Platinum. They give XP (150 to 5 000), take real time from Silver up, and you can show 3 on your profile. Find them under Collection',
-              'Quests now give keys and cases (no more coins or XP)',
-              'Leaderboards in 3 sections (Players, Games, Mini games) with new boards: Wave Rush, Coinflip, Mini Golf, Connect 4, Cup Game and Trophies',
-              'Your stats card: click a number in the bottom row to show another one (Wave Rush best, coinflips won, trophies…). Profiles show game records too',
-              'The Trophy badge is now a Laurel Wreath, so it never looks like a real trophy']),
-    ("5.12", ["NEW: Connect 4 against a real bot that thinks on our server (it can't be tricked). Easy ×1.5, Medium ×2.2, Hard ×4, Professional ×10 (it moves first and looks far ahead). A draw gives your bet back",
-              "Pawn shop: PROPOSE EXCHANGE. He puts one of his items on a plate for yours. Accept, refuse, or ask for a better one: you see the chance he says yes and how angry a no makes him. The market's Swaps tab is gone"]),
-    ("5.11", ['NEW: Cup Game. A Rubenium coin goes under a cup, the cups shuffle, find the coin. Easy (3 cups) ×1.4, Medium (6) ×2.2, Hard (9) ×3.3, Expert (9, very fast) ×5',
-              'Roulette: pick as many bets as you like in one spin (your bet goes on each), see your chance to win something. Gold now pays ×25',
-              'Hi-Lo is clearer: two big HIGHER / LOWER choices beside the card, with the chance and the multiplier on each',
-              'No more daily coin limit in mini games, and up to 16 keys a day from games',
-              "Jackpot: you can minimize Rubenium while you're in one (you still can't open other tabs)"]),
-    ("5.10", ['Updates install by themselves again. A bug since 5.0.1 kept checking for the update over and over, so the Update button did nothing. Now it downloads and restarts on its own',
-              'NEW: themed cases. The Medieval Case and the Nature Case only hold badges of their theme, and the Cosmic Case is now space only',
-              '11 new badge designs you can only get from them: Scroll, Goblet, Knight Helmet, Bow, Battle Axe, Castle, Flower, Butterfly, Cactus, Lotus and Rainbow',
-              'Case prices climb as you buy: each case costs 10, 25 or 50 coins more than the last one you bought this week. Every price goes back to normal on Saturday at 12:00',
-              'All or Nothing, Coin Rush, Jackpot and Vault cases are no longer sold (the ones you have still open)',
-              'Mini Golf aiming remade: an arrow shows the direction (it stops at walls and water) and a bar shows the power. No more circle telling you where the ball stops: you judge the distance. Half the mouse movement for full power',
-              'Golf bots really play now: you see every shot roll, around the walls, with the same physics as you']),
-    ("5.9", ['The OG tag is one of a kind now: a turning rainbow edge, a bright glow and sparkles',
-             'Keys are back in the games: any casino bet of 50 coins or more, and mini games, can drop a key (up to 6 a day). You always see it land',
-             'Daily case: once opened it moves to the bottom with its timer, no Open button until it is ready again',
-             'Jackpot: 5 players at most. Bots now and then put in something much cheaper or much better than everyone else',
-             'Mini Golf: the waiting room is clean again (no more overlapping text or broken buttons). Colour pickers no longer go off screen']),
-    ("5.8", ['Mini Golf, rebuilt: one simple screen. Play alone, or create / join an online match for 2, 3 or 4 players right there',
-             'Online golf is turn by turn now, 25 seconds a shot, and the course only appears when the match starts',
-             'You choose the power: move the mouse away from your ball (further = harder) and click. The dotted line shows exactly how far it rolls on flat grass',
-             'More realistic ball: grass slows it evenly, so what you aim is what you get']),
-    ("5.7.2", ['Mini Golf parties: the lobby no longer reloads itself over and over (it froze Rubenium and blocked online mode)',
-               "Jackpot: bots fill every empty seat, and once you're in you stay on the Jackpot screen until it ends",
-               'Cases give fewer coins and more Basic badges']),
-    ("5.7.1", ['Fixed "Could not check for updates": updates are found even when GitHub limits how often it can be asked']),
-    ("5.7", ['Wave Rush is smoother: the wave and the camera are drawn between physics steps, so it glides at any frame rate (same course, same hits)',
-             'Fixes and polish everywhere']),
-    ("5.6", ['NEW: Mini Golf PARTIES for 3 or 4 players. Everyone plays their own ball at the same time, you see the other balls and a dashed line where each player is aiming. Bots fill the empty seats after 90 seconds',
-             'Party bets are only between players: the best player takes them all (5% fee). Everyone earns coins by strokes']),
-    ("5.5", ['NEW: SWAPS in the Market. Put an item up, choose up to 3 items you would take for it, and anyone who has one swaps in one click. No coins, no fee',
-             'The Market has Buy, Swaps, Sell, My sales and Offers. Selling starts in the Market now (Inventory has an Open the market button). 3 sales and 3 swaps at most each',
-             'New leaderboard titles: COINFLIP and GOLF for the top 3 by wins']),
-    ("5.4", ['NEW: a second row of 6 Mythics: Eclipse, Supernova, Infinity, Thunder Orb, Omega and Vortex. The Rubenium R is still the rarest by far',
-             'NEW: 6 animated banners: Sunrise, Bubbles, Plasma, Neon Rain, Fireworks and Hyperspace',
-             'A second colour of your own (Style > Colour 2) for the outline and the glow',
-             'Mini games: one simple limit a day per game (1 500 coins, back at midnight) instead of every 2 hours, and no more lower pay after a few rounds',
-             'Cosmetics and cosmetic cases 20% cheaper. The Shiny Case is back under the Top Tier Case (8 000, Shiny 1 in 90) and the Elite Case has better Mythic odds']),
-    ("5.3", ["A real fresh start: luck is fixed. A badge's design and its finish are rolled apart: Basic is normal, Painted is common, Shiny is rare, Titanium very rare, Gold extremely rare, Prismatic (Mythic) the rarest. Every design has its own rarity",
-             'Cases pay back less than their price on average and only rarely more. Shop prices go up in order from the plainest to the best, and every case is priced to match. Buying costs 33% tax',
-             'Fresh start: coins, keys, items, levels and the market start again. Hours played, streaks and every game score stay. OGs: the Prismatic Chest again (5 000 coins, 25 keys, 750 XP)',
-             'The tutorial comes first (only the settings that matter) and the menu opens when it is done',
-             'Jackpot: one clock for everybody (no more joining a closed one), bots take at most 2 seats, the winner picks a third of the pot and bot items are capped',
-             'Mini Golf: 3, 5, 10 or 15 holes, 12 new holes (60 in all), clearer water, and the help shows what every block does',
-             "Wave Rush: the first 100 m pay nothing (a gold line shows where coins start). Fixes: game mode unlocks again, notifications show their whole text, scratch cards and wheels can't be left before the prize lands, the pawn shop bubble no longer overlaps, the coinflip countdown glows smoothly"]),
-    ("5.2", ['NEW: JACKPOT at the top of Games. Every 15 minutes, 2 minutes to put in up to 3 items, your chance is your share. Bots fill the empty seats, the wheel spins and the winner picks half of everyone else\'s items',
-             'Leaderboard titles: be top 3 of a leaderboard to wear "#1 RICH" in gold, #2 silver, #3 bronze. Up to 3 titles with your OG tag (Style > Your profile)',
-             'Coinflip: when the last 15 seconds start, the screen fades into a face-off: you on top, them below, a glowing countdown',
-             'Mini Golf: aim with the mouse, the power bar swings by itself: click or press Space at the right moment. Your ball and whose turn it is are easy to see']),
-    ("5.1", ['Wave Rush: the first 2.5 seconds you slide along the walls (no instant crash), spikes are never stacked in tight spaces, and a practice bot plays ahead of you',
-             'Sort and filter your items (price, rarity, recent, collection) in the inventory, coinflips and trades. Coinflip Lock in / Cancel are at the top',
-             'Market: a price stop between every two for more precise prices. The scroll bar can be dragged',
-             'Profiles show the theme the player wears. 20 more coinflip bots with a bot picture, open from 30 minutes to 6 hours',
-             'A trash can for items you never want again (asked twice). Collection sets can be claimed again. Quests no longer overlap in French',
-             'Gifting a case shows every friend. Log out restarts on the login screen',
-             'Shop: banners, frames and themes cost 5 times more, balls and lines 2 times']),
-    ("5.0.1", ['A new guide for everyone: its own window in the middle of the screen, a moving picture for each part, and your settings chosen as you go (the old tour shrank and broke)',
-               'Updates now install by themselves within a minute of their release: Rubenium closes, updates and starts again',
-               'The OG coupon only arrives once you are on 5.0 or newer',
-               'Wave Rush: the distance and difficulty bar have their own strip above the course, the other player no longer slides through walls, your arrow is the size of what can hit, and a practice bot (on or off) shows a perfect run a little ahead of you']),
-    ("5.0", ['THE FULL RELEASE: everyone starts again from zero (500 coins, OG players 1 500 coins and a coupon to level 5). Accounts, friends, hours played and your settings are kept',
-             'OG players, 20 and 21 November only: something is waiting behind the new garage doors of ONLINE mode',
-             'Mythic badges: Prismatic is now the rarest and gets an extra aura. In the Top Tier Case: Titanium 1 in 30 000, Gold 1 in 75 000, Prismatic 1 in 100 000. The R is rarer than ever',
-             'Keys: find one by luck in any mini game, and quests give a key half of the time',
-             'Royal Case fixed (coins far less often), quick sell pays more, Wave Rush pays 5 coins every 10 m, your level boosts more rewards',
-             'Case opening speed: Instant. The daily case shows a key as a key. Rewards no longer wait when you switch tab during an opening',
-             'Blackjack: Hit or Stand. Pawn shop opens straight away. New sell buttons, Clear badges in Edit Profile',
-             'Fixed: level 100 showing 101, the Line ring saying it needs 0 hours, leaving a golf or Wave Rush match (a red Leave button replaces the arrow)']),
-    ("4.7", ['Cases: new odds for every badge. No badge is rarer than 1 in 250 (Basic), 1 000 (Painted), 10 000 (Shiny), 50 000 (Titanium) or 100 000 (Gold); cheap cases hold the lower rarities, big cases everything. Mythic drops unchanged',
-             'The Golden Wheel now spins inside the menu (no more flashing in online mode) and pays far more: 10 000 to 250 000 coins or a big case',
-             'Pawn shop: the slider starts on his price (100%), asking for more no longer sells by itself (press Sell once he agrees), and the market price is shown',
-             'Game mode no longer closes Rubenium: it only stops the mouse reaching it. Hold to open moved to the game mode window',
-             'Gift a case by tapping a friend, up to 3 at once. Deals: one of each per day',
-             'Cleaner Blackjack, Bombs and Hi-Lo, coinflip chance bar fixed, the online menu size switch shows again, limits against spam']),
-    ("4.6", ['Game mode button on the home tab: pick a key, it blocks every click on Rubenium while you play (padlock on the ball). Hold it 5 s to restart',
-             "Trade up: a full row of colours becomes a random Shiny or Titanium you don't have, with a spin",
-             'Sell on the market from your inventory, in a new market stall scene. The pawn shop is easier to deal with and its ban timer is bigger',
-             'Coinflip: chances shown as a bar, your chance while you pick, click any item to see it. Same for trades',
-             'No more pop-ups telling the result before a coin, a case or a duel replay ends',
-             '8 new golf holes, 30 seconds a shot, and Wave Rush gates. Bets are bigger and easier to join in duel lobbies',
-             'Titanium and Gold a little less rare. Online menu in Medium or Large, fixes coming back from online mode, YouTube ads muted better']),
-    ("4.5.1", ['Trades work again: Open and No on a trade request did nothing; requests now show up right away',
-               'Every item can be added to a trade (not only the first 60); coins and keys on sliders',
-               'A trade request notification opens the trade; you hear when yours is accepted; requests are in Profile > Trades too']),
-    ("4.5", ['Wave Rush: see the other player in a duel, a replay of how they crashed, watch duels live, more obstacles, a difficulty bar',
-             'Beat Tap, Wave Rush and the casino work with the keyboard, and every game shows its keys and mouse buttons',
-             'HELP on every game: the steps, the controls and a little moving preview',
-             'Cases: more coloured badges and a little more Shiny, Titanium and Gold. Still very rare',
-             '6 new themes, 5 banners, 4 frames, the Eclipse ball and the Comet line. Inferno redone',
-             'No more daily XP limit: a small limit per hour on each way of earning instead',
-             'Casino bets on a slider, up to 5% of your coins (5 000 at most). Trading is now between friends only',
-             'Profile picture: change, move or remove it. Style is also in Settings',
-             'Hold the show / hide key for 3 seconds to restart Rubenium. F8 is now Right Alt',
-             'Fixes: blank or half-off-screen menus, clicks going through to the game, Minesweeper flags after a loss']),
-    ("4.4", ['Updates now install by themselves as soon as they are out',
-             'The daily reward opens in online mode, the first time each day; a slow red dot and a reminder every 30 minutes while it waits',
-             'Shorter texts in Wave Rush and Mini Golf']),
-    ("4.3", ['XP is earned, not farmed: nothing for a lost bet, a little for a win, lower daily limits (1 000 XP a day)',
-           'Coinflip bots remade: 5 to 10 bot flips always open, from small to big, sized to the players online; never a Mythic',
-           'New casino game: Slots. Three reels, one table of prizes',
-           'New: Wave Rush. Hold to rise, let go to fall, through a course that gets tighter. Solo for coins, or 1v1 on the same course',
-           'Mini Golf: play Solo for coins (no bet), or Duel as before',
-           "Quick sell is now the pawn shop: take his offer or haggle, but don't make him angry",
-           'Social: Users (friends first, a blue dot on each friend) and Leaderboards in its tabs; a clear Leave online button',
-           'Cases: badge cases first, odds evened out, the Open button only when you have one to open',
-           'Games lobby: coins and Quests on one line, the three freebies side by side; the online menu is taller',
-            'Compact Music Mode only folds while you are away from Rubenium; hover it and the tabs, play, skip and the rest fade back in']),
-    ("4.2", ['Coinflip: play a bot (searching, found, choosing, 3-2-1, then the coin), an eye to watch a flip, and you are only in once you lock in (nothing is taken if someone beats you)',
-           'A golden ? on every game: how to play, the best way to play, payouts and chances',
-           'Advent door 1: First Frost 2026, a Legendary frame with snow, limited, never made again',
-           'Rocket is clearer and its auto cash-out lines always show; Timing speeds up far less and cannot be slowed down',
-           'Mythic badges are a ? inside cases until you win one; the free spin opens again',
-           'Style is in the Shop (it was Settings > Look), the sets are in Games > Quests, and the menu keeps your exact casino game when you go back into a game']),
-    ("4.1", ['New minigame: Block Blast. Place the pieces, clear rows and columns, three modes and leaderboards',
-           'Online menu: wider halves, games and shop on the left, social and settings on the right',
-           'The advent calendar is now on the Games tab',
-           'Compact Music Mode folds smoothly and makes the title bigger, with no gap',
-           'RL Swap: Lantern Lift goal explosion',
-           'Fixes: the R always comes back after online mode, the OG scratch card is smooth',
-           'The free spin left the casino bar (it stays in the lobby). Every case is now a Case']),
-    ("4.0", ['Levels 0 to 100 with XP from everything you play, a badge every 5 levels, a level-up scene and Inventory > Levels',
-           'XP coupons in cases, the wheel and scratch cards. OG players get a free coupon to level 5',
-           'Online menu: pick the two sections you want side by side, XP bar on top',
-           "Trades: look at your friend's inventory, READY lights for both players and a summary at the end",
-           'New casino game: Tower. Roulette numbers. New minigame: Minesweeper, with leaderboards',
-           'Mini Golf: 16 new holes (40 in all) and smoother, better synced matches',
-           'Coinflip: create, put in your items, confirm. BOT and RUBENIUM OFFER flips with the same fair coin',
-           'Economy: fairer prices for every item, better quick sell; market listings came back to their owners',
-           'Cases renamed with honest descriptions and a clear chance overview; opening speed in Settings',
-           'Advent calendar: Christmas look, door 1 is a Legendary frame for everyone',
-           'Market search, notification history, chat reactions, Online Activity, your own crosshair image',
-           'Compact Music Mode while gaming, Beat Tap keyboard fix, profile pictures load every time, less lag online']),
-    ("3.2", ['ONLINE: one button instead of Games, Shop and Social. The menu flies up and a big online menu drops down',
-           'Coinflip: put in up to 6 items, pick black or white. Winner takes everything (49% to 51% chance)',
-           'Mini Golf and Coinflip use open lobbies: open one, anyone can join. No more invitations',
-           'Mini Golf: 5 holes a match and 8 new holes',
-           'Two new casino games: Roulette and Hi-Lo',
-           'Cases: buy them with coins, they wait in Your cases, open them with a key. Keys can be traded',
-           'Keys: 1 every 30 minutes, up to 12. Everyone got a full key wallet',
-           'Every item has a worth. Buying from the shop adds a 20% tax, so trading is cheaper',
-           'New cases: Lucky, Frame Case and Cosmic Case. New banners, frames, balls, lines and themes',
-           'Advent calendar from 1 December: limited looks and cases you cannot buy',
-           'Play asks which music app you use (no more Spotify only). Adverts can be muted',
-           'Chat: long messages wrap, 300 characters at most, and spam is slowed down',
-           'Timing reacts instantly, the AFK timer counts down, long texts fit their buttons']),
-    ("3.1.1", ['Royal Case pays less; style cases no longer need a key',
-             'Profile pictures stay after restarting; My Stats in the Social tab',
-             "The market's usual price is never far below an item's worth",
-             'Timing no longer stops by itself',
-             'The automatic login waits 3 seconds']),
-    ("3.1", ['The 6 shop themes have their own scenes: Sunset, Ocean, Forest, Candy, Storm and Retro keep their colours',
-           'Gold banners: choose to show the normal banner or any gold level you unlocked',
-           'AFK coins: 25 every 10 minutes, +5 for every day of your login streak (up to +100)',
-           'New quests: 2 hourly, 4 daily and 6 weekly with much bigger rewards',
-           'Golden Wheel: 5% of free spins and scratch cards unlock it. It always pays: up to 25 000 coins or a free case + key',
-           'Better daily login: up to 1 000 coins, keys and a Premium case on day 7',
-           'Timing: a new skill casino game with a tutorial. Stop the needle on the target',
-           '5 new cases: Pocket, Elite, Royal (high roller), Shiny and Banner Case. Cases are grouped more clearly',
-           'Titanium badges can now be bought in the shop',
-           'Collection sets pay far more: the 6 Mythics now give 5 000 000 coins and 100 keys',
-           'Case chances show the real coin range, lucky x3 and the Jackpot included']),
-    ("3.0.3", ['The OG tag can no longer be earned (everyone who has it keeps it); the OG event is over (rewards are kept)',
-             'Item worth is the shop price everywhere: trades, inventory, collection worth, leaderboards and the market',
-             'Quick sell pays more for badges',
-             'Mini Golf: 16 holes with sand, ice, boost pads and water, and each one can be played mirrored',
-             'Social: Edit Profile button (banner, frame, tag, picture and showcase)']),
-    ("3.0.2", ['Mini Golf 1v1: play a friend live, turn by turn, with a bet from 10 coins up to 80% of the lower balance (it replaces duels)',
-             'OG event (16/11/2026): every OG gets the MYTHIC CHEST BUNDLE: 1 free open of every case, 10 000 coins and 10 gold keys',
-             'Keys: 1 every 15 minutes, up to 5. Gold keys are used first and disappear once used',
-             'Trading and the market are open from the start (no more 5 hours)',
-             'The rarest drops are rarer: the rarest item in the game is about 1 in 1 000 000',
-             'Mini games pay about 30% more, up to 200 coins every 2 hours',
-             'Purchases, invitations, trades and notifications now show within seconds',
-             'Shop themes (Sunset, Ocean, Forest...) can now be previewed in Style > Themes',
-             'Market: one list with a single sort button. The Cases menu shows your keys',
-             'Back to the classic lyrics view. Welcome screen, start screen and starting with Windows are always on',
-             'Fixed: case finish chances showed wrong percentages; item prices are now the same everywhere',
-             'Fixed: giveaway winners show right away and the Giveaway tab goes away after it ends']),
-    ("3.0.1", ['Song History is in the Social tab, and friends can see what you played (you can turn this off)',
-             'Offline mode in Settings: disconnects Rubenium from the internet until you go back online',
-             '10 new banners, and Gold banners: a banner turns Gold I, II and III the longer you wear it',
-             'Fixed: holding the ball over a game menu (Rocket League) could stop the menu from opening',
-             'Balls and banners re-ranked: the animated designs are now the rarer ones',
-             'The Social tab refreshes by itself every 10 seconds']),
-    ("3.0", ['Style cases: every ball, line, font, theme, banner and frame can now come from a case (Style, Theme and Profile cases)',
-           'Rare drops feel rare: the case strip shows the real odds, never repeats an item, and only Epic or better get rays, flashes and fanfare',
-           'One account can be CREATED per PC; you can log into your account from any PC',
-           'The welcome and login screens are no longer pinned over your other windows',
-           'New looks: Jungle and Sakura banners, Vine frame (the winter looks are saved for the Christmas event)',
-           'New swaps can now arrive in the Rocket League tab without an app update']),
-    ("2.7", ['AFK money is better: 25 coins every 10 minutes (150 an hour), up to 1 800 a day',
-           'Every badge shows its exact chance in each case, for every colour and finish',
-           'New looks: Snow, Ember and Nebula banners; Frost, Star and Halo frames',
-           'Inventory: the 2027 LIMITED Advent Calendar is coming soon',
-           'Fixed: after an update, the New tab could show on top of another tab',
-           'The casino was checked: every game pays back 96 to 99% (fun, but you lose a little over time)']),
-    ("2.6.1", ['Cases rebalanced: coin cases now pay back a little more than they cost on average (you still lose about half the time)',
-             'Rare badge cases (All or Nothing, Painter\'s, Vault and Top Tier) are for rare badges: rarer badges are not easier to get',
-             'Every coin drop has a 6% chance to be a lucky ×3; the Jackpot can pay up to 32 times its price',
-             'Badges in the shop cost more, the rarer and luckier they are; the market can now go up to the shop price',
-             'Gifting a case costs its price and 1 key']),
-    ("2.6", ['Fresh start: everyone begins again with 500 coins and 3 keys (items, spins and cases reset)',
-           'Free OG tag for every user who joined before 17 November',
-           'Profiles: banners, frames and a showcase of your 3 favourite badges, seen by everyone',
-           '16 banners and 12 frames in the Shop, on the Market and in Daily Deals',
-           'Quick sell: sell any item right away for a quarter of its value, or every extra copy at once',
-           'Style > Your profile: change your banner, frame, tag and showcase in one place',
-           'Frames and tags show in every list, the leaderboards and the chat']),
-    ("2.5", ['Games tab: Earn coins (mini games) is a big card of its own',
-           'Beat Tap has 4 modes (Normal, Rush, Long notes, Chords); Memory has 3 card styles',
-           'The Shop tab is now the Hub: Get items (Shop, Deals, Cases, Market) and Yours (Inventory, Collection, Sets, Style)',
-           'New: Deals, 4 items cheaper every day',
-           'Friend profiles: friends get Message, Trade and Gift; others see what adding them unlocks',
-           'Settings in 6 clear sections; Game mode text no longer goes off the screen',
-           'Translations fixed everywhere (users instead of players, one consistent French)']),
-    ("2.4.1", ['Gifted cases open for free (after the server update)',
-             'Everything opens inside the menu: no more extra windows over your games',
-             'Game mode: in fullscreen games the mouse goes through Rubenium; tap Right Shift to open it',
-             'The daily reward has a flame that grows every day, and waits until you open the menu',
-             'Profile picture editor: move, zoom, turn, mirror and filters',
-             'Big clear buttons in the shop and the admin panel',
-             'No more error messages while the server update is waiting']),
-    ("2.4", ['New Beat Tap: four lanes, long notes, combos and it gets faster',
-           'New mini game: Memory',
-           'Scratch card every 12 hours and a daily login reward (day 7: a free case)',
-           'Messages with friends, leaderboards, trade history and collection sets with big bonuses',
-           'Mini games pay a little more, with limits every 2 hours instead of every day',
-           'Badges cost what they are really worth; Titanium, Gold and Mythic only come from cases',
-           'Badge size and place, better lyrics, song history and Right Shift to show or hide',
-           'Backups, offline mode, password help from the admin, a tour and nicer case openings']),
-    ("2.3", ['New free mini game: Parking. Slide the cars and get the red car out for coins',
-           'Quests now sit across the top of the Games tab',
-           'Nothing in the shop looks like gold any more: gold is only for real awards',
-           'Friend profiles: last seen, collection worth, gold badges, games played and what they wear',
-           'Admin panel: every give and edit window works']),
-    ("2.2", ['The Ultimate Update: a fresh start for everyone (500 coins, 3 keys). Hours and friends stay',
-           'Trading: send a request from a profile, 8 items and coins each side, Ready then Confirm',
-           'Market: sell to other users at your price, or accept their offers (5% fee)',
-           'Inventory, and a Shop with 10 balls, 10 lines, 5 fonts and 6 themes in every colour',
-           'Badges remade: 12 Common, 12 Rare, 12 Epic, 12 Legendary and 6 secret Mythic',
-           'Finishes: Basic, Painted, Shiny, Titanium and Gold (Gold is extremely rare)',
-           '9 cases, gifts for friends, coins drops that usually beat the price',
-           'Beat Tap mini game, quests every hour, day and week',
-           'Rocket with automatic cash-out, Dice with more choices, free spin every 2 hours',
-           'Social tab: your stats, profile pictures, every user, name changes',
-           'Notifications with a quiet sound (choose them in Settings), live giveaways',
-           'More coins with time: 20 every 10 minutes',
-           'Use screen colours: the menu follows the colours of your screen']),
-    ("2.1", ['Quests: three daily and three weekly goals that pay coins',
-           'Friends: a refresh button, and badges on profiles']),
-    ("2.0", ['The online update: coins, keys and items now live on your account',
-           'Everyone starts fresh: 500 coins and 3 keys',
-           'Coins come with time (10 every 15 minutes) and 1 key every hour',
-           'Five rarities: Standard, Rare, Special, Epic, Exotic. 55 badges, 5 of them Exotic',
-           'Sell badges for quick coins',
-           'Four new cases with their odds shown, and a free daily case',
-           'Casino played on the server, with two new games: Dice and Rocket',
-           'Free spin every 3 hours: press Collect to take the prize',
-           'Themes, ball and ring now unlock with hours played']),
-    ("1.10", ['Logged in? Rubenium starts by itself after 5 seconds (click the card to start at once)']),
-    ("1.9", ['Friends: add users by username and see who is online',
-           'Profiles show time played and, soon, badges and play history']),
-    ("1.8", ['The login now sits inside the start screen',
-           'You can delete your account in Settings (type your name, then hold)',
-           'Reset all settings is gone (each tab keeps its own reset)',
-           'Three Rocket League swaps were removed']),
-    ("1.7", ['Accounts: create one or log in on the welcome screen. You stay logged in',
-           'Time played is now counted online, for your account',
-           'One look for everyone: strong glow, black background, round corners']),
-    ("1.6", ['Timer moved to the bottom of the Screen tab',
-           'New ball and ring: White Gold. Neon is now number 3',
-           'Long song names get smaller instead of being cut',
-           'Medal is no longer picked up as a music app']),
-    ("1.5", ['Turn off all swaps is now Reset Swaps: it puts every original file back',
-           'Wrong, left-over or broken swap files are found and fixed automatically']),
-    ("1.4", ['Casino lobby: the menu only grows when you go in, and goes back when you leave',
-           'New games: Plinko and Bombs',
-           '50 badges in 17 colours, from basic to gold. Show 3 of them on the music tab',
-           'Cases with real odds and an opening animation. Keys are earned in the casino',
-           'New ball style and ring: Neon',
-           "Colours cost 100 coins each. The music's colours open after 1 hour, for free",
-           'A fresh start: everyone begins again from zero coins']),
-    ("1.3", ['Coins: 25 every 15 minutes, with a timer for the next drop. Your hours became coins',
-           'Shop: themes, colours, ball styles, badges and titles are bought with coins',
-           'Games: blackjack, plus a free spin every day',
-           'Badges and titles show on the music tab',
-           'Tidier menu: Screen holds crosshair and display, PC holds stats, tools and apps',
-           'Resetting the settings now takes two clicks and a hold']),
-    ("1.2", ['Rubenium ignores the mouse while a game uses it to aim, even in borderless fullscreen',
-           'Moving the menu: the spot you hold stays under the mouse, and it follows smoothly',
-           'The ball never sits over the close buttons in the top-right corner']),
-    ("1.1", ['Themes rebuilt: one night sky that fills with stars, then turns to gold',
-           'Pick any colour on a colour line',
-           'New ball styles, with a gold ring',
-           'Rubenium start screen when Rocket League and Fortnite load',
-           'Softer interface sounds',
-           'The menu size changes smoothly',
-           'New app icon']),
-    ("1.0", ['Hold the ball to open Rubenium, so it never opens by accident in a game',
-           'Hold the menu for a moment to move it',
-           '9 new swaps, separate Fennec and Octane decals, and a Paint finishes section',
-           'Open apps move to the top of the Apps tab',
-           'New white styles for the R',
-           'The full update history is in this tab']),
-    ("0.9", ['New swaps and a Player banners section',
-           'The ball stays where you leave it and snaps to corners and edges',
-           'Clicks go through Rubenium while a game hides or locks the mouse',
-           'Display has just two choices: Default and Custom',
-           'Apps finds every game installed with Steam or Epic']),
-    ("0.8.1", ['The first build with dated version numbers: the same app as 0.8']),
-    ("0.8", ['Rubenium installs like a normal Windows app and updates by itself',
-           'Soft, quiet interface sounds',
-           'Top apps in Stats, measured like Task Manager',
-           'Rubenium uses much less processor']),
-    ("0.7", ['A picture on every swap',
-           '5 new themes, and styles for the R and the song ring',
-           'A more reliable Update button']),
-    ("0.6", ['Welcome screen with a Launch button',
-           '8 new swaps, and several swaps on at once',
-           'Choose your tabs and the size of the ball',
-           'Stronger glow that follows the music']),
-    ("0.5", ['A website with a one-click download of the latest version']),
-    ("0.4.1", ['Starts reliably with Windows: every part starts on its own and retries if Windows is still loading',
-             'If something fails at start-up, the ball still appears and the problem is written to the log',
-             'Every version is launched and tested on Windows before it is published']),
-    ("0.4", ['Rocket League swaps for Steam and Epic, with backups of the original files',
-           'Rubenium finds new versions by itself and offers to install them',
-           'Reset buttons on every customisation tab',
-           'The menu bar hides when you are not using it',
-           '6 save slots for crosshairs']),
-    ("0.3", ['New tabs: Stats, Timer, Apps, Themes and Rocket League',
-           'Crosshair presets',
-           'Themes that unlock with time']),
-    ("0.2", ['No licence key needed',
-           'The glow follows the music',
-           'Simpler wording in English and French',
-           'Settings saved in Documents']),
-    ("0.1", ['First version: music, lyrics, crosshair, screen colours and tools in one glowing ball']),
+NEWS = [        # every version, newest first: (version, [lines]). 10.0: rewritten in plain words, nothing about
+    # features that are gone or hidden, and 9.6 to 9.9 between 9.5 and 10.0
+    ('10.0', [
+        'Hoops online! Play a friend or anyone else, 1 v 1 with a bot on each team, or team up and take on two bots together',
+        'Fresh start for 10.0: coins, items, cases, levels and records were reset, and everyone gets the starter pack',
+        'Cleaner Home: your profile now sits right under Casino and Mini games. Duels are in Play and Leaderboards are in the side menu',
+    ]),
+    ('9.9', [
+        'New music player on Home, right under the live game, with play, pause, skip and volume',
+        'Rubenium comes straight back to the front when you leave Karting or Hoops',
+        'Hoops: Professional bots never miss now. Only a block will stop them',
+        'Fixed updates not showing up for some players',
+    ]),
+    ('9.8', [
+        'Hoops: stand still with the ball for too long and a defender can knock it out of your hands',
+        'Hoops: changed your mind? Right click cancels a shot and left click cancels a pass',
+        'Hoops: a pass you are charging now goes on its own after a moment',
+    ]),
+    ('9.7', [
+        'Hoops: dunks! Near the hoop press E to jump, then hit each key as its ring closes',
+        'Get all three keys in time for a monster dunk nobody can block. Bots dunk and block too',
+        'Hoops: running into a wall with the ball no longer stops the bots from rushing you',
+    ]),
+    ('9.6', [
+        'Fixed the free spin always landing on 100 coins',
+        'Fixed the scratch card sometimes staying blank after you scratched it',
+        'Fixed Rocket crashing straight away and the roulette always landing on gold',
+    ]),
+    ('9.5', [
+        'Hoops now plays inside Rubenium and runs a lot smoother',
+        'Simpler Hoops controls: with the ball, left click shoots, right click passes and F fakes. Without it, left click steals and right click switches player',
+        'Hoops: your bot team-mate gets open for passes and helps on defence',
+        'Hoops: hang on to the ball too long and the bots rush you. A red edge warns you first',
+        'Hoops: bots fake now, three baskets in a row puts you On Fire, and ankle breakers are in',
+        'Hoops: you can only shoot once you are past the half-way line, and every basket gets a replay',
+        'Hoops: players and the ball no longer jump across the court, and a ball thrown out goes to the other team',
+        'Hoops: an MVP card after the match, a YOU marker over your player and clearer passes',
+        'Hoops and Karting: a points feed at the top, Tab for the scoreboard, and a quick How to play the first time',
+        'Karting: new bots, and the top ones are faster than any player. They show up on the time boards too',
+        'Karting: a live split against your best lap',
+        'Go AFK for 45 seconds in Hoops or Karting and you are disqualified with no prize',
+        'Beating bots pays a lot more: up to 2 500 in Hoops and 1 500 in Karting',
+        'Karting and Hoops stats, records and time boards were reset',
+        'Volume sliders for the interface, game effects, and crowd and engines, in Settings and in game. Game sounds are quieter too',
+        '6 new animations, a free Basic one, and Shattered Shard is now a Mythic',
+        'Inventory: pick several items and sell them all at once',
+        'Daily reward: coins and a case every day, with more coins the longer your streak',
+        'Comeback top-up: once a day, if you drop below your floor you get topped back up',
+        'Quests: bot challenges every hour, day and week, and a case with every weekly quest',
+        'You can bet up to 20% of your coins, and big Horse Racing bets work again',
+        'Friends: see what your friends played last',
+        'The Casino tile on Home opens the doors again, and the case drop list does not lag any more',
+    ]),
+    ('9.4', [
+        'Fresh start: coins, items, badges, cases, levels, trophies, stats and leaderboards were reset, and everyone gets the starter pack',
+        'Tiers are harder to reach now, and you can only go up one tier a day',
+        'The Key Forge refills every 12 hours, and the first press shows the price before you pay',
+        '3 free keys every hour on Rewards',
+        'A free case every day with the daily reward',
+        'Bigger prizes on the free spin',
+        'Karting: tighter driving, races play inside the menu, quieter engines, faster bots and a 10 second countdown',
+        'Karting: the top 10 times on each track, and you can race any of them as a ghost',
+        'Easy and Medium bots make real mistakes now, and Professional is a lot harder',
+        'Leaderboards have a podium for the top 3',
+        'Wave Rush moved to Mini games',
+    ]),
+    ('9.3.2', [
+        'Home now shows your profile, badges and showcase',
+        'Stats: one All time view, and every stat starts again from 0',
+        'Duels feel quicker: your move shows straight away, there is a clear turn banner and bots reply faster',
+        'Game menus have shorter, simpler rules',
+        'Hoops: smoother bots, shorter replays, an OPEN tag when your team-mate is free, and a tougher Professional',
+    ]),
+    ('9.3.1', [
+        'Daily prize limits now grow with your tier, and Casino Legend has none at all',
+        'Higher tiers also get more keys and can bet more in duels and rooms',
+        'A rank-up screen shows what your new tier unlocks. Click the tier bar on Home to see every tier',
+    ]),
+    ('9.3', [
+        'New game: Hoops! 2 v 2 basketball with a bot team-mate against two bots',
+        'Dribble, pass round the defence with lobs and bounce passes, time your shots, steal and block',
+        'Four bot levels, overtime when it is a tie, and a replay of every basket',
+    ]),
+    ('9.2', [
+        'New game: Karting! Race with up to 3 players and a bot on 3 tracks, with boosts, drifts and slipstreams',
+        'New duels: Trifade, noughts and crosses where you only keep 3 marks, and Mazelock, where you race your pawn across and block the way with walls',
+        'Mini Golf rooms: pick how good the bots are',
+        'Mini games pay double',
+        'The hardest bot is called Professional in every game',
+        'Play is split into Mini games, Duels and Multiplayer',
+        'Trophies have their own page in the side menu',
+        'A new Home with your tier, your free rewards and the game that is live',
+        'Jackpot and Horse Racing take turns every 20 minutes, and bots keep both going',
+        'Stats: look up any player by name, and a new Records page',
+        'New season: everyone restarts with 2 500 coins and 5 keys, and leaderboards, streaks and quests start over',
+        'Coinflip: fewer huge bot flips',
+        'Fixes for mini games, the scratch card and text on light buttons',
+    ]),
+    ('9.1.1', [
+        'A starter pack for everyone: 2 500 coins, 5 keys and 8 cases',
+        'Tiers are easier to reach, and everyone starts at Poor',
+        'Hover the tier bar to see how much of your wealth is coins and how much is items',
+    ]),
+    ('9.1', [
+        'Fresh start: coins and keys went back to 0. Your level, basic items and OG tag stayed',
+        'Five wealth tiers, from Poor to Casino Legend. Once you reach one it is yours, and it boosts every free reward',
+        'Leaderboards got their own tab, with every game',
+        'New Stats tab with graphs of your wealth, casino results and free coins',
+        'Play has a casino door now, with the casino games, Jackpot, Horse Racing and Coinflip behind it',
+        'Mini games are free and pay by how well you play, and your first 8 rounds of each game every day pay double',
+        'New: Duels. Play Connect 4 and Battleships against bots or 1 v 1 against other players, for fun or for a bet',
+        'A case for each kind of item, plus the Crown Vault that has them all',
+        '5 animations, each with versions you unlock by owning the original',
+        'Badge layouts that fit how many badges you show',
+        'Buttons take the colours of the song you are playing',
+        'Lyrics stay in time with the song',
+        'You can uninstall Rubenium from Settings > UPDATE',
+        'One account per PC',
+    ]),
+    ('9.0.1', [
+        'Fixed the side menu not reacting to clicks',
+        'Leaving a free game takes you back to Rewards',
+    ]),
+    ('9.0', [
+        'A whole new look: a side menu, a top bar with your coins and level, and big clear tiles everywhere',
+        'Rewards: the free spin, scratch card, daily reward and quests in one place',
+        'Wealth tiers: the more you own, the bigger your free rewards',
+        'The Key Forge: turn coins into keys, a few a day',
+        'A fresh start: everyone begins again with the same coins and keys. Cosmetics, levels and friends stay',
+        'New prices and odds across the whole game',
+        'Less text: tap a golden ? when you want the details',
+        'Bet faster with ½, 2× and Max, and your bet is remembered',
+    ]),
+    ('8.0', [
+        'Mini Golf online is fair for everyone: nobody can fake a hole in one any more',
+        'Password help can no longer be used up by someone else',
+        'A cleaner look everywhere, with matching buttons, tabs and cards',
+        'Reduce motion: a new switch in Settings > Style for calmer animations',
+        'Empty pages now tell you what goes there',
+        'Rubenium uses a lot less CPU while it is idle',
+    ]),
+    ('7.0', [
+        'Horse races are longer, about 2 minutes, and the camera follows the leaders',
+    ]),
+    ('6.9.1', [
+        'Horses run at a normal pace again',
+    ]),
+    ('6.9', [
+        'New: 4 Mythic animations, Supernova, Shatter, Rift and Phoenix',
+        'Click anywhere or press Esc to skip an animation',
+    ]),
+    ('6.8', [
+        'Horse races are 3 times longer with more lead changes, and there are 5 new places to race',
+    ]),
+    ('6.7', [
+        '10 new animated banners and 10 new moving app themes, each in several colours',
+    ]),
+    ('6.6', [
+        'Horse Racing history shows the podium of every race',
+    ]),
+    ('6.5', [
+        '10 more banners, frames and themes, and they all come in extra colours now',
+        'Horse Racing pays the top three now',
+        'A race history with every winner and pot',
+    ]),
+    ('6.4', [
+        '12 new banners, 12 frames and 12 app themes',
+        'New Nature badge: the Leaf',
+    ]),
+    ('6.3', [
+        'New: Horse Racing! Pick one of 5 horses and bet. Your chance is your share of the money',
+        'Jackpot and Horse Racing take turns, and bots play when nobody joins',
+        'Big bets ask you to confirm first',
+        'Mini Golf bots no longer go through walls, and they wait for their turn',
+        "Coloured app fonts colour the app's text too",
+    ]),
+    ('6.2.8', [
+        'The pawn shop allows 10 exchanges an hour, not 5',
+    ]),
+    ('6.2.7', [
+        'Pawn shop: sell several copies of an item at once',
+    ]),
+    ('6.2.6', [
+        "Pawn shop: you can't spam refuse any more",
+    ]),
+    ('6.2.5', [
+        'Pawn shop bans last 5 minutes instead of 30',
+    ]),
+    ('6.2.4', [
+        'SFX Match has a volume bar, so you can turn the sound up or down',
+    ]),
+    ('6.2.3', [
+        'The Jackpot countdown only starts once someone joins',
+    ]),
+    ('6.2.2', [
+        'SFX Match is a lot easier',
+        'More time to answer in Colour Pick',
+        'Trophies remade: tap one to see how to get it and show it on your profile',
+    ]),
+    ('6.2.1', [
+        'Trophies: tap one you have unlocked to see how you got it, on your profile too',
+        'New payouts for Connect 4 and the Cup Game',
+    ]),
+    ('6.2', [
+        'New games: Colour Pick, where you remember a colour and make it again, and SFX Match, the same with a sound',
+        'The Cup Game is harder and faster',
+        'Mythics show as a ? in cases until you unlock them',
+        'After an automatic update Rubenium waits quietly in the corner instead of popping open',
+    ]),
+    ('6.1', [
+        'New Top Tier and Royal Cases, with only Epic and Legendary badges',
+        'Rarer badges are always worth more now',
+        'The Quests button glows when something is ready to claim',
+        'A leaderboard for every casino game',
+    ]),
+    ('6.0', [
+        'Fresh start: coins, keys, items and levels were reset. Hours played and game scores stayed',
+        'All new sounds for cases, cards, chips, coins and more',
+        'New themed badge cases',
+        'Pawn shop: fairer offers, and his anger cools down over time',
+        'The free spin pays a lot more',
+        'Wave Rush runs smoother',
+        'Settings > UPDATE has a Repair button in case an update ever fails',
+        "Updates can't get stuck any more",
+    ]),
+    ('5.14', [
+        'Wave Rush remade: it gets harder at 250, 500, 750 and 1 000 m, with new tunnels and fairer gaps',
+        'No more stutter in Wave Rush',
+    ]),
+    ('5.13', [
+        'New: Trophies! Every game has Bronze, Silver, Gold and Platinum ones, and you can show 3 on your profile',
+        'Quests give keys and cases now',
+        'More leaderboards',
+    ]),
+    ('5.12', [
+        "New: Connect 4 against a bot that can't be tricked",
+        'Pawn shop: propose an exchange and he puts one of his items up for yours',
+    ]),
+    ('5.11', [
+        'New: the Cup Game. Keep your eye on the coin under the cups',
+        'Roulette: bet on as many spots as you like in one spin',
+        'Hi-Lo is clearer, with big HIGHER and LOWER choices',
+    ]),
+    ('5.10', [
+        'Fixed updates not installing by themselves',
+        'New themed cases, Medieval and Nature, with 11 badges you can only get from them',
+        'Mini Golf aiming remade, and golf bots really play their shots now',
+    ]),
+    ('5.9', [
+        'The OG tag got a rainbow edge, a glow and sparkles',
+        'Casino bets and mini games can drop keys again',
+        'Fixed the Mini Golf waiting room',
+    ]),
+    ('5.8', [
+        'Mini Golf rebuilt: play alone or online with up to 4 players, all from one screen',
+        'More realistic ball physics',
+    ]),
+    ('5.7.2', [
+        'Fixed the Mini Golf lobby reloading over and over',
+        'Bots fill every empty Jackpot seat',
+    ]),
+    ('5.7.1', [
+        'Fixed "Could not check for updates"',
+    ]),
+    ('5.7', [
+        'Wave Rush is smoother at any frame rate',
+        'Fixes and polish everywhere',
+    ]),
+    ('5.6', [
+        'Mini Golf for 3 or 4 players',
+    ]),
+    ('5.5', [
+        'Bug fixes and small improvements',
+    ]),
+    ('5.4', [
+        '6 new Mythic badges',
+        '6 new animated banners',
+        'Pick a second colour of your own for the outline and glow',
+        'Cosmetics are 20% cheaper',
+    ]),
+    ('5.3', [
+        "Fresh start with fairer luck: a badge's design and its finish are rolled separately",
+        'Mini Golf: play 3, 5, 10 or 15 holes, and 12 new holes',
+        'The tutorial comes first and only covers what matters',
+        'Lots of fixes',
+    ]),
+    ('5.2', [
+        'New: the Jackpot! Put in your items, and the bigger your share, the better your chance',
+    ]),
+    ('5.1', [
+        'Wave Rush: a softer start and fairer spikes',
+        'Sort and filter your items in the inventory and trades',
+        'Profiles show the theme the player has on',
+    ]),
+    ('5.0.1', [
+        'A new guide for new players, with a moving picture for each part',
+        'Updates now install by themselves within a minute of their release: Rubenium closes, updates and starts again',
+    ]),
+    ('5.0', [
+        'The full release! Everyone starts again from zero. Accounts, friends, hours played and settings are kept',
+        'Prismatic is now the rarest Mythic finish',
+        'Find keys by luck in mini games',
+        'Instant case opening speed',
+        'Fixes for levels, golf and Wave Rush',
+    ]),
+    ('4.7', [
+        'New odds for every badge in every case',
+        'The Golden Wheel spins inside the menu and pays far more',
+        'Gift up to 3 cases at once to a friend',
+        'Game mode no longer closes Rubenium',
+    ]),
+    ('4.6', [
+        'Game mode: pick a key and Rubenium ignores every click while you play',
+        "Trade up: a full row of colours turns into a random Shiny or Titanium you don't have",
+        '8 new golf holes',
+        'No more pop-ups spoiling a result before it lands',
+    ]),
+    ('4.5.1', [
+        'Fixed trade requests doing nothing',
+        'Add any item to a trade, plus coins and keys',
+    ]),
+    ('4.5', [
+        'HELP on every game, with the controls and a little preview',
+        'Beat Tap, Wave Rush and the casino work with the keyboard',
+        '6 new themes, 5 banners, 4 frames, the Eclipse ball and the Comet line',
+        'Change, move or remove your profile picture',
+        'Trading is between friends only',
+        'Hold the show / hide key for 3 seconds to restart Rubenium',
+    ]),
+    ('4.4', [
+        'Updates now install by themselves as soon as they are out',
+        'The daily reward pops up the first time you go online each day',
+    ]),
+    ('4.3', [
+        'New casino game: Slots',
+        'New: Wave Rush. Hold to rise, let go to fall, through a course that keeps getting tighter',
+        'Mini Golf: play solo for coins',
+        "Quick sell is now the pawn shop: take his offer or haggle, but don't make him angry",
+        'XP comes from winning, not just from playing',
+    ]),
+    ('4.2', [
+        'Coinflip against a bot',
+        'A golden ? on every game with how to play, payouts and chances',
+        'Style moved to the Shop',
+    ]),
+    ('4.1', [
+        'New mini game: Block Blast. Place the pieces and clear rows and columns',
+        'Compact Music Mode folds away more smoothly',
+    ]),
+    ('4.0', [
+        'Levels 0 to 100, with XP from everything you play and a badge every 5 levels',
+        'XP coupons in cases, the wheel and scratch cards',
+        "Trades: see your friend's inventory, and both players press READY",
+        'New casino game: Tower, and numbers on the roulette',
+        'New mini game: Minesweeper',
+        '16 new Mini Golf holes',
+        'Notification history, chat reactions and your own crosshair image',
+        'Compact Music Mode while you are gaming',
+    ]),
+    ('3.2', [
+        'One ONLINE button instead of Games, Shop and Social',
+        'Coinflip: put in up to 6 items and pick black or white. The winner takes it all',
+        'Two new casino games: Roulette and Hi-Lo',
+        'Cases are bought with coins and opened with a key',
+        'Pick the music app you use, not just Spotify',
+    ]),
+    ('3.1.1', [
+        'Profile pictures stay after a restart',
+        'Timing no longer stops by itself',
+    ]),
+    ('3.1', [
+        'New skill game: Timing. Stop the needle on the target',
+        'The Golden Wheel: free spins and scratch cards can unlock it, and it always pays',
+        'More quests with bigger rewards',
+        'Better daily login rewards',
+        '5 new cases',
+        'Shop themes have their own scenes',
+    ]),
+    ('3.0.3', [
+        "The OG tag can't be earned any more, but everyone who has it keeps it",
+        'Mini Golf: 16 holes with sand, ice, boost pads and water',
+        'An Edit Profile button for your banner, frame, tag, picture and showcase',
+    ]),
+    ('3.0.2', [
+        'Mini Golf 1 v 1: play a friend live, turn by turn, for a bet',
+        'Purchases, trades and notifications show up within seconds',
+        'Preview shop themes before you buy them',
+    ]),
+    ('3.0.1', [
+        'Song History in Social, and friends can see what you have been playing (you can turn it off)',
+        'Offline mode in Settings',
+        '10 new banners, and Gold banners that level up the longer you wear them',
+    ]),
+    ('3.0', [
+        'Every ball, line, font, theme, banner and frame can come from a case now',
+        'Rare drops feel rare, with rays and a fanfare only for Epic and up',
+        'New swaps can show up in the Rocket League tab without an update',
+    ]),
+    ('2.7', [
+        'More AFK coins',
+        'Every badge shows its exact chance in each case',
+        'New banners and frames',
+    ]),
+    ('2.6.1', [
+        'Cases rebalanced',
+    ]),
+    ('2.6', [
+        'Fresh start: everyone begins again with 500 coins and 3 keys',
+        'Free OG tag for every user who joined before 17 November',
+        'Profiles: banners, frames and a showcase of your 3 favourite badges',
+        'Quick sell: sell any item straight away',
+    ]),
+    ('2.5', [
+        'New: Deals, cheaper items every day',
+        'Beat Tap has 4 modes (Normal, Rush, Long notes, Chords); Memory has 3 card styles',
+        'Friend profiles have Message, Trade and Gift',
+        'Settings split into 6 clear sections',
+    ]),
+    ('2.4.1', [
+        'Everything opens inside the menu, no more extra windows over your games',
+        'Profile picture editor: move, zoom, rotate and filters',
+        'The daily reward has a flame that grows every day',
+    ]),
+    ('2.4', [
+        'New Beat Tap: four lanes, long notes, combos and it gets faster',
+        'New mini game: Memory',
+        'A scratch card every 12 hours and a daily login reward',
+        'Messages with friends, leaderboards, trade history and collection sets',
+    ]),
+    ('2.3', [
+        'New free mini game: Parking. Slide the cars and get the red car out for coins',
+        'Friend profiles show when they were last on, their collection and what they wear',
+    ]),
+    ('2.2', [
+        'The Ultimate Update: a fresh start for everyone (500 coins, 3 keys). Hours and friends stay',
+        'Trading: 8 items and coins on each side',
+        'Inventory, and a Shop with balls, lines, fonts and themes',
+        'Badges remade: Common, Rare, Epic, Legendary and secret Mythic ones',
+        'Finishes: Basic, Painted, Shiny, Titanium and Gold (Gold is extremely rare)',
+        'Beat Tap, plus quests every hour, day and week',
+        'Rocket gets an automatic cash-out, and the free spin comes back every 2 hours',
+    ]),
+    ('2.1', [
+        'Quests: daily and weekly goals that pay coins',
+        'Badges on friend profiles',
+    ]),
+    ('2.0', [
+        'The online update: coins, keys and items now live on your account',
+        'Coins come with time, and keys too',
+        'Four new cases with their odds shown, and a free daily case',
+        'Two new casino games: Dice and Rocket',
+    ]),
+    ('1.10', [
+        'Logged in? Rubenium starts by itself after 5 seconds',
+    ]),
+    ('1.9', [
+        'Friends: add people by username and see who is online',
+    ]),
+    ('1.8', [
+        'The login is now part of the start screen',
+        'You can delete your account in Settings',
+    ]),
+    ('1.7', [
+        'Accounts: sign up or log in on the welcome screen, and you stay logged in',
+        'Time played is saved to your account',
+    ]),
+    ('1.6', [
+        'New ball and ring: White Gold',
+        'Long song names shrink instead of getting cut off',
+    ]),
+    ('1.5', [
+        'Turn off all swaps is now Reset Swaps: it puts every original file back',
+        'Wrong, left-over or broken swap files are found and fixed automatically',
+    ]),
+    ('1.4', [
+        'New casino games: Plinko and Bombs',
+        '50 badges to collect, and cases with an opening animation',
+        'New ball and ring style: Neon',
+    ]),
+    ('1.3', [
+        'Coins! Earn them over time and spend them in the new Shop',
+        'Games: blackjack and a daily free spin',
+        'Tidier menu',
+    ]),
+    ('1.2', [
+        'Rubenium ignores the mouse while a game uses it to aim, even in borderless fullscreen',
+        'Moving the menu feels smoother',
+    ]),
+    ('1.1', [
+        'New themes: a night sky that fills with stars, then turns gold',
+        'Pick any colour on a colour line',
+        'New ball styles with a gold ring',
+        'New app icon',
+    ]),
+    ('1.0', [
+        'Hold the ball to open Rubenium, so it never opens by accident in a game',
+        '9 new swaps',
+        'The full update history is in this tab',
+    ]),
+    ('0.9', [
+        'New swaps and a Player banners section',
+        'The ball stays where you leave it and snaps to the edges',
+        'Apps finds every game installed with Steam or Epic',
+    ]),
+    ('0.8.1', [
+        'Small fixes',
+    ]),
+    ('0.8', [
+        'Rubenium installs like a normal Windows app and updates itself',
+        'Soft, quiet interface sounds',
+        'Rubenium uses a lot less CPU',
+    ]),
+    ('0.7', [
+        'A picture on every swap',
+        '5 new themes, and styles for the R and the song ring',
+    ]),
+    ('0.6', [
+        'Welcome screen with a Launch button',
+        '8 new swaps, and several swaps on at once',
+        'Choose your tabs and the size of the ball',
+    ]),
+    ('0.5', [
+        'A website with a one-click download of the latest version',
+    ]),
+    ('0.4.1', [
+        'Starts reliably with Windows',
+    ]),
+    ('0.4', [
+        'Rocket League swaps for Steam and Epic, with backups of the original files',
+        'Rubenium finds new versions by itself and offers to install them',
+        '6 save slots for crosshairs',
+    ]),
+    ('0.3', [
+        'New tabs: Stats, Timer, Apps, Themes and Rocket League',
+        'Crosshair presets',
+    ]),
+    ('0.2', [
+        'No licence key needed',
+        'The glow follows the music',
+    ]),
+    ('0.1', [
+        'First version: music, lyrics, crosshair, screen colours and tools in one glowing ball',
+    ]),
 ]
+FR.update({  # 10.0: the rewritten update history
+    'Hoops online! Play a friend or anyone else, 1 v 1 with a bot on each team, or team up and take on two bots together':
+        'Hoops en ligne ! Joue contre un ami ou n’importe qui, en 1 contre 1 avec un bot dans chaque équipe, ou faites équipe à deux contre deux bots',
+    'Fresh start for 10.0: coins, items, cases, levels and records were reset, and everyone gets the starter pack':
+        'Nouveau départ pour la 10.0 : pièces, objets, caisses, niveaux et records ont été remis à zéro, et tout le monde reçoit le pack de départ',
+    'Cleaner Home: your profile now sits right under Casino and Mini games. Duels are in Play and Leaderboards are in the side menu':
+        'Accueil plus clair : ton profil est maintenant juste sous Casino et Mini-jeux. Les duels sont dans Jouer et les classements dans le menu latéral',
+    'New music player on Home, right under the live game, with play, pause, skip and volume':
+        'Nouveau lecteur de musique sur l’Accueil, juste sous le jeu en direct, avec lecture, pause, suivant et volume',
+    'Rubenium comes straight back to the front when you leave Karting or Hoops':
+        'Rubenium revient tout de suite au premier plan quand tu quittes Karting ou Hoops',
+    'Hoops: Professional bots never miss now. Only a block will stop them':
+        'Hoops : les bots Professionnels ne ratent plus jamais. Seul un contre peut les arrêter',
+    'Fixed updates not showing up for some players':
+        'Corrigé : les mises à jour n’arrivaient pas chez certains joueurs',
+    'Hoops: stand still with the ball for too long and a defender can knock it out of your hands':
+        'Hoops : reste immobile trop longtemps avec la balle et un défenseur peut te la faire sauter des mains',
+    'Hoops: changed your mind? Right click cancels a shot and left click cancels a pass':
+        'Hoops : tu as changé d’avis ? Clic droit annule un tir et clic gauche annule une passe',
+    'Hoops: a pass you are charging now goes on its own after a moment':
+        'Hoops : une passe que tu charges part toute seule au bout d’un moment',
+    'Hoops: dunks! Near the hoop press E to jump, then hit each key as its ring closes':
+        'Hoops : les dunks ! Près du panier appuie sur E pour sauter, puis sur chaque touche quand son cercle se referme',
+    'Get all three keys in time for a monster dunk nobody can block. Bots dunk and block too':
+        'Les trois touches à temps, c’est un monster dunk que personne ne peut contrer. Les bots dunkent et contrent aussi',
+    'Fixed the free spin always landing on 100 coins':
+        'Corrigé : le tour gratuit tombait toujours sur 100 pièces',
+    'Fixed the scratch card sometimes staying blank after you scratched it':
+        'Corrigé : la carte à gratter restait parfois vide une fois grattée',
+    'Fixed Rocket crashing straight away and the roulette always landing on gold':
+        'Corrigé : Rocket qui explosait tout de suite et la roulette qui tombait toujours sur l’or',
+    'Hoops now plays inside Rubenium and runs a lot smoother':
+        'Hoops se joue maintenant dans Rubenium et tourne bien plus fluide',
+    'Simpler Hoops controls: with the ball, left click shoots, right click passes and F fakes. Without it, left click steals and right click switches player':
+        'Des commandes de Hoops plus simples : avec la balle, clic gauche tire, clic droit passe et F feinte. Sans la balle, clic gauche vole et clic droit change de joueur',
+    'Hoops: your bot team-mate gets open for passes and helps on defence':
+        'Hoops : ton coéquipier bot se démarque pour les passes et aide en défense',
+    'Hoops: hang on to the ball too long and the bots rush you. A red edge warns you first':
+        'Hoops : garde la balle trop longtemps et les bots foncent sur toi. Un bord rouge te prévient avant',
+    'Hoops: bots fake now, three baskets in a row puts you On Fire, and ankle breakers are in':
+        'Hoops : les bots feintent, trois paniers d’affilée te mettent On Fire, et les ankle breakers arrivent',
+    'Hoops: you can only shoot once you are past the half-way line, and every basket gets a replay':
+        'Hoops : tu ne peux tirer qu’après la ligne médiane, et chaque panier a son replay',
+    'Hoops: players and the ball no longer jump across the court, and a ball thrown out goes to the other team':
+        'Hoops : les joueurs et la balle ne sautent plus d’un bout à l’autre du terrain, et une balle envoyée dehors va à l’autre équipe',
+    'Hoops: an MVP card after the match, a YOU marker over your player and clearer passes':
+        'Hoops : une carte MVP après le match, un marqueur TOI au-dessus de ton joueur et des passes plus claires',
+    'Hoops and Karting: a points feed at the top, Tab for the scoreboard, and a quick How to play the first time':
+        'Hoops et Karting : un fil de points en haut, Tab pour le tableau des scores, et un petit Comment jouer la première fois',
+    'Karting: new bots, and the top ones are faster than any player. They show up on the time boards too':
+        'Karting : de nouveaux bots, et les meilleurs sont plus rapides que n’importe quel joueur. Ils apparaissent aussi dans les classements des temps',
+    'Go AFK for 45 seconds in Hoops or Karting and you are disqualified with no prize':
+        'Reste AFK 45 secondes dans Hoops ou Karting et tu es disqualifié, sans gain',
+    'Beating bots pays a lot more: up to 2 500 in Hoops and 1 500 in Karting':
+        'Battre les bots rapporte beaucoup plus : jusqu’à 2 500 dans Hoops et 1 500 dans Karting',
+    'Karting and Hoops stats, records and time boards were reset':
+        'Les stats, records et classements des temps de Karting et Hoops ont été remis à zéro',
+    'Volume sliders for the interface, game effects, and crowd and engines, in Settings and in game. Game sounds are quieter too':
+        'Des curseurs de volume pour l’interface, les effets des jeux, et la foule et les moteurs, dans les Réglages et en jeu. Les sons des jeux sont aussi moins forts',
+    '6 new animations, a free Basic one, and Shattered Shard is now a Mythic':
+        '6 nouvelles animations, une Basique gratuite, et Shattered Shard devient Mythique',
+    'Inventory: pick several items and sell them all at once':
+        'Inventaire : choisis plusieurs objets et vends-les d’un coup',
+    'Daily reward: coins and a case every day, with more coins the longer your streak':
+        'Récompense du jour : des pièces et une caisse chaque jour, avec plus de pièces plus ta série est longue',
+    'Comeback top-up: once a day, if you drop below your floor you get topped back up':
+        'Coup de pouce : une fois par jour, si tu passes sous ton plancher, on te remet à niveau',
+    'Quests: bot challenges every hour, day and week, and a case with every weekly quest':
+        'Quêtes : des défis contre les bots chaque heure, chaque jour et chaque semaine, et une caisse avec chaque quête de la semaine',
+    'You can bet up to 20% of your coins, and big Horse Racing bets work again':
+        'Tu peux miser jusqu’à 20 % de tes pièces, et les grosses mises à la course de chevaux remarchent',
+    'Friends: see what your friends played last':
+        'Amis : vois à quoi tes amis ont joué en dernier',
+    'The Casino tile on Home opens the doors again, and the case drop list does not lag any more':
+        'La tuile Casino de l’Accueil ouvre de nouveau les portes, et la liste des gains des caisses ne rame plus',
+    'Fresh start: coins, items, badges, cases, levels, trophies, stats and leaderboards were reset, and everyone gets the starter pack':
+        'Nouveau départ : pièces, objets, badges, caisses, niveaux, trophées, stats et classements ont été remis à zéro, et tout le monde reçoit le pack de départ',
+    'Tiers are harder to reach now, and you can only go up one tier a day':
+        'Les rangs sont plus durs à atteindre, et tu ne peux monter que d’un rang par jour',
+    'The Key Forge refills every 12 hours, and the first press shows the price before you pay':
+        'La Forge à clés se recharge toutes les 12 heures, et le premier appui montre le prix avant de payer',
+    '3 free keys every hour on Rewards':
+        '3 clés gratuites chaque heure dans Récompenses',
+    'A free case every day with the daily reward':
+        'Une caisse gratuite chaque jour avec la récompense du jour',
+    'Bigger prizes on the free spin':
+        'De plus gros gains au tour gratuit',
+    'Karting: tighter driving, races play inside the menu, quieter engines, faster bots and a 10 second countdown':
+        'Karting : une conduite plus précise, les courses se jouent dans le menu, des moteurs moins forts, des bots plus rapides et un compte à rebours de 10 secondes',
+    'Karting: the top 10 times on each track, and you can race any of them as a ghost':
+        'Karting : les 10 meilleurs temps de chaque circuit, et tu peux affronter n’importe lequel en fantôme',
+    'Easy and Medium bots make real mistakes now, and Professional is a lot harder':
+        'Les bots Facile et Moyen font de vraies erreurs, et le Professionnel est bien plus fort',
+    'Leaderboards have a podium for the top 3':
+        'Les classements ont un podium pour le top 3',
+    'Wave Rush moved to Mini games':
+        'Wave Rush passe dans les Mini-jeux',
+    'Home now shows your profile, badges and showcase':
+        'L’Accueil montre maintenant ton profil, tes badges et ta vitrine',
+    'Duels feel quicker: your move shows straight away, there is a clear turn banner and bots reply faster':
+        'Les duels vont plus vite : ton coup s’affiche tout de suite, une bannière claire montre à qui c’est le tour et les bots répondent plus vite',
+    'Game menus have shorter, simpler rules':
+        'Les menus des jeux ont des règles plus courtes et plus simples',
+    'Hoops: smoother bots, shorter replays, an OPEN tag when your team-mate is free, and a tougher Professional':
+        'Hoops : des bots plus fluides, des replays plus courts, un badge DÉMARQUÉ quand ton coéquipier est libre, et un Professionnel plus coriace',
+    'Daily prize limits now grow with your tier, and Casino Legend has none at all':
+        'Les limites de gains par jour grandissent avec ton rang, et la Légende du casino n’en a aucune',
+    'Higher tiers also get more keys and can bet more in duels and rooms':
+        'Les rangs élevés ont aussi plus de clés et peuvent miser plus dans les duels et les salons',
+    'A rank-up screen shows what your new tier unlocks. Click the tier bar on Home to see every tier':
+        'Un écran de passage de rang montre ce que ton nouveau rang débloque. Clique sur la barre de rang de l’Accueil pour voir tous les rangs',
+    'New game: Hoops! 2 v 2 basketball with a bot team-mate against two bots':
+        'Nouveau jeu : Hoops ! Du basket en 2 contre 2, avec un coéquipier bot contre deux bots',
+    'Dribble, pass round the defence with lobs and bounce passes, time your shots, steal and block':
+        'Dribble, passe la défense avec des lobs et des passes à terre, tire au bon moment, vole et contre',
+    'Four bot levels, overtime when it is a tie, and a replay of every basket':
+        'Quatre niveaux de bots, des prolongations en cas d’égalité, et un replay de chaque panier',
+    'New game: Karting! Race with up to 3 players and a bot on 3 tracks, with boosts, drifts and slipstreams':
+        'Nouveau jeu : Karting ! Fais la course jusqu’à 3 joueurs avec un bot, sur 3 circuits, avec boosts, drifts et aspiration',
+    'New duels: Trifade, noughts and crosses where you only keep 3 marks, and Mazelock, where you race your pawn across and block the way with walls':
+        'Nouveaux duels : Trifade, un morpion où tu ne gardes que 3 marques, et Mazelock, où tu amènes ton pion de l’autre côté en bloquant le chemin avec des murs',
+    'Mini Golf rooms: pick how good the bots are':
+        'Salons de Mini Golf : choisis le niveau des bots',
+    'Mini games pay double':
+        'Les mini-jeux paient le double',
+    'The hardest bot is called Professional in every game':
+        'Le bot le plus fort s’appelle Professionnel dans tous les jeux',
+    'Play is split into Mini games, Duels and Multiplayer':
+        'Jouer est séparé en Mini-jeux, Duels et Multijoueur',
+    'A new Home with your tier, your free rewards and the game that is live':
+        'Un nouvel Accueil avec ton rang, tes récompenses gratuites et le jeu en direct',
+    'Jackpot and Horse Racing take turns every 20 minutes, and bots keep both going':
+        'Le jackpot et la course de chevaux alternent toutes les 20 minutes, et les bots les font tourner',
+    'Stats: look up any player by name, and a new Records page':
+        'Stats : cherche n’importe quel joueur par son nom, et une nouvelle page Records',
+    'New season: everyone restarts with 2 500 coins and 5 keys, and leaderboards, streaks and quests start over':
+        'Nouvelle saison : tout le monde repart avec 2 500 pièces et 5 clés, et les classements, séries et quêtes recommencent',
+    'Coinflip: fewer huge bot flips':
+        'Pile ou face : moins de parties géantes contre les bots',
+    'Fixes for mini games, the scratch card and text on light buttons':
+        'Corrections pour les mini-jeux, la carte à gratter et le texte sur les boutons clairs',
+    'A starter pack for everyone: 2 500 coins, 5 keys and 8 cases':
+        'Un pack de départ pour tout le monde : 2 500 pièces, 5 clés et 8 caisses',
+    'Tiers are easier to reach, and everyone starts at Poor':
+        'Les rangs sont plus faciles à atteindre, et tout le monde commence Pauvre',
+    'Hover the tier bar to see how much of your wealth is coins and how much is items':
+        'Passe la souris sur la barre de rang pour voir la part de pièces et d’objets dans ta richesse',
+    'Fresh start: coins and keys went back to 0. Your level, basic items and OG tag stayed':
+        'Nouveau départ : pièces et clés repartent de 0. Ton niveau, tes objets de base et le tag OG restent',
+    'Five wealth tiers, from Poor to Casino Legend. Once you reach one it is yours, and it boosts every free reward':
+        'Cinq rangs de richesse, de Pauvre à Légende du casino. Un rang atteint est à toi pour de bon, et il augmente toutes les récompenses gratuites',
+    'Leaderboards got their own tab, with every game':
+        'Les classements ont leur propre onglet, avec tous les jeux',
+    'New Stats tab with graphs of your wealth, casino results and free coins':
+        'Nouvel onglet Stats avec des graphiques de ta richesse, de tes résultats au casino et de tes pièces gratuites',
+    'Play has a casino door now, with the casino games, Jackpot, Horse Racing and Coinflip behind it':
+        'Jouer a maintenant une porte de casino, avec derrière les jeux de casino, le jackpot, la course de chevaux et le pile ou face',
+    'Mini games are free and pay by how well you play, and your first 8 rounds of each game every day pay double':
+        'Les mini-jeux sont gratuits et paient selon ton niveau, et tes 8 premières parties de chaque jeu chaque jour paient le double',
+    'New: Duels. Play Connect 4 and Battleships against bots or 1 v 1 against other players, for fun or for a bet':
+        'Nouveau : les duels. Joue au Puissance 4 et à la bataille navale contre des bots ou en 1 contre 1 contre d’autres joueurs, pour le plaisir ou pour une mise',
+    'A case for each kind of item, plus the Crown Vault that has them all':
+        'Une caisse pour chaque type d’objet, plus le Coffre de la Couronne qui les contient tous',
+    'Badge layouts that fit how many badges you show':
+        'Des dispositions de badges adaptées au nombre de badges que tu montres',
+    'Buttons take the colours of the song you are playing':
+        'Les boutons prennent les couleurs du morceau que tu écoutes',
+    'Lyrics stay in time with the song':
+        'Les paroles restent synchronisées avec le morceau',
+    'You can uninstall Rubenium from Settings > UPDATE':
+        'Tu peux désinstaller Rubenium depuis Réglages > MISE À JOUR',
+    'Fixed the side menu not reacting to clicks':
+        'Corrigé : le menu latéral ne réagissait plus aux clics',
+    'Leaving a free game takes you back to Rewards':
+        'Quitter un jeu gratuit te ramène aux Récompenses',
+    'Wealth tiers: the more you own, the bigger your free rewards':
+        'Rangs de richesse : plus tu possèdes, plus tes récompenses gratuites sont grosses',
+    'New prices and odds across the whole game':
+        'Nouveaux prix et nouvelles chances dans tout le jeu',
+    'Mini Golf online is fair for everyone: nobody can fake a hole in one any more':
+        'Le Mini Golf en ligne est équitable pour tout le monde : plus personne ne peut tricher sur un trou en un',
+    'Password help can no longer be used up by someone else':
+        'L’aide au mot de passe ne peut plus être épuisée par quelqu’un d’autre',
+    'A cleaner look everywhere, with matching buttons, tabs and cards':
+        'Un look plus propre partout, avec des boutons, onglets et cartes assortis',
+    'Reduce motion: a new switch in Settings > Style for calmer animations':
+        'Réduire les animations : un nouveau bouton dans Réglages > Style pour des animations plus calmes',
+    'Empty pages now tell you what goes there':
+        'Les pages vides disent maintenant ce qui va dedans',
+    'Rubenium uses a lot less CPU while it is idle':
+        'Rubenium utilise beaucoup moins de processeur quand il ne fait rien',
+    'Horse races are longer, about 2 minutes, and the camera follows the leaders':
+        'Les courses de chevaux sont plus longues, environ 2 minutes, et la caméra suit les premiers',
+    'Horses run at a normal pace again':
+        'Les chevaux courent de nouveau à un rythme normal',
+    'New: 4 Mythic animations, Supernova, Shatter, Rift and Phoenix':
+        'Nouveau : 4 animations Mythiques, Supernova, Éclat de verre, Faille et Phénix',
+    'Click anywhere or press Esc to skip an animation':
+        'Clique n’importe où ou appuie sur Échap pour passer une animation',
+    'Horse races are 3 times longer with more lead changes, and there are 5 new places to race':
+        'Les courses de chevaux sont 3 fois plus longues avec plus de changements en tête, et il y a 5 nouveaux décors',
+    '10 new animated banners and 10 new moving app themes, each in several colours':
+        '10 nouvelles bannières animées et 10 nouveaux thèmes d’app animés, chacun en plusieurs couleurs',
+    'Horse Racing history shows the podium of every race':
+        'L’historique de la course de chevaux montre le podium de chaque course',
+    '10 more banners, frames and themes, and they all come in extra colours now':
+        '10 bannières, cadres et thèmes en plus, et ils existent tous en plusieurs couleurs',
+    'Horse Racing pays the top three now':
+        'La course de chevaux paie maintenant les trois premiers',
+    'A race history with every winner and pot':
+        'Un historique des courses avec chaque gagnant et chaque cagnotte',
+    '12 new banners, 12 frames and 12 app themes':
+        '12 nouvelles bannières, 12 cadres et 12 thèmes d’app',
+    'New Nature badge: the Leaf':
+        'Nouveau badge Nature : la Feuille',
+    'New: Horse Racing! Pick one of 5 horses and bet. Your chance is your share of the money':
+        'Nouveau : la course de chevaux ! Choisis un des 5 chevaux et mise. Ta chance, c’est ta part de l’argent misé',
+    'Jackpot and Horse Racing take turns, and bots play when nobody joins':
+        'Le jackpot et la course de chevaux alternent, et les bots jouent quand personne ne vient',
+    'Big bets ask you to confirm first':
+        'Les grosses mises te demandent de confirmer',
+    'Mini Golf bots no longer go through walls, and they wait for their turn':
+        'Les bots de Mini Golf ne traversent plus les murs, et ils attendent leur tour',
+    "Coloured app fonts colour the app's text too":
+        'Les polices d’app colorées colorent aussi le texte de l’app',
+    'Pawn shop: sell several copies of an item at once':
+        'Prêteur sur gages : vends plusieurs exemplaires d’un objet d’un coup',
+    "Pawn shop: you can't spam refuse any more":
+        'Prêteur sur gages : tu ne peux plus spammer le refus',
+    'Pawn shop bans last 5 minutes instead of 30':
+        'Les bannissements du prêteur sur gages durent 5 minutes au lieu de 30',
+    'The Jackpot countdown only starts once someone joins':
+        'Le compte à rebours du jackpot ne démarre qu’une fois que quelqu’un a rejoint',
+    'SFX Match is a lot easier':
+        'SFX Match est bien plus facile',
+    'More time to answer in Colour Pick':
+        'Plus de temps pour répondre dans Choix de couleur',
+    'Trophies remade: tap one to see how to get it and show it on your profile':
+        'Trophées refaits : touche-en un pour voir comment l’avoir et le montrer sur ton profil',
+    'New payouts for Connect 4 and the Cup Game':
+        'Nouveaux gains pour le Puissance 4 et le jeu des gobelets',
+    'New games: Colour Pick, where you remember a colour and make it again, and SFX Match, the same with a sound':
+        'Nouveaux jeux : Choix de couleur, où tu retiens une couleur et la refais, et SFX Match, pareil avec un son',
+    'The Cup Game is harder and faster':
+        'Le jeu des gobelets est plus dur et plus rapide',
+    'Mythics show as a ? in cases until you unlock them':
+        'Les Mythiques apparaissent comme un ? dans les caisses tant que tu ne les as pas',
+    'After an automatic update Rubenium waits quietly in the corner instead of popping open':
+        'Après une mise à jour automatique, Rubenium attend tranquillement dans le coin au lieu de s’ouvrir',
+    'New Top Tier and Royal Cases, with only Epic and Legendary badges':
+        'Nouvelles Caisses Haut de gamme et Royale, avec seulement des badges Épiques et Légendaires',
+    'Rarer badges are always worth more now':
+        'Les badges plus rares valent toujours plus',
+    'The Quests button glows when something is ready to claim':
+        'Le bouton Quêtes brille quand il y a quelque chose à récupérer',
+    'A leaderboard for every casino game':
+        'Un classement pour chaque jeu de casino',
+    'Fresh start: coins, keys, items and levels were reset. Hours played and game scores stayed':
+        'Nouveau départ : pièces, clés, objets et niveaux remis à zéro. Les heures de jeu et les scores sont gardés',
+    'All new sounds for cases, cards, chips, coins and more':
+        'Tous nouveaux sons pour les caisses, les cartes, les jetons, les pièces et plus',
+    'New themed badge cases':
+        'Nouvelles caisses de badges à thème',
+    'Pawn shop: fairer offers, and his anger cools down over time':
+        'Prêteur sur gages : des offres plus justes, et sa colère retombe avec le temps',
+    'The free spin pays a lot more':
+        'Le tour gratuit paie beaucoup plus',
+    'Wave Rush runs smoother':
+        'Wave Rush est plus fluide',
+    'Settings > UPDATE has a Repair button in case an update ever fails':
+        'Réglages > MISE À JOUR a un bouton Réparer au cas où une mise à jour échoue',
+    "Updates can't get stuck any more":
+        'Les mises à jour ne peuvent plus rester bloquées',
+    'Wave Rush remade: it gets harder at 250, 500, 750 and 1 000 m, with new tunnels and fairer gaps':
+        'Wave Rush refait : ça se corse à 250, 500, 750 et 1 000 m, avec de nouveaux tunnels et des passages plus justes',
+    'No more stutter in Wave Rush':
+        'Plus de saccades dans Wave Rush',
+    'New: Trophies! Every game has Bronze, Silver, Gold and Platinum ones, and you can show 3 on your profile':
+        'Nouveau : les trophées ! Chaque jeu en a en Bronze, Argent, Or et Platine, et tu peux en montrer 3 sur ton profil',
+    'Quests give keys and cases now':
+        'Les quêtes donnent maintenant des clés et des caisses',
+    'More leaderboards':
+        'Plus de classements',
+    "New: Connect 4 against a bot that can't be tricked":
+        'Nouveau : le Puissance 4 contre un bot qu’on ne peut pas piéger',
+    'Pawn shop: propose an exchange and he puts one of his items up for yours':
+        'Prêteur sur gages : propose un échange et il met un de ses objets en jeu contre le tien',
+    'New: the Cup Game. Keep your eye on the coin under the cups':
+        'Nouveau : le jeu des gobelets. Garde l’œil sur la pièce sous les gobelets',
+    'Roulette: bet on as many spots as you like in one spin':
+        'Roulette : mise sur autant de cases que tu veux en un seul tour',
+    'Hi-Lo is clearer, with big HIGHER and LOWER choices':
+        'Plus ou moins est plus clair, avec de gros choix PLUS et MOINS',
+    'Fixed updates not installing by themselves':
+        'Corrigé : les mises à jour ne s’installaient plus toutes seules',
+    'New themed cases, Medieval and Nature, with 11 badges you can only get from them':
+        'Nouvelles caisses à thème, Médiévale et Nature, avec 11 badges qu’on ne trouve que dedans',
+    'Mini Golf aiming remade, and golf bots really play their shots now':
+        'Visée du Mini Golf refaite, et les bots de golf jouent vraiment leurs coups',
+    'The OG tag got a rainbow edge, a glow and sparkles':
+        'Le tag OG a un bord arc-en-ciel, un halo et des étincelles',
+    'Casino bets and mini games can drop keys again':
+        'Les mises au casino et les mini-jeux peuvent de nouveau donner des clés',
+    'Fixed the Mini Golf waiting room':
+        'Corrigé : la salle d’attente du Mini Golf',
+    'Mini Golf rebuilt: play alone or online with up to 4 players, all from one screen':
+        'Mini Golf refait : joue seul ou en ligne jusqu’à 4 joueurs, depuis un seul écran',
+    'More realistic ball physics':
+        'Une physique de balle plus réaliste',
+    'Fixed the Mini Golf lobby reloading over and over':
+        'Corrigé : le salon de Mini Golf se rechargeait sans arrêt',
+    'Bots fill every empty Jackpot seat':
+        'Les bots prennent toutes les places libres du jackpot',
+    'Fixed "Could not check for updates"':
+        'Corrigé : « Impossible de vérifier les mises à jour »',
+    'Wave Rush is smoother at any frame rate':
+        'Wave Rush est plus fluide, quelle que soit la fréquence d’images',
+    'Mini Golf for 3 or 4 players':
+        'Le Mini Golf à 3 ou 4 joueurs',
+    'Bug fixes and small improvements':
+        'Corrections de bugs et petites améliorations',
+    '6 new Mythic badges':
+        '6 nouveaux badges Mythiques',
+    '6 new animated banners':
+        '6 nouvelles bannières animées',
+    'Pick a second colour of your own for the outline and glow':
+        'Choisis une deuxième couleur à toi pour le contour et le halo',
+    'Cosmetics are 20% cheaper':
+        'Les cosmétiques coûtent 20 % moins cher',
+    "Fresh start with fairer luck: a badge's design and its finish are rolled separately":
+        'Nouveau départ avec une chance plus juste : le design d’un badge et sa finition sont tirés séparément',
+    'Mini Golf: play 3, 5, 10 or 15 holes, and 12 new holes':
+        'Mini Golf : joue 3, 5, 10 ou 15 trous, et 12 nouveaux trous',
+    'The tutorial comes first and only covers what matters':
+        'Le tutoriel passe en premier et ne montre que l’essentiel',
+    'Lots of fixes':
+        'Plein de corrections',
+    'New: the Jackpot! Put in your items, and the bigger your share, the better your chance':
+        'Nouveau : le jackpot ! Mets tes objets, et plus ta part est grosse, plus tu as de chances',
+    'Wave Rush: a softer start and fairer spikes':
+        'Wave Rush : un départ plus doux et des pics plus justes',
+    'Sort and filter your items in the inventory and trades':
+        'Trie et filtre tes objets dans l’inventaire et les échanges',
+    'Profiles show the theme the player has on':
+        'Les profils montrent le thème que porte le joueur',
+    'A new guide for new players, with a moving picture for each part':
+        'Un nouveau guide pour les nouveaux joueurs, avec une image animée pour chaque partie',
+    'The full release! Everyone starts again from zero. Accounts, friends, hours played and settings are kept':
+        'La version complète ! Tout le monde repart de zéro. Les comptes, amis, heures de jeu et réglages sont gardés',
+    'Prismatic is now the rarest Mythic finish':
+        'Le Prismatique est maintenant la finition Mythique la plus rare',
+    'Find keys by luck in mini games':
+        'Trouve des clés par chance dans les mini-jeux',
+    'Instant case opening speed':
+        'Vitesse d’ouverture des caisses Instantanée',
+    'Fixes for levels, golf and Wave Rush':
+        'Corrections pour les niveaux, le golf et Wave Rush',
+    'New odds for every badge in every case':
+        'Nouvelles chances pour chaque badge dans chaque caisse',
+    'The Golden Wheel spins inside the menu and pays far more':
+        'La Roue dorée tourne dans le menu et paie beaucoup plus',
+    'Gift up to 3 cases at once to a friend':
+        'Offre jusqu’à 3 caisses d’un coup à un ami',
+    'Game mode no longer closes Rubenium':
+        'Le mode jeu ne ferme plus Rubenium',
+    'Game mode: pick a key and Rubenium ignores every click while you play':
+        'Mode jeu : choisis une touche et Rubenium ignore tous les clics pendant que tu joues',
+    "Trade up: a full row of colours turns into a random Shiny or Titanium you don't have":
+        'Améliorer : une rangée complète de couleurs devient un Brillant ou un Titane au hasard que tu n’as pas',
+    '8 new golf holes':
+        '8 nouveaux trous de golf',
+    'No more pop-ups spoiling a result before it lands':
+        'Plus de pop-ups qui gâchent un résultat avant qu’il tombe',
+    'Fixed trade requests doing nothing':
+        'Corrigé : les demandes d’échange ne faisaient rien',
+    'Add any item to a trade, plus coins and keys':
+        'Ajoute n’importe quel objet à un échange, plus des pièces et des clés',
+    'HELP on every game, with the controls and a little preview':
+        'Une AIDE sur chaque jeu, avec les commandes et un petit aperçu',
+    'Beat Tap, Wave Rush and the casino work with the keyboard':
+        'Beat Tap, Wave Rush et le casino marchent au clavier',
+    '6 new themes, 5 banners, 4 frames, the Eclipse ball and the Comet line':
+        '6 nouveaux thèmes, 5 bannières, 4 cadres, la boule Éclipse et la ligne Comète',
+    'Change, move or remove your profile picture':
+        'Change, déplace ou retire ta photo de profil',
+    'Trading is between friends only':
+        'Les échanges se font seulement entre amis',
+    'Hold the show / hide key for 3 seconds to restart Rubenium':
+        'Maintiens la touche afficher / masquer 3 secondes pour redémarrer Rubenium',
+    'The daily reward pops up the first time you go online each day':
+        'La récompense du jour s’affiche la première fois que tu vas en ligne chaque jour',
+    'New casino game: Slots':
+        'Nouveau jeu de casino : la machine à sous',
+    'New: Wave Rush. Hold to rise, let go to fall, through a course that keeps getting tighter':
+        'Nouveau : Wave Rush. Maintiens pour monter, lâche pour descendre, sur un parcours qui se resserre',
+    'Mini Golf: play solo for coins':
+        'Mini Golf : joue en solo pour des pièces',
+    'XP comes from winning, not just from playing':
+        'L’XP vient des victoires, pas juste du fait de jouer',
+    'Coinflip against a bot':
+        'Pile ou face contre un bot',
+    'A golden ? on every game with how to play, payouts and chances':
+        'Un ? doré sur chaque jeu avec comment jouer, les gains et les chances',
+    'Style moved to the Shop':
+        'Le Style passe dans la Boutique',
+    'New mini game: Block Blast. Place the pieces and clear rows and columns':
+        'Nouveau mini-jeu : Block Blast. Place les pièces et vide les lignes et les colonnes',
+    'Compact Music Mode folds away more smoothly':
+        'Le mode musique compact se replie plus en douceur',
+    'Levels 0 to 100, with XP from everything you play and a badge every 5 levels':
+        'Des niveaux de 0 à 100, avec de l’XP pour tout ce que tu joues et un badge tous les 5 niveaux',
+    'XP coupons in cases, the wheel and scratch cards':
+        'Des coupons XP dans les caisses, la roue et les cartes à gratter',
+    "Trades: see your friend's inventory, and both players press READY":
+        'Échanges : vois l’inventaire de ton ami, et les deux joueurs appuient sur PRÊT',
+    'New casino game: Tower, and numbers on the roulette':
+        'Nouveau jeu de casino : la Tour, et des numéros à la roulette',
+    'New mini game: Minesweeper':
+        'Nouveau mini-jeu : le Démineur',
+    '16 new Mini Golf holes':
+        '16 nouveaux trous de Mini Golf',
+    'Notification history, chat reactions and your own crosshair image':
+        'Historique des notifications, réactions dans le chat et ta propre image de viseur',
+    'Compact Music Mode while you are gaming':
+        'Mode musique compact pendant que tu joues',
+    'One ONLINE button instead of Games, Shop and Social':
+        'Un seul bouton EN LIGNE au lieu de Jeux, Boutique et Social',
+    'Coinflip: put in up to 6 items and pick black or white. The winner takes it all':
+        'Pile ou face : mets jusqu’à 6 objets et choisis noir ou blanc. Le gagnant prend tout',
+    'Cases are bought with coins and opened with a key':
+        'Les caisses s’achètent avec des pièces et s’ouvrent avec une clé',
+    'Pick the music app you use, not just Spotify':
+        'Choisis l’appli de musique que tu utilises, pas seulement Spotify',
+    'Profile pictures stay after a restart':
+        'Les photos de profil restent après un redémarrage',
+    'New skill game: Timing. Stop the needle on the target':
+        'Nouveau jeu d’adresse : Timing. Arrête l’aiguille sur la cible',
+    'The Golden Wheel: free spins and scratch cards can unlock it, and it always pays':
+        'La Roue dorée : les tours gratuits et les cartes à gratter peuvent la débloquer, et elle paie toujours',
+    'More quests with bigger rewards':
+        'Plus de quêtes avec de plus grosses récompenses',
+    'Better daily login rewards':
+        'De meilleures récompenses de connexion',
+    '5 new cases':
+        '5 nouvelles caisses',
+    'Shop themes have their own scenes':
+        'Les thèmes de la boutique ont leurs propres décors',
+    "The OG tag can't be earned any more, but everyone who has it keeps it":
+        'Le tag OG ne peut plus être obtenu, mais tous ceux qui l’ont le gardent',
+    'Mini Golf: 16 holes with sand, ice, boost pads and water':
+        'Mini Golf : 16 trous avec du sable, de la glace, des boosts et de l’eau',
+    'An Edit Profile button for your banner, frame, tag, picture and showcase':
+        'Un bouton Modifier le profil pour ta bannière, ton cadre, ton tag, ta photo et ta vitrine',
+    'Mini Golf 1 v 1: play a friend live, turn by turn, for a bet':
+        'Mini Golf 1 contre 1 : joue contre un ami en direct, chacun son tour, pour une mise',
+    'Purchases, trades and notifications show up within seconds':
+        'Les achats, échanges et notifications s’affichent en quelques secondes',
+    'Preview shop themes before you buy them':
+        'Essaie les thèmes de la boutique avant de les acheter',
+    'Song History in Social, and friends can see what you have been playing (you can turn it off)':
+        'Historique des titres dans Social, et tes amis voient ce que tu écoutes (tu peux le désactiver)',
+    'Offline mode in Settings':
+        'Mode hors ligne dans les Réglages',
+    '10 new banners, and Gold banners that level up the longer you wear them':
+        '10 nouvelles bannières, et des bannières Or qui montent de niveau plus tu les portes',
+    'Every ball, line, font, theme, banner and frame can come from a case now':
+        'Chaque boule, ligne, police, thème, bannière et cadre peut maintenant sortir d’une caisse',
+    'Rare drops feel rare, with rays and a fanfare only for Epic and up':
+        'Les objets rares font vraiment rares, avec des rayons et une fanfare seulement à partir d’Épique',
+    'New swaps can show up in the Rocket League tab without an update':
+        'De nouveaux swaps peuvent arriver dans l’onglet Rocket League sans mise à jour',
+    'More AFK coins':
+        'Plus de pièces AFK',
+    'Every badge shows its exact chance in each case':
+        'Chaque badge montre sa chance exacte dans chaque caisse',
+    'New banners and frames':
+        'Nouvelles bannières et nouveaux cadres',
+    'Cases rebalanced':
+        'Caisses rééquilibrées',
+    'Fresh start: everyone begins again with 500 coins and 3 keys':
+        'Nouveau départ : tout le monde repart avec 500 pièces et 3 clés',
+    'Profiles: banners, frames and a showcase of your 3 favourite badges':
+        'Profils : bannières, cadres et une vitrine de tes 3 badges préférés',
+    'Quick sell: sell any item straight away':
+        'Vente rapide : vends n’importe quel objet tout de suite',
+    'New: Deals, cheaper items every day':
+        'Nouveau : les Bons plans, des objets moins chers chaque jour',
+    'Friend profiles have Message, Trade and Gift':
+        'Les profils d’amis ont Message, Échange et Cadeau',
+    'Settings split into 6 clear sections':
+        'Les Réglages en 6 sections claires',
+    'Everything opens inside the menu, no more extra windows over your games':
+        'Tout s’ouvre dans le menu, plus de fenêtres en plus par-dessus tes jeux',
+    'Profile picture editor: move, zoom, rotate and filters':
+        'Éditeur de photo de profil : déplacer, zoomer, tourner et filtres',
+    'The daily reward has a flame that grows every day':
+        'La récompense du jour a une flamme qui grandit chaque jour',
+    'A scratch card every 12 hours and a daily login reward':
+        'Une carte à gratter toutes les 12 heures et une récompense de connexion chaque jour',
+    'Messages with friends, leaderboards, trade history and collection sets':
+        'Messages avec tes amis, classements, historique des échanges et collections',
+    'Friend profiles show when they were last on, their collection and what they wear':
+        'Les profils d’amis montrent leur dernière connexion, leur collection et ce qu’ils portent',
+    'Trading: 8 items and coins on each side':
+        'Échanges : 8 objets et des pièces de chaque côté',
+    'Inventory, and a Shop with balls, lines, fonts and themes':
+        'Inventaire, et une Boutique avec des boules, lignes, polices et thèmes',
+    'Badges remade: Common, Rare, Epic, Legendary and secret Mythic ones':
+        'Badges refaits : Communs, Rares, Épiques, Légendaires et Mythiques secrets',
+    'Beat Tap, plus quests every hour, day and week':
+        'Beat Tap, et des quêtes chaque heure, jour et semaine',
+    'Rocket gets an automatic cash-out, and the free spin comes back every 2 hours':
+        'Rocket a l’encaissement automatique, et le tour gratuit revient toutes les 2 heures',
+    'Quests: daily and weekly goals that pay coins':
+        'Quêtes : des objectifs du jour et de la semaine qui paient des pièces',
+    'Badges on friend profiles':
+        'Des badges sur les profils d’amis',
+    'Coins come with time, and keys too':
+        'Les pièces arrivent avec le temps, et les clés aussi',
+    'Two new casino games: Dice and Rocket':
+        'Deux nouveaux jeux de casino : le Dé et Rocket',
+    'Logged in? Rubenium starts by itself after 5 seconds':
+        'Connecté ? Rubenium démarre tout seul après 5 secondes',
+    'Friends: add people by username and see who is online':
+        'Amis : ajoute des gens par leur pseudo et vois qui est en ligne',
+    'The login is now part of the start screen':
+        'La connexion fait maintenant partie de l’écran de démarrage',
+    'You can delete your account in Settings':
+        'Tu peux supprimer ton compte dans les Réglages',
+    'Accounts: sign up or log in on the welcome screen, and you stay logged in':
+        'Comptes : inscris-toi ou connecte-toi sur l’écran d’accueil, et tu restes connecté',
+    'Time played is saved to your account':
+        'Le temps de jeu est enregistré sur ton compte',
+    'New ball and ring: White Gold':
+        'Nouvelle boule et nouvel anneau : Or blanc',
+    'Long song names shrink instead of getting cut off':
+        'Les noms de morceaux trop longs rapetissent au lieu d’être coupés',
+    'New casino games: Plinko and Bombs':
+        'Nouveaux jeux de casino : Plinko et Bombes',
+    '50 badges to collect, and cases with an opening animation':
+        '50 badges à collectionner, et des caisses avec une animation d’ouverture',
+    'New ball and ring style: Neon':
+        'Nouveau style de boule et d’anneau : Néon',
+    'Coins! Earn them over time and spend them in the new Shop':
+        'Les pièces ! Gagne-les avec le temps et dépense-les dans la nouvelle Boutique',
+    'Games: blackjack and a daily free spin':
+        'Jeux : le blackjack et un tour gratuit par jour',
+    'Tidier menu':
+        'Menu mieux rangé',
+    'Moving the menu feels smoother':
+        'Déplacer le menu est plus fluide',
+    'New themes: a night sky that fills with stars, then turns gold':
+        'Nouveaux thèmes : un ciel de nuit qui se remplit d’étoiles, puis devient doré',
+    'New ball styles with a gold ring':
+        'Nouveaux styles de boule avec un anneau doré',
+    '9 new swaps':
+        '9 nouveaux swaps',
+    'The ball stays where you leave it and snaps to the edges':
+        'La boule reste où tu la laisses et se colle aux bords',
+    'Small fixes':
+        'Petites corrections',
+    'Rubenium installs like a normal Windows app and updates itself':
+        'Rubenium s’installe comme une vraie appli Windows et se met à jour tout seul',
+    'Rubenium uses a lot less CPU':
+        'Rubenium utilise beaucoup moins de processeur',
+    'Starts reliably with Windows':
+        'Démarre correctement avec Windows',
+})
 FR.update({  # 8.0: What's new lines that had no French
     'Horse Racing is longer: the track is 4 times longer and a race lasts about 2 minutes, with the horses keeping their pace and the camera following the leaders.':
         'La course de chevaux est plus longue : la piste est 4 fois plus longue et une course dure environ 2 minutes, les chevaux gardent leur rythme et la caméra suit les premiers.',
@@ -52738,7 +53374,8 @@ class HubMusic(QWidget):
 
 class HubPage(Page):
     """9.0: the online Home. 9.2: its own page, not a copy of Rewards: hello and what is waiting for you, the one live
-    game on now and where to go. 9.3.2: no "Jump back in"; a preview of your own profile under the four tiles."""
+    game on now and where to go. 9.3.2: no "Jump back in"; a preview of your own profile under the tiles. 10.0: two
+    tiles (Casino, Mini games): Duels and Leaderboards are reached from Play and the side menu."""
     key = "hub"
 
     def __init__(self, ctx) -> None:
@@ -52753,12 +53390,10 @@ class HubPage(Page):
                                                   "Bots play when nobody else does.")))
         lay.addWidget(LiveSlot(self))
         lay.addWidget(HubMusic(ctx))                 # 10.0.1: the music player, small
+        # 10.0: Duels (in Play) and Leaderboards (side menu) left Home, so the profile comes up into their row
         lay.addWidget(tile_grid([
             Tile(tr("Casino"), tr("Enter"), "dice", ("#F5C04A", "#5A1A0A"), lambda: open_games_part(ctx, None, flag="casino_door_auto"), height=96),
-            Tile(tr("Mini games"), tr("Free"), "spark", ("#35E0A1", "#0B4A5A"), lambda: ctx.window.nav("games"), height=96),
-            Tile(tr("Duels"), tr("1 v 1"), "shield", ("#5AA8FF", "#0A2A5A"), lambda: open_arena(ctx, "c4", "duel"), height=96),
-            Tile(tr("Leaderboards"), tr("Global"), "trophy", ("#FF6FA8", "#5A1A7A"), lambda: ctx.window.nav("leaders"),
-                 height=96)], 2))
+            Tile(tr("Mini games"), tr("Free"), "spark", ("#35E0A1", "#0B4A5A"), lambda: ctx.window.nav("games"), height=96)], 2))
         self._preview(lay)                           # 9.3.2: a look at your own profile (nothing to click)
         lay.addStretch(1)
 

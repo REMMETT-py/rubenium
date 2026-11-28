@@ -19,7 +19,13 @@ jobs:
           python3 - <<'PY'
           import json, subprocess
           data = json.load(open("release_history.json", encoding="utf-8"))
-          rels = json.loads(subprocess.check_output(["gh", "api", "repos/${{ github.repository }}/releases?per_page=100"]))
+          rels, page = [], 1                     # 10.0: every page (there are more than 100 releases now)
+          while True:
+              got = json.loads(subprocess.check_output(["gh", "api", f"repos/${{ github.repository }}/releases?per_page=100&page={page}"]))
+              rels += got
+              if len(got) < 100:
+                  break
+              page += 1
           done = 0
           for r in rels:
               want = data.get(r["tag_name"])
