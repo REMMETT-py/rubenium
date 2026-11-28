@@ -1532,8 +1532,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "10.0"   # the version people see
-BUILD = "2026.11.27.43"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "10.0.1"   # the version people see
+BUILD = "2026.11.28.1"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12771,6 +12771,12 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
+    ("10.0.1", ["Updates arrive again: the app was told it was up to date and never saw 9.5 or 10.0",
+               "Hoops: hold the ball still too long and a defender can knock it out of your hands",
+               "Hoops: changed your mind? Right click calls a shot off, left click calls a pass off, and a charged pass goes by itself after a moment",
+               "Hoops: Professional (NBA) bots make every clean shot: only a block stops them",
+               "Home: a small music player under the live game, with play, skip and volume",
+               "Leaving Karting or Hoops brings Rubenium straight back to the front"]),
     ("10.0", ["NEW: Hoops online. Play a friend or anyone online: 1 v 1 with a bot team-mate each, or the two of you together against two bots. Make a room or join one in Hoops",
               "Hoops: the DUNK. Near the hoop press E, then E, R, C and X as each ring closes. Three in time is a MONSTER DUNK nobody can block, and bots dunk and block too",
               "Hoops: running into a wall with the ball no longer stops the bots from rushing you",
@@ -15327,6 +15333,15 @@ class Updater(QObject):
             except Exception as exc:  # noqa: BLE001
                 log.info("server update check failed (%s): asking GitHub", exc)
                 info, tag = self._latest_from_github()
+            else:
+                if version_tuple(tag) <= version_tuple(self.current):
+                    # 10.0.1: the server's note can be behind a release (it is set by hand): GitHub has the last word
+                    try:
+                        info2, tag2 = self._latest_from_github()
+                        if version_tuple(tag2) > version_tuple(tag):
+                            info, tag = info2, tag2
+                    except Exception as exc:  # noqa: BLE001
+                        log.info("GitHub update check failed (%s): keeping the server's answer", exc)
             self.checking = False
             if version_tuple(tag) > version_tuple(self.current):
                 self.latest = info
@@ -52572,6 +52587,154 @@ class HomeHero(QWidget):
         p.drawText(br.adjusted(S(34), 0, -S(12), 0), int(Qt.AlignmentFlag.AlignVCenter), label)
 
 
+class HubMusic(QWidget):
+    """10.0.1: the music player, small, on the online Home (under the live game): cover, song, play / pause, skip and
+    the music volume. The same controls and the same state as the music Home: nothing of its own to go out of sync."""
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.setFixedHeight(S(74))
+        lay = hbox(self, 10, (S(12), S(9), S(14), S(9)))
+        self.art = ArtWidget(56)
+        self.art.setToolTip(tr("Open the music app"))
+        self.art.clicked.connect(ctx.open_player)
+        lay.addWidget(self.art, 0, Qt.AlignmentFlag.AlignVCenter)
+        info = vbox(spacing=0)
+        self.title = Label("", 13, bold=True, shrink=10)
+        self.title.setFixedHeight(S(20))
+        self.artist = Label("", 11, TEXT_DIM)
+        self.artist.setFixedHeight(S(17))
+        self.progress = ProgressBar()
+        self.progress.seek.connect(self._seek)
+        info.addStretch(1)
+        info.addWidget(self.title)
+        info.addWidget(self.artist)
+        info.addSpacing(S(5))
+        info.addWidget(self.progress)
+        info.addStretch(1)
+        lay.addLayout(info, 1)
+        m = ctx.media
+        self.b_prev = IconButton("prev", 28, tip=tr("Previous"))
+        self.b_play = IconButton("play", 34, primary=True)
+        self.b_next = IconButton("next", 28, tip=tr("Next"))
+        self.b_prev.clicked.connect(lambda: m.send(CMD_PREV))
+        self.b_next.clicked.connect(lambda: m.send(CMD_NEXT))
+        self.b_play.clicked.connect(self._toggle)
+        for b in (self.b_prev, self.b_play, self.b_next):
+            lay.addWidget(b, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.b_vol = IconButton("volume", 22, tip=tr("Mute"))
+        self.vol = Slider(0, 100, 100, 1)
+        self.vol.setFixedWidth(S(70))
+        self.vol.setToolTip(tr("Music volume"))
+        self.vol.changed.connect(self._vol_set)
+        self.b_vol.clicked.connect(self._vol_mute)
+        lay.addWidget(self.b_vol, 0, Qt.AlignmentFlag.AlignVCenter)
+        lay.addWidget(self.vol, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.b_vol.hide()
+        self.vol.hide()
+        self._muted = False
+        self._opt_until, self._opt_playing = 0.0, False
+        self._seen = None
+        self._t = QTimer(self)
+        self._t.setInterval(300)
+        self._t.timeout.connect(self._tick)
+        self._tick()
+
+    def showEvent(self, _e) -> None:
+        self._t.start()
+        self._tick()
+
+    def hideEvent(self, _e) -> None:
+        self._t.stop()
+
+    def paintEvent(self, _e) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(S(1), S(1), -S(1), -S(1))
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, mix(QColor("#1A1C1F"), QColor("#1ED760"), 0.10))
+        g.setColorAt(1, QColor("#0E0F11"))
+        p.setPen(QPen(alpha("#FFFFFF", 0.12), S(1.6)))
+        p.setBrush(g)
+        p.drawRoundedRect(r, S(14), S(14))
+
+    # -- the same as the music Home
+    def _vol_match(self):
+        st = self.ctx.state
+        return win.AppVolume.matcher(st.source_id, source_keywords(st.source_id)) if st.source_id else None
+
+    def _vol_set(self, v: float) -> None:
+        match = self._vol_match()
+        if match is None:
+            return
+        if self._muted and v > 0:
+            self.ctx.appvol.set_mute(match, False)
+            self._muted = False
+            self.b_vol.set_kind("volume")
+        self.ctx.appvol.set(match, v / 100)
+
+    def _vol_mute(self) -> None:
+        if self.ctx.appvol.set_mute(self._vol_match(), not self._muted):
+            self._muted = not self._muted
+            self.b_vol.set_kind("muted" if self._muted else "volume")
+
+    def _toggle(self) -> None:
+        if self.ctx.state.status is Status.NOT_RUNNING:
+            return play_with_nothing_open(self.ctx)
+        self._opt_playing = self.ctx.state.status is not Status.PLAYING
+        self._opt_until = time.monotonic() + 0.8
+        self.b_play.set_kind("pause" if self._opt_playing else "play")
+        self.ctx.media.send(CMD_TOGGLE)
+
+    def _seek(self, fraction: float) -> None:
+        st = self.ctx.state
+        if st.can_seek:
+            self.ctx.seek(fraction * st.duration_ms)
+
+    def _tick(self) -> None:
+        try:
+            st = self.ctx.state
+            if st.has_track:
+                title, artist = st.title, st.artist or tr("Unknown artist")
+            elif st.status is Status.NOT_RUNNING:
+                title, artist = tr("No music app is open"), tr("Press play to open your music app")
+            else:
+                title, artist = tr("Nothing is playing"), tr("Press play in your music app")
+            if self.title.text() != title:
+                self.title.set_text(title)
+            if self.artist.text() != artist:
+                self.artist.set_text(artist)
+            self.b_prev.setEnabled(st.has_track and st.can_prev)
+            self.b_next.setEnabled(st.has_track and st.can_next)
+            playing = st.status is Status.PLAYING
+            if time.monotonic() < self._opt_until:
+                playing = self._opt_playing
+            self.b_play.set_kind("pause" if playing else "play")
+            if st.has_track and st.duration_ms > 0:
+                self.progress.set_fraction(self.ctx.position_ms() / st.duration_ms)
+            else:
+                self.progress.set_fraction(0.0)
+            pm = getattr(self.ctx, "art_pixmap", None)
+            if pm is not self._seen:
+                self._seen = pm
+                self.art.set_pixmap(pm)
+            if not self.vol._drag:
+                res = self.ctx.appvol.get(self._vol_match()) if st.source_id else None
+                show = res is not None
+                if show != self.vol.isVisible():
+                    self.vol.setVisible(show)
+                    self.b_vol.setVisible(show)
+                if show:
+                    level, muted = res
+                    if abs(self.vol.value() - level * 100) >= 1:
+                        self.vol.set_value(round(level * 100))
+                    self._muted = muted
+                    self.b_vol.set_kind("muted" if muted else "volume")
+        except (RuntimeError, AttributeError) as exc:
+            log.debug("hub music: %s", exc)
+
+
 class HubPage(Page):
     """9.0: the online Home. 9.2: its own page, not a copy of Rewards: hello and what is waiting for you, the one live
     game on now and where to go. 9.3.2: no "Jump back in"; a preview of your own profile under the four tiles."""
@@ -52588,6 +52751,7 @@ class HubPage(Page):
         lay.addWidget(help_row(tr("Live now"), tr("Jackpot and Horse Racing take turns every 20 minutes, all day. "
                                                   "Bots play when nobody else does.")))
         lay.addWidget(LiveSlot(self))
+        lay.addWidget(HubMusic(ctx))                 # 10.0.1: the music player, small
         lay.addWidget(tile_grid([
             Tile(tr("Casino"), tr("Enter"), "dice", ("#F5C04A", "#5A1A0A"), lambda: open_games_part(ctx, None, flag="casino_door_auto"), height=96),
             Tile(tr("Mini games"), tr("Free"), "spark", ("#35E0A1", "#0B4A5A"), lambda: ctx.window.nav("games"), height=96),
@@ -55831,6 +55995,10 @@ HELP = {
         "charging, up throws a lob, down a bounce pass, left or right curves it. The line is white when it's safe, "
         "orange when risky, red when a defender will cut it off.",
         "Faking: press F. You pretend to shoot, the defender jumps, and you drive past while they are in the air.",
+        "Changed your mind? While shooting, right click calls the shot off. While charging a pass, left click calls it "
+        "off. A charged pass goes by itself after a moment, and the shot meter never waits for ever.",
+        "Keep the ball moving: stand still with it, or charge a pass too long, and a defender can smack it out of your "
+        "hands. The longer you wait, the more likely.",
         "Dunking: close to the hoop with the ball, an E shows over your head: press E to take off. Three keys then "
         "show (E, R, C or X), each with a ring closing on it: press each key as its ring closes. All three: a monster "
         "dunk that even goes in over a defender. Two: a dunk. Fewer: you blow it off the rim. A defender in the air at "
@@ -74751,6 +74919,14 @@ class KartStage(QWidget):
         self.hide()
         self.link.window_closed(self)
         self.deleteLater()
+        try:                                               # 10.0.1: straight back into Rubenium, as before the match
+            if getattr(h, "phase", "shown") == "stowed":
+                h.expand()
+            h.show()
+            h.raise_()
+            h.activateWindow()
+        except (RuntimeError, AttributeError):
+            pass
 
     def place(self) -> None:
         try:
@@ -75282,6 +75458,9 @@ SHOT_T, LAY_T = 0.85, 0.58             # the shot meter fills in this long
 SHOT_C = 0.80                          # the perfect release, on the meter
 FAKE_T = 0.32
 PASS_WIND = 0.70                       # charging a pass to full
+PASS_HOLD = 0.55                       # 10.0.1: then it goes by itself this long after it's full
+SHOT_CANCEL = 0.65                     # 10.0.1: a shot can be called off until the meter is this full
+SMACK = {"Club": 0.75, "Regional": 0.9, "National": 1.0, "Professional": 1.2}   # 10.0.1: how often a swipe knocks a held ball loose
 SHOT_CLOCK = 14.0
 COUNT_START, COUNT_AFTER = 5.0, 2.0
 # 9.6: the dunk. Close to the hoop with the ball, E takes off; then three keys show one after the other, each with a
@@ -75324,6 +75503,7 @@ HOOPS_BOT = {
 # 9.5: stand still with the ball this long (seconds, by the bots' level) and both defenders rush you to take it; aiming
 # a shot gives one more second. A red edge builds up on screen as it gets close.
 HOOPS_PRESS = {"Club": 6.0, "Regional": 5.0, "National": 4.0, "Professional": 3.0}
+HOOPS_PRESS_ONLINE = 4.5                # 10.0.1: in an online duel, the same for both players whatever the bots
 HOOPS_MATE_MIN = "National"           # 9.5: your team-mate reads the game at least this well (it gets open, it defends)
 
 
@@ -75739,7 +75919,8 @@ class HoopsGame:
             self.hold_idle = max(0.0, self.hold_idle - dt * 4)
         else:
             self.hold_idle += dt
-        self.press_lim = HOOPS_PRESS.get(self.level, 5.0) + (1.0 if (i.shift or c.act == "shoot") else 0.0)
+        self.press_lim = (HOOPS_PRESS_ONLINE if getattr(self, "online", False) else HOOPS_PRESS.get(self.level, 5.0)) \
+            + (1.0 if (i.shift or c.act == "shoot") else 0.0)       # 10.0.1: online duels have their own time
         was = self.press
         self.press = self.hold_idle >= self.press_lim
         if self.press and not was:
@@ -76068,6 +76249,11 @@ class HoopsGame:
             p.arms_up = 1.0
             if p.act_t > 0.05 and p.h <= 0 and p.vh <= 0 and p.shot_m < 0.4:
                 p.vh = JUMP_V * (0.7 if p.shot_lay else 0.85)           # off the floor at the start of the meter
+            if rmb_down and p.shot_m < SHOT_CANCEL:      # 10.0.1: the other button calls the shot off
+                p.act, p.act_t = "hold", 0.0
+                p.arms_up = 0.4
+                self.ev("shot_cancel", p=p.i)
+                return 0.0
             if (not inp.lmb) or p.shot_m >= 1.0:
                 self._release(p)
             return 0.0 if not p.shot_lay else DRIB * 0.6
@@ -76084,7 +76270,7 @@ class HoopsGame:
                 p.act, p.act_t = "fake", 0.0
                 self.ev("pass_fake", p=p.i)
                 return 0.0
-            if not inp.lmb:
+            if not inp.lmb or p.act_t >= PASS_WIND + PASS_HOLD:     # 10.0.1: a charged pass can't be held for ever
                 self._pass(p, p.pass_kind, p.pass_c, inp.aim)
             return 0.0
         if a == "gather":
@@ -76341,6 +76527,18 @@ class HoopsGame:
             self.hold_idle = 0.0                         # 9.5: stood still too long: the rush takes it
             self.press = False
             return self._strip(p, c)
+        if c.act in ("hold", "passwind", "fake", "gather") and d_ball <= STEAL_REACH + 0.1:
+            # 10.0.1: a ball held still (or a pass charged too long) can be smacked out of the hands
+            held = c.act_t if c.act in ("hold", "passwind") else 0.0
+            if c.ctrl:
+                held = max(held, self.hold_idle)
+            k = SMACK.get(p.level, 1.0) if not p.ctrl else 1.0
+            chance = clamp((0.06 + 0.11 * max(0.0, held - 0.8)) * k, 0.0, 0.55)
+            if c.act == "passwind" and c.act_t > PASS_WIND:
+                chance = max(chance, 0.3 * k)
+            if self.rng.random() < chance:
+                self.ev("smack", p=p.i, c=c.i)
+                return self._strip(p, c)
         if c.act in ("hold", "passwind", "fake", "gather") or (c.act == "shoot" and c.h > 0.3):
             p.stun = OFF_BAL * 0.8                       # tied up in the hands
             self.ev("tied", p=p.i)
@@ -76548,7 +76746,7 @@ class HoopsGame:
         else:
             zone = "red"
             chance = RED_IN
-        perfect = off <= g * 0.3
+        perfect = off <= g * 0.3 or (zone == "green" and not p.ctrl and p.level == "Professional")   # 10.0.1: NBA: every green is pure
         if perfect:
             chance = 0.995 if d < 9 else 0.98
             p.st["perfect"] += 1
@@ -76918,7 +77116,7 @@ class HoopsGame:
         m = HoopsGame.net_map(perm)
         out = {}
         for k, v in data.items():
-            if k in ("p", "by", "to", "assist") and isinstance(v, int):
+            if k in ("p", "by", "to", "assist", "c") and isinstance(v, int):
                 out[k] = m(v)
             elif mirror and k in ("team", "win") and v in (0, 1):
                 out[k] = 1 - v
@@ -78390,6 +78588,7 @@ class HoopsView(QWidget):
             self.g.ctrl[1] = 2
         else:
             self.g.locked = {1: "g"}
+        self.g.online = True
         if role == "guest":
             self.perm = [2, 3, 0, 1] if mode == "vs" else [1, 0, 2, 3]
             self.mirror = mode == "vs"
@@ -78490,10 +78689,10 @@ class HoopsView(QWidget):
         if consume:                                  # 9.6: drawing the aim line must not eat an F press
             self._fake_q = False
         if has:
-            if me.act == "shoot":
-                shift, lmb, rmb = True, self.lmb, False
-            elif me.act == "passwind":
-                shift, lmb, rmb = False, self.rmb, False
+            if me.act == "shoot":                       # 10.0.1: right click calls the shot off
+                shift, lmb, rmb = True, self.lmb, self.rmb
+            elif me.act == "passwind":                  # 10.0.1: left click calls the pass off (a pass fake)
+                shift, lmb, rmb = False, self.rmb, self.lmb
             elif fake:
                 shift, lmb, rmb = True, False, True
             elif self.lmb:
@@ -78804,6 +79003,13 @@ class HoopsView(QWidget):
                 if g.players[d["p"]].team == me_team:
                     self._msg(tr("Cross the half-way line to shoot"), "#FFC94A", 1.2)
                     self.audio.play("tick")
+            elif kind == "smack":                            # 10.0.1: held too long: knocked out of the hands
+                self.shake = max(self.shake, 0.5)
+                if g.players[d["c"]].team == me_team:
+                    self._msg(tr("Knocked loose! Don't hold the ball still"), "#FF8A5A", 1.4)
+            elif kind == "shot_cancel":
+                if g.players[d["p"]].team == me_team and g.players[d["p"]].ctrl:
+                    self._msg(tr("Shot called off"), "#FFFFFF", 0.9)
             elif kind == "steal":
                 p = g.players[d["p"]]
                 self.audio.play("steal", 0.8)
@@ -79845,9 +80051,9 @@ class HoopsView(QWidget):
                 # 9.6: the same buttons as the guide and the controls bar (left shoots, right passes, F fakes)
                 if me.act == "passwind":
                     tips = [(keys["up"], tr("lob")), (keys["down"], tr("bounce")), (keys["left"] + "/" + keys["right"], tr("curve")),
-                            (tr("Let go of right"), tr("pass"))]
+                            (tr("Let go of right"), tr("pass")), (tr("Left"), tr("call it off"))]
                 elif me.act == "shoot":
-                    tips = [(tr("Let go of left"), tr("in the green"))]
+                    tips = [(tr("Let go of left"), tr("in the green")), (tr("Right"), tr("call it off"))]
                 elif me.act == "dunk":
                     tips = [("E R C X", tr("each key as its ring closes"))]
                 else:
@@ -85513,3 +85719,5 @@ FR.update({'Dunking: close to the hoop with the ball, an E shows over your head:
 FR.update({'shoot': 'tirer', 'Let go of right': 'Lâche le clic droit', 'Let go of left': 'Lâche le clic gauche', 'in the green': 'dans le vert', 'each key as its ring closes': 'chaque touche quand son cercle se referme'})
 FR.update({'{name} left: a bot plays for them': '{name} est parti : un bot joue à sa place', 'The host left the match': 'L’hôte a quitté le match', 'Online duels': 'Duels en ligne', '1 v 1: each with a bot': '1 contre 1 : chacun avec un bot', '2 v 2 together: against 2 bots': '2 contre 2 ensemble : contre 2 bots', "Your room uses the bots' level and the match length picked above. Each player wins the usual Hoops prize for that level.": 'Ta salle utilise le niveau des bots et la durée choisis plus haut. Chaque joueur gagne le lot habituel de Hoops pour ce niveau.', '2 v 2 together': '2 contre 2 ensemble', 'Your room ({mode}, {level}, {n} min): waiting for a player…': 'Ta salle ({mode}, {level}, {n} min) : en attente d’un joueur…', 'Make a room': 'Créer une salle', 'No open rooms right now. Make one and a player can join it.': 'Aucune salle ouverte pour l’instant. Crées-en une et un joueur pourra la rejoindre.', 'Hoops online': 'Hoops en ligne', 'The host left the match: no result, no prize.': 'L’hôte a quitté le match : pas de résultat, pas de lot.', '1 v 1': '1 contre 1'})
 FR.update({'NEW: Hoops online. Play a friend or anyone online: 1 v 1 with a bot team-mate each, or the two of you together against two bots. Make a room or join one in Hoops': 'NOUVEAU : Hoops en ligne. Joue contre un ami ou n’importe qui en ligne : 1 contre 1 avec chacun un coéquipier bot, ou tous les deux ensemble contre deux bots. Crée un salon ou rejoins-en un dans Hoops', 'Hoops: the DUNK. Near the hoop press E, then E, R, C and X as each ring closes. Three in time is a MONSTER DUNK nobody can block, and bots dunk and block too': 'Hoops : le DUNK. Près du panier appuie sur E, puis E, R, C et X quand chaque anneau se referme. Les trois à temps, c’est un MONSTER DUNK que personne ne peut contrer, et les bots dunkent et contrent aussi', 'Hoops: running into a wall with the ball no longer stops the bots from rushing you': 'Hoops : foncer dans un mur avec la balle n’empêche plus les bots de te presser', 'A fresh start for everyone: coins, items, cases, levels and records start again from zero, with the starter pack': 'Un nouveau départ pour tout le monde : pièces, objets, caisses, niveaux et records repartent de zéro, avec le pack de départ'})   # 10.0 news
+FR.update({'Changed your mind? While shooting, right click calls the shot off. While charging a pass, left click calls it off. A charged pass goes by itself after a moment, and the shot meter never waits for ever.': 'Changé d’avis ? Pendant un tir, clic droit l’annule. Pendant que tu charges une passe, clic gauche l’annule. Une passe chargée part toute seule après un instant, et la jauge de tir n’attend jamais indéfiniment.', 'Keep the ball moving: stand still with it, or charge a pass too long, and a defender can smack it out of your hands. The longer you wait, the more likely.': 'Fais vivre le ballon : reste immobile avec, ou charge une passe trop longtemps, et un défenseur peut te l’arracher des mains. Plus tu attends, plus c’est probable.', "Knocked loose! Don't hold the ball still": 'Ballon arraché ! Ne reste pas immobile avec', 'Shot called off': 'Tir annulé', 'call it off': 'annuler'})   # 10.0.1: cancel a shot or pass, the smack
+FR.update({'Updates arrive again: the app was told it was up to date and never saw 9.5 or 10.0': 'Les mises à jour arrivent à nouveau : l’appli croyait être à jour et n’a jamais vu la 9.5 ni la 10.0', 'Hoops: hold the ball still too long and a defender can knock it out of your hands': 'Hoops : garde le ballon immobile trop longtemps et un défenseur peut te l’arracher des mains', 'Hoops: changed your mind? Right click calls a shot off, left click calls a pass off, and a charged pass goes by itself after a moment': 'Hoops : changé d’avis ? Clic droit annule un tir, clic gauche annule une passe, et une passe chargée part toute seule après un instant', 'Hoops: Professional (NBA) bots make every clean shot: only a block stops them': 'Hoops : les bots Professionnels (NBA) marquent chaque tir propre : seul un contre les arrête', 'Home: a small music player under the live game, with play, skip and volume': 'Accueil : un petit lecteur de musique sous le jeu en direct, avec lecture, morceau suivant et volume', 'Leaving Karting or Hoops brings Rubenium straight back to the front': 'Quitter le Karting ou Hoops ramène Rubenium au premier plan'})   # 10.0.1 news

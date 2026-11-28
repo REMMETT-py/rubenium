@@ -1,9 +1,8 @@
-Rubenium 10.0
+Rubenium 10.0.1
 
-- NEW: Hoops online. Play a friend or anyone online: 1 v 1 with a bot team-mate each, or the two of you together against two bots. Make a room or join one in Hoops
-- Hoops: the DUNK. Near the hoop press E, then E, R, C and X as each ring closes. Three in time is a MONSTER DUNK nobody can block, and bots dunk and block too
-- Hoops: running into a wall with the ball no longer stops the bots from rushing you
-- The free spin wheel lands on every prize again (it was stuck on 100 coins)
-- The scratch card always shows your prize (it could stay blank after scratching)
-- Rocket and roulette results are random again (the rocket crashed at once and the roulette always landed on gold)
-- A fresh start for everyone: coins, items, cases, levels and records start again from zero, with the starter pack
+- Updates arrive again: the app was told it was up to date and never saw 9.5 or 10.0
+- Hoops: hold the ball still too long and a defender can knock it out of your hands
+- Hoops: changed your mind? Right click calls a shot off, left click calls a pass off, and a charged pass goes by itself after a moment
+- Hoops: Professional (NBA) bots make every clean shot: only a block stops them
+- Home: a small music player under the live game, with play, skip and volume
+- Leaving Karting or Hoops brings Rubenium straight back to the front
