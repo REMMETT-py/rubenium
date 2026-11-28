@@ -3,7 +3,7 @@
 A glowing ball for Windows 10 / 11 that opens into a gamer command centre: music for any app, lyrics,
 crosshair, screen colours, stats, timer, app launcher, themes and Rocket League item swaps.
 
-**Download:** [RubeniumSetup.exe (latest)](https://github.com/REMMETT-py/rubenium/releases/latest/download/RubeniumSetup.exe)
+**Download:** [RubeniumSetup.exe (latest)](https://github.com/REMMETT-py/rubenium-releases/releases/latest/download/RubeniumSetup.exe)
 
 It installs for your Windows account only (no admin rights), adds Rubenium to the Start menu, and can be removed from Settings → Apps.
 

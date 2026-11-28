@@ -1,5 +1,6 @@
-# Builds Rubenium.exe on Windows and publishes it as a GitHub release whenever VERSION in Rubenium.py
-# is a version that has not been released yet. Everyone's Rubenium then offers the update.
+# Builds and publishes Rubenium whenever BUILD in Rubenium.py is a release that does not exist yet.
+# Once the source repo is private, the build runs in the public repo REMMETT-py/rubenium-releases
+# (free Windows minutes, and players download from there). This repo only hands the commit over.
 name: Release
 
 on:
@@ -17,7 +18,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Where to build. With the secret RELEASES_TOKEN set (a fine-grained token: Contents read-only and Actions
+  # read and write, on rubenium and rubenium-releases), pushes to main are built in the public releases repo by
+  # its Build workflow, which reads this commit with the same token. Without it, everything runs here as before.
+  route:
+    runs-on: ubuntu-latest
+    outputs:
+      remote: ${{ steps.r.outputs.remote }}
+    steps:
+      - id: r
+        env:
+          T: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          if [ -n "$T" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then r=1; else r=0; fi
+          echo "remote=$r" >> "$GITHUB_OUTPUT"; echo "build in the releases repo: $r"
+
+  handoff:
+    needs: route
+    if: needs.route.outputs.remote == '1'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start the build in the public releases repo
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          PUB: REMMETT-py/rubenium-releases
+        run: |
+          gh workflow run build.yml --repo "$PUB" -f ref="${{ github.sha }}"
+          echo "Build started for ${{ github.sha }}: https://github.com/$PUB/actions/workflows/build.yml"
+
   release:
+    needs: route
+    if: needs.route.outputs.remote != '1'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
@@ -206,33 +237,3 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ steps.ver.outputs.tag }}" out/* --title "${{ steps.ver.outputs.tag }} - Rubenium ${{ steps.ver.outputs.name }}" --notes-file release_notes.txt --latest
-
-      # 9.2: the source repo is private. Players download and update from the public repo REMMETT-py/rubenium-releases,
-      # which holds only the installer, the portable exe, their checksums, a README, the Terms and the Privacy Policy
-      # (never the source code or the swap files). Needs the secret RELEASES_TOKEN: a fine-grained token with
-      # Contents read and write on that repo only. Without it the step warns and the release above still stands.
-      - name: Publish the installer to the public releases repo
-        if: steps.exists.outputs.skip == '0' && github.ref == 'refs/heads/main'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-          PUB: REMMETT-py/rubenium-releases
-          TAG: ${{ steps.ver.outputs.tag }}
-          NAME: ${{ steps.ver.outputs.name }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::warning::RELEASES_TOKEN is not set: the installer was NOT published to $PUB"; exit 0
-          fi
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/${PUB}.git" pub
-          cp public/README.md TERMS.md PRIVACY.md pub/
-          cd pub
-          git config user.name "Rubenium release"
-          git config user.email "rubenium-release@users.noreply.github.com"
-          git checkout -B main
-          git add README.md TERMS.md PRIVACY.md
-          git diff --cached --quiet || git commit -m "Rubenium $NAME"
-          git push origin main
-          cd ..
-          if gh release view "$TAG" --repo "$PUB" > /dev/null 2>&1; then echo "$TAG is already in $PUB"; exit 0; fi
-          gh release create "$TAG" out/RubeniumSetup.exe out/RubeniumSetup.exe.sha256 out/Rubenium.exe out/Rubenium.exe.sha256 \
-            --repo "$PUB" --title "Rubenium $NAME" --notes-file release_notes.txt --latest

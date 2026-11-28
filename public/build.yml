@@ -1,0 +1,230 @@
+# Builds Rubenium from the private source repo and publishes the installer here. Started by the source repo's
+# Release workflow for every push to main (or by hand: Actions > Build > Run workflow). Nothing is published if
+# this BUILD already has a release. Needs the secret SOURCE_TOKEN (a fine-grained token with Contents read-only
+# on REMMETT-py/rubenium). Only the installer, the one-file exe and their checksums are published, never source.
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Source commit or branch to build"
+        default: main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Get the source (private repo)
+        uses: actions/checkout@v5
+        with:
+          repository: REMMETT-py/rubenium
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.SOURCE_TOKEN }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Read the version from Rubenium.py
+        id: ver
+        shell: python
+        run: |
+          import os, re, sys
+          text = open("Rubenium.py", encoding="utf-8").read()
+          version = re.search(r'^VERSION = "([0-9][0-9.]*)"', text, re.M).group(1)
+          name = re.search(r'^VERSION_NAME = "([0-9][0-9.]*)"', text, re.M)
+          # The release tag is BUILD in Rubenium.py: a date that only ever goes up. Every Rubenium, old or
+          # new, reads a later date as a newer version.
+          build = re.search(r'^BUILD = "([0-9][0-9.]*)"', text, re.M)
+          if not build:
+              sys.exit("Could not find BUILD in Rubenium.py")
+          tag = build.group(1)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"tag={tag}\n")
+              out.write(f"version={version}\n")
+              out.write(f"name={name.group(1) if name else version}\n")
+          print("version", version)
+
+      - name: Already released?
+        id: exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.ver.outputs.tag }}" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"; echo "${{ steps.ver.outputs.tag }} already exists, nothing to do."
+          else
+            echo "skip=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build Rubenium (PyInstaller with its starter program compiled here, not the shared prebuilt one)
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $ErrorActionPreference = "Stop"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+          $piv = (python -c "import PyInstaller; print(PyInstaller.__version__)").Trim()
+          git clone --depth 1 --branch "v$piv" https://github.com/pyinstaller/pyinstaller.git "$env:RUNNER_TEMP\pyi"
+          Push-Location "$env:RUNNER_TEMP\pyi\bootloader"
+          python ./waf distclean all
+          if ($LASTEXITCODE -ne 0) { throw "bootloader build failed" }
+          Pop-Location
+          pip install --force-reinstall --no-deps "$env:RUNNER_TEMP\pyi"
+          $boot = python -c "import PyInstaller, os; print(os.path.join(os.path.dirname(PyInstaller.__file__), 'bootloader', 'Windows-64bit-intel', 'runw.exe'))"
+          Write-Host "bootloader: $boot  $((Get-FileHash $boot).Hash)"
+          python make_icon.py
+          python make_version_info.py "${{ steps.ver.outputs.version }}"
+          pyinstaller --noconfirm --clean Rubenium.spec
+          if (-not (Test-Path dist\Rubenium\Rubenium.exe)) { throw "no dist\Rubenium\Rubenium.exe" }
+
+      - name: Self-test the app on Windows (open every tab, both languages)
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\Rubenium\Rubenium.exe" -ArgumentList "--selftest" -PassThru
+          $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
+          if (-not $p.WaitForExit(150000)) { $p.Kill(); if (Test-Path $log) { Get-Content $log -Tail 60 }; Write-Error "Self-test timed out"; exit 1 }
+          if (Test-Path $log) { Get-Content $log -Tail 40 }
+          if ($p.ExitCode -ne 0) { Write-Error "Self-test failed (exit code $($p.ExitCode))"; exit 1 }
+          if (-not (Select-String -Path $log -Pattern "SELFTEST OK" -Quiet)) { Write-Error "No SELFTEST OK in the log"; exit 1 }
+
+      - name: Build Rubenium.exe (one file, for older Rubenium versions that update by swapping their .exe)
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          pyinstaller --noconfirm --clean --distpath dist-portable --workpath build-portable Rubenium-portable.spec
+          if (-not (Test-Path dist-portable\Rubenium.exe)) { Write-Error "no dist-portable\Rubenium.exe"; exit 1 }
+
+      - name: Test that an old Rubenium (4.0.0) updates itself to this version
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.SOURCE_TOKEN }}
+        run: |
+          $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
+          $work = Join-Path $env:RUNNER_TEMP "old"
+          New-Item -ItemType Directory -Force $work | Out-Null
+          # the old version comes from the private source repo's releases
+          gh release download v4.0.0 --repo REMMETT-py/rubenium --pattern Rubenium.exe --dir "$work" --clobber
+          $new = (Resolve-Path dist-portable\Rubenium.exe).Path
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Start-Process "$work\Rubenium.exe" -ArgumentList "--selftest-update=$new"
+          Start-Sleep 4; $t = 0
+          while ((Get-Process | Where-Object { $_.Name -like "Rubenium*" }) -and $t -lt 240) { Start-Sleep 2; $t += 2 }
+          Get-Process | Where-Object { $_.Name -like "Rubenium*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+          if (Test-Path $log) { Get-Content $log -Tail 30 }
+          foreach ($text in @("UPDATE SWAP OK", "SELFTEST OK")) {
+            if (-not (Select-String -Path $log -Pattern $text -SimpleMatch -Quiet)) { Write-Error "Not in the log: $text"; exit 1 } }
+          if ((Get-FileHash "$work\Rubenium.exe").Hash -ne (Get-FileHash $new).Hash) { Write-Error "The old exe was not replaced"; exit 1 }
+          Remove-Item (Join-Path $env:LOCALAPPDATA "Rubenium") -Recurse -Force -ErrorAction SilentlyContinue
+          Write-Host "Rubenium 4.0.0 replaced itself with this version, which then started and passed its self-test."
+
+      - name: Build RubeniumSetup.exe
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          if (-not (Test-Path $iscc)) { $iscc = (Get-Command iscc.exe -ErrorAction Stop).Source }
+          & $iscc /Qp "/DVersion=${{ steps.ver.outputs.version }}" "/DVersionName=${{ steps.ver.outputs.name }}" installer.iss
+          if ($LASTEXITCODE -ne 0) { Write-Error "setup build failed"; exit 1 }
+          Get-Item out\RubeniumSetup.exe | Format-List Name,Length
+
+      - name: Test install, update and uninstall on Windows
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        run: |
+          $log = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Rubenium\rubenium.log"
+          $app = Join-Path $env:LOCALAPPDATA "Rubenium\App"
+          $setup = (Resolve-Path out\RubeniumSetup.exe).Path
+          function Wait-Gone {
+            Start-Sleep 4; $t = 0
+            while ((Get-Process | Where-Object { $_.Name -like "Rubenium*" }) -and $t -lt 240) { Start-Sleep 2; $t += 2 }
+            if (Get-Process | Where-Object { $_.Name -like "Rubenium*" }) {
+              Get-Process | Where-Object { $_.Name -like "Rubenium*" } | Stop-Process -Force
+              if (Test-Path $log) { Get-Content $log -Tail 60 }; Write-Error "Rubenium did not finish"; exit 1 }
+          }
+          function Need($text) {
+            if (-not (Select-String -Path $log -Pattern $text -SimpleMatch -Quiet)) {
+              if (Test-Path $log) { Get-Content $log -Tail 60 }; Write-Error "Not in the log: $text"; exit 1 }
+          }
+
+          Write-Host "1. Silent install (what an update does), then the installed app runs its self-test"
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Start-Process $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/RUBENIUMARGS=--selftest"
+          Wait-Gone; Need "SELFTEST OK"
+          if (-not (Test-Path "$app\Rubenium.exe")) { Write-Error "Not installed in $app"; exit 1 }
+          if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Rubenium.lnk")) { Write-Error "No Start menu entry"; exit 1 }
+
+          Write-Host "2. Update from inside the installed app: it starts the setup and closes; the new version starts"
+          Remove-Item $log -ErrorAction SilentlyContinue
+          Start-Process "$app\Rubenium.exe" -ArgumentList "--selftest-update=$setup"
+          Wait-Gone; Need "UPDATE SETUP STARTED"; Need "SELFTEST OK"
+
+          Write-Host "3. Uninstall removes the app and its start-with-Windows entry"
+          New-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Force -ErrorAction SilentlyContinue | Out-Null
+          New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "Rubenium" -Value "`"$app\Rubenium.exe`"" -Force | Out-Null
+          Start-Process "$app\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          Start-Sleep 3
+          if (Test-Path "$app\Rubenium.exe") { Write-Error "Uninstall left the app behind"; exit 1 }
+          if (Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "Rubenium" -ErrorAction SilentlyContinue) {
+            Write-Error "Uninstall left the start-with-Windows entry"; exit 1 }
+          Write-Host "Install, update from the app and uninstall all work."
+
+      - name: Scan with Microsoft Defender
+        if: steps.exists.outputs.skip == '0'
+        shell: pwsh
+        run: |
+          try { Update-MpSignature -ErrorAction Stop } catch { Write-Host "signature update failed: $_" }
+          $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe"
+          foreach ($f in @("out\RubeniumSetup.exe", "dist\Rubenium\Rubenium.exe", "dist-portable\Rubenium.exe")) {
+            & $mp -Scan -ScanType 3 -File (Resolve-Path $f).Path -DisableRemediation
+            if ($LASTEXITCODE -eq 2) { Write-Error "Defender flags $f"; exit 1 }
+          }
+
+
+      - name: Collect the release files
+        if: steps.exists.outputs.skip == '0'
+        shell: bash
+        run: |
+          mkdir -p pub
+          cp out/RubeniumSetup.exe dist-portable/Rubenium.exe pub/
+          cd pub
+          for f in RubeniumSetup.exe Rubenium.exe; do sha256sum "$f" > "$f.sha256"; done
+          ls -l
+
+      - name: Update the README, Terms and Privacy Policy here
+        if: steps.exists.outputs.skip == '0'
+        shell: bash
+        run: |
+          git clone --depth 1 "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" site
+          cp public/README.md TERMS.md PRIVACY.md site/
+          cd site
+          git config user.name "Rubenium release"
+          git config user.email "rubenium-release@users.noreply.github.com"
+          git add README.md TERMS.md PRIVACY.md
+          git diff --cached --quiet || git commit -q -m "Rubenium ${{ steps.ver.outputs.name }}"
+          git push -q origin HEAD
+
+      - name: Publish the release
+        if: steps.exists.outputs.skip == '0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.ver.outputs.tag }}" pub/* --repo "${{ github.repository }}" \
+            --title "Rubenium ${{ steps.ver.outputs.name }}" --notes "Rubenium ${{ steps.ver.outputs.name }}" --latest
