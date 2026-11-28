@@ -1532,8 +1532,8 @@ from PyQt6.QtCore import QPointF, QRectF, Qt  # noqa: E402,F811
 
 APP_NAME = "Rubenium"
 VERSION = "1.0.0"            # file version of the .exe and setup
-VERSION_NAME = "10.0.1"   # the version people see
-BUILD = "2026.11.28.1"      # release tag (a date). It only ever goes up: this is what the updater compares
+VERSION_NAME = "10.0"   # the version people see
+BUILD = "2026.11.28.2"      # release tag (a date). It only ever goes up: this is what the updater compares
 
 
 def build_number(build: str = "") -> int:
@@ -12771,13 +12771,14 @@ FR.update({'Unlocked: {what}': 'Débloqué : {what}', 'Professional moves first 
 # --------------------------------------------------------------------------- #
 NEWS = [        # every version, newest first: (version, [lines]). 4.3: rewritten to match the releases on GitHub
     # one entry per release, and nothing about features that are gone
-    ("10.0.1", ["Updates arrive again: the app was told it was up to date and never saw 9.5 or 10.0",
+    ("10.0", ["Updates arrive again: the app was told it was up to date and never saw 9.5 or 10.0",
                "Hoops: hold the ball still too long and a defender can knock it out of your hands",
                "Hoops: changed your mind? Right click calls a shot off, left click calls a pass off, and a charged pass goes by itself after a moment",
                "Hoops: Professional (NBA) bots make every clean shot: only a block stops them",
                "Home: a small music player under the live game, with play, skip and volume",
-               "Leaving Karting or Hoops brings Rubenium straight back to the front"]),
-    ("10.0", ["NEW: Hoops online. Play a friend or anyone online: 1 v 1 with a bot team-mate each, or the two of you together against two bots. Make a room or join one in Hoops",
+               "Leaving Karting or Hoops brings Rubenium straight back to the front",
+              "Rubenium League bots defend properly now: they keep the goal line, shadow deeper and save long shots, so every bot is clearly stronger than the one below",
+              "NEW: Hoops online. Play a friend or anyone online: 1 v 1 with a bot team-mate each, or the two of you together against two bots. Make a room or join one in Hoops",
               "Hoops: the DUNK. Near the hoop press E, then E, R, C and X as each ring closes. Three in time is a MONSTER DUNK nobody can block, and bots dunk and block too",
               "Hoops: running into a wall with the ball no longer stops the bots from rushing you",
               "The free spin wheel lands on every prize again (it was stuck on 100 coins)",
@@ -85825,3 +85826,4 @@ FR.update({'{name} left: a bot plays for them': '{name} est parti : un bot joue 
 FR.update({'NEW: Hoops online. Play a friend or anyone online: 1 v 1 with a bot team-mate each, or the two of you together against two bots. Make a room or join one in Hoops': 'NOUVEAU : Hoops en ligne. Joue contre un ami ou n’importe qui en ligne : 1 contre 1 avec chacun un coéquipier bot, ou tous les deux ensemble contre deux bots. Crée un salon ou rejoins-en un dans Hoops', 'Hoops: the DUNK. Near the hoop press E, then E, R, C and X as each ring closes. Three in time is a MONSTER DUNK nobody can block, and bots dunk and block too': 'Hoops : le DUNK. Près du panier appuie sur E, puis E, R, C et X quand chaque anneau se referme. Les trois à temps, c’est un MONSTER DUNK que personne ne peut contrer, et les bots dunkent et contrent aussi', 'Hoops: running into a wall with the ball no longer stops the bots from rushing you': 'Hoops : foncer dans un mur avec la balle n’empêche plus les bots de te presser', 'A fresh start for everyone: coins, items, cases, levels and records start again from zero, with the starter pack': 'Un nouveau départ pour tout le monde : pièces, objets, caisses, niveaux et records repartent de zéro, avec le pack de départ'})   # 10.0 news
 FR.update({'Changed your mind? While shooting, right click calls the shot off. While charging a pass, left click calls it off. A charged pass goes by itself after a moment, and the shot meter never waits for ever.': 'Changé d’avis ? Pendant un tir, clic droit l’annule. Pendant que tu charges une passe, clic gauche l’annule. Une passe chargée part toute seule après un instant, et la jauge de tir n’attend jamais indéfiniment.', 'Keep the ball moving: stand still with it, or charge a pass too long, and a defender can smack it out of your hands. The longer you wait, the more likely.': 'Fais vivre le ballon : reste immobile avec, ou charge une passe trop longtemps, et un défenseur peut te l’arracher des mains. Plus tu attends, plus c’est probable.', "Knocked loose! Don't hold the ball still": 'Ballon arraché ! Ne reste pas immobile avec', 'Shot called off': 'Tir annulé', 'call it off': 'annuler'})   # 10.0.1: cancel a shot or pass, the smack
 FR.update({'Updates arrive again: the app was told it was up to date and never saw 9.5 or 10.0': 'Les mises à jour arrivent à nouveau : l’appli croyait être à jour et n’a jamais vu la 9.5 ni la 10.0', 'Hoops: hold the ball still too long and a defender can knock it out of your hands': 'Hoops : garde le ballon immobile trop longtemps et un défenseur peut te l’arracher des mains', 'Hoops: changed your mind? Right click calls a shot off, left click calls a pass off, and a charged pass goes by itself after a moment': 'Hoops : changé d’avis ? Clic droit annule un tir, clic gauche annule une passe, et une passe chargée part toute seule après un instant', 'Hoops: Professional (NBA) bots make every clean shot: only a block stops them': 'Hoops : les bots Professionnels (NBA) marquent chaque tir propre : seul un contre les arrête', 'Home: a small music player under the live game, with play, skip and volume': 'Accueil : un petit lecteur de musique sous le jeu en direct, avec lecture, morceau suivant et volume', 'Leaving Karting or Hoops brings Rubenium straight back to the front': 'Quitter le Karting ou Hoops ramène Rubenium au premier plan'})   # 10.0.1 news
+FR.update({'Rubenium League bots defend properly now: they keep the goal line, shadow deeper and save long shots, so every bot is clearly stronger than the one below': 'Les bots de Rubenium League défendent vraiment : ils gardent leur ligne de but, défendent plus en recul et arrêtent les tirs de loin, donc chaque bot est nettement plus fort que le précédent'})   # 10.0.2 news
