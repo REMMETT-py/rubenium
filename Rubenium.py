@@ -82018,22 +82018,22 @@ AERIAL_BOT_ROSTER = [
 # to 50 % more boost and 10 % more top speed at Ruben). boost: the same pads last this many times longer; speed: top
 # speed (driving and boosting).
 AERIAL_BOT_KIT = {
-    "pip": {"aim": 0.03, "shot": 0.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound"]},
-    "dusty": {"aim": 0.105, "shot": 2000.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound"]},
-    "sprocket": {"aim": 0.18, "shot": 2300.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear"]},
-    "ember": {"aim": 0.255, "shot": 2600.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear",
+    "pip": {"guard": 0.0, "aim": 0.03, "shot": 0.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound"]},
+    "dusty": {"guard": 0.05, "aim": 0.105, "shot": 2000.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound"]},
+    "sprocket": {"guard": 0.1, "aim": 0.18, "shot": 2300.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear"]},
+    "ember": {"guard": 0.15, "aim": 0.255, "shot": 2600.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear",
                                                     "pinch", "chain"]},
-    "jinx": {"aim": 0.33, "shot": 2900.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
+    "jinx": {"guard": 0.2, "aim": 0.33, "shot": 2900.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
                                                    "chain"]},
-    "halo": {"aim": 0.405, "shot": 3200.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
+    "halo": {"guard": 0.25, "aim": 0.405, "shot": 3200.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
                                                    "chain", "fake", "bank"]},
-    "vex": {"aim": 0.48, "shot": 3500.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
+    "vex": {"guard": 0.45, "aim": 0.48, "shot": 3500.0, "boost": 1.0, "speed": 1.0, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
                                                   "chain", "fake", "bank", "corner", "shadow"]},
-    "nova": {"aim": 0.555, "shot": 3800.0, "boost": 1.15, "speed": 1.03, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
+    "nova": {"guard": 0.62, "aim": 0.75, "shot": 3800.0, "boost": 1.15, "speed": 1.03, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
                                                      "chain", "fake", "bank", "corner", "shadow", "mix"]},
-    "apex": {"aim": 0.63, "shot": 4100.0, "boost": 1.3, "speed": 1.06, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
+    "apex": {"guard": 0.75, "aim": 0.95, "shot": 4200.0, "boost": 1.3, "speed": 1.06, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
                                                     "chain", "fake", "bank", "corner", "shadow", "mix", "deny"]},
-    "ruben": {"aim": 0.705, "shot": 4400.0, "boost": 1.5, "speed": 1.10, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
+    "ruben": {"guard": 1.0, "aim": 1.3, "shot": 4600.0, "boost": 1.5, "speed": 1.10, "plays": ["dribble", "flick", "pads", "rebound", "lunge", "clear", "pinch",
                                                      "chain", "fake", "bank", "corner", "shadow", "mix", "deny"]},
 }
 
@@ -82043,8 +82043,8 @@ AERIAL_BOT_TAGS = {"pip": "dribbles and flicks", "dusty": "+ sharper shots", "sp
                    "ruben": "beyond human"}
 
 # The car each bot likes to drive (it takes another one when you drive the same).
-AERIAL_BOT_CAR = {"pip": 0, "dusty": 2, "sprocket": 2, "ember": 1, "jinx": 1, "halo": 0, "vex": 1, "nova": 0,
-                  "apex": 1, "ruben": 2}
+AERIAL_BOT_CAR = {"pip": 0, "dusty": 2, "sprocket": 2, "ember": 1, "jinx": 1, "halo": 2, "vex": 0, "nova": 0,
+                  "apex": 1, "ruben": 1}
 
 
 def aerial_bot_car(key: str, mine: int) -> int:
@@ -82089,6 +82089,7 @@ def aerial_bot_profile(key: str, lv_override: float = None) -> dict:
         "kit": dict(AERIAL_BOT_KIT.get(k, AERIAL_BOT_KIT["pip"])),
     }
     p["plays"] = set(p["kit"]["plays"])
+    p["guard"] = float(p["kit"].get("guard", 0.0))      # how disciplined its defence is (shadow depth, saves)
     return p
 
 
@@ -82250,7 +82251,7 @@ class AerialBot:
             ux, uy = self.want_aim
             a = aerial_atan2(uy * self.f, ux * self.f)
             inp.aim = int(a / _AE_TAU * 64.0 + 64.5) % 64
-            inp.shot = self.mode in ("shoot", "clear", "save", "kick")
+            inp.shot = self.mode in ("shoot", "clear", "save", "kick", "shadow")
         # never stuck: pushing into a wall or a corner without moving, back out and turn
         c = m.sim.cars[self.team]
         if self.unstick > 0:
@@ -82403,11 +82404,11 @@ class AerialBot:
         # a ball on my nose: carry it, flick it, or shoot it
         close = d_me < me.hl + me.r + R + 70 and ahead > 0 and rel_v < 520 and abs(by) < hw - 260 and \
             abs(bx) < hl - 350
-        if danger and path.goal_t < 2.6:
+        if danger and path.goal_t < 2.6 + 1.6 * p["guard"]:
             opts.append((4.0 - path.goal_t + (1.0 if lead > -0.25 else 0.0), "save"))
         if close and "dribble" in p["plays"] and me.x < hl - 300:
             opts.append((1.4 + 0.6 * p["control"] - (0.5 if danger else 0.0), "carry"))
-        if lead > -0.15 or d_me < 400:
+        if lead > -0.15 + 0.3 * p["guard"] * (1.0 if bx < hl * 0.3 else 0.0) or d_me < 400:
             shots = self._shot_dirs(ix, iy, op)
             best = max(shots, key=lambda s: s[0])
             att = 1.2 + best[0] * 0.6 - (0.5 if my_half and lead < 0.3 else 0.0) + 0.3 * self.mood
@@ -82418,8 +82419,6 @@ class AerialBot:
             opts.append((1.1, "clear"))
         if lead < 0.0:
             sh = 1.4 + min(1.0, -lead) * p["patience"] - 0.3 * self.mood
-            if "shadow" in p["plays"]:
-                sh += 0.35
             opts.append((sh, "shadow"))
             if "fake" in p["plays"] and -0.6 < lead < 0.0 and d_me < 900:
                 opts.append((1.1 + 0.4 * p["read_opp"] * rng.random(), "fake"))
@@ -82608,6 +82607,34 @@ class AerialBot:
             side = 0.0 if op.y == 0 else (-0.25 if op.y > 0 else 0.25)
             ux, uy, _ = _ae_norm(1.0, side * p["control"])
             return self._hit(me, bx, by, ux, uy, 0.6, urgent=True)
+        if mode == "save" and p["guard"] > 0 and self.rng.random() < p["guard"]:
+            sv = self._save_point(me, plan)
+            if sv is not None:
+                ix, iy, ivx, ivy, tt, line = sv
+                cy = self._cross_y(plan)
+                gt = plan["path"].goal_t if plan.get("path") is not None else None
+                if cy is not None and gt is not None:
+                    gt -= (self.tick - self.plan_t) * AERIAL_DT
+                    kx = -hl + me.r + 170.0
+                    # time to get onto the line there (and turn side on), against the time the ball needs
+                    t_k = self._reach(me, kx, max(-gw + 60.0, min(gw - 60.0, cy)), me.boost) + 0.25
+                    if line or ix < -hl + 520 or t_k < gt - 0.1 * (1.0 - p["guard"]):
+                        return self._keeper(me, cy)
+                d_b = _ae_norm(bx - me.x, by - me.y)[2]
+                vb = _ae_sqrt(bvx * bvx + bvy * bvy)
+                # the ball is about to reach me: meet it with the nose, any touch turns it away
+                if d_b < 260 + vb * 0.18 and (bx - me.x) * me.fx + (by - me.y) * me.fy > 0:
+                    st, _a = self._steer_to(me, bx + bvx * 0.05, by + bvy * 0.05)
+                    return AerialInput(1, st, me.boost > 0 and abs(_a) < 0.4, False)
+                if line:                                  # nothing reachable in time: get on the line and block it
+                    return self._go(me, ix, iy, 2300.0, 0.6)
+                # get my car onto its way a moment early, then turn into it
+                dd = _ae_norm(ix - me.x, iy - me.y)[2]
+                if dd < 160:
+                    st, _a = self._steer_to(me, bx, by)
+                    vl = me.vx * me.fx + me.vy * me.fy
+                    return AerialInput(1 if vl < 600 else 0, st, False, False)
+                return self._go(me, ix, iy, max(900.0, min(2300.0, dd / max(0.08, tt) * 1.15)), 0.5)
         if mode == "save":
             # the first point of the path I can reach before it goes in, and away to the side
             ix, iy = pt[0], pt[1]
@@ -82648,10 +82675,24 @@ class AerialBot:
         if mode == "shadow":
             # between the ball and my goal, facing the ball; go in when the ball comes loose or close
             gx, gy = -hl - 100, 0.0
-            ux, uy, dgb = _ae_norm(bx - gx, by - gy)
-            sd = min(p["shadow_d"], dgb * 0.55)
-            sx, sy = bx - ux * sd, by - uy * sd
+            g = p["guard"]
+            # the better defenders shadow where the ball is going, and stay goal side: deep enough that a shot has
+            # to beat them, close enough to step up when the ball comes loose
+            ax_, ay_ = bx + bvx * 0.3 * g, by + bvy * 0.3 * g
+            ux, uy, dgb = _ae_norm(ax_ - gx, ay_ - gy)
+            sd_old = min(p["shadow_d"], dgb * 0.55)
+            sd_new = dgb - max(380.0, min(1100.0 - 450.0 * g, dgb * 0.4))
+            sd = sd_old * (1.0 - g) + max(sd_old, sd_new) * g
+            sx, sy = ax_ - ux * sd, ay_ - uy * sd
             sx = max(-hl + 180, sx)
+            dgoal = _ae_norm(bx + hl, by)[2]
+            o_behind = op.x > bx - 120 and _ae_norm(op.x - bx, op.y - by)[2] < 1100
+            if g > 0 and o_behind and dgoal < 1300 + 4000 * g and me.x < bx - 200:
+                # it can shoot from there: keep the line between the ball and my goal (step up only when it is loose)
+                lead_ = plan["lead"]
+                if not (lead_ > 0.25 and _ae_norm(bx - me.x, by - me.y)[2] < 900):
+                    gy_ = by * (420.0 / max(420.0, dgoal))
+                    return self._keeper(me, gy_, 170.0 + 260.0 * min(1.0, dgoal / 3500.0))
             loose = _ae_sqrt((bvx - op.vx) ** 2 + (bvy - op.vy) ** 2) > 420 or \
                 _ae_norm(bx - op.x, by - op.y)[2] > op.hl + op.r + R + 160
             d_b = _ae_norm(bx - me.x, by - me.y)[2]
@@ -82683,6 +82724,69 @@ class AerialBot:
                 return AerialInput(1, 0)
             return self._go(me, pad[0], pad[1], 2000.0, 0.45)
         return self._go(me, bx, by, 1400.0)
+
+    def _keeper(self, me, ty: float, depth: float = 170.0) -> AerialInput:
+        """Goal-line keeping: stand in the mouth of my goal side on to the pitch (the long side of the car blocks the
+        most), and slide along the line by driving forward and back to stay in front of where the ball will cross."""
+        t = AERIAL_TUNE
+        hl, gw = t["hl"], t["goal_hw"]
+        x0 = -hl + me.r + depth
+        ty = max(-gw + 60.0, min(gw - 60.0, ty))
+        # a save goes out to the side and up the pitch, away from the middle of my goal
+        sgn = 1.0 if ty >= 0 else -1.0
+        ux_, uy_, _ = _ae_norm(0.6, sgn)
+        self.want_aim = (ux_, uy_)
+        dx, dy = x0 - me.x, ty - me.y
+        vl = me.vx * me.fx + me.vy * me.fy
+        if abs(dx) > 170 or abs(dy) > 520:
+            # get there; arrive side on (aim a little past the spot along the line)
+            return self._go(me, x0, ty, max(900.0, min(2300.0, _ae_norm(dx, dy)[2] * 2.2)), 0.5)
+        want = _AE_PI * 0.5 if aerial_sin(me.a) >= 0 else -_AE_PI * 0.5
+        err = aerial_wrap(want - me.a)
+        # keep on the line: steer a little toward it while sliding
+        corr = max(-0.5, min(0.5, dx / 300.0)) * (1.0 if want > 0 else -1.0)
+        st = max(-1.0, min(1.0, (err - corr) * 5.0 - me.w * 0.4))
+        along = dy * me.fy                                  # > 0: the spot is ahead of my nose
+        if abs(err) > 0.9:
+            thr = 1 if vl < 250 else 0
+        elif abs(dy) < 25 and abs(vl) < 120:
+            thr = 0
+        else:
+            need = max(-1.0, min(1.0, dy * (1.0 if me.fy >= 0 else -1.0) / 140.0)) * 900.0
+            thr = 1 if vl < need - 60 else (-1 if vl > need + 60 else 0)
+        boost = abs(along) > 260 and me.boost > 0 and along * vl >= 0 and abs(err) < 0.3
+        return AerialInput(thr, int(round(st * 8)), boost and thr == 1, False)
+
+    def _cross_y(self, plan):
+        """Where the ball's way crosses my goal line, if it does."""
+        hl = AERIAL_TUNE["hl"]
+        for x, y, _vx, _vy in plan["pts"]:
+            if x < -hl + 100:
+                return y
+        return None
+
+    def _save_point(self, me, plan):
+        """A save: the first point on the ball's way into my goal that my nose gets to in time (any touch will do);
+        if there is none, the point where it crosses in front of the goal, to block it there."""
+        t = AERIAL_TUNE
+        hl = t["hl"]
+        pts = plan["pts"]
+        if not pts:
+            return None
+        h = AERIAL_DT * AerialBallPath.STEP
+        k_off = (self.tick - self.plan_t) // AerialBallPath.STEP
+        for k in range(k_off, len(pts), 2):
+            x, y, vx, vy = pts[k]
+            tk = (k - k_off + 1) * h
+            if x < -hl - 20:
+                break
+            if self._reach(me, x, y, me.boost) <= tk:
+                return x, y, vx, vy, tk, False
+        for k in range(k_off, len(pts)):
+            x, y, vx, vy = pts[k]
+            if x < -hl + me.r + 120:
+                return -hl + me.r + 60, y, vx, vy, 0.1, True
+        return None
 
     def _pick_pad(self, m, me, op, deny: bool):
         sim = m.sim
