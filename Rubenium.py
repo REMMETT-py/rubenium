@@ -15327,6 +15327,15 @@ class Updater(QObject):
             except Exception as exc:  # noqa: BLE001
                 log.info("server update check failed (%s): asking GitHub", exc)
                 info, tag = self._latest_from_github()
+            else:
+                if version_tuple(tag) <= version_tuple(self.current):
+                    # 10.0.1: the server's note can be behind a release (it is set by hand): GitHub has the last word
+                    try:
+                        info2, tag2 = self._latest_from_github()
+                        if version_tuple(tag2) > version_tuple(tag):
+                            info, tag = info2, tag2
+                    except Exception as exc:  # noqa: BLE001
+                        log.info("GitHub update check failed (%s): keeping the server's answer", exc)
             self.checking = False
             if version_tuple(tag) > version_tuple(self.current):
                 self.latest = info
