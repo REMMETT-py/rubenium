@@ -1549,9 +1549,26 @@ log = logging.getLogger("rubenium")
 # Paths (one place for data)
 # --------------------------------------------------------------------------- #
 DOCS = win.documents_dir()
-DATA_DIR = DOCS / "Rubenium"
+# 10.0: the DEV sandbox (Admin > Open DEV sandbox) is a second copy of the app, started with --sandbox=<folder>. It
+# plays as the throwaway account DEV and keeps everything in that temporary folder, which is deleted when it closes:
+# it never reads or writes the real settings, login, history or logs.
+SANDBOX_DIR = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--sandbox=")), "")
+SANDBOX = bool(SANDBOX_DIR)
+SANDBOX_PREFIX = "rubenium-dev-"
+DATA_DIR = Path(SANDBOX_DIR) if SANDBOX else DOCS / "Rubenium"
 CONFIG_PATH = DATA_DIR / "settings.json"          # one folder in Documents, kept across updates
-OLD_CONFIG_PATH = DOCS / "RubeniumConfig.json"
+OLD_CONFIG_PATH = (DATA_DIR if SANDBOX else DOCS) / "RubeniumConfig.json"
+
+
+def sandbox_dir_ok(folder) -> bool:
+    """A sandbox folder is only ever one we made: rubenium-dev-* in the temporary folder (it gets deleted)."""
+    try:
+        import tempfile
+        p = Path(folder).resolve()
+        return (p.name.startswith(SANDBOX_PREFIX) and p.is_dir()
+                and p.parent == Path(tempfile.gettempdir()).resolve())
+    except (OSError, ValueError):
+        return False
 BACKUP_DIR = DATA_DIR / "backups"
 CROSSHAIR_DIR = DATA_DIR / "crosshairs"
 LYRICS_DIR = DATA_DIR / "lyrics_cache"
@@ -1625,6 +1642,11 @@ class _UI:
 
 
 ui = _UI()
+
+
+def no_motion() -> bool:
+    """10.0: the DEV sandbox runs with no animation at all (motion 0): effects end at once, nothing shakes."""
+    return ui.motion <= 0.01
 
 
 def S(v: float) -> int:
@@ -2296,6 +2318,8 @@ class Config(QObject):
     def _migrate_legacy(self):
         """Import settings from Rubenify (never deletes the old files)."""
         out: dict = {}
+        if SANDBOX:                                       # 10.0: the DEV sandbox never reads anyone's settings
+            return out
         candidates = [DOCS / "RubenifyConfig.json", DOCS / "RubenSpotifyConfig.json"]
         appdata = os.environ.get("APPDATA")
         if appdata:
@@ -2590,6 +2614,39 @@ def _request(path: str, body=None, token: str = "", method: str = "POST", timeou
     raise ApiError("offline")
 
 
+# 10.0 DEV sandbox: every server call is counted and timed (the DEV console shows them), and can be slowed down on
+# purpose to try the online games with lag. Only in the sandbox copy: the normal app calls _request as it is.
+SANDBOX_CALLS: dict = {}            # function -> [calls, last ms, total ms, last error]
+SANDBOX_RECENT: list = []           # the last 300 calls: (time, function, ms, error)
+SANDBOX_OPTS = {"lag_ms": 0, "fail": False}
+if SANDBOX:
+    _request_plain = _request
+
+    def _request(path: str, body=None, token: str = "", method: str = "POST", timeout: float = 12.0):
+        name = path.split("?", 1)[0].rsplit("/", 1)[-1] or path
+        lag = int(SANDBOX_OPTS.get("lag_ms") or 0)
+        if lag > 0 and threading.current_thread() is not threading.main_thread():
+            time.sleep(min(5.0, lag / 1000.0))
+        t0, err = time.monotonic(), ""
+        try:
+            if SANDBOX_OPTS.get("fail") and threading.current_thread() is not threading.main_thread():
+                raise ApiError("offline")
+            return _request_plain(path, body, token, method, timeout)
+        except ApiError as exc:
+            err = str(exc.key)[:120]
+            raise
+        finally:
+            ms = (time.monotonic() - t0) * 1000.0
+            row = SANDBOX_CALLS.setdefault(name, [0, 0.0, 0.0, ""])
+            row[0] += 1
+            row[1] = ms
+            row[2] += ms
+            row[3] = err or row[3]
+            SANDBOX_RECENT.append((time.time(), name, ms, err))
+            if len(SANDBOX_RECENT) > 300:
+                del SANDBOX_RECENT[:-300]
+
+
 class _NetPool:
     """A few daemon threads that do the server calls in order of arrival (daemon: closing Rubenium never waits
     for a slow network)."""
@@ -2684,6 +2741,8 @@ def pc_id() -> str:
     """One fixed id for this PC (a fingerprint of the Windows install: no personal data). The server allows
     one account per PC."""
     import hashlib
+    if SANDBOX:                                       # 10.0: DEV is never tied to this PC
+        return _SANDBOX_PC
     raw = ""
     try:
         import winreg
@@ -2693,6 +2752,9 @@ def pc_id() -> str:
     except Exception:  # noqa: BLE001
         raw = os.environ.get("RUBENIUM_PC", "") or str(uuid.getnode())
     return hashlib.sha256(("rubenium-pc:" + raw).encode()).hexdigest()[:40]
+
+
+_SANDBOX_PC = uuid.uuid4().hex
 
 
 def password_strength(pw: str) -> int:
@@ -2714,6 +2776,28 @@ def _seal(data: bytes) -> bytes:
 
 def _unseal(data: bytes) -> bytes:
     return win.unprotect(data) if win.IS_WIN else base64.b64decode(data)
+
+
+_HANDOFF: dict = {}
+
+
+def sandbox_handoff() -> dict:
+    """10.0: what the admin's Rubenium handed to the DEV sandbox (DEV's login, the owner's name, the language). The
+    file is read once and deleted at once."""
+    if _HANDOFF or not SANDBOX:
+        return _HANDOFF
+    path = DATA_DIR / "handoff.dat"
+    try:
+        data = json.loads(_unseal(path.read_bytes()).decode("utf-8"))
+        if isinstance(data, dict):
+            _HANDOFF.update(data)
+    except Exception:  # noqa: BLE001
+        log.warning("sandbox: no handoff")
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+    return _HANDOFF
 
 
 class Online(QObject):
@@ -2748,6 +2832,9 @@ class Online(QObject):
         return self.minutes / 60.0
 
     def _load(self) -> None:
+        if SANDBOX:                                   # 10.0: the DEV login, handed over once, never saved
+            self.s = dict(sandbox_handoff().get("session") or {})
+            return
         try:
             data = json.loads(_unseal(_session_path().read_bytes()).decode("utf-8"))
             if isinstance(data, dict) and data.get("refresh_token") and data.get("username"):
@@ -2757,6 +2844,8 @@ class Online(QObject):
             self.s = {}
 
     def _save(self) -> None:
+        if SANDBOX:
+            return
         try:
             path = _session_path()
             if not self.s:
@@ -2885,6 +2974,8 @@ class Online(QObject):
         self.changed.emit()
         if token:
             threading.Thread(target=lambda: self._quiet("/auth/v1/logout?scope=local", token), daemon=True).start()
+        if SANDBOX:                                   # 10.0: DEV logged out (or deleted from Admin): the sandbox ends
+            QTimer.singleShot(0, lambda: getattr(self.ctx, "quit", lambda: None)())
 
     @staticmethod
     def _quiet(path: str, token: str) -> None:
@@ -44052,6 +44143,7 @@ class AdminPage(Page):
         pick.changed.connect(self._section)
         lay.addWidget(pick)
         self._lockdown_row(lay)
+        sandbox_admin_row(self, lay)                  # 10.0: Open DEV sandbox
         [self._players, self._give, self._rig, self._live, self._settings, self._flips, self._cases,
          self._bots, self._swaps, self._locks, self._log, self._replays][tab](lay)
 
@@ -46033,6 +46125,1009 @@ class GiveawayPage(Page):
             self.ctx.econ.poll_live()
             QTimer.singleShot(400, self.ctx.reload_page)
         self.ctx.econ.call("rb_giveaway_join", {"giveaway": g["id"]}, done)
+
+
+# ==================================================================================================
+# SECTION: dev sandbox
+# ==================================================================================================
+# 10.0: Admin > Open DEV sandbox. The admin's Rubenium makes a throwaway account named DEV (a paused bot account, the
+# kind Admin > Bots makes), hands its login to a second copy of Rubenium started with --sandbox=<temporary folder>,
+# and deletes DEV (with everything it did) when that copy closes. The copy is plain on purpose: no animation, no
+# sound, no welcome, nothing saved, and a text console full of switches. It never touches the PC (screen colours,
+# crosshair, game files, start with Windows, updates). Nothing changes on the server: DEV is an ordinary bot account.
+import json
+import logging
+import os
+import re
+import secrets
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+
+from pathlib import Path
+
+from PyQt6.QtCore import QT_VERSION_STR, QObject, QTimer, Qt, pyqtSignal
+from PyQt6.QtGui import QFontDatabase, QGuiApplication
+from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
+                             QLineEdit, QPlainTextEdit, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem,
+                             QTabWidget, QVBoxLayout, QWidget)
+
+DEV_NAME = "DEV"
+DEV_MONO = ["Consolas", "Cascadia Mono", "Courier New", "DejaVu Sans Mono", "monospace"]
+SANDBOX_VIEW = {"size": 100, "mono": False}       # the DEV console's look switches for the whole sandbox
+SANDBOX_LOG: list = []                            # the last 600 log lines of the sandbox (the console's Log tab)
+SANDBOX_GAMES = [("flip", "Coinflip", "rb_flip_list"), ("duels", "Mini Golf", "rb_party_list"),
+                 ("wave", "Wave Rush", "rb_wroom_lobbies"), ("kart", "Karting", "rb_kart_lobbies"),
+                 ("hoops", "Hoops", "rb_hoops_rooms"), ("arena", "Arena", "rb_bg_lobbies"),
+                 ("jackpot", "Jackpot", ""), ("horses", "Horse Racing", ""), ("casino", "Casino", "")]
+SANDBOX_PAGES = [("hub", "Home"), ("games", "Play"), ("rewards", "Rewards"), ("friends", "Social"),
+                 ("shop", "Shop"), ("collection", "Collection"), ("stats", "Stats"), ("settings", "Settings")]
+
+
+class _SandboxLog(logging.Handler):
+    def emit(self, record) -> None:
+        try:
+            SANDBOX_LOG.append(self.format(record))
+            if len(SANDBOX_LOG) > 600:
+                del SANDBOX_LOG[:-600]
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def sandbox_settings(cfg) -> None:
+    """The sandbox's settings (in its temporary folder): plain and silent, nothing explained or shown once."""
+    info = sandbox_handoff()
+    for key, value in (("sounds", False), ("reduce_motion", True), ("update_check", False), ("offline_mode", False),
+                       ("tutorial_done", True), ("terms_seen", TERMS_VERSION), ("xp_intro", True), ("news_tab", False),
+                       ("casino_warned", True), ("timing_help", True), ("hilo_help", True), ("online_door_v5", True),
+                       ("daily_shown", time.strftime("%Y-%m-%d")), ("seen_version", BUILD), ("volume_seen", True),
+                       ("online_stay_open", True), ("online_tab", "games"), ("guides_seen", ["kart", "hoops"])):
+        try:
+            cfg.d[key] = value
+        except Exception:  # noqa: BLE001
+            pass
+    if info.get("lang") in ("en", "fr"):
+        cfg.d["lang"] = info["lang"]
+    cfg.save()
+    if not any(isinstance(h, _SandboxLog) for h in logging.getLogger().handlers):
+        h = _SandboxLog()
+        h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s", "%H:%M:%S"))
+        logging.getLogger().addHandler(h)
+    log.info("DEV sandbox: owner %s, folder %s", info.get("owner", "?"), DATA_DIR)
+
+
+def sandbox_show_menu(app) -> None:
+    """The online menu, straight away (no ball flying up, no doors)."""
+    ui.scale = app.online_scale()
+    if app._online_win is None:
+        app._online_win = online_window(app, app.main_window)
+    app.online_mode = True
+    app.window = app._online_win
+    app._online_win.open()
+    app.econ.poll_live()
+
+
+def sandbox_open(app) -> None:
+    """Start of the sandbox: DEV's terms (DEV is the admin's own throwaway account), the menu, the console."""
+    if not app.online.logged_in():
+        log.warning("DEV sandbox: no login, closing")
+        return app.quit()
+    app._terms_ok = True
+    app.online.ask("rb_accept_terms", {"version": TERMS_VERSION, "adult": True}, lambda _ok, _d: None)
+    try:
+        sandbox_show_menu(app)
+    except Exception:  # noqa: BLE001
+        log.exception("DEV sandbox: the online menu did not open")
+    app.dev_console = DevConsole(app)
+    app.dev_console.show()
+    parent = int(sandbox_handoff().get("parent") or 0)
+
+    def watch() -> None:                          # closed from Admin, or the admin's Rubenium closed: so does this
+        try:
+            if (DATA_DIR / "quit").exists():
+                log.info("DEV sandbox: closed from Admin")
+                return app.quit()
+            import psutil
+            if parent and not psutil.pid_exists(parent):
+                log.info("DEV sandbox: the admin's Rubenium is gone, closing")
+                app.quit()
+        except Exception:  # noqa: BLE001
+            pass
+    app._sandbox_watch = QTimer(app)
+    app._sandbox_watch.setInterval(1000)
+    app._sandbox_watch.timeout.connect(watch)
+    app._sandbox_watch.start()
+
+
+def sandbox_reopen(app) -> None:
+    """The menu built again (a new size or font)."""
+    ow = app._online_win
+    app._online_win = None
+    try:
+        if ow is not None:
+            ow.hide()
+            ow.deleteLater()
+    except RuntimeError:
+        pass
+    try:
+        sandbox_show_menu(app)
+    except Exception:  # noqa: BLE001
+        log.exception("DEV sandbox: the menu did not open again")
+
+
+def sandbox_end(app) -> None:
+    """The sandbox closes: DEV's trade is cancelled (its lobbies were already closed), the folder goes."""
+    try:
+        tid = getattr(getattr(app, "trade", None), "trade_id", "")
+        if tid and app.online.logged_in():
+            _request("/rest/v1/rpc/rb_trade_cancel", {"trade": tid}, app.online.s.get("access_token", ""), timeout=3)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        if getattr(app, "dev_console", None) is not None:
+            app.dev_console.hide()
+    except RuntimeError:
+        pass
+    root = logging.getLogger()
+    for h in list(root.handlers):                  # the log file is in the folder: closed first
+        if isinstance(h, logging.FileHandler):
+            try:
+                root.removeHandler(h)
+                h.close()
+            except Exception:  # noqa: BLE001
+                pass
+    if sandbox_dir_ok(DATA_DIR):
+        shutil.rmtree(DATA_DIR, ignore_errors=True)
+
+
+def sandbox_rows_by(data, owner: str) -> list:
+    """The rows of a lobby list made by `owner` (a room's host, a coinflip's maker)."""
+    out, who = [], (owner or "").lower()
+
+    def walk(x, depth: int = 0) -> None:
+        if depth > 4:
+            return
+        if isinstance(x, dict):
+            names = [str(x.get(k) or "") for k in ("host", "a", "owner", "by", "name")]
+            if who and "id" in x and any(n.lower() == who for n in names):
+                out.append(x)
+                return
+            for v in x.values():
+                walk(v, depth + 1)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v, depth + 1)
+    walk(data)
+    return out
+
+
+def _dev_json(data) -> str:
+    try:
+        return json.dumps(data, indent=2, ensure_ascii=False, default=str, sort_keys=True)
+    except Exception:  # noqa: BLE001
+        return repr(data)
+
+
+def _dev_qss(px: int) -> str:
+    return ("QWidget#devconsole, QWidget#devconsole QWidget { background:#101010; color:#D8D8D8; font-size:%dpx; }"
+            "QWidget#devconsole QPushButton { background:#202020; border:1px solid #3A3A3A; padding:4px 8px; }"
+            "QWidget#devconsole QPushButton:hover { background:#2A2A2A; }"
+            "QWidget#devconsole QPushButton:pressed { background:#333333; }"
+            "QWidget#devconsole QLineEdit, QWidget#devconsole QPlainTextEdit, QWidget#devconsole QSpinBox,"
+            "QWidget#devconsole QComboBox, QWidget#devconsole QTableWidget { background:#000000; border:1px solid #3A3A3A; }"
+            "QWidget#devconsole QTabBar::tab { background:#1A1A1A; padding:4px 10px; border:1px solid #333333; }"
+            "QWidget#devconsole QTabBar::tab:selected { background:#000000; color:#7CFF7C; }"
+            "QWidget#devconsole QHeaderView::section { background:#1A1A1A; border:1px solid #333333; padding:2px; }"
+            "QWidget#devconsole QCheckBox::indicator { width:11px; height:11px; border:1px solid #8A8A8A; background:#000000; }"
+            "QWidget#devconsole QCheckBox::indicator:checked { background:#7CFF7C; border:1px solid #7CFF7C; }"
+            % px)
+
+
+class DevConsole(QWidget):
+    """10.0: the DEV sandbox's console: plain widgets, plain text, a lot of switches. In the sandbox copy only."""
+
+    def __init__(self, ctx, tab: int = 0, geo=None) -> None:
+        super().__init__(None, Qt.WindowType.Window)
+        self.ctx = ctx
+        self.t0 = getattr(ctx, "_sandbox_t0", None) or time.monotonic()
+        ctx._sandbox_t0 = self.t0
+        self.owner = str(sandbox_handoff().get("owner") or "")
+        self.opts = getattr(ctx, "_sandbox_opts", None)
+        if self.opts is None:
+            self.opts = ctx._sandbox_opts = {"px": 12, "top": False, "see": 0, "poll": 8}
+        self._ask_id = 0
+        self._ask_at = 0.0
+        self._games = {}
+        self.setObjectName("devconsole")
+        self.setWindowTitle(tr("Rubenium DEV sandbox") + "  ·  " + VERSION_NAME + "  ·  " + BUILD)
+        self.setStyleSheet(_dev_qss(self.opts["px"]))
+        mono = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        mono.setPixelSize(self.opts["px"])
+        self.setFont(mono)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(8, 8, 8, 8)
+        top = QLabel(tr("RUBENIUM DEV BUILD · SANDBOX"))
+        top.setStyleSheet("color:#7CFF7C; font-weight:bold;")
+        lay.addWidget(top)
+        self.head = QLabel()
+        self.head.setWordWrap(True)
+        self.head.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        lay.addWidget(self.head)
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self._games_tab(), tr("Games"))
+        self.tabs.addTab(self._options_tab(), tr("Options"))
+        self.tabs.addTab(self._calls_tab(), tr("Server calls"))
+        self.tabs.addTab(self._state_tab(), tr("State"))
+        self.tabs.addTab(self._log_tab(), tr("Log"))
+        self.tabs.setCurrentIndex(max(0, min(4, tab)))
+        lay.addWidget(self.tabs, 1)
+        row = QHBoxLayout()
+        reload = QPushButton(tr("Reload page"))
+        reload.clicked.connect(lambda: self.ctx.reload_page())
+        bye = QPushButton(tr("Close sandbox"))
+        bye.clicked.connect(self._close_all)
+        row.addWidget(reload)
+        row.addStretch(1)
+        row.addWidget(bye)
+        lay.addLayout(row)
+        self._tick_t = QTimer(self)
+        self._tick_t.setInterval(1000)
+        self._tick_t.timeout.connect(self._tick)
+        self._tick_t.start()
+        self._games_t = QTimer(self)
+        self._games_t.timeout.connect(self._poll_games)
+        self._games_t.start(max(2, int(self.opts["poll"])) * 1000)
+        self._apply_window()
+        if geo is not None:
+            self.setGeometry(geo)
+        else:
+            self.resize(560, 640)
+            try:
+                wa = QGuiApplication.primaryScreen().availableGeometry()
+                self.move(wa.right() - 580, wa.top() + 40)
+            except Exception:  # noqa: BLE001
+                pass
+        self._tick()
+        QTimer.singleShot(800, self._poll_games)
+
+    # -- the window itself
+    def _apply_window(self) -> None:
+        flags = self.windowFlags()
+        on = bool(self.opts["top"])
+        if bool(flags & Qt.WindowType.WindowStaysOnTopHint) != on:
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, on)
+            if self.isVisible():
+                self.show()
+        want = 1.0 - min(70, max(0, int(self.opts["see"]))) / 100.0
+        if abs(self.windowOpacity() - want) > 0.001:
+            self.setWindowOpacity(want)
+
+    def _rebuild(self) -> None:
+        """Built again (a new language or text size), where it was, on the same tab."""
+        new = DevConsole(self.ctx, self.tabs.currentIndex(), self.geometry())
+        self.ctx.dev_console = new
+        new.show()
+        self._tick_t.stop()
+        self._games_t.stop()
+        self.hide()
+        self.deleteLater()
+
+    def _close_all(self) -> None:
+        self.ctx.leave_online()
+
+    def closeEvent(self, e) -> None:              # the window's X: ask like the menu's back arrow
+        e.ignore()
+        self._close_all()
+
+    # -- Games
+    def _games_tab(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.addWidget(QLabel(tr("Open a page")))
+        grid = QGridLayout()
+        for i, (key, name) in enumerate(SANDBOX_PAGES):
+            b = QPushButton(tr(name))
+            b.clicked.connect(lambda _=False, k=key: self._page(k))
+            grid.addWidget(b, i // 4, i % 4)
+        for i, (sub, name, _fn) in enumerate(SANDBOX_GAMES):
+            b = QPushButton(tr(name))
+            b.clicked.connect(lambda _=False, s=sub: self._game(s))
+            grid.addWidget(b, 2 + i // 4, i % 4)
+        lay.addLayout(grid)
+        lay.addWidget(QLabel(tr("Open games made by {o}", o=self.owner or "?")))
+        self.games_box = QPlainTextEdit()
+        self.games_box.setReadOnly(True)
+        self.games_box.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        lay.addWidget(self.games_box, 1)
+        tip = QLabel(tr("Join them as DEV from the game's own page (the buttons above). Tip: in your main Rubenium, "
+                        "Settings > Keep Online open when I click outside it, so both menus stay open side by side."))
+        tip.setWordWrap(True)
+        tip.setStyleSheet("color:#8A8A8A;")
+        lay.addWidget(tip)
+        return w
+
+    def _page(self, key: str) -> None:
+        w = self.ctx.window
+        try:
+            if hasattr(w, "nav"):
+                w.nav(key)
+            else:
+                w.goto(key)
+        except Exception:  # noqa: BLE001
+            log.exception("DEV console: page %s", key)
+
+    def _game(self, sub: str) -> None:
+        try:
+            if sub == "casino":
+                return open_games_part(self.ctx, "casino", back="games")
+            open_games_part(self.ctx, sub, back="games")
+        except Exception:  # noqa: BLE001
+            log.exception("DEV console: game %s", sub)
+
+    def _poll_games(self) -> None:
+        if not self.isVisible() or not self.owner:
+            return
+        for sub, name, fn in SANDBOX_GAMES:
+            if not fn:
+                continue
+
+            def got(ok: bool, data, n=name) -> None:
+                self._games[n] = sandbox_rows_by(data, self.owner) if ok else None
+                self._show_games()
+            self.ctx.online.ask(fn, {}, got)
+
+    def _show_games(self) -> None:
+        lines = []
+        for _sub, name, fn in SANDBOX_GAMES:
+            rows = self._games.get(name)
+            if not fn or not rows:
+                continue
+            for r in rows:
+                bits = [f"{k}={r[k]}" for k in ("id", "state", "size", "seated", "players", "bet", "laps", "track",
+                                                "holes", "mode", "level", "kind") if r.get(k) not in (None, "")]
+                lines.append(f"[{tr(name)}] " + "  ".join(bits))
+        try:
+            self.games_box.setPlainText("\n".join(lines) if lines else tr("Nothing open by {o} right now.", o=self.owner))
+        except RuntimeError:
+            pass
+
+    # -- Options
+    def _check(self, lay, text: str, on: bool, then) -> None:
+        c = QCheckBox(text)
+        c.setChecked(bool(on))
+        c.toggled.connect(then)
+        lay.addWidget(c)
+
+    def _spin(self, grid, row: int, text: str, lo: int, hi: int, value: int, then, step: int = 1) -> QSpinBox:
+        grid.addWidget(QLabel(text), row, 0)
+        sp = QSpinBox()
+        sp.setRange(lo, hi)
+        sp.setSingleStep(step)
+        sp.setValue(int(value))
+        sp.editingFinished.connect(lambda: then(sp.value()))
+        grid.addWidget(sp, row, 1)
+        return sp
+
+    def _options_tab(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        ctx = self.ctx
+        self._check(lay, tr("Animations"), not no_motion(), self._set_motion)
+        self._check(lay, tr("Sounds"), sfx.enabled, self._set_sounds)
+        self._check(lay, tr("Monospace font everywhere"), SANDBOX_VIEW["mono"], self._set_mono)
+        self._check(lay, tr("Keep the menu open when I click outside it"), ctx.cfg.get("online_stay_open", True),
+                    lambda v: ctx.cfg.__setitem__("online_stay_open", bool(v)))
+        self._check(lay, tr("Cut the internet (every server call fails)"), SANDBOX_OPTS["fail"],
+                    lambda v: SANDBOX_OPTS.__setitem__("fail", bool(v)))
+        self._check(lay, tr("Console always on top"), self.opts["top"], self._set_top)
+        grid = QGridLayout()
+        grid.addWidget(QLabel(tr("Language")), 0, 0)
+        langs = QComboBox()
+        langs.addItems(["English", "Français"])
+        langs.setCurrentIndex(1 if lang() == "fr" else 0)
+        langs.currentIndexChanged.connect(lambda i: self._set_lang("fr" if i == 1 else "en"))
+        grid.addWidget(langs, 0, 1)
+        self._spin(grid, 1, tr("Menu size (%)"), 60, 160, SANDBOX_VIEW["size"], self._set_size, 10)
+        self._spin(grid, 2, tr("Extra delay on every server call (ms)"), 0, 3000, SANDBOX_OPTS["lag_ms"],
+                   lambda v: SANDBOX_OPTS.__setitem__("lag_ms", int(v)), 50)
+        self._spin(grid, 3, tr("Refresh the open games every (s)"), 2, 120, self.opts["poll"], self._set_poll)
+        self._spin(grid, 4, tr("Console text size"), 9, 24, self.opts["px"], self._set_px)
+        self._spin(grid, 5, tr("Console see-through (%)"), 0, 70, self.opts["see"], self._set_see, 5)
+        lay.addLayout(grid)
+        lay.addWidget(QLabel(tr("DEV's numbers (set by your admin account)")))
+        nums = QGridLayout()
+        ec = ctx.econ
+        self.n_coins = self._spin(nums, 0, tr("Coins"), 0, 10000000, int(getattr(ec, "coins", 0) or 0), lambda _v: None, 1000)
+        self.n_keys = self._spin(nums, 1, tr("Keys"), 0, 48, int(getattr(ec, "keys", 0) or 0), lambda _v: None)
+        xp = getattr(ec, "xp", None)
+        level = int(xp.get("level") or 0) if isinstance(xp, dict) else 0
+        self.n_level = self._spin(nums, 2, tr("Level"), 0, 100, level, lambda _v: None)
+        go = QPushButton(tr("Apply"))
+        go.clicked.connect(self._ask_numbers)
+        nums.addWidget(go, 3, 1)
+        lay.addLayout(nums)
+        self.ask_note = QLabel("")
+        self.ask_note.setWordWrap(True)
+        lay.addWidget(self.ask_note)
+        lay.addStretch(1)
+        return w
+
+    def _set_motion(self, on: bool) -> None:
+        ui.motion = 1.0 if on else 0.0
+
+    def _set_sounds(self, on: bool) -> None:
+        sfx.enabled = bool(on)
+        self.ctx.cfg["sounds"] = bool(on)
+
+    def _set_mono(self, on: bool) -> None:
+        SANDBOX_VIEW["mono"] = bool(on)
+        self.ctx.apply_font()
+        self.ctx.rebuild_ui()
+
+    def _set_top(self, on: bool) -> None:
+        self.opts["top"] = bool(on)
+        self._apply_window()
+
+    def _set_see(self, v: int) -> None:
+        self.opts["see"] = int(v)
+        self._apply_window()
+
+    def _set_px(self, v: int) -> None:
+        if int(v) != self.opts["px"]:
+            self.opts["px"] = int(v)
+            QTimer.singleShot(0, self._rebuild)
+
+    def _set_poll(self, v: int) -> None:
+        self.opts["poll"] = int(v)
+        self._games_t.start(max(2, int(v)) * 1000)
+
+    def _set_size(self, v: int) -> None:
+        if int(v) != SANDBOX_VIEW["size"]:
+            SANDBOX_VIEW["size"] = int(v)
+            QTimer.singleShot(0, lambda: sandbox_reopen(self.ctx))
+
+    def _set_lang(self, code: str) -> None:
+        if code != lang():
+            self.ctx.set_language(code)
+            QTimer.singleShot(50, self._rebuild)
+
+    def _ask_numbers(self) -> None:
+        """DEV is not an admin: its admin account (the Rubenium that opened the sandbox) sets the numbers."""
+        self._ask_id += 1
+        ask = {"id": self._ask_id, "cfg": {"coins": self.n_coins.value(), "keys": self.n_keys.value(),
+                                           "level": self.n_level.value()}}
+        try:
+            tmp = DATA_DIR / "ask.json.tmp"
+            tmp.write_text(json.dumps(ask), encoding="utf-8")
+            os.replace(tmp, DATA_DIR / "ask.json")
+        except OSError as exc:
+            return self.ask_note.setText(tr("Failed: {e}", e=str(exc)))
+        self._ask_at = time.monotonic()
+        self.ask_note.setText(tr("Asking your admin account…"))
+
+    def _check_answer(self) -> None:
+        if not self._ask_at:
+            return
+        path = DATA_DIR / "answer.json"
+        try:
+            ans = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            ans = None
+        if isinstance(ans, dict) and ans.get("id") == self._ask_id:
+            self._ask_at = 0.0
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            if ans.get("ok"):
+                self.ask_note.setText(tr("Done"))
+                self.ctx.econ.refresh()
+            else:
+                self.ask_note.setText(tr("Failed: {e}", e=str(ans.get("text") or "?")))
+        elif time.monotonic() - self._ask_at > 20:
+            self._ask_at = 0.0
+            self.ask_note.setText(tr("Your admin Rubenium did not answer. Is it still open?"))
+
+    # -- Server calls
+    def _calls_tab(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        row = QHBoxLayout()
+        row.addWidget(QLabel(tr("Function")))
+        self.fn = QLineEdit("rb_me")
+        row.addWidget(self.fn, 1)
+        lay.addLayout(row)
+        lay.addWidget(QLabel(tr("Arguments (JSON)")))
+        self.args = QPlainTextEdit("{}")
+        self.args.setFixedHeight(64)
+        lay.addWidget(self.args)
+        row = QHBoxLayout()
+        call = QPushButton(tr("Call as DEV"))
+        call.clicked.connect(self._call)
+        copy = QPushButton(tr("Copy"))
+        copy.clicked.connect(lambda: QApplication.clipboard().setText(self.reply.toPlainText()))
+        row.addWidget(call)
+        row.addWidget(copy)
+        row.addStretch(1)
+        lay.addLayout(row)
+        self.reply = QPlainTextEdit()
+        self.reply.setReadOnly(True)
+        lay.addWidget(self.reply, 1)
+        lay.addWidget(QLabel(tr("Calls this session")))
+        self.table = QTableWidget(0, 5)
+        self.table.setHorizontalHeaderLabels([tr("Function"), tr("Calls"), tr("Last ms"), tr("Average ms"),
+                                              tr("Last error")])
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.table.cellDoubleClicked.connect(lambda r, _c: self.fn.setText(self.table.item(r, 0).text()))
+        lay.addWidget(self.table, 1)
+        return w
+
+    def _call(self) -> None:
+        name = self.fn.text().strip()
+        try:
+            args = json.loads(self.args.toPlainText() or "{}")
+            if not isinstance(args, dict):
+                raise ValueError("{…}")
+        except ValueError as exc:
+            return self.reply.setPlainText(tr("Not valid JSON: {e}", e=str(exc)))
+        if not re.fullmatch(r"[a-z_][a-z0-9_]{0,62}", name):
+            return self.reply.setPlainText(tr("Not a function name: {e}", e=name))
+        self.reply.setPlainText(tr("Calling…"))
+        t0 = time.monotonic()
+
+        def back(ok: bool, data) -> None:
+            ms = int((time.monotonic() - t0) * 1000)
+            head = f"{name}  ·  {ms} ms  ·  " + ("ok" if ok else "error")
+            try:
+                self.reply.setPlainText(head + "\n\n" + (_dev_json(data) if ok else str(data)))
+            except RuntimeError:
+                pass
+        self.ctx.online.ask(name, args, back, raw=True)
+
+    def _show_calls(self) -> None:
+        rows = sorted(SANDBOX_CALLS.items(), key=lambda kv: -kv[1][0])
+        self.table.setRowCount(len(rows))
+        for i, (name, (n, last, total, err)) in enumerate(rows):
+            for j, v in enumerate((name, str(n), f"{last:.0f}", f"{total / max(1, n):.0f}", err)):
+                it = self.table.item(i, j)
+                if it is None:
+                    self.table.setItem(i, j, QTableWidgetItem(v))
+                elif it.text() != v:
+                    it.setText(v)
+
+    # -- State
+    def _state_tab(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        row = QHBoxLayout()
+        b = QPushButton(tr("Refresh"))
+        b.clicked.connect(self._show_state)
+        tree = QPushButton(tr("List the page's widgets"))
+        tree.clicked.connect(self._show_tree)
+        row.addWidget(b)
+        row.addWidget(tree)
+        row.addStretch(1)
+        lay.addLayout(row)
+        self.state_box = QPlainTextEdit()
+        self.state_box.setReadOnly(True)
+        self.state_box.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        lay.addWidget(self.state_box, 1)
+        return w
+
+    def _show_state(self) -> None:
+        ctx, ec = self.ctx, self.ctx.econ
+        s = {k: v for k, v in ctx.online.s.items() if "token" not in k}
+        state = {
+            "sandbox": {"folder": str(DATA_DIR), "owner": self.owner, "pid": os.getpid(), "pc": pc_id()[:12] + "…",
+                        "uptime_s": int(time.monotonic() - self.t0), "lag_ms": SANDBOX_OPTS["lag_ms"],
+                        "internet_cut": SANDBOX_OPTS["fail"], "motion": ui.motion, "view": SANDBOX_VIEW},
+            "account": s,
+            "economy": {k: getattr(ec, k, None) for k in ("coins", "keys", "xp", "level", "tier", "admin", "ready",
+                                                          "server_old")},
+            "items": len(getattr(ec, "items", None) or []),
+            "page": getattr(ctx.window, "current", ""),
+            "games_sub": getattr(ctx, "games_sub", None), "casino": getattr(ctx, "casino", None),
+            "app": {"version": VERSION_NAME, "build": BUILD, "python": sys.version.split()[0],
+                    "qt": QT_VERSION_STR, "platform": sys.platform,
+                    "scale": ui.scale, "lang": lang()},
+            "settings": ctx.cfg.d,
+        }
+        self.state_box.setPlainText(_dev_json(state))
+
+    def _show_tree(self) -> None:
+        page = None
+        try:
+            page = self.ctx.window.page()
+        except Exception:  # noqa: BLE001
+            page = None
+        root = page or self.ctx.window
+        lines = []
+
+        def walk(wd, depth: int) -> None:
+            if len(lines) > 2000 or depth > 14:
+                return
+            g = wd.geometry()
+            text = ""
+            for attr in ("_text", "text"):
+                v = getattr(wd, attr, "")
+                if callable(v):
+                    try:
+                        v = v()
+                    except Exception:  # noqa: BLE001
+                        v = ""
+                if isinstance(v, str) and v:
+                    text = "  \"" + v[:40] + "\""
+                    break
+            lines.append("  " * depth + f"{type(wd).__name__}  {g.x()},{g.y()} {g.width()}x{g.height()}"
+                         + ("" if wd.isVisible() else "  (hidden)") + text)
+            for ch in wd.findChildren(QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly):
+                walk(ch, depth + 1)
+        walk(root, 0)
+        self.state_box.setPlainText("\n".join(lines))
+
+    # -- Log
+    def _log_tab(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        row = QHBoxLayout()
+        row.addWidget(QLabel(tr("Filter")))
+        self.flt = QLineEdit()
+        row.addWidget(self.flt, 1)
+        self.pause = QCheckBox(tr("Pause"))
+        row.addWidget(self.pause)
+        clear = QPushButton(tr("Clear"))
+        clear.clicked.connect(lambda: (SANDBOX_LOG.clear(), self.log_box.clear()))
+        copy = QPushButton(tr("Copy"))
+        copy.clicked.connect(lambda: QApplication.clipboard().setText(self.log_box.toPlainText()))
+        row.addWidget(clear)
+        row.addWidget(copy)
+        lay.addLayout(row)
+        self.log_box = QPlainTextEdit()
+        self.log_box.setReadOnly(True)
+        self.log_box.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        lay.addWidget(self.log_box, 1)
+        self._log_sig = None
+        return w
+
+    def _show_log(self) -> None:
+        if self.pause.isChecked():
+            return
+        want = self.flt.text().strip().lower()
+        lines = [x for x in SANDBOX_LOG if want in x.lower()] if want else list(SANDBOX_LOG)
+        sig = (len(SANDBOX_LOG), SANDBOX_LOG[-1] if SANDBOX_LOG else "", want)
+        if sig == self._log_sig:
+            return
+        self._log_sig = sig
+        self.log_box.setPlainText("\n".join(lines[-400:]))
+        self.log_box.verticalScrollBar().setValue(self.log_box.verticalScrollBar().maximum())
+
+    # -- every second
+    def _tick(self) -> None:
+        try:
+            ec = self.ctx.econ
+            up = int(time.monotonic() - self.t0)
+            calls = sum(r[0] for r in SANDBOX_CALLS.values())
+            last = SANDBOX_RECENT[-1][2] if SANDBOX_RECENT else 0.0
+            self.head.setText(
+                tr("Playing as DEV: a throwaway account, deleted with everything it did when this closes. Owner: {o}",
+                   o=self.owner or "?") + "\n" +
+                tr("up {t} · {n} server calls · last {ms} ms · {c} coins · {k} keys · page: {p}",
+                   t=f"{up // 3600:02d}:{up // 60 % 60:02d}:{up % 60:02d}", n=calls, ms=int(last),
+                   c=coins_text(int(getattr(ec, "coins", 0) or 0)), k=int(getattr(ec, "keys", 0) or 0),
+                   p=str(getattr(self.ctx.window, "current", "") or "-")))
+            i = self.tabs.currentIndex()
+            if i == 2:
+                self._show_calls()
+            elif i == 4:
+                self._show_log()
+            self._check_answer()
+        except RuntimeError:
+            pass
+        except Exception:  # noqa: BLE001
+            log.exception("DEV console tick")
+
+
+# ------------------------------------------------------------------ the admin's side: make DEV, start, clean up
+def sandbox_command(folder: str) -> list:
+    """How to start this same Rubenium again, as the sandbox."""
+    arg = "--sandbox=" + folder
+    if getattr(sys, "frozen", False):
+        return [sys.executable, arg]
+    exe = sys.executable
+    pyw = os.path.join(os.path.dirname(exe), "pythonw.exe")
+    script = os.path.abspath(sys.argv[0])
+    if sys.platform == "win32" and os.path.exists(pyw):
+        return [pyw, script, arg]
+    return [exe, script, arg, "--console"]          # --console: never re-launched by the first-start check
+
+
+class DevSandbox(QObject):
+    """Admin side of the DEV sandbox: one at a time, DEV deleted (and its folder) whenever it ends."""
+    changed = pyqtSignal()
+
+    def __init__(self, ctx) -> None:
+        super().__init__()
+        self.ctx = ctx
+        self.proc = None
+        self.folder = ""
+        self.state = "off"                       # off / making / open / closing
+        self.note = ""
+        self.since = 0.0
+        self.kill_at = 0.0                       # closing: the sandbox had a few seconds to close by itself
+        self._t = QTimer(self)
+        self._t.setInterval(1500)
+        self._t.timeout.connect(self._poll)
+
+    def running(self) -> bool:
+        return self.proc is not None and self.proc.poll() is None
+
+    def _say(self, text: str, state: str = None) -> None:
+        self.note = text
+        if state:
+            self.state = state
+        self.changed.emit()
+        try:
+            if getattr(self.ctx.window, "current", "") == "admin" or self.ctx.window.showing("admin"):
+                self.ctx.reload_page("admin")
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _fail(self, why: str) -> None:
+        log.warning("DEV sandbox: %s", why)
+        self._say(en("Could not open the sandbox: {e}", e=why), "off")
+        self.ctx.toast(en("DEV sandbox: {e}", e=why), "warn")
+
+    # -- open
+    def open(self) -> None:
+        if self.state != "off" or self.running():
+            return self.ctx.toast(en("The DEV sandbox is already open"), "warn")
+        if not self.ctx.econ.admin:
+            return
+        self._say(en("Making DEV…"), "making")
+        ec = self.ctx.econ
+        # a DEV left from last time (Rubenium closed hard) goes first; no DEV yet is fine too
+        ec.call("rb_admin_bot_delete", {"name": DEV_NAME}, lambda _ok, _d: ec.call("rb_admin_bot_ticket", {}, self._ticket))
+
+    def _ticket(self, ok: bool, tk) -> None:
+        if not ok or not tk:
+            return self._fail(str(tk))
+        pw = secrets.token_urlsafe(24)               # never shown, never saved: the sandbox gets the login itself
+
+        def job():
+            return _request("/auth/v1/signup", {"email": DEV_NAME.lower() + MAIL, "password": pw,
+                                                "data": {"username": DEV_NAME, "device": "bot:" + str(tk)}})
+        self.ctx.online.in_background(job, self._made)
+
+    def _made(self, ok: bool, ans) -> None:
+        if not ok or not isinstance(ans, dict) or not ans.get("access_token"):
+            text = str(ans)
+            if "taken" in text.lower():
+                text = en("a real player already has the name DEV")
+            return self._fail(text)
+        user = ans.get("user") or {}
+        self._session = {"access_token": ans["access_token"], "refresh_token": ans.get("refresh_token", ""),
+                         "expires_at": time.time() + float(ans.get("expires_in", 3600)), "username": DEV_NAME,
+                         "user_id": user.get("id", "")}
+        # paused: the server's bot life (online hours, cases, bets) leaves DEV alone; forced off: never shown online
+        self.ctx.econ.call("rb_admin_bot_set", {"name": DEV_NAME, "cfg": {"paused": True, "force": "off"}}, self._set)
+
+    def _set(self, ok: bool, data) -> None:
+        if not ok:
+            self._delete()
+            return self._fail(str(data))
+        try:
+            self._launch()
+        except Exception as exc:  # noqa: BLE001
+            log.exception("DEV sandbox: start failed")
+            self._delete()
+            self._remove_folder()
+            return self._fail(str(exc) or "start failed")
+
+    def _launch(self) -> None:
+        folder = tempfile.mkdtemp(prefix=SANDBOX_PREFIX)
+        self.folder = folder
+        info = {"session": self._session, "owner": self.ctx.online.username(), "lang": lang(), "parent": os.getpid(),
+                "made": time.time()}
+        self._session = None
+        p = Path(folder)
+        (p / "handoff.dat").write_bytes(_seal(json.dumps(info).encode("utf-8")))
+        settings = {"schema": 3, "v53_fresh": True, "v5_fresh": True, "lang": lang(), "tutorial_done": True,
+                    "terms_seen": TERMS_VERSION, "welcome": False, "sounds": False, "update_check": False,
+                    "seen_version": BUILD, "reduce_motion": True}
+        (p / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
+        cmd = sandbox_command(folder)
+        log.info("DEV sandbox: starting %s", cmd[0])
+        kw = {"close_fds": True, "cwd": os.path.dirname(os.path.abspath(cmd[1] if len(cmd) > 2 else cmd[0])) or None}
+        if getattr(sys, "frozen", False):
+            kw["env"] = clean_env()
+        self.proc = subprocess.Popen(cmd, **kw)
+        self.since = time.monotonic()
+        self._t.start()
+        self._say(en("DEV sandbox open"), "open")
+        self.ctx.toast(en("DEV sandbox opening: a plain copy of Rubenium, logged in as DEV"))
+
+    # -- while open
+    def _poll(self) -> None:
+        if self.proc is not None and self.proc.poll() is not None:
+            return self._ended()
+        if self.kill_at and time.monotonic() > self.kill_at:
+            self.kill_at = 0.0
+            try:
+                self.proc.terminate()
+            except OSError:
+                pass
+            return
+        self._answer()
+
+    def _answer(self) -> None:
+        """The console asked to change DEV's coins, keys or level (DEV is not an admin; this account is)."""
+        if not self.folder:
+            return
+        path = Path(self.folder) / "ask.json"
+        try:
+            ask = json.loads(path.read_text(encoding="utf-8"))
+            path.unlink(missing_ok=True)
+        except (OSError, ValueError):
+            return
+        if not isinstance(ask, dict):
+            return
+        cfg = {}
+        for key, lo, hi in (("coins", 0, 10000000), ("keys", 0, 48), ("level", 0, 100)):
+            try:
+                cfg[key] = max(lo, min(hi, int((ask.get("cfg") or {}).get(key))))
+            except (TypeError, ValueError):
+                pass
+
+        def back(ok: bool, data) -> None:
+            try:
+                out = Path(self.folder) / "answer.json"
+                tmp = out.with_name("answer.json.tmp")
+                tmp.write_text(json.dumps({"id": ask.get("id"), "ok": ok, "text": "" if ok else str(data)}),
+                               encoding="utf-8")
+                os.replace(tmp, out)
+            except OSError:
+                pass
+        if not cfg:
+            return back(False, "nothing to set")
+        self.ctx.econ.call("rb_admin_bot_set", {"name": DEV_NAME, "cfg": cfg}, back)
+
+    # -- close
+    def _ask_quit(self) -> None:
+        """The sandbox closes itself properly (its lobbies and trade closed first) when this file appears."""
+        try:
+            if self.folder:
+                (Path(self.folder) / "quit").write_text("1", encoding="utf-8")
+        except OSError:
+            pass
+
+    def close(self) -> None:
+        if self.running():
+            self._say(en("Closing: deleting DEV…"), "closing")
+            self._ask_quit()
+            self.kill_at = time.monotonic() + 8.0
+        elif self.state != "off":
+            self._ended()
+
+    def _ended(self) -> None:
+        self.proc = None
+        self.kill_at = 0.0
+        self._t.stop()
+        self._say(en("Closing: deleting DEV…"), "closing")
+
+        def done(ok: bool, _data) -> None:
+            self._remove_folder()
+            self._say(en("DEV and everything it did were deleted") if ok else en("DEV could not be deleted: open and close the sandbox again"), "off")
+            self.ctx.admin_cache = {}
+        self._delete(done)
+
+    def _delete(self, then=None) -> None:
+        self.ctx.econ.call("rb_admin_bot_delete", {"name": DEV_NAME}, then or (lambda _ok, _d: None))
+
+    def _remove_folder(self) -> None:
+        if self.folder and sandbox_dir_ok(self.folder):
+            shutil.rmtree(self.folder, ignore_errors=True)
+        self.folder = ""
+
+    def shutdown(self) -> None:
+        """The admin's Rubenium is closing: the sandbox closes too and DEV is deleted now (a few seconds at most)."""
+        if self.state == "off" and not self.running():
+            return
+        self._t.stop()
+        try:
+            if self.running():
+                self._ask_quit()
+                try:
+                    self.proc.wait(4)
+                except subprocess.TimeoutExpired:
+                    self.proc.terminate()
+                    self.proc.wait(2)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            _request("/rest/v1/rpc/rb_admin_bot_delete", {"name": DEV_NAME}, self.ctx.online._token(), timeout=4)
+        except Exception:  # noqa: BLE001
+            log.info("DEV sandbox: DEV not deleted on close (it is deleted the next time the sandbox opens)")
+        self._remove_folder()
+        self.proc, self.state = None, "off"
+
+
+def dev_sandbox(ctx) -> DevSandbox:
+    sb = getattr(ctx, "_dev_sandbox", None)
+    if sb is None:
+        sb = ctx._dev_sandbox = DevSandbox(ctx)
+    return sb
+
+
+def sandbox_admin_row(page, lay) -> None:
+    """Admin: the DEV sandbox button, on top of every admin screen (English, like the rest of the admin panel)."""
+    sb = dev_sandbox(page.ctx)
+    row = hbox(spacing=6)
+    if sb.state == "off":
+        b = Button(en("Open DEV sandbox"), "ghost", 30, icon="play")
+        b.clicked.connect(sb.open)
+    else:
+        b = Button(en("Close DEV sandbox") if sb.state == "open" else sb.note, "danger" if sb.state == "open" else "ghost", 30)
+        b.clicked.connect(sb.close)
+        b.setEnabled(sb.state == "open")
+    row.addWidget(b, 1)
+    lay.addLayout(row)
+    if sb.state == "open":
+        mins = int((time.monotonic() - sb.since) // 60)
+        text = en("DEV sandbox open for {m} min. Join your own games from it as DEV. Closing it deletes DEV and "
+                  "everything it did; what your account loses to DEV is not given back.", m=mins)
+    elif sb.note:
+        text = sb.note
+    else:
+        text = en("A plain copy of Rubenium logged in as DEV, a throwaway account: join your own games from it. "
+                  "Nothing it does is kept: DEV is deleted when it closes.")
+    lay.addWidget(Label(text, 10.5, TEXT_DIM, wrap_w=page.W))
+
+FR.update({   # 10.0: the DEV sandbox
+    "Rubenium DEV sandbox": "Bac à sable DEV de Rubenium",
+    "RUBENIUM DEV BUILD · SANDBOX": "RUBENIUM VERSION DEV · BAC À SABLE",
+    "Options": "Options",
+    "Server calls": "Appels serveur",
+    "State": "État",
+    "Reload page": "Recharger la page",
+    "Close sandbox": "Fermer le bac à sable",
+    "Open a page": "Ouvrir une page",
+    "Open games made by {o}": "Parties ouvertes créées par {o}",
+    "Join them as DEV from the game's own page (the buttons above). Tip: in your main Rubenium, Settings > Keep Online open when I click outside it, so both menus stay open side by side.": "Rejoins-les en tant que DEV depuis la page du jeu (les boutons au-dessus). Astuce : dans ton Rubenium principal, Réglages > Garder En ligne ouvert quand je clique à côté, pour garder les deux menus ouverts côte à côte.",
+    "Nothing open by {o} right now.": "Rien d’ouvert par {o} pour l’instant.",
+    "Monospace font everywhere": "Police à chasse fixe partout",
+    "Keep the menu open when I click outside it": "Garder le menu ouvert quand je clique à côté",
+    "Cut the internet (every server call fails)": "Couper internet (chaque appel au serveur échoue)",
+    "Console always on top": "Console toujours au premier plan",
+    "Menu size (%)": "Taille du menu (%)",
+    "Extra delay on every server call (ms)": "Délai ajouté à chaque appel au serveur (ms)",
+    "Refresh the open games every (s)": "Actualiser les parties ouvertes toutes les (s)",
+    "Console text size": "Taille du texte de la console",
+    "Console see-through (%)": "Transparence de la console (%)",
+    "DEV's numbers (set by your admin account)": "Les chiffres de DEV (réglés par ton compte admin)",
+    "Asking your admin account…": "Demande à ton compte admin…",
+    "Your admin Rubenium did not answer. Is it still open?": "Ton Rubenium admin n’a pas répondu. Est-il toujours ouvert ?",
+    "Function": "Fonction",
+    "Arguments (JSON)": "Arguments (JSON)",
+    "Call as DEV": "Appeler en tant que DEV",
+    "Calls this session": "Appels pendant cette session",
+    "Average ms": "Moyenne ms",
+    "Calls": "Appels",
+    "Last ms": "Dernier ms",
+    "Last error": "Dernière erreur",
+    "Not valid JSON: {e}": "JSON invalide : {e}",
+    "Not a function name: {e}": "Ce n’est pas un nom de fonction : {e}",
+    "Calling…": "Appel en cours…",
+    "List the page's widgets": "Lister les widgets de la page",
+    "Playing as DEV: a throwaway account, deleted with everything it did when this closes. Owner: {o}": "Tu joues en tant que DEV : un compte jetable, supprimé avec tout ce qu’il a fait quand ceci se ferme. Propriétaire : {o}",
+    "up {t} · {n} server calls · last {ms} ms · {c} coins · {k} keys · page: {p}": "lancé depuis {t} · {n} appels au serveur · dernier {ms} ms · {c} pièces · {k} clés · page : {p}",
+    "Not in the DEV sandbox": "Pas dans le bac à sable DEV",
+    "Close the DEV sandbox? DEV and everything it did are deleted.": "Fermer le bac à sable DEV ? DEV et tout ce qu’il a fait sont supprimés."
+})
 
 
 # ==================================================================================================
@@ -60901,6 +61996,10 @@ class FxOverlay(QWidget):
         self._t.timeout.connect(self._step)
 
     def add(self, duration: float, painter, done=None, delay: float = 0.0) -> None:
+        if no_motion():                          # 10.0 DEV sandbox: no effects, what comes after happens at once
+            if done is not None:
+                QTimer.singleShot(0, done)
+            return
         self.fx.append([time.monotonic() + delay, duration, painter, done])
         if not self.isVisible():
             self.show()
@@ -60964,6 +62063,8 @@ def ease_in_out(t: float) -> float:
 
 def shake(widget, strength: float = 6.0, ms: int = 320) -> None:
     """A light shake: the window trembles a few pixels and settles back exactly where it was."""
+    if no_motion():
+        return
     try:
         home = widget.pos()
     except RuntimeError:
@@ -68720,6 +69821,9 @@ class App(QObject):
         for _k in ("welcome", "splash"):                 # 3.0.0: always on (no longer a setting)
             if not self.cfg[_k]:
                 self.cfg[_k] = True
+        if SANDBOX:                                      # 10.0: the DEV sandbox: plain, silent, nothing shown once
+            sandbox_settings(self.cfg)
+            ui.motion = 0.0
         self._was_open = bool(self.cfg["card_open"])
         self.cfg["unlock_all"] = False
         if self.cfg["scale_before_games"]:           # the Games tab had made the menu bigger: back to your size
@@ -68751,7 +69855,8 @@ class App(QObject):
         self._xp_watch.setInterval(3000)
         self._xp_watch.timeout.connect(lambda: self.econ.xp and self._xp_first())
         self._xp_watch.start()
-        threading.Thread(target=cleanup_files, daemon=True).start()
+        if not SANDBOX:
+            threading.Thread(target=cleanup_files, daemon=True).start()
         self.casino = False                          # inside the casino (Games tab, shown bigger)
         self.casino_ask = None                       # the gambling warning is being shown
         self._wear_only_owned()
@@ -68807,7 +69912,10 @@ class App(QObject):
         self.updater.ready.connect(self._update_ready)
         self.updater.failed.connect(self._update_failed)
         self._update_prompted = ""
-        extras.Updater.cleanup()
+        if SANDBOX:                                      # 10.0: the sandbox never looks for, downloads or installs updates
+            self.updater.start = self.updater.check = lambda *_a, **_k: None
+        else:
+            extras.Updater.cleanup()
         pass
         self._daily_timer = QTimer(self)                 # 4.4: unclaimed daily reward: a reminder every 30 minutes
         self._daily_timer.setInterval(30 * 60 * 1000)
@@ -68865,10 +69973,13 @@ class App(QObject):
         qapp.aboutToQuit.connect(self.shutdown)
         atexit.register(self._last_resort)
 
-        if TermsGate.needed(self.cfg):                 # 9.2: the Terms first, before anything starts
+        if not SANDBOX and TermsGate.needed(self.cfg):     # 9.2: the Terms first, before anything starts
             self._terms_gate_w = TermsGate(self, self._begin)
         else:
             self._begin()
+
+    def _sandbox_open(self) -> None:
+        sandbox_open(self)
 
     def _begin(self) -> None:
         self._terms_gate_w = None
@@ -68879,6 +69990,10 @@ class App(QObject):
     def _intro(self) -> None:
         """Welcome screen -> Launch -> the ball lands where it was left. Skipped when the app restarts itself
         (after an update or to get admin rights) and when the user switched it off."""
+        if SANDBOX:                                  # 10.0: no welcome and no ball: the online menu, as DEV
+            self.welcome = None
+            QTimer.singleShot(400, self._sandbox_open)
+            return
         self._news = self.cfg["seen_version"] != BUILD and self.cfg["usage_s"] > 0    # updated, not new
         self.cfg["seen_version"] = BUILD
         restarted = "--updated" in sys.argv or "--elevated" in sys.argv
@@ -68942,16 +70057,20 @@ class App(QObject):
     def _late_start(self) -> None:
         self._safe("colours", self.refresh_accent)
         selftest = "--selftest" in sys.argv
-        self._safe("media", self.media.start)
-        if not selftest:
+        sbx = SANDBOX                                     # 10.0: the DEV sandbox leaves the PC and the game files alone
+        if not sbx:
+            self._safe("media", self.media.start)
+        if not selftest and not sbx:
             self._safe("tray", self._make_tray)
             self._safe("autostart", self._sync_autostart)
-        self._safe("overlays", self.apply_overlays)
-        self._safe("timer", self.apply_timer)
+        if not sbx:
+            self._safe("overlays", self.apply_overlays)
+            self._safe("timer", self.apply_timer)
         self._safe("accent", self.refresh_accent)
-        self._safe("rocket", self.rocket.start)
-        self._safe("online swaps", lambda: extras.fetch_online_swaps(self))
-        self._safe("splash", self.splash.start)
+        if not sbx:
+            self._safe("rocket", self.rocket.start)
+            self._safe("online swaps", lambda: extras.fetch_online_swaps(self))
+            self._safe("splash", self.splash.start)
         self._safe("coins", self.wallet.start)
         if self.cfg["offline_mode"]:               # offline mode survives a restart, but only when logged in
             if self.online.logged_in():
@@ -68966,29 +70085,31 @@ class App(QObject):
         self._zoomer.setInterval(350)
         self._zoomer.timeout.connect(self.game_zoom)
         self._zoomer.start()
-        if self.cfg["update_check"] and not selftest:
+        if self.cfg["update_check"] and not selftest and not sbx:
             self._safe("updates", self.updater.start)
         if not selftest:                                  # 5.2: "the jackpot is open", with a glow
             self._jp_t = QTimer(self)
             self._jp_t.setInterval(5000)
             self._jp_t.timeout.connect(self._jackpot_bell)
             self._jp_t.start()
-        if not selftest:                                  # 5.0.1: a forced update reaches every Rubenium in a minute
+        if not selftest and not sbx:                      # 5.0.1: a forced update reaches every Rubenium in a minute
             self._force_t = QTimer(self)
             self._force_t.setInterval(60_000)
             self._force_t.timeout.connect(self._force_check)
             self._force_t.start()
             QTimer.singleShot(5000, self._force_check)
-        self._safe("show/hide key", lambda: self.tapkey.set_key(self.cfg["hotkey"]))
-        self._safe("game mode key", lambda: self.gmkey.set_key(self.cfg["gm_key"]))
+        if not sbx:
+            self._safe("show/hide key", lambda: self.tapkey.set_key(self.cfg["hotkey"]))
+            self._safe("game mode key", lambda: self.gmkey.set_key(self.cfg["gm_key"]))
         self._pin = QTimer(self)
         self._pin.setInterval(2000)
         self._pin.timeout.connect(lambda: self._safe("housekeeping", self._housekeeping))
         self._pin.start()
         # Right after Windows starts, the tray and the screen settings can still be settling: try again later.
-        QTimer.singleShot(8000, lambda: self._safe("tray retry", self._retry_tray))
-        QTimer.singleShot(12000, lambda: self._safe("display again", self._reapply_display))
-        QTimer.singleShot(30000, lambda: self._safe("tray retry", self._retry_tray))
+        if not sbx:
+            QTimer.singleShot(8000, lambda: self._safe("tray retry", self._retry_tray))
+            QTimer.singleShot(12000, lambda: self._safe("display again", self._reapply_display))
+            QTimer.singleShot(30000, lambda: self._safe("tray retry", self._retry_tray))
         swap = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--selftest-update=")), "")
         if swap:                                    # build test: install a local .exe exactly like an update
             QTimer.singleShot(1500, lambda: self._selftest_update(swap))
@@ -69104,6 +70225,8 @@ class App(QObject):
 
     def apply_overlays(self) -> None:
         """(Re)apply everything that lives outside the card."""
+        if SANDBOX:                                       # 10.0: the DEV sandbox never changes the screen
+            return
         self.crosshair.refresh()
         self.hud.refresh()
         if self.cfg["display"]["active"] in ("A", "B"):
@@ -69544,6 +70667,8 @@ class App(QObject):
         global TEXT
         item = self.cfg["font_item"]
         want = (font_families(item) if item and self.wallet.owns("font:" + item) else []) + list(FONT_DEFAULT)
+        if SANDBOX and SANDBOX_VIEW["mono"]:             # 10.0: the DEV console's monospace switch
+            want = list(DEV_MONO) + list(FONT_DEFAULT)
         col = self.title_colour()                    # 6.3: a coloured font colours the app's text, not only its shape
         if want != FONT_FAMILIES or col != TEXT:
             FONT_FAMILIES[:] = want
@@ -69757,6 +70882,8 @@ class App(QObject):
         unit_w = RAIL_W + (CARD_W - 2 * PAD + ONLINE_EXTRA + ScrollArea.GUTTER) + 2 * PAD
         unit_h = HEAD_H + BOTTOM + 760
         fit = min(wa.width() * 0.96 / unit_w, wa.height() / unit_h)
+        if SANDBOX:                                         # 10.0: the DEV console's menu size
+            return max(0.45, min(2.0, fit * 0.84 * SANDBOX_VIEW["size"] / 100))
         return max(0.75, min(1.6, fit * 0.84))             # 9.2: one size for the online menu (medium)
 
     def set_scale(self, pct: int) -> None:
@@ -69790,6 +70917,8 @@ class App(QObject):
         return self._apps
 
     def apply_timer(self) -> None:
+        if SANDBOX:
+            return
         self.timer_overlay.refresh()
         self.hotkeys.apply(self.cfg["timer"]["keys"])
 
@@ -69805,6 +70934,8 @@ class App(QObject):
 
     # Rocket League swaps: the engine works in a thread, this side shows the loading screen and results
     def rocket_apply(self, desired: dict, reload: bool) -> None:
+        if SANDBOX:                                       # 10.0: not in the DEV sandbox
+            return self.toast(tr("Not in the DEV sandbox"), "warn")
         if self.rocket.apply(desired, reload=reload):
             self.window.show_busy(tr("Closing Rocket League…") if reload else tr("Applying…"))
 
@@ -69871,6 +71002,9 @@ class App(QObject):
         """Offline mode: Rubenium makes no internet request. It cannot be used to dodge anything: it can only be
         switched on between games, cases and trades, at most once a minute, and the time spent offline earns
         nothing (the server only counts minutes it hears about). Returns False when the switch was refused."""
+        if SANDBOX:
+            self.toast(tr("Not in the DEV sandbox"), "warn")
+            return False
         on = bool(on)
         if on == bool(self.cfg["offline_mode"]):
             return True
@@ -69911,6 +71045,8 @@ class App(QObject):
 
     def restart_app(self) -> None:
         """4.5: hold the show / hide key for 3 seconds: Rubenium starts again (a way out when something is stuck)."""
+        if SANDBOX:                                       # 10.0: not in the DEV sandbox
+            return self.toast(tr("Not in the DEV sandbox"), "warn")
         if self._closing:
             return
         path = sys.executable if getattr(sys, "frozen", False) else os.path.abspath(sys.argv[0])
@@ -70076,6 +71212,8 @@ class App(QObject):
     def door_mode(self):
         """What opens when the online menu has dropped: the OG chest, the garage doors (the first time online after
         Rubenium starts) or nothing."""
+        if SANDBOX:                                       # 10.0: no doors, no chest in the DEV sandbox
+            return None
         oc = getattr(self, "og_chest", None) or {}
         if oc.get("due") and time.time() < float(oc.get("ends") or 0):
             return "og"
@@ -70187,6 +71325,8 @@ class App(QObject):
         self.offer_update()
 
     def offer_update(self) -> None:
+        if SANDBOX:
+            return
         info = self.updater.latest
         if not info or self._update_prompted == info["version"] or self.updater.installing:
             return
@@ -70200,6 +71340,8 @@ class App(QObject):
 
     def repair_app(self) -> None:
         """6.0: reinstall the newest version over this one (asked for in Settings > UPDATE, after a clear warning)."""
+        if SANDBOX:                                       # 10.0: not in the DEV sandbox
+            return self.toast(tr("Not in the DEV sandbox"), "warn")
         try:
             if self.econ.rounds_held():
                 return self.toast(tr("Finish your round first, then repair"), "warn")
@@ -70214,6 +71356,8 @@ class App(QObject):
     def uninstall_app(self) -> None:
         """Settings > UPDATE > Uninstall (held for 4 s): a quick save, the game files put back, then every local
         Rubenium file goes once Rubenium has closed. Nothing online is touched."""
+        if SANDBOX:                                       # 10.0: not in the DEV sandbox
+            return self.toast(tr("Not in the DEV sandbox"), "warn")
         if getattr(self, "uninstalling", False):
             return
         if not win.IS_WIN:
@@ -70299,6 +71443,8 @@ class App(QObject):
                                                        "Settings > Apps instead."), "error"))
 
     def install_update(self) -> None:
+        if SANDBOX:                                       # 10.0: not in the DEV sandbox
+            return self.toast(tr("Not in the DEV sandbox"), "warn")
         sfx.play("pick")
         if self.updater.install():
             self.window.show_busy(tr("Downloading update… {p}%", p=0))
@@ -70508,6 +71654,9 @@ class App(QObject):
     def leave_online(self, after=None, ask: bool = True) -> None:
         """The back arrow: tell what leaving would close (lobbies, a live match, a giveaway entry) and ask once; then
         the black hole takes the banner and the ball floats back down to where it lives."""
+        if SANDBOX:                                       # 10.0: leaving the online menu closes the DEV sandbox
+            return self.window.confirm(tr("Close the DEV sandbox? DEV and everything it did are deleted."),
+                                       self.quit, yes=tr("Close sandbox"))
         if not self.online_mode or getattr(self, "_online_busy", False):
             return
         if claim_blocked(self):
@@ -70629,6 +71778,8 @@ class App(QObject):
         return self.crosshair.isVisible() or self.hud.isVisible() or self.display.active
 
     def set_crosshair(self, on: bool) -> None:
+        if SANDBOX:
+            return
         self.cfg["crosshair_on"] = on
         self.crosshair.refresh()
         self.window.ball.update()
@@ -70637,6 +71788,8 @@ class App(QObject):
             page.on_show()
 
     def set_hud(self, on: bool) -> None:
+        if SANDBOX:
+            return
         self.cfg["hud"]["on"] = on
         self.cfg.save()
         self.hud.refresh()
@@ -70683,7 +71836,8 @@ class App(QObject):
         self.online.ask("rb_my_data", {}, got)
 
     def delete_account_dialog(self) -> None:
-        pass
+        if SANDBOX:                                       # 10.0: DEV goes when the sandbox closes
+            return self.leave_online()
         self._delete_dialog = DeleteDialog(self)
 
     def quit(self) -> None:
@@ -70695,6 +71849,11 @@ class App(QObject):
             return
         self._closing = True
         log.info("Shutting down")
+        try:
+            if getattr(self, "_dev_sandbox", None) is not None:
+                self._dev_sandbox.shutdown()         # 10.0: an open DEV sandbox closes and DEV is deleted
+        except Exception:  # noqa: BLE001
+            log.exception("DEV sandbox shutdown")
         try:
             self.admute.release()                    # never leave the music app muted
             if self.online_mode and self.online.logged_in():
@@ -70728,6 +71887,8 @@ class App(QObject):
             self.media.wait(3000)
         finally:
             self.cfg.flush()
+            if SANDBOX:                                  # 10.0: the DEV sandbox leaves nothing behind
+                sandbox_end(self)
 
     def _last_resort(self) -> None:
         try:
@@ -85792,8 +86953,10 @@ FR.update({'Rubenium League rebuilt: 1 v 1 car soccer on a flat pitch seen from 
 
 
 def main() -> int:
+    if SANDBOX and not (sandbox_dir_ok(SANDBOX_DIR) and (DATA_DIR / "handoff.dat").is_file()):
+        return 1                                       # 10.0: a sandbox only starts from the admin's Rubenium
     setup_logging()
-    if not win.single_instance(wait=8.0 if ("--elevated" in sys.argv or "--updated" in sys.argv) else 0.0):
+    if not SANDBOX and not win.single_instance(wait=8.0 if ("--elevated" in sys.argv or "--updated" in sys.argv) else 0.0):
         return 0
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     qapp = QApplication(sys.argv)
